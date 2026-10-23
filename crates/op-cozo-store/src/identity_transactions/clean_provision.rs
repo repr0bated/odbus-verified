@@ -151,7 +151,8 @@ pub(super) fn validate(
         || device["attached"] != true
         || instance["status"] != "Stopped"
         || instance["type"] != "container"
-        || instance["name"] != "3tchedChatbot"
+        || !(instance["name"] == "3tchedChatbot" || instance["name"] == "3tchedCtlChatbot"
+            || instance["name"].as_str().is_some_and(is_numbered_native_name))
         || !(provenance["version"] == if explicitly_deleted { 3 } else { 2 }
             || (provenance["version"] == 4 && (fresh_partitioned || explicitly_deleted)))
         || provenance["session_id"] != sid

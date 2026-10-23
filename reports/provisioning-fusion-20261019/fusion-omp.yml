@@ -1,0 +1,26 @@
+# Task-scoped overlay; does not change normal OMP settings.
+modelRoles:
+  judge: typesafe/jev-latest
+skills:
+  customDirectories:
+    - /srv/git/odbus-verified/.agents/skills
+    - /srv/git/odbus-verified/.claude/skills
+  includeSkills:
+    - grpc-expert
+    - grpc-protocol-expert
+    - json-render
+    - ovs-db-analysis
+    - kernel-fuse-diagnosis
+    - fuse
+    - btrfs
+    - incus
+    - rust-memory-optimization
+    - memory-safety-patterns
+    - rust
+    - application-security
+    - systematic-debugging
+    - using-superpowers
+    - agent-patterns
+retry:
+  fallbackChains:
+    consolidation-fusion/litellm/fusion-1: []

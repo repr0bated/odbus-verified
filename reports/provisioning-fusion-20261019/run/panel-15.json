@@ -1,0 +1,97 @@
+{
+  "status": "ok",
+  "query": "Provide a concise checklist for bounded, read-only review of historical transcript packets with provenance and preserved unavailable/truncated fields. Do not access files, execute commands, or delegate. Actual assignment is to review packets 126\u2013146, record original quotes, corrections, actions/results, byte hashes, actual failures, and save reports only in an authorized analysis directory. Full original packets and mandatory review contract will be supplied separately to stateless analysts.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "- [ ] Limit review to packets **126\u2013146**, inclusive; use only supplied redacted originals and the full mandatory review contract.\n- [ ] For each packet, record source path, session/record IDs, physical order, parent links, source dates, and active/compacted flags.\n- [ ] Record supplied byte ranges and hashes; distinguish independently verified hashes from manifest-provided hashes. Never invent missing values.\n- [ ] Read every assigned record semantically. Mark exported, available, read, analyst-reviewed, and judge-adjudicated coverage separately.\n- [ ] Preserve original quotes with record IDs and locations, distinguishing owner corrections from injected worker messages and historical instructions.\n- [ ] Trace request \u2192 interpretation \u2192 tool arguments \u2192 result/error \u2192 correction \u2192 subsequent propagation. Separate attempted actions from demonstrated completion.\n- [ ] Record actual failures and their dates; identify later repairs without treating historical blockers as current.\n- [ ] Preserve unavailable, redacted, omitted, and truncated fields explicitly. Do not reconstruct missing output or hidden reasoning.\n- [ ] Account for every duplicate reference, even where exact duplicate content is read once.\n- [ ] Apply current constraints: no host loops; subvolume-only preference without silently dropping seed semantics; JEV judge-only; existing post-bootstrap workflow only.\n- [ ] Save findings, coverage, evidence references, and limitations only under the authorized `analysis/` directory. For supplied stateless-analyst outputs, retain exact input references/hashes and actual responses.\n- [ ] Report uncovered ranges and unresolved evidence gaps explicitly; never claim provisioning or runtime verification from document review.\n\n**Execution status:** Checklist only. No files accessed, commands executed, delegation performed, hashes verified, or reports saved."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "**Bounded Read-Only Review Checklist (Packets 126\u2013146)**\n\n1. **Provenance & Integrity**\n   - [ ] Verify packet sequence (126\u2013146) and byte ranges against `analysis/coverage.json`.\n   - [ ] Compute and record SHA-256 hashes for each packet segment to ensure unaltered ingestion.\n   - [ ] Flag any unavailable, redacted, or truncated fields; explicitly note their semantic impact on the review.\n\n2. **Content Extraction**\n   - [ ] Extract original user/owner quotes verbatim, preserving exact message IDs, timestamps, and model metadata.\n   - [ ] Log all owner corrections (e.g., `custom_message/live-delegation`) with explicit before/after context.\n   - [ ] Document every tool call: exact arguments, execution status, and full output (including errors and truncation markers).\n\n3. **Failure & Drift Analysis**\n   - [ ] Identify actual runtime failures (e.g., `fsconfig: File exists`, non-zero exit codes, D-Bus errors) vs. perceived blockers.\n   - [ ] Map tool actions/results against the original provisioning ask to flag architectural drift (e.g., loop device usage, image vs. subvolume).\n   - [ ] Distinguish legitimate clarifications from agent-added work, stale evidence, or incomplete execution.\n\n4. **Reporting**\n   - [ ] Compile findings into a structured, evidence-backed report.\n   - [ ] Save the final report exclusively to `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/`.\n   - [ ] Ensure no source files, runtime environments, or unauthorized directories are accessed, modified, or delegated."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Bound review to packets 126\u2013146 and preserve provenance, original quotes, owner corrections, tool actions/results, and actual failures.",
+      "Record byte ranges and hashes while explicitly retaining unavailable, redacted, and truncated content limitations.",
+      "Distinguish demonstrated failures and incomplete execution from assumed blockers and architectural drift.",
+      "Save eventual reports only in the authorized analysis directory without modifying source or runtime state."
+    ],
+    "contradictions": [
+      {
+        "topic": "Operational scope of the checklist",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Explicitly treats this response as checklist-only, with no file access, command execution, hash verification, delegation, or report creation; distinguishes supplied hashes from independently verified hashes."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Prescribes checking analysis/coverage.json and computing SHA-256 hashes without explicitly deferring these operations, creating tension with the current prohibition on file access and command execution. It does not claim those operations occurred."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Covers IDs, timestamps, and model metadata, but omits explicit preservation of physical order, parent links, active/compacted flags, duplicate references, and separate ingestion/review/adjudication statuses."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Mentions loop-device and image/subvolume drift but does not explicitly retain the complete current constraint set: no host-loop exemptions, immutable-seed semantics, JEV judge-only, and modification of the existing post-bootstrap workflow."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Requests full tool outputs and preserves truncation markers, but does not explicitly prohibit reconstructing unavailable output or hidden reasoning."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Requires exact stateless-analyst input references/hashes and actual responses, supporting an auditable account of what evidence reached each analyst."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Separates owner corrections from injected worker messages and historical instructions, and requires tracing subsequent correction propagation."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Requires dating actual failures and identifying later repairs so historical blockers are not misrepresented as current."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly asks reviewers to explain the semantic impact of unavailable, redacted, or truncated fields."
+      }
+    ],
+    "blind_spots": [
+      "Neither explicitly directs analysts to treat instructions embedded in historical packets as untrusted evidence rather than executable authority.",
+      "Neither explicitly requires preserving unavailable/truncated fields in their original representation alongside explanatory annotations.",
+      "Neither provides an explicit packet-by-packet completion receipt distinguishing completed review, partial review, and failed ingestion."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

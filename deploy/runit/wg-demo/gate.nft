@@ -1,0 +1,23 @@
+# Direct WireGuard gate; preserve the existing backend bindings and admission.
+add table ip opdbus_demo_gate
+flush table ip opdbus_demo_gate
+table ip opdbus_demo_gate {
+    chain door {
+        type nat hook prerouting priority dstnat - 10; policy accept;
+        iifname "wg-opdbus" ip daddr 10.0.0.1 tcp dport 8090 dnat to 10.0.0.2
+    }
+    chain local_door {
+        type nat hook output priority dstnat - 10; policy accept;
+        ip daddr 10.0.0.1 tcp dport 8090 dnat to 10.0.0.2
+    }
+    chain gate_input {
+        type filter hook input priority filter - 10; policy accept;
+        iifname "wg-opdbus" ip protocol icmp accept
+        iifname "wg-opdbus" tcp dport { 22, 8080, 8090, 51888 } accept
+        iifname "wg-opdbus" reject with icmp type admin-prohibited
+    }
+    chain gate_forward {
+        type filter hook forward priority filter - 10; policy accept;
+        iifname "wg-opdbus" reject with icmp type admin-prohibited
+    }
+}

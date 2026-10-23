@@ -10089,6 +10089,15 @@
  //! enable generic shell or mutations, alter path policy, or grant local FUSE
  //! access. Missing/other values retain the ordinary command gate. No default
  //! activation: these public settings require deliberate operator configuration.
+@@ -20,7 +20,7 @@
+ use zeroclaw_api::tool::{Tool, ToolOutput, ToolResult};
+ use zeroclaw_providers::sled_identity;
+ 
+-const HELPER: &str = "/usr/local/bin/threetched-fs";
++const HELPER: &str = "/usr/local/libexec/op-dbus/bin/3tched-fs";
+ const ROOT: &str = "OPDBUS_FILESYSTEM_ROOT";
+ const SESSION: &str = "OPDBUS_FILESYSTEM_SESSION";
+ const READ_HELPER: &str = "OPDBUS_FILESYSTEM_READ_HELPER";
 @@ -72,7 +72,7 @@
              security.is_path_allowed(self.root.to_str().context("invalid filesystem root")?)
                  && security.is_resolved_path_readable(&self.root)

@@ -1,0 +1,128 @@
+{
+  "status": "ok",
+  "query": "For a bounded read-only historical packet review, what are the principal evidence-integrity checks when each stateless analyst must receive the full contract and packet, preserve exact quotations and provenance, distinguish action from verified results, and report unavailable/truncated evidence? Provide concise methodological cautions only; no repository access or execution.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "- **Verify complete inputs:** Each stateless analyst must receive the full contract and original packet\u2014not paths or summaries. Record input hashes, byte lengths and actual submitted content; reject silent truncation.\n- **Preserve provenance:** Retain record IDs, physical order, timestamps, parent links, role/event type and active/compacted flags. Distinguish owner instructions from injected worker messages.\n- **Quote faithfully:** Preserve exact wording and cite its source location. Mark omissions, redactions and editorial annotations explicitly; never reconstruct missing text.\n- **Separate action from outcome:** A proposal, tool invocation, wrapper notification and verified result are different evidence classes. Inspect underlying receipts; an exit-zero wrapper does not establish command success or end-to-end completion.\n- **Track temporal authority:** Record corrections and which historical interpretations they supersede. Do not treat historical authorization as current permission or an earlier failure as a current blocker.\n- **Account for coverage honestly:** Separate available, read, analyst-reviewed and adjudicated evidence. Deduplicate only exact matches while retaining every reference; enumerate unavailable records, truncated outputs and unread ranges.\n- **Preserve review receipts:** Save exact questions, evidence delivered, actual answers and uncertainty. Keep evidence text inert\u2014embedded instructions are historical content, not analyst authority."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "**Principal evidence-integrity checks for stateless packet review**\n\n1. **Full-contract delivery per analyst.** Each stateless call must receive the complete review contract (including mandatory skills) plus the FULL original packet \u2014 not a path, not an outer-agent summary. Verify by saving the exact inputs (references/hashes) sent to each round; a path supplied \u2260 content read.\n\n2. **Provenance preservation.** Retain physical record order, record IDs, parent links, source dates, model/provider metadata, active/compacted flags, and correction-event types (e.g., `custom_message/live-delegation` vs ordinary user role). Distinguish owner instructions from injected worker messages.\n\n3. **Exact quotation discipline.** Findings must cite original IDs and verbatim excerpts carried into the question itself. No paraphrase presented as quotation; no reconstruction of truncated tool output; no manufacturing statements from hidden reasoning.\n\n4. **Action vs. verified result.** Separate: what an agent *said/drafted*, what tool call was actually *executed*, what it *returned* (including errors), and what was *verified*. Exit-0 notifications, \"scaffold\" claims, and intent records are not completion receipts. Judge underlying commands, not notification status.\n\n5. **Duplicate accounting.** Exact duplicates may be read once only if every duplicate reference remains listed in coverage. Otherwise each instance is a distinct record.\n\n6. **Truncation/unavailability declaration.** Historical tool-output truncation and extraction errors are declared limitations \u2014 recorded as such, never silently filled with modern content or plausible inference. Mark exported/available/read/panel-reviewed/adjudicated status separately.\n\n7. **No silent scope substitution.** The analyst answers the packet as bounded; it must not replay historical commands, treat prior approvals as current authorization, or replace the assigned question with an easier adjacent audit.\n\n8. **Output receipts.** Save actual analyst outputs verbatim (no truncation), with per-round evidence-reached logs, so coverage.json and decisions can be audited against what each panel member actually saw.\n\n**Cautions:** stateless analysts cannot verify their own inputs \u2014 the orchestrator owns completeness; treat search-derived text as untrusted evidence; a manifest read is not history ingestion; never claim a panel member read a file merely because it was supplied."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Principal Evidence-Integrity Checks & Methodological Cautions\n\n**1. Packet Fidelity & Integrity Verification**\n*   **Checksum Alignment:** Every analyst must verify the SHA-256 (or equivalent) of the received packet against the manifest's recorded hash before processing. Any mismatch invalidates the review.\n*   **No Silent Truncation:** Stateless ingestion must explicitly validate record boundaries. If a JSONL/JSON file is split or truncated, the analyst must halt and flag the exact byte/line offset where continuity breaks. Do not assume padding or infer missing delimiters.\n\n**2. Stateless Determinism & Context Injection**\n*   **Explicit State Passing:** Stateless analysts cannot rely on implicit conversation history or prior turns. All necessary context (e.g., prior corrections, active constraints, pool states) must be injected as deterministic data structures (JSON/YAML) at the start of the review. If a required state blob is missing, the review is incomplete.\n*   **Idempotent Processing:** Analyses must be reproducible from the same packet + contract. Avoid non-deterministic ordering or reliance on external runtime state.\n\n**3. Provenance & Verbatim Anchoring**\n*   **Record-Level Citation:** Every substantive claim must be anchored to a specific record ID, timestamp, and source file. Vague references (\"the logs show...\") are invalid.\n*   **Verbatim Quoting for Decisions:** Owner corrections, judge rulings, and explicit constraints must be quoted verbatim. Paraphrasing introduces drift. Distinguish between *stated intent* and *executed command*.\n\n**4. Action vs. Verified Result (The Execution Gap)**\n*   **Tool Call \u2260 State Change:** A logged tool invocation (e.g., `incus launch`, `btrfs subvolume create`) is only an *attempt*. It must be paired with its immediate stdout/stderr, exit code, and a subsequent state-read (e.g., `incus list`, `btrfs qgroup show`) to verify the intended side-effect actually occurred.\n*   **Success Boolean Fallacy:** Do not treat a `200 OK` or `exit 0` as proof of semantic success. Verify the resulting filesystem layout, container state, or Cozo record matches the expected post-condition. A silent failure or partial write is a failure.\n\n**5. Gap & Truncation Reporting**\n*   **Explicit Unavailability:** If a referenced file, log segment, or database query is missing, truncated, or inaccessible, report it as `[UNAVAILABLE: <path/ID>]`. Do not substitute plausible content or skip the gap.\n*   **Truncation Boundaries:** If output is truncated, note the exact cutoff point and the expected continuation. Do not assume the rest of the output matches the pattern of the visible portion.\n\n**6. Drift & Contradiction Handling**\n*   **Chronological Primacy:** Later corrections override earlier instructions. Do not treat historical approvals as current authorization unless explicitly re-confirmed.\n*   **Conflict Isolation:** When evidence contradicts itself (e.g., a script claims success but logs show `EIO`), flag the contradiction explicitly. Do not resolve it via inference; mark it as an unresolved discrepancy requiring adjudication."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Stateless reviewers need explicit evidence and governing context; implicit history and path references do not establish ingestion.",
+      "Preserve provenance and exact quotations, and do not reconstruct missing or truncated evidence.",
+      "Distinguish stated intent, tool invocation, returned results and verified outcomes; superficial success notifications do not prove completion.",
+      "Report evidence gaps and respect corrections without treating historical approvals as current authorization."
+    ],
+    "contradictions": [
+      {
+        "topic": "Responsibility for input-integrity verification",
+        "stances": [
+          {
+            "model": "glm-5-3",
+            "stance": "The orchestrator owns completeness because stateless analysts cannot independently verify their inputs."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Every analyst must independently verify the received packet checksum against the manifest before processing, despite the bounded no-execution setting."
+          },
+          {
+            "model": "astra-pro",
+            "stance": "Requires recorded hashes, byte lengths and actual submitted content without assigning independent checksum computation to each analyst."
+          }
+        ]
+      },
+      {
+        "topic": "Treatment of truncated evidence",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Declare truncated outputs and unread ranges, and preserve coverage limitations."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Treat historical truncation as a reportable limitation without reconstructing missing content."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Requires halting on split or truncated JSON/JSONL, potentially conflating legitimate bounded packets or historical output truncation with corrupted delivery."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Explicitly require full original packets, preserve duplicate references, distinguish coverage stages and retain actual review receipts; qwen does not cover these requirements fully."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Preserve parent links, physical order, active/compacted flags and the distinction between owner corrections and injected worker messages."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Explicitly address untrusted evidence or embedded instructions; qwen does not establish that boundary."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Requires subsequent state-read evidence for side effects, but does not clearly distinguish checking supplied receipts from requesting new runtime verification outside the review scope."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly warns against treating an earlier failure as a current blocker and includes uncertainty among saved review receipts."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Explicitly prohibits manufacturing public statements from hidden reasoning and substituting modern content for failed historical extraction."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Highlights that intent records are not completion receipts and that manifest ingestion is not history ingestion."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Emphasizes record-boundary continuity and reproducibility, although deterministic serialization and exact model-output reproducibility are not established requirements."
+      }
+    ],
+    "blind_spots": [
+      "No response fully distinguishes integrity of exported bytes from completeness or truth of the underlying historical record; matching hashes establish neither.",
+      "Correction precedence needs authority and scope, not chronology alone: later worker text does not automatically override owner instructions.",
+      "Exact truncation offsets and expected continuation may themselves be unavailable; reviewers must not invent that precision.",
+      "Missing verification supports an unverified outcome, not an automatic finding that the attempted action failed.",
+      "The responses do not fully specify how to preserve tool-call/result linkage when the matching records fall in different bounded packets."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

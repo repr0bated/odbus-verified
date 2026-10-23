@@ -1,0 +1,95 @@
+{
+  "request": 44,
+  "started": "2026-10-18T21:58:38.993862+00:00",
+  "finished": "2026-10-18T21:58:50.972758+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01ff6afd5a8e04a0016ad54112792087d0ad94d9b39dd28268",
+    "created": 1792360722,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming retired source references\",\"path\":\"/srv/git/odbus-verified/crates/**/*.rs;/srv/git/odbus-verified/scripts;/srv/git/odbus-verified/deploy;/srv/git/3tched.com/src\",\"pattern\":\"GetProviderCatalog|GetConfigSchema|3tched-router\\\\.provider-catalog\\\\.(list|result)|3tched-router\\\\.config-schema\\\\.(get|result|read)|get_provider_catalog|get_config_schema\"}",
+                "name": "grep"
+              },
+              "id": "call_6EMhhrAeCPAnzxog95C9vZX0",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating retained schema invariants\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs\",\"pattern\":\"ListProviders|providers.read|ConfigSchema|native_config|alternative|filter\"}",
+                "name": "grep"
+              },
+              "id": "call_0kdnikJuoYU1knManmykwjVo",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating observed publication implementation\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/large_language_model_dispatch.rs\",\"pattern\":\"observed_tched_router_state|persist_tched_router|coherent_observation|model_assignments\"}",
+                "name": "grep"
+              },
+              "id": "call_y2JxPqdO0QsniFC94OFhKuGG",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading behavioral schema assertion context\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs:1530-1565\"}",
+                "name": "read"
+              },
+              "id": "call_tO3xQ4Y9yL0hkg8JOamSvTYW",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading current ownership claim detail\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:424-425:raw\"}",
+                "name": "read"
+              },
+              "id": "call_eZVQZIviY0C6tWeGtL7hK4NE",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 905,
+      "prompt_tokens": 151929,
+      "total_tokens": 152834,
+      "completion_tokens_details": {
+        "reasoning_tokens": 224
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 143552
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:58:50.970449+00:00",
+  "stream_chunks": 12
+}

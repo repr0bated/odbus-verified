@@ -1,0 +1,129 @@
+{
+  "status": "ok",
+  "query": "Advisory decision review, no execution/configuration changes. Resume OD-121 consolidation repo. User prohibits tests/fmt/clippy/fixtures/live changes/grants changes; provisioning worker sa-0-32370f11 owns compiler, no authoritative completion exists. Previous 18 wrapper+5 short router removals implemented unbuilt. Original prompt permits bounded selected slices plus concrete every-method dispositions, not full parity. Scout finds two further bounded retirements: tched_router GetProviderCatalog has same empty input/providers Vec output/read/idempotent/providers.read capability as existing ListProviders; only demonstrated caller backing test, migrate string. Remove schema and plugin/legacy dispatch memberships preserving observer for GetModelRoutes/ResolveRoute and ListProviders committed observation+assignment preservation. GetConfigSchema already described retired by config engine but schema/fallback remains; fallback serializes ConfigSchema descriptor instead of promised native JSON schema. Existing sealed native_config is real authority; no production caller found. Remove accessor/output type/exclusive carried capability, preserve shared state descriptor. Four versioned old config-schema grants must remain untouched under prohibition, explicitly account obsolete grants. Broader LLM 8/MCP2/cron9/gemma.route/provider filtering/cognitive groups need explicit deferred-native-migration vs retained-local-responsibility disposition, not claim fully consolidated. OD-122 persona and OD-123 Cozo native memory only. Generated specializations cannot refresh until fresh isolated catalog. Assess plan for scope/security errors, particularly capability boundaries and preserving historical generated files until actual seal. Return compact actionable review; do not suggest tests or activating router.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Approve the bounded retirements, with two admission constraints.** This is further OD-121 consolidation, not complete native migration. Assessment relies on the supplied scout evidence; no independent source or runtime verification is claimed.\n\n### Implement\n- **`GetProviderCatalog` \u2192 `ListProviders`:** remove the duplicate declaration and dispatch memberships; migrate the demonstrated backing-test caller without running it. Preserve `ListProviders` observation, committed-state publication and local assignment preservation. Keep observer paths needed by `GetModelRoutes` and `ResolveRoute`.\n- **`GetConfigSchema`:** retire the declaration, obsolete fallback, accessor and exclusively used output type. Preserve the shared state descriptor. Do not replace the misleading fallback with another independently authored schema or compatibility endpoint.\n\n### Admission constraints\n1. **Provider equivalence must include the complete admission contract**, not just `providers.read`: capability alternatives, caller filtering and any method-specific admission must remain unchanged. The supplied matching input/output, side-effect and idempotency evidence supports the retirement but does not alone prove identical admission.\n2. **`native_config` is the schema authority, not an authorization substitute.** Point discovery/documentation to its existing sealed projection without introducing a bypass or assuming holders of the retired capability can read it.\n\nLeave the **four versioned config-schema grants untouched**. Record their exact locations as obsolete references to a removed operation\u2014not migrated authorization. Remove the exclusive carried capability only where it belongs to the retired declaration; do not alter shared admission or grant materialization under this authorization.\n\n### Remaining dispositions\nRecord these as distinct obligations:\n- **Deferred native migration:** eight LLM facades, two MCP config facades, nine cron operations, `gemma_brain.route`, and native inference/config/tool contract capture.\n- **Retained local responsibility:** narrow MCP path policy, filtered provider selectability, identity-bound context, private jobs, cancellation/receipt semantics and complete-tree SHM publication.\n- **OD-122 / OD-123:** persona/configuration enhancements and Cozo-backed native memory integration only. Do not use these entries to absorb unrelated deferred migration.\n\nUse per-method rows where those groups contain mixed responsibilities; \u201cretain\u201d must not imply \u201calready consolidated.\u201d\n\n### Release boundary\n- Preserve historical generated specialization files and hashes until a **fresh isolated catalog** exists. Mark them stale relative to source; do not present them as matching release inputs.\n- Compiler ownership remains with **`sa-0-32370f11`**. Without an authoritative completion receipt, do not start Cargo or refresh the catalog.\n- Assuming the earlier baseline and no other schema changes, these retirements would take router methods **38\u219236** and total methods **1,365\u21921,363**. These are expected counts, not catalog receipts.\n\n**Handoff status:** additional source retirements; build, isolated seal and generated refresh pending compiler release. No grants changes, authenticated-operation proof or deployment claim."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "**Verdict: plan is sound; approve with four corrections.**\n\n**GetProviderCatalog retirement \u2014 approve.**\n- Same input/output shape, read/idempotent, and `providers.read` capability as `ListProviders` \u2192 genuine duplicate declaration, not a distinct local responsibility. Removing it is within the \"bounded selected slice\" authority.\n- Caller reconciliation is the real risk: the scout found only a test backing it. Per repo rules, an existing test pinning a to-be-removed method is a wording/implementation test \u2014 delete it, never re-pin. Confirm no generated bridge contract or toolset references it before removal; `grep` the symbol across `crates/` and the sibling UI, not just the named dispatch files.\n- Preserving the observer for `GetModelRoutes`/`ResolveRoute` and `ListProviders`' committed observation+assignment path is correct \u2014 those have distinct typed contracts (routes, ambiguity rejection, selection preservation) that CLI stdout does not replace.\n\n**GetConfigSchema retirement \u2014 approve, with one sharpening.**\n- The engine already describes it retired; the fallback serializes a `ConfigSchema` descriptor, not the promised native JSON schema \u2014 so the method is already not delivering its declared contract. Removing the accessor/output type is a truthfulness fix, not feature loss.\n- Correct call to preserve the shared state descriptor: other code (config engine, possibly `GetConfig` masking) may read it. Verify with references before deleting the type; if only the removed accessor used the output struct, delete it too \u2014 no dead weight.\n- **Grant accounting:** the four versioned old config-schema grants stay untouched (prohibition honored), but you MUST record them in the handoff as orphaned-by-declaration with exact grant IDs, holder, and a proposed smallest-concrete-change for the owner to approve later. Do not silently leave them unmentioned \u2014 that's how stale grants become permanent.\n\n**Corrections / risks to name:**\n\n1. **Capability boundary:** removing `GetConfigSchema`'s \"exclusive carried capability\" \u2014 verify exclusivity by checking no other method on `tched_router` (or any plugin) declares the same capability string. If shared, removal changes effective admission for the surviving method; if truly exclusive, the capability becomes unreachable and the grant is dead weight. Either way, document; don't broaden or narrow anything else.\n2. **Dispatch cleanup:** remove both methods from plugin schema, `plugin_method_routes`/legacy dispatch membership, and any subid registry entries. A dangling subid registration will fail the uniqueness/CI conventions later even though CI doesn't gate.\n3. **Historical generated files:** correct to leave the checked-in FUSE specialization (generation1494 evidence) and generated bridge contracts untouched until the fresh isolated catalog exists. Regenerating against the live generation74 catalog would resurrect `tched_plugins`/`tched_skills`. State this explicitly in the handoff so no downstream agent \"helpfully\" regenerates early.\n4. **Expected delta update:** with these two additional retirements, the arithmetic becomes 74\u219272 plugins and 1,388\u21921,363 methods (43\u219236 router methods: \u22125 short config, \u2212GetProviderCatalog, \u2212GetConfigSchema). Label as arithmetic, not a receipt \u2014 no seal has run.\n5. **Deferred groups:** the broader LLM-8/MCP-2/cron-9/gemma.route/model_registry-filtering/cognitive dispositions must each be written as *deferred-native-migration* or *retained-local-responsibility* with one-line justification, per the every-method-disposition requirement. Do not summarize as \"candidate\" without the disposition verb \u2014 the prompt requires explicit per-group accounting, and the prior addendum already supplies most of it; carry it forward verbatim where still accurate.\n6. **Build blocker:** compiler ownership (sa-0-32370f11) remains the sole blocker for build/seal/generated refresh. Finish all source/caller/handoff work first; record the exact `pgrep` receipt and do not start a second Cargo process. No test/fmt/clippy suggestions apply.\n\n**Security check:** no wildcard grants, no identity/transport substitution, no policy rewrite, no broadening. The two removals *narrow* the exposed surface; the only security-relevant residue is the orphaned grants in (1)/(grant accounting) \u2014 handled by documentation, not by unauthorized grant edits. Mount adapter already selects `threetched,tched_router`; these removals don't touch it.\n\n**Next action:** implement the two retirements + caller/test reconciliation + handoff/SIGNALS/WISHLIST updates, then wait on compiler ownership for the GNU release build \u2192 fresh opblob `seal-plugins` isolated catalog \u2192 delta review \u2192 typed_specialize regeneration."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "**Problem:** `tched_router` schema contains two redundant/obsolete method declarations (`GetProviderCatalog`, `GetConfigSchema`) that duplicate existing authority or fail to match their promised contracts. Broader overlap areas (LLM 8, MCP 2, cron 9, gemma.route, provider filtering, cognitive groups) require explicit disposition without claiming full consolidation. Build/catalog refresh is blocked by external compiler ownership.\n\n**Decision:** \n- **Retire `GetProviderCatalog`**: Remove schema, plugin registration, and legacy dispatch. Preserve observer linkage for `GetModelRoutes`/`ResolveRoute` and `ListProviders` committed observation/assignment.\n- **Retire `GetConfigSchema`**: Remove accessor, output type, and exclusive carried capability. Preserve shared state descriptor. Four versioned old config-schema grants remain untouched; explicitly account for obsolete grants in the handoff.\n- **Broader scope**: Classify LLM 8, MCP 2, cron 9, gemma.route, provider filtering, and cognitive groups as **deferred-native-migration** or **retained-local-responsibility**. Do not claim full consolidation.\n- **Generated files**: Preserve historical generated specializations intact. Do not regenerate until a fresh isolated catalog is sealed.\n\n**Check:** \n- **Capability boundaries**: Retiring `GetProviderCatalog` does not remove `ListProviders` authority or shared state descriptors. Retiring `GetConfigSchema` does not alter the four versioned config-schema grants or the sealed `native_config` authority.\n- **Security/Scope**: No live changes, grant broadening, or identity shifts. Historical generated files remain untouched until actual seal, preventing stale hash mismatches or broken FUSE projections.\n- **Blocker**: Compiler owned by `sa-0-32370f11`. No build, seal, or catalog delta is claimed.\n\n**Next:** Update HANDOFF/SIGNALS with exact method dispositions, grant accounting, and the compiler blocker. Await compiler availability to run the GNU release build, then `seal-plugins` against an isolated catalog, followed by typed_specialize regeneration. No tests, fmt, clippy, fixtures, or router activation."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Both retirements fit the authorized bounded OD-121 slice; neither establishes complete consolidation.",
+      "Remove GetProviderCatalog while preserving ListProviders committed observation and assignment preservation, plus observer paths required by GetModelRoutes and ResolveRoute.",
+      "Remove GetConfigSchema's obsolete declaration, fallback, accessor and exclusively used output type/capability; preserve the shared state descriptor and sealed native_config authority.",
+      "Leave all four versioned config-schema grants unchanged and explicitly document their obsolete references.",
+      "Distinguish deferred native migrations from retained local responsibilities across the remaining overlap groups; keep OD-122 and OD-123 narrowly scoped.",
+      "Preserve historical FUSE specializations until a fresh isolated catalog exists; expected counts are arithmetic, not seal receipts.",
+      "Respect compiler ownership by sa-0-32370f11. No build, seal, generated refresh, tests, formatting, Clippy, fixtures or deployment success is established."
+    ],
+    "contradictions": [
+      {
+        "topic": "Treatment of the demonstrated backing-test caller",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Migrate the backing-test caller to ListProviders without running it."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Delete the test rather than migrate it, classifying it as an implementation-pinning test without evidence of its assertions."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Does not specify how to reconcile the backing-test caller."
+          }
+        ]
+      },
+      {
+        "topic": "Admission equivalence confidence",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Matching shape and named capability support retirement but do not prove equivalent admission; capability alternatives, filtering and method-specific checks require preservation."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Initially treats matching shape and named capability as establishing a genuine duplicate, then adds exclusivity and admission checks."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "States that surviving authority is unaffected without identifying the remaining admission-evidence requirement."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly distinguishes native_config schema authority from authorization to read that projection; retired grants must not become replacement access."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Requests detailed obsolete-grant accounting and capability exclusivity checks, but its proposed later grant-change package exceeds what is necessary for this advisory decision."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Calculate the conditional expected router count of 36 and total method count of 1,363; qwen omits that arithmetic."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Name concrete retained responsibilities such as provider filtering, MCP path policy and state publication; qwen provides only group-level disposition instructions."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Remove an exclusive carried capability only from the retired contract, without changing shared admission or grant materialization."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Historical generated artifacts should be explicitly marked stale relative to source rather than presented as matching release inputs."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Regeneration from the old live catalog would restore removed wrapper declarations, explaining why the isolated-catalog prerequisite matters."
+      }
+    ],
+    "blind_spots": [
+      "The review is advisory only. Implementation-oriented next actions must not be interpreted as authorization to edit files or execute commands during this review.",
+      "No response has independently verified current source. Approval must remain conditional on the supplied scout evidence.",
+      "The backing test must be classified by its actual assertions: migrate a meaningful provider/state invariant; delete only an incidental declaration-pinning assertion. Its reference to a retired method alone does not justify deleting it.",
+      "GLM conflates catalog-derived FUSE specializations with build-generated bridge contracts. Preserve historical catalog-derived artifacts until sealing, but allow the normal bridge build to regenerate its own outputs; do not hand-edit generated routes.",
+      "GLM's claim that a dangling subid registration necessarily fails uniqueness or CI is unsupported by the supplied evidence.",
+      "Removing a broken GetConfigSchema operation is still an exposed-contract retirement; describing it as 'not feature loss' understates the compatibility change.",
+      "Compiler ownership is an established blocker, not proof that it is the sole remaining prerequisite. Build, seal and generation may reveal further blockers.",
+      "Group-level labels are insufficient where methods mix native behavior and local obligations. Durable dispositions should enumerate affected methods and separate deferred native ownership from retained integration responsibilities."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

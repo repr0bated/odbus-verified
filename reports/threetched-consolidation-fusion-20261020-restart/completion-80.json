@@ -1,0 +1,72 @@
+{
+  "request": 80,
+  "started": "2026-10-20T17:25:44.944468+00:00",
+  "finished": "2026-10-20T17:26:06.760005+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0393c57631117239016ad7a41ef7e087d19ae3f063bba413af",
+    "created": 1792517151,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Closing recorded delivery obligations\",\"op\":\"done\",\"task\":\"Update existing consolidation report and shared ownership with actual outcomes\"}",
+                "name": "todo"
+              },
+              "id": "call_UctYq2ve57qpES7dTJ9XYtoI",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording board build receipt\",\"input\":\"[/srv/git/odbus-verified/WISHLIST.md#1CE1]\\nPUT >373:\\n+  - Final consumer build: `cargo build --release --target x86_64-unknown-linux-gnu -p tched-fs --example typed_use_generated`, exit0 at2026-10-20T17:24:20Z,2m48s/33 warnings. Receipt `/var/tmp/typed-use-generated-1792516892107.receipt`; no tests or runtime invocation.\"}",
+                "name": "edit"
+              },
+              "id": "call_67hMwjrxKJ3W6OAM800v5nZp",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 492,
+      "prompt_tokens": 284610,
+      "total_tokens": 285102,
+      "completion_tokens_details": {
+        "reasoning_tokens": 131
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 187693
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:26:06.758486+00:00",
+  "stream_chunks": 6
+}

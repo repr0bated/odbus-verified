@@ -1,0 +1,63 @@
+{
+  "request": 72,
+  "started": "2026-10-18T22:00:56.712907+00:00",
+  "finished": "2026-10-18T22:01:13.123973+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-002af4e99952eddb016ad5419beb6c87d0be42821c92015ea1",
+    "created": 1792360860,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Migrating retained facade admission tests\",\"input\":\"[/srv/git/odbus-verified/crates/op-grpc-bridge/tests/large_language_model_dispatch.rs#2D18]\\nPUT 55.=64:\\n+async fn invoke(engine: &MutationEngine) -> anyhow::Result<serde_json::Value> {\\nPUT 69.=72:\\n+            \\\"large_language_model\\\",\\n+            \\\"stream_generate\\\",\\n+            r#\\\"{\\\"agent_alias\\\":\\\"fixture\\\",\\\"prompt\\\":\\\"hello\\\"}\\\"#,\\n+            Some(\\\"llm.invoke\\\"),\\nCUT 104.=107\\nPUT 112.=112:\\n+        let error = invoke(&engine()).await.unwrap_err();\\nPUT 122.=122:\\n+        let error = invoke(&engine()).await.unwrap_err();\\nPUT 132.=132:\\n+    let capability = tched().methods[\\\"start_generation\\\"]\\nPUT 141.=141:\\n+    let error = invoke(&engine()).await.unwrap_err();\\nPUT 148.=148:\\n+            \\\"fixture-principal\\\": {\\\"capabilities\\\": [capability, \\\"llm.invoke\\\"]}\\nPUT 153.=153:\\n+    let error = invoke(&engine()).await.unwrap_err();\"}",
+                "name": "edit"
+              },
+              "id": "call_StRWL1EFxgrR9qxW22Mg7dv0",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 882,
+      "prompt_tokens": 339279,
+      "total_tokens": 340161,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 222282
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:13.121500+00:00",
+  "stream_chunks": 4
+}

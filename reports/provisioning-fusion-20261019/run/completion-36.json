@@ -1,0 +1,65 @@
+{
+  "request": 36,
+  "started": "2026-10-19T04:41:40.304903+00:00",
+  "finished": "2026-10-19T04:41:59.518712+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-04db6cfb912a1f10016ad59f86e9c487d0810f7371be47f2b1",
+    "created": 1792384903,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading preliminary drift ledger\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/initial-drift-ledger.md:raw\"}",
+                "name": "read"
+              },
+              "id": "call_EQZThcfHbeQTK3hzffmxiA08",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The exports contain 6,620 records across 42 histories. I\u2019m reviewing them in bounded, provenance-preserving batches, including inactive/compacted records and queued owner corrections.\n\nThe original Hermes exchanges show two distinct issues: incomplete end-to-end execution, then genuine admission failures. Later receipts must determine which failures remain current. Source, installed helpers, and historical implementations are being compared separately; no runtime operations are being replayed."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 942,
+      "prompt_tokens": 232073,
+      "total_tokens": 233015,
+      "completion_tokens_details": {
+        "reasoning_tokens": 375
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 185304
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:41:59.516361+00:00",
+  "stream_chunks": 5
+}

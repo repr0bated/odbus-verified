@@ -33,6 +33,7 @@ pub fn run(state: &State) -> Result<()> {
     let release = state.release(slot)?; let root = state.root(slot)?;
     let inventory = inventory::load(&root)?;
     ensure!(inventory.graph_sha256 == release.graph_sha256 && inventory.tree_sha256 == release.tree_sha256, "boot committed inventory mismatch");
+    let base = fs::release_base()?;
     let mut built = Vec::new();
     for (index,target) in release.targets.iter().enumerate() {
         let parent = mounts::verify_parent(target)?;
@@ -42,7 +43,7 @@ pub fn run(state: &State) -> Result<()> {
         let target_fd = fs::secure_absolute(&target.path, libc::O_PATH | libc::O_DIRECTORY)?;
         ensure!(fs::mount_id(target_fd.as_fd())? == parent.mount_id, "boot target parent mount mismatch");
         let lower = fs::open_beneath(root.as_fd(), &target.source, libc::O_RDONLY | libc::O_DIRECTORY)?;
-        let overlay = fs::detached_overlay(lower.as_fd(), &release.tag(slot,index), target.noexec)?;
+        let overlay = fs::detached_overlay(lower.as_fd(), base.as_fd(), &release.tag(slot,index), target.noexec)?;
         built.push((index, overlay, target_fd));
     }
     for (index, overlay, target) in built {

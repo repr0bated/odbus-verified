@@ -1,0 +1,72 @@
+{
+  "request": 22,
+  "started": "2026-10-18T21:32:01.841424+00:00",
+  "finished": "2026-10-18T21:32:18.864235+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-08a8842db4d9e3f5016ad53ad4bde887d087fdca3df1db579d",
+    "created": 1792359124,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recovering implementation requirements\",\"path\":\"/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md:1-287\"}",
+                "name": "read"
+              },
+              "id": "call_FJx3lIInXyOBZM3bKObivPLf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading delegation rules\",\"path\":\"skill://agent-patterns\"}",
+                "name": "read"
+              },
+              "id": "call_Tq1YhFKeSftB0QnTq9yFwmA7",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 278,
+      "prompt_tokens": 230404,
+      "total_tokens": 230682,
+      "completion_tokens_details": {
+        "reasoning_tokens": 77
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 152300
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:32:18.862808+00:00",
+  "stream_chunks": 6
+}

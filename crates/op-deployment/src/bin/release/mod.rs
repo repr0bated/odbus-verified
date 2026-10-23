@@ -17,7 +17,7 @@ use std::{collections::BTreeSet, path::Path};
 fn activate(state: &mut State, slot: Slot) -> Result<()> {
     ensure!(state.active != Some(slot), "requested slot is already active");
     let mut candidate = state.release(slot)?.clone();
-    let incoming = inventory::load(&state.root(slot)?)?;
+    let incoming = inventory::load(&*state.root(slot)?)?;
     ensure!(incoming.graph_sha256 == candidate.graph_sha256 && incoming.tree_sha256 == candidate.tree_sha256, "activation inventory differs from verified receive");
     let old = state.active.and_then(|s| match state.root(s).and_then(|r| inventory::load(&r)) {
         Ok(inventory) => Some(inventory),
@@ -135,7 +135,7 @@ pub fn run() -> Result<()> {
 fn recover_readiness(state: &mut State) -> Result<()> {
     let slot = state.active.context("no committed release")?;
     let release = state.release(slot)?.clone();
-    let inventory = inventory::load(&state.root(slot)?)?;
+    let inventory = inventory::load(&*state.root(slot)?)?;
     let mut journal = Journal::new("activate", Some(slot), Some(slot));
     journal.candidate = Some(release.clone()); journal.plan = services::plan(None, &inventory, &BTreeSet::new())?;
     state.journal = Some(journal); state.intent("recover-committed-catalog")?;

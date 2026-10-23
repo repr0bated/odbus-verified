@@ -1,0 +1,44 @@
+{
+  "request": 3,
+  "started": "2026-10-20T16:59:15.956821+00:00",
+  "finished": "2026-10-20T17:04:42.025998+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 1,
+    "panel_failures": 4,
+    "analysis_available": true
+  },
+  "tool_names": [],
+  "response": {
+    "id": "chatcmpl-08dbf99ec50a2de3016ad79f27734087d1acf145fb5fb6e5b6",
+    "created": 1792515879,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "<title>Consolidate source and prepare release</title>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 239,
+      "prompt_tokens": 4879,
+      "total_tokens": 5118,
+      "completion_tokens_details": {
+        "reasoning_tokens": 186
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1193
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:04:36.050444+00:00",
+  "stream_chunks": 3
+}

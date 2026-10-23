@@ -1,0 +1,65 @@
+{
+  "request": 29,
+  "started": "2026-10-19T04:41:04.919923+00:00",
+  "finished": "2026-10-19T04:41:26.416741+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e252130b9514765016ad59f63be9487d0be6c13ff6cf9d83d",
+    "created": 1792384867,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var supplementRecords=[];var sf=['evidence/hermes/delegations.jsonl',...manifest.context.map(x=>x.export_path.replace('reports/provisioning-fusion-20261019/','')),...supplemental.filter(x=>x!=='evidence/hermes/delegations.jsonl')];var sp=[];for(var f of [...new Set(sf)]){var t=await fs.readFile(base+f,'utf8');for(var start=0;start<t.length;start+=100000){var id='supplement-'+String(sp.length).padStart(3,'0');var text='SOURCE '+f+' character range '+start+'-'+Math.min(start+100000,t.length)+'\\\\n'+t.slice(start,start+100000);await fs.writeFile(a+'packets/'+id+'.txt',text);sp.push({id,file:f,start,end:Math.min(start+100000,t.length),path:a+'packets/'+id+'.txt',sha256:hash(text)});}}await fs.writeFile(a+'supplement-index.json',JSON.stringify(sp,null,2));for(var g=0;g<Math.ceil(sp.length/15);g++){var subset=sp.slice(g*15,(g+1)*15);await corpusPool.push(`Supplement slice ${g}: review FULL packets ${subset.map(x=>x.id).join(', ')} at analysis/packets/. Same contract/mandatory preload as history. Complete semantically read full packets with bounded completion and save analysis/reviews/<packet-id>.json and analysis/reviews/supplement-slice-${g}.json exact coverage. These include delegation links and historical HANDOFF/SIGNALS/secondary indices; treat as secondary claims, never fresh runtime proof. Keep relevant provisioning drift, later corrections, and original source citations; explicitly classify unrelated material. No omission merely because unrelated: read and classify. No historical commands.`);}console.log({supplementPackets:sp.length});\",\"title\":\"Covering delegation and context evidence\"}",
+                "name": "eval"
+              },
+              "id": "call_R0SP8ckqhwmQXo0GCq2l3x5c",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The exports contain 6,620 records across 42 histories. Bounded review is underway with physical order, record IDs, correction events and exact duplicate references preserved. Separate readers are tracing current, installed and historical code; no historical commands are being replayed.\n\nThe no-host-loop rule includes the existing pool backing. The analysis will distinguish supported Incus declarations from proof that they preserve the seed, private writes and upgrade semantics."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1303,
+      "prompt_tokens": 227334,
+      "total_tokens": 228637,
+      "completion_tokens_details": {
+        "reasoning_tokens": 298
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 181048
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:41:26.415023+00:00",
+  "stream_chunks": 5
+}

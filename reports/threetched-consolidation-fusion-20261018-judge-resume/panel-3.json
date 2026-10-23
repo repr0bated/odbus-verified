@@ -1,0 +1,64 @@
+{
+  "status": "ok",
+  "query": "Generate a 3-6 word imperative coding session title from this task context: Source cutover removes wrappers and router namespace facades; mount/workspace consumers use canonical plugins. User asks to complete original consolidation deliverable with fresh release, isolated seal, catalog delta and specialization; no tests or live activation and report genuine build blockers. Title overall goal not current micro-step. Return just suggested title.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "<title>Complete threetched native schema consolidation</title>"
+    },
+    {
+      "model": "opus-5-5",
+      "content": "<title>Complete threetched wrapper consolidation release</title>"
+    },
+    {
+      "model": "kimi-k3",
+      "content": "<title>Complete threetched consolidation release deliverable</title>"
+    },
+    {
+      "model": "glm-5-3",
+      "content": "<title>Complete threetched consolidation release</title>"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<title>Consolidate threetched wrappers and router facades</title>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "All responses use short imperative titles centered on threetched consolidation.",
+      "All titles satisfy the 3\u20136 word limit and avoid claiming successful builds or deployment."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "opus-5-5",
+          "kimi-k3",
+          "glm-5-3"
+        ],
+        "point": "Explicitly include release completion, reflecting the remaining deliverable."
+      },
+      {
+        "models": [
+          "opus-5-5",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Name wrappers, emphasizing a concrete consolidation component rather than the full native-schema objective."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly identifies native schema consolidation as the overarching architectural goal."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly includes router facades alongside wrappers, but frames already implemented source removals as the task rather than completing the remaining deliverable."
+      }
+    ],
+    "blind_spots": [
+      "No title explicitly names isolated sealing, catalog delta review, or specialization; release-oriented wording leaves these obligations implicit.",
+      "No title expresses the no-live-activation boundary, so release wording should not be interpreted as deployment authorization."
+    ]
+  }
+}

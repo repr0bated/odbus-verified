@@ -1,0 +1,64 @@
+{
+  "request": 236,
+  "started": "2026-10-19T04:43:25.583774+00:00",
+  "finished": "2026-10-19T04:43:37.469876+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0065ca07dc2bf040016ad59ff1420087d098f5ab4e14271c08",
+    "created": 1792385009,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"title\":\"Saving first semantic packet reviews\",\"timeout\":0,\"code\":\"async def save_packet(item):\\n    pid,handle,receipt=item\\n    try:\\n        result=handle.wait()\\n        if inspect.isawaitable(result): result=await result\\n        rawout=result if isinstance(result,str) else json.dumps(result,ensure_ascii=False)\\n        outpath=reviews/f'{pid}.txt'\\n        outpath.write_text(rawout)\\n        receipt.update(output_path=str(outpath),output_bytes=len(rawout.encode()),output_sha256=sha(rawout.encode()))\\n        try:\\n            data=json.loads(rawout.strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip())\\n            receipt.update(status='success' if data.get('fully_reviewed') is True and data.get('packet_id')==pid else 'incomplete_review', findings_count=len(data.get('findings',[])),fully_reviewed=data.get('fully_reviewed'))\\n        except Exception as e: receipt.update(status='parse_error_raw_preserved',error=str(e))\\n    except Exception as e: receipt.update(status='completion_failed',error=str(e))\\n    (reviews/f'{pid}.receipt.json').write_text(json.dumps(receipt,indent=2))\\n    receipts.append(receipt)\\n    return {'packet_id':pid,'status':receipt['status'],'findings_count':receipt.get('findings_count'),'error':receipt.get('error')}\\nprint(await asyncio.gather(*(save_packet(x) for x in active)))\"}",
+                "name": "eval"
+              },
+              "id": "call_xZs5O9KX07XxI4O6NQ7WkmE7",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 524,
+      "prompt_tokens": 91671,
+      "total_tokens": 92195,
+      "completion_tokens_details": {
+        "reasoning_tokens": 71
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 84189
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:37.468200+00:00",
+  "stream_chunks": 4
+}

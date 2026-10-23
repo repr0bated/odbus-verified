@@ -1,0 +1,63 @@
+{
+  "request": 63,
+  "started": "2026-10-18T22:00:07.285147+00:00",
+  "finished": "2026-10-18T22:00:17.801208+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0713dee874cd3e3f016ad5416a442c87d0b8203f6e980274e2",
+    "created": 1792360810,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Coordinating expanded backing test slice\",\"path\":\"agent://RetireLlmFacades\",\"content\":\"Main expanded my slice: retire gemma_brain route bridge dispatch/module and backing helper/assertions at prior ranges469-485,728-753,854-938; you own gemma declaration. Please avoid these backing regions; my provider change already landed. I will claim expanded ownership and read fresh ranges.\"}",
+                "name": "write"
+              },
+              "id": "call_lYaVRGt72q3k8g2FkNjghKxI",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 312,
+      "prompt_tokens": 261611,
+      "total_tokens": 261923,
+      "completion_tokens_details": {
+        "reasoning_tokens": 85
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 165188
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:17.799695+00:00",
+  "stream_chunks": 4
+}

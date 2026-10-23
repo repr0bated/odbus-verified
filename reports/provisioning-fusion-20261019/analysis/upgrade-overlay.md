@@ -1,0 +1,126 @@
+# Upgrade overlay specification
+
+Task: `provisioning-fusion-20261019` · 2026-10-19 · Status: specification only.
+
+## Ownership and decision
+
+The owner implements the known-working provisioning baseline and supplies its interface and authoritative receipts. Fusion specifies **only the upgrade overlay** in the existing `sync-instance-upgrade.sh` → `bind-instance-root.sh` / `restore-chatbot-root` → `identity-roots` workflow. This document does not claim that the owner has completed the baseline.
+
+Retain a separate Btrfs send/receive upgrade replica. Compose the root read-only with **upgrade above inherited seed root**, without `upperdir` or `workdir`. Bind ordinary private persistence separately. Preserve caller/session, existing native UUID, immutable seed, inherited siblings, admission, idmap and authoritative receipts. No new orchestrator, grants, identity/container creation, provisioning-proof changes or backing selection.
+
+No host loops remains mandatory, including restoration paths. The owner supplies the established backing and restoration interface; this specification neither selects it nor claims a proven no-image topology. Earlier broad proposals about provisioning/proof migration are outside this scope. Pending owner integration values are a handoff dependency, not a newly discovered architectural blocker.
+
+## Evidence and current implementation
+
+Citations `S:` below are relative to `../evidence/source/`; `R:` to `../recovery/`. They are saved source evidence, not live readiness receipts. Read-only SHA-256 comparison against the current checkout found `identity-roots/run` byte-identical; diffs for sync, bind and restore found only the export's redacted public-key literal. Thus the cited overlay behavior also exists in the inspected current checkout. Installed/runtime equality was not checked.
+
+| Existing part | Evidence | Narrow remaining work |
+|---|---|---|
+| Host/instance locks, stopped native UUID/session validation, bounded observations, durable send intent | S: `deploy/scripts/sync-instance-upgrade.sh:42-114,203-239,281-284` | Consume owner handoff; coordinate with existing lifecycle exclusion, not merely helper-local locks. |
+| Full initial send; later incremental send from retained read-only parent; received UUID equals sent UUID | S: sync `155-169,329-337` | Bind parent and candidate to exact generation identities; revalidate destination immediately before receive. |
+| Immutable received baseline plus separate published clone; clone parent UUID checked | S: sync `338-346,394-405` | Record/reconcile each publication boundary; preserve a proven rollback generation. |
+| Read-only mapped Btrfs lowers, then read-only OverlayFS in upgrade:seed order; sibling/persistence restoration | S: sync `178-194,347-392`; bind `260-280` | Apply complete sync-style source/mode/identity observations to bind and running restoration. |
+| Native idmap selection accepts current or next only when all present mappings agree | S: bind `126-150` | Reuse this rule in sync, which currently requires current alone (`211-217`). Do not start the guest to obtain current. |
+| Running restoration is observation-only; stopped restoration invokes sync boot | S: `deploy/runit/libexec-3tched/restore-chatbot-root:74-109` | Verify full effective composition, not only overlay type/order/ro. Restore selected retained generation after interruption. |
+| Boot selection preflights receipts and rejects duplicate logical identity selections | S: `deploy/runit/identity-roots/run:76-126,156-180` | Integrate the owner's established receipt locations; preserve unrelated identities and readiness fencing. |
+
+Concrete gaps already evidenced: sync uses the old pool/source FSID while bind/restore use newer pins (R: SourceChain `89-141`); bind checks replica type/FSROOT but not its live FSID against the receipt (S: bind `77-83`); sync retains intent on failure but rejects incomplete state on re-entry rather than reconciling it (S: sync `78-114`); publication uses two non-atomic renames (S: sync `340-344`); running restore checks only type/order/mode (S: restore `100-106`). These do not justify replacing the workflow.
+
+The current binder is an initial-binding path: it expects `container-defined`, saves backups, edits fstab/hostname and can perform device preparation (S: bind `51-58,198-258`). **Do not replay that provisioning sequence against the owner's completed baseline.** Reuse its composition/verification part through the existing maintenance workflow, leaving the baseline's already established guest configuration and device contract intact.
+
+## Minimum owner baseline handoff
+
+Use one protected baseline receipt and its authoritative references, consumed consistently by all four existing components. This is an integration contract, not a new public schema, provisioning plan version or replacement Cozo record. Do not add fields to a strict receipt merely because this document lists them.
+
+| Required fact | Minimum handoff evidence | Status here |
+|---|---|---|
+| Identity and native target | Existing caller/session binding reference, target name, native UUID, selected Incus project/remote, authoritative binding revision/operation reference and current stopped-state observation | Saved reports identify `3tchedCtlChatbot`, UUID `137c61ff-435c-4300-b3c0-c605e461be13`; preserve, do not recreate. Fresh baseline confirmation awaits owner. No credentials required in this report. |
+| Inherited root | Actual canonical mounted path and filesystem identity, subvolume ID/UUID for inherited `@`, mapped lower mount path, required mode and immutable-seed receipt reference | Await owner-produced paths and observations; do not substitute old pool constants. |
+| Inherited siblings | Actual source path, FSID, subvolume ID/UUID and required mode for each of the six agent siblings, plus guest destinations | Names are source-established: memory, rules, shared, skills, soul, user. Current source makes shared/soul ro and the other four rw. Confirm baseline matches its authoritative contract; do not change it here. |
+| Persistence | Actual host ordinary-directory path, owning FSID/subvolume, inode/device identity, ownership/mode and guest mount destination | Source contract: `@agent_user/persist`, root-owned 0700, separately bound at `/opt/run-mounts/persist`; actual source mount awaits owner. Not a new subvolume or overlay upper. |
+| Upgrade source and destination | Actual mounted source/replica paths, each FSID and mount-root/subvolume identity, receive directory, publication location, owner/security modes and existing no-loop restoration contract | Await owner. Separate replica means distinct designated upgrade storage, not persistence or seed; no new partition/image/pool requirement is introduced here. |
+| Retained upgrade chain | Current selected generation, host snapshot UUID, received snapshot UUID and Received UUID, published clone UUID/Parent UUID, read-only baseline properties, retained known-good generation and paths | Await owner's actual chain, or explicit evidence that initial pairing has not yet occurred. Never infer empty/unpaired state from a missing receipt. |
+| Root/native/security integration | Native root path and pool binding, root-view/lower paths, exact idmap current/next observations, profile/device/security contract, lifecycle exclusion and helper closure references | Existing map is UID and GID namespace 0 → host 1000000, range 1000000000. Actual baseline readback and paths await owner. |
+| Authoritative baseline completion | Receipt path/digest or immutable reference, existing operation/revision, terminal result and resulting authoritative identity/native state, boot restoration authorization and explicit power policy | Await owner. A local `root_bound` or `identity_registered` flag alone is insufficient. |
+
+Mounted identity means exact mountpoint, filesystem type, FSID, mount root, expected subvolume identity and mode—not merely an existing directory or the nearest ancestor filesystem. Paths must be canonical, root-controlled and protected against symlink/rename substitution. Receipt paths, helper paths and receive directories stay protected. Existing authoritative facts are reused; final values must come from the owner, not this report's historical constants.
+
+## Overlay and replication contract
+
+### Layer composition
+
+Conceptually, with paths supplied by the handoff:
+
+```text
+native root → read-only root view
+               lowerdir = mapped_upgrade : mapped_inherited_seed_root
+               no upperdir; no workdir
+private persistence → separate rw bind at /opt/run-mounts/persist
+agent siblings      → separate binds at /agent/{memory,rules,shared,skills,soul,user}
+```
+
+Map the Btrfs lowers before mounting OverlayFS, as the existing implementation does; do not attempt to idmap the overlay or recursively chown inherited data. Both lower exposures and the merged root are ro. The receive filesystem may remain writable, and the existing publication clone has subvolume `ro=false`; that is not a writable guest upper. No host writer may change a published lower while referenced by a mounted overlay. Received and source baselines retain the Btrfs **subvolume ro property**, not merely a ro bind mount.
+
+Upgrade content has precedence. Files absent from a sparse upgrade fall through to seed; deleting a seed file requires the existing OverlayFS whiteout/opaque-directory semantics in the upgrade artifact. Absence alone is not deletion. Validate the effective merged mountpoints before binding any private data: an upgrade may not hide or redirect the agent/persistence mount locations. Do not repair directories through a mounted lower/view. Transport OS upgrade content only, never agent state or persistence; retain the existing rejection of unaccounted nested source subvolumes (S: sync `152-169,250-255,350-367`).
+
+### Generation and ancestry
+
+For generation G retain:
+
+- Source snapshot H(G): actual source FSID, subvolume UUID, ro property and generation/transaction observations.
+- Received baseline R(G): actual replica FSID, local subvolume UUID, `Received UUID == UUID(H(G))`, ro property and receive transaction observations where available.
+- Published clone P(G): local UUID and `Parent UUID == UUID(R(G))`; source identity behind the mapped upgrade lower must be P(G).
+- Logical generation label and predecessor, linked to the same native UUID and baseline receipt. A timestamp/name is only a selector, not proof. Local Btrfs transaction IDs are observations, not globally equal generation identifiers.
+
+Before incremental send from G to N, verify both retained H(G) and R(G) are immutable, correspond by UUID and belong to this pair. Verify N's received identity before publication. A same-named snapshot is not a common baseline. Never toggle a received baseline writable, overwrite it or use the mutable publication clone as an incremental parent. Keep the source and receiver ancestry needed for the selected generation, rollback generation and any pending transition; no automatic garbage collection is introduced.
+
+The existing completed PairReceipt is strict (`deny_unknown_fields`, S: sync `400-405`; R: BackendProof `292-319`). Preserve its accepted shape. Additional transition identities belong in the existing helper's protected recovery evidence/private journal, linked to that receipt and operation, not in Cozo provisioning proofs or arbitrary new PairReceipt fields. Physical ancestry must still be observed; JSON labels are not substitutes.
+
+### Stopped activation
+
+1. Under the existing maintenance/lifecycle exclusion, validate the authoritative baseline reference, native UUID/session, stopped state, idmap/security contract, source/replica mounts and current selected generation. Helper locks alone do not stop external lifecycle writers; if exclusive maintenance cannot be established, do not activate.
+2. Persist a pre-effect intent naming predecessor, candidate and exact affected objects. Use protected exclusive staging, file persistence, atomic receipt publication and directory persistence as the existing commit protocol does. Reconcile an existing intent instead of issuing a fresh transition.
+3. Preserve the source's detach discipline: detach only proven owned sibling/persistence binds, native root, root-view and lower binds; verify no retained lower references under the maintenance contract. Never lazy-detach or mutate a live lower. Recheck stopped UUID and mappings immediately before switching.
+4. Revalidate the exact receive destination mount identity immediately before receive while exclusion remains held. A missing mount must fail closed—never receive into the host-root fallback directory. Protect the receive directory from concurrent writers. Observe complete pipeline success, received UUID and ro state before clone/publication.
+5. Prepare P(N), verify ancestry, retain P(G) and both immutable baselines, and reconcile the two rename boundaries. No receipt claims N active merely because the receive or first rename succeeded.
+6. Rebuild mapped lowers, ro overlay, all separate sibling/persistence binds and native root. Verify exact sources, FSIDs/subvolume identities, lower order, modes, native/view object equality, idmap and effective guest mountpoints. Preserve unprivileged/nonnested operation, storage ioctl denials, device allowlist, socket-origin identity and existing grants.
+7. Persist terminal pairing/activation evidence only after full restoration and readback. An initial unbound pair is transport-complete, not root-bound or running. Start remains the existing separately authorized lifecycle operation; overlay synchronization must not start the guest or rewrite adoption state.
+
+## Interrupted transition and rollback
+
+Implement reconciliation **inside the existing helpers**, not a recovery daemon. Keep the original operation, candidate and predecessor. On timeout/disconnect, assume effect is unknown, not absent. Read current objects and mounts under the same exclusion before taking the single missing transition.
+
+| Observed boundary | Required reconciliation |
+|---|---|
+| Intent persisted, no completed receive | Keep G selected. Match any candidate source/receiver objects to the intent. An incomplete receiver is not R(N), even if its name matches. Retain/quarantine it out of publication; removal/retry requires explicit exact-object maintenance authorization. Never blind-replay into it. |
+| Receive complete, clone absent | Verify UUID/ro/ancestry and ownership; finish the existing candidate clone without resending. If provenance cannot be proved, retain evidence and leave stopped. |
+| Clone present, old `@` still published | Verify candidate Parent UUID and current G identity. Continue the same stopped transition; do not allocate a new generation simply because the receipt is incomplete. |
+| Old `@` moved, new `@` absent | Use recorded identities to locate retained G and candidate N. Complete the intended N rename or an explicitly selected rollback to G. Do not select by newest filename. |
+| New `@` present, receipt still intent | Verify that it is P(N); finish mount restoration and terminal publication. Do not resend or rotate it again. |
+| `restore-intent`, partially mounted view | Inventory each existing mount. Keep correct owned mounts; detach/rebuild only proven owned inconsistent composition while stopped. An unknown reference or UUID mismatch blocks activation, not admission. |
+| Fully restored root, terminal receipt publication uncertain | Re-observe full composition and candidate identities, then reconcile the same terminal receipt. Do not label error as no effect or clear the fence blindly. |
+
+Rollback is an explicit stopped-instance selection of the retained **known-good** generation K, not an automatic error trap. `paired` proves transport/root restoration, not successful application behavior: the owner/lifecycle evidence must identify what is known-good. Retain K before activating N. Use the retained verified P(K), or reconstruct its publication clone from immutable R(K) if required, preserving exact ancestry. Rebind and verify the full root, then publish selection K using the existing receipt contract. H(K) and R(K) remain available for future incremental synchronization; do not leave `.generation` naming N while K is mounted. Never receive from or modify seed/persistence to roll back the OS.
+
+Root rollback does not roll back private data. Any application data-format compatibility constraint remains visible in the generation's acceptance evidence; do not silently snapshot/reset persistence. If rollback compatibility or K's identity is unknown, retain both generations and leave the guest stopped for the existing owner to choose—do not invent a successful rollback.
+
+## Boot restoration and narrow file changes
+
+- **`sync-instance-upgrade.sh`:** consume owner-supplied mounted identity and receipt references instead of old hardcoded paths/FSIDs/image assumptions; leave backing restoration to the owner's established contract. No loop creation, member add/remove or format fallback. Retain send/receive, clone ancestry and detach logic. Add the phase reconciliation above, immediate pre-receive destination proof, consistent idmap selection and explicit retained-generation rollback within this helper's workflow.
+- **`bind-instance-root.sh`:** integrate only composition and full source/mode/idmap verification with the completed baseline. Do not replay its initial fstab/hostname/device-preparation sequence. Require actual replica FSID and generation ancestry, and exact effective private binds before root-bound evidence. Guest configuration/security comes from the owner baseline; do not broaden it.
+- **`restore-chatbot-root`:** consume the same established baseline and selected upgrade receipt. Running service restart remains observation-only with complete composition checks. Stopped restoration reconciles pending intent or restores the selected retained generation; no backing allocation or native recreation. A rollback selection must survive reboot. Do not unconditionally advance to host latest and undo it. The existing boot sync may advance only under the already authorized synchronization policy and a new explicit transition.
+- **`identity-roots`:** preserve preflight of all selected receipts, duplicate-session rejection and no readiness on incomplete restoration. Restore the existing resources and verify the selected generation before readiness; do not suppress inherited/unrelated identities. Keep startup under existing power policy/authority. Host uses runit; guest systemd is separate. Base-service delivery remains distinct from application-helper staging (R: SourceChain `305-360`); no deployment is authorized here.
+
+## Specified now; integration pending
+
+Specified now: separation of transport/persistence, read-only layer precedence, UUID/ancestry invariants, mount identity checks, stopped activation, interrupted-publication reconciliation, known-good rollback and boot selection preservation. These reuse existing implementation rather than requiring another orchestrator.
+
+Pending owner handoff: actual canonical paths, mounted FSIDs/subvolume identities and modes, completed baseline receipt/revision/native-state readback, no-loop restoration interface, retained generation chain/known-good selection, lifecycle exclusion and boot policy. Do not force those values to match obsolete pool constants. No claim is made that baseline provisioning, overlay integration or deployment has occurred.
+
+## Verification and limits
+
+Performed: bounded source/report reads; SHA-256 comparison of four current helpers against saved exports; three text diffs resolving the redaction-only differences. No program/helper execution, storage/native-runtime probe, build, test, smoke fixture, service action, provisioning or deployment. Future authorized operation evidence must show correct destination, receive/clone ancestry, full root composition, unchanged identity/security/persistence, interrupted-transition reconciliation, rollback selection and cold restoration; none is claimed exercised here.
+
+Reused judgments: `../jev-seed-mechanism-correction.json` records the actual decisions `seed_plus_added_writable_member`, `no_requires_actual_topology`, `preserve_mechanism_investigate_no_loop`. The acknowledged panel receipt records one substantive response, one non-substantive response and three failures, **not consensus**. The correction is retained: seed backing, writable member, exposed subvolumes and upgrade replica are distinct; private writes are not an OverlayFS upper. No new JEV call or panel was made. Prior judgments do not approve this specification or prove today's baseline.
+
+Coverage is focused, not full semantic review. R: SourceChain and BackendProof were reused; relevant NativeFeasibility sections and the incomplete HistoricalScripts report were reused. The latter ends mid-citation at line 137. Earlier partial CASE/manifest reads and unfinished corpus coverage remain partial; no packets, exports or completed reviews were regenerated. Prior findings are not current runtime receipts.

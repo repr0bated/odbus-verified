@@ -1,0 +1,63 @@
+{
+  "request": 42,
+  "started": "2026-10-18T21:58:29.199570+00:00",
+  "finished": "2026-10-18T21:58:38.847427+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-06c0d41f84742304016ad54107d95487d0a87260911c4c1d6b",
+    "created": 1792360711,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Retiring duplicate router accessors\",\"input\":\"[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs#412E]\\nCUT 544.=551\\nCUT 574.=582\\nCUT 1892.=1901\\nCUT 1922.=1931\\nCUT 2332.=2335\\nCUT 2435.=2437\\nCUT 2447.=2449\\n[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs#1FC6]\\nCUT 132.=132\\n[/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs#4754]\\nPUT 224.=227:\\n+    if matches!(method, \\\"GetModelRoutes\\\" | \\\"ResolveRoute\\\") {\\n[/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs#79EA]\\nCUT 5796.=5796\\n[/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs#CFB4]\\nPUT 1373.=1373:\\n+    let providers = dispatch(&engine, &caller, \\\"ListProviders\\\", json!({}))\"}",
+                "name": "edit"
+              },
+              "id": "call_wScbxxKUTNdGzoZlCLsa3Bgk",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 702,
+      "prompt_tokens": 149538,
+      "total_tokens": 150240,
+      "completion_tokens_details": {
+        "reasoning_tokens": 164
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 128031
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:58:38.846004+00:00",
+  "stream_chunks": 4
+}

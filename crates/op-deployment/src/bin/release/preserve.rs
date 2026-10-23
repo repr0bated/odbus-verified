@@ -361,7 +361,7 @@ pub(super) fn remove_service_directory(state: &mut State, path: &Path) -> Result
         } else {
             ensure!(metadata.is_dir(), "unexpected new supervise object");
             let entries = stdfs::read_dir(&supervise)?.collect::<std::io::Result<Vec<_>>>()?;
-            let allowed = ["control", "ok", "status", "status.new", "pid", "stat", "lock"];
+            let allowed = ["control", "ok", "status", "status.new", "pid", "pid.new", "stat", "stat.new", "lock"];
             for entry in &entries {
                 ensure!(allowed.iter().any(|name| entry.file_name() == *name) && !entry.file_type()?.is_dir(), "unexpected new supervision state");
             }

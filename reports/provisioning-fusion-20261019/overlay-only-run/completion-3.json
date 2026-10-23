@@ -1,0 +1,44 @@
+{
+  "request": 3,
+  "started": "2026-10-19T06:03:39.404734+00:00",
+  "finished": "2026-10-19T06:04:10.775549+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [],
+  "response": {
+    "id": "chatcmpl-02950fe326d005df016ad5b2d867d487d0b2568526df3ea31b",
+    "created": 1792389848,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "<title>Specify upgrade overlay and receipt</title>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 43,
+      "prompt_tokens": 4598,
+      "total_tokens": 4641,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1148
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:04:07.993197+00:00",
+  "stream_chunks": 3
+}

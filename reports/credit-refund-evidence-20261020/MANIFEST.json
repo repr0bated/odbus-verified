@@ -1,0 +1,130 @@
+{
+  "bundle": "credit-refund-evidence-20261020",
+  "files": [
+    {
+      "path": "EMAIL-DRAFT-READY-TO-SEND.txt",
+      "bytes": 6282,
+      "sha256": "982bb898f60ceb7a076d8ccada7cce82c3f03e33643e6db962ccbc2b01d72907"
+    },
+    {
+      "path": "SUPPORT-REQUEST-HERMES-NOUS.md",
+      "bytes": 2594,
+      "sha256": "59a776148f5be838e61b4d36f4b07cff209a06bcc41068d604e50439b7cf7ff6"
+    },
+    {
+      "path": "SUPPORT-REQUEST-OPENAI.md",
+      "bytes": 6282,
+      "sha256": "982bb898f60ceb7a076d8ccada7cce82c3f03e33643e6db962ccbc2b01d72907"
+    },
+    {
+      "path": "code/consolidation-omp.yml",
+      "bytes": 946,
+      "sha256": "1ed36d34543e120115f4313377b1087cf9fc0d9101e7e51748860802dd2d0ff5"
+    },
+    {
+      "path": "code/fusion_config.yaml",
+      "bytes": 899,
+      "sha256": "02770b37ae54695f016e26bd707d2710c654adc2562c73ea164200af1ae04265"
+    },
+    {
+      "path": "code/hermes_bridge.py",
+      "bytes": 6764,
+      "sha256": "87d7f3cdf5455b83544135c28b1d5d93a989f4e175afb5200924d5f2ca72b23c"
+    },
+    {
+      "path": "code/omp_bridge.py",
+      "bytes": 6877,
+      "sha256": "0e0ab0b68dcafa2baa5279000dbf133dae2d3b83e983d992cd64a21a42b09031"
+    },
+    {
+      "path": "code/omp_fusion.ts",
+      "bytes": 770,
+      "sha256": "808fb53f0c6d7b8954eb40ccaa87d11fa542607d1259e5c2e14c8069ec708b29"
+    },
+    {
+      "path": "code/run_fusion.py",
+      "bytes": 13976,
+      "sha256": "b802460691db6c13e9af5a09684f76016afbb541c98156450ede6b5251e40967"
+    },
+    {
+      "path": "screenshots/00a-openai-webpage-credits-and-app-limits-before-burn.png",
+      "bytes": 273746,
+      "sha256": "a4218fb565253bd0808ef90c093110020ce20371a97188ff014e133905473541"
+    },
+    {
+      "path": "screenshots/00b-hermes-nous-linked-plan-and-topup-settings.png",
+      "bytes": 298294,
+      "sha256": "a520e06d56bf27c62a5df0596fbad574142a3d357194e650a745e98805f17eca"
+    },
+    {
+      "path": "screenshots/01-credit-burn-summary-dashboard.png",
+      "bytes": 511688,
+      "sha256": "8b667a5022046f980eb85d5ecdea4639dd893fbf188b95acc8c6061e5cd5f2d2"
+    },
+    {
+      "path": "screenshots/02-subagent-model-escape-proof.png",
+      "bytes": 562080,
+      "sha256": "c637c241ca75d12fb111e33818a506ed5945c8c88decc6f74c226c66d6595aa1"
+    },
+    {
+      "path": "screenshots/03-call-timeline-and-containment.png",
+      "bytes": 438775,
+      "sha256": "fa6b77ef0e9640720e4fe393a0cb809dcabb2d271c4f1c5dab0370e836d82cdf"
+    },
+    {
+      "path": "transcripts-and-audit/CorpusReview-1-workpool-panel-explosion-excerpt.jsonl",
+      "bytes": 51186,
+      "sha256": "61fb5c06877e32a1a5035c7e16cd70c973395bbd0ec6609969e8e33fe0b12d8c"
+    },
+    {
+      "path": "transcripts-and-audit/ScopeReview-subagent-escape-excerpt.jsonl",
+      "bytes": 7115,
+      "sha256": "7b44dbaa6273f9a18672db952b5d3fca6b64c3ab958a4e55123235a1ed772293"
+    },
+    {
+      "path": "transcripts-and-audit/SourceChain-subagent-escape-excerpt.jsonl",
+      "bytes": 6360,
+      "sha256": "48b7b1ecf35691f82fd5c04be6297bc79f82dde9353dd5506f879f4e307fcd75"
+    },
+    {
+      "path": "transcripts-and-audit/credit-containment-status.json",
+      "bytes": 897,
+      "sha256": "28121148d09393e8825dca65199ff5b77ec6e39e2a0a1458d676f2452e2ae06c"
+    },
+    {
+      "path": "transcripts-and-audit/credit-usage-audit.json",
+      "bytes": 6390,
+      "sha256": "97cde35d85a804abd1d5e7062d84262acf26e12c031ec4cab9216a109bb77e23"
+    },
+    {
+      "path": "transcripts-and-audit/fusion-246-requests-ledger.csv",
+      "bytes": 48551,
+      "sha256": "620b0be3e8a96a2ed9269c2c3a0541aedec7cbb9b6ab54a150eca3421a02f66e"
+    },
+    {
+      "path": "transcripts-and-audit/openai-codex-534-deduplicated-ledger.csv",
+      "bytes": 290591,
+      "sha256": "8ca8f0b3b67764339a76cad61046bb8beeb6d473b2fe9c3575eb4dce6f2e9f49"
+    },
+    {
+      "path": "transcripts-and-audit/openai-codex-534-deduplicated-ledger.jsonl",
+      "bytes": 464459,
+      "sha256": "a9d9ea74b79afe6d798155d2d5ff573797114be58be2ab6ce5f8ab8a5834ebe6"
+    },
+    {
+      "path": "transcripts-and-audit/openai-codex-calls-ledger.csv",
+      "bytes": 444126,
+      "sha256": "586d66212c9c8bab68c53e4d01efed5e4303fa989dda1ea586f1146b783a3f77"
+    },
+    {
+      "path": "transcripts-and-audit/openai-codex-calls-ledger.jsonl",
+      "bytes": 710949,
+      "sha256": "fff70529c16f3ed76c2f2565a9dbbfff7a0515fc8d8f988918164fd5502f2629"
+    },
+    {
+      "path": "transcripts-and-audit/provisioning-fusion-run-receipt.json",
+      "bytes": 772,
+      "sha256": "b28b9d09ff796d151fba36629b8de7922e9ad849db67e29f1145f1c66a92ddbc"
+    }
+  ]
+}

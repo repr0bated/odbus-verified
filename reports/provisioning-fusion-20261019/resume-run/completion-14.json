@@ -1,0 +1,64 @@
+{
+  "request": 14,
+  "started": "2026-10-19T04:53:00.400069+00:00",
+  "finished": "2026-10-19T04:53:16.410474+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-04944ee275a90ef3016ad5a230027087d0ae6fe0a28e7b20e5",
+    "created": 1792385584,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"console.log('handle',JSON.stringify(reviewHandle)); console.log('packet spans',JSON.stringify(packet.spans.slice(-2)));console.log('contract first',contract.slice(0,3500));console.log('result type',typeof reviewed);\",\"title\":\"Inspecting completed review provenance\"}",
+                "name": "eval"
+              },
+              "id": "call_hHwLNMQpWpUsnc8ki0w8rRCa",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 585,
+      "prompt_tokens": 204756,
+      "total_tokens": 205341,
+      "completion_tokens_details": {
+        "reasoning_tokens": 372
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 145313
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:53:16.409109+00:00",
+  "stream_chunks": 4
+}

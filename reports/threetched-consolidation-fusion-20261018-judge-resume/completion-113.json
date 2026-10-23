@@ -1,0 +1,63 @@
+{
+  "request": 113,
+  "started": "2026-10-18T22:04:09.378298+00:00",
+  "finished": "2026-10-18T22:04:25.355713+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0c6cb1b3dc85d471016ad5425c668487d0b81a56f1db23148b",
+    "created": 1792361052,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Removing incidental wiring assertions\",\"input\":\"[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model.rs#BB55]\\nCUT 146.=146\\nCUT 148.=154\\nCUT 156.=163\\n[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model_methods.rs#0524]\\nCUT 14.=20\\nPUT 81.=81:\\n+    fn stream_generate_rejects_missing_required_input() {\\nCUT 83.=92\\n[/srv/git/odbus-verified/crates/op-grpc-bridge/src/large_language_model_dispatch.rs#2454]\\nCUT 116.=133\"}",
+                "name": "edit"
+              },
+              "id": "call_LSrCfViZaR0NVkFrrE5oq08F",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 758,
+      "prompt_tokens": 199594,
+      "total_tokens": 200352,
+      "completion_tokens_details": {
+        "reasoning_tokens": 420
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 130355
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:25.354547+00:00",
+  "stream_chunks": 4
+}

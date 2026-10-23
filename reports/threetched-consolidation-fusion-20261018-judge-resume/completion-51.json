@@ -1,0 +1,63 @@
+{
+  "request": 51,
+  "started": "2026-10-18T21:59:13.068868+00:00",
+  "finished": "2026-10-18T21:59:21.267750+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0c9d3328512216f4016ad54133b60c87d0aa1d29f22a08c915",
+    "created": 1792360755,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading durable publication preservation\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs:6247-6310\"}",
+                "name": "read"
+              },
+              "id": "call_0FP4Cj6lTy0igtKngx5COT3x",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 316,
+      "prompt_tokens": 164781,
+      "total_tokens": 165097,
+      "completion_tokens_details": {
+        "reasoning_tokens": 196
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 155572
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:21.266286+00:00",
+  "stream_chunks": 4
+}

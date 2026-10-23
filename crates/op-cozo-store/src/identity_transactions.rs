@@ -4,6 +4,8 @@
 use super::*;
 mod physical_root;
 mod clean_provision;
+mod native_creation;
+pub use native_creation::{NativeCreationRequest, NativeCreationRecord, is_numbered_native_name};
 pub use clean_provision::{CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches};
 use cozo::{MultiTransaction, TransactionPayload};
 use nix::{fcntl::OFlag, sys::stat::Mode};

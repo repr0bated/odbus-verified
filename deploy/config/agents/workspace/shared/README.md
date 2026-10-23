@@ -5,10 +5,13 @@ agent_* operations. agent-config links to the existing agent configuration owner
 Use their current schemas and admitted operations. These links do not create a
 second agent registry, start agents, or grant tools.
 
-threetched-plugins links to the tched_plugins owner for installed extension
-packages. Its methods map the threetched binary's plugin commands. Installation
-and runtime selection are separate: the existing tched_router configuration
-owner controls plugins.enabled, plugins.plugins_dir and signature policy.
+threetched-plugins links to the canonical threetched plugin for installed
+extension packages. Discover its dotted plugin.list, plugin.info, plugin.search,
+plugin.install, plugin.remove and plugin.migrate operation declarations. These
+require their exact native capabilities; retired tched_plugins grants are not
+aliases. Installation and runtime selection are separate: the existing
+tched_router configuration owner controls plugins.enabled, plugins.plugins_dir
+and signature policy.
 Agent skill selection uses agents.<alias>.skill_bundles and the referenced
 skill_bundles.<alias>.include/exclude settings through that same owner.
 

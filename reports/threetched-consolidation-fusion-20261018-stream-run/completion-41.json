@@ -1,0 +1,89 @@
+{
+  "request": 41,
+  "started": "2026-10-18T21:39:26.035123+00:00",
+  "finished": "2026-10-18T21:39:43.837638+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0a3a1996f242e1df016ad53c90ff8c87d0b0279c2b3086c6a0",
+    "created": 1792359569,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading remaining router dispositions\",\"path\":\"artifact://11:45-220\"}",
+                "name": "read"
+              },
+              "id": "call_MOEucHH6XJXMeqmyYoEkIPyq",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading remaining wrapper evidence\",\"path\":\"artifact://12:50-220\"}",
+                "name": "read"
+              },
+              "id": "call_qePN4w5FTHxQXGW1R8SSluns",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading release capture selectors\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_paths.rs:1-220\"}",
+                "name": "read"
+              },
+              "id": "call_dI0YqiQvIwZp1VMSVPaYYhzx",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing grounded ownership phase\",\"op\":\"done\",\"task\":\"Reconcile shared ownership and mounted contracts; classify evidence with JEV and Fusion\"}",
+                "name": "todo"
+              },
+              "id": "call_C1VIz16PSPJHpOlliNdZpD3M",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The additional slice removes five redundant router CLI facades. Typed config, generation, private-state and receipt paths remain unchanged.\n\nThe old `edit_skill(contents)` contract has no captured native equivalent. It is retired; editor-dependent native calls now fail before spawning. Existing native capabilities remain unchanged\u2014no grant translation or broadening."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 861,
+      "prompt_tokens": 299295,
+      "total_tokens": 300156,
+      "completion_tokens_details": {
+        "reasoning_tokens": 227
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 194299
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:39:43.835368+00:00",
+  "stream_chunks": 11
+}

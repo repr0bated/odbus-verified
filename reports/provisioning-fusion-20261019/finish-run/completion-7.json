@@ -1,0 +1,97 @@
+{
+  "request": 7,
+  "started": "2026-10-19T06:01:18.191338+00:00",
+  "finished": "2026-10-19T06:01:32.982875+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-07d8445bb275b0dd016ad5b2314c9487d09f14b6d54f253454",
+    "created": 1792389681,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading final adoption proof details\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/BackendProof.md:254-594\"}",
+                "name": "read"
+              },
+              "id": "call_sj8GO52aZgmFtU6L2cBKTzy6",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading kernel constraint qualifications\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/NativeFeasibility.md:244-400\"}",
+                "name": "read"
+              },
+              "id": "call_d9bI1L4VfIhgUd2dvByRkHuK",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading saved drift ledger\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/drift-ledger.md:1-200\"}",
+                "name": "read"
+              },
+              "id": "call_VZq4IasADB1Y2sw6uum6WiC6",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading coverage metadata keys\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/coverage.json?q=keys\"}",
+                "name": "read"
+              },
+              "id": "call_psB0O3UiE8Rnj4MAzYQUjghJ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading decision provenance\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/decisions.jsonl\"}",
+                "name": "read"
+              },
+              "id": "call_Bvpj0c9xsBHOGZdj0rancrdM",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The old scripts establish the missing distinction: Oct5 added a loop-mapped private leaf; Oct11 added partition 1 of a loop-mapped GPT image. Both then exposed inherited subvolumes to Incus. Neither is evidence of a no-host-loop implementation.\n\nI\u2019m retaining that mechanism and separating concrete integration repairs from the unresolved replacement backing\u2014not restarting the corpus review."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 762,
+      "prompt_tokens": 279930,
+      "total_tokens": 280692,
+      "completion_tokens_details": {
+        "reasoning_tokens": 166
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 197404
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:01:32.979929+00:00",
+  "stream_chunks": 13
+}

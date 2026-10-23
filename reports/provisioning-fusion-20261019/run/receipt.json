@@ -1,0 +1,16 @@
+{
+  "started": "2026-10-19T04:34:44.359013+00:00",
+  "repo": "/srv/git/odbus-verified",
+  "handoff": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/CASE.md",
+  "source_sha256": "435cd0e957d2cae1e3548d122db82d29917b72ea6640630e8e1c6425550a4312",
+  "extension": "/home/jeremy/litellm-fusion/omp_fusion.ts",
+  "config": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/fusion-omp.yml",
+  "context": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/context.md",
+  "resume": null,
+  "continuation": null,
+  "transport": "authenticated loopback, native asynchronous SSE; OMP executes tools",
+  "invocation": "first required; subsequent tool steps auto",
+  "pid": 4737,
+  "exit_code": 1,
+  "finished": "2026-10-19T04:45:12.968935+00:00"
+}

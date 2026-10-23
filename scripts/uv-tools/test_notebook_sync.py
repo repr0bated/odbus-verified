@@ -171,7 +171,7 @@ class NotebookSyncGroupingTest(unittest.TestCase):
             result = notebook_sync.grouped_call("source_add", args, SESSION)
         run.assert_called_once()
         self.assertEqual(run.call_args.args[0], [
-            "/usr/local/bin/threetched-fs", "call", "notebooklm", "source_add",
+            "/usr/local/bin/3tched-fs", "call", "notebooklm", "source_add",
             "--mount", "/fixture/mount", "--expected-session", SESSION,
             "--args", "-", "--confirm-side-effects"])
         self.assertEqual(json.loads(run.call_args.kwargs["input"]), args)

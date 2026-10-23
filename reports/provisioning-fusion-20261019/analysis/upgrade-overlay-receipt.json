@@ -1,0 +1,136 @@
+{
+  "task": "provisioning-fusion-20261019",
+  "date": "2026-10-19",
+  "status": "focused_specification_delivered_not_implemented",
+  "scope": {
+    "owner": "Known-working provisioning baseline, backing and authoritative baseline interface/receipts",
+    "fusion": "Upgrade overlay specification in existing sync/bind/restore/identity-roots workflow only",
+    "baseline_implementation_claimed": false,
+    "no_host_loops_required": true,
+    "backing_selected": false,
+    "no_image_topology_claimed": false,
+    "cozo_provisioning_proofs_changed": false
+  },
+  "deliverables": [
+    "analysis/upgrade-overlay.md",
+    "analysis/upgrade-overlay-receipt.json"
+  ],
+  "specified": [
+    "Separate OS upgrade send/receive replica; no private state replication",
+    "Immutable common source/received baselines and exact received/published UUID ancestry",
+    "Logical generation distinct from local Btrfs transaction identifiers",
+    "Read-only mapped upgrade above inherited seed root; no upperdir/workdir",
+    "Separate ordinary private persistence and unchanged inherited sibling bindings",
+    "Minimum baseline handoff with actual paths, mounted FSIDs/subvolume identities, modes, native UUID/stopped state and authoritative receipt",
+    "Stopped activation with lifecycle exclusion and immediate pre-receive destination identity check",
+    "Interrupted receive, clone, rename, restoration and terminal-receipt reconciliation",
+    "Explicit rollback to retained known-good generation without private-data rollback",
+    "Boot restoration of selected generation without device membership changes",
+    "Narrow changes to four existing helpers; no initial provisioning replay or new orchestrator"
+  ],
+  "pending_owner_values": [
+    "Actual canonical root/source/replica/lower/native-root/receipt paths",
+    "Mounted FSIDs, mount roots, subvolume IDs/UUIDs and read-only properties",
+    "Authoritative completed baseline receipt/revision and fresh native UUID/stopped-state confirmation",
+    "Ordinary persistence source object and guest destination confirmation",
+    "Retained host/received/publication ancestry and selected known-good generation",
+    "Established no-loop backing-restoration interface",
+    "Existing lifecycle exclusion, helper closure and boot synchronization/power policy"
+  ],
+  "pending_classification": "Expected baseline integration handoff; not a newly discovered architectural blocker",
+  "evidence": {
+    "path_base": "reports/provisioning-fusion-20261019",
+    "reused_prior_reads": [
+      {"path": "latest-owner-correction.json", "coverage": "complete in prior continuation"},
+      {"path": "subvolume-preference.json", "coverage": "complete in prior continuation"},
+      {"path": "manifest.json", "coverage": "header/structural summary only; not full ingestion"},
+      {"path": "CASE.md", "coverage": "1-111; long line 18 truncated in retained read"},
+      {"path": "recovery/SourceChain.md", "coverage": "1-546 previously read; overlay sections located by grep in this continuation"},
+      {"path": "recovery/BackendProof.md", "coverage": "1-594 previously read; 254-594 reread"},
+      {"path": "recovery/NativeFeasibility.md", "coverage": "1-403 previously read; 244-400 reread; remainder not claimed reviewed here"},
+      {"path": "recovery/HistoricalScripts.md", "coverage": "1-137 previously read; 85-137 reread; saved file ends mid-citation"},
+      {"path": "analysis/proposed-changes.md", "coverage": "1-82; long line 76 truncated; broad provisioning proposals superseded by overlay-only scope"},
+      {"path": "analysis/seed-mechanism-panel-receipt.json", "coverage": "metadata/status and response summary read; long response line truncated"},
+      {"path": "jev-seed-mechanism-correction.json", "coverage": "state, source excerpt, questions, answers and role read via JSON selector"}
+    ],
+    "original_overlay_source_reads": [
+      {"path": "evidence/source/deploy/scripts/sync-instance-upgrade.sh", "ranges": ["1-210", "211-407"]},
+      {"path": "evidence/source/deploy/scripts/bind-instance-root.sh", "ranges": ["45-84", "87-139", "138-149", "199-284"]},
+      {"path": "evidence/source/deploy/runit/libexec-3tched/restore-chatbot-root", "ranges": ["1-109"]},
+      {"path": "evidence/source/deploy/runit/identity-roots/run", "ranges": ["76-180"]}
+    ],
+    "coverage_limits": [
+      "Full corpus semantic review remains incomplete; no packet processing resumed",
+      "Saved reports and historical observations are not current runtime receipts",
+      "No live mounted destination, native state, installed closure or baseline completion was inspected",
+      "No new comprehensive audit of provisioning/backing/Cozo proofs",
+      "Before latest scope repetition, this continuation also read saved drift/decision/coverage metadata, listed the report directory, and grepped selected historical provisioning/failure records; these do not establish broad semantic coverage and are not relied on as current readiness"
+    ]
+  },
+  "verification": {
+    "performed": [
+      "Bounded original overlay source and retained report reads",
+      "sha256sum of four current checkout helpers and corresponding saved exports",
+      "diff -u for sync, bind and restore: differences only at exported redacted public-key literal; exit 1 indicates differences, not execution failure"
+    ],
+    "current_source_comparison": [
+      {
+        "path": "deploy/scripts/sync-instance-upgrade.sh",
+        "current_sha256": "12f4131819814c5dd18d804466963147cf371d20ded10dfc3c17b4aee24e59c2",
+        "export_sha256": "e71cb7bc470c8fc03d70636b2dfa4b7d1788c79b773c753a482b0c3c435706cc",
+        "difference": "Export redacts public-key literal at line 59; no overlay code difference"
+      },
+      {
+        "path": "deploy/scripts/bind-instance-root.sh",
+        "current_sha256": "f04d60688bc6125336c1f95fac40cc0c189ab314d8286f521ef9dd331983996f",
+        "export_sha256": "37d151a37724a1bfbf6b63b689ac8840f6bf8cc88f5aeadef1d478b663c73299",
+        "difference": "Export redacts public-key literal at line 20; no overlay code difference"
+      },
+      {
+        "path": "deploy/runit/libexec-3tched/restore-chatbot-root",
+        "current_sha256": "2cc3b606e0b23f226e284181db22ac741b63cb823de5a7e618d54b85c53817f8",
+        "export_sha256": "0747d1f4e6b40c32b23277ce31de3574a7eaca7503f0e6101b89c642ddb47d11",
+        "difference": "Export redacts public-key literal at line 14; no overlay code difference"
+      },
+      {
+        "path": "deploy/runit/identity-roots/run",
+        "current_sha256": "fbfaad6dbb4a73ff0152ad2c6c6581286294083ef74387273f45e7b2a25afc68",
+        "export_sha256": "fbfaad6dbb4a73ff0152ad2c6c6581286294083ef74387273f45e7b2a25afc68",
+        "difference": "None; byte-identical hashes"
+      }
+    ],
+    "runtime_verified": false,
+    "builds_run": false,
+    "tests_or_smoke_fixtures_run": false,
+    "helpers_executed": false,
+    "storage_or_provisioning_operations_run": false,
+    "installed": false,
+    "deployed": false
+  },
+  "judgment": {
+    "role": "JEV is decision/evidence judge only, never model selection or routing",
+    "new_calls": 0,
+    "reused_artifact": "jev-seed-mechanism-correction.json",
+    "actual_saved_answers": {
+      "historical_mechanism": "seed_plus_added_writable_member",
+      "layer_inference": "no_requires_actual_topology",
+      "current_authorization": "preserve_mechanism_investigate_no_loop"
+    },
+    "input_rubric_answer_provenance": "Existing artifact retains original source excerpt, owner correction, typed questions/criteria and actual answers; not regenerated",
+    "panel_acknowledgment": "analysis/seed-mechanism-panel-receipt.json: one substantive response, one non-substantive response, three failures; no consensus",
+    "overlay_specification_judged": false,
+    "approval_claimed": false
+  },
+  "execution_boundary": {
+    "task_agents_spawned": 0,
+    "workpools_or_completion_calls": 0,
+    "new_fusion_panels": 0,
+    "provider_probes_or_routing_changes": 0,
+    "writes_this_overlay_continuation": [
+      "analysis/upgrade-overlay.md",
+      "analysis/upgrade-overlay-receipt.json"
+    ],
+    "application_source_runtime_storage_services_identity_grants_handoff_signals_changed": false,
+    "credentials_exported_in_deliverables": false
+  }
+}

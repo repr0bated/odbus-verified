@@ -1,0 +1,64 @@
+{
+  "request": 202,
+  "started": "2026-10-19T04:43:10.987684+00:00",
+  "finished": "2026-10-19T04:43:23.287482+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-01536de6d219eeeb016ad59fe2051887d09a4084550eebb7a0",
+    "created": 1792384994,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"code\":\"async def collect(pending):\\n    for pid,handle,inp in pending:\\n        record={'packet_id':pid,'input_reference':str(outdir/f'{pid}.input.json'),'packet_sha256':inp['packet']['sha256'],'packet_bytes':inp['packet']['bytes']}\\n        try:\\n            raw=await handle.wait()\\n            text=raw if isinstance(raw,str) else json.dumps(raw,ensure_ascii=False)\\n            (outdir/f'{pid}.raw.txt').write_text(text)\\n            record['raw_output']=str(outdir/f'{pid}.raw.txt'); record['output_sha256']=hashlib.sha256(text.encode()).hexdigest()\\n            try:\\n                parsed=json.loads(text)\\n                (outdir/f'{pid}.json').write_text(json.dumps(parsed,ensure_ascii=False,indent=2))\\n                record['report']=str(outdir/f'{pid}.json')\\n                record['status']='success' if parsed.get('fully_reviewed') is True and parsed.get('packet_id')==pid else 'review_incomplete'\\n                record['findings_count']=len(parsed.get('findings',[]))\\n            except Exception as e:\\n                record['status']='parse_error';record['error']=str(e)\\n        except Exception as e:\\n            record['status']='completion_error';record['error']=str(e)\\n            (outdir/f'{pid}.failure.txt').write_text(str(e))\\n        receipt['packets'].append(record)\\n        print(record)\\n    (outdir/'slice-12.json').write_text(json.dumps(receipt,indent=2))\\nawait collect(pending)\\npending=launch(assigned[3:6])\",\"title\":\"Saving first packet analyses\",\"timeout\":0}",
+                "name": "eval"
+              },
+              "id": "call_Y6gHrQig7HT4laHjmTb8nFiF",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 878,
+      "prompt_tokens": 91252,
+      "total_tokens": 92130,
+      "completion_tokens_details": {
+        "reasoning_tokens": 100
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 83357
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:23.285366+00:00",
+  "stream_chunks": 4
+}

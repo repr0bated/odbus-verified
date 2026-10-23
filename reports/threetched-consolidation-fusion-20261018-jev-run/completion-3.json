@@ -1,0 +1,128 @@
+{
+  "request": 3,
+  "started": "2026-10-18T21:47:32.953902+00:00",
+  "finished": "2026-10-18T21:47:43.926395+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-083ff810c8f68e78016ad53e77bbb887d0b0aaff52849280e0",
+    "created": 1792360055,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing renderer preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/json-render/SKILL.md:301-377\"}",
+                "name": "read"
+              },
+              "id": "call_IZj93DGAlUqWqkf5oNVcvr3v",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing network analysis preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/ovs-db-analysis/SKILL.md:301-309\"}",
+                "name": "read"
+              },
+              "id": "call_CVtPAucNxfEp6k5J1ayzFTl8",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing kernel diagnosis preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/kernel-fuse-diagnosis/SKILL.md:301-423\"}",
+                "name": "read"
+              },
+              "id": "call_LqpVFtO6HCHh6rn1SN5w9jet",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing allocation preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/rust-memory-optimization/SKILL.md:301-352\"}",
+                "name": "read"
+              },
+              "id": "call_gSpAR2OjLgrWEojaLmHiOjUF",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading worker routing authority\",\"path\":\"skill://jev-router\"}",
+                "name": "read"
+              },
+              "id": "call_eij5lTCWiGRmpT3h55Tl0kYm",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Rust implementation skill\",\"path\":\"skill://rust\"}",
+                "name": "read"
+              },
+              "id": "call_wCmhfR5Kfo6di8fvi0ROJcFB",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading application security skill\",\"path\":\"skill://application-security\"}",
+                "name": "read"
+              },
+              "id": "call_p3AuYek6TJUDlwF6fAPg1Q1r",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading delegation skill\",\"path\":\"skill://agent-patterns\"}",
+                "name": "read"
+              },
+              "id": "call_iFi1dk2mcAaqJRipphaamq7D",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading parallel worker skill\",\"path\":\"skill://dispatching-parallel-agents\"}",
+                "name": "read"
+              },
+              "id": "call_oQLxiaM6xyoTTMJxpcI6Mq6U",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 667,
+      "prompt_tokens": 288026,
+      "total_tokens": 288693,
+      "completion_tokens_details": {
+        "reasoning_tokens": 21
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 181478
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:47:43.922013+00:00",
+  "stream_chunks": 20
+}

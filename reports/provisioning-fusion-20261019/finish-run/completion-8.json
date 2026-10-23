@@ -1,0 +1,96 @@
+{
+  "request": 8,
+  "started": "2026-10-19T06:01:33.035634+00:00",
+  "finished": "2026-10-19T06:01:46.796002+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-07878293ac596869016ad5b23ff75487d098feb9620dd5ef7e",
+    "created": 1792389696,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating historical identity leaf binding\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/scripts/provision-workspace-subscriber.sh\",\"pattern\":\"leaf=|device_path|cozo_id|seed-create|seed_dir|binding\"}",
+                "name": "grep"
+              },
+              "id": "call_1AoSIx352tHZ3QS7RjtOC1Wa",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating concrete failure records\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl\",\"pattern\":\"e84b7ba8|47e15770|54f08ba3\"}",
+                "name": "grep"
+              },
+              "id": "call_zBtNsjSAxbPrWmFXAQyZy2Sr",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading prior coverage counts\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/recovery-semantic-coverage.json?q={completed:(.completedPackets|map({keys:keys,id:.packet,packet_id:.packet_id})),pending:.pending,supplements_pending:.supplements_pending}\"}",
+                "name": "read"
+              },
+              "id": "call_6VMegTijWA5igqpFLp8nregR",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading retained semantic result structure\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/reviews/recovery-history-009-to-history-012-result.json?q=keys\"}",
+                "name": "read"
+              },
+              "id": "call_YqotCDCNsZT3bQj7nW6fDtGS",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading evidence root inventory\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/\"}",
+                "name": "read"
+              },
+              "id": "call_ffoXPB7VQLIesUCcQHgBULKM",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 678,
+      "prompt_tokens": 295560,
+      "total_tokens": 296238,
+      "completion_tokens_details": {
+        "reasoning_tokens": 140
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 217247
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:01:46.793172+00:00",
+  "stream_chunks": 12
+}

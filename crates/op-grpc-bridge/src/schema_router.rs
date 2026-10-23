@@ -331,7 +331,7 @@ impl SchemaRouter {
             .await
             .map_err(|e| SchemaRouterError::DbusCallFailed {
                 method: method_name.to_string(),
-                error: e.to_string(),
+                error: e,
             })?;
 
         Ok(result)
@@ -375,7 +375,7 @@ impl SchemaRouter {
             .await
             .map_err(|e| SchemaRouterError::DbusCallFailed {
                 method: format!("GetProperty({property_name})"),
-                error: e.to_string(),
+                error: e,
             })
     }
 
@@ -421,7 +421,7 @@ impl SchemaRouter {
             .await
             .map_err(|e| SchemaRouterError::DbusCallFailed {
                 method: format!("SetProperty({property_name})"),
-                error: e.to_string(),
+                error: e,
             })?;
 
         Ok(())
@@ -936,9 +936,31 @@ impl SchemaBackedInterface {
         };
         let result = dispatch
             .await
-            .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))?;
+            .map_err(method_dispatch_error)?;
 
         serde_json::to_string(&result).map_err(|error| zbus::fdo::Error::Failed(error.to_string()))
+    }
+}
+
+fn method_dispatch_error(error: anyhow::Error) -> zbus::fdo::Error {
+    match error.downcast_ref::<op_state_store::method_receipt::AuditedMethodRefusal>() {
+        Some(refusal) => zbus::fdo::Error::NotSupported(refusal.to_string()),
+        None => zbus::fdo::Error::Failed(error.to_string()),
+    }
+}
+
+pub(crate) fn unsupported_method_message(error: &zbus::Error) -> Option<&str> {
+    match error {
+        zbus::Error::MethodError(name, message, _)
+            if name.as_str() == "org.freedesktop.DBus.Error.NotSupported" =>
+        {
+            Some(message.as_deref().unwrap_or("method unsupported"))
+        }
+        zbus::Error::FDO(error) => match error.as_ref() {
+            zbus::fdo::Error::NotSupported(message) => Some(message),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
@@ -1162,7 +1184,7 @@ pub enum SchemaRouterError {
     #[error("D-Bus proxy build failed: {0}")]
     ProxyBuildFailed(String),
     #[error("D-Bus call failed: {method}: {error}")]
-    DbusCallFailed { method: String, error: String },
+    DbusCallFailed { method: String, error: zbus::Error },
     #[error("Serialization failed: {0}")]
     SerializationFailed(String),
 }
@@ -1196,7 +1218,10 @@ impl From<SchemaRouterError> for tonic::Status {
                 tonic::Status::internal(format!("D-Bus proxy build failed: {}", msg))
             }
             SchemaRouterError::DbusCallFailed { method, error } => {
-                tonic::Status::internal(format!("D-Bus call failed: {}: {}", method, error))
+                match unsupported_method_message(&error) {
+                    Some(message) => tonic::Status::unimplemented(message),
+                    None => tonic::Status::internal(format!("D-Bus call failed: {}: {}", method, error)),
+                }
             }
             SchemaRouterError::SerializationFailed(msg) => {
                 tonic::Status::internal(format!("Serialization failed: {}", msg))
@@ -1213,6 +1238,30 @@ mod tests {
     use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
+
+    #[test]
+    fn method_refusal_survives_dbus_and_router_status_mapping() {
+        use op_state_store::method_receipt::{AuditedMethodRefusal, UnsupportedBeforeEffect};
+        let refusal = UnsupportedBeforeEffect::new("editor_unsupported", "omit --edit");
+        let public = AuditedMethodRefusal::new(uuid::Uuid::nil(), refusal);
+        let message = public.to_string();
+        let dbus = method_dispatch_error(anyhow::Error::new(public).context("private context"));
+        assert!(matches!(&dbus, zbus::fdo::Error::NotSupported(text) if text == &message));
+        let status: tonic::Status = SchemaRouterError::DbusCallFailed {
+            method: "skills.add".into(), error: dbus.into(),
+        }.into();
+        assert_eq!(status.code(), tonic::Code::Unimplemented);
+        assert_eq!(status.message(), message);
+        for error in [anyhow::Error::new(refusal), anyhow::anyhow!(message)] {
+            assert!(matches!(method_dispatch_error(error), zbus::fdo::Error::Failed(_)));
+        }
+        let failed: zbus::Error = zbus::fdo::Error::Failed("method_outcome_unknown".into()).into();
+        assert!(unsupported_method_message(&failed).is_none());
+        let status: tonic::Status = SchemaRouterError::DbusCallFailed {
+            method: "skills.add".into(), error: failed,
+        }.into();
+        assert_eq!(status.code(), tonic::Code::Internal);
+    }
 
     /// Builds a test `PluginRoute` with a single method and two properties.
     fn test_route() -> PluginRoute {

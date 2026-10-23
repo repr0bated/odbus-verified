@@ -27,4 +27,4 @@ install -d -o root -g root -m 0755 /run/opdbus/lungs
 }
 install -d -m 0755 /run/opdbus/runit-ready
 touch /run/opdbus/runit-ready/opdbus-rundirs
-exec pause
+exec sleep infinity

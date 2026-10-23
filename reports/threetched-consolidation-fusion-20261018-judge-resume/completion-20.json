@@ -1,0 +1,63 @@
+{
+  "request": 20,
+  "started": "2026-10-18T21:53:01.375380+00:00",
+  "finished": "2026-10-18T21:53:09.601344+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-099407b3baac4190016ad53fc06b2887d0804e3dc912795cb8",
+    "created": 1792360384,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading installed service launcher\",\"path\":\"/etc/sv/op-grpc-bridge/run:1-40\"}",
+                "name": "read"
+              },
+              "id": "call_nohWRNl0Qwg1UVL3pZ2xUjVy",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 166,
+      "prompt_tokens": 230595,
+      "total_tokens": 230761,
+      "completion_tokens_details": {
+        "reasoning_tokens": 71
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 222806
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:53:09.599507+00:00",
+  "stream_chunks": 4
+}

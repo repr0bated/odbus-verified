@@ -2,8 +2,8 @@ format=opdbus.3tched-json-render-ui-source.v1
 source_repository=/srv/git/3tched.com
 source_head=31eae4be68ce437e5c0d5c90c0a08d4a319630fa
 source_worktree=modified
-content_manifest_sha256=97c61d49b0b0c62862bd2b94662a5fbf8e57f26b912ef0acebf878faec5a852d
-source_archive_sha256=d171df24966261b5d6c0eb027fa0096d6b174f0a5838ee1595d5a64ac0404de5
+content_manifest_sha256=5d28686b3a3b31796eec4237873692349d78b69525e2c1211404e63357614fac
+source_archive_sha256=511e33302405ce68088ed21a25609f95ee68f062b2e4bed62c7446bd39e7a6c4
 archive_root=3tched-json-render-ui
 node_engine=>=22.22.2
 asset_base=/

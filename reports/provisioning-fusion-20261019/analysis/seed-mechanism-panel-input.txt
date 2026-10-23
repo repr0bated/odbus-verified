@@ -1,0 +1,27 @@
+REQUIRED FIRST PANEL ROUND. Read-only diagnosis; no commands to execute. Owner statements in order: “the seed is the lbacking . by adding the btrfs as a device to acieve the rw”; “that is haow it worked before”; “enphasooze that to the panel”; “specy the command btrfs device add”.
+The mechanism to preserve is explicitly btrfs device add <writable-device> <mounted-seed-path>. Immutable seed supplies backing; adding writable member supplies persistent sprout writes. Do not substitute OverlayFS upper, copied roots or snapshots. Parent withdraws implication that each exposed Incus subvolume must itself be the block-device operand. Separate backing, writable member, Cozo identity association, exposed subvolumes and upgrade replica. No HOST loop devices, including pool backing and seed wrappers. Prefer no images/subvolumes only IF all retained semantics survive. Do not invent proven replacement topology, LVM management or VM conversion. JEV judges evidence, never model routing.
+ORIGINAL EVIDENCE, commit 26a4ad132fbbd4523b05724060bfdeb9ca661824 deploy/runit/libexec-3tched/op-identity-root:
+1172 mount -t btrfs -o "ro,subvolid=5,device=$seed_view" "$seed_view" "$seed_dir/volume"
+1173 # Validate inherited siblings before creating sprout. Nothing copied/snapshotted; all writes after ADD_DEV go to new leaf.
+1175 initial_members=$(seed_layout_pins) || seed_fail "seed lacks seven distinct sibling subvolumes"
+1176 initial_image=$(seed_image_metadata verify) || seed_fail "seed image verification failed before device add"
+1177 seed_write --argjson image "$initial_image" '.image=$image'
+1178 [ "$(btrfs property get -ts "$seed_dir/volume/@" ro)" = ro=false ] || seed_fail "seed @ must be a normal writable subvolume"
+1179 [ -d "$seed_dir/volume/@/etc" ] && [ ! -L "$seed_dir/volume/@/etc" ] || seed_fail "seed root lacks safe etc directory"
+1180 seed_write --argjson members "$initial_members" '.members=$members'
+1181 current_seed_super=$(btrfs inspect-internal dump-super "$seed_device")
+1182 [ "$(blockdev --getro "$seed_device")" = 1 ] || seed_fail "physical seed lost block read-only enforcement"
+1183-1185 validate SEEDING, source_fsid and source_generation unchanged
+1186 seed_no_direct_mount
+1187 seed_write '.phase="device-add-intent"'
+1188 btrfs device add "$leaf_loop" "$seed_dir/volume"
+1189 sync -f "$seed_dir/volume"
+1190 umount "$seed_dir/volume"
+1191 sprout_fsid=$(seed_super "$leaf")
+1192 valid_session "$sprout_fsid" && [ "$sprout_fsid" != "$source_fsid" ] || seed_fail "invalid new sprout FSID"
+1193 seed_write --arg fsid "$sprout_fsid" '.sprout_fsid=$fsid | .phase="layout-intent"'
+1194 mount -t btrfs -o "rw,subvolid=5,device=$seed_view,device=$leaf_loop" "$leaf_loop" "$seed_dir/volume"
+1195 seed_verify_volume
+1196 compare seed_layout_pins to initial_members; fail if inherited sibling identities changed.
+ORIGINAL Hermes records: id4095 user: "no the persistent cozo iws addedwith btrfs add disk". id4099 assistant: "Right—the persistent writable storage is added to the seed with btrfs device add, and Cozo tracks the identity’s leaf assignment. It is not a writable OverlayFS upper layer. The separate upgrade partition supplies upgrade/@ for the read-only overlay. I conflated those two roles." id4111 assistant: "Yes—the script uses btrfs device add to attach the persistent root partition to the seed, then mounts that pair read-write. prepare-instance-disk.sh:111 — adds the root partition. prepare-instance-disk.sh:116–118 — formats the separate upgrade partition and creates @. bind-instance-root.sh:216 — combines upgrade and seed layers into a read-only overlay. But the storage path is still wrong: the script requires /var/lib/3tched-leaf-pool, rather than your selected /var/lib/incus/storage-pools/3tched-pool. The layout is implemented; that integration is not finished."
+TASK: Explicitly acknowledge btrfs device add, what old script added and where, subsequent sprout remount and identity roles. Distinguish original script evidence from assistant claims and proposed no-loop changes. Reopen unsupported blanket layout rejection; state exact remaining evidence needed without requiring each subvolume be a block operand. Report every successful/failed configured member and evidence coverage, not fabricated consensus. This round does NOT claim full corpus review or present provisioning completion.

@@ -180,17 +180,21 @@ async fn dispatch_method_owned(
         | "snapshot_instance" | "exec_instance" => args.get("name"),
         _ => None,
     };
-    let _identity_target = if let Some(target) = target {
-        let target = target.as_str().context("Incus target name is invalid")?;
-        if uuid::Uuid::parse_str(target).is_ok_and(|uuid| uuid.to_string() == target) {
-            Some(crate::identity_sled_dispatch::guard_identity_incus_target(engine, target).await?)
-        } else {
-            None
-        }
+    let resolved_session = if let Some(target) = target {
+        crate::identity_sled_dispatch::identity_session_for_native(engine,
+            target.as_str().context("Incus target name is invalid")?).await?
+    } else { None };
+    let _identity_target = if let Some(session) = &resolved_session {
+        Some(crate::identity_sled_dispatch::guard_identity_incus_target(engine, session).await?)
     } else {
         None
     };
     let _observation = engine.lock_host_observation().await;
+    if let Some(target) = target {
+        ensure!(crate::identity_sled_dispatch::identity_session_for_native(engine,
+            target.as_str().context("Incus target name invalid")?).await? == resolved_session,
+            "native ownership changed while queued; retry with the same target");
+    }
     let _seeded_root = if let Some(target) = &_identity_target {
         target.verify_under_host_lock(method).await?
     } else {

@@ -1,0 +1,89 @@
+{
+  "request": 4,
+  "started": "2026-10-19T06:03:39.453330+00:00",
+  "finished": "2026-10-19T06:03:50.265412+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-078f8c7d83396b0c016ad5b2be8d5487d084a82a2a19e17c2b",
+    "created": 1792389822,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading replication transition implementation\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/sync-instance-upgrade.sh:1-210\"}",
+                "name": "read"
+              },
+              "id": "call_SQaJEpJnlaNcSVsBVilNBkgR",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading publication and restoration implementation\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/sync-instance-upgrade.sh:211-407\"}",
+                "name": "read"
+              },
+              "id": "call_Tuj2XFek55xIOQBWRmOhj70Z",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading binder composition guards\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/bind-instance-root.sh:45-84,199-284\"}",
+                "name": "read"
+              },
+              "id": "call_fqjXZ2qfzf1kTlvct8BKyaa2",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading boot restoration dispatch\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/source/deploy/runit/libexec-3tched/restore-chatbot-root:1-109\"}",
+                "name": "read"
+              },
+              "id": "call_0juq1CnUDsOHXHWiaxbWIAUv",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "I\u2019ll specify the overlay using the existing helpers. The owner\u2019s baseline paths and storage identities remain pending handoff values, not a new architectural blocker. No provisioning redesign or runtime changes.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 700,
+      "prompt_tokens": 203433,
+      "total_tokens": 204133,
+      "completion_tokens_details": {
+        "reasoning_tokens": 102
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 131770
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:03:50.261468+00:00",
+  "stream_chunks": 11
+}

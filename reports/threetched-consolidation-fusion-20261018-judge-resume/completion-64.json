@@ -1,0 +1,63 @@
+{
+  "request": 64,
+  "started": "2026-10-18T22:00:09.391038+00:00",
+  "finished": "2026-10-18T22:00:21.767965+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01d5be43235f9967016ad5416c798487d0a139d1b3cb6689d9",
+    "created": 1792360812,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Coordinating backing caller migration\",\"path\":\"agent://RetireAccessors\",\"content\":\"Parent now gives you exclusive tests/tched_router_backing.rs. I have NOT edited it. Please also migrate LLM block 1404-1496: dispatch_llm -> dispatch; set_provider\u2192SetProvider, update_config\u2192SetSelection, list_providers\u2192ListProviders, list_models\u2192ListModels, generate\u2192Chat; get_provider/get_config\u2192GetState with caller projections from result.state (provider search and selected fields), preserve behavioral assertions. Remove unused dispatch_llm helper445-466 and LLM schema fixture546-548. Parent directed me only gemma declaration removal, your route cleanup.\"}",
+                "name": "write"
+              },
+              "id": "call_RI5Jf6O0M1thco7uXNL53d8W",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 453,
+      "prompt_tokens": 326510,
+      "total_tokens": 326963,
+      "completion_tokens_details": {
+        "reasoning_tokens": 126
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 206498
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:21.766386+00:00",
+  "stream_chunks": 4
+}

@@ -379,8 +379,9 @@ fn sled_to_genesis(sled: &ContainerIdentitySled) -> GenesisInputsRecord {
 }
 
 const CONTROL_PLANE_CHATBOT_CONTAINER: &str = "3tchedChatbot";
+const RESERVED_CHATBOT_CONTAINER: &str = "3tchedCtlChatbot";
 
-fn configured_chatbot_key() -> Option<String> {
+pub(crate) fn configured_chatbot_key() -> Option<String> {
     std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")
         .ok()
         .map(|value| value.trim().to_owned())
@@ -406,13 +407,41 @@ fn chatbot_binding_matches(
 }
 
 pub(crate) fn identity_instance_matches(sled: &ContainerIdentitySled, instance: &IncusInstance) -> bool {
-    (instance.name == sled.session_id && instance.instance_type == "container")
+    // The native name is a label. Ownership remains the stored UUID, session
+    // and key binding, not the label's number or its creation receipt.
+    let named = (op_cozo_store::is_numbered_native_name(&instance.name)
+        || (instance.name == RESERVED_CHATBOT_CONTAINER
+            && sled.principal_kind.as_deref() == Some("service")
+            && control_plane_chatbot_session_id().as_deref() == Some(sled.session_id.as_str())
+            && configured_chatbot_key().as_deref() == Some(sled.wireguard_pubkey.as_str())
+            && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id))
+        && instance.instance_type == "container"
+        && instance.config.as_ref().is_some_and(|c| {
+            c.get("user.opdbus.session_id") == Some(&sled.session_id)
+                && c.get("user.opdbus.wireguard_public_key") == Some(&sled.wireguard_pubkey)
+                && c.get("volatile.uuid").is_some_and(|v| uuid::Uuid::parse_str(v).is_ok())
+        })
+        && sled.instance.as_ref().is_some_and(|stored| {
+            stored.name == instance.name && stored.config.as_ref().zip(instance.config.as_ref())
+                .is_some_and(|(a,b)| a.get("volatile.uuid") == b.get("volatile.uuid"))
+        });
+    named || (instance.name == sled.session_id && instance.instance_type == "container")
         || chatbot_binding_matches(
             sled,
             instance,
             control_plane_chatbot_session_id().as_deref(),
             configured_chatbot_key().as_deref(),
         )
+}
+
+fn identity_session_binding_matches(sled: &ContainerIdentitySled) -> bool {
+    match sled.instance.as_ref() {
+        Some(instance) => identity_instance_matches(sled, instance),
+        // The identity owner explicitly initializes humans without per-account
+        // containers. Actor class comes from the committed record, not SID1 or
+        // request metadata; any attached instance must still match above.
+        None => sled.principal_kind.as_deref() == Some("human"),
+    }
 }
 
 fn validate_sled(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
@@ -756,9 +785,7 @@ pub(crate) async fn authenticate_sid1_wire(
         .await
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "sealed identity session was not found".to_string())?;
-    if !sled.instance.as_ref().is_some_and(|instance| {
-        identity_instance_matches(&sled, instance)
-    }) {
+    if !identity_session_binding_matches(&sled) {
         return Err("sealed identity has no matching provisioned container binding".into());
     }
     let now = chrono::Utc::now().timestamp();
@@ -797,10 +824,8 @@ fn apply_genesis_stamp(
     stamp: &GenesisStamp,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(
-        sled.instance.as_ref().is_some_and(|instance| {
-            identity_instance_matches(sled, instance)
-        }),
-        "SID1 minting requires the exact provisioned identity container"
+        identity_session_binding_matches(sled),
+        "SID1 minting requires a human session or the exact provisioned identity container"
     );
     let claims = op_identity::sealed_id::SealedId::from_inline_ref(&stamp.sealed_id)
         .map_err(|error| anyhow::anyhow!("invalid authored SID1: {error}"))?;
@@ -1402,6 +1427,40 @@ pub(crate) struct IdentityIncusTargetGuard {
     session_id: String,
 }
 
+/// Resolve ownership from committed identity bindings and durable preparation
+/// intents, not from the spelling of an ID-N name.
+pub(crate) async fn identity_session_for_native(engine: &MutationEngine, name: &str)
+    -> anyhow::Result<Option<String>> {
+    let cozo = engine.identity_sled_store()?.cozo().clone();
+    let target = name.to_owned();
+    tokio::task::spawn_blocking(move || -> anyhow::Result<Option<String>> {
+        let state = cozo.read_identity_recovery_state(0)?;
+        let mut owner = None;
+        for revision in state.identities {
+            if let Some(record) = revision.record {
+                if !record.instance_json.is_empty() {
+                    let instance: IncusInstance = serde_json::from_str(&record.instance_json)?;
+                    if instance.name == target {
+                        anyhow::ensure!(owner.is_none(), "duplicate identity native binding");
+                        owner = Some(record.session_id);
+                    }
+                }
+            }
+        }
+        // Preparation has not yet committed an identity record. Retain its
+        // target mapping without making creation phase a lifecycle policy.
+        if owner.is_none() {
+            owner = cozo.native_creation_records()?.into_iter()
+                .find(|row| row.name == target && row.request.owner_kind == "identity")
+                .map(|row| row.request.logical_target);
+        }
+        if owner.is_none() && uuid::Uuid::parse_str(&target).is_ok_and(|id| id.to_string() == target) {
+            owner = Some(target);
+        }
+        Ok(owner)
+    }).await?
+}
+
 pub(crate) async fn guard_identity_incus_target(
     engine: &MutationEngine,
     session_id: &str,
@@ -1994,8 +2053,8 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
                     .await?;
             Ok(serde_json::json!({"identity": sled}))
         }
-        "provision_container" => {
-            anyhow::bail!("provision_container requires the verified principal owner route")
+        "prepare_container" | "provision_container" => {
+            anyhow::bail!("container preparation/provision requires the verified principal owner route")
         }
         "attach_btrfs_device" => {
             let session_id = arg_str(args, "session_id");
@@ -2159,9 +2218,7 @@ async fn refresh_credential_owned(
         "credential refresh requires a human identity"
     );
     anyhow::ensure!(
-        sled.instance
-            .as_ref()
-            .is_some_and(|instance| identity_instance_matches(&sled, instance)),
+        identity_session_binding_matches(&sled),
         "identity has no matching provisioned container binding"
     );
     anyhow::ensure!(
@@ -2489,6 +2546,56 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
             own_genesis,
         )
         .await;
+    }
+    if method == "prepare_container" {
+        let caller_session = session_id.context("prepare requires verified session")?.to_owned();
+        let caller_genesis = session_genesis.context("prepare requires verified genesis")?.to_owned();
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Input { wireguard_pubkey: String, operation_id: String }
+        let input: Input = serde_json::from_value(args.clone())?;
+        let seal = seed_provision::capture_method_seal(method)?;
+        let engine = engine.clone();
+        let store = engine.identity_sled_store()?.clone();
+        let actor = actor_id.to_owned();
+        return tokio::spawn(async move {
+            let sid = op_identity::session::derive_session_id(&input.wireguard_pubkey);
+            anyhow::ensure!(configured_chatbot_key().as_deref() == Some(input.wireguard_pubkey.as_str())
+                && control_plane_chatbot_session_id().as_deref() == Some(sid.as_str())
+                && sid == "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+                "prepare is restricted to the configured chatbot; not human identities");
+            let _lifecycle = store.lifecycle_lock(&sid).await.lock_owned().await;
+            let _host = engine.lock_host_observation().await;
+            seed_provision::admit(&engine, &store, &actor, &caller_session, &caller_genesis, &seal).await?;
+            seed_provision::target_key_is_registered(&input.wireguard_pubkey).await?;
+            let existing = crate::native_container_creation::records(&engine).await?.into_iter()
+                .find(|r| r.request.operation_id == input.operation_id);
+            let (record, replayed) = if let Some(record) = existing {
+                anyhow::ensure!(record.request.owner_kind == "identity" && record.request.logical_target == sid
+                    && record.request.actor_id == actor && record.request.caller_session == caller_session
+                    && record.request.caller_genesis == caller_genesis,
+                    "prepare operation belongs to a different caller or target");
+                (crate::native_container_creation::reconcile_locked(&engine, record).await?, true)
+            } else {
+                let revision = load_revision(&store, &sid).await?;
+                anyhow::ensure!(revision.record.is_none() && revision.genesis.is_none(),
+                    "retain the existing identity/native binding; explicit retirement is required first");
+                let native = op_plugins::state_plugins::incus::IncusRootRepairBackend::local()
+                    .default_project_state().await?;
+                anyhow::ensure!(!native.instances.iter().any(|i| i.name == sid
+                    || i.name == CONTROL_PLANE_CHATBOT_CONTAINER
+                    || i.name == RESERVED_CHATBOT_CONTAINER
+                    || i.config.as_ref().is_some_and(|c| c.get("user.opdbus.session_id") == Some(&sid))),
+                    "existing native identity container must be retained or explicitly retired");
+                let body = op_plugins::state_plugins::incus::identity_creation_body(&sid, &input.wireguard_pubkey).await?;
+                let mut request = crate::native_container_creation::request(&input.operation_id, &actor,
+                    &caller_session, &caller_genesis, "identity", &sid, body)?;
+                request.reserved_name = Some(RESERVED_CHATBOT_CONTAINER.to_owned());
+                crate::native_container_creation::create_locked(&engine, request).await?
+            };
+            Ok(serde_json::json!({"session_id":sid,"name":record.name,"native_uuid":record.native_uuid,
+                "operation_id":record.request.operation_id,"phase":record.phase,"replayed":replayed}))
+        }).await.context("prepare owner failed; reconcile the same operation")?;
     }
     if matches!(method, "provision_container" | "inspect_provision_preflight") {
         let caller_session = session_id
@@ -3899,6 +4006,52 @@ pub(crate) mod tests {
             serde_json::to_value(bootstrapped.instance).unwrap()
         );
         assert_eq!(after.genesis, identity.genesis);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn containerless_human_sid1_authenticates_reanchors_and_refreshes() {
+        let _refresh_lock = refresh_test_lock().lock().await;
+        let (engine, _shm, mut identity, _grants_dir, previous, _registry) =
+            refresh_test_fixture_with_claims(0xb4, Some("dbus,grpc,mcp"), 0).await;
+        let store = engine.identity_sled_store().unwrap();
+        let mut unrelated_instance = identity.instance.take().unwrap();
+        unrelated_instance.name = "unrelated-human-instance".to_owned();
+        let expected = load_revision(store, &identity.session_id).await.unwrap();
+        commit_sled_update(
+            &engine, store, opid("containerless-human-fixture"),
+            expected, identity.clone(), (),
+        ).await.unwrap();
+        let wire = inline_sid1_wire(identity.sealed_id.as_deref().unwrap());
+        let claims = authenticate_sid1_wire(&engine, &wire, "grpc").await.unwrap();
+        assert_eq!(claims.session_id, identity.session_id);
+        assert_eq!(claims.wireguard_pubkey, identity.wireguard_pubkey);
+        engine.mint_and_store_genesis(&identity.session_id, &identity.wireguard_pubkey)
+            .await.unwrap();
+        assert_eq!(
+            stored_session(&engine, &identity.session_id).await.unwrap().unwrap().sealed_id,
+            identity.sealed_id,
+        );
+        let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
+        dispatch_identity_sled_method_for_verified_session(
+            &engine, "refresh_credential", &serde_json::json!({}), &actor,
+            Some(&identity.session_id), identity.genesis.as_deref(),
+        ).await.unwrap();
+        let refreshed = stored_session(&engine, &identity.session_id).await.unwrap().unwrap();
+        let refreshed_wire = inline_sid1_wire(refreshed.sealed_id.as_deref().unwrap());
+        let refreshed_claims = authenticate_sid1_wire(&engine, &refreshed_wire, "grpc").await.unwrap();
+        assert_eq!(refreshed_claims.session_id, claims.session_id);
+        assert_eq!(refreshed_claims.transport_scope, "dbus,grpc,mcp,mqtt");
+        assert!(authenticate_sid1_wire(&engine, &wire, "grpc").await.is_err());
+        // Only an authoritative human record may omit a native container.
+        for kind in [Some("service"), None] {
+            let mut nonhuman = refreshed.clone();
+            nonhuman.principal_kind = kind.map(str::to_owned);
+            assert!(!identity_session_binding_matches(&nonhuman));
+        }
+        let mut mismatched_human = refreshed.clone();
+        mismatched_human.instance = Some(unrelated_instance);
+        assert!(!identity_session_binding_matches(&mismatched_human));
+        restore_grants_path(previous);
     }
 
     #[tokio::test(flavor = "multi_thread")]

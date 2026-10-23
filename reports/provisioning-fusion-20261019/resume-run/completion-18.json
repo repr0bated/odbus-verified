@@ -1,0 +1,64 @@
+{
+  "request": 18,
+  "started": "2026-10-19T04:54:50.850896+00:00",
+  "finished": "2026-10-19T04:55:10.183630+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e4367bf0ab33343016ad5a29e233c87d087c35c369094c71d",
+    "created": 1792385694,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var duplicates=JSON.parse(await fs.readFile(a+'duplicate-index.json','utf8'));console.log(JSON.stringify(duplicates[0],null,2));console.log((await fs.readFile(pi[1].path,'utf8')).slice(0,1200));console.log(JSON.stringify(cov.outstanding));console.log('review fields',Object.keys(JSON.parse(reviewed)));\",\"title\":\"Inspecting exact duplicate provenance\"}",
+                "name": "eval"
+              },
+              "id": "call_7IfmQtnPTNEhok7RpmHiom3m",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 530,
+      "prompt_tokens": 215306,
+      "total_tokens": 215836,
+      "completion_tokens_details": {
+        "reasoning_tokens": 299
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 157218
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:55:10.181883+00:00",
+  "stream_chunks": 4
+}

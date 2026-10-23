@@ -221,10 +221,7 @@ pub(crate) async fn dispatch(
         documents.context("retained tched_router method requires the configured durable owner")?,
     );
     let observed = ObservedTchedRouterState::from(&native);
-    if matches!(
-        method,
-        "GetModelRoutes" | "GetProviderCatalog" | "ResolveRoute"
-    ) {
+    if matches!(method, "GetModelRoutes" | "ResolveRoute") {
         let receipt = methods.observe(method, args, &observed).await?;
         ensure_runtime_unchanged(pinned, &complete_native, sealed_identity).await?;
         let expected = pin.clone();

@@ -1,0 +1,64 @@
+{
+  "request": 18,
+  "started": "2026-10-18T21:31:04.584546+00:00",
+  "finished": "2026-10-18T21:31:17.370566+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0966d688a38a1edd016ad53a9b398887d0b8b1529ec5df9ebd",
+    "created": 1792359067,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating capability admission implementation\",\"query\":\"Canonical method required_capability alternatives validation in MutationEngine including threetched dispatch and per-command exact capabilities\",\"grep_keywords\":[\"required_capability\",\"threetched\"],\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src\"}",
+                "name": "find"
+              },
+              "id": "call_dWhDk6Pav1TNzs404V2P4Yso",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 539,
+      "prompt_tokens": 241116,
+      "total_tokens": 241655,
+      "completion_tokens_details": {
+        "reasoning_tokens": 263
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 199637
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:31:17.369043+00:00",
+  "stream_chunks": 4
+}

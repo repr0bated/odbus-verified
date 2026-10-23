@@ -1,0 +1,592 @@
+{
+  "type": "title",
+  "v": 1,
+  "title": "",
+  "updatedAt": "2026-10-19T04:40:36.699Z",
+  "pad": "                                                                                                                                                                              "
+}
+{
+  "type": "session",
+  "version": 3,
+  "id": "01a15276-245b-74b0-b796-d03cbe0e46bd",
+  "timestamp": "2026-10-19T04:40:36.699Z",
+  "cwd": "/srv/git/odbus-verified",
+  "parentSession": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/run/sessions/2026-10-19T04-34-44-731Z_01a15270-c57b-741c-9016-c6725374bd6a.jsonl",
+  "additionalDirectories": [
+    "/srv/git/3tched.com",
+    "/run/mounts/3tchedFS",
+    "/run/mounts/threetched"
+  ]
+}
+{
+  "type": "model_change",
+  "id": "18659c4d",
+  "parentId": null,
+  "timestamp": "2026-10-19T04:40:40.251Z",
+  "runtime": {
+    "version": "18.11.3"
+  },
+  "model": "consolidation-fusion/litellm/fusion-1",
+  "resolvedModelIsFallback": false
+}
+{
+  "type": "session_init",
+  "id": "6edac06b",
+  "parentId": "18659c4d",
+  "timestamp": "2026-10-19T04:40:41.212Z",
+  "runtime": {
+    "version": "18.11.3"
+  },
+  "systemPrompt": [
+    "[TRUNCATED FOR READABILITY \u2014 96KB SYSTEM PROMPT]"
+  ],
+  "task": "Complete assignment thoroughly:\n\n<workpool pool=\"CorpusReview\" batch=\"CorpusReview-1-b1\">\nYou are a worker in pool `CorpusReview`. Complete every item below in order. After EACH item, call `yield` once as `{ key, data }` or `{ key, error }`, where `key` is the item's 1-based number and `data` is its self-contained outcome/evidence value. The tool tells you which keys remain; the final key ends the turn automatically. NEVER combine several items into one yield.\n## Item 1\nSlice 0. Review assigned packets history-000, history-001, history-002, history-003, history-004, history-005, history-006, history-007, history-008, history-009, history-010, history-011, history-012, history-013, history-014, history-015, history-016, history-017, history-018, history-019, history-020. All at /srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/. Use bounded stateless completion calls if context demands (read xd://eval/judge). Each call receives full analysis/review-contract.txt (mandatory skills) and FULL packet text, never only paths/summaries. Save each result as analysis/reviews/<packet-id>.json or .txt and group coverage receipt analysis/reviews/slice-0.json listing actual success/failure, byte hashes, assigned IDs. Read all original fragments; preserve unavailable/truncated fields. Need original quotes, corrections, action/results and provenance. Up to 3 concurrent completions per worker. Preserve raw output on parse error. No tests or historical commands.\n</workpool>",
+  "tools": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield",
+    "ast_edit",
+    "debug"
+  ],
+  "agent": "task",
+  "resolvedModel": "consolidation-fusion/litellm/fusion-1",
+  "readOnly": false,
+  "spawns": "*",
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "CorpusReview#1": {}
+    },
+    "required": [
+      "CorpusReview#1"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchemaMode": "strict"
+}
+{
+  "type": "session_init",
+  "id": "fa4ac1f4",
+  "parentId": "6edac06b",
+  "timestamp": "2026-10-19T04:40:42.647Z",
+  "runtime": {
+    "version": "18.11.3"
+  },
+  "systemPrompt": [
+    "[TRUNCATED FOR READABILITY \u2014 96KB SYSTEM PROMPT]"
+  ],
+  "task": "Complete assignment thoroughly:\n\n<workpool pool=\"CorpusReview\" batch=\"CorpusReview-1-b1\">\nYou are a worker in pool `CorpusReview`. Complete every item below in order. After EACH item, call `yield` once as `{ key, data }` or `{ key, error }`, where `key` is the item's 1-based number and `data` is its self-contained outcome/evidence value. The tool tells you which keys remain; the final key ends the turn automatically. NEVER combine several items into one yield.\n## Item 1\nSlice 0. Review assigned packets history-000, history-001, history-002, history-003, history-004, history-005, history-006, history-007, history-008, history-009, history-010, history-011, history-012, history-013, history-014, history-015, history-016, history-017, history-018, history-019, history-020. All at /srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/. Use bounded stateless completion calls if context demands (read xd://eval/judge). Each call receives full analysis/review-contract.txt (mandatory skills) and FULL packet text, never only paths/summaries. Save each result as analysis/reviews/<packet-id>.json or .txt and group coverage receipt analysis/reviews/slice-0.json listing actual success/failure, byte hashes, assigned IDs. Read all original fragments; preserve unavailable/truncated fields. Need original quotes, corrections, action/results and provenance. Up to 3 concurrent completions per worker. Preserve raw output on parse error. No tests or historical commands.\n</workpool>",
+  "tools": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield",
+    "ast_edit",
+    "debug"
+  ],
+  "agent": "task",
+  "resolvedModel": "consolidation-fusion/litellm/fusion-1",
+  "readOnly": false,
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "CorpusReview#1": {}
+    },
+    "required": [
+      "CorpusReview#1"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchemaMode": "strict",
+  "spawns": "*",
+  "workPoolYieldItems": [
+    {
+      "id": "CorpusReview#1",
+      "index": 1
+    }
+  ]
+}
+{
+  "type": "message",
+  "id": "f8fbfccd",
+  "parentId": "fa4ac1f4",
+  "timestamp": "2026-10-19T04:40:42.651Z",
+  "runtime": {
+    "version": "18.11.3"
+  },
+  "message": {
+    "role": "user",
+    "content": [
+      {
+        "type": "text",
+        "text": "Complete assignment thoroughly:\n\n<workpool pool=\"CorpusReview\" batch=\"CorpusReview-1-b1\">\nYou are a worker in pool `CorpusReview`. Complete every item below in order. After EACH item, call `yield` once as `{ key, data }` or `{ key, error }`, where `key` is the item's 1-based number and `data` is its self-contained outcome/evidence value. The tool tells you which keys remain; the final key ends the turn automatically. NEVER combine several items into one yield.\n## Item 1\nSlice 0. Review assigned packets history-000, history-001, history-002, history-003, history-004, history-005, history-006, history-007, history-008, history-009, history-010, history-011, history-012, history-013, history-014, history-015, history-016, history-017, history-018, history-019, history-020. All at /srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/. Use bounded stateless completion calls if context demands (read xd://eval/judge). Each call receives full analysis/review-contract.txt (mandatory skills) and FULL packet text, never only paths/summaries. Save each result as analysis/reviews/<packet-id>.json or .txt and group coverage receipt analysis/reviews/slice-0.json listing actual success/failure, byte hashes, assigned IDs. Read all original fragments; preserve unavailable/truncated fields. Need original quotes, corrections, action/results and provenance. Up to 3 concurrent completions per worker. Preserve raw output on parse error. No tests or historical commands.\n</workpool>"
+      }
+    ],
+    "attribution": "agent",
+    "timestamp": 1792384841212
+  }
+}
+{
+  "type": "custom",
+  "customType": "system-prompt-digest",
+  "data": "7f05f9b43f7017d5",
+  "id": "2113a793",
+  "parentId": "f8fbfccd",
+  "timestamp": "2026-10-19T04:41:52.364Z",
+  "runtime": {
+    "version": "18.11.3"
+  }
+}
+{
+  "type": "message",
+  "id": "2c4ecfe7",
+  "parentId": "2113a793",
+  "timestamp": "2026-10-19T04:41:52.364Z",
+  "runtime": {
+    "version": "18.11.3"
+  },
+  "message": {
+    "role": "assistant",
+    "content": [
+      {
+        "type": "toolCall",
+        "id": "call_VJHpZNwOUP3mzeJD7zvStPG0",
+        "name": "read",
+        "arguments": {
+          "i": "Reading mandatory review preload",
+          "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:raw"
+        },
+        "partialArgs": "{\"i\":\"Reading mandatory review preload\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:raw\"}",
+        "streamIndex": 0,
+        "intent": "Reading mandatory review preload"
+      }
+    ],
+    "api": "openai-completions",
+    "provider": "consolidation-fusion",
+    "model": "litellm/fusion-1",
+    "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+      }
+    },
+    "stopReason": "toolUse",
+    "timestamp": 1792384842651,
+    "responseId": "chatcmpl-04ffaf615e85b243016ad59f8d464c87d0b04c0b064852ab4c",
+    "duration": 69711.042594,
+    "ttft": 69641.92865900003,
+    "completedAt": 1792384912363,
+    "contextSnapshot": {
+      "promptTokens": 0,
+      "nonMessageTokens": 8628,
+      "toolSchemaTokens": 3977,
+      "compactionEpoch": 0
+    }
+  }
+}
+{
+  "type": "custom",
+  "customType": "tool_execution_start",
+  "data": {
+    "toolCallId": "call_VJHpZNwOUP3mzeJD7zvStPG0",
+    "toolName": "read",
+    "startedAt": "2026-10-19T04:41:52.365Z",
+    "args": {
+      "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:raw"
+    },
+    "intent": "Reading mandatory review preload"
+  },
+  "id": "6fab41b9",
+  "parentId": "2c4ecfe7",
+  "timestamp": "2026-10-19T04:41:52.365Z",
+  "runtime": {
+    "version": "18.11.3"
+  }
+}
+{
+  "type": "message",
+  "id": "4e72309b",
+  "parentId": "6fab41b9",
+  "timestamp": "2026-10-19T04:41:52.368Z",
+  "runtime": {
+    "version": "18.11.3"
+  },
+  "message": {
+    "role": "toolResult",
+    "toolCallId": "call_VJHpZNwOUP3mzeJD7zvStPG0",
+    "toolName": "read",
+    "content": [
+      {
+        "type": "text",
+        "text": "\nMANDATORY SKILL grpc-expert\n---\nname: grpc-expert\ndescription: \"Expert guidance for gRPC/Protocol Buffers work in the operation-dbus-proto (OP-DBUS) workspace \u2014 designing plugin methods, generating .proto/service definitions, wiring the op-grpc-bridge, or fixing plugins with missing gRPC methods. Use this whenever the user mentions gRPC, proto/protobuf, plugin methods, the gRPC bridge, tonic, reflection descriptors, 'missing plugins' in the gRPC diagnostic page, or the seal/freeze/hot pipeline \u2014 even if they don't say 'gRPC' explicitly (e.g. 'the plugin isn't showing up on the diagnostic page', 'add a method to plugin X', 'regen protos').\"\nmetadata:\n  version: 1.0.0\ndisable-model-invocation: false\n---\n\n# gRPC Expert \u2014 OP-DBUS\n\nThis workspace does **not** hand-write per-plugin `.proto` files. Proto generation is\nautomatic, driven entirely by each plugin's `PluginSchema`. If you remember one thing\nfrom this skill: **fixing a plugin's gRPC surface means editing its Rust schema\nfunction, not writing `.proto`.**\n\n## The real pipeline (roll \u2192 seal \u2192 freeze \u2192 hot)\n\n```\n1. Plugin declares  \u2192 PluginSchema { methods: HashMap<String, MethodDecl>, signals: Vec<SignalDecl>, ... }\n                       in crates/op-plugins/src/state_plugins/<plugin>.rs\n2. Schema gets put   \u2192 op-projection's SchemaEngine publishes the catalog hash\n                       (op_identity::schema_bridge::schema_catalog_hash())\n3. Sealed by blob    \u2192 op-blob seals the plugin object into an immutable blob:\n                       /dev/shm/opdbus/plugin-blobs/<plugin_id>.<schema_hash16>.blob\n                       (op-blob is the ONLY writer \u2014 never write blobs elsewhere)\n4. Descriptors       \u2192 TWO separate reflection layers exist, don't confuse them:\n   for reflection       a) STATIC: crates/op-grpc-bridge/build.rs generates\n                            plugin_methods.proto from every plugin's schema.methods,\n                            compiles it with tonic_build into operation_descriptor.bin\n                            (a protobuf FileDescriptorSet), served by tonic-reflection.\n                         b) DYNAMIC: crates/op-grpc-bridge/src/dynamic_reflection.rs\n                            (ActiveReflectionCatalog) hydrates live from the sealed\n                            SHM blob catalog via hydrate_reflection_from_shm() \u2014\n                            this is the \"frozen\" descriptor set for what's actually\n                            present right now, independent of what's compiled in.\n5. Frozen            \u2192 the blob + its descriptors are immutable once sealed.\n6. gRPC socket = hot \u2192 crates/op-grpc-bridge/src/grpc_server.rs registers the\n                       generated per-plugin service (plugin_method_routes.rs,\n                       add_routes()) on the tonic UDS bridge, dispatching each\n                       RPC to call_generated_plugin_method_typed(plugin_id,\n                       schema_name, ...) which routes through PluginService.CallMethod\n                       \u2014 i.e. gRPC never bypasses D-Bus, it's a bridge, not a\n                       second control plane.\n```\n\nA plugin shows green/connected on the gRPC diagnostic page **iff**:\n- its `PluginSchema.methods` is non-empty (empty \u2192 `build.rs` silently skips it \u2014\n  see `collect_plugin_methods()`), **and**\n- the plugin is sealed in the SHM blob catalog.\n\nThese are discovery prerequisites, not proof of execution. Canonical dispatch\nalso requires the method's complete declaration and plugin version to match the\ncompiled handler, argument validation, verified identity, and its exact grant.\nAn advertised method whose adapter is absent is unfinished work.\n\n## Where to actually make changes\n\n| Task | File |\n|---|---|\n| Add/fix methods for plugin `<name>` | `crates/op-plugins/src/state_plugins/<name>.rs`, inside `<name>_schema()` |\n| Reusable input/output builders | `crates/op-plugins/src/state_plugins/plugin_scaffold_helpers.rs` |\n| Regenerate the derived `.proto` + routes | Just rebuild \u2014 `build.rs` regenerates on every `cargo build -p op-grpc-bridge` (it `rerun-if-changed`s `../op-plugins/src/state_plugins`) |\n| Wire a genuinely new (non-plugin-derived) service | `crates/op-grpc-bridge/proto/*.proto`, add to the `compile_protos` list + `rerun-if-changed` in `crates/op-grpc-bridge/build.rs`, then register in `crates/op-grpc-bridge/src/grpc_server.rs` |\n| Inspect what's currently generated | `target/{debug,release}/build/op-grpc-bridge-*/out/plugin_methods.proto` (build artifact \u2014 never hand-edit) |\n\n**Never** create files under a `/proto/plugin_methods/` directory or a\n`plugin_methods_unified.proto` by hand \u2014 those paths don't exist in this repo and\naren't part of the real pipeline; that was a stale spec from an earlier session.\nThe single source of truth is `schema.methods`.\n\n## Adding methods to a plugin (the actual workflow)\n\nLook at `crates/op-plugins/src/state_plugins/proxy_server.rs` (`proxy_server_schema()`)\nfor the canonical pattern:\n\n```rust\nuse op_state_store::{MethodDecl, PluginSchema, SideEffect};\n\nschema.methods.insert(\n    \"start_proxy\".to_string(),\n    method_decl_from_schemars_with_output::<StartProxyInput, plugin_scaffold_helpers::AckOutput>(\n        \"start_proxy\",\n        SideEffect::Mutation,       // Read | Mutation\n        false,                       // idempotent?\n        \"cap.network.proxy.start@v1\",   // required_capability\n        \"mut.network.proxy.start@v1\",   // subid \u2014 must follow the taxonomy in CLAUDE.md\n    ),\n);\n```\n\n- Define `StartProxyInput` (and a typed output struct, or reuse `AckOutput`) as\n  `#[derive(schemars::JsonSchema)]` structs \u2014 the JSON Schema is derived, never\n  hand-written as `serde_json::json!({...})` unless there's no existing helper.\n- `method_decl_from_schemars_with_output::<Input, Output>` is the current\n  (non-deprecated) helper; the single-generic `method_decl_from_schemars` is\n  deprecated but still present for legacy callers.\n- `subid` must be registered in the canonical registry per CLAUDE.md\n  (`crates/op-plugins/src/state_plugins/oscal_subid_registry.rs`) \u2014 CI enforces\n  uniqueness.\n- For plugins with **zero** declared methods today (the ones missing from the\n  diagnostic page), don't hand-author their methods one by one \u2014 see\n  **The Auto-Creator Plugin** below. That's the actual deliverable: a plugin\n  that finds these gaps and fills them itself, using real research per plugin.\n\n## The Auto-Creator Plugin (an ongoing capability, not a one-off batch)\n\nThis is **not** a one-time task to fix ~11 named plugins. It's a standing\nsystem capability: whenever the system encounters *any* missing plugin \u2014\nnow, or a new one added in the future \u2014 it automatically generates that\nplugin and submits it for **human review**, never auto-merges/auto-seals it\nunreviewed. The current ~11 gaps are just the first real instances that\nexercise this, not the scope.\n\nConsistent with this workspace's \"reactive, not polled\" principle (CLAUDE.md):\nthis should be triggered by an actual arrival/lookup that reveals the gap\n(e.g. a D-Bus/gRPC call or reflection lookup against a plugin whose\n`schema.methods` is empty, or a plugin name that doesn't resolve at all),\nnot a cron-style sweep re-scanning all plugins on a timer.\n\nBuild it as a plugin itself (same `PluginSchema`/`MethodDecl` pattern as every\nplugin in `crates/op-plugins/src/state_plugins/`), whose job is to:\n\n1. **Detect a gap on encounter** \u2014 when something references a plugin that's\n   missing or has `schema.methods.is_empty()` (same emptiness check\n   `build.rs::collect_plugin_methods` already uses to skip plugins), that's\n   the trigger \u2014 not a periodic scan of the whole registry.\n2. **Research that specific gap** \u2014 drive deep research via the **NotebookLM\n   MCP** (once wired up) to determine what capabilities/operations the\n   missing plugin should realistically expose, given its existing state\n   struct (if any), documentation, and prior art from comparable plugins\n   already in the registry. This replaces guessing or generic Get/List/Watch\n   stubs with a grounded, plugin-specific proposal.\n3. **Synthesize typed schemas** \u2014 turn the research output into real Rust\n   input/output structs (`#[derive(schemars::JsonSchema)]`) and `MethodDecl`\n   entries \u2014 per the \"no `AckOutput`\" rule above, every synthesized method\n   needs its own meaningful typed request/response, not a generic ack.\n4. **Submit for human review \u2014 do not auto-apply.** The output is a proposed\n   plugin/schema (e.g. a diff/PR against `<name>_schema()`, or a new\n   `crates/op-plugins/src/state_plugins/<name>.rs` for a wholly new plugin),\n   held for a human to approve before it's merged. Only after human approval\n   does it enter the normal pipeline (build \u2192 proto \u2192 reflection \u2192 sealed\n   blob \u2192 hot). The auto-creator must never seal a blob or register a plugin\n   into the live catalog on its own. It never emits `.proto` directly and\n   never writes to `/proto/plugin_methods/` \u2014 the single source of truth\n   stays `schema.methods`, authored by a human-approved change.\n\nIn short: this is a **standing, reactive meta-plugin that drafts schemas for\nwhatever plugin is found missing, research-backed via NotebookLM, gated by\nhuman review** \u2014 not a fixed batch job for a specific list of plugins.\n\n## JSON Schema \u2192 proto mapping\n\nThe shared mapper lives in `crates/op-blob/src/json_schema_proto.rs`; the bridge\nuses it for generated native messages. Structured objects become typed nested\nmessages; typed string-key maps retain their value types. Scalars preserve\npresence, including explicit false, zero and empty strings. Unsigned 64-bit\ncontracts use `uint64`. Nulls, arbitrary JSON, unions and nested arrays use the\nappropriate standard `Value`/`Struct`/`ListValue` dependencies. Arbitrary numbers\ninside `Value` remain subject to protobuf's double-precision limit.\n\nTwo existing wire layouts have distinct numbering rules: generated native\nbridge fields use stable FNV-1a numbers; sealed per-method messages retain their\nsorted sequential numbering. Preserve both layouts. Canonical schema map keys\nand declared transport method names are separate identities, not interchangeable\naliases. Consumers register the original sealed descriptors and never reseal,\nregenerate, or hash them as an existence check.\n\n## Known project-specific tensions vs. generic gRPC best practice\n\nBe aware of these before applying textbook advice unmodified:\n\n- **Do not use `AckOutput { success: bool }` for new/generated methods.**\n  It exists in the codebase (see `proxy_server.rs`) as a legacy shortcut for\n  \"no meaningful return value,\" but every method a plugin exposes should have\n  a real, dedicated typed **input** struct and typed **output** struct that\n  reflect what the operation actually consumes and returns \u2014 not a generic\n  bool. This matters especially for the auto-creator (below): when it\n  synthesizes methods for a previously-empty plugin, it must generate a\n  specific `<Method>Input` and `<Method>Output` schemars struct per method,\n  never fall back to `AckOutput`. Errors still go through `tonic::Status` /\n  D-Bus error replies, never a `success: false` field.\n- **Enums are flattened to `string`, not real proto `enum`.** JSON Schema\n  `enum` currently maps to proto `string` (see table above), so the classic\n  `FOO_STATUS_UNSPECIFIED = 0` convention isn't applied by the generator today.\n  If asked to add real proto enums, that requires changing\n  `json_schema_type_to_proto` in `crates/op-grpc-bridge/build.rs`, not just the\n  plugin schema.\n- **Streaming comes from state in SHM.** The owner reaffirmed this on\n  2026-09-13. Methods update authoritative SHM state before notifications;\n  existing state subscriptions read that state. Current generated method RPCs\n  being unary does not require another streaming method/service. Preserve\n  private principal/session scope. Method arguments, event payloads and\n  generator buffers are not independent state authorities, and buffered unary\n  responses are not a substitute for SHM state streaming.\n- **One generated file per bridge crate**, not the \"1-1-1\" file-per-message\n  convention \u2014 `plugin_methods.proto` bundles every plugin's messages/services\n  in one generated file. That's fine; it's a build artifact, not hand-maintained\n  source, so the usual \"small modular .proto files\" guidance doesn't apply to it.\n\n## Generic protobuf/gRPC conventions (still apply to hand-written `.proto`)\n\nFor any `.proto` you *do* hand-write (domain services under\n`crates/op-grpc-bridge/proto/`, not plugin-derived ones):\n\n- `snake_case` field names, `CamelCase` message/service/RPC names, package names\n  lowercase (this repo uses `operation.plugin.v1`-style packages).\n- Reserve field numbers for removed fields; never reuse them.\n- Prefer `optional` for fields that may be absent; avoid letting one field's\n  value change the semantic meaning of another.\n- Real proto `enum`s (where you control the generator, e.g. hand-written\n  services) always start with `..._UNSPECIFIED = 0`.\n- Use gRPC status codes (`tonic::Status`) for error paths; reserve response\n  message fields for actual data.\n- TLS is mandatory in this workspace (per CLAUDE.md zero-trust transport) \u2014\n  never wire a new gRPC service as plaintext, even over UDS.\n- Server reflection (`tonic-reflection`) must stay wired for every new service\n  so it's discoverable by `op-cognitive-mcp` and the gRPC diagnostic page \u2014\n  don't add a service that bypasses reflection registration.\n\n## Quick diagnostic checklist\n\nIf a plugin isn't showing up / isn't callable over gRPC:\n\n1. Does `crates/op-plugins/src/state_plugins/<name>.rs`'s `<name>_schema()`\n   actually populate `schema.methods`? (Empty \u2192 `build.rs` skips it entirely.)\n2. Is the plugin registered via `inventory::submit! { PluginReg::new(...) }` in\n   its own file (self-registration \u2014 check `crates/op-plugins/src/default_registry.rs`\n   only if the plugin doesn't show up in `available_plugins()` at all)?\n3. Did `cargo build -p op-grpc-bridge` actually rerun? (`build.rs` only reruns on\n   changes under `../op-plugins/src/state_plugins` or `build.rs` itself.)\n4. Is the plugin actually **sealed** in the SHM blob catalog\n   (`/dev/shm/opdbus/plugin-blobs/`)? Static compiled-in proto support and the\n   *dynamic* \"hot\" reflection/routing are two different gates \u2014 a plugin can\n   compile fine and still be invisible if it was never sealed.\n\nMANDATORY SKILL grpc-protocol-expert\n---\nname: grpc-protocol-expert\ndescription: >-\n  Generic specialist in gRPC protocol, streaming RPCs, Protocol Buffers, channel\n  config, load balancing, auth, and observability. Use for general gRPC/protobuf\n  work outside the OP-DBUS PluginSchema seal/freeze/hot pipeline. For OP-DBUS\n  plugin gRPC surfaces, prefer the grpc-expert skill instead.\ndisable-model-invocation: false\n---\n\n# gRPC Protocol Expert\n\n## Focus Areas\n\n- gRPC protocol intricacies and best practices\n- Unary, server-streaming, client-streaming, and bidirectional streaming RPCs\n- Protocol Buffers (protobuf) for efficient serialization\n- Service definition and implementation in gRPC\n- Channel configuration and management\n- Load balancing strategies within gRPC\n- gRPC authentication and authorization mechanisms\n- Network optimization for gRPC communication\n- Observability setups, including logging, tracing, and metrics\n- Efficient handling of gRPC errors and status codes\n\n## Approach\n\n- Begin with a clear understanding of service requirements before implementing\n- Use Protocol Buffers for defining service interfaces and messages\n- Implement efficient error handling with gRPC status codes\n- Leverage streaming for real-time data processing where applicable\n- Optimize network usage by compressing messages and headers\n- Employ deadline and timeouts for better control over communication\n- Choose appropriate load balancing strategies for scalability\n- Configure multiple channels and target services for robustness\n- Utilize SSL/TLS for secure communication\n- Implement structured logging, tracing, and metrics setup for observability\n\n## Quality Checklist\n\n- Thoroughly defined .proto files adhering to defined conventions\n- Service implementation matches the .proto specification\n- Correctly configured server and client channels\n- Stream types appropriately used based on data flow needs\n- Efficient serialization and deserialization processes\n- Comprehensive unit and integration testing for gRPC calls\n- Implemented error handling with descriptive status codes\n- Adequate logging of gRPC requests and responses\n- Metrics capturing for latency, error rates, and payload size\n- Secure communication ensured with proper encryption standards\n\n## Output\n\n- Clear and comprehensive .proto files defining all services and methods\n- High-performance gRPC services with optimized channel settings\n- Robust client applications with efficient service consumers\n- Detailed logging and monitoring setup for gRPC calls\n- Secure and scalable gRPC-based systems\n- Reliable streaming implementations for real-time data\n- Documentation including gRPC integration guides and best practices\n- Load testing results showing stable performance under expected traffic\n- Error handling guides for service developers\n\n[Showing lines 1-300 of 2212. Use :301 to continue]"
+      }
+    ],
+    "details": {
+      "truncation": {
+        "truncated": true,
+        "truncatedBy": "lines",
+        "totalLines": 2212,
+        "totalBytes": 17272,
+        "outputLines": 300,
+        "outputBytes": 17272,
+        "lastLinePartial": false,
+        "firstLineExceedsLimit": false
+      },
+      "totalLines": 2212,
+      "displayContent": {
+        "text": "\nMANDATORY SKILL grpc-expert\n---\nname: grpc-expert\ndescription: \"Expert guidance for gRPC/Protocol Buffers work in the operation-dbus-proto (OP-DBUS) workspace \u2014 designing plugin methods, generating .proto/service definitions, wiring the op-grpc-bridge, or fixing plugins with missing gRPC methods. Use this whenever the user mentions gRPC, proto/protobuf, plugin methods, the gRPC bridge, tonic, reflection descriptors, 'missing plugins' in the gRPC diagnostic page, or the seal/freeze/hot pipeline \u2014 even if they don't say 'gRPC' explicitly (e.g. 'the plugin isn't showing up on the diagnostic page', 'add a method to plugin X', 'regen protos').\"\nmetadata:\n  version: 1.0.0\ndisable-model-invocation: false\n---\n\n# gRPC Expert \u2014 OP-DBUS\n\nThis workspace does **not** hand-write per-plugin `.proto` files. Proto generation is\nautomatic, driven entirely by each plugin's `PluginSchema`. If you remember one thing\nfrom this skill: **fixing a plugin's gRPC surface means editing its Rust schema\nfunction, not writing `.proto`.**\n\n## The real pipeline (roll \u2192 seal \u2192 freeze \u2192 hot)\n\n```\n1. Plugin declares  \u2192 PluginSchema { methods: HashMap<String, MethodDecl>, signals: Vec<SignalDecl>, ... }\n                       in crates/op-plugins/src/state_plugins/<plugin>.rs\n2. Schema gets put   \u2192 op-projection's SchemaEngine publishes the catalog hash\n                       (op_identity::schema_bridge::schema_catalog_hash())\n3. Sealed by blob    \u2192 op-blob seals the plugin object into an immutable blob:\n                       /dev/shm/opdbus/plugin-blobs/<plugin_id>.<schema_hash16>.blob\n                       (op-blob is the ONLY writer \u2014 never write blobs elsewhere)\n4. Descriptors       \u2192 TWO separate reflection layers exist, don't confuse them:\n   for reflection       a) STATIC: crates/op-grpc-bridge/build.rs generates\n                            plugin_methods.proto from every plugin's schema.methods,\n                            compiles it with tonic_build into operation_descriptor.bin\n                            (a protobuf FileDescriptorSet), served by tonic-reflection.\n                         b) DYNAMIC: crates/op-grpc-bridge/src/dynamic_reflection.rs\n                            (ActiveReflectionCatalog) hydrates live from the sealed\n                            SHM blob catalog via hydrate_reflection_from_shm() \u2014\n                            this is the \"frozen\" descriptor set for what's actually\n                            present right now, independent of what's compiled in.\n5. Frozen            \u2192 the blob + its descriptors are immutable once sealed.\n6. gRPC socket = hot \u2192 crates/op-grpc-bridge/src/grpc_server.rs registers the\n                       generated per-plugin service (plugin_method_routes.rs,\n                       add_routes()) on the tonic UDS bridge, dispatching each\n                       RPC to call_generated_plugin_method_typed(plugin_id,\n                       schema_name, ...) which routes through PluginService.CallMethod\n                       \u2014 i.e. gRPC never bypasses D-Bus, it's a bridge, not a\n                       second control plane.\n```\n\nA plugin shows green/connected on the gRPC diagnostic page **iff**:\n- its `PluginSchema.methods` is non-empty (empty \u2192 `build.rs` silently skips it \u2014\n  see `collect_plugin_methods()`), **and**\n- the plugin is sealed in the SHM blob catalog.\n\nThese are discovery prerequisites, not proof of execution. Canonical dispatch\nalso requires the method's complete declaration and plugin version to match the\ncompiled handler, argument validation, verified identity, and its exact grant.\nAn advertised method whose adapter is absent is unfinished work.\n\n## Where to actually make changes\n\n| Task | File |\n|---|---|\n| Add/fix methods for plugin `<name>` | `crates/op-plugins/src/state_plugins/<name>.rs`, inside `<name>_schema()` |\n| Reusable input/output builders | `crates/op-plugins/src/state_plugins/plugin_scaffold_helpers.rs` |\n| Regenerate the derived `.proto` + routes | Just rebuild \u2014 `build.rs` regenerates on every `cargo build -p op-grpc-bridge` (it `rerun-if-changed`s `../op-plugins/src/state_plugins`) |\n| Wire a genuinely new (non-plugin-derived) service | `crates/op-grpc-bridge/proto/*.proto`, add to the `compile_protos` list + `rerun-if-changed` in `crates/op-grpc-bridge/build.rs`, then register in `crates/op-grpc-bridge/src/grpc_server.rs` |\n| Inspect what's currently generated | `target/{debug,release}/build/op-grpc-bridge-*/out/plugin_methods.proto` (build artifact \u2014 never hand-edit) |\n\n**Never** create files under a `/proto/plugin_methods/` directory or a\n`plugin_methods_unified.proto` by hand \u2014 those paths don't exist in this repo and\naren't part of the real pipeline; that was a stale spec from an earlier session.\nThe single source of truth is `schema.methods`.\n\n## Adding methods to a plugin (the actual workflow)\n\nLook at `crates/op-plugins/src/state_plugins/proxy_server.rs` (`proxy_server_schema()`)\nfor the canonical pattern:\n\n```rust\nuse op_state_store::{MethodDecl, PluginSchema, SideEffect};\n\nschema.methods.insert(\n    \"start_proxy\".to_string(),\n    method_decl_from_schemars_with_output::<StartProxyInput, plugin_scaffold_helpers::AckOutput>(\n        \"start_proxy\",\n        SideEffect::Mutation,       // Read | Mutation\n        false,                       // idempotent?\n        \"cap.network.proxy.start@v1\",   // required_capability\n        \"mut.network.proxy.start@v1\",   // subid \u2014 must follow the taxonomy in CLAUDE.md\n    ),\n);\n```\n\n- Define `StartProxyInput` (and a typed output struct, or reuse `AckOutput`) as\n  `#[derive(schemars::JsonSchema)]` structs \u2014 the JSON Schema is derived, never\n  hand-written as `serde_json::json!({...})` unless there's no existing helper.\n- `method_decl_from_schemars_with_output::<Input, Output>` is the current\n  (non-deprecated) helper; the single-generic `method_decl_from_schemars` is\n  deprecated but still present for legacy callers.\n- `subid` must be registered in the canonical registry per CLAUDE.md\n  (`crates/op-plugins/src/state_plugins/oscal_subid_registry.rs`) \u2014 CI enforces\n  uniqueness.\n- For plugins with **zero** declared methods today (the ones missing from the\n  diagnostic page), don't hand-author their methods one by one \u2014 see\n  **The Auto-Creator Plugin** below. That's the actual deliverable: a plugin\n  that finds these gaps and fills them itself, using real research per plugin.\n\n## The Auto-Creator Plugin (an ongoing capability, not a one-off batch)\n\nThis is **not** a one-time task to fix ~11 named plugins. It's a standing\nsystem capability: whenever the system encounters *any* missing plugin \u2014\nnow, or a new one added in the future \u2014 it automatically generates that\nplugin and submits it for **human review**, never auto-merges/auto-seals it\nunreviewed. The current ~11 gaps are just the first real instances that\nexercise this, not the scope.\n\nConsistent with this workspace's \"reactive, not polled\" principle (CLAUDE.md):\nthis should be triggered by an actual arrival/lookup that reveals the gap\n(e.g. a D-Bus/gRPC call or reflection lookup against a plugin whose\n`schema.methods` is empty, or a plugin name that doesn't resolve at all),\nnot a cron-style sweep re-scanning all plugins on a timer.\n\nBuild it as a plugin itself (same `PluginSchema`/`MethodDecl` pattern as every\nplugin in `crates/op-plugins/src/state_plugins/`), whose job is to:\n\n1. **Detect a gap on encounter** \u2014 when something references a plugin that's\n   missing or has `schema.methods.is_empty()` (same emptiness check\n   `build.rs::collect_plugin_methods` already uses to skip plugins), that's\n   the trigger \u2014 not a periodic scan of the whole registry.\n2. **Research that specific gap** \u2014 drive deep research via the **NotebookLM\n   MCP** (once wired up) to determine what capabilities/operations the\n   missing plugin should realistically expose, given its existing state\n   struct (if any), documentation, and prior art from comparable plugins\n   already in the registry. This replaces guessing or generic Get/List/Watch\n   stubs with a grounded, plugin-specific proposal.\n3. **Synthesize typed schemas** \u2014 turn the research output into real Rust\n   input/output structs (`#[derive(schemars::JsonSchema)]`) and `MethodDecl`\n   entries \u2014 per the \"no `AckOutput`\" rule above, every synthesized method\n   needs its own meaningful typed request/response, not a generic ack.\n4. **Submit for human review \u2014 do not auto-apply.** The output is a proposed\n   plugin/schema (e.g. a diff/PR against `<name>_schema()`, or a new\n   `crates/op-plugins/src/state_plugins/<name>.rs` for a wholly new plugin),\n   held for a human to approve before it's merged. Only after human approval\n   does it enter the normal pipeline (build \u2192 proto \u2192 reflection \u2192 sealed\n   blob \u2192 hot). The auto-creator must never seal a blob or register a plugin\n   into the live catalog on its own. It never emits `.proto` directly and\n   never writes to `/proto/plugin_methods/` \u2014 the single source of truth\n   stays `schema.methods`, authored by a human-approved change.\n\nIn short: this is a **standing, reactive meta-plugin that drafts schemas for\nwhatever plugin is found missing, research-backed via NotebookLM, gated by\nhuman review** \u2014 not a fixed batch job for a specific list of plugins.\n\n## JSON Schema \u2192 proto mapping\n\nThe shared mapper lives in `crates/op-blob/src/json_schema_proto.rs`; the bridge\nuses it for generated native messages. Structured objects become typed nested\nmessages; typed string-key maps retain their value types. Scalars preserve\npresence, including explicit false, zero and empty strings. Unsigned 64-bit\ncontracts use `uint64`. Nulls, arbitrary JSON, unions and nested arrays use the\nappropriate standard `Value`/`Struct`/`ListValue` dependencies. Arbitrary numbers\ninside `Value` remain subject to protobuf's double-precision limit.\n\nTwo existing wire layouts have distinct numbering rules: generated native\nbridge fields use stable FNV-1a numbers; sealed per-method messages retain their\nsorted sequential numbering. Preserve both layouts. Canonical schema map keys\nand declared transport method names are separate identities, not interchangeable\naliases. Consumers register the original sealed descriptors and never reseal,\nregenerate, or hash them as an existence check.\n\n## Known project-specific tensions vs. generic gRPC best practice\n\nBe aware of these before applying textbook advice unmodified:\n\n- **Do not use `AckOutput { success: bool }` for new/generated methods.**\n  It exists in the codebase (see `proxy_server.rs`) as a legacy shortcut for\n  \"no meaningful return value,\" but every method a plugin exposes should have\n  a real, dedicated typed **input** struct and typed **output** struct that\n  reflect what the operation actually consumes and returns \u2014 not a generic\n  bool. This matters especially for the auto-creator (below): when it\n  synthesizes methods for a previously-empty plugin, it must generate a\n  specific `<Method>Input` and `<Method>Output` schemars struct per method,\n  never fall back to `AckOutput`. Errors still go through `tonic::Status` /\n  D-Bus error replies, never a `success: false` field.\n- **Enums are flattened to `string`, not real proto `enum`.** JSON Schema\n  `enum` currently maps to proto `string` (see table above), so the classic\n  `FOO_STATUS_UNSPECIFIED = 0` convention isn't applied by the generator today.\n  If asked to add real proto enums, that requires changing\n  `json_schema_type_to_proto` in `crates/op-grpc-bridge/build.rs`, not just the\n  plugin schema.\n- **Streaming comes from state in SHM.** The owner reaffirmed this on\n  2026-09-13. Methods update authoritative SHM state before notifications;\n  existing state subscriptions read that state. Current generated method RPCs\n  being unary does not require another streaming method/service. Preserve\n  private principal/session scope. Method arguments, event payloads and\n  generator buffers are not independent state authorities, and buffered unary\n  responses are not a substitute for SHM state streaming.\n- **One generated file per bridge crate**, not the \"1-1-1\" file-per-message\n  convention \u2014 `plugin_methods.proto` bundles every plugin's messages/services\n  in one generated file. That's fine; it's a build artifact, not hand-maintained\n  source, so the usual \"small modular .proto files\" guidance doesn't apply to it.\n\n## Generic protobuf/gRPC conventions (still apply to hand-written `.proto`)\n\nFor any `.proto` you *do* hand-write (domain services under\n`crates/op-grpc-bridge/proto/`, not plugin-derived ones):\n\n- `snake_case` field names, `CamelCase` message/service/RPC names, package names\n  lowercase (this repo uses `operation.plugin.v1`-style packages).\n- Reserve field numbers for removed fields; never reuse them.\n- Prefer `optional` for fields that may be absent; avoid letting one field's\n  value change the semantic meaning of another.\n- Real proto `enum`s (where you control the generator, e.g. hand-written\n  services) always start with `..._UNSPECIFIED = 0`.\n- Use gRPC status codes (`tonic::Status`) for error paths; reserve response\n  message fields for actual data.\n- TLS is mandatory in this workspace (per CLAUDE.md zero-trust transport) \u2014\n  never wire a new gRPC service as plaintext, even over UDS.\n- Server reflection (`tonic-reflection`) must stay wired for every new service\n  so it's discoverable by `op-cognitive-mcp` and the gRPC diagnostic page \u2014\n  don't add a service that bypasses reflection registration.\n\n## Quick diagnostic checklist\n\nIf a plugin isn't showing up / isn't callable over gRPC:\n\n1. Does `crates/op-plugins/src/state_plugins/<name>.rs`'s `<name>_schema()`\n   actually populate `schema.methods`? (Empty \u2192 `build.rs` skips it entirely.)\n2. Is the plugin registered via `inventory::submit! { PluginReg::new(...) }` in\n   its own file (self-registration \u2014 check `crates/op-plugins/src/default_registry.rs`\n   only if the plugin doesn't show up in `available_plugins()` at all)?\n3. Did `cargo build -p op-grpc-bridge` actually rerun? (`build.rs` only reruns on\n   changes under `../op-plugins/src/state_plugins` or `build.rs` itself.)\n4. Is the plugin actually **sealed** in the SHM blob catalog\n   (`/dev/shm/opdbus/plugin-blobs/`)? Static compiled-in proto support and the\n   *dynamic* \"hot\" reflection/routing are two different gates \u2014 a plugin can\n   compile fine and still be invisible if it was never sealed.\n\nMANDATORY SKILL grpc-protocol-expert\n---\nname: grpc-protocol-expert\ndescription: >-\n  Generic specialist in gRPC protocol, streaming RPCs, Protocol Buffers, channel\n  config, load balancing, auth, and observability. Use for general gRPC/protobuf\n  work outside the OP-DBUS PluginSchema seal/freeze/hot pipeline. For OP-DBUS\n  plugin gRPC surfaces, prefer the grpc-expert skill instead.\ndisable-model-invocation: false\n---\n\n# gRPC Protocol Expert\n\n## Focus Areas\n\n- gRPC protocol intricacies and best practices\n- Unary, server-streaming, client-streaming, and bidirectional streaming RPCs\n- Protocol Buffers (protobuf) for efficient serialization\n- Service definition and implementation in gRPC\n- Channel configuration and management\n- Load balancing strategies within gRPC\n- gRPC authentication and authorization mechanisms\n- Network optimization for gRPC communication\n- Observability setups, including logging, tracing, and metrics\n- Efficient handling of gRPC errors and status codes\n\n## Approach\n\n- Begin with a clear understanding of service requirements before implementing\n- Use Protocol Buffers for defining service interfaces and messages\n- Implement efficient error handling with gRPC status codes\n- Leverage streaming for real-time data processing where applicable\n- Optimize network usage by compressing messages and headers\n- Employ deadline and timeouts for better control over communication\n- Choose appropriate load balancing strategies for scalability\n- Configure multiple channels and target services for robustness\n- Utilize SSL/TLS for secure communication\n- Implement structured logging, tracing, and metrics setup for observability\n\n## Quality Checklist\n\n- Thoroughly defined .proto files adhering to defined conventions\n- Service implementation matches the .proto specification\n- Correctly configured server and client channels\n- Stream types appropriately used based on data flow needs\n- Efficient serialization and deserialization processes\n- Comprehensive unit and integration testing for gRPC calls\n- Implemented error handling with descriptive status codes\n- Adequate logging of gRPC requests and responses\n- Metrics capturing for latency, error rates, and payload size\n- Secure communication ensured with proper encryption standards\n\n## Output\n\n- Clear and comprehensive .proto files defining all services and methods\n- High-performance gRPC services with optimized channel settings\n- Robust client applications with efficient service consumers\n- Detailed logging and monitoring setup for gRPC calls\n- Secure and scalable gRPC-based systems\n- Reliable streaming implementations for real-time data\n- Documentation including gRPC integration guides and best practices\n- Load testing results showing stable performance under expected traffic\n- Error handling guides for service developers",
+        "startLine": 1,
+        "lineNumbers": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133,
+          134,
+          135,
+          136,
+          137,
+          138,
+          139,
+          140,
+          141,
+          142,
+          143,
+          144,
+          145,
+          146,
+          147,
+          148,
+          149,
+          150,
+          151,
+          152,
+          153,
+          154,
+          155,
+          156,
+          157,
+          158,
+          159,
+          160,
+          161,
+          162,
+          163,
+          164,
+          165,
+          166,
+          167,
+          168,
+          169,
+          170,
+          171,
+          172,
+          173,
+          174,
+          175,
+          176,
+          177,
+          178,
+          179,
+          180,
+          181,
+          182,
+          183,
+          184,
+          185,
+          186,
+          187,
+          188,
+          189,
+          190,
+          191,
+          192,
+          193,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          200,
+          201,
+          202,
+          203,
+          204,
+          205,
+          206,
+          207,
+          208,
+          209,
+          210,
+          211,
+          212,
+          213,
+          214,
+          215,
+          216,
+          217,
+          218,
+          219,
+          220,
+          221,
+          222,
+          223,
+          224,
+          225,
+          226,
+          227,
+          228,
+          229,
+          230,
+          231,
+          232,
+          233,
+          234,
+          235,
+          236,
+          237,
+          238,
+          239,
+          240,
+          241,
+          242,
+          243,
+          244,
+          245,
+          246,
+          247,
+          248,
+          249,
+          250,
+          251,
+          252,
+          253,
+          254,
+          255,
+          256,
+          257,
+          258,
+          259,
+          260,
+          261,
+          262,
+          263,
+          264,
+          265,
+          266,
+          267,
+          268,
+          269,
+          270,
+          271,
+          272,
+          273,
+          274,
+          275,
+          276,
+          277,
+          278,
+          279,
+          280,
+          281,
+          282,
+          283,
+          284,
+          285,
+          286,
+          287,
+          288,
+          289,
+          290,
+          291,
+          292,
+          293,
+          294,
+          295,
+          296,
+          297,
+          298,
+          299,
+          300
+        ]
+      },
+      "fileSize": 95493,
+      "meta": {
+        "source": {
+          "type": "path",
+          "value": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt"
+        },
+        "truncation": {
+          "direction": "head",
+          "truncatedBy": "lines",
+          "totalLines": 2212,
+          "totalBytes": 17272,
+          "outputLines": 300,
+          "outputBytes": 17272,
+          "maxBytes": 153600,
+          "shownRange": {
+            "start": 1,
+            "end": 300
+          },
+          "nextOffset": 301
+        }
+      }
+    },
+    "isError": false,
+    "timestamp": 1792384912368
+  }
+}

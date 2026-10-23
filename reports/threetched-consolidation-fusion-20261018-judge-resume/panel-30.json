@@ -1,0 +1,140 @@
+{
+  "status": "ok",
+  "query": "Implement constrained Rust outer-facade retirement: remove seven large_language_model methods list_providers,get_provider,get_config,set_provider,generate,list_models,update_config while preserving stream_generate, all generation_admission code and stream lifetime/cancellation/private job pins; canonical equivalents remain tched_router ListProviders/GetState/SetProvider/Chat/ListModels/SetSelection. No compilation/tests allowed. What are key code-review hazards when deleting facade-only dispatch/types and reconciling owner metadata? Give concise guidance only.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Key review hazards, based on the supplied evidence\u2014not a fresh source inspection:\n\n- **Over-deleting shared code:** remove only types/helpers used exclusively by the seven retired facades. Preserve `stream_generate`, shared observed-state helpers, and **all `generation_admission` code**.\n- **Breaking stream ownership:** do not rename generation-origin metadata, principal/session partitions, job owner paths or capability pins merely because sibling methods disappear. Preserve worker lifetime, cancellation signaling, revision checks and terminal receipts.\n- **Incomplete retirement:** reconcile declarations, dispatch branches, imports, owner metadata and demonstrated callers. Unknown retired names must fail truthfully\u2014not fall through to success or become an independently authored compatibility schema.\n- **Assuming equivalent contracts:** migrate callers explicitly: `list_providers\u2192ListProviders`, `get_provider/get_config\u2192GetState`, `set_provider\u2192SetProvider`, `generate\u2192Chat`, `list_models\u2192ListModels`, `update_config\u2192SetSelection`. Preserve required argument and result transformations; especially do not substitute the whole `GetState` result for a formerly narrowed result accidentally.\n- **Bypassing canonical admission:** migrated callers must use the ordinary `tched_router` admission/publication path and its exact declared capability. Old facade grants do not automatically authorize canonical operations; do not broaden grants or substitute identities.\n- **Removing the surviving owner:** `large_language_model` still exposes `stream_generate`; retain its necessary registration, state ownership and metadata. Describe it as a streaming integration, not as the retired seven-method facade.\n- **Misstating delivery:** generated surfaces must later follow the supported build/catalog generation path, not hand edits. With compilation/tests prohibited, report source changes separately from built, sealed, deployed or verified behavior."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "**Key review hazards for this slice:**\n\n1. **Over-deletion into shared code.** `stream_generate` stays, so anything it shares with the seven removed methods must survive: shared observed-state helpers, provider/selection readback utilities, generation-origin pins, and any common error/receipt types. Verify each deleted `match` arm or helper call site isn't the sole user of a type that `start_generation` also needs \u2014 and conversely, don't leave now-dead helpers behind.\n\n2. **Dispatch table integrity.** Removing seven arms from the facade dispatcher must not leave a fallthrough that silently returns success or panics. Callers of removed methods must get a truthful \"unsupported/unknown method\" status, not a fake-success envelope or an accidental match on a shorter name.\n\n3. **Schema/declaration vs. implementation drift.** The plugin's declared methods (schema attachment, registry entries, capability derivation) must drop exactly the seven \u2014 not eight. `stream_generate`'s declaration, capability hash, and admission path must be byte-identical afterward. Check any `match` on method name used for capability hashing or grant derivation.\n\n4. **Generation admission untouched.** `generation_admission.rs` and the queued-before-launch commit, revision checks, cancellation ownership, and private job pins are explicitly out of scope. Any edit that touches job state, revision counters, or cancel paths to \"clean up\" is scope creep \u2014 reject it.\n\n5. **Owner metadata reconciliation.** If the facade plugin's method count/description appears in registry metadata, toolsets, or generated contract inputs, update those consistently; a stale count is a lying contract. Don't rename or re-home the surviving `stream_generate` into `tched_router` \u2014 canonical equivalents are for *callers to migrate to*, not for this plugin to alias.\n\n6. **Caller migration honesty.** Callers of the seven removed methods should be pointed at the canonical `tched_router` operations with their *different* argument/result shapes and capabilities (e.g., `generate\u2192Chat` is not a drop-in; `get_provider/get_config\u2192GetState` merges two methods into one). No compatibility shim that re-exposes the old names as a second authored surface.\n\n7. **No compilation allowed \u2192 no verification theater.** Since you can't build, every claim of \"compiles\" or \"all references removed\" must be grounded in exhaustive grep/read of symbol references, not plausibility. Pay extra attention to: unused-import warnings that would now be errors under deny-warnings, `#[allow(dead_code)]` accumulation, and trait impls orphaned by deleted types.\n\n8. **Preserve unrelated shared work.** The repo has substantial uncommitted multi-agent work; edits must be surgical to the facade module and its direct references, never a reformat or \"while you're at it\" cleanup of adjacent code.\n\n**Recommendation:** treat the seven removals as declaration-first (schema/registry), then dispatch, then types, then callers \u2014 reviewing each layer for the `stream_generate` shared-dependency check before deleting."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "**Capability Hash & Grant Mismatch**\n- Capability grants are derived from `SHA256(method_name)`. Removing `generate`/`set_provider` etc. changes the hash. Callers holding old grants will be denied on the new `tched_router` equivalents unless explicitly migrated or temporarily aliased. Verify every caller's capability list against the new canonical names.\n\n**Job Registry & State Orphaning**\n- `generation_admission`, private job pins, and cancellation tokens are often keyed to the facade's method namespace. Stripping the facade can orphan the job registry or break `cancel_generation`/`recover_generation_jobs` if they still reference deleted state paths. Ensure the job pinning logic is either preserved in `large_language_model` or cleanly migrated to `tched_router` without double-ownership or stale references.\n\n**Sync vs. Stream Semantics**\n- `generate` is a blocking call; `Chat`/`stream_generate` are async/streaming. Callers expecting a synchronous return will hang or panic. Verify that `stream_generate` preserves the exact session ID, cancellation token, and error envelope contract that `generate` previously provided. Do not assume stream chunks map 1:1 to the old return type.\n\n**Schema & Catalog Generation**\n- Stripping methods may leave `large_language_model` as an empty or malformed plugin in the generated schema. `seal-plugins` may drop it entirely if it has zero methods, breaking callers that still expect the plugin ID to exist. Decide explicitly: retire the plugin entirely (and update all plugin-level references) or retain it as a thin shim with only the preserved methods.\n\n**Config/Provider Access Gaps**\n- Removing `get_config`/`set_provider`/`update_config` removes the only path to update provider settings if `tched_router`'s equivalents (`SetProvider`, `SetSelection`, `GetConfig`) aren't granted to the same principal. Verify UI, bridge, and cron callers aren't left with read-only config or silent failures.\n\n**Orphaned Dispatch Arms & Type Leaks**\n- Stale `match` arms, `dispatch` functions, or `impl` blocks in `mutation_engine.rs`, `tched_router_legacy_dispatch.rs`, or bridge code will cause compile-time or runtime routing failures. Purge all facade-only dispatch glue alongside the schema. Ensure no leftover `large_language_model` type aliases or result envelopes leak into `tched_router` return types.\n\n**Metadata Reconciliation Checklist**\n- Recalculate capability hashes for every retained method.\n- Verify `plugin.schema.json` reflects only the preserved methods.\n- Confirm `generation_admission` gates on the new canonical method names.\n- Audit `tched_router` for duplicate job-state keys or conflicting cancellation hooks.\n- Update any hardcoded plugin/method strings in UI, bridge, or cron configs."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Remove facade-only declarations, dispatch arms, types and imports together; preserve dependencies used by stream_generate.",
+      "Reconcile demonstrated callers with canonical tched_router operations, including argument, result and authorization differences.",
+      "Review owner metadata and generated-surface inputs for stale descriptions and removed-method references.",
+      "Preserve stream lifetime, cancellation and private job ownership semantics."
+    ],
+    "contradictions": [
+      {
+        "topic": "Generation admission and state ownership",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Preserve all generation_admission code and existing generation-origin metadata, partitions and capability pins."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Treat generation admission, job state and cancellation paths as explicitly out of scope for edits."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Allows migrating job pinning into tched_router and recommends changing admission gates to canonical names, conflicting with the requested preservation boundary."
+          }
+        ]
+      },
+      {
+        "topic": "Surviving plugin ownership",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Retain large_language_model registration and ownership because stream_generate remains."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Remove exactly seven methods without moving stream_generate into tched_router."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Offers retiring the entire plugin as an option despite the explicit requirement to preserve stream_generate."
+          }
+        ]
+      },
+      {
+        "topic": "Capability handling",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Use exact declared canonical capabilities; do not infer authorization equivalence or broaden grants."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Preserve the surviving method's capability and admission contract unchanged."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Generalizes SHA256-derived capabilities to these facades and recommends recalculating retained-method hashes. The supplied evidence establishes that formula for native CLI commands, not these facade methods."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Explicitly require truthful unsupported/unknown-method outcomes rather than accidental success after dispatch removal."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Respect the no-build/no-test boundary and distinguish source review from verified runtime behavior."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Identify GetState projection differences and warn that canonical targets are not drop-in replacements."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly rejects hand-editing generated outputs and separates implemented, built, sealed and deployed status."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Owner metadata should describe the remaining streaming integration rather than the retired multi-method facade."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Static Rust review should consider orphaned impls, unused imports under deny-warnings and dead-code suppression, while preserving unrelated shared edits."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Highlights synchronous-versus-streaming result expectations, but its specific claims that generate is blocking, Chat is streaming and callers will hang or panic are unsupported by the supplied evidence."
+      }
+    ],
+    "blind_spots": [
+      "None supplies fresh source evidence identifying the exact facade-exclusive types, shared helpers or owner-metadata fields; these are review considerations, not verified deletion instructions.",
+      "The responses do not clearly distinguish descriptive owner metadata that should change from operational ownership identifiers that must remain stable.",
+      "Repository text searches can support reference review but cannot establish compilation success or exhaustively resolve macro-generated and build-generated dependencies.",
+      "Some guidance expands beyond concise review advice into speculative migration or capability changes that the constrained task does not authorize."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

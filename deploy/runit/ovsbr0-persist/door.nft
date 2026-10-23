@@ -1,0 +1,10 @@
+# The one door. WARP traffic from the decoy arrives on the public address,
+# port 8090, and is delivered to the door at 10.0.0.2:8090.
+add table ip opdbus_door
+flush table ip opdbus_door
+table ip opdbus_door {
+    chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+        iifname "pub0" ip daddr 188.68.58.237 tcp dport 8090 counter dnat to 10.0.0.2:8090
+    }
+}

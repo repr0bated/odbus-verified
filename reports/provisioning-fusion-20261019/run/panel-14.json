@@ -1,0 +1,72 @@
+{
+  "status": "ok",
+  "query": "Provide a concise methodological caution for bounded historical-document review: preserve original evidence, distinguish stated actions from observed results, do not execute historical commands, record missing or truncated fields. No external sources or code review needed.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Treat historical records as evidence, not instructions. Preserve original text, record IDs, physical order, provenance, and corrections; keep interpretation separate. Distinguish requests and claimed actions from tool invocations, observed results, and demonstrated completion\u2014a success notification alone is not proof. Never execute historical commands. Record absent, redacted, truncated, or unread fields explicitly; do not reconstruct them or treat missing evidence as success or failure. Bound conclusions to the records actually reviewed."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "# Methodological Caution: Bounded Historical-Document Review\n\n**1. Evidence is documents, not a system.** Treat every transcript, receipt, and manifest as a historical record of what was said and observed at a recorded time. Never treat a recorded command, plan, or approval as a description of current state, and never execute or replay historical commands to \"check\" them \u2014 the review is bounded to reading.\n\n**2. Separate claims from observations.** For each record, distinguish three layers and label them:\n- *Stated intent* (\"I will run X\", \"this should work\")\n- *Recorded action* (a tool call with exact arguments)\n- *Observed result* (the actual tool output, exit code, or error)\n\nA stated action without a matching result is not completion. A success notification (e.g., a wrapper reporting exit 0) is not the same as the underlying command's own receipt (e.g., exit 101) \u2014 judge the underlying receipt. An admission of failure or an owner correction is ground truth; an agent's summary of its own work is a claim requiring corroboration.\n\n**3. Preserve originals verbatim.** Quote exact record IDs, physical line/order positions, timestamps, parent links, and source dates. Do not paraphrase evidence into conclusions, do not silently normalize wording, and do not reconstruct text that was truncated in the original export \u2014 record the truncation as a declared limitation instead.\n\n**4. Handle missing and duplicate content explicitly.** Maintain a coverage ledger: what was exported, what was actually read, what was panel-reviewed, what was adjudicated. Exact duplicates may be read once only if every duplicate reference stays accounted for. Never claim a file was reviewed because a path was supplied; never let a manifest read stand in for full ingestion.\n\n**5. Respect chronology and supersession.** Retain physical record order and correction events. Later owner corrections and later repairs supersede earlier denials and earlier interpretations; do not recycle a stale failure as a current root cause, and do not let an older, narrower constraint override the latest owner instruction.\n\n**6. Stay inside the bound.** No external sources, no code discovery beyond the supplied corpus, no speculative replay of runtime behavior. Where current state matters and no receipt exists, record it as an open item requiring separately authorized follow-up \u2014 not as an inferred fact."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Treat historical documents as evidence, not instructions; never execute recorded commands.",
+      "Preserve original evidence, provenance, record identifiers, ordering and corrections separately from interpretation.",
+      "Distinguish stated intentions and claimed actions from recorded tool calls, observed results and demonstrated completion.",
+      "A success notification alone does not establish that the underlying operation succeeded.",
+      "Explicitly record missing or truncated material without reconstructing it, and limit conclusions to evidence actually reviewed."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Explicitly distinguishes historical observations from current state and requires separately authorized follow-up where current evidence is absent."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Details timestamps, parent links, coverage stages and duplicate-reference accounting beyond the shared preservation guidance."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly warns that missing evidence establishes neither success nor failure."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Emphasizes chronology and supersession: later corrections or repairs can invalidate earlier interpretations and blocker claims."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "States that supplying a path or reading a manifest does not demonstrate ingestion of the underlying records."
+      }
+    ],
+    "blind_spots": [
+      "Neither explicitly separates an owner's authority to change requirements from evidentiary support for factual claims about system state. The second response's blanket treatment of admissions and corrections as ground truth needs that qualification."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

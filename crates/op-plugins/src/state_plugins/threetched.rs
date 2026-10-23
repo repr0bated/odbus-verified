@@ -6,6 +6,7 @@
 //! sealed declarations and dispatch through the existing MutationEngine gate.
 
 use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::process::Command;
 use std::sync::{Arc, OnceLock, atomic::{AtomicBool, Ordering}};
@@ -13,13 +14,14 @@ use std::sync::{Arc, OnceLock, atomic::{AtomicBool, Ordering}};
 use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
+use op_state_store::method_receipt::UnsupportedBeforeEffect;
 use op_state_store::{CapabilityDecl, MethodDecl, PluginSchema, SideEffect};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use simd_json::OwnedValue;
-use threetched_fs::threetched_surface::{SurfaceSnapshot, ThreetchedSurface};
+use tched_fs::threetched_surface::{SurfaceSnapshot, ThreetchedSurface};
 
 pub const PLUGIN_NAME: &str = "threetched";
 const VERSION: &str = "1.0.0";
@@ -42,18 +44,63 @@ pub struct ThreetchedState {
 struct Captured {
     state: ThreetchedState,
     surface: ThreetchedSurface,
+    version: String,
+}
+
+static CAPTURED: OnceLock<std::result::Result<Captured, String>> = OnceLock::new();
+
+/// Explicit authoring entry point for opblob and generated bridge contracts.
+/// Each opblob command is a new process: every seal captures fresh bytes, shared
+/// by all consumers in that invocation. Runtime never initializes this cache.
+pub fn prepare_schema_capture() -> Result<()> {
+    CAPTURED.get_or_init(|| capture().map_err(|error| format!("{error:#}")))
+        .as_ref().map(|_| ()).map_err(|error| anyhow::anyhow!("{error}"))
+}
+
+pub(crate) fn is_schema_capture() -> bool {
+    CAPTURED.get().is_some()
 }
 
 fn captured() -> Result<&'static Captured> {
-    static CAPTURED: OnceLock<std::result::Result<Captured, String>> = OnceLock::new();
     CAPTURED
-        .get_or_init(|| capture().map_err(|error| format!("{error:#}")))
+        .get().context("threetched capture requires explicit schema preparation; runtime uses sealed blobs")?
         .as_ref()
         .map_err(|error| anyhow::anyhow!("{error}"))
 }
 
+pub(crate) fn sealed_schema(plugin_id: &str) -> Result<PluginSchema> {
+    let directory = std::env::var_os("OP_BLOB_CATALOG_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| op_blob::catalog::DEFAULT_SHM_DIR.into());
+    op_blob::catalog::read_plugin_state_store_schema(&directory, plugin_id)
+        .with_context(|| format!("missing or invalid sealed {plugin_id} schema in {}", directory.display()))
+}
+
+pub(crate) fn sealed_state(plugin_id: &str) -> Result<OwnedValue> {
+    sealed_schema(plugin_id)?.example
+        .with_context(|| format!("sealed {plugin_id} schema has no discovery descriptor"))
+}
+
+pub(crate) fn capture_state() -> Result<&'static ThreetchedState> {
+    Ok(&captured()?.state)
+}
+
 fn path_text(path: &Path) -> Result<String> {
     Ok(path.to_str().context("threetched path is not UTF-8")?.to_owned())
+}
+
+fn sha256_file(path: &Path) -> Result<String> {
+    let mut file = File::open(path).with_context(|| format!("open {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let count = file.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 fn manifest_version(manifest: &Value, binary_hash: &str) -> Result<String> {
@@ -72,14 +119,16 @@ fn capture() -> Result<Captured> {
     let manifest = super::tched_router_paths::manifest()?;
     let config_dir = super::tched_router_paths::config_dir()?;
     let (capture_binary, capture_manifest) = super::tched_router_paths::capture_paths()?;
-    let manifest_sha256 = super::tched_skills::sha256_file(&capture_manifest)?;
+    let manifest_sha256 = sha256_file(&capture_manifest)?;
     let descriptor: Value = serde_json::from_reader(File::open(&capture_manifest)?)?;
-    let binary_sha256 = super::tched_skills::sha256_file(&capture_binary)?;
+    let binary_sha256 = sha256_file(&capture_binary)?;
     let version = manifest_version(&descriptor, &binary_sha256)?;
+    let bare_version = version.strip_prefix("threetched ")
+        .expect("manifest_version prefixes the bare version").to_owned();
     let surface = ThreetchedSurface::capture_with_config(&capture_binary, &config_dir)?;
     ensure!(surface.binary_sha256() == binary_sha256, "threetched executable changed during capture");
     ensure!(surface.version() == Some(version.as_str()), "threetched version differs from its manifest");
-    ensure!(super::tched_skills::sha256_file(&capture_manifest)? == manifest_sha256, "threetched manifest changed during capture");
+    ensure!(sha256_file(&capture_manifest)? == manifest_sha256, "threetched manifest changed during capture");
     let state = ThreetchedState {
         binary: path_text(&binary)?,
         manifest: path_text(&manifest)?,
@@ -88,7 +137,22 @@ fn capture() -> Result<Captured> {
         manifest_sha256,
         surface: serde_json::to_value(surface.snapshot())?,
     };
-    Ok(Captured { state, surface })
+    Ok(Captured { state, surface, version: bare_version })
+}
+
+/// The pinned binary surface captured once at seal.
+pub(crate) fn surface() -> Result<&'static ThreetchedSurface> {
+    Ok(&captured()?.surface)
+}
+
+/// The threetched `config schema` document from the same pinned capture.
+pub(crate) fn config_schema() -> Result<&'static Value> {
+    Ok(captured()?.surface.schema_json())
+}
+
+/// The bare upstream version (e.g. "0.8.4") verified against the manifest.
+pub(crate) fn binary_version() -> Result<&'static str> {
+    Ok(captured()?.version.as_str())
 }
 
 fn command_policy(method: &str) -> (String, String) {
@@ -145,11 +209,17 @@ fn schema_from_capture(captured: &Captured) -> Result<PluginSchema> {
 }
 
 pub fn threetched_schema() -> PluginSchema {
+    if !is_schema_capture() {
+        return sealed_schema(PLUGIN_NAME).expect("threetched runtime requires its sealed schema");
+    }
     schema_from_capture(captured().expect("threetched discovery must succeed before sealing"))
         .expect("threetched discovered contract must be representable")
 }
 
 pub fn state_value() -> Result<OwnedValue> {
+    if !is_schema_capture() {
+        return sealed_state(PLUGIN_NAME);
+    }
     Ok(simd_json::serde::to_owned_value(&captured()?.state)?)
 }
 
@@ -201,13 +271,39 @@ fn validate_config_selector(value: &Value, config_dir: &Path, spellings: &[&str]
     Ok(())
 }
 
+fn validate_noninteractive_command(
+    method: &str,
+    value: &Value,
+    surface: &ThreetchedSurface,
+) -> Result<()> {
+    // Called only after canonical admission, queued-call rechecks and sealed
+    // argument validation. These closed refusals cannot contain caller data.
+    if method == "skills.edit" {
+        return Err(UnsupportedBeforeEffect::new(
+            "threetched_skills_edit_unsupported",
+            "skills.edit is unavailable in the noninteractive executor; native content editing is not captured",
+        ).into());
+    }
+    if method == "skills.add" {
+        let editor_requested = surface.option_spellings(method, "--edit")?
+            .iter().any(|spelling| value.get(*spelling).and_then(Value::as_bool) == Some(true));
+        if editor_requested {
+            return Err(UnsupportedBeforeEffect::new(
+                "threetched_skills_add_editor_unsupported",
+                "skills.add with an editor is unavailable in the noninteractive executor; omit --edit",
+            ).into());
+        }
+    }
+    Ok(())
+}
+
 fn prepare_command(method: &str, value: &Value, source: &ThreetchedState) -> Result<Command> {
     let binary = super::tched_router_paths::binary()?;
     let manifest = super::tched_router_paths::manifest()?;
     let config_dir = super::tched_router_paths::config_dir()?;
     ensure!(binary == Path::new(&source.binary) && manifest == Path::new(&source.manifest)
         && config_dir == Path::new(&source.config_dir), "threetched runtime paths changed since seal");
-    ensure!(super::tched_skills::sha256_file(&manifest)? == source.manifest_sha256,
+    ensure!(sha256_file(&manifest)? == source.manifest_sha256,
         "threetched manifest changed since seal");
     let snapshot: SurfaceSnapshot = serde_json::from_value(source.surface.clone())?;
     let surface = ThreetchedSurface::from_snapshot(&binary, &snapshot)?;
@@ -217,6 +313,9 @@ fn prepare_command(method: &str, value: &Value, source: &ThreetchedState) -> Res
     let config_spellings = surface.option_spellings(method, "--config-dir")?;
     validate_config_selector(value, &config_dir, &config_spellings)?;
     let argv = surface.arguments(method, value).context("invalid threetched CLI arguments")?;
+    // No interactive terminal/content-input contract exists. Refuse before
+    // constructing or spawning a command; never translate runner failures.
+    validate_noninteractive_command(method, value, &surface)?;
     // Match the existing tched-router service owner. This backend is a shared
     // service selected by exact capabilities, never a caller-supplied identity
     // or a guessed mapping from SID1 to an operating-system account.
@@ -263,7 +362,7 @@ pub async fn dispatch(
         // worker has killed and reaped its child group.
         let _operation = operation;
         let mut command = prepare_command(&method, &value, &source)?;
-        let output = threetched_fs::fuse_process::run_command(&mut command, &cancelled)?;
+        let output = tched_fs::fuse_process::run_command(&mut command, &cancelled)?;
         ensure!(output.exit == 0, "threetched command exited with {}; inspect the identity-bound method receipt before retrying", output.exit);
         Ok(serde_json::to_value(&output)?)
     }).await.context("threetched execution worker failed")?
@@ -292,7 +391,7 @@ case "$*" in
   '--version') printf 'threetched 0.0.1\n' ;;
   'config schema') printf '{"type":"object","properties":{}}\n' ;;
   '--help')
-    printf 'Usage: threetched <COMMAND>\n\nCommands:\n  config  Configuration\n  widgets  Widget operations\n' ;;
+    printf 'Usage: threetched <COMMAND>\n\nCommands:\n  config  Configuration\n  widgets  Widget operations\n  skills  Skill operations\n' ;;
   'config --help')
     printf 'Usage: threetched config <COMMAND>\n\nCommands:\n  schema  Export schema\n' ;;
   'config schema --help') printf 'Usage: threetched config schema\n' ;;
@@ -313,6 +412,12 @@ Options:
   -c, --config-dir <CONFIG_DIR>  Runtime configuration
 HELP
     ;;
+  'skills --help')
+    printf 'Usage: threetched skills <COMMAND>\n\nCommands:\n  edit  Edit a skill\n  add  Add a skill\n' ;;
+  'skills edit --help')
+    printf 'Usage: threetched skills edit <NAME>\n\nArguments:\n  <NAME>  Skill name\n' ;;
+  'skills add --help')
+    printf 'Usage: threetched skills add [OPTIONS] <NAME>\n\nArguments:\n  <NAME>  Skill name\n\nOptions:\n  -e, --edit  Open editor\n' ;;
   *) exit 91 ;;
 esac
 "#).unwrap();
@@ -328,6 +433,7 @@ esac
                 surface: serde_json::to_value(surface.snapshot()).unwrap(),
             },
             surface,
+            version: "0.0.1".into(),
         };
         let schema = schema_from_capture(&captured).unwrap();
         let method_name = "widgets.publish";
@@ -393,6 +499,32 @@ esac
         assert_eq!(spellings, ["-c", "--config-dir"]);
         assert!(validate_config_selector(&serde_json::json!({"-c":["/other/identity"]}),
             Path::new(&captured.state.config_dir), &spellings).is_err());
+
+        let private_name = "private-skill-name";
+        let edit = validate_noninteractive_command(
+            "skills.edit", &serde_json::json!({"arguments":[private_name]}), &restored,
+        ).unwrap_err();
+        assert_eq!(edit.downcast_ref::<UnsupportedBeforeEffect>().unwrap().code(),
+            "threetched_skills_edit_unsupported");
+        assert!(!edit.to_string().contains(private_name));
+        let edit_spellings = restored.option_spellings("skills.add", "--edit").unwrap();
+        assert_eq!(edit_spellings, ["-e", "--edit"]);
+        for spelling in edit_spellings {
+            let refusal = validate_noninteractive_command(
+                "skills.add", &serde_json::json!({(spelling):true,"arguments":[private_name]}), &restored,
+            ).unwrap_err();
+            assert_eq!(refusal.downcast_ref::<UnsupportedBeforeEffect>().unwrap().code(),
+                "threetched_skills_add_editor_unsupported");
+            assert!(refusal.to_string().contains("omit --edit"));
+            assert!(!refusal.to_string().contains(private_name));
+            validate_noninteractive_command(
+                "skills.add", &serde_json::json!({(spelling):false,"arguments":[private_name]}), &restored,
+            ).unwrap();
+        }
+        validate_noninteractive_command(
+            "skills.add", &serde_json::json!({"arguments":[private_name]}), &restored,
+        ).unwrap();
+        validate_noninteractive_command("widgets.publish", &serde_json::json!({}), &restored).unwrap();
     }
 
     #[test]

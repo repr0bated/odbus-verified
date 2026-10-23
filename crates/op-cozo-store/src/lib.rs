@@ -21,6 +21,7 @@ pub use identity_inventory::{
     IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
 };
 pub use identity_transactions::{
+    NativeCreationRequest, NativeCreationRecord, is_numbered_native_name,
     CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
     IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
     IdentityRecoverySnapshot, IdentityRevision, PhysicalRootMigrationReceipt, RootRepairJournal,
@@ -296,6 +297,8 @@ impl CozoGraphShuttle {
             // Migration markers survive empty catalogs; row count is not a
             // migration version and must never resurrect retired identities.
             r#":create schema_migrations { name: String => completed: Bool }"#,
+            r#":create native_container_sequence { key: String => next: Int, pending: String }"#,
+            r#":create native_container_creations { operation_id: String => document: String }"#,
             // Private project catalog. Document stores reside in each project's
             // own persistent mount, not in this control-plane catalog.
             r#":create project_catalog { project_id: String => document: String }"#,

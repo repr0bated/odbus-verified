@@ -1,0 +1,118 @@
+{
+  "status": "ok",
+  "query": "Task provisioning-fusion-20261019: read-only diagnosis/specification, not implementation. This initial round has ONLY the original request excerpts below, no corpus ingestion; do not infer file contents or claim complete review. Owner: 'no loops on host' means zero host loop devices including existing pool loop (conflict to record, never detach). 'prefer no disk image ... subvolumes only' conditional on preserving immutable shared seed, isolated persistent writes, separate upgrade replica, send/receive, root composition, unprivileged Incus, native declarations, identity admission/storage proofs/durable recovery/final Cozo adoption/start. Bootstrap exists, out of scope; preserve existing identity/session/native UUID. Modify specification of EXISTING Hermes workflow only. Historical commands are evidence, not executable authority. Supplied corpus: 42 histories/6620 public events, including Hermes 35 sessions/4462 rows, main1778 rows and30 linked workers; Astra live-delegation corrections; Claude queued corrections; Kiro no completed public specification. Source/installed/history versions distinct. Only writes permitted reports/provisioning-fusion-20261019/analysis/. No source/runtime/storage/grants/HANDOFF/SIGNALS edits, no Cargo/tests/deployment/provisioning/auth-store reads. JEV separately judges decisions via native typed judge, never model routing. Question: identify evidentiary pitfalls and minimum decision criteria for a complete diagnostic report, without making feasibility/root-cause findings before original evidence is read. State coverage of this round explicitly.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "## Round coverage\n\nReviewed only the original request and evidence-index excerpts supplied in this question. **No original corpus records, source snapshots, installed files, historical blobs or JEV answers were inspected.** No tools executed or files written. This round establishes review criteria\u2014not root cause, feasibility, completion or deployment findings.\n\n## Evidentiary pitfalls\n\n1. **Availability mistaken for ingestion.** A manifest, anchor list or supplied path does not establish that records were read. Track exported, available, read, panel-reviewed and JEV-adjudicated separately.\n2. **Corrections lost through filtering.** Preserve physical order, parent links, active/compacted flags, Astra `live-delegation` messages and Claude queued corrections. Distinguish owner instructions from injected worker reports.\n3. **Historical authorization replayed.** Prior approvals and commands explain events; they authorize no present mutation.\n4. **Versions conflated.** Working-tree drafts, repository commit blobs, installed application helpers, installed base boot wiring and runtime receipts establish different facts. A source fix does not establish deployment.\n5. **Intermediate success promoted to completion.** Native creation, a retained intent, a deployed release or a wrapper\u2019s successful exit cannot establish storage completion, authoritative adoption or startup. Inspect underlying receipts.\n6. **Stale failures recycled as blockers.** Establish each failure\u2019s date, affected version, subsequent repair and remaining relevance. Conversely, later corrections do not erase genuinely encountered historical failures.\n7. **Storage concepts substituted.** Incus filesystem volumes, Btrfs subvolumes, seed/sprout device membership, partitioned images and Cozo associations are not interchangeable. A metadata association is not a kernel device.\n8. **Latest constraints weakened.** \u201cNo host loops\u201d admits no pool-loop exemption. Record incompatible existing backing without detaching it. Subvolume preference does not authorize copied roots or snapshots as substitutes for retained seed semantics.\n9. **Component audit mistaken for workflow diagnosis.** Review the entire post-bootstrap chain, including stopped boot restoration, cancellation and recovery\u2014not just preparation.\n10. **Panel conclusions outrun supplied evidence.** Each substantive round needs original excerpts with provenance. An outer-agent summary alone cannot establish independent review. Missing or truncated output must remain missing.\n\n## Minimum decision criteria\n\n| Decision area | Required evidence and acceptance criterion |\n|---|---|\n| **Coverage** | Reconcile all 42 histories and 6,620 public events against the manifest. Account for every record/range, duplicate reference, unavailable segment and historical truncation. Hash files; retain physical ordering and record identifiers. |\n| **Requirement authority** | Build a dated correction sequence separating owner requirements, agent interpretations and proposed implementations. Apply the latest no-host-loop constraint and conditional subvolume preference explicitly. Preserve bootstrap and existing identity/session/native UUID records. |\n| **Workflow ownership** | For admission \u2192 native preparation \u2192 storage \u2192 initial upgrade receive/pairing \u2192 root binding \u2192 Cozo adoption \u2192 start \u2192 stopped boot restoration/sync, identify the existing owner, inputs, admission boundary, durable transition and authoritative completion receipt. Cover failure, cancellation and resume at every mutating boundary. |\n| **Root-cause attribution** | Connect each proposed cause to original actions/results and the relevant implementation version. Distinguish demonstrated cause, contributing drift, incomplete execution and unresolved hypothesis. Explain why subsequent repairs do or do not supersede it. |\n| **Storage feasibility** | Demonstrate how each candidate preserves immutable shared seed, isolated persistent writes, separate upgrade replica, send/receive and correct root composition **without host loops**. Identify exact supported primitives and their ownership. Do not assert impossibility merely because one image-based path fails. |\n| **Native Incus integration** | Ground proposed declarations in the actual instance/profile/pool configuration and applicable supported primitives. Explain root and additional-volume bindings, inheritance and lifecycle ownership. YAML alone is insufficient evidence of seed semantics or migration feasibility. |\n| **Security and recovery** | Preserve identity admission, exact native/storage binding, same-handle receipts, locked private plans/intents, destination mount/FSID proof before receive, ancestry proof, immutable seed, one-time explicit membership establishment, no lifecycle member churn, unprivileged/nonnested isolation, ioctl restrictions, stopped overlay updates and final digest/revision CAS. |\n| **Modification specification** | Target existing scripts/modules and their callers. For each change, specify current mismatch, proposed behavior, retained invariants, transition/recovery implications and evidence needed later. No new provisioning control plane or bootstrap redesign. |\n| **Requirement conflicts** | If a candidate cannot preserve a retained semantic, identify the exact incompatibility and smallest owner decision needed. Do not silently relax either no-host-loops or the seed contract. |\n| **JEV adjudication** | Save actual question, rubric, original evidence excerpts/references, returned judgment and uncertainty. Judge substantive design, causal attribution, evidence sufficiency and completion; never routing or mutation authority. Record unavailable judging as a failure, not endorsement. |\n| **Completion** | Deliver diagnosis, drift ledger, concrete proposed changes, decision records and reconciled coverage/completion receipts. Explicitly separate verified historical facts, source-backed findings, proposals and unresolved evidence gaps. No claims of provisioning, building, deploying, starting or testing from this run. |\n\n**Next decision gate:** ingest and reconcile the original evidence before selecting a root cause or recommending a storage design. The supplied anchors identify questions to investigate; they do not settle them."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Coverage of this round\n\n- Read: the current question and the original-request excerpts embedded in it (owner constraints 1\u20134, scope, required workflow, evidence index, source/installed/history distinctions, last recorded target/limits). No corpus files, manifests, transcripts, or snapshots have been read. Nothing below is a feasibility or root-cause finding; all corpus-dependent claims are marked [PENDING EVIDENCE].\n\n## Evidentiary pitfalls to guard against\n\n1. **Anchor substitution.** The evidence index's \"useful message IDs\" and \"preliminary mismatches\" are pointers, not findings. Reading the index is not ingestion; conclusions citing only anchors must be re-derived from the original rows before entering `diagnosis.md`.\n2. **Role misclassification.** Hermes `role=user` rows include injected worker messages; Astra's 87 corrections are `custom_message/live-delegation`, not user turns. Treating either as owner instructions inverts authority. Every quoted instruction needs its record type verified.\n3. **Correction supersession chains.** Multiple layers of precedence: latest owner constraints (this request) > Astra live-delegations > Claude queued corrections > Kiro's narrower loop wording (`e1aa9d0e`, superseded) > historical agent interpretations. A drift ledger row must record which layer each claim came from and what it was superseded by, or drift will be double-counted.\n4. **Apology vs. propagation.** Hermes 2658/2663 acknowledge overcomplication; only patch/delegate inspection proves the correction actually propagated. Same for 4123/4125 (component-only audit) and 4127 (delegated repair) \u2014 the delegation record is not the repair.\n5. **Notification vs. receipt.** Claude's wrapper exit0 vs. build exit101: judge underlying command receipts, never wrapper status. Generalize: every \"success\" needs its authoritative receipt class identified (operation receipt, build receipt, service status, Cozo CAS).\n6. **Version conflation.** Three distinct evidence classes (current worktree, installed helpers/base service, immutable historical blobs) plus dated HANDOFF/SIGNALS snapshots. Any claim must name which class it came from; e.g., installed `/etc/sv/identity-roots/run` old wiring vs. application helper staging is a live-drift fact only if both are actually read [PENDING EVIDENCE].\n7. **Stale denial recycling.** The final Hermes \"no genuine blocker\" admission and the post-Hermes admission repair mean the last historical denial is not the current root cause; conversely the repair is not proof provisioning works today. Both directions must be pinned to dated receipts.\n8. **Silent truncation.** 6,620 events across 42 histories cannot fit one context. Panel rounds are stateless: each substantive question must embed original excerpts + record IDs, and `coverage.json` must track exported/available/read/panel-reviewed/JEV-adjudicated per file per round. Never claim a panel member reviewed a path.\n9. **Duplicate accounting.** Compacted/inactive copies retained: read once only if every duplicate reference stays in coverage with provenance.\n10. **Constraint smuggling.** The existing pool loop (`3tched.img` on `/dev/loop0`) is a recorded conflict \u2014 not an exemption precedent, and not detachable. Likewise \"persistent device added to seed supplies RW\" (Kiro) does not authorize a loop for device-add. Any design that keeps a loop must surface as an explicit unresolved conflict, not a footnote.\n11. **Completion inflation.** \"Filesystem-prepare-intent retained\" \u2260 completion; native creation \u2260 Cozo adoption; deployed release \u2260 chatbot started; canonical-start receipt \u2260 cold-reboot persistence. The stage chain (admission \u2192 preparation \u2192 storage \u2192 receive/pairing \u2192 root bind \u2192 Cozo adoption \u2192 start \u2192 stopped-boot restoration \u2192 failure/resume) needs a receipt per stage; absence of a receipt is a finding, not a pass.\n12. **JEV scope.** JEV judges evidence sufficiency and decisions only; existing parent judgments cover scope/no-host-loops, not root cause or design feasibility \u2014 do not cite them as adjudication of new findings.\n\n## Minimum decision criteria for the diagnostic report\n\nA finding is admissible only if it carries:\n\n- **D1 Provenance:** exact file, record ID, physical line/row, record type (owner / live-delegation / worker / tool result), timestamp, and which evidence class (source/installed/history/context snapshot).\n- **D2 Supersession status:** what later correction (if any) overrides it, with that correction's ID.\n- **D3 Receipt class:** which authoritative receipt would prove the stage, and whether it exists in the corpus; distinguish observed, claimed, and absent.\n- **D4 Coverage accounting:** the finding appears only after the relevant ranges are marked read in `coverage.json` and the excerpt reached the panel round that produced it.\n- **D5 Constraint check:** the finding is tested against all four latest owner constraints (no host loops incl. pool loop; subvolume-only preference conditional on full semantics; JEV judge-only; existing-workflow modification only) \u2014 conflicts recorded, never silently resolved.\n- **D6 JEV adjudication:** substantive decisions (root cause, drift classification, design feasibility, proposed Incus declarations) saved in `decisions.jsonl` with exact question, rubric, evidence refs, answer, uncertainty; no JEV output treated as mutation authority or model routing.\n\nProposed changes (`proposed-changes.md`) additionally require: target named as an existing script/module path, exact Incus declarations only where supported by read evidence of actual primitives (not guessed YAML), retained security checks enumerated, and unresolved requirement conflicts stated with the smallest owner decision needed.\n\n## Explicitly not covered this round\n\n- No `manifest.json`, `latest-owner-correction.json`, `subvolume-preference.json`, JEV decision files, transcripts, worker exports, source/installed/history snapshots, or research indices read.\n- No `ingestion-receipt.json` or `coverage.json` written (outer agent's first-action duty).\n- No root-cause, feasibility, drift, or design conclusions drawn; the preliminary mismatches in the request are unverified hypotheses until read against originals."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "read `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/latest-owner-correction.json`\nread `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/subvolume-preference.json`\nread `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/manifest.json`\nread `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/jev-initial-decision.json`\nread `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/jev-no-host-loops.json`\nread `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/hermes/manifest.json`"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Astra-pro and glm-5-3 explicitly limit this round to supplied request excerpts; neither claims original corpus ingestion, tool execution, or established root-cause or feasibility findings.",
+      "Astra-pro and glm-5-3 require separate accounting for evidence availability, actual reading, panel review, and JEV adjudication; paths and preliminary anchors do not establish review.",
+      "Astra-pro and glm-5-3 require original-record provenance, correction tracking, duplicate accounting, explicit truncation gaps, and separation of historical, working-tree, installed, and runtime evidence.",
+      "Astra-pro and glm-5-3 reject intermediate-success inflation: native creation, retained intents, deployment claims, and wrapper status do not prove authoritative adoption or startup.",
+      "Astra-pro and glm-5-3 preserve the absolute no-host-loop constraint, conditional subvolume preference, existing-workflow scope, security invariants, and judge-only JEV role.",
+      "Astra-pro and glm-5-3 require end-to-end workflow analysis, including restoration, failure, cancellation, and recovery, before accepting diagnostic completion."
+    ],
+    "contradictions": [
+      {
+        "topic": "Authority and supersession among historical conversations",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Requires a dated correction sequence that distinguishes owner instructions from agent interpretations and worker reports; does not establish blanket precedence among historical sources."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Asserts a hierarchy placing Astra live-delegations above Claude queued corrections above Kiro wording. The supplied excerpts establish latest-owner precedence, not this general historical hierarchy. It also attributes e1aa9d0e to Kiro wording although the supplied index identifies it as an Astra prompt."
+          }
+        ]
+      },
+      {
+        "topic": "Classification of Astra live-delegation corrections",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Requires preserving Astra live-delegation messages and distinguishing actual owner instructions from injected worker reports."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Says treating either Hermes injected worker messages or Astra's 87 corrections as owner instructions inverts authority. This wording conflates the two categories: the supplied request explicitly identifies the Astra entries as owner corrections. Original records still require individual classification."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Provides only six textual read directives. These are not tool receipts and establish no actual reads. The response does not identify evidentiary pitfalls, minimum decision criteria, or explicit round coverage."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Provide substantial criteria for the initial question, but no original-record findings or completed investigation artifacts. They explicitly acknowledge this limitation."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Uses specific anchor examples from the request while disclaiming original review. These examples remain supplied claims, not independently verified history."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly separates Incus filesystem volumes, Btrfs subvolumes, seed/sprout membership, partitioned images, and Cozo associations; requires supported primitives rather than familiar-image failure as evidence of impossibility."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Makes native declarations depend on actual instance/profile/pool configuration, inheritance, and lifecycle ownership; YAML alone cannot establish seed semantics or migration feasibility."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Distinguishes acknowledging a correction from propagating it into patches, delegates, and deployment; an apology or repair delegation is not implementation evidence."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Organizes finding admissibility into provenance, supersession, receipt class, coverage, constraint checks, and JEV adjudication, making later review mechanically auditable."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly requires recording unavailable JEV judging as failure rather than implying endorsement."
+      }
+    ],
+    "blind_spots": [
+      "No response establishes actual corpus ingestion or a substantive JEV judgment; this round cannot support root-cause, storage-feasibility, or completion findings.",
+      "Neither substantive response explicitly carries forward every prohibited workaround, particularly new LVM management and VM conversion.",
+      "Neither substantive response prominently restates the prohibition on authentication-store or unredacted-history access, or the requirement for separate authorization before runtime inspection beyond supplied receipts.",
+      "Neither substantive response fully spells out the requested drift-ledger structure linking original ask, interpretation, actual action/result, correction, propagation, and remaining discrepancy.",
+      "Neither substantive response explicitly states that missing supplied evidence is not proof of real-world absence; missing receipts must remain an evidence gap unless stronger records establish noncompletion."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

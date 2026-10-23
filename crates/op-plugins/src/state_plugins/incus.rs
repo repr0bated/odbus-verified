@@ -307,7 +307,8 @@ impl IncusPlugin {
     ) -> Result<(String, &'static str)> {
         let (_, body) = Self::identity_session_power_request(session_id, state)?;
         if instance_name != session_id
-            && !(instance_name == "3tchedChatbot"
+            && !numbered_native_name(instance_name)
+            && !(matches!(instance_name, "3tchedChatbot" | "3tchedCtlChatbot")
                 && session_id == "b0c777e3-0955-cd8b-3d01-ca12998cae28")
         {
             anyhow::bail!("native identity power target is not canonical or the pinned chatbot");
@@ -316,8 +317,9 @@ impl IncusPlugin {
     }
 
     /// The bridge supplies an already validated durable identity binding.
-    /// This transport admits only UUID names and the fixed chatbot pair; it
-    /// does not resolve identities, assign names, or modify their authority.
+    /// This transport accepts canonical legacy names and numbered names only
+    /// after the bridge validates their durable identity binding; spelling is
+    /// not ownership. It never resolves identities or allocates names.
     pub async fn set_bound_identity_session_power_state(
         session_id: &str,
         instance_name: &str,
@@ -360,53 +362,36 @@ impl IncusPlugin {
 
     /// Provision the project plugin's restricted container in one Incus
     /// operation. Image/pool/path are trusted deployment policy, not chat input.
-    pub async fn create_project_container(
-        project_id: &str,
-        owner_session_id: &str,
-        fingerprint: &str,
-        pool: &str,
-        persist_path: &str,
-    ) -> Result<()> {
-        if uuid::Uuid::parse_str(project_id)?.to_string() != project_id
-            || fingerprint.len() != 64
-            || !fingerprint.bytes().all(|c| c.is_ascii_hexdigit())
-            || pool.is_empty()
-            || !std::path::Path::new(persist_path).is_absolute()
-        {
-            anyhow::bail!("invalid project provisioning policy");
-        }
-        let body = serde_json::json!({
-            "name": project_id, "type": "container", "ephemeral": false,
-            "source": {"type": "image", "fingerprint": fingerprint},
-            "profiles": [],
-            "config": {
-                "boot.autostart": "false", "security.privileged": "false", "security.nesting": "false",
-                "user.opdbus.role": "project", "user.opdbus.project_id": project_id,
-                "user.opdbus.owner_session_id": owner_session_id
-            },
-            "devices": {
-                "root": {"type": "disk", "path": "/", "pool": pool},
-                // Only the authenticated project dispatcher writes this Cozo
-                // store. A container must not alter host database files or
-                // introduce symlinks underneath a privileged store handle.
-                "project": {"type": "disk", "path": "/project", "source": persist_path, "shift": "true", "readonly": "true"}
-            }
-        });
-        Self::incus_api_call("POST", "/1.0/instances", Some(&body.to_string())).await?;
-        Self::verify_project_container(project_id, owner_session_id, persist_path).await
+    pub fn project_creation_body(
+        project_id: &str, owner_session_id: &str, fingerprint: &str, pool: &str, persist_path: &str,
+    ) -> Result<serde_json::Value> {
+        anyhow::ensure!(uuid::Uuid::parse_str(project_id)?.to_string() == project_id
+            && fingerprint.len() == 64 && fingerprint.bytes().all(|c| c.is_ascii_hexdigit())
+            && !pool.is_empty() && std::path::Path::new(persist_path).is_absolute(),
+            "invalid project provisioning policy");
+        Ok(serde_json::json!({
+            "type":"container", "ephemeral":false,
+            "source":{"type":"image","fingerprint":fingerprint}, "profiles":[],
+            "config":{"boot.autostart":"false","security.privileged":"false","security.nesting":"false",
+                "user.opdbus.role":"project","user.opdbus.project_id":project_id,"user.opdbus.owner_session_id":owner_session_id},
+            "devices":{"root":{"type":"disk","path":"/","pool":pool},
+                "project":{"type":"disk","path":"/project","source":persist_path,"shift":"true","readonly":"true"}}
+        }))
     }
 
     /// Existence and ownership are checked before project data access, including
     /// parked containers. A stale catalog row is not a substitute for a container.
     pub async fn verify_project_container(
         project_id: &str,
+        instance_name: &str,
         owner: &str,
         persist_path: &str,
     ) -> Result<()> {
         if uuid::Uuid::parse_str(project_id)?.to_string() != project_id {
             anyhow::bail!("invalid project container id");
         }
-        let value = serde_json::to_value(Self::incus_get_instance(project_id).await?)?;
+        instance_path(instance_name)?;
+        let value = serde_json::to_value(Self::incus_get_instance(instance_name).await?)?;
         if value["type"] != "container"
             || value["config"]["user.opdbus.project_id"] != project_id
             || value["config"]["user.opdbus.owner_session_id"] != owner
@@ -438,67 +423,7 @@ impl IncusPlugin {
             ["list", "--format=json"] => {
                 Self::incus_api_call("GET", "/1.0/instances?recursion=1", None).await
             }
-            ["init", ..] => {
-                let mut image = "";
-                let mut name = "";
-                let mut storage_pool = None;
-                let mut profiles: Vec<String> = Vec::new();
-                let mut no_profiles = false;
-                let mut instance_type = "container";
-                let mut i = 1;
-                while i < args.len() {
-                    match args[i] {
-                        "--storage" => {
-                            i += 1;
-                            storage_pool = args.get(i).copied().map(String::from);
-                        }
-                        "--no-profiles" => {
-                            no_profiles = true;
-                        }
-                        "--vm" => {
-                            instance_type = "virtual-machine";
-                        }
-                        "--profile" => {
-                            i += 1;
-                            if let Some(p) = args.get(i) {
-                                profiles.push(p.to_string());
-                            }
-                        }
-                        arg if arg.starts_with('-') => {}
-                        arg if image.is_empty() => image = arg,
-                        arg if name.is_empty() => name = arg,
-                        _ => {}
-                    }
-                    i += 1;
-                }
-
-                let mut body = simd_json::json!({
-                    "name": name,
-                    "source": { "type": "image", "alias": image },
-                    "type": instance_type,
-                });
-                if no_profiles {
-                    body.insert("profiles", Value::Array(Vec::new()))?;
-                } else if !profiles.is_empty() {
-                    let profile_values: Vec<Value> =
-                        profiles.iter().map(|p| Value::from(p.as_str())).collect();
-                    body.insert("profiles", Value::Array(profile_values))?;
-                }
-                if let Some(pool) = storage_pool {
-                    body.insert(
-                        "devices",
-                        simd_json::json!({
-                            "root": {
-                                "type": "disk",
-                                "pool": pool,
-                                "path": "/"
-                            }
-                        }),
-                    )?;
-                }
-                let body_str = simd_json::to_string(&body)?;
-                Self::incus_api_call("POST", "/1.0/instances", Some(&body_str)).await
-            }
+            ["init", ..] => anyhow::bail!("native creation requires the durable MutationEngine allocation owner"),
             ["delete", name, "--force"] => {
                 Ok(serde_json::to_vec(&IncusApi::local().delete(name).await?)?)
             }
@@ -736,42 +661,8 @@ impl IncusPlugin {
     }
 
     /// Apply a single Create action for an instance.
-    pub async fn apply_create(instance: &IncusInstance) -> Result<Vec<String>> {
-        let mut changes = Vec::new();
-        let name = &instance.name;
-
-        // Determine the image to use; fall back to a sensible default
-        let image = instance.image.as_deref().unwrap_or("images:debian/12");
-
-        let mut create_args = vec!["init".to_string(), image.to_string(), name.to_string()];
-        if let Some(pool) = instance.storage_pool.as_deref() {
-            create_args.push("--storage".to_string());
-            create_args.push(pool.to_string());
-        }
-        if instance.profiles.is_empty() {
-            create_args.push("--no-profiles".to_string());
-        } else {
-            for profile in Self::normalize_profiles(&instance.profiles) {
-                create_args.push("--profile".to_string());
-                create_args.push(profile);
-            }
-        }
-        if instance.instance_type == "virtual-machine" {
-            create_args.push("--vm".to_string());
-        }
-        let create_args_ref: Vec<&str> = create_args.iter().map(String::as_str).collect();
-        log::info!("Creating instance '{}' from image '{}'", name, image);
-        Self::run_incus_command(&create_args_ref)
-            .await
-            .with_context(|| format!("Failed to create instance '{}'", name))?;
-        changes.push(format!("Created instance '{}'", name));
-
-        changes.extend(Self::sync_profiles(name, None, instance).await?);
-        changes.extend(Self::sync_config(name, None, instance).await?);
-        changes.extend(Self::sync_devices(name, None, instance).await?);
-        changes.extend(Self::sync_status(name, None, instance).await?);
-
-        Ok(changes)
+    pub async fn apply_create(_instance: &IncusInstance) -> Result<Vec<String>> {
+        anyhow::bail!("declarative creation is unsupported; use admitted create_instance for durable ID-N allocation")
     }
 
     async fn apply_modify(current: &IncusInstance, desired: &IncusInstance) -> Result<Vec<String>> {
@@ -1028,7 +919,7 @@ impl StatePlugin for IncusPlugin {
     }
 
     fn version(&self) -> &str {
-        "3.0.0"
+        "3.1.0"
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
@@ -1489,13 +1380,21 @@ mod tests {
 
 /// create_instance method input
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateInstanceInput {
-    /// Instance name
+    /// Server assigned; omit or leave empty. Caller naming is rejected.
+    #[serde(default)]
     pub name: String,
+    /// Caller-generated canonical UUID, pinned to the authenticated request.
+    pub operation_id: String,
+    /// Explicit source: image (default) or empty.
+    #[serde(default = "default_source_mode")]
+    pub source_mode: String,
     /// Instance type: container or virtual-machine
     #[serde(default = "default_instance_type")]
     pub instance_type: String,
     /// Local image alias/fingerprint, local:<alias>, or images:<alias>.
+    #[serde(default)]
     pub image: String,
     /// Profile names to apply
     #[serde(default)]
@@ -1507,6 +1406,93 @@ pub struct CreateInstanceInput {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub devices: Vec<NamedDevice>,
 }
+
+/// Reconciliation observes only; it never repeats a possibly accepted POST.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReconcileNativeCreationInput {
+    pub operation_id: String,
+}
+
+pub fn numbered_native_name(name: &str) -> bool {
+    name.strip_prefix("ID-").is_some_and(|n| n.parse::<i64>()
+        .is_ok_and(|value| value > 0 && value.to_string() == n))
+}
+
+/// Pure request preparation; only the bridge's durable owner may submit it.
+pub fn native_creation_body(input: &CreateInstanceInput) -> Result<serde_json::Value> {
+    anyhow::ensure!(input.name.is_empty(), "name is server assigned; omit name for ID-N creation");
+    anyhow::ensure!(matches!(input.instance_type.as_str(), "container" | "virtual-machine"), "invalid Incus instance type");
+    let source = match input.source_mode.as_str() {
+        "image" => image_source(&input.image)?,
+        "empty" if input.image.is_empty() => serde_json::json!({"type":"none"}),
+        _ => anyhow::bail!("source_mode must be image with image, or empty without image"),
+    };
+    let config = input.config.clone().unwrap_or_default();
+    validate_config(&config)?;
+    anyhow::ensure!(!config.contains_key("user.opdbus.creation_operation")
+        && !config.contains_key("user.opdbus.creation_digest"),
+        "creation receipt markers are server assigned");
+    let mut devices = BTreeMap::new();
+    for named in &input.devices {
+        validate_segment(&named.name, "device name")?;
+        anyhow::ensure!(devices.insert(named.name.clone(), named.device.to_incus_map()).is_none(), "duplicate Incus device name");
+    }
+    Ok(serde_json::json!({"type":input.instance_type,"source":source,
+        "profiles":input.profiles,"config":config,"devices":devices,"ephemeral":false}))
+}
+
+/// Native transport only. Admission, allocation and the durable POST fence
+/// belong to MutationEngine; no plugin method dispatches here directly.
+pub async fn create_reserved_native(body: &serde_json::Value) -> Result<()> {
+    let name = body["name"].as_str().context("allocated native name missing")?;
+    let reserved_chatbot = name == "3tchedCtlChatbot"
+        && body["type"] == "container"
+        && body["config"]["user.opdbus.session_id"] == "b0c777e3-0955-cd8b-3d01-ca12998cae28"
+        && std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY").ok()
+            .is_some_and(|key| !key.trim().is_empty()
+                && body["config"]["user.opdbus.wireguard_public_key"] == key.trim());
+    anyhow::ensure!((numbered_native_name(name) || reserved_chatbot)
+        && body["config"]["user.opdbus.creation_operation"].as_str().is_some_and(|op| uuid::Uuid::parse_str(op).is_ok_and(|id| id.to_string() == op))
+        && body["config"]["user.opdbus.creation_digest"].as_str().is_some_and(|digest| digest.len() == 64 && digest.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))),
+        "native create requires a numbered or configured chatbot durable reservation");
+    IncusApi::local().call("POST", "/1.0/instances", Some(&body.to_string()), None).await?;
+    Ok(())
+}
+
+/// Fixed stopped/unprivileged chatbot preparation; storage remains external.
+pub async fn identity_creation_body(session: &str, public_key: &str) -> Result<serde_json::Value> {
+    let pool = IncusApi::local().call("GET", "/1.0/storage-pools/identity-roots", None, None).await
+        .context("prepare requires the externally configured identity-roots pool")?;
+    anyhow::ensure!(pool["driver"] == "dir" && pool["status"] == "Created"
+        && pool["config"]["source"] == "/var/lib/incus-storage/identity-roots",
+        "identity-roots pool differs from trusted preparation policy");
+    let profile = IncusApi::local().call("GET", "/1.0/profiles/3tched-lungs", None, None).await?;
+    let devices = profile["devices"].as_object().context("3tched-lungs devices missing")?;
+    anyhow::ensure!(devices.keys().all(|key| matches!(key.as_str(), "runtime-run" | "lungs-socket-dir"))
+        && devices.get("lungs-socket-dir") == Some(&serde_json::json!({
+            "type":"disk","source":"/run/opdbus/lungs","path":"/run/opdbus/lungs","readonly":"true"})),
+        "3tched-lungs devices differ from trusted socket-only profile");
+    anyhow::ensure!(profile["config"].as_object().is_some_and(|config| config.is_empty()),
+        "3tched-lungs profile config must be empty");
+    let mut runtime = profile["devices"]["runtime-run"].clone();
+    let runtime_object = runtime.as_object_mut().context("3tched-lungs runtime-run disk missing")?;
+    runtime_object.remove("initial.mode");
+    anyhow::ensure!(runtime == serde_json::json!({"type":"disk","source":"tmpfs:","path":"/run"}),
+        "runtime-run differs from trusted tmpfs disk");
+    Ok(serde_json::json!({
+        "type":"container","ephemeral":false,"source":{"type":"none"},"profiles":["3tched-lungs"],
+        "config":{"security.privileged":"false","security.nesting":"false","security.protection.shift":"true",
+            "boot.autostart":"false","security.syscalls.deny_default":"true",
+            "security.syscalls.deny":"ioctl errno 1 [1,0x4008941a,SCMP_CMP_MASKED_EQ,0xffffffff]\nioctl errno 1 [1,0x5000940f,SCMP_CMP_MASKED_EQ,0xffffffff]\nioctl errno 1 [1,0x5000943f,SCMP_CMP_MASKED_EQ,0xffffffff]",
+            "user.opdbus.session_id":session,"user.opdbus.wireguard_public_key":public_key,
+            "user.display_name":"control-plane-chatbot","raw.lxc":format!("lxc.uts.name = {session}")},
+        "devices":{"root":{"type":"disk","path":"/","pool":"identity-roots"},"runtime-run":runtime,
+            "fuse":{"type":"unix-char","source":"/dev/fuse","path":"/dev/fuse"}}
+    }))
+}
+
+fn default_source_mode() -> String { "image".into() }
 
 fn default_instance_type() -> String {
     "container".to_string()
@@ -2375,6 +2361,10 @@ fn image_source(image: &str) -> Result<serde_json::Value> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateInstanceOutput {
+    pub operation_id: String,
+    pub native_uuid: String,
+    pub phase: String,
+    pub replayed: bool,
     pub name: String,
     pub created: bool,
     pub changes: Vec<String>,
@@ -2630,44 +2620,7 @@ async fn dispatch_incus_with_api(
     args: &serde_json::Value,
 ) -> Result<serde_json::Value> {
     match method {
-        "create_instance" => {
-            let input: CreateInstanceInput = serde_json::from_value(args.clone())
-                .context("invalid create_instance arguments")?;
-            instance_path(&input.name)?;
-            anyhow::ensure!(
-                matches!(
-                    input.instance_type.as_str(),
-                    "container" | "virtual-machine"
-                ),
-                "invalid Incus instance type"
-            );
-            let config = input.config.unwrap_or_default();
-            validate_config(&config)?;
-            let mut devices = BTreeMap::new();
-            for named in input.devices {
-                validate_segment(&named.name, "device name")?;
-                anyhow::ensure!(
-                    devices
-                        .insert(named.name, named.device.to_incus_map())
-                        .is_none(),
-                    "duplicate Incus device name"
-                );
-            }
-            // Include restrictions, root disks and all other requested devices
-            // in the create request, before the provider can start the instance.
-            let body = serde_json::json!({
-                "name": input.name, "type": input.instance_type,
-                "source": image_source(&input.image)?,
-                "profiles": input.profiles, "config": config, "devices": devices
-            });
-            api.call("POST", "/1.0/instances", Some(&body.to_string()), None)
-                .await?;
-            Ok(serde_json::to_value(CreateInstanceOutput {
-                changes: vec![format!("Created stopped instance '{}'", input.name)],
-                name: input.name,
-                created: true,
-            })?)
-        }
+        "create_instance" => anyhow::bail!("native creation requires the durable MutationEngine allocation owner"),
         "modify_instance" => {
             let input: ModifyInstanceInput = serde_json::from_value(args.clone())
                 .context("invalid modify_instance arguments")?;
@@ -2917,7 +2870,7 @@ pub(crate) fn incus_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "incus",
-        "3.0.0",
+        "3.1.0",
         "Incus instance management",
         &root,
     );
@@ -2945,6 +2898,10 @@ pub(crate) fn incus_schema() -> PluginSchema {
         ]
     }));
     let mut methods = std::collections::HashMap::new();
+    methods.insert("reconcile_creation".into(),
+        super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<ReconcileNativeCreationInput, CreateInstanceOutput>(
+            "reconcile_creation", op_state_store::SideEffect::Mutation, true,
+            "cap.service.incus.instance.create@v1", "mut.service.incus.instance.reconcile-creation@v1"));
     methods.insert(
         "create_instance".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<

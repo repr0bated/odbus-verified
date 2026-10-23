@@ -1,0 +1,79 @@
+{
+  "request": 48,
+  "started": "2026-10-18T21:59:01.127674+00:00",
+  "finished": "2026-10-18T21:59:12.958143+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-06ee24dfdb6b4be2016ad541280dfc87d0a7a2c39215b0f08e",
+    "created": 1792360744,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading retained coherent observation\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_config_engine.rs:400-475\"}",
+                "name": "read"
+              },
+              "id": "call_UvpnSJxkD65AdRMNcQQxHDn7",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating observation merge preservation\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs\",\"pattern\":\"fn persist_tched_router_observation|fn persist_tched_router_fields|model_assignments\"}",
+                "name": "grep"
+              },
+              "id": "call_wfCPzMQaHY2QBN0cXwS9KNxw",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming accessor caller spelling variants\",\"path\":\"/srv/git/odbus-verified/crates/**/*.rs;/srv/git/odbus-verified/scripts;/srv/git/odbus-verified/deploy;/srv/git/3tched.com/src\",\"pattern\":\"getprovidercatalog|getconfigschema|get_provider_catalog|get_config_schema|provider-catalog\\\\.(result|list)@v1|config-schema\\\\.(result|get)@v1\",\"case\":false}",
+                "name": "grep"
+              },
+              "id": "call_mKNgqyQt7PKAf2yaYfZLs8Y6",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 658,
+      "prompt_tokens": 162602,
+      "total_tokens": 163260,
+      "completion_tokens_details": {
+        "reasoning_tokens": 230
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 151650
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:12.956456+00:00",
+  "stream_chunks": 8
+}

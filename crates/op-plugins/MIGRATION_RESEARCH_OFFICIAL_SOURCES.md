@@ -416,14 +416,14 @@ XAI_API_KEY used for model call to obtain precise field mappings from man/ioctl 
 
 ## 15. agent_config
 
-**Nature:** Agent enablement, model overrides, and per-agent tool allow-list configuration. Single source for which agents from the op-agents catalog are active in a given context (UI forms, MCP exposure, cognitive sessions). Used as dependency by mcp and cognitive_mcp.
+**Nature:** Agent enablement, model overrides, and per-agent tool allow-list configuration. Single source for which agents from the op-agents catalog are active in a given context (UI forms, MCP exposure, cognitive sessions). Used as dependency by mcp and cognitive.
 
 **Official / Authoritative Sources (researched via code + project specs 2026-07-03):**
 - crates/op-agents/src/agent_catalog.rs + lib.rs: `AgentDescriptor { agent_type: String, name: String, description: String, operations: Vec<String> }` and `builtin_agent_descriptors()`. This is the authoritative list of known agents (agent_type acts as "name").
 - crates/op-agents/src/unified/agent_trait.rs: `UnifiedAgent` trait (id, name, description, category: AgentCategory, capabilities: HashSet<AgentCapability>), `AgentRequest`, `AgentResponse`, `AgentCapability` enum. Categories: Execution/Persona/Orchestration.
 - crates/op-gemma/src/ui_gallery.rs `gen_agent_config`: renders AgentConfigForm example with `agentName`, `provider` ("anthropic"|"openai"), `model` (e.g. "claude-sonnet-4-20250514"|"gpt-4o-mini"), `status` ("idle"|"running"|"error"|"stopped"), `tools: Vec<String>`.
 - crates/op-plugins/src/state_plugins/agent_config.rs (legacy): `AgentConfigState { agents: Vec<AgentConfig> }`; `AgentConfig { name, enabled, model: Option<String>, tools: Vec<String> }`. Methods: get_config/update_config/list_tools/register_tool/reset_config.
-- mcp.rs (dependency): mcp lists "agent_config" as dep; cognitive_mcp uses for agent tool registration surface.
+- mcp.rs (dependency): mcp lists "agent_config" as dep; cognitive uses for agent tool registration surface.
 - Project specs: DESIGN.md (agents array untyped weakness), docs/plugins/plugin-catalog.md ("agent tool/model configuration"), PLUGIN-METHOD-SPEC.md, FACTORY-PROMPT-plugin-schema-uniformization.md, schema-from-structs.md.
 - No external RFC/man for this (internal control plane); typed from op-agents catalog + UI form contracts.
 

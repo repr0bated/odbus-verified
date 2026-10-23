@@ -6,6 +6,43 @@ use serde_json::Value;
 pub const MAX_METHOD_ARGUMENT_BYTES: usize = 1024 * 1024;
 pub const MAX_METHOD_RECEIPT_BYTES: usize = 16 * 1024 * 1024;
 
+/// An explicit backend guarantee that this unsupported request was refused
+/// before any effect. Never construct this from a subprocess/transport error,
+/// cancellation, or a failed publication. Static diagnostics exclude private
+/// arguments and backend error text; authorization must precede this refusal.
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("{code}; {message}")]
+pub struct UnsupportedBeforeEffect {
+    code: &'static str,
+    message: &'static str,
+}
+
+impl UnsupportedBeforeEffect {
+    pub const fn new(code: &'static str, message: &'static str) -> Self {
+        Self { code, message }
+    }
+
+    pub fn code(&self) -> &'static str {
+        self.code
+    }
+}
+
+/// Public refusal produced only after the canonical owner durably records the
+/// failed terminal event and recovery journal. This deliberately has no error
+/// source: a nested method's refusal cannot prove its outer call had no effect.
+#[derive(Debug, thiserror::Error)]
+#[error("method_failed_before_effect; operation_id={operation_id}; {refusal}")]
+pub struct AuditedMethodRefusal {
+    operation_id: uuid::Uuid,
+    refusal: UnsupportedBeforeEffect,
+}
+
+impl AuditedMethodRefusal {
+    pub fn new(operation_id: uuid::Uuid, refusal: UnsupportedBeforeEffect) -> Self {
+        Self { operation_id, refusal }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MethodEventProof {
@@ -144,6 +181,20 @@ pub fn validate_method_result(schema: Option<&Value>, result: &Value) -> anyhow:
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn audited_refusal_does_not_certify_an_outer_call_as_before_effect() {
+        let refusal = UnsupportedBeforeEffect::new("editor_unsupported", "omit --edit");
+        let backend = anyhow::Error::new(refusal).context("private backend context");
+        assert_eq!(backend.downcast_ref::<UnsupportedBeforeEffect>().unwrap().code(), "editor_unsupported");
+        let public = AuditedMethodRefusal::new(uuid::Uuid::nil(), refusal);
+        let public = anyhow::Error::new(public).context("private transport context");
+        assert!(public.downcast_ref::<UnsupportedBeforeEffect>().is_none());
+        let safe = public.downcast_ref::<AuditedMethodRefusal>().unwrap().to_string();
+        assert!(safe.contains("method_failed_before_effect"));
+        assert!(safe.contains("editor_unsupported; omit --edit"));
+        assert!(!safe.contains("private"));
+    }
 
     fn receipt() -> MethodExecutionReceipt {
         MethodExecutionReceipt {

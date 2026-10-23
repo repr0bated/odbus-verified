@@ -1,0 +1,63 @@
+{
+  "request": 44,
+  "started": "2026-10-18T21:40:27.058783+00:00",
+  "finished": "2026-10-18T21:40:34.949810+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0d4d2c4472d766a2016ad53ccdb41487d088f58765242b9cf4",
+    "created": 1792359629,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming nonoverlapping ownership\",\"path\":\"agent://Main\",\"content\":\"No conflict: I own none of those files/hunks or the consolidation report. My source slice is complete: binary_namespace.rs deleted, mod.rs declaration and tched_router.rs attachment/dispatch removed; only my HANDOFF row/entry additionally changed. Your listed hunks/report append are clear from my ownership.\"}",
+                "name": "write"
+              },
+              "id": "call_G2K4kdMhhze4CcibpJLGUpuq",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 254,
+      "prompt_tokens": 284513,
+      "total_tokens": 284767,
+      "completion_tokens_details": {
+        "reasoning_tokens": 44
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 186663
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:40:34.948576+00:00",
+  "stream_chunks": 4
+}

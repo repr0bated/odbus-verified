@@ -85,17 +85,17 @@ struct PairReceipt {
     generation: String,
 }
 
-fn readonly_overlay(path: &Path) -> Result<()> {
+fn readonly_overlay(path: &Path, mounts: &Path) -> Result<()> {
     let mut found = false;
-    let mounts = std::fs::read_to_string("/proc/self/mountinfo")?;
-    for line in mounts.lines() {
+    let mountinfo = std::fs::read_to_string("/proc/self/mountinfo")?;
+    for line in mountinfo.lines() {
         let Some((left, right)) = line.split_once(" - ") else { continue; };
         let left = left.split_whitespace().collect::<Vec<_>>();
         let right = right.split_whitespace().collect::<Vec<_>>();
         if left.get(4).copied() != path.to_str() { continue; }
         ensure!(left.get(5).is_some_and(|options| options.split(',').any(|option| option == "ro"))
             && right.first() == Some(&"overlay"), "guest root is not a read-only overlay");
-        let expected = "lowerdir=/var/lib/3tched-leaf-pool/.mounts/3tchedChatbot/upgrade-layer:/var/lib/3tched-leaf-pool/.mounts/3tchedChatbot/seed-layer";
+        let expected = format!("lowerdir={}/upgrade-layer:{}/seed-layer", mounts.display(), mounts.display());
         ensure!(right.get(2).is_some_and(|options| options.split(',').any(|option| option == expected)),
             "overlay layers differ from the pinned identity");
         found = true;
@@ -108,11 +108,12 @@ pub(super) fn verify_overlay(
     plan: &CleanPlan, image: &File, backing: &std::fs::Metadata, seed_root: &File, guest: &File,
 ) -> Result<Vec<File>> {
     let layout = plan.partitioned_overlay.as_ref().context("overlay plan absent")?;
-    let mounts = Path::new("/var/lib/3tched-leaf-pool/.mounts/3tchedChatbot");
+    let name = plan.native_name()?;
+    let mounts = Path::new(PARTITIONED_POOL).join(".mounts").join(name);
     let view_path = mounts.join("root-view");
     let view = open_controlled(&view_path, true, Some(&view_path), None)?;
-    readonly_overlay(&view_path)?;
-    readonly_overlay(Path::new(&plan.native_root))?;
+    readonly_overlay(&view_path, &mounts)?;
+    readonly_overlay(Path::new(&plan.native_root), &mounts)?;
     ensure!(view.metadata()?.dev() == guest.metadata()?.dev()
         && view.metadata()?.ino() == guest.metadata()?.ino() && guest.metadata()?.uid() == 1000000,
         "Incus root is not the UID-mapped overlay view");
@@ -149,8 +150,8 @@ pub(super) fn verify_overlay(
         ensure!(unsafe { libc::fstatvfs(layer.as_raw_fd(), &mut flags) } == 0
             && flags.f_flag & libc::ST_RDONLY != 0, "overlay layer lost mount read-only protection");
     }
-    let pair_path = Path::new("/var/lib/3tched-leaf-pool/.provisioning/3tchedChatbot.upgrade.json");
-    let pair = open(pair_path, false)?;
+    let pair_path = Path::new(PARTITIONED_POOL).join(".provisioning").join(format!("{name}.upgrade.json"));
+    let pair = open(&pair_path, false)?;
     let pair_meta = pair.metadata()?;
     ensure!(pair_meta.is_file() && pair_meta.uid() == 0 && pair_meta.mode() & 0o077 == 0
         && pair_meta.len() <= 4096, "upgrade pair receipt is not protected and bounded");
@@ -162,10 +163,10 @@ pub(super) fn verify_overlay(
         && !receipt.generation.is_empty() && receipt.generation.len() <= 128
         && receipt.generation.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-'),
         "upgrade pair receipt differs from the adoption plan");
-    let received_path = upgrade_path.join(".upgrade-sync/3tchedChatbot").join(&receipt.generation);
+    let received_path = upgrade_path.join(".upgrade-sync").join(name).join(&receipt.generation);
     let received = open(&received_path, true)?;
-    let host_path = Path::new("/var/lib/3tched-leaf-pool/.mounts/host-upgrade/.upgrade-sync/3tchedChatbot")
-        .join(&receipt.generation);
+    let host_path = Path::new(PARTITIONED_POOL).join(".mounts/host-upgrade/.upgrade-sync")
+        .join(name).join(&receipt.generation);
     let host = open(&host_path, true)?;
     fs_info(&received, &layout.upgrade_fsid)?;
     fs_info(&host, &layout.host_upgrade_fsid)?;

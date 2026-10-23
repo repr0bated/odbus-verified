@@ -1,0 +1,11 @@
+{
+  "task":"provisioning-fusion-20261019",
+  "acknowledged":true,
+  "evidence":["seed-correction-retry-run/panel-1.json","seed-correction-retry-run/panel-5.json"],
+  "responding_members":["astra-pro","qwen-3-6-35b-a3b"],
+  "failed_members":["opus-5-5","kimi-k3","glm-5-3"],
+  "failure_type":"NotFoundError",
+  "acknowledged_mechanism":"Immutable seed backing plus btrfs device add of writable member, followed by read-write sprout mount.",
+  "corrected_inference":"Exposed subvolumes need not individually be device-add operands; operand typing alone does not establish impossibility of the complete arrangement.",
+  "limits":"Two responding members, not five-model unanimity. Supplied-excerpt review, not full corpus completion. Supported no-host-loop topology remains unresolved; no storage mutation or implementation authorized."
+}

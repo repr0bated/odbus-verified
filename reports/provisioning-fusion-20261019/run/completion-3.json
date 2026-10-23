@@ -1,0 +1,112 @@
+{
+  "request": 3,
+  "started": "2026-10-19T04:36:45.208646+00:00",
+  "finished": "2026-10-19T04:37:01.053411+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0b2be3f8cf69fd46016ad59e6000fc87d0bbe8b0137ff8b818",
+    "created": 1792384608,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading task case\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/CASE.md:raw\"}",
+                "name": "read"
+              },
+              "id": "call_e9CiknoIOpuixlSmWxezPk6M",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading complete corpus manifest\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/manifest.json:raw\"}",
+                "name": "read"
+              },
+              "id": "call_TOQ3r5LapTGncXBrLoohYtrV",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading delegation skill\",\"path\":\"skill://agent-patterns\"}",
+                "name": "read"
+              },
+              "id": "call_k5THx6zSmv0po10hPyJYm2Zx",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading diagnostic skill\",\"path\":\"skill://systematic-debugging\"}",
+                "name": "read"
+              },
+              "id": "call_3HL9wFtxqcicRAoJhuCJzNJl",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading session skill\",\"path\":\"skill://using-superpowers\"}",
+                "name": "read"
+              },
+              "id": "call_L1Dl2NzagNPoSiovhT8hZStq",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading native judge documentation\",\"path\":\"xd://eval/judge\"}",
+                "name": "read"
+              },
+              "id": "call_5GlQEZeZsAJ8ymnQtLXWfgTH",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Planning complete evidence investigation\",\"op\":\"init\",\"items\":[\"Ingest complete histories and snapshots with exact coverage\",\"Reconstruct post-bootstrap chain and drift with original evidence\",\"Adjudicate concrete modifications through Fusion and native JEV\",\"Write diagnosis specification and final coverage receipts\"]}",
+                "name": "todo"
+              },
+              "id": "call_70hOm6KEE457t9iyUuCldGc9",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 724,
+      "prompt_tokens": 136532,
+      "total_tokens": 137256,
+      "completion_tokens_details": {
+        "reasoning_tokens": 140
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 91540
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:37:01.049801+00:00",
+  "stream_chunks": 16
+}

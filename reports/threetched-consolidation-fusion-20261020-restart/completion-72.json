@@ -1,0 +1,63 @@
+{
+  "request": 72,
+  "started": "2026-10-20T17:21:00.724637+00:00",
+  "finished": "2026-10-20T17:21:32.070680+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0bd5ac9da92009eb016ad7a3030d4c87d1bcc0aeb8009c3346",
+    "created": 1792516867,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"title\":\"Launching detached example build\",\"code\":\"var base = '/var/tmp/typed-use-generated-' + Date.now(); var script = `#!/bin/bash\\nexec </dev/null >\\\"${base}.log\\\" 2>&1\\nfinish() {\\n  rc=$?\\n  trap - EXIT\\n  printf 'exit_code=%s\\\\\\\\ncompleted_utc=%s\\\\\\\\ncommand=cargo build --release --target x86_64-unknown-linux-gnu -p tched-fs --example typed_use_generated\\\\\\\\nlog=${base}.log\\\\\\\\n' \\\"$rc\\\" \\\"$(date -u +%FT%TZ)\\\" >\\\"${base}.receipt\\\"\\n  sync -f \\\"${base}.log\\\" \\\"${base}.receipt\\\"\\n  exit \\\"$rc\\\"\\n}\\ntrap finish EXIT\\nprintf 'started_utc=%s\\\\\\\\npid=%s\\\\\\\\n' \\\"$(date -u +%FT%TZ)\\\" \\\"$$\\\"\\nif pgrep -a -x 'cargo|rustc|clippy|clippy-driver|cargo-clippy'; then\\n  printf 'BLOCKED: Cargo process exclusion occupied; build not started\\\\\\\\n'\\n  exit 75\\nfi\\nexport CXXFLAGS='-include cstdint'\\nexport CARGO_NET_OFFLINE=true\\nexport THREETCHED_CAPTURE_BIN=\\\"\\u00024{THREETCHED_CAPTURE_BIN:-$PWD/target/threetched-artifacts/tched-router/threetched}\\\"\\nexport THREETCHED_CAPTURE_MANIFEST=\\\"\\u00024{THREETCHED_CAPTURE_MANIFEST:-$PWD/target/threetched-artifacts/tched-router/manifest.json}\\\"\\nexport THREETCHED_BIN=\\\"\\u00024{THREETCHED_BIN:-/usr/local/libexec/op-dbus/threetched/threetched}\\\"\\nexport THREETCHED_MANIFEST=\\\"\\u00024{THREETCHED_MANIFEST:-/usr/share/op-dbus/threetched-manifests/tched-router.json}\\\"\\nexport TCHED_ROUTER_CONFIG_DIR=\\\"\\u00024{TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}\\\"\\nexport COGNITIVE_QDRANT_URL=\\\"\\u00024{COGNITIVE_QDRANT_URL:-http://127.0.0.1:6334}\\\"\\ncargo build --release --target x86_64-unknown-linux-gnu -p tched-fs --example typed_use_generated\\n`; script = script.replaceAll('\\\\u00024', '$'); print(await tool.write({i:'Writing detached execution wrapper',path:base+'.sh',content:script})); print(await tool.bash({i:'Building corrected generated example',command:'setsid --wait bash '+base+'.sh',cwd:'/srv/git/odbus-verified',async:true,timeout:3600})); print({log:base+'.log', receipt:base+'.receipt'});\"}",
+                "name": "eval"
+              },
+              "id": "call_P2H6DVvu3WPczjX8Cb6XsUAX",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1853,
+      "prompt_tokens": 75637,
+      "total_tokens": 77490,
+      "completion_tokens_details": {
+        "reasoning_tokens": 714
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 54206
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:21:32.068820+00:00",
+  "stream_chunks": 4
+}

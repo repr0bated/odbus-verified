@@ -1,0 +1,104 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review cross-check. Given this packet summary, identify key evidence limits and diagnostic discrepancies, do not execute anything: Hermes exported session 20261018_190519_b780ef rows627-653 (all inactive0 compacted0), partial leading terminal result display1262 and cut-off ending1447. Source reads show Incus mutation authoritative readback/publication errors require reconciliation; identity guard only canonical UUID instance names; public projection tests redact names/config. Patch1301/result1302 successfully switches standalone script inventory from redacted FUSE state to bounded force-local default-project Incus query, mounted mutations remain, nested receipts checked success/completed/plugin/method. Syntax command1329/result1330 parses six scripts, no runtime deployment. Script1332 lines465-583 directly incus init empty with unprivileged/no nesting/ioctl deny, seed-create/check helpers, shared-partition-siblings-v2 descriptor, native ETag+identity revision preflight, durable fsync/rename plan, mounted provision_container adoption then touch_session activation, grants unchanged. Helper internals absent, no proof no loops. Handoff1357 says source-only incomplete, naming ID-1 in creation order preserve identity IDs; golden pending. Skill patch1355/1358 adds receipt-envelope/privacy rules. Todo1377/1378 8 complete3pending1inprogress source claims only. Handoff1385/1386 claims completed storage/adoption children, golden child/naming design active. Final1396 nothing deployed. Owner1435 finish naming ID1,2,3,4 and deploy; interrupted1436; correction1437 with dash.1447 issues delegate list and status/file reads, results absent. Duplicate1356 references row302/id637 SHA a7bc03ce882c432f6363011d7647f6fe47af99ed24573f04a0a570cb59419119 absent. Search1359 includes clipped historical notes about recovery initialization before grants, missing v2 migration receipt support, missing identity helper127, ghostbridge identity registration failure, network snapshot vs untested reboot; these aren't current runtime proof. Need JSON findings exact provenance in final; advise main cross-boundary dependencies and avoid overclaims.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"20261018_190519_b780ef:rows627-653:summary-cross-check\",\n  \"fully_reviewed\": false,\n  \"review_scope\": {\n    \"reviewed\": \"The supplied current_question packet summary and accompanying evidence index.\",\n    \"not_reviewed\": \"Original exported rows627-653, referenced source files, duplicate provenance, and adjacent records were not supplied verbatim.\",\n    \"reported_metadata\": {\n      \"session_id\": \"20261018_190519_b780ef\",\n      \"rows\": \"627-653\",\n      \"inactive\": 0,\n      \"compacted\": 0,\n      \"leading_boundary\": \"Partial terminal result display1262\",\n      \"ending_boundary\": \"Cut-off display1447\",\n      \"parent_links\": \"Not supplied in this packet summary.\"\n    },\n    \"provenance_policy\": \"Findings follow the supplied physical sequence. Display IDs are preserved without assuming they are export row numbers. Quotes below are exact excerpts of the supplied summary, not verified original transcript quotations.\",\n    \"actions_executed\": false,\n    \"whole_conversation_review_claimed\": false\n  },\n  \"findings\": [\n    {\n      \"ids\": [\"1262\"],\n      \"row\": \"Within rows627-653; exact row mapping unavailable\",\n      \"source\": \"current_question summary of leading terminal result and source reads\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"Incus mutation authoritative readback/publication errors require reconciliation\",\n      \"classification\": \"Observation reported by summary; diagnostic consequence is inference\",\n      \"stage\": \"Native mutation, authoritative readback and publication\",\n      \"actual_tool_result\": \"Only a partial leading terminal display is described. Complete command, error branches and output are unavailable.\",\n      \"observation\": \"The described source distinguishes native mutation from successful authoritative readback/publication.\",\n      \"inference\": \"An error after native mutation must not automatically be classified as no mutation. Retry or recovery requires reconciliation against native identity and authoritative records.\",\n      \"correction_propagation_or_discrepancy\": \"Neither reconciliation implementation completeness nor a successful reconciliation receipt is established here.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"Within rows627-653; exact source-read IDs unavailable\",\n      \"source\": \"current_question summary of source reads\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"identity guard only canonical UUID instance names; public projection tests redact names/config\",\n      \"classification\": \"Observation reported by summary; naming risk is inference\",\n      \"stage\": \"Identity enforcement and public inventory\",\n      \"actual_tool_result\": \"Source/test inspection is described, not runtime guard enforcement or a newly executed test.\",\n      \"observation\": \"The guard's described naming assumption differs from the later human-facing ID-1 naming requirement. Public projection intentionally omits names/configuration.\",\n      \"inference\": \"Display naming must not become identity authority, and redacted public inventory cannot support checks requiring private native details.\",\n      \"correction_propagation_or_discrepancy\": \"Cross-boundary review must establish how canonical UUID binding survives display-name changes and whether guard coverage extends to renamed instances. The summary alone does not prove a bypass.\"\n    },\n    {\n      \"ids\": [\"1301\", \"1302\"],\n      \"row\": \"Within rows627-653; exact row mapping unavailable\",\n      \"source\": \"current_question summary of patch1301/result1302\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"switches standalone script inventory from redacted FUSE state to bounded force-local default-project Incus query\",\n      \"classification\": \"Observation reported by summary\",\n      \"stage\": \"Inventory and operation receipt validation\",\n      \"actual_tool_result\": \"Patch application reportedly succeeded. Mounted mutations remained, and nested receipts were checked for success/completed/plugin/method.\",\n      \"observation\": \"This addresses the mismatch between a privacy-redacted projection and inventory requirements without replacing the mounted mutation path.\",\n      \"inference\": \"The query's fixed local/default-project scope must match the intended native target; it does not itself establish authorization or adoption.\",\n      \"correction_propagation_or_discrepancy\": \"Receipt validation improved in source. The summary does not establish same-handle correlation, exact identity binding, or successful runtime execution.\"\n    },\n    {\n      \"ids\": [\"1329\", \"1330\"],\n      \"row\": \"Within rows627-653; exact row mapping unavailable\",\n      \"source\": \"current_question summary of syntax command1329/result1330\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"parses six scripts, no runtime deployment\",\n      \"classification\": \"Observation reported by summary\",\n      \"stage\": \"Source validation\",\n      \"actual_tool_result\": \"Six scripts reportedly passed syntax parsing.\",\n      \"observation\": \"This is evidence of syntax validity only.\",\n      \"inference\": \"It establishes neither dependency availability nor native/storage correctness, admission, deployment, adoption or startup.\",\n      \"correction_propagation_or_discrepancy\": \"Any later completion claim must remain separate from this narrowly scoped result.\"\n    },\n    {\n      \"ids\": [\"1332\"],\n      \"row\": \"Within rows627-653; displayed source lines465-583\",\n      \"source\": \"current_question summary of script1332\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"directly incus init empty with unprivileged/no nesting/ioctl deny\",\n      \"classification\": \"Source observation reported by summary; control-plane concern is inference\",\n      \"stage\": \"Native preparation and storage establishment\",\n      \"actual_tool_result\": \"A script excerpt was displayed; no execution result for its native initialization or helper calls is supplied.\",\n      \"observation\": \"The excerpt contains native initialization and declared isolation safeguards, followed by seed-create/check helpers and a shared-partition-siblings-v2 descriptor.\",\n      \"inference\": \"The direct native operation must be traced to its authorized preparation owner. It is not equivalent to final identity adoption. Declared isolation settings are not proof of effective runtime enforcement.\",\n      \"correction_propagation_or_discrepancy\": \"Helper internals and effective instance/profile configuration are missing. Neither the descriptor name nor the excerpt proves seed semantics, native pool integration or absence of host loops.\"\n    },\n    {\n      \"ids\": [\"1332\"],\n      \"row\": \"Within rows627-653; displayed source lines465-583\",\n      \"source\": \"current_question summary of script1332\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"native ETag+identity revision preflight, durable fsync/rename plan\",\n      \"classification\": \"Source observation reported by summary; completion limits are inference\",\n      \"stage\": \"Durable intent, authoritative adoption and session activation\",\n      \"actual_tool_result\": \"Displayed source reportedly includes preflight checks, durable plan publication, mounted provision_container adoption and subsequent touch_session activation; grants remained unchanged.\",\n      \"observation\": \"The excerpt contains meaningful concurrency, durability and admission-preservation safeguards.\",\n      \"inference\": \"Preflight revision checks do not alone prove a final digest/revision CAS. A durable plan does not alone prove crash recovery or cancellation safety. Session activation is not proof of container start.\",\n      \"correction_propagation_or_discrepancy\": \"Retain these safeguards while tracing final CAS, failure after native creation, adoption-before-activation ordering and restart/recovery consumers across packet boundaries.\"\n    },\n    {\n      \"ids\": [\"1355\", \"1356\", \"1358\"],\n      \"row\": \"Within rows627-653; duplicate points outside this packet\",\n      \"source\": \"current_question summary of skill patch and duplicate marker\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"Duplicate1356 references row302/id637 SHA a7bc03ce882c432f6363011d7647f6fe47af99ed24573f04a0a570cb59419119 absent\",\n      \"classification\": \"Observation reported by summary\",\n      \"stage\": \"Instruction propagation and coverage accounting\",\n      \"actual_tool_result\": \"Skill patch1355/result1358 reportedly adds receipt-envelope/privacy rules. Duplicate1356's referenced content is unavailable here.\",\n      \"observation\": \"Instruction-level correction was recorded, but its duplicate provenance cannot be independently checked in this packet.\",\n      \"inference\": \"Skill documentation changes do not establish that all delegates or deployed code adopted the rules.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve duplicate1356 as outstanding until row302/id637 is reviewed and matched to the stated SHA. Do not count the duplicate marker itself as content review.\"\n    },\n    {\n      \"ids\": [\"1357\"],\n      \"row\": \"Within rows627-653; exact row mapping unavailable\",\n      \"source\": \"current_question summary of handoff1357\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"source-only incomplete, naming ID-1 in creation order preserve identity IDs\",\n      \"classification\": \"Assistant status claim reported by summary\",\n      \"stage\": \"Naming design and handoff\",\n      \"actual_tool_result\": \"No deployment result is associated with this handoff; golden work remained pending.\",\n      \"observation\": \"The handoff explicitly distinguishes source progress from completion and preserves identity IDs independently of display numbering.\",\n      \"inference\": \"Creation-order display numbering must be assessed separately from admission and UUID authority.\",\n      \"correction_propagation_or_discrepancy\": \"Subsequent naming work must be checked against both this invariant and the later owner dash correction.\"\n    },\n    {\n      \"ids\": [\"1359\"],\n      \"row\": \"Within rows627-653; search-result source rows unavailable\",\n      \"source\": \"current_question summary of clipped historical search results\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"missing v2 migration receipt support, missing identity helper127, ghostbridge identity registration failure\",\n      \"classification\": \"Historical search evidence reported by summary\",\n      \"stage\": \"Recovery, migration, identity registration and boot persistence\",\n      \"actual_tool_result\": \"Search returned clipped historical notes, also covering recovery initialization before grants and network snapshot versus untested reboot.\",\n      \"observation\": \"These are historical leads, not fresh runtime verification.\",\n      \"inference\": \"Each requires its original date, version, complete command/result and later repair history before being called a current blocker.\",\n      \"correction_propagation_or_discrepancy\": \"Do not revive old helper/admission failures or infer reboot readiness from a network snapshot. The meaning of 'helper127' cannot be resolved from this summary alone.\"\n    },\n    {\n      \"ids\": [\"1377\", \"1378\"],\n      \"row\": \"Within rows627-653; exact row mapping unavailable\",\n      \"source\": \"current_question summary of todo1377/result1378\",\n      \"original_short_quote\": null,\n      \"packet_quote\": \"8 complete3pending1inprogress source claims only\",\n      \"classification\": \"Task-tracker observation reported by summary\",\n      \"stage\": \"Progress accounting\",\n      \"actual_tool_result\": \"The tracker reportedly recorded eight complete, three pending and one in progress.\",\n      \"observation\": \"Tracker status is not an operation receipt.\",\n      \"inference\": \"Completed source tasks may coexist with an unfinished provisioning chain.\",\n      \"correction_propagation_or_discrepancy\": \"Map each completed item to its actual artifact and verification scope rather than promoting the aggregate count to deployed readiness.\"\n    },\n    {\n      \"ids\": [\"1385\", \"1386\", \"1396\"],\n      \"row\": \"Within rows627-653; exact row mappin",
+      "truncated": true
+    }
+  ],
+  "analysis": {
+    "consensus": [],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Only one panel response was supplied, and it is truncated during the finding for IDs1385/1386/1396. Cross-model agreement or disagreement cannot be assessed."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The response explicitly reviews the supplied summary and evidence index, not original rows627\u2013653. It marks fully_reviewed false, leaves original quotations null, and distinguishes display IDs from unavailable exact row mappings."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The visible analysis covers source-level inventory and receipt fixes, syntax validation, native preparation, isolation declarations, durable plans, adoption ordering, naming assumptions, duplicate provenance and historical search limitations. It does not establish runtime execution or deployment."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The response identifies instruction-level propagation through skill patches but cannot establish propagation into every worker, effective runtime configuration or deployed code."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Although the response says findings follow physical sequence, it groups IDs1355/1356/1358 before ID1357. That grouping does not strictly preserve the reported sequence and needs checking against original rows."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "A native mutation followed by authoritative readback or publication failure is not evidence that no mutation occurred; reconciliation must precede assumptions about safe retry."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Canonical-UUID naming assumptions in the identity guard need reconciliation with human-facing ID-1 display names, without treating the apparent mismatch as a proven security bypass."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Switching inventory from privacy-redacted FUSE state to a bounded local Incus query addresses an information mismatch, but does not itself establish authorization, target correctness or final adoption."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "ETag/revision preflight is distinct from final digest/revision CAS; fsync/rename plan publication is distinct from demonstrated crash recovery; touch_session activation is distinct from container startup."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Duplicate1356 cannot count as reviewed content until its referenced row302/id637 and stated hash are verified at first provenance."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Historical search snippets and task-tracker completion counts are leads or status claims, not current blocker evidence or authoritative provisioning receipts."
+      }
+    ],
+    "blind_spots": [
+      "Original transcript excerpts, exact row-to-ID mappings, parent links and complete boundary outputs are unavailable in the supplied panel material.",
+      "The visible response does not reach owner instructions1435/1437, interruption1436 or the unanswered calls at1447; correction propagation and subsequent deployment remain unassessed.",
+      "The response truncates before completing the comparison between claimed completed storage/adoption children and the explicit nothing-deployed status at1396.",
+      "Helper internals and downstream recovery consumers are absent, preventing verification of seed/sprout behavior, root composition, initial upgrade pairing, boot synchronization and no-host-loop compliance.",
+      "The visible analysis notes missing loop proof but does not explicitly reconcile the existing pool loop with the owner's prohibition on every host loop device.",
+      "Same-handle receipt correlation, effective isolation enforcement, final authoritative CAS and actual startup lack direct evidence.",
+      "No visible completed boundary-dependencies or uncertainty section survives the panel response truncation, and no substantive JEV adjudication is supplied."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

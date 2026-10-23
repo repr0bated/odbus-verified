@@ -1,0 +1,837 @@
+SOURCE evidence/context/HANDOFF.md character range 300000-400000
+fixtures and source docs follow the new names without aliases. Parent queried references and applied supported LSP renames after a shared mutation barrier; remaining unresolved cross-crate references were reconciled with contextual anchored edits. Generic MCP machinery, protocol contracts, identity admission, schema authority and the bridge-owned in-process single writer remain intact.
+
+Detailed evidence is `local://cognitive-rename-report-20261018.json`:85 content-edited paths, both moves, all39 actual crate review rows, exact residual rationale and outside-scope integration inventory. Coverage is naming-focused manifest/entry-source/affected-context inspection, not a claim of an exhaustive semantic audit of every unrelated line. Static searches found no old naming in root Cargo/lock, crate manifests or root Rust examples. The13 retained crate files are: the dated cognitive comparison; two historical runtime comments; the standalone-name negative test; dated plugin research/transcript; five captured zeroclaw example schemas; and the two hash-pinned threetched generated artifacts. Existing docs label captured examples/specialization as historical; parent explicitly requires regenerated specialization only after replacement compilation/sealing, never forged hashes.
+
+Parent integration must keep current old-binary inputs/catalog coherent through its existing activation, then coordinate replacement binaries/schema catalog with `mcp-toolsets.json`, capability grants, cognitive client endpoints, run-script environment keys, workspace links, notebook_sync, source-path CI/scripts and current docs. Retired-service/binary denylist entries and dated/hash-pinned evidence stay historical. Bridge policy tests include the deployment toolset manifest and now expect `plugin.cognitive.*`; the matching replacement manifest is required when those tests are eventually run. No live database, grant, catalog, service, network, mount or guard changes were made here.
+
+**Not performed:** compilation, Cargo checks/tests, lint, formatting, smoke runs, deployment or activation. No claim that replacement cognitive source is compiled, tested, staged or running. Parent should perform separately authorized scoped consumer/schema/policy/reflection verification and catalog-derived regeneration before the replacement release; the current inventory build is not that verification.
+
+### 2026-10-18 · InventoryParser — bounded restart-inventory source repair
+
+Task `overlay-inventory-parser-20261018` / OD-121; HEAD `34ff9a502d953bb7b1520d530eed849b507e266a`, shared dirty tree preserved. Changed only `crates/op-cozo-store/src/bin/inventory/mod.rs`, its existing `tests.rs`, and own shared notes. No Cargo manifest/lock/dependency changes; coordinated with CognitiveRename and ReleaseInputs. Observed failures and source evidence are recorded in `local://deployment-inventory-failure-20261018.md` and the adjacent ReleaseInputs handoff.
+
+The parser now retains quoted argument boundaries and backslash continuations, scans nested command-substitution operands without retaining their closing syntax as pathname bytes, and traces known global path aliases into function positional bindings. Non-path keys, IP/interface values and timeouts are not rejected merely for containing variables. Unknown path values, incomplete mixed function calls, unknown executable/config/include operands, dynamic eval and missing release-owned paths remain blockers. Unknown assignment overwrites clear old bindings; temporary command environments do not leak global paths. Supported output expressions are bounded lexical `readlink -f -- "$0"`, single-operand `dirname`, the declared `CDPATH= cd -- ... && pwd -P` wrapper, and single-template `mktemp` with optional `-d`. Exact `unix:path=` defaults/prefix removal declare external socket paths without pretending to validate runtime overrides. Nested substitutions are bounded to32 levels; arbitrary command output is not evaluated.
+
+Captured-source JSON is classified by its strict repository/commit/source_path/files metadata structure, not individual filenames. Upstream citations no longer become missing runtime includes; unknown/mixed schemas retain configuration scanning. Files remain inventoried/hashed and owned directory dependencies still include the full skill bundle. Added supported-boundary documentation to the parser and graph limitations; extended existing contract tests for function aliases/data, quoted nested wrappers, continuations, socket paths, provenance/mixed schemas, unknown config/include/output/overwrites and missing release inputs. No tests, builds, checks, lint, formatters, fixtures, privileged reads or live actions were executed. Parent confirmed all reported staged paths exist; no run-script/staging edits are justified. Next authorized action belongs to parent: scoped `system_graph_inventory` release build, then actual preparation/inventory invocation. No runtime success or activation claimed.
+
+
+### 2026-10-18 · Codex — build-in-progress correction
+
+Owner reports the application is being built now. This supersedes treating the earlier missing selected release/catalog as a final blocker; those paths were absent only at preflight. No Cargo command was started by this task, and no mount was attempted. Once the running build's completion and installation/catalog/session receipts are available, check the versioned mount prerequisites and mount `/run/mount/3tchedFS` through its supported service path.
+
+### 2026-10-18 · Codex — requested 3tchedFS mount blocked before execution
+
+Task `mount-3tchedfs-20261018`, checkout HEAD `34ff9a5`. User asked to mount the threetched filesystem at `/run/mount/3tchedFS`. Native `target/release/threetched-fs` exists and its `mount --help` confirms the supported command; no installed `threetched-fs` service or executable exists. Read-only `findmnt` shows no existing FUSE mount. `/run/mount/3tchedFS`, `/dev/shm/opdbus/plugin-blobs/.manifest.json`, `/dev/shm/3tchedfs`, `/run/opdbus/lungs/lungs.sock`, `/etc/op-dbus/human-lungs-session` and the selected release target are absent. `/opt/op-dbus/current` is a dangling symlink to `releases/20261008T232920Z-e46dad8`. Golden is root:root0700; stat of its catalog returned EACCES, not evidence of its contents. `deploy/runit/threetched-fs/run` requires selected binary, sealed release catalog, declared human session, and a verified `threetched` schema before capture/mount. No alternate catalog or identity fabricated; no capture, directory creation, mount, service action, build or test performed. Next action: finish authorized release/catalog/session bootstrap, then run the supported versioned service path and verify the mounted metadata, pinned view and schema.
+
+### 2026-10-18 · ReleaseInputs — missing release path reconciliation
+
+Task `overlay-release-inputs-20261018`, source inspection only; no run scripts or wrappers changed. `scripts/notebook-sync` and `notebook-sources-sync-up`:4-5 and `notebook-sources-upload`:9-10 derive their own canonical directory with nested readlink/dirname/cd. Their actual children are `scripts/notebook-sync`, `scripts/notebook-sources-sync-up`, and `scripts/uv-tools/notebook_sync.py`, all explicitly staged by `deploy/lib/golden/build-golden.sh`:728-731 under `/usr/share/op-dbus/notebook-sync/scripts/`; the exporter is staged there too. Router run:72,84-86 consumes `/usr/share/op-dbus/threetched-manifests/tched-router.json`, explicitly staged at build-golden:676-677. Router executable maps from `/usr/local/libexec/op-dbus/threetched/threetched` to staged `usr/bin/threetched` through inventory RELEASE_ROOTS:34, matching build-golden:675. Bootstrap config/skills paths match build-golden:837-838.
+
+Parser-owned cases: notebook run:120 is continued printf data; :74/:76 pass external protected-file paths bound at :6/:8. Bridge run:136/:159 pass interface/address/timeout data. Session-bus run:17-18 defaults a `unix:path=` URI then removes its prefix for external runtime socket setup. Router run:22/:32/:137 pass external opt-in/session/receipt paths; :116/:123/:190/:205/:210/:249 pass threetched configuration keys, not filesystem paths. Router jq assignments retain a closing substitution parenthesis under old tokenization (InventoryParser independently confirmed). Skill `SOURCES.json` includes upstream `source_path` citations, e.g. ai-elements:4/14, plus relative captured-file provenance; these are not runtime configuration includes. Findings delivered to InventoryParser.
+
+No build-golden change is justified by these reported failures. Direct golden directory inspection returned EACCES; no child privileged retry or live mutation. Parent subsequently reported bounded authorized sudo stat evidence: the three wrappers, `scripts/uv-tools/notebook_sync.py`, and `scripts/export-llm-sessions-to-notebooklm-sources.py` all exist in golden as regular root:root0755 files; `usr/share/op-dbus/threetched-manifests/tched-router.json` exists as regular root:root0644. Parent reported no permission changes. This closes staged-existence confirmation by parent receipt, not an independent child observation. Parent owns integrated parser build plus the actual golden/inventory invocation. No child build/check/test/lint/formatter run; no deployment, credential, identity, network, catalog or guard change. Guard hold remains intact.
+
+
+### 2026-10-18 · Codex — native execution runtime prepared; real restart inventory blocks activation
+
+Pinned EMQX tarball and nlm wheel were reused through supported target/source-artifacts overrides. Golden stages34 binaries after retired/base-only filtering. Host default Python is3.13; existing uv-managed native GNU CPython3.14.7 was found. Updated `deploy/runit/prepare-execution-python.sh` to optionally copy that standalone runtime into the immutable execution payload, install the hash-locked packages into that private prefix, verify relocated base_prefix, preserve non-Python shebangs, and key preparation reuse by runtime and preparer digests. No system Python replacement or user-home runtime symlink dependency. Actual native preparation succeeded twice (final bg_22:2.75s); eight locked packages installed and tool version readiness passed, not a test suite. Lock SHA4c11b48a6277c256082530b268bba092d8e6c857530b4df226d14c08472fb124.
+
+Full golden preparation now fails at real `system_graph_inventory` after writing MANIFEST: `artifact://468`. It reports unbounded function arguments, nested shell path expressions, session-bus dynamic path assignment, and hundreds of skill SOURCES.json provenance references misclassified as runtime config. Some referenced paths may be genuine staging mismatches; distinguish them with source evidence, never bypass the completeness gate. Parent has not changed op-cozo parser or active run scripts yet. Separate source workers own parser analysis/fix and actual release-input reconciliation, while parent controls scoped build and real staging.
+
+Luna lookup failed authoritatively: task preflight listed only bundled workers; global modelRoles has web/judge only, task.agentModelOverrides is empty, and no project/user agent directory exists. No Luna subprocess started and no model/config changed. Owner then said “let it go as it is”; parent explicitly announced using the existing worker setup for concurrent cognitive naming work, not relabeling another worker Luna. Contracts: `local://cognitive-rename-20261018.md` and `local://deployment-inventory-failure-20261018.md`. Speaker request remains canceled; guard hold unchanged.
+
+### 2026-10-18 · Codex — deployment proceeds concurrently with requested Luna source replacement
+
+Owner clarified the exact target is **cognitive MCP → cognitive**, across every crate. After an execution-order clarification selecting “Finish deployment first,” owner further specified that **Luna should do the replacement while the primary deploys**. No controller rebuild was requested: the earlier rebuild interpretation was withdrawn before any Cargo command. The replacement must be compiled before it is included in a release; current activation continues from the existing selected binaries and isolated catalog. No source crate edits have begun. Resolve actual Luna agent/model availability; do not merely relabel another agent and claim it is Luna.
+
+Native `op-release-launch provision-slots` succeeded. Golden preparation then stopped before payload staging because the default `/var/cache/op-dbus/source-artifacts` lacks the pinned EMQX archive. Exact required EMQX tarball and nlm wheel are present in `target/source-artifacts`; supported `EMQX_ARTIFACT_CACHE_DIR` and `MCP_PROVIDER_ARTIFACT_CACHE_DIR` overrides avoid fetching/rebuilding them. Next: invoke preparation with those paths, resolve subsequent actual prerequisites, derive exact first-activation approval, and activate through the canonical wrapper.
+
+The speaker-output request was explicitly withdrawn as intended for someone else. No audio settings/code changed. Repeated the documented mute workaround clearly: Ctrl+L turns omp live voice off/on, not system-wide microphone mute. No network changes or guard activation authorized.
+
+### 2026-10-18 · Codex — checked-delete receipts for both empty legacy slots; native status succeeds
+
+Authorized one-time native reconciliation completed in63.61s. Held the release flock, matched the exact backed-up null journal and both root identities/empty contents, durably recorded intents, froze each root read-only, closed its descriptors, then invoked the current independent lifetime module's kernel checked-delete ABI. Output: `checked-delete id=265 name=@release-a result=removed-and-cleaned`; same result for266/@release-b. Filesystem sync, native subvolume cleanup wait and name-absence checks completed before atomic migration to current version1 State. No ordinary-delete fallback, other-root removal, application activation, network change or guard activation.
+
+Durable recovery evidence: `/var/lib/opdbus-release/bootstrap-20261018.sYDTwX/{slots.legacy.json,reconciliation.json}`. A narrowly scoped maintenance executable was compiled against existing GNU release rlibs and current independent fs/lifetime modules; no Cargo/workspace rebuild. Initial compile attempts needed the host proc-macro search path and SHA2 0.10.9 artifact; final compilation succeeded. These were build corrections, not test runs.
+
+Actual installed `op-release-launch status` now succeeds: version1, slots a/b null, active/previous/journal null, transaction_in_progress false, readiness null and no application OverlayFS mounts. Next: native golden provisioning/preparation, exact graph-derived first-activation approval, then canonical activation. Guard down markers remain required indefinitely until explicit owner reauthorization.
+
+### 2026-10-18 · Codex — exact empty-slot replacement approved; voice shortcut answered
+
+Owner answered the scoped question naming only @release-a ID265 and @release-b ID266 on filesystemd53eeac0-949b-499c-b051-9fecf8678f59: **“do what is supposed to happened.”** This authorizes the proposed checked-delete replacement of these verified-empty roots and backed-up null-journal migration. Do not ask the same approval again; do not broaden deletion to other roots or bypass the kernel's live-reference rejection. All guard/identity/network limits persist. A one-time native maintenance helper may reuse the current independent fs/lifetime code and built dependencies; no workspace rebuild is intended.
+
+Latest priority question was the mute shortcut. Read authoritative omp keybindings docs: app.live.toggle defaults to Ctrl+L (stop/start live voice, not system-wide mute); answered that directly. No keybinding changed. An intervening ambiguous “on-0”/two-Wi-Fi remark does not identify a device or host; no network action taken and do not infer that the repaired deployment host needs rebonding.
+
+### 2026-10-18 · Codex — catalog/receiver/cgroup prepared; legacy roots verified empty
+
+Continuation of `overlay-deploy-20261018`. Source `deploy/release/op-release-activate` now prepares its own root-only cgroup at boot, independently of guard startup: secure root-owned cgroup-v2 parents, dedicated opdbus-release0700 directory and three0600 controls, without enabling controllers or granting BPF trust. Installed updated boot script and refreshed the exact three-file manifest. New boot SHA256`2b83a58a7d47a13e8bfca474b0297e56e1bf697ff9fd68ef79c610ec8f1c3c4c` supersedes5c8da366…; controller7d83a722… and launcherfaa7d26a… unchanged. Boot hook still NOT rcS-enabled or executed. Current `/sys/fs/cgroup/opdbus-release` created0700 and cgroup.procs/cgroup.threads/cgroup.subtree_control0600 directly as authorized bootstrap preparation; no processes moved or BPF loaded.
+
+Prepared receiver artifact hash matches its manifest: `4afab868c84f3620f037fc0009c1dc302937bb26e366a04764b555c5eae7b604`. Installed root:root0755 `/usr/local/libexec/opdbus-release-receiver/btrfs` and root0644 build manifest beside it. Published root0600 `/var/lib/opdbus-release/receiver.json`, pinning path/hash/device30/inode3669653/uid0/gid0/full st_mode33261. Local pin preparation file remains `target/overlay-deploy-receiver.json`. Native transfer has not yet executed this receiver.
+
+Already-built prepared opblob completed isolated seal (bg_11,3.44s, full output artifact://440): `/var/lib/opdbus-release/bootstrap-20261018.sYDTwX/catalog`, generation74,74plugins, catalog hash`3bcc49239c40140f4393bdf4f338fa44368fc764e8f8478572bfaf187d57d2db`. Passed paired absolute THREETCHED_CAPTURE_BIN/MANIFEST pointing at target/threetched-artifacts/tched-router; left COGNITIVE_MCP_QDRANT_URL unset to match current bridge source defaults. Source declarations inspected only, no network diagnosis/change. No live SHM or persisted catalog publication; use this isolated path as OP_PERSISTED_CATALOG_SOURCE in the canonical activation.
+
+Actual bounded root inspection held `/var/lib/opdbus-release/lock`, asserted the exact null legacy journal, and entered a private unshare mount namespace. Both roots were mounted READ-ONLY for inspection, then explicitly unmounted: ID265 UUIDb5936789-bae3-8d41-a3b8-8f1858d54ec8 and ID266 UUID4a035264-3be0-ed4f-b15d-00558cfe6410 each returned `entries=0`. Their subvolume flags remain writable and generation5340; no contents/properties/deletions/renames changed. This supersedes the preceding entry's “contents not inspected.” Temporary inspection script was removed after proof; root-private empty `bootstrap-20261018.sYDTwX/inspect` mountpoint remains, with no mount attached. Original journal backup retained.
+
+The two preexisting blank legacy roots block new native provision, which requires absent or registered received slots. Scoped next decision is replacement of exactly these two empty roots, followed by the backed-up journal migration to independent State. Do not use ordinary btrfs deletion or fake release registration; retain exact FSID/native/received-UUID checks and kernel quiescent-delete rejection for references. No one-shot migration helper has been written/compiled, no workspace rebuild or tests, and no application overlay activation yet.
+
+### 2026-10-18 · Codex — bootstrap installed from existing optimized artifacts; migration boundary reached
+
+Task `overlay-deploy-20261018` / OD-121 continues with owner approval. Owner also reaffirmed direct reads/writes through the FUSE namespace for identity operations, not an MCP client/parallel API, and asked to execute deployment one command at a time. Base-system release bootstrap is the already-authorized maintenance path. Latest keyboard/microphone-mute question needs the client app identified; no keyboard/input configuration changed and deployment authorization was not withdrawn.
+
+Source edits now applied: `activate-golden.sh` exports a canonical OP_RELEASE_DIR and verifies the installed controller against that directory; `deploy/lib/golden/build-golden.sh` uses the same selector (default target/release preserved). `deploy/release/op-release-launch` adds ONLY the explicitly approved6.18.57/BTF418e74eb9598f5747b4039d3934d77f244b1d9e7ba0f64d729c21a6ddebdb975 pair, preserving older pairs and all integrity checks. `deploy/release/lifetime/README.md` and this header now say the persistent guard hold ends only on explicit owner reauthorization, not deployment/provisioning milestones.
+
+Prepared `target/overlay-deploy-inputs-20261018.xhtkfx` using Btrfs reflinks of40 existing top-level workspace executables, then the12 updated native GNU-target binaries. Correction: previous plan's “13” was a counting error; actual selected updates are op-release,opblob,system_graph_inventory,op-grpc-bridge,op-grants-materializer,op-web-server,opdbus,op-runit-systemctl,svd,dbus-agent,op-agent-manager,threetched-fs. `source-inputs.sha256` records every selected source. Original build output directories untouched; no Cargo/rustc invocation. OP_RELEASE_DIR must point at this complete prepared set, not the12-binary scoped directory alone.
+
+Installed the approved base bootstrap, not application payload: `/usr/local/libexec/opdbus-release` root:root0755; op-release and op-release-launch root:root0755; `/etc/init.d/op-release-activate` root:root0755 but NOT rcS-enabled yet. Root0600 manifest names exactly those three files. SHA256: controller`7d83a7223c6b67037aacee7360d8a91274367fe6fa05e13880c163a7c8bd56fe`, launcher`faa7d26a3f76174c8d5fc4af92a626b779adca80d90a23f0bd4e7d59ed6bc3f8`, boot`5c8da36668c4b1e457a19c241e0a9ac3b3bb6d98376b358e2ffce5a10b684c6a`. Staged manifest retained in prepared inputs. Actual `sudo -n /usr/local/libexec/opdbus-release/op-release-launch status` reaches the new native controller and fails: `unknown variant @release-a, expected a or b at line3 column16`. Thus the kit/kernel admission path executed; no successful state/status/activation claim.
+
+Created private root recovery directory `/var/lib/opdbus-release/bootstrap-20261018.sYDTwX`; original `/var/lib/opdbus-release/slots.json` copied with preserved metadata to `slots.legacy.json` (bg_10 completed successfully). Live journal has NOT been modified: old null @release-a/@release-b entries plus null active/previous/pending. New independent State has lowercase a/b and version/journal/metrics/preservation fields; explicit one-time reconciliation is required. Both actual roots remain unmodified: ID265 UUIDb5936789-bae3-8d41-a3b8-8f1858d54ec8 and ID266 UUID4a035264-3be0-ed4f-b15d-00558cfe6410, parent5, generation5340, no received UUID, flags“-” (writable), createdOct14. Their contents have NOT been inspected, so do NOT assume empty from null journal entries. No root deletion/rename/mount/read-only conversion performed. Current native provision refuses unregistered preexisting roots. Any necessary removal must honor exact identity, emptiness and the quiescent-destroy boundary; no ordinary-delete fallback or rename-aside retained generation.
+
+Additional concrete prerequisites: `/sys/fs/cgroup/opdbus-release` is absent after reboot (previously created by guard startup); establish its independent approved base-bootstrap lifecycle without starting the guard. `/var/lib/opdbus/plugin-blobs` is absent; prepare an isolated real sealed catalog with the already-built opblob, preserving any historical catalog sources. Existing static receiver is already prepared: target/btrfs-receiver-artifacts/{btrfs,manifest.json}; manifest reports native static v7.1, SHA4afab868c84f3620f037fc0009c1dc302937bb26e366a04764b555c5eae7b604,2924704bytes, no PT_INTERP/DT_NEEDED. Manifest read only; current binary digest/pin not yet installed/checked. Do not rebuild it merely because older provenance notes say LZO missing.
+
+Next: resolve the legacy journal and inspect the two existing roots safely under the release lock, provision independent cgroup/bootstrap receiver authority, prepare isolated sealed catalog and first-activation approval, then rerun canonical activate-golden with the prepared input selector. Do not reseal live SHM, delete roots, fabricate registration metadata, enable boot hooks or claim readiness prematurely. Kernel lifetime adapter is current release/lifetime.rs; no one-shot helper has yet been written/compiled. Actual overlay activation/rotation/rollback and all tests remain unrun. No network/lungs diagnosis/change, guard/BPF load, service restart or reboot.
+
+### 2026-10-18 · Codex — deployment resumed; guard hold now indefinite until owner instruction
+
+Owner answered the launcher-only approval question: **“continue deployment and guard stays off until i say trun back on, nmake that persistent throgh boots.”** This authorizes continuing the proposed exact current-kernel/BTF launcher approval and missing bootstrap installation while strengthening the guard hold. Do NOT ask the same approval again or treat deployment/provisioning completion as permission to enable the guard. Existing root-owned persistent runit down markers remain in place; root bpftool inventories were empty. No guard startup or policy change is needed for deployment.
+
+Under the newly approved root bootstrap/deployment authority, `sudo -n jq . /var/lib/opdbus-release/slots.json` succeeded (bg_7): `{"slots":{"@release-a":null,"@release-b":null},"active":null,"previous":null,"pending":null}`. This is the legacy schema, not the independent controller State schema; preserve the original and reconcile explicitly rather than dropping unknown fields. Its prior jeremy-only EACCES is superseded for this approved maintenance read, not a global permission grant.
+
+Next implementation plan: preserve owner-only guard hold and update shared authority; add only the approved current kernel/BTF pair to deploy/release/op-release-launch; select a complete existing optimized artifact set consistently in activate-golden.sh and build-golden.sh (new GNU directory currently has the13 scoped binaries while default directory retains the broader workspace set); inspect prepared static-receiver artifacts; prepare the independent three-file bootstrap/manifest and explicit legacy-empty-slot reconciliation, sealed catalog and first-activation approval; run canonical activation and consume authoritative receipt/mount/readiness output. No rebuild/tests/network changes/guard activation/reboot. Source edits and bootstrap installation have not yet happened. Shared notes are the only changes so far.
+
+### 2026-10-18T06:22:38Z · Codex — BPF capability distinguished from active guard
+
+Owner repeats for the fourth time: kernel guard MUST remain disabled until deployment AND provisioning finish, then asks whether BPF is still enabled somewhere. This instruction is preserved; no guard was started, loaded, trusted, rearmed or altered.
+
+Actual root maintenance results: `sudo -n bpftool -j prog show`, `link show`, and `map show` each succeed with `[]`. `sudo -n sv status /etc/service/op-storage /etc/service/op-storage-kernel-guard` reports both down1169s; their log children remain running, not enforcement. Both `/etc/sv/{op-storage,op-storage-kernel-guard}/down` markers are root:root0644. Root stat of `/sys/fs/bpf/opdbus-btrfs-guard` returns ENOENT. Installed guard run script confirms its GLOBAL programs persist through a supervisor stop, so service-down alone was not used as proof; empty actual kernel object inventories establish no loaded eBPF guard at inspection.
+
+Kernel capability is still enabled by design: installed current config has CONFIG_BPF/BPF_SYSCALL/BPF_JIT/BPF_LSM/BPF_EVENTS/DEBUG_INFO_BTF=y and CONFIG_LSM includes bpf. This does not mean a guard program is loaded. No rebuild or attempt to disable the entire BPF subsystem.
+
+Independent release launcher still contains an explicit old kernel/BTF allowlist; installed storage bootstrap uses the same older pairs with the error `kernel/BTF requires guard policy review`. Neither script was executed to arm a guard. The release allowlist is a static deployment-policy prerequisite, distinct from active enforcement. The previous exact-pair approval question received a guard-hold reiteration, not an explicit allowlist decision; do not claim approval or modify that policy silently. Deployment attempt remains stopped before provisioning at missing release kit. No source/runtime changes beyond these shared notes.
+
+### 2026-10-18 · Codex — existing optimized release deployment attempted; bootstrap approval pending
+
+Task `overlay-deploy-20261018` / OD-121. Owner explicitly asks to try deployment using the already release-optimized workspace. Ran `sudo -n ./activate-golden.sh` once from repo root, job bg_6: exit1, `stat: cannot statx '/usr/local/libexec/opdbus-release': No such file or directory`. Failure is at the entry-point directory preflight, before provision/golden/release; no host installation or deployment mutation occurred. No Cargo, tests, network investigation/change, storage/guard action, reboot or unrelated modification. HEAD remains last-observed34ff9a502d953bb7b1520d530eed849b507e266a.
+
+Separate policy prerequisite: `deploy/release/op-release-launch:84-92` requires separate approval for new kernel/BTF pairs. Current release is `6.18.57-x64v3-op-release-lifetime1-xanmod1`; observed `/sys/kernel/btf/vmlinux` SHA256 is `418e74eb9598f5747b4039d3934d77f244b1d9e7ba0f64d729c21a6ddebdb975`. Proposed authorization: add only this exact pair for the existing root-owned application release launcher, persistent until explicitly revoked. Preserve old approved pairs, digest/ownership checks, first-activation/receiver authority and all guard/identity policies. Expected effect: admit the already-installed current kernel to canonical release and boot operations. Verification: installed three-file manifest plus native launcher status and actual activation receipt; no fixture/test-suite gate. Rollback: remove only the added pair and regenerate the approved launcher digest, preserving original pairs. Approval not yet received; no policy edited or bootstrap installed.
+
+Artifact selection needs reconciliation without rebuilding: `activate-golden.sh:49` and `build-golden.sh:50` hardcode target/release. Its op-release is14296896bytes, modified00:47:04Z, while target/x86_64-unknown-linux-gnu/release/op-release is14303760bytes, modified01:54:30Z from the successful scoped native build. Do not install the older default binary merely because the wrapper currently points there, or assume all companion binaries are present in the GNU directory without checking the existing inventory.
+
+Native preparation contracts reviewed: transfer.rs29-83 journals golden/slot provisioning and rejects preexisting unregistered roots; receiver.json must pin an approved static native Btrfs receiver (transfer.rs85-116). preserve.rs7-18 requires exact first-activation graph target/service approval. Existing slots.json remains unread after earlier jeremy EACCES; do not assume it matches the independent State schema or discard prior roots/journals. Next: obtain the exact kernel-policy approval, then resolve supported bootstrap/state/receiver/catalog prerequisites and resume the canonical entry point using built artifacts. No successful activation/rotation/rollback claimed.
+
+### 2026-10-18T06:09:50Z · Codex — post-boot overlay-only inspection
+
+Task `overlay-check-20261018` / OD-121. Owner reports network and boot correct after single-mode work and explicitly excludes network/lungs diagnosis from this request. Do not infer network readiness from the incidental identity-mount namespace discovery; it is excluded from this assessment. HEAD verified `34ff9a502d953bb7b1520d530eed849b507e266a`. Changed only own HANDOFF/SIGNALS notes; existing application/kernel owners and guard hold preserved.
+
+Observed running `6.18.57-x64v3-op-release-lifetime1-xanmod1`, superseding the prior handoff's unobserved-reboot status. `/proc/filesystems` registers overlay and btrfs; matching installed config has `CONFIG_OVERLAY_FS=y` and `CONFIG_BTRFS_FS=y`. `findmnt -rn -t overlay -o TARGET,SOURCE,OPTIONS` and the PID1 variant `findmnt -N 1 ...` both return no matches/status1. This proves no OverlayFS mounts in those two namespaces, not a lifetime-ioctl or activation/rollback test.
+
+Native read-only `sudo -n btrfs subvolume list -puqR /opt` succeeds: `@release-a` ID265 UUIDb5936789-bae3-8d41-a3b8-8f1858d54ec8 and `@release-b` ID266 UUID4a035264-3be0-ed4f-b15d-00558cfe6410 exist; both show no received UUID and there are no listed descendant subvolumes. Neither is assigned active/previous by this inspection. `/opt` is Btrfs `@opt`, subvol271. `/opt/op-dbus/golden` is an empty ordinary directory on that mount. `/opt/op-dbus/current` is a dangling historical symlink to `releases/20261008T232920Z-e46dad8` (`stat -L` ENOENT).
+
+Built op-release artifacts exist in target/release and target/x86_64-unknown-linux-gnu/release; existence is not installed/deployed proof. Independent `/usr/local/libexec/opdbus-release`, `/etc/init.d/op-release-activate`, matching rcS registration, and `/run/opdbus-release/ready` are absent. Source launcher lines88-91 still allows only the6.18.56/6.12.111 kernel/BTF pairs; the running custom6.18.57 needs separately reviewed policy approval before that launcher could admit deployment. No launcher execution, installation, policy edit, provision, mount, recovery, seal, service action, reboot or test fixture was performed.
+
+Access limitation: current caller jeremy received EACCES reading `/var/lib/opdbus-release/slots.json`; metadata is root:root0600,124bytes. Did not retry via sudo or run another reader to bypass the denial. Thus committed slot assignments and pending journal are **unverified**, not assumed empty/healthy. `/opt` directory discovery also exposed protected historical snapshot directories; their contents were not read. Exact next overlay work: authorized journal inspection, independently approved controller/boot-kit installation with the current kernel/BTF policy, then prepared golden release activation through the canonical entry point. This check does not authorize those mutations or prove rotation/rollback.
+
+### 2026-10-18 · Codex — kernel installed and next boot selected; tests deferred by owner
+
+`xanmod-release-kernel-20261018` / OD-121. Owner corrected the pre-deployment test gate: **build → install/deploy; tests afterward only when requested**. Updated actual `AGENTS.md` and `deploy/release/lifetime/README.md` to explicitly include disposable-VM/custom fixtures in that rule. This supersedes the preceding handoff's instruction to require a full VM pass before installation. Kernel source/build artifacts were not changed or rebuilt after the successful native build.
+
+Additive host installation completed in13.11s (parent job bg_17): copied staged modules into `/lib/modules/6.18.57-x64v3-op-release-lifetime1-xanmod1`, installed matching image/config/System.map under `/boot`, ran depmod, generated the new initramfs and GRUB menu. Installed image SHA256`c7ac19f0b359a59fa6ee8d11386503a518aa99b141556e9021ee06e3567f92f3`, config`934138bf9b6a1e57097567dcf52567943cfc51b039290769fdd9b72fe4901e14`, map`541c7523e0e4c3223fc2a40888ddafc8280bcda46d661d1f0948764fa008c79b`, initramfs`b9ea0c17dac68995f30eea9bcaaff8f80c9af856932aab0131fae2c0ea3f660c`. Image/config/map match the completed build provenance. Stock6.18.56 image/initramfs/config/map all matched pre-install hashes; its image+headers are now manually retained against autoremove. Installation receipts and previous GRUB settings are under `/srv/git/xanmod-build-6.18.57-op-release-20261018/installation`.
+
+Read the generated GRUB entries, then set and read back:
+`next_entry=gnulinux-advanced-d53eeac0-949b-499c-b051-9fecf8678f59>gnulinux-6.18.57-x64v3-op-release-lifetime1-xanmod1-advanced-d53eeac0-949b-499c-b051-9fecf8678f59`.
+This selects the new kernel **once**, for the owner's next reboot. `/etc/default/grub` still pins stock6.18.56, so a later reboot returns to that fallback unless the owner subsequently makes the new kernel the persistent default. New and old normal/recovery entries are present. No assistant reboot, module load, service restart or guard activation occurred.
+
+Testing status is explicitly **partial/deferred**, not passed. Runs001–003 exposed corrected fixture assumptions (see prior handoff); run004 reached12 ioctl cases then exposed the fixture's invalid single-lower readonly OverlayFS. Added an empty second lower, preserving payload/lifetime assertions. Owner interrupted run005: Luna cancelled its exact job; no associated QEMU process remained. Network surfaces and mounted/lazy-detached OverlayFS EBUSY paths had passed, but there is **no final clean-delete/orphan/full-VM PASS receipt**. Saved scripts, partial/failure logs and hashes to `/srv/git/xanmod-build-6.18.57-op-release-20261018/deferred-vm-smoke.tar.gz`, excluding disposable disks/initramfs/binaries; removed only the task's temporary harness directory afterward. The archive restores the documented original `/tmp/kernel-vm-smoke-20261018-ALO6R3` location if later explicitly authorized. No more tests were started.
+
+Remaining main objective is still **OD-121 host ingress, active+previous application overlay deployment, and chatbot provisioning**—kernel installation is not application deployment. Owner controls the immediate reboot. After reconnect, establish the running release; separately resolve the launcher's approved kernel/BTF pair without silently widening its policy, then resume the already-authorized application work. Keep op-storage/op-storage-kernel-guard and their persistent down markers untouched/off through both deployment and chatbot milestones. Decoy/wgcf and vector work remain outside this task. Current host boot into the new kernel is unobserved. Recorded commit remains34ff9a502d953bb7b1520d530eed849b507e266a; no commit/reset/stash or unrelated work changes.
+
+### 2026-10-18 · Codex — kernel built; isolated fixture corrections, not rebuilds
+
+`xanmod-release-kernel-20261018` / OD-121; HEAD remains recorded34ff9a502d953bb7b1520d530eed849b507e266a. Native build completed once; staged image and provenance are in `/srv/git/xanmod-build-6.18.57-op-release-20261018/staging` (build log artifact://476). All three disposable runs booted that exact image, not the host. run-001 failed the fixture's only-loopback assumption; built-in dummy initializes dummy0 (`source/drivers/net/dummy.c:47,179`). Corrected baseline preserves virtual interfaces and rejects hardware NICs. run-002 confirmed lo+dummy0 and all5 WG/OVS/veth/TUN/TAP cases passed, then fixture incorrectly rejected native GET_SUBVOL_INFO's positive success (`source/fs/btrfs/ioctl.c:2109-2155`). run-003 passed those and writable-root EROFS, then fixture confused native root-item READONLY bit0 with SETFLAGS READONLY bit1 (`include/uapi/linux/btrfs_tree.h:912`, `btrfs.h:49`, `ioctl.c:1408-1410,2081`). Parent corrected the probe's separate constants; custom checked-delete return/errno requirements and all24 cases unchanged. Prior failure receipts retained under `/tmp/kernel-vm-smoke-20261018-ALO6R3/run-00{1,2,3}`. These are NOT full ABI passes; further changed-fixture execution remains pending. No kernel rebuild, installation, host boot change, reboot or guard/storage activation. Exact next action: complete bounded same-image smoke, then additive install only if actual lifetime behavior passes.
+
+### 2026-10-18 · KernelBuildPrep — pinned native kernel build staged
+Owner-authorized command ran once from `/srv/git/odbus-verified`, unprivileged:
+`bash deploy/release/lifetime/build-native.sh /srv/git/xanmod-linux-95d03facd0b1f7aa185682797863b4a2e639d5f2-kernelbuildprep /srv/git/xanmod-build-6.18.57-op-release-20261018 8 native`.
+The finite job completed; terminal output ended `Private staged artifacts: /srv/git/xanmod-build-6.18.57-op-release-20261018/staging`. Build log/completion snapshot: `artifact://476` / `artifact://481`. Patch applied eight files; `olddefconfig`, kernel/modules build and staged `modules_install` completed through `DEPMOD`.
+Final `objects/include/config/kernel.release`: `6.18.57-x64v3-op-release-lifetime1-xanmod1`. Staged source pin records XanMod tag `6.18.57-xanmod1`, commit `cb444174e58f61ebed6c4140af0579cdcc6fa1e1`, patch SHA256 `a684f8c19b92a73e1dec7f88563413daf0799e2ff3957b1de494de3d953d91a2`. `staging/build-provenance.json` records profile `native`, clang/LLD19.1.7, pahole1.30, and activation explicitly not installed/loaded/booted.
+Staged effective config: `staging/kernel.config`, SHA256 `934138bf9b6a1e57097567dcf52567943cfc51b039290769fdd9b72fe4901e14`; config source pin's base hash remains `a62c2dad1ba4d2275dcdb5545952f51883362c750a3587e62a12fc5ad51eb6db`. Staged `bzImage` 15,286,272 bytes, SHA256 `c7ac19f0b359a59fa6ee8d11386503a518aa99b141556e9021ee06e3567f92f3`; `System.map` 7,442,388 bytes, SHA256 `541c7523e0e4c3223fc2a40888ddafc8280bcda46d661d1f0948764fa008c79b`. Modules at `staging/lib/modules/6.18.57-x64v3-op-release-lifetime1-xanmod1`.
+One authorized disposable QEMU smoke ran once after build using `/tmp/kernel-vm-smoke-20261018-ALO6R3/run.sh` and the staged image/config/release with run directory `/tmp/kernel-vm-smoke-20261018-ALO6R3/run-001`. QEMU TCG booted release `6.18.57-x64v3-op-release-lifetime1-xanmod1`; guest reported `OP_VM_SMOKE_RESULT=FAIL protocol=1 stage=guest-network-surfaces status=1`, then summary `vm=0 probe=0 ioctl_cases=0 network=0 surface_cases=0 release=1 kernel_bad=1` and host `OP_VM_HOST_RESULT=FAIL protocol=1 stage=serial-receipt status=1`. Guest powered down normally. Command exit 1; output is in bg_11 completion snapshot. No lifetime ioctl receipts were produced; this is not a safety pass. No retry, harness/source edit, live install, boot change, service action, reboot or guard action. Parent owns diagnosis/next step.
+
+### 2026-10-18 · KernelVmSmokePrep — requested built-in surfaces added; preparation frozen
+
+Parent-requested addendum is implemented only in the same `/tmp/kernel-vm-smoke-20261018-ALO6R3` harness, now four files: `probe.rs`, `guest-init.sh`, new `guest-network.sh`, `run.sh`. This supersedes the earlier22-case count and absence of OverlayFS integration in the prior preparation receipt. No compile, syntax/lint/format checks, smoke execution, dependency installation, host network/storage operation, source/config edit, module load or guard action occurred.
+
+Readonly OverlayFS scenario mounts the real received Btrfs generation as its sole lower layer; checked-delete must return EBUSY while mounted and preserve exact lower identity plus overlay file contents. It then holds a real overlay file, lazy-detaches the mount, requires mountinfo/path disappearance, and again requires EBUSY while the held file remains readable. Releasing that final file precedes the existing required successful checked-delete and repeated exact-identity ENOENT assertions. No upper/work directory or write/copy-up path is introduced.
+
+The installed `/usr/bin/ip` and `/usr/bin/ovs-dpctl` exist and their ldd-listed libraries resolve; runner stages those real binaries/libraries without installation. A60s guest-only slice starts/ends with only loopback and creates/deletes unconfigured WireGuard, a veth pair, an explicit `system@smoke-ovs` kernel datapath with a veth port, and persistent TUN and TAP devices. No keys, peers, addresses, routes, traffic, external NIC or OVS userspace daemon is used. Config preflight now also requires built-in OVERLAY_FS/WIREGUARD/OPENVSWITCH/VETH/TUN. Guest-only gates remain mandatory before operations.
+
+Same single fresh image and unchanged2vCPU/1024MiB/512MiB/600s outer VM bounds. Host receipt now requires24 actual ioctl-case receipts,5 network-surface receipts, both specific probe/surface summaries and the VM summary, with kernel-error rejection unchanged. Prior invocation/cleanup path are unchanged. Precise coverage limit: readonly OverlayFS mount/lazy-detached file lifetime plus interface/datapath object creation/deletion; not overlay copy-up/rotation, tunnel traffic/OVS flows, exhaustive races/crashes, a full suite or live installation proof. Prepared files are frozen for the parent's assigned executor.
+
+
+### 2026-10-18 · KernelVmSmokePrep — disposable guest harness prepared, not executed
+
+Created only `/tmp/kernel-vm-smoke-20261018-ALO6R3/probe.rs`, `guest-init.sh`, `run.sh`, plus this worker's HANDOFF claim/receipt. Mandatory nine-skill preload completed. Source/config/patch/build recipe and other owners' notes were not edited. Read-only inventory found installed BusyBox with required applets, btrfs, `/usr/sbin/mkfs.btrfs`, resolved distro shared libraries/loaders, QEMU tooling and installed stable GNU Rust. No compilation, tests, lint, formatting, QEMU execution, host mounts/deletion, module loads, networking, service/guard action or reboot occurred.
+
+Execution is reserved for the parent's assigned worker after the final build. With `BUILD` set to that completed build workdir, exact invocation:
+
+```sh
+bash /tmp/kernel-vm-smoke-20261018-ALO6R3/run.sh "$BUILD/staging/bzImage" "$BUILD/staging/kernel.config" "$BUILD/objects/include/config/kernel.release" /tmp/kernel-vm-smoke-20261018-ALO6R3/run-001
+```
+
+Runner refuses root, active Cargo/rustc/Clippy, existing staging output, wrong kernel release/config prerequisites and incomplete runtime dependencies. Uses only direct rustc, installed tools/libraries, generated initramfs and a new regular512MiB image. Guest-only formatting/mounting; no host devices/directories/network passthrough. QEMU TCG `max` with enforced v3 features,2vCPU,1024MiB guest RAM,128MiB translation cache,600s deadline(+10s kill grace); probe300s and standalone compilation120s. Initial console device nodes are encoded into the archive without host mknod.
+
+Probe derives FSID/root ID/native UUID/received UUID with real Btrfs ioctls, including a real send/receive nonzero received UUID. Compile-time96-byte ABI size/offset assertions. Covers flags/all four reserved words→EINVAL; FSID/native/received mismatch→ESTALE; writable-root→EROFS; held file and mapping-only→EBUSY while exact namespace identity and content survive; release→checked deletion success→repeat exact-identity ENOENT; ordinary guest unlink while a file stays open→EBUSY until release→ENOENT. KernelLifetimeFinish clarified that delayed iputs/internal owners permit transient EBUSY after release; ONLY EBUSY may settle up to30s with attempt counts, never ENOENT instead of linked-delete success or ordinary-delete fallback.
+
+Both deterministic guest/probe PASS receipts,22 case receipts, exact guest uname, zero QEMU exit and no kernel panic/oops/error/warning are required. `/proc/version`, serial output, original/artifact hashes, dependency listings and receipt remain in `run-001/`. This is a prepared bounded sequential smoke, NOT observed kernel safety, race/crash/OverlayFS coverage, test-suite evidence or installation authorization. No runtime prerequisite blocker observed; completed final kernel/config/release artifacts and parent-assigned execution remain required. Only task cleanup path, after retaining receipts and ensuring execution has stopped: `/tmp/kernel-vm-smoke-20261018-ALO6R3`.
+
+
+### 2026-10-18 · Codex — documented kernel configuration; native build submitted
+
+Owner requested kernel configuration documentation. Added
+`deploy/release/lifetime/README.md`: pinned .57 source and unchanged stock config
+lineage, exact override groups/rationale, preservation/pruning tradeoffs,
+WG/OVS/TUN versus userspace WARP/D-Bus boundaries, applicable Rust decision,
+build invocation/toolchain/output provenance, signing-key reproducibility
+limitation and additive-install/boot/guard boundaries. This is configuration
+documentation, not a build/boot success claim.
+
+KernelSafetyReview found one concrete compile blocker in the new absent-root
+caller: cached lookup had static linkage/no header declaration. Source owner
+corrected it, regenerated eight-file patch/pin, and froze SHA256
+a684f8c19b92a73e1dec7f88563413daf0799e2ff3957b1de494de3d953d91a2.
+Reviewer found no other provable must-fix issue in its bounded source review;
+runtime safety remains unproven.
+
+Assigned Luna execution worker KernelBuildPrep exactly once:
+`bash deploy/release/lifetime/build-native.sh /srv/git/xanmod-linux-95d03facd0b1f7aa185682797863b4a2e639d5f2-kernelbuildprep /srv/git/xanmod-build-6.18.57-op-release-20261018 8 native`
+from repository root, unprivileged, timeout0, completion receipt rather than
+polling. Worker reports command submitted, patch applied/config written and
+compilation begun; no completion received yet. No source edits while compiling.
+KernelVmSmokePrep owns a throwaway guest-only harness; no host Btrfs destructive
+operation or mount authorized by that fixture.
+
+Install preparation: /boot has835MiB free and root525GiB free. Existing GRUB
+default explicitly selects stock6.18.56; preserve that recovery path. Existing
+initramfs modules list includes dm-mod (profile makes it built-in). No boot
+files, initramfs, GRUB environment/defaults or services changed by preparation.
+
+
+### 2026-10-18 · KernelLifetimeFinish — cached-only lookup linkage review correction
+
+Parent's bounded review found the new `inode.c` absent-generation caller could not access `btrfs_lookup_fs_root`: its `disk-io.c` definition remained static and `disk-io.h` lacked a prototype. Confirmed through narrow source references; made the existing cached-only function internal-global and declared its reference-returning contract in `disk-io.h`. No `btrfs_get_fs_root` substitution, new constructor behavior, module export or ABI change. Original `.56` lineage is preserved unchanged; correction belongs to final `.57` scratch `/tmp/kernel-lifetime-6.18.57-source-MAbhYG`.
+
+Regenerated exact patch and source pin. New frozen patch SHA256 `a684f8c19b92a73e1dec7f88563413daf0799e2ff3957b1de494de3d953d91a2` supersedes prior `e160...`. Kernel changed-file set is now eight: `fs/btrfs/{btrfs_inode.h,ctree.h,disk-io.c,disk-io.h,fs.h,inode.c,ioctl.c}` and `include/uapi/linux/btrfs.h`. Added pristine/patched `disk-io.h` hashes and updated patched `disk-io.c` hash; existing archive already includes all `fs/btrfs`, so archive paths/digest remain correct. Parent notified. No compilation/tests/formatters or new broad audit; prior dynamic-evidence limitations still apply.
+
+
+### 2026-10-18 · Codex — kernel assessment/profile selected; sudo-rs installed
+
+Owner explicitly resumed custom XanMod build and requested beneficial changes,
+pruning, built-in WG/OVS/early support, D-Bus/Rust assessment and sudo-rs.
+Selected full stable6.18.57-xanmod1 atcb444174e58f61ebed6c4140af0579cdcc6fa1e1:
+upstream log includes Btrfs readonly ACL/LZO bounds fixes, OVS softlockup/IPv6
+validation fixes and BPF verifier pointer/bounds fixes. Source owner completed
+the lifetime patch rebase; original .56 source preserved. No kernel built yet.
+
+Parent changed `deploy/release/lifetime/build-native.sh`: commit comes from
+source-pin, stock native.config remains immutable input, explicit headless
+profile goes through Kconfig and validates required features before compiling.
+Built-ins include Btrfs/OverlayFS/FUSE, WG/OVS/TUN with required conntrack/nftables
+dependencies, VMXNET3/virtio network, virtio-SCSI/ATA-PIIX/device-mapper/loop,
+VFAT and Bochs. TUN provides TUN/TAP; hidden CONFIG_TAP is not that interface.
+Remove unused physical AMD/Intel/NVIDIA GPU, sound/media/Wi-Fi/Bluetooth/NFC/
+ham-radio families and desktop scheduler autogroup. Actual hardware inventory
+shows QEMU440FX, BochsVGA, VMXNET3, virtioSCSI/console/balloon and PIIX; preserve
+framebuffer/serial recovery consoles and storage/network/security/cgroup/
+namespace/BPF/BTF support. Leave THP and preemption unchanged: no measured
+workload evidence justifies tuning them. Strip staged module debug sections,
+retaining source/build debug objects and BTF; record build recipe with artifacts.
+
+D-Bus prerequisites UNIX/epoll/eventfd/signalfd/timerfd/memfd/futex/proc/sysfs/
+tmpfs/devtmpfs are already built in. Existing system-bus run script creates
+/var/run/dbus, requires /proc, ensures machine ID, then execs dbus-daemon.
+No supported kernel D-Bus replacement is selected; early bus startup would be
+a separate userspace ordering change, not removal of policy or a second bus.
+OVS control daemons and WARP remain userspace; no host WG interface configured.
+Available Rust kernel drivers target Android Binder, physical GPU/PHY or
+experimental null-block uses, none required by this VM; keep CONFIG_RUST off.
+
+Installed owner-requested distro sudo-rs0.2.5-5+deb13u1 alongside original sudo.
+Actual noninteractive /usr/bin/sudo-rs and /usr/bin/sudo each executed id -u
+and returned0; both binaries4755 root:root. No sudoers/grant/alias/default-sudo
+changes. Package receipt artifact://461;1 package added,0 upgraded/removed.
+Guard/storage remain held; no reboot, host network cutover or kernel install.
+Manual/on-request full-test policy is applied, not still pending.
+
+
+### 2026-10-18 · KernelLifetimeFinish — lifetime source/provenance frozen on authorized stable base
+
+Completed the preserved `.56` scratch first, then followed parent's explicit authorization to use the full XanMod `6.18.57-xanmod1` stable base, commit `cb444174e58f61ebed6c4140af0579cdcc6fa1e1`. No rejected controller was used. Repository changes owned here: `deploy/release/lifetime/0001-btrfs-quiescent-destroy.patch`, `deploy/release/lifetime/source-pin.json`, this worker's HANDOFF row/entries. Native config and build recipe remain parent-owned.
+
+Final scratch: `/tmp/kernel-lifetime-6.18.57-source-MAbhYG`. Pristine matching source: `/tmp/kernel-lifetime-6.18.57-pristine-fSRDKO`; its `pinned-source.tar` is a direct `git archive --format=tar cb444174e58f61ebed6c4140af0579cdcc6fa1e1 fs/btrfs include/uapi/linux/btrfs.h` from the parent's acquired full Git repository, SHA256 `50772932d64a61621671d81ed13dbe2d84de07436af8adbee4d274d606f85e5e`. Final patch SHA256 `e1603178f282d94e4a4f85a9330552d16c69ed688b3acd065d939b2768993cb5`; pin includes each pristine/patched file hash and unchanged native.config SHA256 `a62c2dad1ba4d2275dcdb5545952f51883362c750a3587e62a12fc5ad51eb6db`. Original `.56` scratch remains at the original contract path, with completed `quiescent-destroy-6.18.56-completed.patch` SHA256 `a3c7f47e592b425c5a0163e506227bf8de76556e49c331d79af0ed87e9a19d1b`. Earlier `.56` archive and patch lineage are retained in source-pin.
+
+Exact patched kernel files: `fs/btrfs/{btrfs_inode.h,ctree.h,disk-io.c,fs.h,inode.c,ioctl.c}` and `include/uapi/linux/btrfs.h`. Added immutable constructor IDs (avoid mutable root_key reads), a transient absent-generation constructor barrier spanning live-tree lookup and final registry scan, a pinned canonical root across that scan, READY-gated inode admission, and canonical retry for duplicate constructors instead of publishing a closed stale copy. Existing scratch atomic close/reopen registry integration and duplicate rejection are included in the export. Checked send/swapfile rejection uses EBUSY; ordinary deletion retains its original errors. Post-unlink failures remain EIO, never safe ENOENT.
+
+Source invariants/locks: production inode attachment increments once and owns a root reference until irreversible teardown decrements the census; ordinary iget/new inode, dummy directory, metadata and newly created subvolume paths are covered. Sanity-test inodes use their separate test destructor and do not enter the production census. Root constructors register before disk reads; registry membership survives radix removal through final put. A zero root refcount cannot revive (`refcount_inc_not_zero`) and implies no owned inode; all nonzero matching roots must pass the census. READY is sampled under the registry spinlock before identity is read. Parent/victim inode locks precede `subvol_sem`, then trylocked root publication gate; identity/readonly changes use `subvol_sem`. Registry spinlock only protects brief list/bit/ref operations, never sleeping cache work or root puts. Administrative dentry is unhashed, preexisting RCU walks drained, then root inode/dentry ownership sampled together under i_lock→d_lock. Internal cache/relocation igrab walkers cannot publish external aliases.
+
+Evidence limits/residual risk: original-base patch applied to new pristine `.57` source using fuzz=0 during rebase (offsets only), then the final patch was generated directly against `.57`; this is source integration evidence, not a build or execution result. Reviewed overlapping upstream changes; lifetime hooks do not replace the stable fixes. No compilation, tests, formatter, VM execution, installation, service/guard action or reboot ran here. No known unfinished source placeholder remains, but concurrency/lockdep behavior and live ABI are unproven: parent must obtain its authorized build and isolated actual-operation evidence for retained references, constructor/final-free races, clean deletion, orphan ENOENT, wrong identity and pre/post-unlink failures. Conservative EBUSY during construction/cache activity is intentional. Parent was notified patch/pin are frozen. No additional unrelated kernel feature was recommended.
+
+Self-evaluation: accuracy4/5 (source reasoning and exact generated provenance, no execution proof); completeness4/5 (assigned source/pin complete, dynamic evidence deliberately outside this worker); clarity4/5 (locking/ownership documented); actionability4/5 (exact inputs and residual gate identified); conciseness4/5 (detailed safety handoff retained for integration). Overall4.0/5.
+
+
+### 2026-10-18 · Codex — stock XanMod distinction; manual verification rules persisted
+
+Owner asks "the prebuilt kernel was not sufficient?" Stock installed/running
+`6.18.56-x64v3-xanmod1` supports ordinary OverlayFS and Btrfs send/receive.
+The replacement-kernel requirement comes from the current release controller's
+custom `BTRFS_IOC_SNAP_DESTROY_QUIESCENT` call (`release/lifetime.rs:6-8,33-37`),
+not from OverlayFS. Earlier wording overstated the general requirement. No
+kernel was built, installed or booted. Parent paused both workers while this
+maintenance/design tradeoff is clarified; do not silently bypass checked-delete
+safety or treat stock installation as completion of that custom ABI.
+
+KernelLifetimeFinish reports no source edits; preserved scratch/patch/pin remain
+incomplete. KernelBuildPrep collected prerequisites and began additive source
+acquisition; its receipt below distinguishes collected facts from unconfirmed
+fetch completion. Keep storage/guard OFF and existing boot fallback intact.
+No reboot authorized. Non-Cargo execution role `sonic` is Luna for this session
+only per owner; saved model defaults unchanged. Classifier remains disabled.
+
+Completed the owner's previously pending rule-file request: `AGENTS.md:267-284`
+and `.kiro/specs/release-overlay-target-rotation/tasks.md:30-34` now explicitly
+make tests, Clippy, formatting and /verify manual/on-request, including after
+deployment. Build receipts and bounded actual-operation safety/readiness remain
+separate. Effective OMP configuration exposes no verification-mode key, so none
+was invented. No tests/fmt/Clippy ran for this rules-only change. Last recorded
+HEAD remains34ff9a502d953bb7b1520d530eed849b507e266a; unrelated changes preserved.
+
+
+### 2026-10-18 · KernelLifetimeFinish — paused before implementation/export
+
+Parent paused further implementation and export while clarifying whether stock XanMod suffices for the owner's intended deployment. This worker changed only its own Active work row and this handoff; no scratch kernel source, `deploy/release/lifetime/0001-btrfs-quiescent-destroy.patch`, `source-pin.json`, native config, build recipe or userspace adapter edits occurred. No builds, tests, formatters, installation, service/guard action or reboot occurred. Original pinned lineage and all preserved source remain unchanged.
+
+Read-only continuation found the latest scratch already has atomic close/reopen list helpers (`inode.c:4706-4719`), same-ID duplicate rejection (`4731-4799`), READY-before-identity sampling in the absent-root walk (`5010-5113`), constructor registration (`disk-io.c:694-714`) and final-put list removal (`1843-1865`), beyond the older exported patch. These were preexisting, not this worker's changes. Ordinary iget, new inode, dummy directory, metadata inode and new-subvolume root assignment census paths were traced; sanity-test dummy inode ownership and reference-revival review remain unfinished. No safety claim follows from that inventory.
+
+Current unresolved analysis point: absent-generation proof releases its initially acquired canonical root before walking `lifetime_roots`, and registration/final-free/closure inheritance must be reasoned across the entire disk lookup and final list scan, including zero-reference dying roots and concurrent constructors. A temporary per-ID closure barrier was considered but NOT implemented or established necessary/sufficient. Also retain review of internal `igrab` walkers versus external publication, mutable identity under `subvol_sem`, lock ordering and post-unlink error classification. Resume only on parent direction; saved patch still predates scratch, source-pin still lacks `native_config_sha256`, and neither is frozen for build/install.
+
+
+### 2026-10-18 · KernelBuildPrep — paused at owner clarification
+Task `xanmod-release-kernel-20261018` / OD-121. Read `deploy/release/lifetime/build-native.sh` and current host boot state. Recipe requires exact executables `clang-19 ld.lld-19 llvm-ar-19 llvm-nm-19 llvm-objcopy-19 llvm-objdump-19 llvm-readelf-19 llvm-strip-19 pahole make git tar patch python3 pkg-config flex bison openssl bc zstd`; it checks clang/LLD 19.1.7 and pahole v1.30. Present: clang-19 19.1.7, llvm-ar/nm/objcopy/objdump/readelf/strip-19, make 4.4.1, git 2.47.3, tar, patch, python3 3.13.5, pkg-config, openssl, bc, zstd. Missing `ld.lld-19` (Debian `lld-19`), `pahole` (`dwarves`), `flex` (`flex`), `bison` (`bison`). No package installation. CPU 16 online; memory 31 GiB total / 26 GiB available; `/srv/git` root filesystem 718 GiB, 528 GiB available. No build launched.
+
+Current kernel `6.18.56-x64v3-xanmod1`; `/boot` ext4 and `/boot/efi` vfat. Only kernel image/config/System.map/initrd present are for that version; image 14,675,968 bytes, initrd 41,311,697 bytes; initrd contains Btrfs support. GRUB default selects the advanced entry for that version, timeout 5; menu has normal and recovery entries for that same kernel plus netboot.xyz network recovery, no other installed kernel entry. Existing current kernel/initrd is the only local fallback observed. No `/boot/vmlinuz` symlink. No GRUB/initramfs changes.
+
+Disposable VM smoke: `qemu-system-x86_64`, `qemu-img`, and `/dev/kvm` absent; BusyBox 1.37.0 and `lsinitramfs` available. No QEMU/KVM smoke possible with current inventory.
+
+Exact-source acquisition completed in the task-owned directory `/srv/git/xanmod-linux-95d03facd0b1f7aa185682797863b4a2e639d5f2-kernelbuildprep`. Command: `git clone --filter=blob:none --no-checkout https://gitlab.com/xanmod/linux.git /srv/git/xanmod-linux-95d03facd0b1f7aa185682797863b4a2e639d5f2-kernelbuildprep && git -C /srv/git/xanmod-linux-95d03facd0b1f7aa185682797863b4a2e639d5f2-kernelbuildprep checkout --detach 95d03facd0b1f7aa185682797863b4a2e639d5f2`; original finite job completed with output `HEAD is now at 95d03facd0b1 Linux 6.18.56-xanmod1`. Verified exact HEAD/tag, origin `https://gitlab.com/xanmod/linux.git`, non-shallow, clean worktree, target tree present (91,253 entries; source files present). Packed objects 2.02 GiB. Existing Btrfs scratch preserved. One initial concurrent checkout attempt failed 128 on `.git/index.lock`; did not remove lock; original clone/checkout then completed. A read-only tag inventory found pinned 6.18.56-xanmod1 and newer existing 6.18.57-xanmod1 at `cb444174e58f61ebed6c4140af0579cdcc6fa1e1`; no repin/fetch.
+Candidate versions before authorization: `lld-19` 1:19.1.7-3+b1; `dwarves` 1.30-1; `flex` 2.6.4-8.2+b4; `bison` 2:3.8.2+dfsg-1+b2. QEMU candidates were `qemu-system-x86` and `qemu-utils` 1:10.0.13+ds-0+deb13u1 (11.0.2 backports at priority 100); BusyBox 1:1.37.0-6+b9 already installed.
+Owner-authorized command completed: `sudo -n apt-get install -y --no-install-recommends lld-19 dwarves flex bison qemu-system-x86 qemu-utils`. Receipt: 24 new packages, 0 upgraded, 0 removed, 17 not upgraded; 21.7 MB downloaded, 130 MB additional disk. No service restart prompt/action in output. Installed versions: `lld-19` 1:19.1.7-3+b1; `dwarves`/`pahole` 1.30-1; flex 2.6.4-8.2+b4; bison 2:3.8.2+dfsg-1+b2; qemu-system-x86 and qemu-utils 1:10.0.13+ds-0+deb13u1. Executable versions: LLD 19.1.7; pahole v1.30; Flex 2.6.4; GNU Bison 3.8.2; QEMU/qemu-img 10.0.13. BusyBox remains 1:1.37.0-6+b9; `/dev/kvm` remains unavailable. Apt output artifact://446.
+No compilation, tests, formatting, live boot edits, activation, service action or reboot. Parent owns additional kernel-change assessment, build and integration/install.
+
+The package-installation restriction recorded at the time of the initial receipt was superseded by explicit owner authorization above. No build or live boot action has occurred.
+
+### 2026-10-18T02:18:33Z · Codex — log permissions repaired before owner's reboot
+
+Task `repair-log-ownership-20261018`. Owner explicitly authorized "first fix log
+folder permissions". Six exact `/var/log/runit/{anacron,avahi-daemon,dbus,elogind,
+exim4,lightdm}` directories and each existing regular `current`/`lock` were
+jeremy:jeremy. Changed only these 18 paths to `_runit-log:adm`, using nonrecursive
+`chown --no-dereference --from=jeremy:jeremy`. Corrected `/var/log/exim4` to
+`Debian-exim:adm`, matching `/var/lib/dpkg/info/exim4-base.postinst:26`.
+Directory modes remain0750 and02750 respectively; current0644/lock0600 preserved.
+Exim mainlog was absent; left historical mainlog.1 and .pkg markers untouched.
+No log files truncated/deleted by the repair; recovered svlogd processes resume
+their own writes/rotation and new current files use the logger's primary group.
+
+Runtime evidence: before repair five enabled logger children were down/want-up;
+afterward all ran for32s: anacron5223, avahi5165, dbus5201, elogind5205, exim5207.
+Parent PIDs avahi1664/dbus1651/elogind1650/exim12277 and SSH1658/logger1657 unchanged.
+Anacron parent was already down and remains so; no claim to repair that separate
+parent state. LightDM's .lightdm disable link remains; graphics process search
+returned no matches. Both storage/guard services remain down. Exim's own account
+successfully created `/var/log/exim4/.permission-check.dTRDSu`, then removed it.
+No mail sent, parent restart, reboot, source-code change or tests/fmt/Clippy.
+
+Correction to initial-overlay answer: normal activation/rollback is specified
+reboot-free, but the present lifetime adapter requires a downstream Btrfs ioctl
+(release/lifetime.rs:6-8,37). The source-only kernel recipe builds built-in Btrfs,
+disables livepatch, emits bzImage/modules and uses localversion
+`-x64v3-op-release-lifetime1` (build-native.sh:48,67,74-89). That replacement-kernel
+path requires a one-time boot; plain OverlayFS mounting itself does not. Observed
+running kernel remains6.18.56-x64v3-xanmod1. /proc/filesystems lists Btrfs but not
+OverlayFS; modinfo was unavailable on the tool PATH. No kernel build/install,
+module load or reboot occurred. The completed Cargo build is application-only;
+reboot alone must not be described as installing the incomplete kernel/overlay kit.
+New kernel/BTF approval is separately required by op-release-launch:84-91.
+
+Changed shared notes HANDOFF.md, SIGNALS.md and WISHLIST.md only; live mutations
+limited to the19 ownership fixes above and the removed permission fixture.
+Last recorded HEAD34ff9a502d953bb7b1520d530eed849b507e266a, not refreshed.
+Owner's requested actual manual-verification/testing rule edits remain pending,
+superseded in immediate priority by this pre-reboot log repair; no rule edit claimed.
+
+
+### 2026-10-18T02:09:53Z · Codex — rebuild receipt accepted; configuration edits next turn
+
+Parent read the compiler's actual completion output in `artifact://415`:
+`Finished release profile [optimized] target(s) in 19m 00s`. Scoped GNU release
+rebuild completed; six bridge-library warnings reported. The worker's exact
+command and receipt follow. No tests/fmt/Clippy or deployment were performed.
+This supersedes the interrupted-build status for these current compiled targets,
+not the remaining ingress/bootstrap, overlay lifecycle/recovery or activation work.
+Kernel guard remains OFF through deployment and chatbot provisioning.
+
+Owner explicitly requires ACTUAL configuration/rule files changed NEXT TURN to
+make verification/testing manual/on-request. Do not substitute a verbal promise
+or handoff for those edits; no verification-rule file was changed in this turn.
+JEV classifier plugin/config disablement is complete and is a separate change.
+
+
+### 2026-10-18T02:08:45Z · HostReleaseRebuild — scoped native release build completed
+
+Task `host-release-rebuild-20261018` / OD-121. All nine mandatory skills read. Single immediate `pgrep -a -x 'cargo|rustc|clippy-driver|cargo-clippy'` exclusion gate returned no matches (status1) at2026-10-18T01:49:17Z. The exact command below then ran once from `/srv/git/odbus-verified`, finite async timeout3600, with no polling, retry or fixes:
+
+```sh
+CXXFLAGS='-include cstdint' THREETCHED_CAPTURE_BIN=/srv/git/odbus-verified/target/threetched-artifacts/tched-router/threetched THREETCHED_CAPTURE_MANIFEST=/srv/git/odbus-verified/target/threetched-artifacts/tched-router/manifest.json /home/jeremy/.cargo/bin/cargo build --release --target x86_64-unknown-linux-gnu -p op-deployment -p op-plugins -p op-cozo-store -p op-grpc-bridge -p op-web -p op-runit-systemctl -p op-agents -p threetched-fs --bin op-release --bin opblob --bin system_graph_inventory --bin op-grpc-bridge --bin op-grants-materializer --bin op-web-server --bin opdbus --bin op-runit-systemctl --bin svd --bin dbus-agent --bin op-agent-manager --bin threetched-fs
+```
+
+Completion receipt: `bg_1` completed, wall1140.76s; final diagnostic: `Finished release profile [optimized] target(s) in 19m 00s` (release is backtick-quoted in raw output), preceded by `op-grpc-bridge (lib) generated 6 warnings`. Exit0 inferred from successful tool completion and Cargo Finished diagnostic; tool did not print a numeric exit status. Durable full output: `artifact://415`. Start followed the01:49:17Z gate immediately; completion observed by02:08:45Z. Exact process wall-clock endpoints were not exposed. Expected target output directory is `/var/lib/cargo-build/odbus-verified/x86_64-unknown-linux-gnu/release/` under the existing target/cache configuration; no post-build artifact audit performed.
+
+No source/config/rule changes, tests, fmt, Clippy, seal, golden preparation, installation, deployment, restart or network/storage/guard changes. Runtime THREETCHED_BIN/MANIFEST untouched. Guard remains OFF; recovery trees untouched. Owner clarified through Main: verification/testing are manual/on-request from next turn, and ACTUAL configuration/rule files must be changed then, not only a verbal preference. This is a pending parent task; this execution worker made no such changes.
+
+### 2026-10-18 · Codex — owner disables JEV classifier; rebuild not yet started
+
+Task `disable-class-router-20261018`. Owner requested Luna build workers for the
+rest of this session because JEV routing was not working, then explicitly requested
+JEV routing disabled. The loaded session policy still prohibits explicit Cargo
+model overrides; no separate dispatcher or model allocation was added.
+
+`ResumeHostReleaseBuild` failed before Cargo with OpenRouter free-model daily
+quota429. Its transcript contains preliminary reads only, no build or source edit.
+The installed classifier config had applyTo=all and cargo mapped to
+openrouter/openrouter/free; legacy task-router being disabled did not disable this
+separate npm plugin.
+
+Applied `omp plugin disable @ejstembler/pi-classifier-router`; `omp plugin list`
+shows the disabled marker. Changed only enabled:true→false in
+`/home/jeremy/.omp/class-router.json`, preserving mappings/endpoints/credentials.
+Exercised the installed package's actual loadConfig for this checkout: enabled=false,
+global source, errors=[]. New sessions/workers load the disabled config. Existing
+sessions cache their runtime toggles: `/class-router off` is their immediate command;
+do not claim an existing worker was hot-unloaded by the persisted plugin change.
+
+Recovered the exact prior scoped build from archive session01a14711-f319,
+records2716–2717. Use absolute /home/jeremy/.cargo/bin/cargo, both existing
+THREETCHED_CAPTURE_* inputs and CXXFLAGS=-include cstdint, native GNU target.
+No tests/fmt/Clippy, deployment, guard change or service restart performed.
+Last recorded HEAD34ff9a502d953bb7b1520d530eed849b507e266a, not refreshed.
+Next: a new execution worker, one immediate compiler exclusion gate and one scoped
+release invocation; no repeated model inspection or unrelated diagnostics.
+
+
+### 2026-10-18T01:38:46Z · Codex — main objective recovered; false disconnect account withdrawn
+
+Task `objective-recovery-20261018`, supporting `host-ingress-overlay-20261017`
+/ OD-121. The main objective is **fix host ingress and implement rotating
+application-release overlays, then complete deployment and provision the chatbot**.
+Rotate read-only overlays directly at application-owned host targets, transfer the
+prepared golden snapshot through Btrfs send/receive, and retain active + previous
+only. Do not revive the rejected release-retirement implementation. Decoy/wgcf
+development is explicitly outside this host deployment. Guard remains OFF through
+deployment AND chatbot provisioning; vector redesign/ingestion remains deferred.
+
+Source: `archive.prompts` recovered session `01a14711-f319`, including the owner's
+"wgcf is not part of deployment ... fix the ingress and implement fortationg overlay",
+"ready for full deploy?", "status on rotating overlay?", and guard-hold instructions.
+These establish the objective, not a new runtime authorization from this correction.
+Console logging, memory/disconnect diagnosis and graphics shutdown were interruptions,
+not substitutes for completing the release mechanism and deployment.
+
+Last recorded stopping point: catalog publisher/journal source integrated; pinned
+UI assets and EMQX/NLM archives prepared. The current integrated release build was
+interrupted by the 01:04:20Z OOM, not a verified complete build. The older successful
+application baseline does not verify the newer controller. Direct-target rotation,
+rollback/catalog recovery and activation remain unproved; occupied-slot lifetime
+work remains incomplete. Host ingress and base identity bootstrap still need
+completion. Next implementation action is reconcile the interrupted build receipt
+and remaining source prerequisites, then resume the scoped build/deployment path
+under its existing hold/authorization boundaries—not start unrelated decoy work.
+
+**Correction:** the previous entry falsely attributed an active desktop session
+to the owner. The owner explicitly said "we were not on desktop sessiohn" and then
+"yes they were we got disconnected" when SSH interruption was denied. Accept that
+disconnect report. Later surviving SSH processes and a fresh localhost handshake
+do not prove uninterrupted access. LightDM closed a logged-in graphical session,
+but that does not explain the reported non-desktop disconnect. OOM and an SSH
+close/reopen coincide at 01:04:20Z; exact causation remains unverified. Withdraw the
+unverified claim about separate assistant/broker session and cgroup ancestry.
+
+Modified only HANDOFF.md and SIGNALS.md; no build, test, runtime probe, service
+change, graphics restoration or deployment in this correction. Last recorded
+HEAD remains `34ff9a502d953bb7b1520d530eed849b507e266a` (not refreshed).
+
+
+### 2026-10-18T01:25:25Z · Codex — owner-directed headless host
+
+Task `disable-graphics-20261018`; owner explicitly requested all X11, display
+managers and window managers disabled. Found LightDM1659 → Xorg2388 and
+MATE x-session-manager14261/Marco14600, plus xrdp25995/sesman25988.
+Correction at 01:38:46Z: assistant/broker session and cgroup separation was not
+verified; the owner reports a non-desktop disconnect. Do not infer continuity.
+
+Applied on the host:
+- `/usr/sbin/update-rc.d lightdm disable`; `sv -w15 down /etc/service/lightdm`;
+  moved only `/etc/runit/runsvdir/default/lightdm` to `.lightdm`. This hidden
+  symlink is the installed `/lib/runit/trigger_sv` automatic-enable exclusion.
+- `/usr/sbin/update-rc.d xrdp disable`; `/etc/init.d/xrdp stop`. This host's
+  runit stage2 explicitly runs the retained SysV boot entries; all LightDM
+  and xrdp entries in runlevels2–5 are now K01, with no S entries.
+- Installed root:root0644 `/etc/ssh/sshd_config.d/00-headless.conf` containing
+  `X11Forwarding no`. Native `sshd -t` passed; `sshd -T` before/after comparisons
+  for default, jeremy and root contexts differ ONLY in x11forwarding yes→no.
+  Reloaded with `sv hup /etc/service/ssh`, not restart. Temporary candidate removed.
+
+Live verification: repeated exact-name process searches find no X server,
+display manager, window manager/session, xrdp/sesman; alternate full-command
+search finds no VNC/Xpra/NX/Chrome remote desktop/startx/xinit launcher. No user
+or root crontab; inspected profile/system autostarts have no graphical server
+launcher. No3389/3350/5900/5901/6000 TCP listeners. SSH1658 and logger1657 keep
+their original PIDs/uptime; a fresh localhost SSH handshake succeeds.
+The pre-existing SSH session26118 was observed owning loopback6010 X11 forwarding.
+That observation does not establish uninterrupted client access or refute the
+owner's disconnect report; no deliberate SSH-session termination was issued.
+No fresh authenticated X11-forwarding request was exercised; native effective
+configuration and reload are verified. Latest memory:4.3GiB used,27GiB available,
+4.1GiB swap used. No reboot, package removal, network/identity/guard changes or
+build retry. LightDM logger is no longer supervised; other logger faults remain.
+
+Rollback only if owner requests graphics again: restore the `.lightdm` link
+to its original name, enable LightDM/xrdp with update-rc.d and explicitly start
+the selected services. Remove only this SSH drop-in, validate sshd and HUP to
+restore prior X11-forwarding policy. Desktop configuration/data retained.
+HEAD34ff9a502d953bb7b1520d530eed849b507e266a; repository changes for this task
+are shared HANDOFF/SIGNALS notes, not an application deployment.
+
+
+### 2026-10-18T01:16:45Z · Codex — console logger permissions and coincident OOM/SSH loss
+
+Follow-up owner question: no memory-driven reboot recommended. Fresh `free -h`
+shows31GiB total,7.7GiB used,23GiB available; swap7GiB used of8GiB.
+`vmstat 1 3` has two interval rows with si=so=0, blocked tasks0 and CPU idle
+92–97%; this is a short healthy sample, not proof under a resumed build.
+`/proc/pressure/memory` is absent, so PSI is unassessed. No swap flush or reboot.
+
+
+Task `console-log-permission-20261018` / OD-121. Owner redirected deployment
+work to console permission errors and asked whether the assistant intentionally
+rebooted. No reboot/shutdown was issued in this investigation. Prior uptime
+receipt reports boot at 2026-10-16T03:48:10; current `sv status` shows SSH and
+other core daemons continuously running for about 163516 seconds.
+
+Read-only live diagnosis: log children for anacron, avahi-daemon, dbus,
+elogind, exim4 and lightdm are down/want-up with 0–1 second ages. All resolve
+to `/etc/sv/svlogd/run`, which drops to `_runit-log` (UID/GID996); no local/global
+conf overrides were found. Their `/var/log/runit/<service>` directories are
+`jeremy:jeremy` mode0750, with only base ACL entries. All six directory ctimes
+are 2026-10-16T02:39:50.377006256Z. Existing directories are not repaired by
+the generic script's create-only ownership setup. Working SSH/incus/lxcfs/uuidd
+log directories are `_runit-log:adm` mode0750. This identifies the log-access
+failure; the historical command that changed ownership is not established.
+No logger was manually launched or service restarted. A bounded trace attempt
+could not start because strace is absent; no package was installed.
+
+Separate resource incident: `/var/log/syslog:7386-7410,7656-7658` records global
+OOM at 2026-10-17T21:04:20-04:00 (2026-10-18T01:04:20Z), zero free pages and
+84KiB free of 8GiB swap. Victim rustc PID5559 had 13299512KiB anonymous RSS;
+rust-analyzer PID18740 also had about5.9GiB resident. Owner correctly notes
+12–13GiB compiler usage is normal on a32GiB host: victim selection is not
+proof of a compiler defect or sole causation. `/var/log/auth.log:38196-38197`
+records jeremy SSH close at21:04:20.178443-04:00 and reopen21:04:23.542767-04:00;
+`last -x -n12` corroborates the session boundary. [INFERENCE] Memory exhaustion
+likely contributed to the session disruption; no evidence establishes that
+sshd or the assistant was directly OOM-killed. The detailed SSH log directory
+and lightdm log refused reads as jeremy; no alternate-identity retry. Later
+`free -h` shows23GiB available and7GiB swap used, not ongoing exhaustion.
+
+Exact next actions: obtain scoped authority before repairing ownership of
+those six log directories and their current/lock files (preserve modes/data,
+no recursive change to `/var/log`); verify the existing supervisors recover.
+For an exact SSH disconnect reason, authorize reading the protected SSH log.
+Do not restart the unchanged build merely because memory recovered; account
+for whole-host concurrent usage rather than treating normal compiler RSS as
+abnormal. No app deployment, guard/network change or runtime repair claimed.
+HEAD34ff9a502d953bb7b1520d530eed849b507e266a; only HANDOFF.md, SIGNALS.md and
+WISHLIST.md changed by this investigation. Prior source/workers remain intact.
+
+
+### 2026-10-18 · BuildCaptureReady — build invocation failed before Cargo
+
+Mandatory nine skills and shared ownership read. `rustc -vV` reported native
+`x86_64-unknown-linux-gnu`; CARGO_BUILD_TARGET unset, no discovered Cargo target
+configuration, and process preflight found no cargo/rustc/clippy process.
+The shell inherited a stale `cargo` function using OPDBUS_CARGO_DISPATCH at
+`/srv/git/odbus-verified/scripts/cargo-dispatch.sh`, which is absent.
+`unset -f cargo && type cargo` successfully resolved `/home/jeremy/.cargo/bin/cargo`,
+but that state did not persist into the next tool invocation despite the tool's
+persistent-shell contract. The exact assigned release command, with only
+THREETCHED_CAPTURE_BIN/MANIFEST and CXXFLAGS assignments, exited127:
+`error: command not found: /srv/git/odbus-verified/scripts/cargo-dispatch.sh`.
+No Cargo process started or artifacts were newly built. No retry per assignment.
+Parent must authorize a fresh invocation using direct executable resolution
+within the same shell call. No source, install, service, guard, or live changes.
+
+
+### 2026-10-18 · Codex — rotating-overlay status, prepared inputs, and host bootstrap prerequisites
+
+Task `host-ingress-overlay-20261017` / OD-121. Owner asked rotating-overlay
+status: answered **not deployed**; native controller, direct-target switching,
+rollback/boot/catalog integration are source-only pending build and actual
+overlay smoke. Occupied-slot lifetime implementation remains incomplete and
+stopped. Do not confuse this with the prior successful application baseline.
+Latest owner guard hold remains binding through full deployment AND completed
+chatbot provisioning. Mail is an external service: Oct9 handoff already
+excluded its container bundle/op-mail-admin; recovery notes identify Zoho.
+Enabled application services do not require mail. Recovered messages untouched.
+The microphone message was explicitly withdrawn as the wrong window.
+
+Completed cleanup after the preceding installed receipt: removed ONLY
+historical `target/release/op-release` and `op-release.d` from
+`/srv/git/odbus-btrfs-enforcement-20261013`; removed the one-shot
+`target/retired-release-cleanup.sh`. Valid app builds/cache remain intact.
+
+CatalogPublisher and CatalogTransaction finished their bounded source slices
+(details below). Parent reviewed coordinated writes, actual-directory identity
+reconciliation and visible source operands. Parent then dispatched
+BuildIntegratedHost to run the scoped native GNU release build of op-release,
+opblob, system_graph_inventory, bridge/grants, web/opdbus, runit/svd,
+dbus-agent/manager and threetched-fs. No result has been received at this entry;
+do not infer a build pass or poll/watch its log. No tests/fmt/Clippy or workspace
+command was requested. One Cargo at a time.
+
+Prepared inputs:
+- Pinned UI helper now builds without predeployment type-check/lint/test gates;
+  those remain deferred. Actual helper exited0, artifacts/hashes in worker entry.
+- Exact NLM wheel downloaded from public PyPI release metadata and digest
+  verified: `target/source-artifacts/notebooklm_mcp_cli-0.11.2-py3-none-any.whl`,
+  SHA256 `86f23f282d04e632a10d5612e29b3a0d4f8166320c74337bd9f2e0a5cd0dac12`.
+- Original EMQX website URL returned HTTP403; no changed-identity/proxy retry.
+  Official public [GitHub release assets](https://github.com/emqx/emqx/releases/expanded_assets/6.2.2)
+  publish the identical filename/digest. Downloaded and verified
+  `target/source-artifacts/emqx-enterprise-6.2.2-ubuntu24.04-amd64.tar.gz`,
+  SHA256 `c5b549d312d449d424a39617a8bfa092ea259ad572c6fe2b20c30a2ae7b4c9e9`.
+  Updated only EMQX_SOURCE_URL in deploy/config/emqx.version to that official
+  GitHub asset; version/filename/hash unchanged.
+- Use absolute target/source-artifacts for EMQX_ARTIFACT_CACHE_DIR and
+  MCP_PROVIDER_ARTIFACT_CACHE_DIR during golden preparation.
+- Host runtime package checker exited0; Node22.22.2/npm10.9.7 observed.
+  findmnt confirms /opt on FSID d53eeac0-949b-499c-b051-9fecf8678f59,
+  @opt subvolume271, writable Btrfs.
+
+Additional source-only bootstrap corrections: existing op-session-bus was
+required by bridge but neither enabled nor application-marked; added its
+enabled declaration, application marker and release-owned readiness helper
+paths. No new bus/API introduced. identity-roots now waits on actual host
+service `incus`, not nonexistent `incusd`. Read-only `sudo sv status /etc/sv/incus`
+showed running PID1725; no restart. Its existing run script tolerates guard
+not-ready without arming it. Host identity-roots service and base helpers
+op-identity-root/restore-chatbot-root/runit-ready-signal are absent, so base
+storage-owner bootstrap still must be installed/reconciled before bridge
+readiness. Do not silently package these excluded base-storage helpers in an
+application overlay. Existing identity helper's legacy `up` unconditionally
+requires the obsolete Raccoon lower even with no legacy identities; do not use
+that fallback to invent a new identity or bypass modern storage receipts.
+
+PrivateIngressContract confirms host receiver/metadata preservation are
+implemented, but the current external Xray gateway is EGRESS only. Historical
+decoy .2:8444 is VLESS/XHTTP, not raw gRPC. The concrete current receiving/
+forwarding and private return-path contract remains unresolved with transport
+ownership; no host-only public8090/raw relay/new tunnel was substituted.
+Scout's canonical Xray config read was EACCES, not retried as root. User's
+historically reliable peer-bound identity handoff remains established.
+
+Prepared but NOT built/run temporary smoke inputs:
+`target/release-primitives-smoke/{Cargo.toml,src/main.rs}` includes the actual
+release fs.rs to exercise a private mount namespace, RO A→B rotation with a
+held old reader, B→A rollback and atomic journal publication; build into its OWN
+target directory, never target/release where golden could collect it.
+`target/catalog-publication-smoke.sh` invokes actual opblob only on disposable
+Btrfs/tmpfs catalogs; it does not test controller crash reconciliation or live
+stage-shm. Remove these temporary inputs after real proof. Next: consume native
+build result, fix actual compile errors, then run bounded real smoke before
+installing the independent kit/preparing/activating any application release.
+
+
+### 2026-10-18 · CatalogTransaction — journaled catalog publication and recovery, unverified
+
+Task `catalog-transaction-20261018`; parent last-observed HEAD
+`34ff9a502d953bb7b1520d530eed849b507e266a` (not independently reread).
+Changed only `crates/op-deployment/src/bin/release/{services.rs,model.rs}` and
+the parent-approved `recovery.rs` insertion, plus this shared note/own row.
+No build, test, formatter, Clippy, installed action or live catalog mutation.
+Kernel guard remains OFF; lifetime/root-deletion, network, mail and other
+owners' files are untouched.
+
+`CatalogPublication` records creating/publishing/cleaning phases, the exact
+same-parent stage pathname, parent/stage/old directory device+inode identities
+(Btrfs filesystem/subvolume identity across boot), source/old declared-file
+fingerprints and the cleanup inventory. `publish_catalog` saves intent before
+mkdir, saves the new empty directory identity before invoking the existing
+persist/stage-shm verbs with `OPDBUS_RELEASE_CATALOG_STAGE`, and preserves
+inherited fd9 through exec so recovery cannot race a surviving publisher.
+`catalog` and `restore_boot_lost_shm` both use this path.
+
+`reconcile_catalog` compares actual identities and complete source bytes to
+distinguish successful EXCHANGE/NOREPLACE from an unpublished stage even when
+the subprocess receipt is lost. It syncs the parent before recording cleanup;
+cleanup admits only exact recorded inodes/metadata/hashes, with missing entries
+permitted for interrupted unlink. Empty stage creation interrupted before the
+identity save is recoverable only while still empty. Recreated/unrelated
+state is retained and blocks recovery. Reboot-lost SHM intent is discarded
+only if both exact volatile paths are absent. There is no rename-aside,
+recursive removal, random publisher stage or undeclared retained catalog.
+First publication into an absent destination and recovery after it are
+explicit branches, not EXCHANGE-only assumptions.
+
+Recovery invokes reconciliation after consumer shutdown/readiness transition
+and before mount reversal or original-catalog restoration. Existing committed
+release authority and service restoration order are unchanged.
+CatalogPublisher agreed/implemented complete anonymous O_TMPFILE writes then
+linkat under declared filenames; named partial-file fallback is prohibited.
+
+Parent verification prerequisite: build the changed op-release and opblob and
+ensure the selected release uses the coordinated publisher, then exercise
+Btrfs and tmpfs O_TMPFILE/linkat support, initial absent-destination publish,
+EXCHANGE receipt loss, mkdir/identity-save interruption, subset stage copies,
+cleanup interruption, unknown inode/bytes refusal, SHM reboot loss and
+first-activation rollback. No runtime or compilation result is claimed here.
+
+
+### 2026-10-18 · PrepareUiAssets — pinned UI assets prepared, not deployed
+
+Task `prepare-ui-assets-20261018`. Ran from repository root:
+`vendor/3tched-json-render-ui/build-assets.sh --npm-cache target/npm-cache --output-dir target/ui-artifacts/3tched-json-render-ui`.
+Builder exit **0**; complete stdout/stderr retained in
+`target/prepare-ui-assets-20261018.Htj8Kh.log`. Existing helper verified the
+pinned source archive/content manifest, ran npm ci and Vite, checked emitted
+dashboard assets, and wrote the provenance manifest. Recorded Node22.22.2,
+npm10.9.7, base `/`, door `https://10.0.0.2:8090`.
+
+Outputs under `target/ui-artifacts/3tched-json-render-ui/`:
+- `assets.tar.gz`: 190645 bytes, SHA256 `bd38bab73549a827af777bc4829b899019bbf6507905590b32d286f01ba94f75`.
+- `manifest.json`: SHA256 `e58260c9241e2299715b295e680fd14ff71df8d0cf3613d49b31322378a95497`.
+
+Nonfatal build warnings remain: SvelteKit overrides Vite base;
+FeedBoundCanvas.svelte:8 captures the initial `spec`; a client chunk exceeds
+500kB; FORCE_COLOR overrides NO_COLOR. No warning suppression or source/pin
+edits. Removed only the successfully published invocation's extracted tree
+`/var/tmp/prepare-ui-assets.62bRsm/op-ui-build.gLVZW8`; unrelated temporary
+directories and the invocation's Node compile cache remain untouched.
+No Cargo, additional type-check/lint/tests, external UI checkout edits,
+application installs, services, guard, snapshots, mail or deployment actions.
+Parent owns golden integration; no live UI or application readiness claim.
+
+
+### 2026-10-18 · CatalogPublisher — controller-owned catalog publication implemented, unverified
+
+Task `catalog-publisher-20261018`; baseline last observed parent HEAD
+`34ff9a502d953bb7b1520d530eed849b507e266a` (not independently reread).
+Owned source: `crates/op-plugins/src/bin/opblob.rs`; no controller, mail,
+network, installed catalog, guard or service edits.
+
+`persist` (including explicit source/destination) and `stage-shm` now accept
+optional `OPDBUS_RELEASE_CATALOG_STAGE`. Unset preserves the existing temporary
+directory/rollback behavior. Set requires an existing empty absolute canonical
+nonsymlink sibling directory, root-owned and not group/other writable; its
+parent must also be root-owned and not group/other writable. Source permissions
+may not permit group/other writes. Source/destination/stage alias/nesting checks
+and pinned parent/stage fds prevent writes following a substituted stage name.
+The serialized controller must exclude competing privileged publishers.
+
+Coordinated writes reuse validated captured blob buffers. Each declared blob,
+then manifest LAST, is written/chmodded/fsynced as `O_TMPFILE` and linked only
+when complete with `linkat(AT_EMPTY_PATH)`; no random temporary filename or
+named partial file is created. Unsupported filesystem/capability errors fail
+without fallback. Named entries on failure are complete source bytes; anonymous
+inodes disappear after the publisher closes/exits. Controller must wait for
+that exit before cleanup. Existing fd9 inheritance is untouched.
+
+After stage fsync and identity checks, EXCHANGE preserves the prior destination
+at the exact journaled stage path, or NOREPLACE moves the stage inode into a
+previously absent destination. Parent fsync and post-rename identity checks
+follow. Every coordinated error leaves visible directories/entries intact:
+no TempDir cleanup, remove, alternate recovery name or reverse rename. A sync
+failure after rename is explicitly indeterminate durability and requires
+controller reconciliation; process success alone is not commit proof.
+Success output is unchanged; coordinated errors identify preserved paths.
+
+Added unrun fixtures for invalid stage paths and isolated existing-call tests
+from inherited stage environment. Root-only fixtures (explicitly ignored by
+default) cover absent/existing destination identities, nonempty-stage refusal,
+replaced stage paths and completed-file collision preservation. No builds,
+tests, smoke, fmt or Clippy ran, and nothing was installed/deployed. Parent owns
+native opblob build and disposable Btrfs/tmpfs smoke; deferred downtime tests
+must explicitly include ignored root/filesystem cases. Kernel guard remains OFF.
+
+### 2026-10-18T00:15:34Z · Codex — installed rejected coordinator removed; guard hold extended
+
+Task `host-ingress-overlay-20261017` / OD-121, last observed HEAD
+`34ff9a502d953bb7b1520d530eed849b507e266a`. Owner explicitly approved root
+maintenance only to remove the private storage policy's top-level `golden`
+and `golden_transfer`, preserving everything else. Latest owner instruction:
+kernel guard remains disabled until full application deployment AND chatbot
+provisioning complete; no enable/rearm/reboot prerequisite. Earlier instructions
+requiring active enforcement during bring-up are superseded. Occupied backing
+trees still must not be deleted without the required lifetime proof.
+
+Historical source removal described below was built successfully by
+BuildCleanStorage: native GNU release `op-storage`, one unused-variable warning
+in capture.rs, no tests/fmt/Clippy. The freshly built daemon is now installed at
+`/usr/local/libexec/opdbus-storage/op-storage`, SHA256
+`79b9bc2343e3bd95cae22929f92dd6a7a46fe086126d64d6c9658d699760c7df`.
+Removed `/etc/rcS.d/S12op-release-activate`, regenerated its boot registration
+with `insserv -r`, then removed installed
+`/usr/local/libexec/opdbus-storage/{op-release,op-release-launch}` and
+`/etc/init.d/op-release-activate`. No snapshots, journals, captures, seven-member
+host policy, recovery data, identity grants or other owners' work were removed.
+
+Root-only policy migration used `del(.golden,.golden_transfer)` and verified
+the entire remaining JSON equals the original minus exactly those two fields.
+No policy contents were disclosed. Installed Polkit source now omits only the
+four obsolete golden actions; all retained actions remain deny-by-default.
+The cleaned storage verifier was also updated in the historical checkout and
+installed. Its exact eight-entry manifest retains guardctl/BPF, storage
+daemon/verifier/launcher, storage/guard run scripts and Incus run script; it
+does not depend on any application release executable or init hook.
+
+Actual maintenance command:
+`sudo -n /bin/sh target/retired-release-cleanup.sh` exited 0.
+Existing pins checked before mutation; staged known hashes checked before
+publication; installed `verify_bootstrap` passed. `verify_guard_ready` was NOT
+called. Private policy scope/hash checks passed; both persistent down-marker
+identities/modes were unchanged. No service start, guard operation, reboot,
+snapshot/receive or application activation occurred. Installed verifier SHA256
+`29665500eee3606763727ef17ea8cead57b0c5554167930a81fa747c55ceaf3d`;
+storage manifest `47917cb109a9965e2bdc411aba1301eb36ea1632c97cd3c38668f3bb4d6d5121`;
+Polkit `a37f8936bab2e65692d549c0ff94f48bcc4bf9c1be63e8da16e9f67ce91c2d1d`.
+This was authorized base-kit cleanup, NOT application deployment.
+
+Independent release bootstrap source is now fixed to
+`/usr/local/libexec/opdbus-release`; no old storage-kit execution fallback.
+Actual negative smoke `/bin/sh deploy/release/op-release-launch status`
+exited 1 with `insecure directory: /usr/local/libexec/opdbus-release` because
+that new kit is not installed. Native inventory now excludes both base-kit
+prefixes from overlay targets. No positive new-controller/deployment result.
+
+Remaining: remove the obsolete historical standalone build output and
+one-shot maintenance script, then finish the independent release controller
+and real private ingress within host-only scope. Preserve successful existing
+application artifacts/cache; do not restart kernel feature work or arm the
+guard to unblock deployment. Catalog crash-stage ownership and occupied-slot
+lifetime implementation are still incomplete; private ingress evidence below
+does not establish a currently working endpoint. Full checks and baseline
+documentation cleanup remain post-deployment.
+
+
+### 2026-10-17 · UnlinkReleaseBootstrap — release entry points detached from rejected installed kit
+
+Source edits only: `activate-golden.sh`, `deploy/release/op-release-launch`, `deploy/release/op-release-activate`. All now select `/usr/local/libexec/opdbus-release`, with no old bootstrap source or storage-kit execution dependency. The independent read-only verifier is inline in the launcher; no rejected helper/controller was copied or renamed. Boot authenticates the launcher's digest before invoking it. Wrapper checks installed bytes against this checkout's two scripts and `target/release/op-release` before provision; native recovery returns nonzero and still stops golden preparation. Launcher retains fd9 through exec, preexisting-cgroup membership only, and all unchanged native lifetime/receiver checks.
+
+Exact base-install contract is also in the launcher's header: root:root0755 directory containing ONLY `op-release`, `op-release-launch`, `manifest.sha256`; executab

@@ -1,0 +1,63 @@
+{
+  "request": 39,
+  "started": "2026-10-18T21:37:51.714485+00:00",
+  "finished": "2026-10-18T21:38:06.706140+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-09e60c8a8c87048b016ad53c326f4487d0a76707d7ca038130",
+    "created": 1792359474,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording namespace slice handoff\",\"input\":\"[/srv/git/odbus-verified/HANDOFF.md#D17D]\\nPUT 424.=424:\\n+| RetireNamespace \u2014 SOURCE COMPLETE | `threetched-consolidation-fusion-20261018` / OD-121 | Changed only `crates/op-plugins/src/state_plugins/binary_namespace.rs` (deleted), `crates/op-plugins/src/state_plugins/mod.rs` (module removal), and `crates/op-plugins/src/state_plugins/tched_router.rs` (namespace attachment/dispatch removal), plus this ownership/handoff entry. Parent owns documentation/status integration. | 2026-10-18 | Five short CLI namespace facades retired; typed config APIs and native capabilities unchanged. Source/reference review found no demonstrated production short-name caller. No Cargo/tests/format/LSP startup/seal/deployment/grant changes. |\\nPUT >712:\\n+### 2026-10-18 \u00b7 RetireNamespace \u2014 router namespace facade retired in source\\n+\\n+Task `threetched-consolidation-fusion-20261018`. Deleted the 382-line `binary_namespace.rs` module including its three internal tests; removed its public module declaration and the router schema attachment/early dispatch. This retires only `get/init/list/set/patch`, not typed `config_*` APIs. Pre-edit source references were confined to those integration points and module-local calls/tests; no production short-name caller was demonstrated in crates/scripts/deploy or sibling UI source. Mounted canonical `threetched.config.get/init/list/set/patch` declarations were read; native hashed capabilities remain untouched. Inline patch operations convenience is retired, not translated into a new stdin contract. Historical reports and generated `docs/crate-graph` snapshots still mention the former module; no generated artifacts were hand-edited. No LSP reference tool was exposed; no analyzer startup, Cargo, tests, formatting, seal or deployment ran. Parent retains report/status and release integration ownership.\\n+\\n\"}",
+                "name": "edit"
+              },
+              "id": "call_JdZLqEIfYTFBEfvag3IogFJn",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1071,
+      "prompt_tokens": 190735,
+      "total_tokens": 191806,
+      "completion_tokens_details": {
+        "reasoning_tokens": 211
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 182813
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:38:06.704409+00:00",
+  "stream_chunks": 4
+}

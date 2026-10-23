@@ -1,0 +1,173 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review cross-check. Packet is Hermes session 20261018_213904_4f98c0 rows6-15 IDs2318,2319,2320,2321,2322,2323,2326,2327,2338,2339 plus opening truncated execute_code tail display_order2314. Actual tools only read skills, search HANDOFF, read SIGNALS, page spilled skills. Need distinguish documentary claims from runtime receipts. Key evidence: HANDOFF 427 provisioning fix ACTIVE with resumed Rust child sa-0-ef07f235 and shell sa-1-f870bd18;428 audit claims stale paths/receipt, rejected plan, erased FUSE fstab, detached root after sync, unsafe grants/native bypass/conditional multi-identity boot suppression. HANDOFF628 old /dev/loop3 sprout running,629 owner final name3tchedChatbot not3tchedCtlbot,630 truncated live deploy claim20261005T083153Z-26a4ad1;4310 recovery release20261005T044146Z-3cf5c47-bridge-recovery receivedRO build passed/catalog;4312 full verify failed fmt/clippy tests stopped before run;4316 focused57pass5ignored fixture correction.4330 SO_PEERPIDFD held/polled before/after capture and calls fail closed no pidfd_open numericPID.4334 schema4.5.0 same-key no grants broaden;4338 seven rootIDs including256 fixtures unrun;4342 seed-readonly UID0 lock FSID SEEDING PARTUUID nonvirtual physical setro,4344 unrun tests. SIGNALS2 stuck document_pending marker and missing guest lungs mount;10 38 focused tests not production enforcement stable FS/subvol identity;12 restored bridge unsafe automatic subvolume creation before grants, unbounded upgrades, Artix pacman assumption;14-20 owner Oct5 forbids lifecycle add/remove members, creation once Cozo loop assignment HISTORICAL superseded by latest NO HOST LOOPS including pool;25-32 retired plugin_schema.dat not bringup dep;51 response requires chatbot own write not bridge auto commit;56 256 is HANDLE_LIMIT ENOMEM not FUSE queue, no D state, don't tune/abort/unmount;58 staged grants drops principal so live retained;60 leaf.img/live seed UUID mismatch. Latest contract no loops, prefer no images/subvol only preserving seed/sprout, private persistence, upgrade replica, sendreceive root composition unprivileged Incus admission durable recovery final CAS/adoption/start. Opening execute result exit0 stdout captured50000 total94816 omitted44816 spill path; ID2322 search lowerbound100 truncated and lines clipped;ID2323 only1-60/866;ID2327 spill297-946/2053;2339 requested947 limit560 but packet cuts at1103|110 no result footer. Duplicate markers2319->3521 other session row9,2320->3522 row10,2321->3244 other sessionrow7 originals unavailable here. Return concise independent cautions / key findings; no commands or external access.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"hermes/20261018_213904_4f98c0:opening-display_order2314-and-rows6-15\",\n  \"fully_reviewed\": false,\n  \"review_scope\": \"Read the entire supplied cross-check packet description. Original message bodies, duplicate originals and omitted output were not supplied here; character-level review of those originals cannot be certified. No commands, external access or mutations performed.\",\n  \"findings\": [\n    {\n      \"ids\": [2314],\n      \"row\": \"opening truncated execute_code tail\",\n      \"source\": \"execute_code result, as described in current_question\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Observation from supplied description: exit0 accompanies captured and truncated stdout. Inference: this establishes successful execution of the documentary read, not provisioning or deployment success.\",\n      \"stage\": \"Evidence ingestion\",\n      \"actual_tool_result\": \"50,000 characters captured of 94,816; 44,816 omitted; spill path reported but not supplied here.\",\n      \"correction_propagation_or_discrepancy\": \"Do not transfer this exit status to commands or deployment claims appearing inside the read documents.\"\n    },\n    {\n      \"ids\": [2319, 2320, 2321],\n      \"row\": [7, 8, 9],\n      \"source\": \"Duplicate markers described in current_question\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Observation: duplicate references identify other records, but their original strings are unavailable in this packet.\",\n      \"stage\": \"Coverage and provenance\",\n      \"actual_tool_result\": \"2319 references 3521, another session row9; 2320 references 3522, row10; 2321 references 3244, another session row7.\",\n      \"correction_propagation_or_discrepancy\": \"These references must remain accounted for. They cannot be marked independently reviewed without the first-provenance text or its review receipt.\"\n    },\n    {\n      \"ids\": [2322],\n      \"row\": 10,\n      \"source\": \"HANDOFF search, lines427-428\",\n      \"original_short_quote\": \"ACTIVE\",\n      \"observation_vs_inference\": \"Observation: the documentary entry labels provisioning repair active and names resumed Rust child sa-0-ef07f235 and shell child sa-1-f870bd18. It reports stale paths/receipts, a rejected plan, erased FUSE fstab, root detachment after sync, unsafe grants/native bypass and conditional multi-identity boot suppression. These are documentary audit claims, not independently observed runtime failures in this packet.\",\n      \"stage\": \"Repair delegation; admission through root restoration\",\n      \"actual_tool_result\": \"Search output had a lower bound of 100 matches, was truncated and contained clipped lines.\",\n      \"correction_propagation_or_discrepancy\": \"ACTIVE and resumed-child references do not establish completed fixes, deployed corrections or authoritative adoption. Follow the named children and their actual patch/deployment receipts.\"\n    },\n    {\n      \"ids\": [2322],\n      \"row\": 10,\n      \"source\": \"HANDOFF lines628-630,4310-4316\",\n      \"original_short_quote\": \"/dev/loop3\",\n      \"observation_vs_inference\": \"Observation: historical notes describe a running sprout, an owner naming correction to 3tchedChatbot rather than 3tchedCtlbot, a clipped live-deploy claim, and recovery-release verification. These are different historical events and must not be fused into present readiness.\",\n      \"stage\": \"Historical storage, naming, build and deployment\",\n      \"actual_tool_result\": \"The actual tool searched documentation. Embedded claims include release 20261005T083153Z-26a4ad1; recovery release 20261005T044146Z-3cf5c47-bridge-recovery received read-only with build/catalog success; full verification failed fmt/clippy with tests stopped before execution; focused verification reported 57 passed and 5 ignored after fixture correction.\",\n      \"correction_propagation_or_discrepancy\": \"Focused passes do not override failed full verification. Historical loop-backed operation conflicts with the latest blanket no-host-loop constraint. Naming is not identity authorization, and this packet does not establish propagation of the historical name correction.\"\n    },\n    {\n      \"ids\": [2322],\n      \"row\": 10,\n      \"source\": \"HANDOFF lines4330,4334,4338,4342,4344\",\n      \"original_short_quote\": \"SO_PEERPIDFD\",\n      \"observation_vs_inference\": \"Observation: notes describe held/polled peer pidfds before and after capture/calls, fail-closed handling without numeric-PID pidfd_open, schema4.5.0 same-key compatibility without broader grants, seven root IDs including256, and seed protections. They do not prove deployed enforcement.\",\n      \"stage\": \"Admission and storage proof\",\n      \"actual_tool_result\": \"Document search only. Root-ID fixtures and other tests were explicitly unrun. Reported seed checks include read-only state, UID0 locking, FSID, SEEDING, PARTUUID, nonvirtual physical backing and setro.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve these safeguards in any modification specification, but distinguish source/document assertions from runtime receipts. The seed/device checks require reconciliation with the requested native no-loop design rather than silent removal.\"\n    },\n    {\n      \"ids\": [2323],\n      \"row\": 11,\n      \"source\": \"SIGNALS lines2,10,12,14-20,25-32,51\",\n      \"original_short_quote\": \"document_pending\",\n      \"observation_vs_inference\": \"Observation: notes report a stuck marker and missing guest lungs mount; warn that 38 focused tests do not prove production enforcement; identify automatic subvolume creation before grants, unbounded upgrades and an Artix pacman assumption; and retain a requirement for the chatbot's own write rather than bridge auto-commit.\",\n      \"stage\": \"Admission, establishment, guest readiness and lifecycle recovery\",\n      \"actual_tool_result\": \"Only lines1-60 of an 866-line SIGNALS document were returned.\",\n      \"correction_propagation_or_discrepancy\": \"The Oct5 correction permits explicit one-time creation but forbids lifecycle member add/remove. Its historical Cozo loop assignment is superseded by NO HOST LOOP DEVICES, including pool backing. Cozo metadata is not a kernel block device. Retired plugin_schema.dat must not become an invented bring-up dependency.\"\n    },\n    {\n      \"ids\": [2323],\n      \"row\": 11,\n      \"source\": \"SIGNALS lines56,58,60\",\n      \"original_short_quote\": \"HANDLE_LIMIT\",\n      \"observation_vs_inference\": \"Observation: the notes attribute 256/ENOMEM to a handle limit, not a FUSE request queue, and report no D-state processes. They also report staged grants dropping a principal, with live grants retained, and a leaf.img/live-seed UUID mismatch.\",\n      \"stage\": \"Failure diagnosis, authorization and storage identity\",\n      \"actual_tool_result\": \"Document read only; no fresh process, FUSE, grants or storage inspection.\",\n      \"correction_propagation_or_discrepancy\": \"Do not propose FUSE tuning, connection abort or unmount from this evidence. Retaining live grants is not proof that staged grants were repaired. The UUID mismatch requires exact historical device/FSID receipts before identifying a current storage failure.\"\n    },\n    {\n      \"ids\": [2318, 2326, 2327, 2338, 2339],\n      \"row\": [6, 12, 13, 14, 15],\n      \"source\": \"Skill-read and spill-pagination activity described in current_question\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Observation: this activity reads reference material. It supplies no provisioning execution receipt.\",\n      \"stage\": \"Reference ingestion\",\n      \"actual_tool_result\": \"2327 exposes spill lines297-946 of2053. 2339 requested start947 with limit560, but the supplied packet cuts at 1103|110 without a result footer. Individual bodies for 2318,2326 and2338 are not supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Do not mark remaining skill text, the requested page or the complete original packet reviewed solely from pagination arguments.\"\n    }\n  ],\n  \"truncations_unavailable\": [\n    \"Original packet message bodies are unavailable; findings above are bounded cross-checks of the supplied description.\",\n    \"Opening output omits 44,816 characters; spill content is only partially represented.\",\n    \"2322 search is truncated, lower-bound100, with clipped lines.\",\n    \"2323 covers SIGNALS1-60/866 only.\",\n    \"2327 covers spill297-946/2053; 2339 ends mid-output at1103|110 without footer.\",\n    \"Duplicate originals3521,3522,3244 and their first-provenance review receipts are unavailable.\",\n    \"Exact timestamps, active/compacted flags and session-parent metadata for these rows are not supplied. Named child references are retained without inferring completion.\"\n  ],\n  \"boundary_dependencies\": [\n    \"Retrieve original rows and duplicate first-provenance text to complete character-level coverage.\",\n    \"Follow sa-0-ef07f235 and sa-1-f870bd18 through actual actions, results, corrections and deployment receipts.\",\n    \"Compare historical documentation with current source, installed helpers and installed base boot service separately.\",\n    \"Require evidence for the complete post-bootstrap chain through authoritative CAS/adoption/start and stopped restoration, not merely native creation or successful application deployment.\",\n    \"Resolve no-host-loops and the conditional subvolume-only preference while retaining immutable seed/sprout semantics, isolated persistent writes, a separate upgrade replica, send/receive, root composition, unprivileged native Incus, admission, storage proofs and durable recovery.\",\n    \"JEV remains decision judge only. No judge call or adjudication result is present in this packet.\"\n  ],\n  \"uncertainty\": [\n    \"This packet does not establish a current root cause or prove feasibility or impossibility of the requested storage design.\",\n    \"Historical documented failures and verification claims need their underlying command receipts before independent confirmation.\",\n    \"No conclusion here asserts that provisioning, deployment, adoption, startup or tests occurred during this review.\"\n  ]\n}"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "```json\n{\n  \"packet_id\": \"20261018_213904_4f98c0\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"id\": \"HANDOFF-427,428\",\n      \"row\": \"2318, 2319\",\n      \"source\": \"HANDOFF\",\n      \"original_short_quote\": \"provisioning fix ACTIVE with resumed Rust child sa-0-ef07f235 and shell sa-1-f870bd18; audit claims stale paths/receipt, rejected plan, erased FUSE fstab, detached root after sync, unsafe grants/native bypass/conditional multi-identity boot suppression.\",\n      \"observation_vs_inference\": \"Documentary claim of an active provisioning fix contrasts with runtime receipt of a rejected plan, detached root, and unsafe grant bypasses. The agent inferred completion or active repair, but evidence shows the plan was rejected and root was detached post-sync.\",\n      \"stage\": \"Post-bootstrap admission & storage binding\",\n      \"actual_tool_result\": \"Read-only diagnostic corpus analysis. No commands executed. Tools only read HANDOFF/SIGNALS and skills.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Historical audit flagged unsafe grants and detached root. Latest owner constraint explicitly forbids host loops and mandates subvolumes, contradicting the old /dev/loop3 sprout (SIGNALS 628) and existing pool backing. No propagation of the rejection into a corrected, loop-free design is visible.\"\n    },\n    {\n      \"id\": \"SIGNALS-14-20\",\n      \"row\": \"2320, 2321\",\n      \"source\": \"SIGNALS\",\n      \"original_short_quote\": \"owner Oct5 forbids lifecycle add/remove members, creation once Cozo loop assignment HISTORICAL superseded by latest NO HOST LOOPS including pool.\",\n      \"observation_vs_inference\": \"Explicit owner override of historical Cozo loop assignments. Inference that historical loop-based provisioning is valid is incorrect; latest instructions strictly prohibit host loops, including the existing pool backing.\",\n      \"stage\": \"Storage establishment & identity binding\",\n      \"actual_tool_result\": \"Read-only diagnostic corpus analysis. No commands executed.\",\n      \"correction_propagation_or_discrepancy\": \"Correction: Direct conflict with existing pool backing `/var/lib/incus/disks/3tched.img` on `/dev/loop0`. No exemption authorized. The design must shift to subvolume-only native Incus declarations without loop devices.\"\n    },\n    {\n      \"id\": \"SIGNALS-60, HANDOFF-4342\",\n      \"row\": \"2322, 2323\",\n      \"source\": \"SIGNALS, HANDOFF\",\n      \"original_short_quote\": \"leaf.img/live seed UUID mismatch; seed-readonly UID0 lock FSID SEEDING PARTUUID nonvirtual physical setro.\",\n      \"observation_vs_inference\": \"Immutable seed requirement vs mismatched live leaf. Inference that the seed is properly paired is contradicted by the UUID mismatch and read-only lock state.\",\n      \"stage\": \"Initial upgrade receive/pairing & root composition\",\n      \"actual_tool_result\": \"Read-only diagnostic corpus analysis. No commands executed.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Seed remains permanently mounted and immutable per latest instructions. The mismatch indicates an unfinished or drifted state. Upgrade send/receive and pairing at provisioning have not been successfully reconciled with the immutable seed contract.\"\n    },\n    {\n      \"id\": \"SIGNALS-56, HANDOFF-4330\",\n      \"row\": \"2326, 2327\",\n      \"source\": \"SIGNALS, HANDOFF\",\n      \"original_short_quote\": \"256 is HANDLE_LIMIT ENOMEM not FUSE queue, no D state, don't tune/abort/unmount; SO_PEERPIDFD held/polled before/after capture and calls fail closed no pidfd_open numericPID.\",\n      \"observation_vs_inference\": \"Misdiagnosis of resource limits as FUSE queue issues; syscall failure due to missing kernel support. Inference that FUSE tuning or PID fallback is needed is incorrect.\",\n      \"stage\": \"Durable recovery & startup\",\n      \"actual_tool_result\": \"Read-only diagnostic corpus analysis. No commands executed.\",\n      \"correction_propagation_or_discrepancy\": \"Correction: Agent incorrectly attempted to tune/abort FUSE queue. Correct action is to handle `HANDLE_LIMIT ENOMEM` and acknowledge `pidfd_open` failure without fallback to numeric PIDs. No runtime tuning should be applied.\"\n    },\n    {\n      \"id\": \"SIGNALS-12, HANDOFF-4312\",\n      \"row\": \"2338, 2339\",\n      \"source\": \"SIGNALS, HANDOFF\",\n      \"original_short_quote\": \"restored bridge unsafe automatic subvolume creation before grants, unbounded upgrades, Artix pacman assumption; full verify failed fmt/clippy tests stopped before run.\",\n      \"observation_vs_inference\": \"Provisioning bypassed grant checks; build pipeline halted pre-test. Inference that the bridge is production-ready is contradicted by test failures and unsafe auto-creation.\",\n      \"stage\": \"Identity admission & final CAS/adoption\",\n      \"actual_tool_result\": \"Read-only diagnostic corpus analysis. No commands executed.\",\n      \"correction_propagation_or_discrepancy\": \"Correction: Automatic subvolume creation violates the 'creation once' and 'admission first' rules. Test failures indicate the proposed changes are not yet production-ready. Final authoritative adoption cannot proceed until grants are enforced and tests pass.\"\n    }\n  ],\n  \"truncations/unavailable\": [\n    \"Opening execute_code tail (display_order 2314): stdout truncated (50k/94k total).\",\n    \"ID 2322: search lowerbound 100 truncated and lines clipped.\",\n    \"ID 2323: only lines 1-60/866 available.\",\n    \"ID 2327: spill 297-946/2053.\",\n    \"ID 2339: requested 947, limit 560, cuts at 1103.\",\n    \"Duplicate markers 2319->3521, 2320->3522, 2321->3244 originals unavailable here.\"\n  ],\n  \"boundary_dependencies\": [\n    \"NO HOST LOOP DEVICES: Not merely no per-container loops. Do not silently exempt the existing pool loop, seed wrappers or a mapping described as stored in Cozo. Existing pool backing is a recorded conflict, not permission to detach it.\",\n    \"PREFER SUBVOLUMES ONLY: Prefer subvolumes only, without disk images, if compatible with the complete required behavior. This is a preference, not permission to silently replace immutable-seed/sprout semantics with copied roots or snapshots.\",\n    \"JEV DECISION JUDGE: JEV is the decision judge, NOT model routing. Never activate jev-router, class-router, a Cargo model dispatcher or Haiku fallback.\",\n    \"BOOTSTRAP OUT OF SCOPE: Preserve existing identity/session/native UUID/creation records. Modify the design of the EXISTING Hermes workflow, not a new provisioning script, orchestrator, endpoint or control plane.\"\n  ],\n  \"uncertainty\": [\n    \"Cannot verify runtime state of sa-0-ef07f235 and sa-1-f870bd18 due to read-only scope.\",\n    \"Truncated tool outputs prevent full verification of execute_code results and search limits.\",\n    \"Original duplicate records are unavailable, limiting cross-session correlation.\",\n    \"Exact status of the 3tchedChatbot native instance and its Cozo adoption receipt cannot be confirmed without runtime access.\",\n    \"No commands or external access were performed; all conclusions are derived strictly from the provided evidence index and transcript excerpts.\"\n  ]\n}\n```"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The packet is incomplete: both responses mark it not fully reviewed and retain the principal truncation and unavailable-duplicate limitations.",
+      "The recorded tool activity reads documents and skills; it does not establish provisioning, adoption, deployment or startup during this review.",
+      "The latest no-host-loop prohibition includes pool backing and supersedes historical Cozo loop-assignment interpretations; it does not authorize detaching existing backing.",
+      "Admission safeguards, immutable-seed semantics and lifecycle restrictions must remain relevant to the modification specification.",
+      "Neither response reports executing commands or accessing external evidence."
+    ],
+    "contradictions": [
+      {
+        "topic": "Conditional subvolume preference versus mandatory architecture",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats subvolume-only storage as conditional on preserving the full required semantics and leaves feasibility unresolved."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Says the owner 'mandates subvolumes' and the design 'must shift to subvolume-only native Incus declarations,' although its boundary section correctly calls this a preference. The stronger findings exceed the supplied constraint."
+          }
+        ]
+      },
+      {
+        "topic": "Documentary allegations versus underlying runtime receipts",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Labels rejected plans, detached roots, unsafe grants and historical deployment results as document claims requiring underlying receipts."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Calls the rejected plan and detached root a 'runtime receipt' and states that provisioning bypassed grants. The packet description supplies documentary references, not those underlying execution receipts."
+          }
+        ]
+      },
+      {
+        "topic": "Record and source attribution",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Associates HANDOFF search findings with ID2322, SIGNALS findings with ID2323, and treats IDs2319\u20132321 as unavailable duplicate references."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Assigns HANDOFF and SIGNALS findings to IDs2318\u20132321 and skill-pagination IDs2326\u20132339, and calls HANDOFF628 'SIGNALS 628.' These attributions conflict with the packet's stated tool sequence."
+          }
+        ]
+      },
+      {
+        "topic": "FUSE and pidfd diagnosis",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Preserves the documentary distinction between HANDLE_LIMIT ENOMEM and a FUSE queue issue, and describes SO_PEERPIDFD protections without asserting a syscall failure."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Adds missing kernel support, a pidfd_open failure and an agent attempt to tune or abort FUSE. None of those events is established by the supplied packet description."
+          }
+        ]
+      },
+      {
+        "topic": "Verification status",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Distinguishes failed fmt/clippy verification, tests stopped before execution, and a separate focused result of 57 passed and 5 ignored."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Acknowledges tests stopped before running but subsequently calls these 'test failures' and introduces passing tests as a prerequisite for adoption. That conflates verification stages and adds a gate not established here."
+          }
+        ]
+      },
+      {
+        "topic": "Historical UUID mismatch and current root cause",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Requires exact historical device and FSID receipts before treating the documented mismatch as a current storage failure."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Concludes that pairing and send/receive remain unreconciled and treats read-only seed locking as part of the contradiction. The required immutable seed state is not itself evidence of failed pairing."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Both discuss the named repair children, but neither has their original histories or action receipts to establish correction propagation or completion."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Omits several anchors covered by astra-pro: the naming correction, separate release identifiers, focused verification outcome, schema4.5.0 same-key grant preservation, unrun root-ID fixtures, retired plugin_schema.dat, chatbot-owned write requirement and retention of live grants after staged principal loss."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Neither can substantiate the complete post-bootstrap chain from this packet. Astra-pro explicitly separates that dependency from the packet findings; qwen's stage labels sometimes imply broader coverage than its evidence supports."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly identifies missing active/compacted flags, timestamps and session-parent metadata rather than reconstructing them."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Separates the opening execute_code exit0 from the deployment and verification claims contained in its stdout; successful document retrieval cannot authenticate embedded operational success."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Explains that requested pagination limits do not establish received coverage, especially for ID2339, whose output ends without a result footer."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Preserves duplicate-reference accounting while refusing to certify first-provenance review without the original strings or a review receipt."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly restates bootstrap exclusion and preservation of existing identity, session and native UUID records in its boundary conditions."
+      }
+    ],
+    "blind_spots": [
+      "Neither response has the original packet bodies; apparent quotations from the supplied synopsis cannot be certified as verbatim original transcript text.",
+      "No file hashes, exact covered byte ranges or first-provenance duplicate receipts are available, so neither response establishes complete ingestion.",
+      "The packet cannot establish current deployed enforcement, present storage identity or no-loop native seed/sprout feasibility.",
+      "No substantive JEV question, answer or adjudication receipt is present; acknowledging the judge-only role does not constitute adjudication.",
+      "Underlying historical command receipts and linked worker histories remain necessary to distinguish documented defects from confirmed failures and completed repairs."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "request": 40,
+  "started": "2026-10-19T04:41:45.662243+00:00",
+  "finished": "2026-10-19T04:41:54.052931+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-00155aec5d268726016ad59f8c6bc487d0b197c9ae5b1922e4",
+    "created": 1792384908,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:301-600:raw\"}",
+                "name": "read"
+              },
+              "id": "call_EeqMA8M8rxhQ9rYUeUD7eLWP",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:601-900:raw\"}",
+                "name": "read"
+              },
+              "id": "call_X59uBDHVkqN6eqOzBNEzDzDG",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:901-1200:raw\"}",
+                "name": "read"
+              },
+              "id": "call_fIQDPQ7jEXRdJt8ljfHR4lXs",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading complete contract introduction\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt:1-2:raw\"}",
+                "name": "read"
+              },
+              "id": "call_qYBwqOeqT19xxvZD1tzCwenw",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 513,
+      "prompt_tokens": 43831,
+      "total_tokens": 44344,
+      "completion_tokens_details": {
+        "reasoning_tokens": 46
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 27142
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:41:54.049414+00:00",
+  "stream_chunks": 10
+}

@@ -5,7 +5,7 @@
 //! measured rather than assumed:
 //!
 //! 1. **One CozoDB writer.** The bridge owns the persistent `CognitiveServer`.
-//!    Historically, clients spawning the retired `op-cognitive-mcp --stdio`
+//!    Historically, clients spawning the retired `op-cognitive --stdio`
 //!    raced for its file lock and lost with `Resource temporarily unavailable`.
 //!    Routing through the bridge leaves exactly one owner.
 //!

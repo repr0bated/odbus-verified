@@ -28,6 +28,8 @@ pub const DEFAULT_LUNGS_SOCKET: &str = "/run/opdbus/lungs/lungs.sock";
 pub const LUNGS_OBJECT_PATH: &str = "/org/opdbus/v1/lungs";
 const NEGOTIATION_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_CONNECTIONS: usize = 64;
+/// Local HTTP control plane for rust-network-mgr (no private UDS).
+const NETWORK_MGR_HTTP: &str = "http://127.0.0.1:9100";
 
 /// This fd refers to the socket's original peer, even after its numeric PID is
 /// recycled. Opening a pidfd by that numeric PID would already be too late.
@@ -465,6 +467,88 @@ fn valid_session_id(session_id: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
 }
 
+/// Line-oriented rust-network-mgr control (`status`/`reload`/`ping`/`shutdown`).
+/// First byte is ASCII lowercase; D-Bus negotiation starts with NUL.
+fn looks_like_network_mgr_control(peek: &[u8]) -> bool {
+    let Some(&first) = peek.first() else {
+        return false;
+    };
+    if !first.is_ascii_lowercase() {
+        return false;
+    }
+    const COMMANDS: &[&[u8]] = &[b"status", b"reload", b"ping", b"shutdown"];
+    let line = peek
+        .split(|&byte| byte == b'\n' || byte == b'\r')
+        .next()
+        .unwrap_or(peek);
+    COMMANDS
+        .iter()
+        .any(|command| command.starts_with(line) || line.starts_with(*command))
+}
+
+async fn proxy_network_mgr_control(
+    mut stream: tokio::net::UnixStream,
+    peer_uid: u32,
+) -> Result<()> {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    let bridge_uid = nix::unistd::geteuid().as_raw();
+    ensure!(
+        peer_uid == bridge_uid,
+        "network-mgr lungs control requires bridge uid"
+    );
+
+    let mut reader = BufReader::new(&mut stream);
+    let mut line = String::new();
+    reader
+        .read_line(&mut line)
+        .await
+        .context("read network-mgr control command")?;
+    let command = line.trim();
+    let client = reqwest::Client::new();
+    let request = match command {
+        "status" => client.get(format!("{NETWORK_MGR_HTTP}/status")),
+        "reload" => client.post(format!("{NETWORK_MGR_HTTP}/reload")),
+        "ping" => client.get(format!("{NETWORK_MGR_HTTP}/health")),
+        "shutdown" => client.post(format!("{NETWORK_MGR_HTTP}/shutdown")),
+        _ => {
+            stream
+                .write_all(b"ERROR: Unknown command\n")
+                .await
+                .context("write unknown network-mgr command error")?;
+            return Ok(());
+        }
+    };
+    let response = request
+        .send()
+        .await
+        .with_context(|| format!("network-mgr HTTP {command}"))?;
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .context("read network-mgr HTTP body")?;
+    if status.is_success() {
+        stream
+            .write_all(body.as_bytes())
+            .await
+            .context("write network-mgr response")?;
+        if !body.ends_with('\n') {
+            stream
+                .write_all(b"\n")
+                .await
+                .context("write network-mgr response newline")?;
+        }
+    } else {
+        let message = format!("ERROR: HTTP {status}: {body}\n");
+        stream
+            .write_all(message.as_bytes())
+            .await
+            .context("write network-mgr HTTP error")?;
+    }
+    Ok(())
+}
+
 /// Access to the socket grants negotiation only; bootstrap and every operation
 /// authenticate kernel/native identity before capability admission.
 fn bind_socket(path: &Path) -> Result<tokio::net::UnixListener> {
@@ -515,6 +599,51 @@ pub async fn serve(
             Ok(peer) => peer,
             Err(_) => continue,
         };
+        let mut peek = [0u8; 16];
+        let peeked = match tokio::time::timeout(NEGOTIATION_TIMEOUT, stream.async_io(tokio::io::Interest::READABLE, || {
+            // SAFETY: the borrowed stream stays open and peek is writable for
+            // its full length. MSG_PEEK leaves protocol bytes for the consumer.
+            let count = unsafe {
+                libc::recv(
+                    stream.as_raw_fd(),
+                    peek.as_mut_ptr().cast(),
+                    peek.len(),
+                    libc::MSG_PEEK | libc::MSG_DONTWAIT,
+                )
+            };
+            if count < 0 {
+                Err(std::io::Error::last_os_error())
+            } else {
+                Ok(count as usize)
+            }
+        })).await {
+            Ok(Ok(n)) => n,
+            Ok(Err(error)) => {
+                tracing::warn!(%error, "lungs peek failed");
+                continue;
+            }
+            Err(_) => {
+                tracing::warn!("rejecting local socket peer: protocol probe timed out");
+                continue;
+            }
+        };
+        if peeked > 0 && looks_like_network_mgr_control(&peek[..peeked]) {
+            let peer_uid = credentials.uid();
+            tokio::spawn(async move {
+                let _permit = permit;
+                if let Err(error) = proxy_network_mgr_control(stream, peer_uid).await {
+                    tracing::warn!(%error, "network-mgr lungs control ended");
+                }
+            });
+            continue;
+        }
+        if peeked > 0 && peek[0] != 0 {
+            tracing::warn!(
+                first = peek[0],
+                "lungs connection refused: unknown non-D-Bus protocol"
+            );
+            continue;
+        }
         let router = router.clone();
         let identity = Arc::new(LungsIdentity::new(
             engine.clone(),
@@ -592,6 +721,17 @@ mod tests {
             native_uuid: "4dece3a4-d987-44a0-b8b5-d7cb27211ed0".into(),
             init: process(23, 100, 2, 3),
         }
+    }
+
+    #[test]
+    fn network_mgr_control_prefixes_are_detected() {
+        assert!(looks_like_network_mgr_control(b"status\n"));
+        assert!(looks_like_network_mgr_control(b"reload"));
+        assert!(looks_like_network_mgr_control(b"ping\n"));
+        assert!(looks_like_network_mgr_control(b"sh"));
+        assert!(!looks_like_network_mgr_control(&[0]));
+        assert!(!looks_like_network_mgr_control(b"PRI * HTTP/2.0\r\n"));
+        assert!(!looks_like_network_mgr_control(b"GET /"));
     }
 
     #[test]

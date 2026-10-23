@@ -1,0 +1,44 @@
+{
+  "request": 4,
+  "started": "2026-10-18T21:27:14.289386+00:00",
+  "finished": "2026-10-18T21:27:42.280202+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 5,
+    "panel_failures": 0,
+    "analysis_available": true
+  },
+  "tool_names": [],
+  "response": {
+    "id": "chatcmpl-0daf2bd679bcf1eb016ad539ccd98087d0b4e1a1df06a99f9b",
+    "created": 1792358860,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "<title>Implement threetched native schema consolidation</title>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 47,
+      "prompt_tokens": 4761,
+      "total_tokens": 4808,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1226
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:27:40.353334+00:00",
+  "stream_chunks": 3
+}

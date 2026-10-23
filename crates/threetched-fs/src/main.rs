@@ -13,7 +13,7 @@ mod store;
 #[path = "threetched-surface.rs"]
 mod threetched_surface;
 #[cfg(not(test))]
-use threetched_fs::threetched_surface;
+use tched_fs::threetched_surface;
 
 use std::fs;
 use std::io::Read;
@@ -33,7 +33,7 @@ use crate::store::{DEFAULT_STORE_DIR, ObjectStore};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "3tchedfs",
+    name = "3tched-fs",
     version,
     about = "Typed blob overlay filesystem for OP-DBUS"
 )]
@@ -61,6 +61,12 @@ enum Command {
         /// Write the view without advancing the current pointer.
         #[arg(long)]
         no_activate: bool,
+        /// Project only these sealed plugins, retaining the source catalog pin.
+        #[arg(long = "include-plugin", value_delimiter = ',', conflicts_with = "exclude_plugins")]
+        include_plugins: Vec<String>,
+        /// Omit these sealed plugins from this view, retaining their catalog authority.
+        #[arg(long = "exclude-plugin", value_delimiter = ',', conflicts_with = "include_plugins")]
+        exclude_plugins: Vec<String>,
     },
     /// Inspect an immutable view, workspace, or plugin object.
     Inspect {
@@ -141,6 +147,9 @@ enum Command {
     /// Mount a pinned immutable view or writable COW workspace through FUSE.
     Mount {
         mountpoint: PathBuf,
+        /// Visible kernel mount source label; this does not select an identity.
+        #[arg(long, default_value = "3tchedFS")]
+        fs_name: String,
         #[command(flatten)]
         target: TargetArgs,
         #[arg(long, default_value = DEFAULT_STATE_DIR)]
@@ -400,13 +409,27 @@ async fn main() -> Result<()> {
             state,
             schema_only,
             no_activate,
+            include_plugins,
+            exclude_plugins,
         } => {
             let source = SourceCatalog::new(catalog, state);
-            let snapshot = if schema_only {
+            let mut snapshot = if schema_only {
                 source.capture_schema_only()?
             } else {
                 source.capture()?
             };
+            for plugin in include_plugins.iter().chain(exclude_plugins.iter()) {
+                if !snapshot.objects.contains_key(plugin) {
+                    bail!("selected plugin '{plugin}' is absent from the sealed catalog");
+                }
+            }
+            snapshot.objects.retain(|plugin, _| {
+                (include_plugins.is_empty() || include_plugins.contains(plugin))
+                    && !exclude_plugins.contains(plugin)
+            });
+            if snapshot.objects.is_empty() {
+                bail!("plugin selection produces an empty filesystem view");
+            }
             print_json(&store.capture_snapshot(snapshot, !no_activate)?)?;
         }
         Command::Inspect { target, plugin } => {
@@ -594,6 +617,7 @@ async fn main() -> Result<()> {
         }
         Command::Mount {
             mountpoint,
+            fs_name,
             target,
             state,
             catalog,
@@ -605,6 +629,11 @@ async fn main() -> Result<()> {
             lungs_session,
             bus_address,
         } => {
+            if fs_name.is_empty() || fs_name.len() > 63
+                || !fs_name.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+            {
+                bail!("filesystem source name must contain 1-63 ASCII letters, digits, underscores or hyphens");
+            }
             if !mountpoint.is_dir() {
                 bail!("mountpoint {} is not a directory", mountpoint.display());
             }
@@ -637,7 +666,7 @@ async fn main() -> Result<()> {
             }
             filesystem = filesystem.with_catalog_dir(catalog)?;
             let mut options = vec![
-                MountOption::FSName("3tchedFS".to_string()),
+                MountOption::FSName(fs_name),
                 MountOption::Subtype("3tchedFS".to_string()),
                 MountOption::DefaultPermissions,
                 MountOption::NoDev,

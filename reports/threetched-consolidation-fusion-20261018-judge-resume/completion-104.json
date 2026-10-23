@@ -1,0 +1,63 @@
+{
+  "request": 104,
+  "started": "2026-10-18T22:03:27.149835+00:00",
+  "finished": "2026-10-18T22:03:35.036778+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e731e2f2e9d3cfc016ad5423272f487d08b85090eece46e5c",
+    "created": 1792361010,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading facade schema assertions\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model.rs:138-168\"}",
+                "name": "read"
+              },
+              "id": "call_mADBCSYpCln23m8XSbTFWtnd",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 154,
+      "prompt_tokens": 196932,
+      "total_tokens": 197086,
+      "completion_tokens_details": {
+        "reasoning_tokens": 41
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 127362
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:35.035436+00:00",
+  "stream_chunks": 4
+}

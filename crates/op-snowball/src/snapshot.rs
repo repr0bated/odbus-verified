@@ -24,6 +24,8 @@ pub enum SnapshotInterval {
     Daily,
     /// Snapshot every week
     Weekly,
+    /// Snapshots are requested explicitly by the storage owner, never by appends.
+    Manual,
 }
 
 impl SnapshotInterval {
@@ -42,6 +44,7 @@ impl SnapshotInterval {
             "hourly" | "1-hour" | "1h" => SnapshotInterval::Hourly,
             "daily" | "1-day" | "1d" => SnapshotInterval::Daily,
             "weekly" | "1-week" | "1w" => SnapshotInterval::Weekly,
+            "manual" => SnapshotInterval::Manual,
             _ => {
                 warn!("Invalid OPDBUS_SNAPSHOT_INTERVAL, defaulting to every-15-minutes");
                 SnapshotInterval::Every15Minutes
@@ -60,15 +63,16 @@ impl SnapshotInterval {
             "hourly" | "1-hour" | "1h" | "hour" => Some(SnapshotInterval::Hourly),
             "daily" | "1-day" | "1d" | "day" => Some(SnapshotInterval::Daily),
             "weekly" | "1-week" | "1w" | "week" => Some(SnapshotInterval::Weekly),
+            "manual" => Some(SnapshotInterval::Manual),
             _ => None,
         }
     }
 
     /// Get the duration for this interval
-    /// Returns None for PerOperation (snapshot on every change)
+    /// Returns None for PerOperation and Manual, which have no timed schedule.
     pub fn as_duration(&self) -> Option<Duration> {
         match self {
-            SnapshotInterval::PerOperation => None,
+            SnapshotInterval::PerOperation | SnapshotInterval::Manual => None,
             SnapshotInterval::EveryMinute => Some(Duration::from_secs(60)),
             SnapshotInterval::Every5Minutes => Some(Duration::from_secs(5 * 60)),
             SnapshotInterval::Every15Minutes => Some(Duration::from_secs(15 * 60)),
@@ -81,6 +85,9 @@ impl SnapshotInterval {
 
     /// Check if enough time has passed since the last snapshot
     pub fn should_snapshot(&self, elapsed: Duration) -> bool {
+        if matches!(self, SnapshotInterval::Manual) {
+            return false;
+        }
         match self.as_duration() {
             None => true, // PerOperation always snapshots
             Some(interval) => elapsed >= interval,
@@ -98,6 +105,7 @@ impl SnapshotInterval {
             SnapshotInterval::Hourly => "every hour",
             SnapshotInterval::Daily => "every day",
             SnapshotInterval::Weekly => "every week",
+            SnapshotInterval::Manual => "explicit storage-owner requests only",
         }
     }
 }
@@ -111,6 +119,16 @@ impl std::fmt::Display for SnapshotInterval {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn manual_interval_never_schedules_snapshots() {
+        for elapsed in [Duration::ZERO, Duration::from_secs(15 * 60), Duration::MAX] {
+            assert!(!SnapshotInterval::Manual.should_snapshot(elapsed));
+            assert!(SnapshotInterval::PerOperation.should_snapshot(elapsed));
+        }
+        assert!(!SnapshotInterval::Every15Minutes.should_snapshot(Duration::from_secs(899)));
+        assert!(SnapshotInterval::Every15Minutes.should_snapshot(Duration::from_secs(900)));
+    }
 
     #[test]
     fn test_duration() {

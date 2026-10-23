@@ -14,6 +14,8 @@ use std::{
 mod storage;
 
 const PLAN_DIR: &str = "/var/lib/op-dbus/identity-provision-plans";
+const PARTITIONED_POOL: &str = "/var/lib/incus/storage-pools/3tched-pool";
+const PARTITIONED_POOL_FSID: &str = "a1ab7b42-12a8-437c-8f65-d0469892c8dd";
 const MEMBERS: [&str; 7] = [
     "@",
     "@agent_memory",
@@ -102,7 +104,14 @@ fn canonical_key(key: &str) -> Result<()> {
 }
 
 impl CleanPlan {
+    fn native_name(&self) -> Result<&str> {
+        self.instance["name"].as_str().context("clean native name missing")
+    }
     fn validate(&self) -> Result<()> {
+        let native_name = self.native_name()?;
+        ensure!(native_name == CONTROL_PLANE_CHATBOT_CONTAINER || native_name == RESERVED_CHATBOT_CONTAINER
+            || op_cozo_store::is_numbered_native_name(native_name),
+            "invalid clean native name");
         canonical_key(&self.wireguard_pubkey)?;
         ensure!(
             matches!(self.version, 2 | 3 | 4)
@@ -116,8 +125,8 @@ impl CleanPlan {
             let layout = self.partitioned_overlay.as_ref().context("partitioned overlay pins absent")?;
             let root = &layout.root_partition;
             let upgrade = &layout.upgrade_partition;
-            ensure!(self.binding.device_path == "/var/lib/3tched-leaf-pool/3tchedChatbot.img"
-                && self.binding.mount_point == "/var/lib/3tched-leaf-pool/.mounts/3tchedChatbot/root"
+            ensure!(self.binding.device_path == format!("{PARTITIONED_POOL}/{native_name}.img")
+                && self.binding.mount_point == format!("{PARTITIONED_POOL}/.mounts/{native_name}/root")
                 && root.start_sector == 2048 && root.sectors >= 2_097_152
                 && root.start_sector.checked_add(root.sectors) == Some(upgrade.start_sector)
                 && upgrade.sectors >= 2_097_152
@@ -131,7 +140,7 @@ impl CleanPlan {
                 ensure!(uuid::Uuid::parse_str(value)?.to_string() == *value && uuids.insert(value),
                     "partition or filesystem identities are invalid or reused");
             }
-            ensure!(layout.host_upgrade_fsid == "5a88e7cd-9701-40a7-8301-ef076761886c",
+            ensure!(layout.host_upgrade_fsid == "7de8757c-6b8e-43d0-82fc-47e9da564775",
                 "host upgrade identity differs");
         } else {
             ensure!(self.partitioned_overlay.is_none(), "legacy plan includes partitioned layout");
@@ -184,10 +193,9 @@ impl CleanPlan {
                 && self.native_root
                     == format!(
                         "/var/lib/incus/storage-pools/{}/containers/{}/rootfs",
-                        self.pool_name, CONTROL_PLANE_CHATBOT_CONTAINER
+                        self.pool_name, native_name
                     )
                 && (self.version != 4 || self.pool_source == "/var/lib/incus-storage/identity-roots")
-                && self.instance["name"] == CONTROL_PLANE_CHATBOT_CONTAINER
                 && self.instance["type"] == "container"
                 && self.instance["status"] == "Stopped"
                 && self.instance["status_code"] == 102,
@@ -380,7 +388,7 @@ async fn native_proof(
     strict_stopped: bool,
 ) -> Result<(storage::StorageGuard, IncusInstance)> {
     let native = IncusRootRepairBackend::local();
-    let (instance, etag) = native.instance(CONTROL_PLANE_CHATBOT_CONTAINER).await?;
+    let (instance, etag) = native.instance(plan.native_name()?).await?;
     if strict_stopped {
         ensure!(
             instance == plan.instance && etag == plan.instance_etag,
@@ -477,7 +485,7 @@ pub(super) async fn observe_power(
     let instance = snapshot
         .instances
         .iter()
-        .find(|instance| instance.name == CONTROL_PLANE_CHATBOT_CONTAINER)
+        .find(|instance| sled.instance.as_ref().is_some_and(|stored| instance.name == stored.name))
         .context("clean native power readback absent")?
         .clone();
     ensure!(

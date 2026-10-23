@@ -35,12 +35,10 @@ pub const EMQX_LOG_DIR: &str = "/var/log/emqx";
 pub const EMQX_DASHBOARD_URL: &str = "http://127.0.0.1:18083";
 pub const EMQX_API_BASE: &str = "http://127.0.0.1:18083/api/v5";
 pub const EMQX_MQTT_TCP_BIND: &str = "127.0.0.1:1883";
-/// Doorbell listener: MQTT over WSS on the EMQX alias of ovsbr0.
-/// Browsers loaded over `https://10.0.0.3:8090` can only open `wss://`.
-pub const EMQX_MQTT_WSS_BIND: &str = "10.0.0.3:8084";
-/// EMQX alias on ovsbr0. Listeners may bind loopback or this address.
-/// Tonic `10.0.0.2` belongs on `rtly-lungs`, not on this alias.
-pub const EMQX_ALIAS_IP: &str = "10.0.0.3";
+/// Private WSS backend for the identity-gated wake relay on `10.0.0.2:8090`.
+pub const EMQX_MQTT_WSS_HOST: &str = "127.0.0.1";
+pub const EMQX_MQTT_WSS_PORT: u16 = 8085;
+pub const EMQX_MQTT_WSS_BIND: &str = "127.0.0.1:8085";
 /// Content-free wake topics. `<owner-key>` is the private-view owner key
 /// (`sha256(principal, session, genesis)`), so the broker never sees an
 /// identity. Payload is `{"seq": <scope revision>}` only.
@@ -175,7 +173,7 @@ pub struct EmqxState {
     pub listeners: Vec<EmqxDeclaredListener>,
     pub exhook: EmqxExhookDeclaration,
     /// EMQX's MCP Bridge is intentionally not installed. The only external
-    /// MCP endpoint is the bridge-owned `https://10.0.0.3:8090/mcp`.
+    /// MCP endpoint is the bridge-owned `https://10.0.0.2:8090/mcp`.
     pub mcp_gateway_installed: bool,
 }
 
@@ -675,7 +673,7 @@ fn local_endpoint(value: &str) -> bool {
         .unwrap_or(value);
     address
         .parse::<SocketAddr>()
-        .map(|address| address.ip().is_loopback() || address.ip().to_string() == EMQX_ALIAS_IP)
+        .map(|address| address.ip().is_loopback())
         .unwrap_or(false)
 }
 
@@ -1163,7 +1161,7 @@ async fn dispatch_emqx_method_on(
                 gateway_version: None,
                 topic_prefix: None,
                 internal_transport_only: true,
-                external_mcp_endpoint: "https://10.0.0.3:8090/mcp".to_string(),
+                external_mcp_endpoint: "https://10.0.0.2:8090/mcp".to_string(),
             })?
         }
         "list_listeners" => {
@@ -1531,7 +1529,7 @@ mod tests {
     }
 
     #[test]
-    fn declared_endpoints_are_local_or_fabric_and_mcp_gateway_is_absent() {
+    fn declared_endpoints_are_loopback_or_uds_and_mcp_gateway_is_absent() {
         let state = EmqxState::declared();
         assert!(state
             .listeners

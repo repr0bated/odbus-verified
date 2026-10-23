@@ -1,0 +1,88 @@
+{
+  "request": 7,
+  "started": "2026-10-19T06:04:20.595659+00:00",
+  "finished": "2026-10-19T06:04:41.923435+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e4885ce056893c9016ad5b2e77b1087d09a19be956505be38",
+    "created": 1792389863,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Comparing current binder source\",\"command\":\"diff -u reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/bind-instance-root.sh deploy/scripts/bind-instance-root.sh\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_RIw2mmqiV1TZkCDjv52qLcjw",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Comparing current restoration source\",\"command\":\"diff -u reports/provisioning-fusion-20261019/evidence/source/deploy/runit/libexec-3tched/restore-chatbot-root deploy/runit/libexec-3tched/restore-chatbot-root\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_Rlm7Faud0Sncky8lSB27lGgD",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading completed mapping selector\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/bind-instance-root.sh:138-149\"}",
+                "name": "read"
+              },
+              "id": "call_di90L0Je8ydnQTLbjeDdqY5V",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading retained historical overlay summary\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/HistoricalScripts.md:85-137\"}",
+                "name": "read"
+              },
+              "id": "call_RxXbqs48Jn9nszwUF1IOlofD",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1022,
+      "prompt_tokens": 242588,
+      "total_tokens": 243610,
+      "completion_tokens_details": {
+        "reasoning_tokens": 396
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 178766
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:04:41.921237+00:00",
+  "stream_chunks": 10
+}

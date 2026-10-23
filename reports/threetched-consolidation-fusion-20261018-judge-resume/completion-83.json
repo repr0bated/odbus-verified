@@ -1,0 +1,65 @@
+{
+  "request": 83,
+  "started": "2026-10-18T22:01:44.485760+00:00",
+  "finished": "2026-10-18T22:01:54.362839+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0860ce02d037aaeb016ad541cb43b087d09956ccb2542c8d3b",
+    "created": 1792360907,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Awaiting scoped source receipts\"}",
+                "name": "wait"
+              },
+              "id": "call_hn8xU2Ndm7HNyPQTT6DflVkr",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The next source cutover removes two router accessors, seven LLM facades, and `gemma_brain.route`. Canonical router grants and generation-origin checks remain unchanged. Build, isolated sealing, and generated-view refresh still await the provisioning worker\u2019s compiler-release receipt.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 317,
+      "prompt_tokens": 279948,
+      "total_tokens": 280265,
+      "completion_tokens_details": {
+        "reasoning_tokens": 175
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 189359
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:54.361228+00:00",
+  "stream_chunks": 5
+}

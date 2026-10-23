@@ -295,6 +295,13 @@ pub(super) fn verify(plan: &CleanPlan) -> Result<StorageGuard> {
     }
     let mut files = vec![seed, leaf, volume, guest, native];
     if plan.version == 4 {
+        let pool = open(Path::new(PARTITIONED_POOL), true)?;
+        let pool_meta = pool.metadata()?;
+        fs_info(&pool, PARTITIONED_POOL_FSID)?;
+        ensure!(subvolume(&pool)? == 5 && pool_meta.ino() == 256
+            && leaf_meta.dev() == pool_meta.dev(),
+            "private image is not on the pinned top-level pool; refusing host-root fallback");
+        files.push(pool);
         files.extend(partitioned::verify_overlay(plan, &files[1], &leaf_meta, &files[3], &files[4])?);
     }
     for member in MEMBERS {

@@ -1,0 +1,96 @@
+{
+  "request": 53,
+  "started": "2026-10-19T04:41:54.088948+00:00",
+  "finished": "2026-10-19T04:42:05.280463+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-09b5a6ce53a3a4a9016ad59f94e5b887d0b9b45d572f43a2cd",
+    "created": 1792384916,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:1201-1500:raw\"}",
+                "name": "read"
+              },
+              "id": "call_mV0yPznLzt74QYBOM28VrBq2",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:1501-1800:raw\"}",
+                "name": "read"
+              },
+              "id": "call_PY1dB3Fxhvz7RIT4ZzRR7IEr",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:1801-2100:raw\"}",
+                "name": "read"
+              },
+              "id": "call_tgeXscgg7O1yYGhEaoPoopqo",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:2101-2212:raw\"}",
+                "name": "read"
+              },
+              "id": "call_MzCiJgZBemQJfpVyPquujFv3",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Listing supplied packet names\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/\"}",
+                "name": "read"
+              },
+              "id": "call_VX15VRZCT4FCUUDiM1o0aqAQ",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 728,
+      "prompt_tokens": 63265,
+      "total_tokens": 63993,
+      "completion_tokens_details": {
+        "reasoning_tokens": 151
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 46560
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:42:05.278009+00:00",
+  "stream_chunks": 12
+}

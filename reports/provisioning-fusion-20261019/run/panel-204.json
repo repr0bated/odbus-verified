@@ -1,0 +1,95 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review: assess key conclusions/limits from this packet summary without executing anything. Astra ProvisionShellConsumers rows49-61 on 2026-10-19: grep results show prepare-instance-disk creates readonly seed loop plus image partition loops; sync restores loops; op-identity-root checks blockRO, SEEDING FSID/generation, exact loop BACK-FILE/RO/REF. Worker messages identify shell adoption part-only lsblk rejecting LVM and bind requiring idmap.current although candidate has only next. Messages delivered/injected to OwnerPaths/Main, not proof implemented. Row60 edit and row61 partial result show changes to five shell/runit files: pool /var/lib/incus/storage-pools/3tched-pool exact btrfs FSROOT / UUID a1ab7b42-12a8-437c-8f65-d0469892c8dd != host root; canonical root-owned no group/world-write ancestry; private receipt dirs0700/files0600; part|lvm seed + retained readonly loop exact backing/offset0/sizelimit0/FSID; exact UID/GID Hostid1000000 Nsid0 range1000000000, accept next if current absent and reject mismatch; host upgrade FSID switched to 7ac6c955-4028-439c-80b4-c55a647abcb4. Latest governing owner prohibits ALL host loops including pool, preference image-free only preserving immutable seed/sprout, isolated writes, upgrade replica send/receive root composition unprivileged native Incus admission proofs durable recovery final CAS/adoption/start. Packet opens mid SIGNALS.md truncated tool result (870 lines file601731 bytes, view 78 lines plus125/126/870, 768-char line truncation); closes mid row61 diff. Signals report deleted seeds pinned on loops, hidden namespace mount pinning blocking up, Cozo leaf.img vs live FSID mismatch, missing chatbot FUSE recovery lane, no-session incus mutation logs, historical source/test/security and partial deployment reports. Row58 error135168 auto-retry recovered; exact error is duplicate pointer absent. Row59 agent-attributed steering content duplicate pointer absent. Need distinguish observed source edit vs deployment, retrospective latest-owner discrepancy vs proof worker ignored correction, preserve parent mismatches and duplicate-reference limitations. Give concise independent pitfalls/conclusions.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"Astra ProvisionShellConsumers rows49-61 (summary-only packet; original packet ID unavailable)\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"ids_row_source\": \"ProvisionShellConsumers, rows49-61, 2026-10-19; supplied summary of grep results\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"prepare-instance-disk creates readonly seed loop plus image partition loops; sync restores loops\",\n      \"classification\": \"Reported observation; underlying grep output unavailable\",\n      \"stage\": \"Storage establishment and stopped-boot restoration\",\n      \"actual_tool_result\": \"The summary reports loop creation/restoration in shell sources, not execution of those paths.\",\n      \"conclusion\": \"The described implementation conflicts with the latest prohibition on every host loop device. Read-only seed mappings and an existing pool loop are not exemptions. Cozo associations do not supply kernel block devices.\",\n      \"correction_propagation_or_discrepancy\": \"This is a retrospective architectural discrepancy. The packet does not establish that this worker received the later absolute prohibition and ignored it. Existing backing must not be detached during this investigation.\"\n    },\n    {\n      \"ids_row_source\": \"ProvisionShellConsumers, worker messages within rows49-61; exact message IDs and rows unavailable\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"shell adoption part-only lsblk rejecting LVM and bind requiring idmap.current although candidate has only next\",\n      \"classification\": \"Reported worker diagnosis, not independently verified runtime failure\",\n      \"stage\": \"Storage proof, root binding and adoption prerequisites\",\n      \"actual_tool_result\": \"Messages reportedly reached OwnerPaths/Main; no corresponding successful adoption or bind receipt is supplied.\",\n      \"conclusion\": \"These are concrete candidate interface mismatches: admissible block-device classification and pending-versus-current native idmap state. Neither establishes the sole reason provisioning remained unfinished.\",\n      \"correction_propagation_or_discrepancy\": \"Delivery or injection proves communication only. Full delegate-to-parent mapping, implementation and downstream acceptance remain unverified. Accepting an existing LVM-backed seed would not authorize adding LVM management.\"\n    },\n    {\n      \"ids_row_source\": \"ProvisionShellConsumers, row60 edit and row61 partial result\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"changes to five shell/runit files\",\n      \"classification\": \"Reported source-edit observation with truncated result\",\n      \"stage\": \"Native preparation, storage validation and boot wiring\",\n      \"actual_tool_result\": \"An edit and partial diff are described; complete filenames, patch outcome and final file contents are unavailable here.\",\n      \"conclusion\": \"The strongest supported completion claim is partial source-edit evidence. It does not prove installation, build success, deployment, base-service replacement, runtime acceptance, authoritative adoption or startup.\",\n      \"correction_propagation_or_discrepancy\": \"Application helper staging and installed base runit service must remain separate evidence categories. A five-file edit cannot establish end-to-end integration.\"\n    },\n    {\n      \"ids_row_source\": \"ProvisionShellConsumers, rows60-61\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"private receipt dirs0700/files0600\",\n      \"classification\": \"Reported source safeguards\",\n      \"stage\": \"Storage admission and privileged helper validation\",\n      \"actual_tool_result\": \"The partial edit reportedly checks exact Btrfs FSROOT '/', pool UUID a1ab7b42-12a8-437c-8f65-d0469892c8dd, separation from host root, canonical root-owned ancestry without group/world write, and private receipt permissions.\",\n      \"conclusion\": \"These are important safeguards to preserve, but source checks are not runtime proofs. The stated pool path /var/lib/incus/storage-pools/3tched-pool must not be assumed equivalent to the recorded native pool named 3tched.\",\n      \"correction_propagation_or_discrepancy\": \"Exact native pool identity, mounted destination, FSID and backing must reconcile across source, installed helpers and authoritative receipts. A correct FSID alone does not establish non-loop backing.\"\n    },\n    {\n      \"ids_row_source\": \"ProvisionShellConsumers, rows60-61\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"accept next if current absent and reject mismatch\",\n      \"classification\": \"Reported source correction; full branch logic unavailable\",\n      \"stage\": \"Native idmap validation before root binding\",\n      \"actual_tool_result\": \"The edit reportedly requires UID and GID mappings with Hostid1000000, Nsid0 and range1000000000, allowing next only when current is absent and rejecting mismatch.\",\n      \"conclusion\": \"This plausibly addresses a stopped candidate that has pending mapping only. It must remain exact identity-bound validation, not a general fallback permitting missing or inconsistent native state.\",\n      \"correction_propagation_or_discrepancy\": \"The partial diff cannot establish handling of extra mappings, malformed values, conflicting current/next state, native UUID binding or continued unprivileged/nonnested isolation.\"\n    },\n    {\n      \"ids_row_source\": \"ProvisionShellConsumers, rows60-61\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"host upgrade FSID switched to 7ac6c955-4028-439c-80b4-c55a647abcb4\",\n      \"classification\": \"Reported source correction\",\n      \"stage\": \"Initial upgrade pairing and subsequent send/receive\",\n      \"actual_tool_result\": \"An expected-FSID change is reported; no successful receive or pairing receipt is provided.\",\n      \"conclusion\": \"Updating a constant does not prove that every consumer now uses the same destination, that the destination is mounted, or that ancestry and replica pairing are valid. The retained exact read-only loop checks remain incompatible with the latest no-loop constraint.\",\n      \"correction_propagation_or_discrepancy\": \"The five-file change must be reconciled with sync and restoration versions. It neither proves subvolume-only feasibility nor proves native Incus integration impossible.\"\n    },\n    {\n      \"ids_row_source\": \"Opening SIGNALS.md tool-result fragment; exact message ID unavailable\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"deleted seeds pinned on loops\",\n      \"classification\": \"Historical reported claims, not current runtime observations\",\n      \"stage\": \"Recovery, storage reconciliation and admission\",\n      \"actual_tool_result\": \"Only a truncated document view is described. Reports include hidden-namespace mount pinning, Cozo leaf.img versus live-FSID mismatch, a missing chatbot FUSE recovery lane, no-session Incus mutation logs and partial deployment/security claims.\",\n      \"conclusion\": \"These are relevant leads for ownership, durable recovery and authorization review. They do not by themselves prove current pinning, a current bypass, or the current provisioning blocker.\",\n      \"correction_propagation_or_discrepancy\": \"Each claim needs its underlying dated call/result and subsequent repair history. Later repairs must not be erased by recycling stale failures.\"\n    },\n    {\n      \"ids_row_source\": \"ProvisionShellConsumers, row58 followed by row59\",\n      \"original_short_quote\": null,\n      \"summary_quote\": \"error135168 auto-retry recovered\",\n      \"classification\": \"Reported tool recovery and unavailable duplicate references\",\n      \"stage\": \"Evidence acquisition and correction provenance\",\n      \"actual_tool_result\": \"Row58 reportedly recovered through automatic retry, but its exact error text is unavailable. Row59 contains agent-attributed steering with an absent duplicate pointer.\",\n      \"conclusion\": \"Do not interpret 135168 as a specific shell exit status or an unresolved provisioning failure. Do not elevate agent-attributed steering into a verified owner instruction.\",\n      \"correction_propagation_or_discrepancy\": \"Neither duplicate can be marked independently reviewed without its first provenance and exact string. Retry success establishes only recovery of that tool step.\"\n    }\n  ],\n  \"truncations_unavailable\": [\n    \"Original rows49-61, original message/tool IDs, full arguments/results and exact source quotations were not supplied; only their summary was reviewed.\",\n    \"Opening SIGNALS.md result is described as an 870-line, 601731-byte file with a partial 78-line view, references to 125/126/870 and 768-character line truncation. Missing text cannot be reconstructed.\",\n    \"Row61 ends mid-diff; the complete five-file modification and final result are unavailable.\",\n    \"Row58 exact-error duplicate provenance and row59 steering duplicate provenance are absent.\",\n    \"Active/compacted flags, parent IDs and the reported parent mismatches cannot be reconstructed from this summary.\"\n  ],\n  \"boundary_dependencies\": [\n    \"Retrieve original ordered rows and first-provenance duplicate strings before claiming full packet coverage.\",\n    \"Reconcile worker delivery/injection records with parent acknowledgments, subsequent patches and installed versions.\",\n    \"Trace admission through native preparation, storage, receive/pairing, binding, final digest/revision CAS, adoption, start and recovery using authoritative receipts.\",\n    \"Assess no-loop and image-free feasibility against actual supported seed/sprout primitives; neither copied roots nor snapshots may silently replace the seed contract.\",\n    \"Any substantive design adjudication still requires saved native JEV judge questions, evidence and returned answers; none occurred in this review.\"\n  ],\n  \"uncertainty\": {\n    \"scope\": \"Only the supplied summary was assessed, not the original packet or complete conversation corpus.\",\n    \"bottom_line\": \"The summary supports partial hardening work and unresolved architectural/integration drift, not completed provisioning or a uniquely established root cause.\",\n    \"actions\": \"No commands, filesystem access, writes, tests, builds, deployments or judge calls were executed.\"\n  }\n}"
+    }
+  ],
+  "analysis": {
+    "consensus": [],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Assesses the supplied summary only and explicitly declines full packet or corpus coverage. Original rows, exact quotations, tool arguments/results, parent links and active/compacted metadata remain unverified."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Identifies source-level hardening and candidate interface mismatches, but cannot verify complete edits, propagation into installed helpers and base runit wiring, or successful binding, adoption and startup."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Recognizes the conflict between retained loop-based storage and the latest absolute no-host-loop rule, without resolving whether supported native primitives can preserve all seed/sprout and upgrade semantics."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Treats SIGNALS reports as historical leads requiring underlying receipts and repair chronology rather than established current blockers."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Separates retrospective incompatibility with the latest owner constraint from evidence that the worker received and ignored that correction."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Distinguishes worker-message delivery from implementation, and a partial source diff from installation, deployment or authoritative provisioning completion."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Notes that exact filesystem UUID validation does not prove non-loop backing, and that the path ending in 3tched-pool must not automatically be equated with the native pool named 3tched."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Treats accepting an existing LVM-backed seed as distinct from authorizing new LVM management."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Flags that accepting idmap.next when current is absent needs complete branch inspection; the partial diff does not establish rejection of extra mappings or preservation of native UUID and isolation checks."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Does not decode error135168 into an unsupported failure meaning or promote agent-attributed steering into a verified owner correction when duplicate provenance is missing."
+      }
+    ],
+    "blind_spots": [
+      "Only one panel response was supplied; cross-model agreement, disagreement and independent corroboration cannot be assessed.",
+      "The response discusses row58 and row59 after rows60\u201361 rather than preserving the packet's physical order, although it retains the row references.",
+      "The reported parent mismatches remain unspecified; neither their exact identities nor their consequences can be evaluated from this summary.",
+      "No original evidence establishes the complete five-file patch outcome, current deployment state, end-to-end provisioning root cause or feasibility of the requested no-loop design.",
+      "No saved JEV adjudication of these substantive conclusions is present."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

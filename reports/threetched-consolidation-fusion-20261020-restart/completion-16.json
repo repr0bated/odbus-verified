@@ -1,0 +1,65 @@
+{
+  "request": 16,
+  "started": "2026-10-20T17:04:00.939241+00:00",
+  "finished": "2026-10-20T17:04:16.777861+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-09cdce7486820f1f016ad79f073cbc87d1a0c943aad0839bb3",
+    "created": 1792515847,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading structured judge interface\",\"path\":\"xd://eval/judge\"}",
+                "name": "read"
+              },
+              "id": "call_rmanhMTdxPxfbiDKLG2VU755",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The old release blocker is superseded by later Hermes receipts. I\u2019m checking whether that completed build, isolated catalog and generated bindings already cover all 33 retirements before repeating anything. The mounted views now show 70 main plugins and two upstream plugins; directory enumeration returns EIO, so this does not establish operation readiness."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 474,
+      "prompt_tokens": 223550,
+      "total_tokens": 224024,
+      "completion_tokens_details": {
+        "reasoning_tokens": 234
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 179652
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:04:16.776150+00:00",
+  "stream_chunks": 5
+}

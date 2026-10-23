@@ -1,0 +1,85 @@
+{
+  "status": "ok",
+  "query": "Bounded document review task: review supplied historical provisioning packets only as secondary claims, preserve original citations, explicitly classify unrelated material, avoid treating history as fresh runtime proof. What concise evidence distinctions should be retained in the report? Do not access tools, files, or perform any action.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Report paths: None.\n\nFailures:\n- Mandatory preload, review contract, and original packets were not available in the supplied text; complete packet review cannot be claimed.\n- No report was persisted. Supplied historical summaries remain secondary claims\u2014not fresh runtime proof, verified current blockers, or evidence that provisioning completed."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Evidence distinctions to retain in the report\n\n**1. Source tier vs. claim tier.** Every record should carry a status: *exported/available* \u2192 *read (by whom, which ranges)* \u2192 *panel-reviewed* \u2192 *JEV-adjudicated*. A path in the manifest is not ingestion; a summary is not the original. Cite original record IDs (e.g. Hermes 4127, Astra `e84b7ba8`, Kiro cancelled write) alongside any paraphrase.\n\n**2. Historical vs. current.** All 42 sessions, 49 snapshots, and 65 blobs are **secondary claims about past states**, not fresh runtime verification. Explicitly state: no cold-reboot proof, no guest-boot/sole-8090 proof, no Guard/AppArmor runtime evidence, no proof today's subvolume-only/no-host-loop architecture works. Working-tree snapshots \u2260 commit `051a20d`; installed helpers \u2260 source snapshots \u2260 historical blobs \u2014 never interchangeable.\n\n**3. Owner instruction vs. agent interpretation vs. tool action.** The drift ledger must separate: original ask \u2192 agent interpretation \u2192 actual tool result \u2192 owner correction \u2192 propagation \u2192 residual discrepancy. Classify each drift as legitimate clarification, agent-added work, stale evidence, genuine failure, or incomplete execution. The 87 Astra `custom_message/live-delegation` corrections are owner instructions, not ordinary user messages; Hermes role=user worker injections are not owner instructions.\n\n**4. Superseded vs. live constraints.** Mark precedence explicitly: latest owner constraints (no host loops at all; subvolume-only preference; JEV as judge only) override historical wording (e.g. Kiro's narrower loop phrasing, Astra `e1aa9d0e`). Historical approvals are not current authorization; the final Hermes denial is superseded by later Oct19 repairs.\n\n**5. Genuine failure vs. notification status vs. retracted claim.** Judge underlying commands, not wrappers (Claude exit0 wrapper vs. exit101 build receipt). Distinguish genuine failures (`fsconfig: File exists`, `seed is not sealed`) from retracted claims (old `/dev/sdc2` as required seed) and from unfinished checks presented as blockers (Hermes 4012\u20134032).\n\n**6. Conflicts left open, not resolved.** Pool `3tched` on `/dev/loop0` is a recorded conflict with no-host-loops \u2014 flag, don't exempt. Old-FSID sync vs. new-FSID drafts; installed `identity-roots` old wiring; Oct5 manual-vs-scripted leaf receipts unreconciled; filesystem-prepare-intent \u2260 completion.\n\n**7. Unrelated material classified, not deleted.** Rejected extra egress, unrelated network daemon, model-routing/jev-router material, bootstrap (out of scope) \u2014 label as out-of-scope and do not reintroduce as prerequisites.\n\n**8. Truncation honesty.** Historical tool-output truncation is a declared limitation; never reconstruct silently. Duplicates read once must keep every duplicate reference accounted for in `coverage.json`.\n\n**Bottom line:** the report should let a reader reconstruct, per claim, *what was actually observed, when, by which agent, with what original ID, and whether it binds today* \u2014 nothing promoted from \"history says\" to \"currently true\" without a separate runtime-evidence note."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Historical summaries must not be promoted to fresh runtime proof or evidence that provisioning completed.",
+      "Evidence availability and actual review must be distinguished; supplied paths or summaries do not establish complete packet ingestion."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Reports unavailable prerequisites and lack of persistence, but does not provide the requested evidence distinctions, citation practices, or classification of unrelated material."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Provides detailed distinctions using the supplied preliminary anchors, but does not explicitly delimit its answer as guidance rather than completed original-packet review."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly disclaims complete packet review and persisted reports when the mandatory preload, review contract, and original packets were not supplied in the text."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Separates exported, available, read, panel-reviewed, and JEV-adjudicated evidence states, with original IDs and duplicate-reference accounting."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Distinguishes owner corrections, worker injections, agent interpretations, actual tool results, and whether corrections propagated into implementation."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Separates underlying command failures from wrapper success notifications, retracted prerequisite claims, superseded admission failures, and unfinished checks."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Preserves distinctions among working-tree snapshots, installed helpers, and immutable commit blobs, and identifies unresolved conflicts without claiming authority to repair them."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Explicitly classifies rejected networking additions, routing proposals, and bootstrap work as unrelated or out of scope rather than prerequisites."
+      }
+    ],
+    "blind_spots": [
+      "Neither response demonstrates review of original packets; substantive historical details remain attributed to the supplied preliminary anchors.",
+      "Calling all historical records secondary claims is too broad: original tool receipts can be primary evidence of a past action or result, while still not proving current runtime state.",
+      "The responses do not fully distinguish proposed actions, attempted calls, cancelled writes, successful execution, durable adoption, and verified startup as separate completion states.",
+      "Citation guidance should retain source file, physical record order, parent links, timestamps, and active or compacted flags alongside message IDs.",
+      "Missing original packets limits review claims, but does not prevent answering the bounded conceptual question from the supplied text."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "EmptyPanelResponse",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

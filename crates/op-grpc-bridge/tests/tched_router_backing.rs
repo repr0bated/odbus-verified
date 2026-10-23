@@ -442,48 +442,6 @@ async fn dispatch_mcp(
         .await
 }
 
-async fn dispatch_llm(
-    engine: &MutationEngine,
-    caller: &op_grpc_bridge::mutation_engine::SessionContext,
-    method: &str,
-    args: Value,
-) -> anyhow::Result<Value> {
-    use op_state::StatePlugin;
-    let schema = op_plugins::state_plugins::large_language_model::LargeLanguageModelPlugin::new()
-        .schema()
-        .unwrap();
-    engine
-        .dispatch_method_call_with_identity(
-            "large_language_model",
-            method,
-            &args.to_string(),
-            schema.methods[method].required_capability.as_deref(),
-            &op_identity::session::derive_principal_id(&caller.wireguard_pubkey),
-            Some(&caller.session_id),
-            Some(&caller.genesis_hex),
-        )
-        .await
-}
-
-#[test]
-fn gemma_route_uses_the_exact_tched_router_resolve_contract() {
-    use op_state::StatePlugin;
-    let gemma = op_plugins::state_plugins::gemma_brain::GemmaBrainPlugin::new()
-        .schema()
-        .unwrap();
-    let router = op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
-        .schema()
-        .unwrap();
-    let facade = &gemma.methods["route"];
-    let target = &router.methods["ResolveRoute"];
-    assert_eq!(facade.args, target.args);
-    assert_eq!(facade.returns, target.returns);
-    assert_eq!(facade.side_effect, target.side_effect);
-    assert_eq!(facade.idempotent, target.idempotent);
-    assert_eq!(facade.subid, "obs.service.gemma.route@v2");
-    assert_eq!(facade.required_capability.as_deref(), Some("gemma.invoke"));
-}
-
 #[tokio::test]
 async fn canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure() {
     use op_state::StatePlugin;
@@ -531,9 +489,6 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     let schema = op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
         .schema()
         .unwrap();
-    let gemma_schema = op_plugins::state_plugins::gemma_brain::GemmaBrainPlugin::new()
-        .schema()
-        .unwrap();
     let schemas = [
         op_plugins::state_plugins::human_principal::HumanPrincipalPlugin::new()
             .schema()
@@ -542,10 +497,6 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .schema()
             .unwrap(),
         schema.clone(),
-        gemma_schema.clone(),
-        op_plugins::state_plugins::large_language_model::LargeLanguageModelPlugin::new()
-            .schema()
-            .unwrap(),
         op_plugins::state_plugins::ctl_plane_chatbot::CtlPlaneChatbotPlugin::new()
             .schema()
             .unwrap(),
@@ -623,7 +574,6 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     let actor = op_identity::session::derive_principal_id(&public_key);
     let grants = root.path().join("grants.json");
     let mut capabilities = schema.capabilities.keys().cloned().collect::<Vec<_>>();
-    capabilities.push("gemma.invoke".to_owned());
     capabilities.extend(["mcp.read".to_owned(), "mcp.write".to_owned()]);
     std::fs::write(
         &grants,
@@ -724,33 +674,15 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     );
     assert_eq!(fixture.inner.lock().await.writes, writes_before_cross_alias);
 
-    // Gemma's retained route facade must reach the same admitted router
-    // resolver and preserve its typed provider/model selection.
+    // Resolve through the canonical admitted router and preserve its typed
+    // provider/model selection without a second facade capability.
     let principal_id = op_identity::session::derive_principal_id(&caller.wireguard_pubkey);
-    let route = engine
-        .dispatch_method_call_with_identity(
-            "gemma_brain",
-            "route",
-            &json!({"hint":"old-model"}).to_string(),
-            Some("gemma.invoke"),
-            &principal_id,
-            Some(&caller.session_id),
-            Some(&caller.genesis_hex),
-        )
+    let route = dispatch(&engine, &caller, "ResolveRoute", json!({"hint":"old-model"}))
         .await
         .unwrap();
     assert_eq!(route["result"]["route"]["hint"], "runtime");
     assert_eq!(route["result"]["route"]["provider"], "ollama");
     assert_eq!(route["result"]["route"]["model"], "old-model");
-    let native_route = dispatch(
-        &engine,
-        &caller,
-        "ResolveRoute",
-        json!({"hint":"old-model"}),
-    )
-    .await
-    .unwrap();
-    assert_eq!(route["result"], native_route["result"]);
 
     // External MCP configuration is owned by the same native router and its
     // committed SHM projection, not by a second file-based plugin manager.
@@ -851,23 +783,19 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     );
     fixture.inner.lock().await.write_fail = false;
 
-    let error = engine
-        .dispatch_method_call_with_identity(
-            "gemma_brain",
-            "route",
-            &json!({"hint":"not-an-observed-native-route"}).to_string(),
-            Some("gemma.invoke"),
-            &principal_id,
-            Some(&caller.session_id),
-            Some(&caller.genesis_hex),
-        )
-        .await
-        .unwrap_err();
+    let error = dispatch(
+        &engine,
+        &caller,
+        "ResolveRoute",
+        json!({"hint":"not-an-observed-native-route"}),
+    )
+    .await
+    .unwrap_err();
     assert!(format!("{error:#}").contains("not declared by the native runtime"));
 
-    // Removing the nested router grant stops before the native target.
+    // Removing the exact router grant stops before native observation.
     let before_denial = fixture.requests.load(Ordering::SeqCst);
-    let without_nested = capabilities
+    let without_route = capabilities
         .iter()
         .filter(|capability| *capability != "cap.software.3tched-router.route.resolve@v1")
         .cloned()
@@ -875,57 +803,37 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     std::fs::write(
         &grants,
         serde_json::to_vec(
-            &serde_json::json!({(principal_id.clone()): {"capabilities": without_nested}}),
+            &serde_json::json!({(principal_id.clone()): {"capabilities": without_route}}),
         )
         .unwrap(),
     )
     .unwrap();
-    let error = engine
-        .dispatch_method_call_with_identity(
-            "gemma_brain",
-            "route",
-            &json!({"hint":"old-model"}).to_string(),
-            Some("gemma.invoke"),
-            &principal_id,
-            Some(&caller.session_id),
-            Some(&caller.genesis_hex),
-        )
+    let error = dispatch(&engine, &caller, "ResolveRoute", json!({"hint":"old-model"}))
         .await
         .unwrap_err();
-    assert!(format!("{error:#}").contains("exact nested"));
+    assert!(format!("{error:#}").contains("current exact backend capability grant is required"));
     assert_eq!(fixture.requests.load(Ordering::SeqCst), before_denial);
-    for (outer_granted, session, args) in [
+    std::fs::write(
+        &grants,
+        serde_json::to_vec(&json!({
+            (principal_id.clone()): {"capabilities":capabilities}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    for (session, args) in [
+        (None, json!({"hint":"old-model"})),
         (
-            false,
-            Some(caller.session_id.as_str()),
-            json!({"hint":"old-model"}),
-        ),
-        (true, None, json!({"hint":"old-model"})),
-        (true, Some(caller.session_id.as_str()), json!({"hint":""})),
-        (
-            true,
             Some(caller.session_id.as_str()),
             json!({"hint":"old-model", "unknown":true}),
         ),
     ] {
-        let current_grants = capabilities
-            .iter()
-            .filter(|capability| outer_granted || capability.as_str() != "gemma.invoke")
-            .collect::<Vec<_>>();
-        std::fs::write(
-            &grants,
-            serde_json::to_vec(&json!({
-                (principal_id.clone()): {"capabilities":current_grants}
-            }))
-            .unwrap(),
-        )
-        .unwrap();
         let result = engine
             .dispatch_method_call_with_identity(
-                "gemma_brain",
-                "route",
+                "tched_router",
+                "ResolveRoute",
                 &args.to_string(),
-                Some("gemma.invoke"),
+                Some("cap.software.3tched-router.route.resolve@v1"),
                 &principal_id,
                 session,
                 Some(&caller.genesis_hex),
@@ -933,18 +841,16 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .await;
         assert!(
             result.is_err(),
-            "invalid or unauthorized Gemma route reached its target"
+            "invalid or unauthenticated ResolveRoute reached its native backend"
         );
         assert_eq!(fixture.requests.load(Ordering::SeqCst), before_denial);
     }
-    std::fs::write(
-        &grants,
-        serde_json::to_vec(
-            &serde_json::json!({(principal_id.clone()): {"capabilities": capabilities}}),
-        )
-        .unwrap(),
-    )
-    .unwrap();
+    // Empty hints are rejected by the canonical resolver after observation,
+    // rather than by the removed facade's preflight.
+    let error = dispatch(&engine, &caller, "ResolveRoute", json!({"hint":""}))
+        .await
+        .unwrap_err();
+    assert!(format!("{error:#}").contains("hint must not be empty"));
     // A selected property is not sufficient authority when its profile is
     // absent from the configured provider enumeration.
     fixture.inner.lock().await.omit_reference_from_list = Some("ollama.main".into());
@@ -1370,7 +1276,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .iter()
             .any(|route| route["provider"] == "openai" && route["model"] == "new-model")
     );
-    let providers = dispatch(&engine, &caller, "GetProviderCatalog", json!({}))
+    let providers = dispatch(&engine, &caller, "ListProviders", json!({}))
         .await
         .unwrap();
     assert!(
@@ -1401,22 +1307,22 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         "old-alt"
     );
 
-    // Every unary LLM facade must execute the native router owner. Check
-    // selection effects and their canonical SHM readback as well as the reads.
-    let selected = dispatch_llm(
+    // Canonical router calls preserve selection effects, provider/model
+    // reads, generation, and authoritative SHM sibling-state readback.
+    let selected = dispatch(
         &engine,
         &caller,
-        "set_provider",
+        "SetProvider",
         json!({"provider_id":"ollama"}),
     )
     .await
     .unwrap();
     assert_eq!(selected["result"]["selected_provider"], "ollama");
     assert_eq!(fixture.inner.lock().await.provider, "ollama.main");
-    let selection = dispatch_llm(
+    let selection = dispatch(
         &engine,
         &caller,
-        "update_config",
+        "SetSelection",
         json!({"provider_id":"openai","model_id":"new-model"}),
     )
     .await
@@ -1425,15 +1331,9 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         selection["result"],
         json!({"selected_provider":"openai","selected_model":"new-model"})
     );
-    let providers = dispatch_llm(&engine, &caller, "list_providers", json!({}))
+    let providers = dispatch(&engine, &caller, "ListProviders", json!({}))
         .await
         .unwrap();
-    assert_eq!(
-        providers["result"],
-        dispatch(&engine, &caller, "ListProviders", json!({}))
-            .await
-            .unwrap()["result"]
-    );
     assert!(
         providers["result"]["providers"]
             .as_array()
@@ -1441,25 +1341,26 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .iter()
             .any(|p| p["id"] == "openai")
     );
-    let provider = dispatch_llm(&engine, &caller, "get_provider", json!({}))
+    let observed = dispatch(&engine, &caller, "GetState", json!({}))
         .await
         .unwrap();
-    assert_eq!(provider["result"]["selected_provider"], "openai");
-    assert_eq!(provider["result"]["provider"]["id"], "openai");
-    let models = dispatch_llm(
+    let state = &observed["result"]["state"];
+    assert_eq!(state["selected_provider"], "openai");
+    let provider = state["providers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|provider| provider["id"] == state["selected_provider"])
+        .unwrap();
+    assert_eq!(provider["id"], "openai");
+    let models = dispatch(
         &engine,
         &caller,
-        "list_models",
+        "ListModels",
         json!({"provider":"openai"}),
     )
     .await
     .unwrap();
-    assert_eq!(
-        models["result"],
-        dispatch(&engine, &caller, "ListModels", json!({"provider":"openai"}))
-            .await
-            .unwrap()["result"]
-    );
     assert!(
         models["result"]["model_routes"]
             .as_array()
@@ -1467,16 +1368,22 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .iter()
             .any(|m| m["model"] == "new-model")
     );
-    let config = dispatch_llm(&engine, &caller, "get_config", json!({}))
+    let config = dispatch(&engine, &caller, "GetState", json!({}))
         .await
         .unwrap();
-    assert_eq!(config["result"]["config"], selection["result"]);
+    assert_eq!(
+        json!({
+            "selected_provider": config["result"]["state"]["selected_provider"],
+            "selected_model": config["result"]["state"]["selected_model"]
+        }),
+        selection["result"]
+    );
     let chats = fixture.inner.lock().await.chats;
-    let generated = dispatch_llm(
+    let generated = dispatch(
         &engine,
         &caller,
-        "generate",
-        json!({"message":"facade fixture request"}),
+        "Chat",
+        json!({"message":"canonical router fixture request"}),
     )
     .await
     .unwrap();
@@ -1484,14 +1391,14 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     assert_eq!(generated["result"]["provider"], "openai");
     assert_eq!(generated["result"]["model"], "new-model");
     assert_eq!(fixture.inner.lock().await.chats, chats + 1);
-    let after_facades: Value = serde_json::from_slice(
+    let after_calls: Value = serde_json::from_slice(
         &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
     )
     .unwrap();
-    assert_eq!(after_facades["selected_provider"], "openai");
-    assert_eq!(after_facades["selected_model"], "new-model");
+    assert_eq!(after_calls["selected_provider"], "openai");
+    assert_eq!(after_calls["selected_model"], "new-model");
     assert_eq!(
-        after_facades["model_assignments"],
+        after_calls["model_assignments"],
         reconciled_shm["model_assignments"]
     );
 

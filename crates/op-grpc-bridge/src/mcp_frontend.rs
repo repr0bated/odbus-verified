@@ -1944,7 +1944,7 @@ async fn compact_call(
             backend
                 .call_tool(caller, target, input, selection)
                 .await
-                .map_err(RpcDispatchError::internal)
+                .or_else(tool_call_error)
         }
         "respond" => {
             let message = object
@@ -2010,7 +2010,7 @@ async fn dispatch_rpc(
             backend
                 .call_tool(caller, name, arguments, selection.as_ref())
                 .await
-                .map_err(RpcDispatchError::internal)
+                .or_else(tool_call_error)
         }
         "resources/list" => {
             let mut resources = backend
@@ -2425,6 +2425,20 @@ fn normalize_tool_definition(mut tool: Value) -> Value {
     tool
 }
 
+fn tool_call_error(error: anyhow::Error) -> Result<Value, RpcDispatchError> {
+    if let Some(message) = error.downcast_ref::<zbus::Error>()
+        .and_then(crate::schema_router::unsupported_method_message)
+    {
+        // Canonical D-Bus NotSupported is a tool refusal, not an uncertain
+        // transport/server failure. Preserve the sanitized recovery locator.
+        return Ok(json!({
+            "content": [{"type": "text", "text": message}],
+            "isError": true
+        }));
+    }
+    Err(RpcDispatchError::internal(error))
+}
+
 fn normalize_tool_result(result: Value) -> Value {
     if result.as_object().is_some_and(|object| {
         object.contains_key("content") || object.contains_key("structuredContent")
@@ -2663,6 +2677,18 @@ mod tests {
     use super::*;
     use axum::http::header::CONTENT_TYPE;
     use tower::ServiceExt;
+
+    #[test]
+    fn unsupported_dbus_reply_is_a_tool_error_not_an_internal_failure() {
+        let message = "method_failed_before_effect; operation_id=00000000-0000-4000-8000-000000000001; omit --edit";
+        let refused: zbus::Error = zbus::fdo::Error::NotSupported(message.into()).into();
+        let result = tool_call_error(anyhow::Error::new(refused).context("private context")).unwrap();
+        assert_eq!(result["isError"], true);
+        assert_eq!(result["content"][0]["text"], message);
+        let failed: zbus::Error = zbus::fdo::Error::Failed(message.into()).into();
+        assert_eq!(tool_call_error(failed.into()).unwrap_err().code, -32603);
+        assert_eq!(tool_call_error(anyhow::anyhow!(message)).unwrap_err().code, -32603);
+    }
 
     #[test]
     fn notebooklm_setup_auth_alone_gets_the_interactive_request_timeout() {

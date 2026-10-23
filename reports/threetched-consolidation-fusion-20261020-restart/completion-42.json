@@ -1,0 +1,64 @@
+{
+  "request": 42,
+  "started": "2026-10-20T17:12:14.266624+00:00",
+  "finished": "2026-10-20T17:12:41.791117+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0863807c0cb6d8ca016ad7a0f5174087d19a7b516af1d203de",
+    "created": 1792516341,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating schema capture implementation\",\"path\":\"/srv/git/odbus-verified/crates/threetched-fs/src/source.rs\",\"pattern\":\"capture_schema_only|fn capture|write|create\"}",
+                "name": "grep"
+              },
+              "id": "call_djo65B6FbsrMwGE6HgNIyCF8",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: confirm the catalog pins and generator provenance, run the existing generator once in a detached session with closed stdin, then return its terminal receipt and pre/post hashes. The catalog remains read-only; no build, test, or generated-example execution will run.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1392,
+      "prompt_tokens": 119469,
+      "total_tokens": 120861,
+      "completion_tokens_details": {
+        "reasoning_tokens": 616
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 110650
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:12:41.789099+00:00",
+  "stream_chunks": 5
+}

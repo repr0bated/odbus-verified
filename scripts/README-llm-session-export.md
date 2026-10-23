@@ -109,7 +109,7 @@ Persistent CLIs: exit ≠ end of conversation. The watermark in `.export-state.j
 
 The client uses the mounted declarations for `notebook_list`, `notebook_get`,
 `notebook_create`, `source_add`, `source_get_content` and `source_delete`.
-The installed `threetched-fs` helper validates arguments, exact session,
+The installed `3tched-fs` helper validates arguments, exact session,
 permissions, result contracts and operation receipts. Backend grants remain
 unchanged. Native router autonomy remains read-only; the separately requested
 sync service performs its owned corpus mutations under existing human grants.

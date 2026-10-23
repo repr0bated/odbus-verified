@@ -1,0 +1,63 @@
+{
+  "request": 57,
+  "started": "2026-10-18T21:59:43.581492+00:00",
+  "finished": "2026-10-18T21:59:56.441345+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-08a343f339d758e2016ad541528b9087d09c4f1f13dfc63170",
+    "created": 1792360786,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Retiring duplicate facade methods\",\"input\":\"[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model.rs#D788]\\nPUT 1.=5:\\n+//! Streaming generation facade backed exclusively by the canonical tched_router.\\n+//!\\n+//! Only stream_generate remains: its llm.invoke admission and pinned generation\\n+//! origin protect canonical private jobs. Provider/model discovery, selection,\\n+//! configuration and synchronous inference use tched_router directly.\\nCUT 14.=19\\nCUT 104.=149\\nPUT 156.=156:\\n+        \\\"Streaming generation facade; tched_router exclusively owns provider, model, configuration, inference, and state\\\",\\nCUT 164.=215\\nCUT 247.=275\\nPUT >281:\\n+        assert_eq!(schema.methods.len(), 1);\\n+        assert_eq!(schema.capabilities.len(), 1);\\n+        assert_eq!(\\n+            schema.methods[\\\"stream_generate\\\"].required_capability.as_deref(),\\n+            Some(\\\"llm.invoke\\\")\\n+        );\\n[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model_methods.rs#174B]\\nCUT 2.=2\\nCUT 5.=10\\nCUT 21.=44\\nCUT 47.=50\\nCUT 52.=53\\nCUT 76.=87\\nCUT 96.=130\\nCUT 151.=207\\nCUT 221.=272\\nCUT 288.=307\\nPUT 310.=312:\\n+        assert!(complete_method(\\\"stream_generate\\\", serde_json::json!({\\\"accepted\\\":true})).is_err());\\n[/srv/git/odbus-verified/crates/op-grpc-bridge/src/large_language_model_dispatch.rs#5080]\\nCUT 120.=147\"}",
+                "name": "edit"
+              },
+              "id": "call_OW71PQXmUbylsq7YStLGlHHo",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1067,
+      "prompt_tokens": 204593,
+      "total_tokens": 205660,
+      "completion_tokens_details": {
+        "reasoning_tokens": 252
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 189402
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:56.439541+00:00",
+  "stream_chunks": 4
+}

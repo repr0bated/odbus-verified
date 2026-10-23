@@ -1,0 +1,107 @@
+{
+  "states": {
+    "hermes_audit_gap": {
+      "claim": "Hermes deployed component work without completing the requested end-to-end provisioning audit/workflow.",
+      "evidence": [
+        {
+          "source": "evidence/hermes/20261018_190519_b780ef.jsonl",
+          "id": 4111,
+          "quote": "The layout is implemented; that integration is not finished."
+        },
+        {
+          "source": "evidence/hermes/20261018_190519_b780ef.jsonl",
+          "id": 4123,
+          "quote": "I audited pieces, missed integration gaps, and deployed before completing the provisioning you requested. The chatbot is still not provisioned."
+        }
+      ],
+      "limit": "Historical admission, not proof of current runtime state."
+    },
+    "native_creation_not_completion": {
+      "claim": "The existing native container UUID proves full identity provisioning and startup completed.",
+      "evidence": [
+        {
+          "source": "evidence/research/ClaudeKiroHistory.md",
+          "original": "Kiro tool receipts Oct19 04:06–04:14; Claude native creation receipt",
+          "facts": "Native UUID137c61ff-435c-4300-b3c0-c605e461be13 exists, stopped; identity_registered:false, root_bound:false, started:false. Earlier receipt explicitly says storage/binding/adoption remain separate."
+        }
+      ],
+      "limit": "Research index identifies original tool records; no new runtime execution."
+    },
+    "notification_not_command_success": {
+      "claim": "The Claude worker build succeeded because its background notification said exit0.",
+      "evidence": [
+        {
+          "source": "evidence/claude/agent-a6b199e4c3071de99.jsonl",
+          "original": "toolu_014yg3iA3uprAyo5T1LL9E2w",
+          "facts": "Actual build log: ring v0.17.14 failed for missing x86_64-linux-musl-gcc; exit=101. Shell wrapper ended with echo. Retry compilation had no final success receipt before cancellation."
+        }
+      ]
+    },
+    "cozo_mapping_not_kernel_proof": {
+      "claim": "A Cozo identity-to-device association proves there are no host loop devices in the storage implementation.",
+      "evidence": [
+        {
+          "source": "evidence/installed/usr/local/libexec/3tched/op-identity-root",
+          "facts": "Installed helper allocates seed and leaf losetup mappings before btrfs device add."
+        },
+        {
+          "source": "evidence/source/crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+          "facts": "Current verifier explicitly checks LOOP_GET_STATUS64 and pinned loop mapping."
+        }
+      ],
+      "latest_owner": "no loops  on host",
+      "limit": "Does not prove every possible alternative architecture is impossible."
+    },
+    "subvolume_feasibility": {
+      "claim": "The current evidence establishes a complete supported subvolume-only native Incus implementation preserving all seeded-member semantics and the upgrade layer.",
+      "evidence": [
+        {
+          "source": "evidence/astra/latest-kiro-brief.txt",
+          "facts": "Requests an explicit compatibility investigation; no implemented native-volume path."
+        },
+        {
+          "source": "evidence/kiro/sess_e49a5a84-8491-4c1d-987a-a3b2916a8615.jsonl",
+          "facts": "Owner says a previous provisioning version worked; Kiro researched old scripts and ended cancelled without a public completed specification."
+        },
+        {
+          "source": "manifest.json",
+          "facts": "Historical source blobs supplied for further investigation; none has been established here as proof of loop-free subvolume-only end-to-end behavior."
+        }
+      ],
+      "latest_owner": "Prefer no disk image if possible, use subvolumes only; no host loops mandatory."
+    },
+    "preference_not_silent_semantic_change": {
+      "claim": "The owner authorized abandoning immutable seed/sprout semantics whenever that makes a subvolume-only design easier.",
+      "evidence": [
+        {
+          "source": "subvolume-preference.json",
+          "quote": "woould prfer no  disk image if possibgle to use subvolumes olnly"
+        },
+        {
+          "source": "CASE.md",
+          "facts": "Retain immutable seed, isolated persistent writes, separate send/receive upgrade layer, identity and authoritative provisioning workflow."
+        }
+      ],
+      "limit": "Preference is conditional; a semantic change requires explicit owner decision."
+    }
+  },
+  "questions": {
+    "assessment": {
+      "type": "choice",
+      "instructions": "Evaluate the claim strictly from supplied evidence and latest owner requirements. Historical admission is not current runtime verification. Do not invent implementation or authorize operations.",
+      "criteria": {
+        "supported": "The evidence supports the claim at its stated scope.",
+        "contradicted": "The evidence directly contradicts the claim.",
+        "not_established": "The supplied evidence does not establish the claim; more analysis is required."
+      }
+    },
+    "ready_to_assert_current_completion": {
+      "type": "bool",
+      "instructions": "Does this evidence justify asserting the requested current end-to-end provisioning is completed, without further authoritative completion receipts?",
+      "criteria": {
+        "true": "Actual authoritative storage/adoption/start receipts establish all current requirements.",
+        "false": "Historical statements, partial-stage receipts, source code, conflicting observations or unimplemented proposals do not establish current completion."
+      }
+    }
+  }
+}

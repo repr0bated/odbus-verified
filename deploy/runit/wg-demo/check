@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+[ "$(/usr/bin/wg show wg-opdbus listen-port)" = 51821 ]
+ip -4 address show dev wg-opdbus | grep -Fq 'inet 10.0.0.1/24'

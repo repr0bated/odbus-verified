@@ -1,0 +1,137 @@
+{
+  "status": "ok",
+  "query": "Review this consolidation decision, advisory only; do not claim implementation. OP-DBUS original brief explicitly permits largest coherent evidence-backed slice and explicit defer/retain/retire dispositions, but requires continuing beyond 18 existing native plugin/skill wrapper removals and reconciling every affected caller/grant/state/receipt. Prior run removed 18 wrappers plus five short tched_router namespace facades, mount/workspace consumers, and refused unsupported interactive skill editing. It explicitly deferred GetConfigSchema (engine already returns retired; schema/fallback remain), GetProviderCatalog (duplicate ListProviders), all 8 LLM facades, MCP config facades, cron typed contracts, and native HTTP/WS capture. New owner asks review improper narrowing, finish reachable source work; no tests/checks/fmt/custom fixtures or live actions. Separate provisioning owner has compiler slot until authoritative completion evidence; don't poll. OD-122 persona enhancements and OD-123 Cozo native memory integration genuinely deferred. JEV judge-only; class-router forbidden. What criteria distinguish a safe additional source cutover now (e.g. retire contradictory GetConfigSchema and redundant GetProviderCatalog with literal callers reconciled) from silently narrowing required consolidation? Name correctness risks in native capability changes, independently authored schema ownership, and declaring completion while build/seal/catalog specialization blocked. Avoid invented endpoint/schema implementations.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "## Decision\n\n**Retiring contradictory `GetConfigSchema` and consolidating redundant `GetProviderCatalog` are reasonable next source cutovers\u2014not automatically proven safe ones.** The supplied evidence supports investigating them now. It does not establish their complete caller, authorization, or state equivalence.\n\nThe compiler-slot hold blocks build-dependent work, not reachable source reconciliation. Conversely, \u201clargest coherent slice\u201d permits explicit deferral; it does not justify deferring a reachable removal solely because the first slice already works on paper.\n\nThis review is advisory; current source and runtime state were not independently inspected.\n\n## Safe-cutover criteria\n\nA further cutover is defensible when all of these are established:\n\n1. **One authoritative destination\u2014or deliberate retirement.** Identify an existing canonical declaration and implementation. If none exists, retire the behavior explicitly or record the missing native capture; do not invent a replacement operation.\n2. **Complete consumer closure.** Reconcile literal callers **and** dynamic dispatch tables, toolsets, generated registrations, schema discovery, policy references, UI adapters, and release inputs. Literal-call search alone is insufficient.\n3. **Contract differences resolved.** Compare arguments, results, errors, side effects, idempotency, masking, filtering, and cancellation behavior. Shared backend code does not establish equivalent contracts.\n4. **Authorization remains exact.** Trace outer and nested admission, capability alternatives, caller identity, and resource scope. Any required grant change remains an explicit approval boundary.\n5. **State and receipts remain truthful.** Preserve private partitions, complete-tree SHM commits before notifications, unrelated state, and the distinction between backend effects and publication failure.\n6. **The source change closes coherently.** Remove obsolete declarations and dispatch paths together; migrate affected maintained callers. Identify generated outputs that require the blocked build/seal rather than manually fabricating them.\n\n### Applying those criteria\n\n| Candidate | Safe additional source action | Critical condition |\n|---|---|---|\n| `GetConfigSchema` | Remove the advertised operation and fallback if the authoritative engine already rejects it as retired; migrate consumers to existing sealed schema discovery. | Confirm that reading sealed `native_config` preserves access rules and supplies what consumers actually need. Do not substitute live runtime schema capture or reconstruct another schema. |\n| `GetProviderCatalog` | Remove the duplicate declaration and migrate callers to existing `ListProviders`. | Establish equivalent filtering, output shape, errors, state publication, and admission. A more permissive capability or broader inventory makes a simple rename unsafe. |\n\nThe second change consolidates an outer duplicate; **it does not make retained `ListProviders` native-derived**. Report that distinction.\n\n## What would constitute improper narrowing?\n\nDeferral is justified by a **specific unresolved dependency**: missing native-owned export, materially different semantics, unresolved authorization, unavailable authoritative evidence, or another owner\u2019s claimed files.\n\nDeferral is not justified merely by:\n\n- Existing callers: those identify migration work.\n- A large method count.\n- The completed wrapper removal.\n- The compiler being occupied, where the remaining work is source-only.\n- Relabelling native duplication as \u201cintegration responsibility\u201d without separating the actual local responsibility.\n\nFor each remaining group, record the exact obstacle and the reachable work completed around it. Local identity admission, jobs, scoped context, and publication can legitimately remain; they do not justify separately authoring the underlying native contract.\n\nOD-122 and OD-123 are genuine deferred scope. They must not become umbrella blockers for unrelated config, inventory, or facade cleanup. Native HTTP/WS-dependent work may need export development; it must not be replaced by guessed endpoints or by pretending CLI envelopes satisfy typed contracts.\n\n## Principal correctness risks\n\n**Capability changes.** Old grouped grants and per-command hashed capabilities are not interchangeable. Native CLI options may authorize a broader operation than an old wrapper allowed. Read/idempotent declarations becoming mutation/non-idempotent changes admission and retry expectations. Adding old grants as permissive alternatives can silently broaden authority; dropping required alternatives can silently revoke it. Either outcome needs explicit treatment, not an alias or blanket grant rewrite.\n\n**Schema ownership.** Moving declarations into `large_language_model`, another module, or a hand-maintained \u201cnative\u201d schema preserves duplication. Native shapes must derive through the existing verified export/capture boundary. Runtime consumes sealed contracts; it must not recapture or use an independently authored fallback.\n\n**Effects and receipts.** CLI exit zero does not necessarily establish the intended mutation. Dropping a provider stream does not undo accepted provider work. Successful backend execution followed by failed SHM publication must not become an ordinary success or a retry-safe failure.\n\n## Completion boundary\n\nWhile the compiler slot remains owned elsewhere, finish reachable source/caller/documentation work without polling or starting Cargo.\n\nThe accurate delivery status remains:\n\n- **Implemented:** only source changes actually made and reconciled.\n- **Built:** blocked until the authorized GNU release build succeeds.\n- **Sealed:** blocked until fresh GNU `opblob` produces the isolated catalog.\n- **Specialized:** blocked until existing generation runs against that catalog.\n- **Tested:** not run; unauthorized.\n- **Deployed:** no; unauthorized.\n\nExpected removals are not a catalog receipt. Source mount selection is not live mount agreement. The handoff must name remaining dependencies and the next authorized build \u2192 isolated seal \u2192 exact delta review \u2192 catalog specialization sequence.\n\n**Do not claim complete consolidation\u2014or release readiness\u2014while those obligations remain blocked.**"
+    },
+    {
+      "model": "kimi-k3",
+      "content": "Advisory review requested. I'll ground it in current repo state with read-only checks first \u2014 HANDOFF, SIGNALS, and the specific claims about `GetConfigSchema`, `GetProviderCatalog`, module removals, mount adapter, and UI callers. No edits, no build, no compiler polling."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Criteria: safe additional cutover vs. silent narrowing\n\n**Safe to cut now** when all of these hold:\n\n1. **Single native counterpart already captured** \u2014 the replacement operation exists in the sealed native schema today (generation74: 147 CLI ops), so no new capture/HTTP/WS invention is needed. `GetProviderCatalog`\u2192`ListProviders` qualifies; `GetConfigSchema`\u2192sealed `native_config` qualifies. `GetTools` (needs `/api/tools` typed capture incl. `param_domains`) does not.\n2. **Result contract is genuinely equivalent or the difference is honestly surfaced** \u2014 `ListProviders` returns the same provider inventory the catalog facade assembles; if the facade adds local shaping (as `model_registry.native_list_providers` does with agent-owned-profile filtering), that shaping must migrate with the caller, not vanish. A facade whose output is a strict subset of the native result is a removal; one with local enrichment is a migration, not a removal.\n3. **Literal callers enumerated and reconciled** \u2014 `xd://lsp` references / grep for every consumer (bridge dispatch, UI `src/chat/*`, toolsets, generated views). Zero remaining callers, or each remaining caller updated to the canonical name and admission path. \"No production caller found\" must be evidenced by reference search, not fixture absence.\n4. **Capability mapping is exact, not broadened** \u2014 old typed read capability \u2192 the native `cap.software.threetched.call.c<sha256(m)>@v1` declaration. If the old grant was narrower (e.g. MCP's whole-config concern), the cutover must not silently widen what one grant reaches. No OR-alternatives, no wildcard.\n5. **Contradiction removal, not feature removal** \u2014 `GetConfigSchema` is a special case: the engine already reports it retired while schema/fallback code remains. Deleting dead contradictory code is cleanup of an already-made decision, the lowest-risk cutover available. Verify the fallback is truly unreachable (no dispatch path, no UI consumer) before deleting.\n6. **State/receipt semantics preserved or truthfully changed** \u2014 if the removed facade committed SHM state the native CLI envelope `{stdout,stderr,exit}` does not, that's a disposition decision the owner must see, not a silent drop.\n\n**Silent narrowing** looks like: deferring a method because its callers are hard to trace (not because the contract is missing); retiring a facade while leaving its enrichment behind un-migrated; replacing a typed read with a CLI stdout passthrough and calling it equivalent; stopping at the 18-wrapper slice while reachable, capture-complete removals (GetConfigSchema, GetProviderCatalog) sit unstarted with no recorded blocker.\n\n**Verdict on the two named candidates:** both meet the criteria *if* the reference search confirms caller sets. `GetConfigSchema` is the stronger case (engine already declares retirement \u2014 the source contradicts itself). `GetProviderCatalog` requires migrating the backing assertion and any local shaping to `ListProviders` first. Both are reachable source work the prior run should not have deferred without a named dependency \u2014 deferral there was narrowing unless a concrete caller/contract blocker was recorded (the addendum records none for these two).\n\n**Not safe now, correctly deferred:** the 8 LLM facades (targets are tched_router methods with local orchestration \u2014 Chat especially), MCP config facades (nested-grant/path-policy reconciliation unresolved), cron (needs derived HTTP contracts), GetTools, PatchConfig, generation jobs. These have real missing contracts or local obligations; cutting them now would be the invented-endpoint failure mode.\n\n## Correctness risks to name explicitly\n\n- **Capability changes:** old read/idempotent \u2192 native mutation/non-idempotent is a breaking grant cutover. Risk: a caller holding the old capability now gets denial; that's truthful, but any code that \"helpfully\" falls back to a broader grant or adds OR-alternatives masks it. Also the hashed-CLI capability is per-exact-method-name; a rename breaks grants silently at admission time, not compile time.\n- **Schema ownership:** the failure mode is a compatibility name that grows its own `PluginSchema` entry, or moving router declarations into `large_language_model` \u2014 both recreate duplicate authoring pre-seal. A temp alias must resolve to the one canonical declaration only.\n- **Completion claims while blocked:** the build was never started (compiler slot occupied by an unrelated `cargo check`, PID 25761). Any statement like \"consolidation complete,\" \"catalog delta 74\u219272,\" or \"callers verified end-to-end\" without build + `seal-plugins` receipt + typed_specialize regeneration is fabrication. The arithmetic delta is a prediction, not a receipt. Also: regenerating FUSE specialization against the *old* live catalog would resurrect removed wrappers \u2014 the generated-view refresh is a correctness obligation, not optional cleanup, and must wait for the isolated catalog.\n- **Editor refusal (`skills.edit`, `skills.add --edit`):** refusing before spawn is correct, but it's an execution limitation \u2014 do not describe the 18 mappings as \"working operations\" without an admitted runtime receipt.\n\n## Recommended scope for the next source pass\n\n1. Retire `GetConfigSchema` schema/fallback after proving unreachability (engine already returns retired).\n2. Migrate `GetProviderCatalog` callers to `ListProviders`, preserving any local shaping and the backing assertion; exact capability remap.\n3. Re-run literal caller search for both; update UI/pinned input only if references exist.\n4. Record everything else as explicit defer-with-dependency in HANDOFF/WISHLIST (most already is).\n5. Do not start Cargo while the provisioning owner holds the slot; when clear, run the GNU release build \u2192 fresh opblob `seal-plugins` \u2192 delta review \u2192 typed_specialize regeneration, in that order. Until then: **implemented, not built, not sealed, not deployed** \u2014 say exactly that."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<evidence>\n- `read` `HANDOFF.md`\n- `read` `SIGNALS.md`\n- `read` `WISHLIST.md`\n- `read` `reports/threetched-overlap-map-20261018.md`\n- `read` `reports/threetched-overlap-map-20261018.txt`\n- `read` `crates/op-plugins/src/state_plugins/threetched.rs`\n- `read` `crates/op-plugins/src/state_plugins/tched_router.rs`\n- `read` `crates/op-plugins/src/state_plugins/large_language_model_methods.rs`\n- `read` `crates/op-plugins/src/state_plugins/mcp_methods.rs`\n- `read` `crates/op-plugins/src/state_plugins/cognitive_agents.rs`\n- `read` `crates/op-grpc-bridge/src/tched_config_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/tched_config_engine.rs`\n- `read` `crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/generation_jobs_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/generation_admission.rs`\n- `read` `crates/op-grpc-bridge/src/tched_router_generation.rs`\n- `read` `crates/op-grpc-bridge/src/cron_gateway.rs`\n- `read` `crates/op-grpc-bridge/src/specialist.rs`\n- `read` `crates/op-grpc-bridge/src/tched_router_runtime.rs`\n- `read` `crates/op-grpc-bridge/src/agent_catalog_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/agent_workflow.rs`\n- `read` `crates/op-plugins/src/state_plugins/binary_namespace.rs` (check if it exists)\n- `read` `crates/op-plugins/src/state_plugins/mod.rs`\n- `read` `crates/op-plugins/src/default_registry.rs`\n- `read` `crates/op-plugins/src/bin/opblob.rs`\n- `read` `crates/threetched-fs/src/threetched-surface.rs`\n- `read` `crates/op-blob/src/lib.rs`\n- `read` `crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/tched_config_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/tched_config_engine.rs`\n- `read` `crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/generation_jobs_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/generation_admission.rs`\n- `read` `crates/op-grpc-bridge/src/tched_router_generation.rs`\n- `read` `crates/op-grpc-bridge/src/cron_gateway.rs`\n- `read` `crates/op-grpc-bridge/src/specialist.rs`\n- `read` `crates/op-grpc-bridge/src/tched_router_runtime.rs`\n- `read` `crates/op-grpc-bridge/src/agent_catalog_dispatch.rs`\n- `read` `crates/op-grpc-bridge/src/agent_workflow.rs`\n- `read` `crates/op-plugins/src/state_plugins/binary_namespace.rs`\n- `read` `crates/op-plugins/src/state_plugins/mod.rs`\n- `read` `crates/op-plugins/src/default_registry.rs`\n- `read` `crates/op-plugins/src/bin/opblob.rs`\n- `read` `crates/threetched-fs/src/threetched-surface.rs`\n- `read` `crates/op-blob/src/lib.rs`\n</evidence>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The substantive reviews identify GetConfigSchema retirement and GetProviderCatalog consolidation as additional source-cutover candidates, conditional on reconciling consumers and contract differences.",
+      "An occupied compiler slot blocks build-dependent verification and catalog preparation, not otherwise reachable source work.",
+      "Safe consolidation requires preserving authorization, state publication, result/error semantics, and required local integration responsibilities.",
+      "Expected catalog arithmetic is not an actual sealing receipt; source changes cannot establish built, sealed, specialized, deployed, or authenticated-operation status.",
+      "OD-122 persona enhancements and OD-123 Cozo-native-memory integration remain legitimately deferred."
+    ],
+    "contradictions": [
+      {
+        "topic": "Whether the proposed replacements are already captured native operations",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "GetProviderCatalog to ListProviders removes an outer duplicate but does not make retained ListProviders native-derived; sealed native_config is schema discovery, not an invented replacement method."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Initially classifies both replacements as already captured native counterparts. This conflicts with the supplied evidence that ListProviders remains a handwritten tched_router operation and native_config is sealed schema content."
+          }
+        ]
+      },
+      {
+        "topic": "Whether remaining facade groups are necessarily unsafe to consolidate now",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Requires specific unresolved dependencies for each deferral and rejects treating existing callers or local integration responsibilities as blanket reasons to retain duplicate contracts."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Categorically calls all eight LLM facades and several other groups correctly deferred. The response does not establish method-by-method blockers sufficient to support that blanket conclusion."
+          }
+        ]
+      },
+      {
+        "topic": "Capability migration rules",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Preserve exact capability alternatives; adding permissive alternatives can broaden access, while dropping required alternatives can revoke it."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "States 'No OR-alternatives' and suggests mapping to hashed native CLI capabilities generally. That overextends the prior wrapper-specific cutover and could incorrectly change admission for a retained router destination."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "kimi-k3"
+        ],
+        "point": "Provides only an intention to perform read-only grounding. It supplies neither findings nor the requested advisory criteria."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Provides a repeated list of purported reads under an evidence tag, without tool receipts, findings, or a substantive comparison. The list cannot establish that any inspection occurred."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Emphasizes literal caller searches but does not fully close dynamic dispatch, discovery, policy, and generated-consumer dependencies; astra-pro explicitly identifies this limitation."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Both discuss source and release boundaries, but neither establishes current implementation safety through independent source evidence. Their recommendations remain conditional advisory judgments."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Separates duplicate-facade removal from native schema derivation: eliminating GetProviderCatalog does not resolve the independent authorship of ListProviders."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Requires consumer closure beyond literal references, including dynamic tables, discovery, toolsets, policy references, generated registrations, and release inputs."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Distinguishes backend acceptance from failed SHM publication and warns against reporting such outcomes as ordinary success or retry-safe failure."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Highlights that regenerating specialization against the old live catalog could restore removed wrapper declarations; generation must use the fresh isolated catalog."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Identifies the unsupported editor refusal as an execution limitation, not evidence that all eighteen native replacements are working admitted operations."
+      }
+    ],
+    "blind_spots": [
+      "No response provides current source or mounted-operation receipts. The historical compiler PID must not be presented as the current blocker; the current authority is the provisioning owner's slot hold until authoritative completion evidence.",
+      "The distinction between legitimate feature retirement and compatibility-preserving migration needs sharper treatment: retirement can be intentional and breaking, but callers and authorization consequences still require explicit reconciliation.",
+      "GetConfigSchema's engine-level retirement does not prove every fallback is unreachable. A remaining reachable fallback must be traced and deliberately removed or migrated, rather than described as dead code without evidence.",
+      "A read-method rename to ListProviders does not inherently require a hashed threetched CLI capability. Admission must follow the actual canonical destination and preserve its exact existing capability contract.",
+      "The substantive reviews do not establish a method-by-method reachable-work frontier for the eight LLM facades or other retained groups; blanket deferral risks reproducing the narrowing under review.",
+      "Completion needs separate source-slice and overall-task statuses. Reachable source work may be finished while the requested build, isolated seal, catalog delta review, and specialization remain explicitly blocked.",
+      "Current shared-file ownership must be reconciled before edits; a compiler hold does not grant permission to modify another owner's claimed source files."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

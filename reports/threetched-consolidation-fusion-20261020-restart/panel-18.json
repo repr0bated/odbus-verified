@@ -1,0 +1,51 @@
+{
+  "status": "ok",
+  "query": "Choose one emoji and 1-6 uppercase-letter subject code for session title 'Consolidate source and prepare release'. Code must derive from one title word (whole if <=6, otherwise leading abbreviation). Emoji concrete subject not generic work symbol. Return suggestion only.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "<title>\ud83d\udce6 REL</title>"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<title>\ud83d\udce6 RELE</title>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Both select \ud83d\udce6 to represent the release package.",
+      "Both derive an uppercase subject code from the title word 'release' and satisfy the 1\u20136-character limit.",
+      "Both return only a suggestion wrapped in title tags."
+    ],
+    "contradictions": [],
+    "partial_coverage": [],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Uses REL, a three-letter leading abbreviation of 'release'."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Uses RELE, a four-letter leading abbreviation of 'release'."
+      }
+    ],
+    "blind_spots": []
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

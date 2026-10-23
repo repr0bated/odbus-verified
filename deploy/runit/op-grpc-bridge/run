@@ -5,6 +5,11 @@
 # op-dbus-consumes: /usr/share/op-dbus/plugin-blobs
 exec 2>&1
 
+startup_phase() {
+    printf 'op-grpc-bridge startup phase=%s pid=%s\n' "$1" "$$"
+}
+startup_phase identity-selector
+
 # Explicit root-owned initialization selector; absent during normal boot.
 identity_init=/etc/op-dbus/initialize-local-human
 unset OP_LOCAL_HUMAN_INITIALIZE_SESSION
@@ -28,6 +33,7 @@ DEFAULT_READY_PATH=/run/opdbus/runit-ready/op-grpc-bridge
 rm -f -- "$DEFAULT_READY_PATH"
 
 wait_dep() {
+    startup_phase "dependency:$1"
     sv start "$1" >/dev/null 2>&1 || true
     i=0
     until sv check "$1" >/dev/null 2>&1; do
@@ -35,6 +41,7 @@ wait_dep() {
         [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
         sleep 1
     done
+    startup_phase "dependency-ready:$1"
 }
 
 # Nothing in the boot path calls back into this service: ovs-vswitchd
@@ -57,6 +64,7 @@ wait_dep tched-router
 # best-effort and must still open :8090 for D-Bus and gRPC when vector search
 # is unavailable.
 
+startup_phase configuration
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 [ -r /etc/op-dbus/decoy-network-client.env ] && . /etc/op-dbus/decoy-network-client.env
@@ -74,6 +82,7 @@ export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://12
 export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
 # Door selection is not limited to OpenCode profiles.
 export TCHED_ROUTER_REQUIRE_OPENCODE=0
+startup_phase runtime-token
 TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
 unset TCHED_ROUTER_RUNTIME_TOKEN
 if [ ! -f "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ] || [ -L "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ]; then
@@ -105,17 +114,6 @@ rm -f -- "$OPDBUS_READY_PATH"
 # Fails closed: an origin not listed here gets no CORS preflight answer.
 export OP_MCP_ALLOWED_ORIGINS="${OP_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080,http://10.0.0.1:8080,http://10.0.0.2:8080,http://10.0.0.3:8080,http://10.0.0.4:8080,http://dashboard.ghostbridge.tech:8080,http://127.0.0.1:5173,http://localhost:5173}"
 
-has_ipv4() {
-    interface=$1
-    address=$2
-    ip -4 -o addr show dev "$interface" 2>/dev/null | awk -v wanted="$address" '
-        {
-            split($4, parts, "/")
-            if (parts[1] == wanted) found = 1
-        }
-        END { exit(found ? 0 : 1) }
-    '
-}
 
 has_local_ipv4() {
     address=$1
@@ -128,25 +126,12 @@ has_local_ipv4() {
     '
 }
 
-wait_for_ipv4() {
-    interface=$1
-    address=$2
-    timeout=${3:-90}
-    elapsed=0
-    while ! has_ipv4 "$interface" "$address"; do
-        elapsed=$((elapsed + 1))
-        if [ "$elapsed" -ge "$timeout" ]; then
-            echo "required address $address did not appear on $interface after ${timeout}s" >&2
-            exit 1
-        fi
-        sleep 1
-    done
-}
 
 # The base-network owner supplies the private host endpoint. Application
 # startup observes that address, not the transport or interface that delivers
 # remote traffic to it. It must never create an interface, route or fallback
 # public listener. Certificate filenames retain their tonic-svc0 names.
+startup_phase private-addresses
 elapsed=0
 until has_local_ipv4 10.0.0.2; do
     elapsed=$((elapsed + 1))
@@ -156,7 +141,7 @@ until has_local_ipv4 10.0.0.2; do
     fi
     sleep 1
 done
-wait_for_ipv4 ovsbr0 10.0.0.3 "${OP_GRPC_MQTT_WAIT_SECS:-90}"
+startup_phase private-door-address-ready
 
 # `:8090` is tonic on 10.0.0.2, with the internal certificate.
 # The unix socket serves the same fabric.
@@ -167,6 +152,7 @@ export TCHED_ROUTER_UNIX_SOCKET="${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.so
 export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
 unset TCHED_ROUTER_BROWSER_TLS_BIND_ADDR TCHED_ROUTER_BROWSER_TLS_CERT_FILE TCHED_ROUTER_BROWSER_TLS_KEY_FILE
+startup_phase emqx-prepare
 /usr/local/libexec/op-dbus/helpers/emqx-prepare
 export OP_EMQX_EXHOOK_ENABLE=1
 export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
@@ -226,24 +212,25 @@ export OP_LOCAL_HUMAN_DISPLAY_ALIAS="${OP_LOCAL_HUMAN_DISPLAY_ALIAS:-jeremy-wg-f
 # registered human key rather than TCP-source equality.
 export OP_ORACLE_ASSERTION_SOURCE_BINDING="${OP_ORACLE_ASSERTION_SOURCE_BINDING:-trusted-decoy-signature}"
 export RUST_LOG="${GRPC_RUST_LOG:-info}"
-# Qdrant is reached over TCP through the host loopback proxy. HTTP serves the
-# REST plugin client; gRPC serves the cognitive shuttle. No /var sockets.
+# FUSE callers enter through the authenticated lungs socket above. These URLs
+# select the bridge's native Qdrant backend: HTTP for the qdrant plugin and
+# gRPC for the cognitive shuttle. They are not client-facing lungs addresses.
 export QDRANT_HTTP_URL="${QDRANT_HTTP_URL:-http://127.0.0.1:6333}"
 export QDRANT_GRPC_URL="${QDRANT_GRPC_URL:-http://127.0.0.1:6334}"
-# Host Qdrant's ovsbr0 alias number is unset. Leave COGNITIVE_MCP_QDRANT_URL
-# unset so the shuttle uses its loopback default, 127.0.0.1:6334.
-# The clean baseline uses source indexed through cognitive_mcp.code_index.
+export COGNITIVE_QDRANT_URL="${COGNITIVE_QDRANT_URL:-$QDRANT_GRPC_URL}"
+# The clean baseline uses source indexed through cognitive.code_index.
 # Historical bulk collections are retained for recovery; their Gridstore
 # payload reads currently fail, so they must not stall normal context calls.
-export COGNITIVE_MCP_RAG_COLLECTION="${COGNITIVE_MCP_RAG_COLLECTION:-opdbus_baseline_code_v1}"
-export COGNITIVE_MCP_COMPLETION_COLLECTIONS="${COGNITIVE_MCP_COMPLETION_COLLECTIONS:-$COGNITIVE_MCP_RAG_COLLECTION}"
-export COGNITIVE_MCP_SEARCH_COLLECTIONS="${COGNITIVE_MCP_SEARCH_COLLECTIONS:-$COGNITIVE_MCP_RAG_COLLECTION}"
+export COGNITIVE_RAG_COLLECTION="${COGNITIVE_RAG_COLLECTION:-opdbus_baseline_code_v1}"
+export COGNITIVE_COMPLETION_COLLECTIONS="${COGNITIVE_COMPLETION_COLLECTIONS:-$COGNITIVE_RAG_COLLECTION}"
+export COGNITIVE_SEARCH_COLLECTIONS="${COGNITIVE_SEARCH_COLLECTIONS:-$COGNITIVE_RAG_COLLECTION}"
 [ -r /etc/op-dbus/secrets/voyage-api-key ] && export VOYAGE_API_KEY="$(cat /etc/op-dbus/secrets/voyage-api-key)"
 # Phase 2: tool dispatch is in-process ToolRegistry — no HTTP MCP loopback URL.
 
 # These are runtime requirements, not merely build-host packages. Fail with a
 # precise error on a received golden image instead of silently dropping the
 # Btrfs/NUMA path when a target is missing a dependency.
+startup_phase storage-preflight
 for command_name in btrfs findmnt numactl taskset; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
         echo "required runtime command is missing: $command_name" >&2
@@ -287,6 +274,7 @@ esac
 
 umask 0077
 
+startup_phase "exec:$OPDBUS_NUMA_POLICY"
 case "$OPDBUS_NUMA_POLICY" in
     localalloc)
         exec numactl --localalloc /usr/local/libexec/op-dbus/bin/op-grpc-bridge

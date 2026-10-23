@@ -1,0 +1,63 @@
+{
+  "request": 47,
+  "started": "2026-10-18T21:58:53.063342+00:00",
+  "finished": "2026-10-18T21:59:02.058053+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0b7ebcc8d1aa176f016ad5412000e087d08d4b21d9a7c301a4",
+    "created": 1792360736,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Claiming scoped facade retirement\",\"input\":\"[/srv/git/odbus-verified/HANDOFF.md#9ADB]\\nPUT >423:\\n+| Fusion / RetireLlmFacades \u2014 SOURCE IMPLEMENTATION | `threetched-consolidation-fusion-20261018` / OD-121 | Own seven-method LLM facade retirement in `state_plugins/large_language_model{,_methods}.rs`, bridge `large_language_model_dispatch.rs`, facade-specific tests, Antigravity metadata in its plugin/chat/dispatch files and `gemma_brain.rs` dependency metadata. | 2026-10-18 | Preserve stream_generate, all generation admission/pins, observation helper, unrelated edits and grants. No mutation_engine edits, compiler/checks, runtime changes or recursive delegation. Parent integrates shared reports/docs and final handoff. |\"}",
+                "name": "edit"
+              },
+              "id": "call_Wpyx1XDKzfr3voA6TsTM0DNZ",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 430,
+      "prompt_tokens": 138782,
+      "total_tokens": 139212,
+      "completion_tokens_details": {
+        "reasoning_tokens": 42
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 113183
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:02.056914+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,63 @@
+{
+  "request": 111,
+  "started": "2026-10-18T22:03:57.532114+00:00",
+  "finished": "2026-10-18T22:04:09.343954+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01c00cc652ef8031016ad54250918c87d0876a1c3085b8b02d",
+    "created": 1792361040,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading obsolete wiring helper\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model_methods.rs:14-20,78-99\"}",
+                "name": "read"
+              },
+              "id": "call_s3gw7Pzq16MRd77QGBz6A6C3",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 316,
+      "prompt_tokens": 198702,
+      "total_tokens": 199018,
+      "completion_tokens_details": {
+        "reasoning_tokens": 193
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 129791
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:09.342831+00:00",
+  "stream_chunks": 4
+}

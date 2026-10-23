@@ -1,0 +1,191 @@
+{
+  "status": "ok",
+  "query": "We implement authorized threetched consolidation in OP-DBUS. Current six plugin/twelve skills wrapper modules already removed by prior agent, preserve removals. Native 147 CLI methods derive verified help/config schema with hashed per-command capabilities; output stdout/stderr/exit; all mutation. Old wrapper grants were exact read/write/install/search/execute and output text. Existing native dispatcher validates config root, sealed binary manifest and argv, clears env, runs child with cancellation group cleanup; canonical admission+queue recheck precede dispatch. Mounted evidence: native skills.edit is interactive editor with --file/--bundle, whereas removed edit_skill accepted contents; skills.add additionally offers --edit; bundle.remove needs --yes. No grants broadening, tests/smoke/live activation allowed. Need choose safe policy: do NOT add old capability alternatives for wider native argument domains; explicitly retire incompatible contents edit and require exact existing native capability for canonical commands, document migration/caller differences. Additional slice may retire duplicate router alias methods after migrating callers; native typed HTTP/WS capture absent, preserve local state/private receipts. Assess risks and minimum obligations of this policy. Advisory only; do not claim implementation or tools. Owner asks largest coherent evidence-backed subset, not full parity, but all43 router methods require disposition. Build GNU workspace and fresh isolated catalog authorized once Cargo free.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "## Decision\n\nThe proposed policy is safe **provided the removal is treated as an intentional authorization and API break, not a transparent migration**.\n\nRequire each canonical native command\u2019s existing exact capability. Do not attach old wrapper capabilities to native methods whose argument domains are broader. Retire `edit_skill(contents)` without pretending that interactive `skills.edit` replaces it.\n\nThe supplied evidence supports this decision; it does not establish implemented caller migration, successful admission, or release readiness.\n\n## Direct-wrapper slice: minimum obligations\n\n| Area | Required treatment |\n|---|---|\n| All 18 operations | Record old plugin/method, canonical native command, argument differences, result differences, old capability and exact native capability. Mark incompatible behavior explicitly retired. |\n| Authorization | Preserve canonical admission and queue-time recheck. A caller lacking the native capability receives the existing permission error; no fallback to another plugin, identity or transport. |\n| Caller migration | Update demonstrated callers, discovery/toolsets and affected UI. Do not leave callers invoking removed methods or interpreting denial as successful execution. |\n| Results | Replace assumptions about typed/text wrapper results with the native `{stdout, stderr, exit}` contract. Preserve command failure reporting; receiving an envelope is not evidence that the operation succeeded. |\n| Catalog and mounts | Remove wrapper IDs from source registration and mount selection consistently. The live mount remains unchanged until authorized activation; document that expected source/live divergence. |\n| Release inputs | Regenerate derived artifacts through the build, then seal a fresh isolated catalog. Preserve the previous catalog and record exact plugin-ID and schema deltas. |\n\n### Argument-domain risks\n\n- **`skills.edit`:** interactive editor selection is not a contents-writing API. Do not turn `contents` into shell commands, temporary-file injection or direct runtime-file writes. The retired behavior needs an explicit caller-visible explanation.\n- **`skills.add --edit`:** automated callers must not select the interactive branch. Existing process cancellation cleanup does not make an unattended editor a suitable replacement.\n- **`skills.bundle.remove --yes`:** inspect what the flag confirms before adding it to migrated calls. If it only confirms the exact deletion the caller already requested, an explicit mapping can preserve intent. Do not silently attach it to discovery, previews or ambiguous requests.\n- **Broader native options:** old read/search/install grants cannot safely authorize every argument accepted by the corresponding native command. Even read-like commands remain mutation/non-idempotent in the captured contract; consumers must not introduce automatic retries based on the retired wrapper classification.\n\nRemoving wrappers may leave previously authorized users unable to perform these actions. That is a deliberate compatibility cost, not permission to broaden grants. Record affected callers and missing exact capabilities without exposing credentials.\n\n## Additional slice: router aliases\n\nRetiring duplicate router aliases is a reasonable next bounded slice. Its benefit is **declaration deduplication**, not completion of native config consolidation.\n\nBefore removing each alias, establish that the retained method preserves its arguments, results, exact capability alternatives, dispatch behavior and state effects. Similar spelling is insufficient. Migrate every demonstrated caller; do not leave an independently authored compatibility schema.\n\nA complete proposed disposition ledger for all 43 methods is:\n\n| Disposition | Methods |\n|---|---|\n| **Retire after equivalence and caller reconciliation \u2014 5** | `get`, `init`, `list`, `patch`, `set` |\n| **Defer native-contract migration; retain existing behavior meanwhile \u2014 10** | `GetConfig`, `GetConfigSchema`, `GetMcpConfig`, `PatchConfig`, `config_get`, `config_init`, `config_list`, `config_migrate`, `config_patch`, `config_set` |\n| **Defer native inventory/projection consolidation \u2014 9** | `GetState`, `GetProviderCatalog`, `GetModelRoutes`, `GetRouter`, `GetStructuredOutput`, `GetTools`, `ListModels`, `ListProviders`, `ListUiSurfaces` |\n| **Defer selection/routing consolidation \u2014 9** | `SetModel`, `SetProvider`, `SetSelection`, the five role setters identified in the brief, `ResolveRoute` |\n| **Retain local binding/caller-scope responsibility \u2014 3** | `apply_catalog_model_binding`, `resolve_catalog_model_binding`, `get_own_agent_route` |\n| **Defer native generation-contract migration \u2014 1** | `Chat` |\n| **Retain local job lifecycle and committed-state responsibility \u2014 6** | `start_generation`, `cancel_generation`, `get_generation_job`, `get_generation_jobs`, `delete_generation_job`, `recover_generation_jobs` |\n\nThese are proposed dispositions, not verified equivalence findings. For the five role setters, the implementation ledger must use their exact current declaration names.\n\n\u201cRetain\u201d applies to the local responsibility, not permanent ownership of a duplicate native operation. In particular, `start_generation` combines native inference with local job management; future capture should replace the inference contract without discarding scoped jobs, revisions or receipts. Inventory retention must preserve provider selectability filtering, masking and private/public state boundaries.\n\nIf any alias comparison fails, defer that alias rather than silently changing its semantics.\n\n## Boundaries that must survive\n\n- Keep Cozo data and principal/session partitions unchanged.\n- Preserve complete-tree SHM publication before notifications.\n- Distinguish backend failure from backend acceptance followed by publication failure.\n- Describe cancellation as the observed local/provider-stream outcome\u2014not proof that remote processing or billing was undone.\n- Do not move removed declarations into `large_language_model`.\n- Keep OD-122, OD-123 and future lungs MCP deferred.\n\n## Build/catalog handoff\n\nOnce source and callers are reconciled:\n\n1. Check for existing Cargo/rustc/Clippy activity. If occupied, record the blocker; do not launch competing work.\n2. Delegate the authorized GNU workspace release build without a model override, retaining `CXXFLAGS=\"-include cstdint\"`.\n3. After successful build, use that GNU-target `opblob` to seal a **new isolated** catalog with the verified schema-shaping environment.\n4. Record native binary/manifest provenance, previous and new catalog locations, exact added/changed/removed IDs, and affected generated/UI release inputs.\n5. Report **implemented / built / sealed / deployed / tested** separately.\n\nThe expected wrapper removal is `tched_plugins` and `tched_skills`; the actual catalog delta must establish that no unrelated plugin disappeared. No live activation, tests, formatting checks or custom smoke fixtures are authorized.\n\n**Delivery claim:** a coherent direct-wrapper consolidation, plus any fully reconciled alias removals. Not complete threetched consolidation, native persona parity, or authenticated runtime verification."
+    },
+    {
+      "model": "opus-5-5",
+      "content": "# Advisory: native-wrapper retirement policy and router dispositions\n\n## Verdict\n\nThe policy is sound. Two weak points need attention before the work is called done:\n\n- **Capability semantics.** Every native command is declared as a mutation.\n- **Argument-domain safety.** Native commands allow interactive editing, file paths and confirmation bypass.\n\nRetiring wrappers without capability alternatives is a reduction in feature access, not a broadening. It is acceptable if it is documented as a permission boundary and not fixed by rewriting grants.\n\n## 1. Capability policy\n\n**Decision:** Require only the exact native per-command capability. Do not add the old `cap.*` read/write/install/search/execute IDs as alternatives.\n\n**Why:** The native argument domains are larger than the old typed inputs. Examples are `--edit`, `--file`, `--bundle` and `--yes`. An old `install` or `write` grant never authorized those domains, so accepting old IDs would silently widen authority.\n\n**Consequences to record, not fix:**\n- Principals holding only old wrapper grants lose these operations.\n- That is the permission boundary working as intended. Record it in HANDOFF/SIGNALS as: affected operation, old capability, required native capability and caller.\n- Any grant change follows the AGENTS smallest-concrete-change procedure and needs owner approval. Do not map old grants to new capabilities in the materializer, policy files or grant source. That would be a grant rewrite.\n- Read-classed callers are affected because all 147 commands are declared `mutation` / `idempotent=false`. This includes `plugin.list/info/search`, `skills.list/audit`, and `skills.bundle.list/show`. Their callers now need mutation-class admission and go through the mutation queue.\n  - Do not hand-relabel them as `Read` in a schema override; that creates a second authority.\n  - A read classification can only come from a deterministic rule in the capture code (`schema_from_capture`). Otherwise defer it and record the caller impact.\n- Remove dangling references in repository policy/grant sources and the OSCAL subid registry entries for the 18 removed methods. Removing them is not broadening. Leave live grant state alone; that is runtime and out of scope.\n\n## 2. Argument-domain risks (minimum obligations)\n\n| Native surface | Risk | Minimum obligation |\n|---|---|---|\n| `skills.edit` with no `--file` | Spawns `$EDITOR`. With a cleared environment and no TTY it either hangs until cancelled or fails nondeterministically. | Confirm the native dispatcher gives the child a null stdin and has a bounded deadline. Interactive-only argv forms should get a truthful error, not a hang. If argv validation cannot reject the editor form, document it as an unsupported invocation. |\n| `skills.edit --file <path>`, `skills.add` source paths | The native binary reads an arbitrary file under the bridge service identity (path traversal/confused deputy). This is the main security risk in this slice. | Check whether the existing argv validation confines path arguments to the validated config root. If it does not, do not advertise caller-supplied paths as a migration target for `edit_skill`. Mark the contents-edit replacement **deferred**, not \"use `--file`\". |\n| `skills.add --edit` | Same interactive problem. | Same handling as `skills.edit` with no `--file`. |\n| `skills.bundle.remove` without `--yes` | Without the flag: prompt, then hang or failure. With it: a destructive operation with no confirmation. | Never inject `--yes` server-side. The caller supplies it explicitly under the exact mutation capability. Document the change: the old remove semantics had no confirmation step. |\n| `plugin.install`, `skills.install` | Remote fetch (supply chain); the cleared environment drops proxies. | Make no network or environment changes. Report install failures as native errors through the status channel. |\n| Scope of all writes | Native writes go to the runtime config directory. If the old wrappers were scoped per principal, this becomes a shared write and a cross-principal effect. | Verify the old wrapper scoping from source history or the current diff. If it was principal-scoped, record the scope change as a CONCERN and gate it on the existing exact grant. Do not invent a per-principal config directory. |\n\n**`edit_skill` (accepted `contents`): retire.** Old callers that sent contents have no safe native equivalent. List them, remove the calls, and expose an explicit \"retired/unsupported\" outcome in the UI. Do not keep a stub that returns success.\n\n## 3. Results and errors\n\n- The old wrappers returned text; native returns `{stdout, stderr, exit}`.\n- Confirm that a nonzero exit becomes a gRPC status or `MutationError`, not a success envelope carrying `exit != 0`. This is required by the UI AGENTS rule that errors come from the status channel. If it does not, that is a dispatcher bug in scope, because it affects every delivered operation.\n- Callers must not parse `stdout` as structured data unless the captured help declares a machine-output flag.\n\n## 4. State, catalog and mount agreement\n\n- **SHM state:** The removed plugins may have committed state children. Removing the blobs orphans those paths. Confirm that no consumer reads them, including FUSE state files. Do not delete Cozo or SHM data as part of retirement.\n- **Expected catalog delta:** removed `tched_plugins` and `tched_skills`; changed `tched_router` only if its methods change; `threetched` unchanged except if the capture binary or config changes.\n- **Unexpected delta:** any other removal or hash change means the schema-shaping environment does not match the service. Stop and diagnose it before handoff.\n- **Recoverable inputs:** keep the current persisted catalog as a recoverable copy.\n- **Mount adapter (`mount-3tchedfs:35`):** Drop the two IDs in the same change. It is host mount wiring, not necessarily part of the golden snapshot. Record that the live host stays inconsistent until it is deployed separately: either the host lists IDs missing from the new catalog, or it is ahead of the old catalog.\n- **UI:** If `door-chat-adapter.ts` or `native-routing.ts` reference the removed methods, edit the adapter and its test together, as the UI AGENTS requires. Running tests is not authorized, so report them as unrun. Update `vendor/3tched-json-render-ui` only if the UI changes.\n\n## 5. All 43 `tched_router` methods\n\nNative typed HTTP and WebSocket capture is absent, so \"retain as local integration\" is the truthful default for most groups.\n\n| Group | Methods | Disposition | Reason |\n|---|---|---|---|\n| Config aliases (5) | `get`, `init`, `list`, `patch`, `set` | **Retire now** after migrating callers to `config_*` | Pure in-plugin duplicates; same admission path. The lowest-risk real consolidation. |\n| Typed config (6) | `config_get/init/list/migrate/patch/set` | **Retain**; migrate later only if native masks secrets | [INFERENCE] Native CLI `config get` stdout may expose unmasked secrets. Migrating without masking parity is a data-exposure regression. |\n| Structured config (4) | `GetConfig`, `GetConfigSchema`, `GetMcpConfig`, `PatchConfig` | **Defer** to OpenAPI capture | Structured results; the CLI envelope is text. `GetConfigSchema` is a retirement candidate once callers read the sealed `threetched` schema; trace callers first. |\n| Inventory/projection (9) | `GetState`, `GetProviderCatalog`, `GetModelRoutes`, `GetRouter`, `GetStructuredOutput`, `GetTools`, `ListModels`, `ListProviders`, `ListUiSurfaces` | **Retain (local projection)** | SHM state and UI projection; `ListProviders` filtering (agent-owned profiles, selectability) is not a native passthrough. |\n| Selection/routing (12) | `SetModel`, `SetProvider`, `SetSelection`, five role setters, `ResolveRoute`, `apply_catalog_model_binding`, `resolve_catalog_model_binding`, `get_own_agent_route` | **Retain (local integration)** | Identity-scoped routes and local catalog bindings. No native contract is captured. |\n| Generation (7) | `Chat`, `start_generation`, `cancel_generation`, `get_generation_job`, `get_generation_jobs`, `delete_generation_job`, `recover_generation_jobs` | **Retain**; defer native frame capture | Local revisions, SHM commit and cancellation semantics. Native disconnect does not undo provider effects. There is no `threetched.Chat`. |\n\n**Downstream facades:** `large_language_model` (8), `mcp.get_config` / `configure_server` and `gemma_brain.route` stay **deferred**, because their router targets are retained. Retargeting them now would only move the duplication.\n\n## 6. Build and catalog obligations\n\n- Check that no cargo/rustc/clippy is running, then run one release build: `CXXFLAGS=\"-include cstdint\"`, `--workspace --release --target x86_64-unknown-linux-gnu`, from the repo root, through JEV routing with no model override.\n- The bridge's `build.rs` prepares the native capture. A build failure from missing verified binary or manifest inputs is a blocker to report, not a reason for a fallback.\n- Run `target/x86_64-unknown-linux-gnu/release/opblob seal-plugins <new dir>` with the environment from the `op-grpc-bridge` run script.\n- Diff the plugin IDs and hashes against the pinned generation 74 (hash `8a34d0da9517\u2026`).\n- Record the catalog path, the ID/hash delta, binary digests and the source state (HEAD plus dirty file list). Status: built and sealed (isolated), not deployed, not tested.\n\n## Uncertainty\n\nUnverified points that change the outcome:\n\n- Whether argv validation confines path arguments. This decides retire versus defer for the `--file` migration.\n- Whether a nonzero exit maps to an error status.\n- Whether native `config get` masks secrets.\n- Whether the old wrappers were principal-scoped.\n\nEach must be resolved from current source before it is stated as fact in the handoff."
+    },
+    {
+      "model": "kimi-k3",
+      "content": "Advisory assessment requested. Grounding it in current mounted/source evidence first \u2014 bounded reads, no edits."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Assessment: policy is sound; risks are in capability semantics, caller reconciliation, and catalog delta honesty\n\n### Verdict\n\nThe proposed policy \u2014 retire the contents-based `edit_skill`, require the exact hashed native capability per canonical command, and add no old-capability alternatives to widen native argument domains \u2014 is the correct safe choice. It preserves the authorization boundary (no broadening), avoids fabricating equivalence where the native contract differs (interactive `skills.edit --file/--bundle` vs. removed `edit_skill(contents)`), and keeps one schema authority. The alias-retirement slice is coherent only after callers are migrated; do not retire declarations ahead of their callers.\n\n### Risks, ranked\n\n1. **Capability narrowing silently breaks existing callers.** Old wrapper grants were exact read/write/install/search/execute; native capabilities are hashed per-command. A caller holding `cap.skills.edit@v1`-style old grants will be denied on the canonical command's hashed capability. This is a *denial*, not a bug \u2014 but every denied caller must be reconciled or documented, and denials must surface as truthful `PermissionDenied`/missing-capability errors, never fake success. Trace: bridge dispatch, toolsets, `/srv/git/3tched.com` `door-chat-adapter.ts`/`native-routing.ts`, generated surfaces.\n2. **`edit_skill` retirement is a feature change, not a migration.** Native `skills.edit` is an interactive editor with `--file/--bundle`; the removed method accepted inline contents. There is no native equivalent for programmatic contents edit in the current capture. Retire it, document the feature change in HANDOFF/WISHLIST (candidate OD entry), and reconcile callers to an explicit unsupported outcome \u2014 do not map them onto `skills.edit` pretending equivalence.\n3. **`skills.add --edit` and `bundle.remove --yes` are argument-domain differences, not capability differences.** The dispatcher validates argv against the sealed schema, so these are safe *if* the derived schema captures the flags. Verify the derived `PluginSchema` for `skills.add`/`bundle.remove` actually includes them; a capture gap here would make the flags uncallable, not insecure.\n4. **Alias retirement on the router (43 methods).** Dispositions must be per-method, not per-group: config/schema (15), inventory (9), selection/bindings (12), generation (7). Only retire an alias after its demonstrated callers resolve to the canonical declaration and admission path. Generation methods (`cancel_generation`, job recovery) carry local state/receipt obligations the native stateless stream does not provide \u2014 native disconnect \u2260 undone provider request \u2014 so those are \"retain as integration responsibility,\" not retire. Typed HTTP/WS capture is absent; any disposition depending on it is **defer**, with caller impact recorded.\n5. **Catalog delta honesty.** Full reseal sweeps plugin IDs absent from the build. The isolated `seal-plugins` catalog must show exactly `tched_plugins` and `tched_skills` removed (and any retired aliases) with nothing else swept. Keep a recoverable copy of the prior catalog inputs before sealing. The mount adapter (`mount-3tchedfs:35`) currently lists all four upstream IDs; it must be updated in the same change set as the catalog removal, or the mount will reference absent plugins.\n\n### Minimum obligations for this policy to be defensible\n\n- **Per-method capability map**: old method \u2192 canonical native command \u2192 exact hashed capability \u2192 old grant disposition (preserved/denied/retired). No wildcard or \"closest match\" grants.\n- **Caller reconciliation evidence**: every reference to removed methods (bridge dispatch, `mod.rs`/registry, UI adapter, toolsets, generated artifacts) updated or explicitly documented as denied/unsupported. The prior agent's removal edits in `mod.rs`, `threetched.rs`, `mutation_engine.rs` must be reconciled, not repeated blind \u2014 verify they compile-cohere with current HEAD's shared uncommitted work.\n- **Truthful outcomes**: retired methods produce explicit unsupported/unavailable errors at every remaining caller; no success booleans, no silent no-ops.\n- **Receipts preserved**: canonical admission + queue recheck before dispatch; committed SHM publication before notifications; cancellation semantics unchanged for delivered operations.\n- **Build/catalog receipts only**: one GNU-target release build (`CXXFLAGS=\"-include cstdint\"`, `x86_64-unknown-linux-gnu`) when Cargo is free, then isolated `seal-plugins` catalog with the service's schema-shaping env. Report built/sealed status distinctly from deployed; no live activation, no tests/smoke unless owner requests.\n- **HANDOFF/SIGNALS/WISHLIST updates**: exact changed files, method dispositions (migrate/retain/defer/retire per all 43 router methods), catalog removal delta, and the `edit_skill` feature-change record.\n\n### What to explicitly not do\n\n- No old-capability alternatives layered onto native commands (correctly excluded by the policy).\n- No `threetched.Chat` invention, no HTTP/WS endpoint fabrication from config section names.\n- No persona (OD-122) or memory (OD-123) work blocking this slice; Cozo stays authoritative.\n- No assumption that the prior removal was built/sealed \u2014 it is source-only until the build and isolated catalog receipts exist.\n\n**Bottom line:** the policy is the boring, safe option and matches the owner's boundary. Its success depends entirely on the per-method capability map, complete caller reconciliation, and honest catalog/delta reporting \u2014 not on the removals themselves."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<read path=\"/srv/git/odbus-verified/HANDOFF.md\" />\n<read path=\"/srv/git/odbus-verified/SIGNALS.md\" />\n<read path=\"/srv/git/odbus-verified/WISHLIST.md\" />\n<read path=\"/srv/git/odbus-verified/reports/threetched-overlap-map-20261018.md\" />\n<read path=\"/srv/git/odbus-verified/reports/threetched-overlap-map-20261018.txt\" />\n<read path=\"/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md\" />"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "astra-pro, opus-5-5 and glm-5-3 support requiring each canonical native command's exact capability without accepting old wrapper capabilities as alternatives. They identify loss of access for old-grant-only callers as an explicit compatibility change, not authorization to broaden grants.",
+      "The three substantive responses distinguish contents-based edit_skill from native interactive skills.edit and reject treating the latter as an equivalent replacement.",
+      "The substantive responses require an 18-operation mapping covering native targets, argument/result differences, exact capabilities and demonstrated callers, alongside consistent wrapper removal from registration, dispatch, generated surfaces and mount selection.",
+      "Router aliases may be retired only after establishing equivalence and reconciling callers. Native typed HTTP/WebSocket capture gaps do not justify invented methods or moving duplicate declarations into another plugin.",
+      "Local identity scope, Cozo ownership, committed SHM publication, generation-job receipts and truthful cancellation semantics must survive. Native stream disconnect does not prove remote provider effects were undone.",
+      "The authorized delivery boundary is source reconciliation, a single GNU workspace release build when Cargo is free, and a fresh isolated catalog with provenance and reviewed deltas. Tests, smoke fixtures and live activation remain unauthorized.",
+      "The resulting work must be described as a bounded consolidation slice, not complete consolidation or proven authenticated runtime behavior."
+    ],
+    "contradictions": [
+      {
+        "topic": "Whether migrated bundle removal may supply --yes",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Allows an explicit mapping that supplies --yes if source inspection establishes that it merely confirms the exact deletion already requested."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Prohibits server-side injection of --yes and requires the caller to supply it explicitly under the native capability."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Treats --yes primarily as a captured argument-domain difference and does not resolve who must supply the confirmation."
+          }
+        ]
+      },
+      {
+        "topic": "Safety established by sealed argv validation",
+        "stances": [
+          {
+            "model": "glm-5-3",
+            "stance": "Says the interactive and confirmation flags are safe if captured and validated by the derived schema, treating a missing flag primarily as an availability gap."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Says schema-valid arguments can still create unattended-editor, service-identity file-access and shared-runtime-scope risks requiring separate investigation."
+          },
+          {
+            "model": "astra-pro",
+            "stance": "Rejects interactive editor invocation as an unattended migration target and requires semantic review of destructive confirmation, beyond checking that flags exist."
+          }
+        ]
+      },
+      {
+        "topic": "Retain versus defer classifications for router methods",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Classifies most config, inventory and selection methods as deferred native migrations while retaining current behavior; reserves explicit local-responsibility retention mainly for bindings, caller scope and job lifecycle."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Labels broader groups, including typed config, inventory and all selection/routing methods, as retained local integration responsibilities despite missing native capture."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Requires per-method distinctions: capture-dependent migration is deferred, while demonstrated local state and receipt responsibilities are retained."
+          }
+        ]
+      },
+      {
+        "topic": "Catalog comparison baseline and acceptable changes",
+        "stances": [
+          {
+            "model": "opus-5-5",
+            "stance": "Specifies comparison against historical generation 74 and treats any other removal or hash change as evidence of a schema-shaping environment mismatch."
+          },
+          {
+            "model": "astra-pro",
+            "stance": "Requires actual prior/new catalog evidence and review of unrelated removals without asserting that all additional changes necessarily indicate an environment mismatch."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Expects exactly the two wrapper plugin removals and alias changes, but does not account explicitly for legitimate concurrent source changes affecting other catalog hashes."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5"
+        ],
+        "point": "Provide router disposition tables totaling 43 methods, but aggregate several methods and leave the five role setters without their exact declaration names. These are proposed ledgers, not current-source verification."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Requires a per-method disposition ledger for all 43 router methods but does not supply one."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Identify the required 18-operation capability and caller map but provide neither exact native capability values nor verified caller inventories."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5"
+        ],
+        "point": "Discuss the stdout/stderr/exit transition. Opus additionally calls for verifying nonzero-exit status handling, but no response establishes the current dispatcher's actual error contract."
+      },
+      {
+        "models": [
+          "kimi-k3"
+        ],
+        "point": "Offers only an intention to perform bounded reads; provides no assessment or evidence."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Emits read-shaped text without results or analysis. It does not establish that any file was read."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Distinguishes alias deduplication from native-contract consolidation: removing five router aliases can be useful without resolving the remaining handwritten config authority."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Warns consumers not to inherit read/idempotent retry assumptions from retired wrappers because the captured native commands are mutation and non-idempotent."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Raises a conditional confused-deputy risk for caller-supplied file paths executed under the bridge service identity; validating a runtime config root does not itself establish confinement of every file argument."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Calls out potentially orphaned wrapper state paths and requires consumer reconciliation without deleting authoritative Cozo or SHM data."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Separates versioned mount-adapter changes from live host mount wiring, which may not be delivered by the application snapshot alone."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Identifies secret masking and provider selectability filtering as obligations that prevent treating typed configuration and provider projections as bare CLI passthroughs."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Explicitly distinguishes missing flag capture from missing native functionality: a capture gap can make an existing native option unavailable through the sealed contract."
+      }
+    ],
+    "blind_spots": [
+      "No response supplies observed source, mounted declarations, build receipts or catalog receipts. All implementation-specific conclusions remain advisory or conditional.",
+      "No response establishes whether --file names an input file, an edit target or another native concept. Security and migration conclusions about that flag require its actual implementation semantics.",
+      "The responses do not fully distinguish retiring the legacy contents-edit operation from changing or suppressing the already-existing canonical native skills.edit command. The latter would be additional scope.",
+      "Opus proposes deadline, stdin, path-confinement and nonzero-exit changes conditionally, but does not establish whether these are existing defects, required consolidation changes or unrelated hardening.",
+      "The responses do not establish exact alias capability equivalence. Migrating an alias to a similarly named config method could change access even when arguments and handlers match.",
+      "No response demonstrates that the proposed direct-wrapper and alias slices exhaust the additional evidence-backed consolidation reachable under the owner's largest-coherent-subset requirement.",
+      "Retained local responsibilities and deferred native contracts are not consistently separated within mixed methods such as start_generation, inventory projections and route selection.",
+      "Catalog expectations must be reconciled with current shared source and the current authoritative catalog; historical generation numbers and unexplained hash changes cannot alone establish a regression.",
+      "No response supplies a concrete plan for reconciling stale policy references without modifying shared grants or deleting entries still used by other callers.",
+      "No response establishes the current schema-shaping environment, matching native binary/manifest inputs, or whether affected UI changes require a refreshed pinned release archive."
+    ]
+  }
+}

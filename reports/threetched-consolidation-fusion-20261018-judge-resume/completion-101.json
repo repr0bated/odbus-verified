@@ -1,0 +1,64 @@
+{
+  "request": 101,
+  "started": "2026-10-18T22:03:09.920475+00:00",
+  "finished": "2026-10-18T22:03:27.109156+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-05601976b3202b97016ad54220ce1087d0a548679b49d5402f",
+    "created": 1792360993,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Removing incidental schema assertions\",\"path\":\"agent://RetireLlmFacades\",\"content\":\"Developer verification rule forbids re-pinning incidental implementation/wiring counts: your schema test now one method/one capability must not re-pin old count test. Remove obsolete count/wiring-only assertion/test (retain any substantive independent admission invariants). Also exact nine file list with test paths needed. Preserve true stream admission tests if exercise consumer-visible denial not mock echoes. No test execution; supply edit receipt.\"}",
+                "name": "write"
+              },
+              "id": "call_GkdsqXpgdPjYARxdUTuI0WXS",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 468,
+      "prompt_tokens": 302676,
+      "total_tokens": 303144,
+      "completion_tokens_details": {
+        "reasoning_tokens": 137
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 198200
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:27.107503+00:00",
+  "stream_chunks": 4
+}

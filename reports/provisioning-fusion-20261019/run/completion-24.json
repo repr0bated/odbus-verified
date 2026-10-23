@@ -1,0 +1,65 @@
+{
+  "request": 24,
+  "started": "2026-10-19T04:40:44.541371+00:00",
+  "finished": "2026-10-19T04:41:04.891572+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-03240b7fbe151b22016ad59f4fb4ec87d08eb15210ff7ed60f",
+    "created": 1792384847,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"console.log('coverage',manifest.coverage,'privacy',manifest.privacy,'exclusions',manifest.excluded_sessions);console.log('hermes remainder',Object.fromEntries(Object.entries(hm).filter(([k])=>k!=='sessions')));console.log('manifest hash',hash(await fs.readFile(base+'manifest.json'))); var supplemental=['initial-drift-ledger.md','jev-evidence-inputs.json','jev-evidence-decisions.json','evidence/hermes/delegations.jsonl','evidence/astra/latest-kiro-brief.txt',...manifest.research.map(x=>x.export_path.replace('reports/provisioning-fusion-20261019/',''))];for(var f of supplemental){var b=await fs.readFile(base+f);console.log(f,b.length,hash(b));}\",\"title\":\"Accounting supplemental evidence and limits\"}",
+                "name": "eval"
+              },
+              "id": "call_nUcG05rUflSm4PyeRzuABArO",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The corpus contains 6,620 records across 42 histories. Bounded reviewers are reading the full exported content, with exact duplicates mapped back to their first occurrence. Separate reviews cover current source, installed helpers, historical scripts, and Incus/Btrfs feasibility.\n\nCoverage receipts distinguish file parsing from semantic review and later Fusion/JEV review. No provisioning or host changes are being made."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1048,
+      "prompt_tokens": 224625,
+      "total_tokens": 225673,
+      "completion_tokens_details": {
+        "reasoning_tokens": 221
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 179544
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:41:04.889320+00:00",
+  "stream_chunks": 5
+}

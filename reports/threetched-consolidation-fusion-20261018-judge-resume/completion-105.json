@@ -1,0 +1,88 @@
+{
+  "request": 105,
+  "started": "2026-10-18T22:03:27.159241+00:00",
+  "finished": "2026-10-18T22:03:39.242930+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0a06a3dd3e614f7d016ad54233053087d08944728e35022b60",
+    "created": 1792361011,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting retained facade declaration\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model.rs:90-200\"}",
+                "name": "read"
+              },
+              "id": "call_fEXgGlzXRldnBekLr8z1Ltjz",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting retained facade execution\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model_methods.rs:1-180\"}",
+                "name": "read"
+              },
+              "id": "call_pUftEXFvFQk1dW8Ff8Gejycr",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording release dependency blockers\",\"op\":\"block\",\"task\":\"Seal fresh isolated catalog and record exact provenance and plugin delta\",\"reason\":\"Requires fresh consolidation GNU release binary; compiler ownership remains with external Hermes worker sa-0-32370f11, absent authoritative terminal receipt and unavailable in registered agent namespace.\"}",
+                "name": "todo"
+              },
+              "id": "call_AOGOU75mLw2CpVCGyCNTQ8Kh",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording generator dependency blocker\",\"op\":\"block\",\"task\":\"Regenerate catalog-pinned specialization through existing generator\",\"reason\":\"Requires new isolated consolidation catalog; old live catalog would restore retired wrappers. No hand edits or regeneration against stale catalog.\"}",
+                "name": "todo"
+              },
+              "id": "call_LuTVF3Ih7HTMi5AEUBwwyTK2",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 389,
+      "prompt_tokens": 303766,
+      "total_tokens": 304155,
+      "completion_tokens_details": {
+        "reasoning_tokens": 82
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 199577
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:39.240935+00:00",
+  "stream_chunks": 10
+}

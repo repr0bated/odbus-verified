@@ -1,0 +1,64 @@
+{
+  "request": 94,
+  "started": "2026-10-18T22:02:47.774510+00:00",
+  "finished": "2026-10-18T22:02:58.839516+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-083381b8b8708b9a016ad5420a76e087d0a2e1d3c2aeb1773b",
+    "created": 1792360970,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Requesting final release ownership evidence\",\"path\":\"agent://ReleaseReadiness\",\"content\":\"Source retirement workers now running (two accessors + seven LLM facades + gemma.route); no source freeze yet. Parent wrote shared COMPILER RELEASE REQUEST TO HERMES row. Can you establish authoritative provisioning parent/worker completion via available registered agent message path (without polling processes/logs, no pgrep, no Cargo)? If external parent unavailable, state exact reachability limitation; current HANDOFF claim remains blocker. Do not repeatedly scan unchanged handoff/logs. No model/config changes.\"}",
+                "name": "write"
+              },
+              "id": "call_rj1clPV4vht2UbR7G0KnM7Jz",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 333,
+      "prompt_tokens": 286566,
+      "total_tokens": 286899,
+      "completion_tokens_details": {
+        "reasoning_tokens": 158
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 196328
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:02:58.838112+00:00",
+  "stream_chunks": 4
+}

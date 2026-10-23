@@ -1,0 +1,41 @@
+{
+  "proof_migration": {
+    "type": "choice",
+    "choice": "coordinated_change",
+    "confidence": 1,
+    "probabilities": {
+      "coordinated_change": 1,
+      "shell_only": 0,
+      "insufficient": 0
+    }
+  },
+  "subvolume_equivalence": {
+    "type": "choice",
+    "choice": "unsupported",
+    "confidence": 1,
+    "probabilities": {
+      "unsupported": 1,
+      "supported": 0,
+      "uncertain": 0
+    }
+  },
+  "topology": {
+    "type": "choice",
+    "choice": "conditional_only",
+    "confidence": 1,
+    "probabilities": {
+      "conditional_only": 1,
+      "complete": 0,
+      "impossible_all": 0
+    }
+  },
+  "completion": {
+    "type": "choice",
+    "choice": "incomplete",
+    "confidence": 1,
+    "probabilities": {
+      "incomplete": 1,
+      "complete": 0
+    }
+  }
+}

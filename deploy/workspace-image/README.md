@@ -31,31 +31,40 @@ The caller is responsible for downloading and verifying those artifacts before
 calling `prepare`. The helper records the downloaded archive's provenance;
 it does not claim to perform the signature or archive verification itself.
 
-Before metadata preparation, `prepare-lungs-client TOP RECEIVED_RELEASE`
-installs the received `threetched-fs` client and a public schema-only view in
-the already writable offline base. It requires a read-only release under
-`/opt/op-dbus/releases`, refuses existing client/view targets, and never
-captures live SHM or credentials. The guest's enabled `3tchedfs.service` runs
-`mount /run/mount/3tchedfs`, using this `/etc/fstab` entry:
+Before metadata preparation, `prepare-lungs-client TOP READ_ONLY_RELEASE`
+installs the release's `3tched-fs` client and two public schema-only views in
+the already writable offline base. Both mounts run that same binary, as two
+separately supervised processes. It requires a root-controlled read-only
+release under `/opt/op-dbus/releases` or `/opt/op-dbus/release-send` and reads
+the catalog at `usr/share/op-dbus/plugin-blobs`. The receipt distinguishes a
+retained received release from a native source snapshot; a source snapshot is
+not evidence of receipt or activation. It refuses existing client/view targets and never
+captures live SHM or credentials. The enabled `3tchedfs.service` and
+`threetchedfs.service` mount `/run/mount/3tchedfs` and `/run/mount/threetched`:
 
 ```fstab
 3tchedFS /run/mount/3tchedfs fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
+threetched /run/mount/threetched fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
 ```
 
-`noauto` prevents a competing early-boot mount; the enabled service starts it
+`noauto` prevents competing early-boot mounts; each enabled service starts
 after local filesystems and tmpfiles. `/usr/sbin/mount.fuse.3tchedFS` runs the
-existing preflight and foreground client under service supervision. A manual
-`mount /run/mount/3tchedfs` also stays in the foreground. Unsupported mount
-options are rejected rather than silently ignored. Runtime prerequisites remain
-`/dev/fuse`, the lungs socket, sealed catalog, schema-only view and empty state
-directory. Offline configuration checks do not prove an identity-bound mount
-or a successful boot.
+existing preflight and foreground client under service supervision. Manual
+mounts also stay in the foreground. Unsupported mount options are rejected
+rather than silently ignored. The main view excludes `threetched,tched_router`;
+the upstream view includes them, matching the host adapter. Both retain the
+same sealed catalog pin and use `/run/3tched-lungs.socket` for canonical writes.
+The stores contain immutable declarations, not separate authoritative state.
+The offline empty-state directory does not provide live SHM data-file reads.
+Runtime prerequisites remain `/dev/fuse`, the lungs socket, sealed catalog,
+schema-only views and empty state directory. Offline configuration checks do
+not prove an identity-bound operation or a successful boot.
 
 Host agents use a separate projection of the same blobs; no copied schema or
 synchronization layer is required. A guest may also serve its MCP clients with:
 
 ```sh
-threetched-fs --store /usr/share/op-dbus/lungs-view mcp \
+3tched-fs --store /usr/share/op-dbus/lungs-view mcp \
   --state /usr/share/op-dbus/lungs-empty-state \
   --lungs-socket /run/3tched-lungs.socket --all
 ```
@@ -75,12 +84,18 @@ not a second listener. Directory binding keeps socket replacement visible
 after a bridge restart; binding the socket inode alone does not. Never bind
 the host's entire `/run` to provide the public entrypoint.
 
+Owner correction (2026-10-19): retain the sole `:8090` door. Do not add a
+separate internet-proxy socket attachment to the seed/profile as a workaround.
+`nmrs` is a NetworkManager D-Bus client, not a replacement networking daemon.
+Installed NetworkManager or a configured FUSE mount alone does not prove
+internet connectivity through that door.
+
 For a headless seed, keep display-manager packages installed but mask the
 installed display-manager unit and `display-manager.service`, and select
 `multi-user.target` as the default. A network manager's enablement must follow
 the actual selected adapter's dependencies, not a similarly named project's
-documentation. The loopback relay and host internet carrier are separate
-prerequisites; a D-Bus socket alone does not establish internet access.
+documentation. Verify the existing single-door transport rather than adding a
+separate egress socket; a D-Bus socket alone does not establish internet access.
 
 `verify TOP` is the pre-seal check. It validates the exact seven Btrfs sibling
 names and mount layout, metadata schema and artifact hashes, the complete

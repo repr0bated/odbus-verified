@@ -1,0 +1,83 @@
+{
+  "request": 36,
+  "started": "2026-10-18T21:58:03.775441+00:00",
+  "finished": "2026-10-18T21:59:46.592212+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 3,
+    "panel_failures": 2,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0928cde1d668b01f016ad54146efec87d0953063aa94186afa",
+    "created": 1792360775,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Preserving facade admission semantics\",\"path\":\"agent://RetireLlmFacades\",\"content\":\"Reporting nuance: targets are existing delegation destinations, not lossless external caller renames. Record removed adapter input/output mappings and exact old/target grants (schema derives many from router). No production invocation found != no external consumers. Keep plugin stream_generate registration, llm.invoke origin pins/private partitions/recovery untouched; owner metadata only where proven. Do not drop shared helper. Check residual subid/toolsets if relevant. No tests run.\"}",
+                "name": "write"
+              },
+              "id": "call_UDkeDZmpX1pn3TBySOrjxvcV",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming accessor contract boundaries\",\"path\":\"agent://RetireAccessors\",\"content\":\"Please explicitly verify provider response envelope/filtering/masking/readback differences when migrating backing assertion; source shows same Provider vector but canonical ListProviders does coherent observation/publication. Removed names must follow existing unknown-method/error path, no remaining fallback alias. Four obsolete grants may affect validation; parent will inspect policy handling, don't call them inert without evidence. Preserve ConfigSchema state.\"}",
+                "name": "write"
+              },
+              "id": "call_jWfEn9OQkNNLccwfSQjsttsU",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating grant catalog validation\",\"path\":\"/srv/git/odbus-verified/crates\",\"query\":\"Where capability grants materialization checks granted capability IDs against declared capabilities in sealed catalog and handles unknown obsolete capability identifiers\",\"grep_keywords\":[\"capability\",\"catalog\",\"unknown\",\"materializ\"]}",
+                "name": "find"
+              },
+              "id": "call_Tg90s0F5GYYBmuSBdhqaWXGB",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 570,
+      "prompt_tokens": 252276,
+      "total_tokens": 252846,
+      "completion_tokens_details": {
+        "reasoning_tokens": 115
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 128127
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:34.528976+00:00",
+  "stream_chunks": 8
+}

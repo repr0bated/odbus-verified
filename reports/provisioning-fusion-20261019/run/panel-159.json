@@ -1,0 +1,93 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review cross-check. Packet history-042 consists of Hermes session 20261018_190519_b780ef records 2912-2927 (file reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl). Beginning provenance cut; final record 2927 cut mid escaped skill content. 2912/2913 duplicate markers reference absent first content ids 2821 row1224 hash5b0880340e1692cb557eb9a8fc9c3b4176534121c1f66a834e600b083809cc57 and2822 row1225 hash9e2c30f658dea9e8e9561739de6ba363ccd85125f040d79c4aacdb677acec1d1. 2914/2915 rows1317/1318 search outputs total_count0 with queries absent.2916 row1319 hidden interruption.2917 row1320 user 'i am going out please builed deploy...derfer tests'.2918 row1321 failed_turn 'This turn did not complete. Some actions may already have run; verify their effects before resending.'2919 row1322 user requests one-time container zero named/ID3tchedCtlChatbot previous keypair and ONLY root account/group root;2920 row1323 repeats root request.2921 row1324 clarify asks application/container-only vs host changes and promises host unchanged.2922 row1325 tool reports answered submitted user_response 'eventuall will be host but for now container'.2923 row1326 calls execute_code reads nine skills from /srv/git/odbus-verified/.agents/skills (no incus in list).2924 row1327 output success exit0 nine calls but stdout truncated50000/94903 bytes44903 omitted with spill /home/jeremy/.hermes/cache/exec/stdout-f8430a7629cc.txt. Skill documentation includes gRPC dispatch not discovery proof; runit authenticated D-Bus snapshot send/receive no binary copy; FUSE/OVS example failures not host telemetry.2925 row1328 requests spill offsets340limit510,850limit490; terminal date/git status/ps/stat mounted identity_sled and incus operations/git HEAD; HANDOFF search PROVISIONING FIX|FUSION EXITED|source.stable|3tchedCtlChatbot; native_creation.rs limit260.2926 row1329 returns spill340-849 total2062lines94903bytes truncated true; docs include ACL server-side uuid not subid actor/cap grants and historical factory examples verify sealed.2927 row1330 partial return visible spill850-1053, OVS examples and start FUSE skill. No terminal/search/source results from2925 in packet. All complete records active0 compacted1 compressed_summary0 display_order=id effects null; no parent/delegation metadata. Physical order2918 before2919 despite timestamp inversion. Need identify key audit cautions and findings, distinguish observations/inferences; no commands execute, no invented omitted material. Current contract NO HOST LOOP incl pool, preserve seed/sprout etc; bootstrap out of scope JEV judge not router. Provide concise crosscheck only.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"history-042\",\n  \"fully_reviewed\": false,\n  \"review_scope\": \"Reviewed the supplied packet description only. Original JSONL records and complete tool payloads were not supplied here; beginning provenance and record 2927 are cut. This is a bounded cross-check, not complete Hermes-history ingestion.\",\n  \"source\": \"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl\",\n  \"record_metadata\": {\n    \"scope\": \"All complete records, as reported in the packet description\",\n    \"active\": 0,\n    \"compacted\": 1,\n    \"compressed_summary\": 0,\n    \"display_order\": \"id\",\n    \"effects\": null,\n    \"parent_delegation_metadata\": \"Not supplied\",\n    \"ordering\": \"Preserve physical order: 2918 precedes 2919 despite timestamp inversion. Null effects do not establish that no actions occurred.\"\n  },\n  \"findings\": [\n    {\n      \"ids\": [2912, 2913],\n      \"rows\": [null, null],\n      \"source\": \"Packet description of duplicate markers in the source JSONL\",\n      \"original_short_quote\": null,\n      \"classification\": \"observation\",\n      \"stage\": \"Evidence coverage\",\n      \"finding\": \"Duplicate references are accounted for, but their original content is unavailable to this reviewer. They cannot be counted as independently reviewed content.\",\n      \"actual_tool_result\": \"Not supplied.\",\n      \"correction_propagation_or_discrepancy\": \"First provenance must be checked at ID 2821 row 1224, hash 5b0880340e1692cb557eb9a8fc9c3b4176534121c1f66a834e600b083809cc57, and ID 2822 row 1225, hash 9e2c30f658dea9e8e9561739de6ba363ccd85125f040d79c4aacdb677acec1d1.\"\n    },\n    {\n      \"ids\": [2914, 2915],\n      \"rows\": [1317, 1318],\n      \"source\": \"Packet description of source JSONL tool results\",\n      \"original_short_quote\": \"total_count0\",\n      \"quote_status\": \"Packet notation, not a verbatim JSON payload\",\n      \"classification\": \"observation\",\n      \"stage\": \"Historical evidence discovery\",\n      \"finding\": \"Two searches reportedly returned zero results, but their queries are absent. These results cannot establish missing history, missing prerequisites, or an exhaustive search.\",\n      \"actual_tool_result\": \"Both reported total_count = 0.\",\n      \"correction_propagation_or_discrepancy\": \"Recover the originating calls before assigning evidentiary significance.\"\n    },\n    {\n      \"ids\": [2916, 2917, 2918],\n      \"rows\": [1319, 1320, 1321],\n      \"source\": \"Packet description of source JSONL interruption, owner request and failed_turn\",\n      \"original_short_quote\": \"This turn did not complete. Some actions may already have run; verify their effects before resending.\",\n      \"classification\": \"observation\",\n      \"stage\": \"Build/deployment request and interrupted execution\",\n      \"finding\": \"The owner historically requested build/deploy with tests deferred. The subsequent failed-turn warning establishes an incomplete turn, not successful deployment and not proof that nothing ran. Record 2916 is identified only as a hidden interruption.\",\n      \"actual_tool_result\": \"No build, deployment or test command receipt is supplied in this packet.\",\n      \"correction_propagation_or_discrepancy\": \"Historical authorization is not authorization for this read-only review. Any effects require receipts elsewhere; do not replay the request.\"\n    },\n    {\n      \"ids\": [2919, 2920, 2921, 2922],\n      \"rows\": [1322, 1323, 1324, 1325],\n      \"source\": \"Packet description of source JSONL owner requests, clarification and submitted answer\",\n      \"original_short_quote\": \"eventuall will be host but for now container\",\n      \"classification\": \"observation\",\n      \"stage\": \"Identity/container scope clarification\",\n      \"finding\": \"The owner requested a one-time container zero named/ID 3tchedCtlChatbot, the previous keypair, and only the root account/group. The assistant clarified application/container versus host changes; the submitted answer limits the immediate scope to the container. The account/group request does not authorize privileged Incus configuration, host-root changes, a new identity, or an admission bypass.\",\n      \"actual_tool_result\": \"Clarification tool reportedly recorded an answered/submitted user_response with the quoted text.\",\n      \"correction_propagation_or_discrepancy\": \"The container-only correction reached the clarification tool. No resulting configuration, identity binding, key reuse, account change or enforcement receipt is present. Display naming must not be treated as identity authorization.\"\n    },\n    {\n      \"ids\": [2923, 2924],\n      \"rows\": [1326, 1327],\n      \"source\": \"Packet description of source JSONL execute_code call and result\",\n      \"original_short_quote\": null,\n      \"classification\": \"observation\",\n      \"stage\": \"Skill preload and evidence availability\",\n      \"finding\": \"The historical call read nine skills from /srv/git/odbus-verified/.agents/skills; Incus was not in that list. Successful execution of the read does not establish full model ingestion of its truncated output. This is not, by itself, proof of violation of a historical ten-skill requirement.\",\n      \"actual_tool_result\": \"Reported success, exit 0, nine calls; stdout retained 50000 of 94903 bytes, omitting 44903 bytes, with spill at /home/jeremy/.hermes/cache/exec/stdout-f8430a7629cc.txt.\",\n      \"correction_propagation_or_discrepancy\": \"Current Incus-specific review requirements remain applicable. Historical preload coverage must distinguish execution success from visible/read content.\"\n    },\n    {\n      \"ids\": [2925],\n      \"rows\": [1328],\n      \"source\": \"Packet description of source JSONL requested tool calls\",\n      \"original_short_quote\": \"PROVISIONING FIX|FUSION EXITED|source.stable|3tchedCtlChatbot\",\n      \"classification\": \"observation\",\n      \"stage\": \"Follow-up inspection\",\n      \"finding\": \"The assistant requested two spill reads, terminal inspection, a HANDOFF search and native_creation.rs inspection. These are requested inspections, not supplied observations of repository, process, mounted-operation or native-creation state.\",\n      \"actual_tool_result\": \"Only spill-read results are represented in subsequent records of this packet. Terminal, HANDOFF search and source results are absent.\",\n      \"correction_propagation_or_discrepancy\": \"Do not infer a stable source tree, running build, deployed release, accessible admission surface or implemented native creation from these call arguments.\"\n    },\n    {\n      \"ids\": [2926, 2927],\n      \"rows\": [1329, 1330],\n      \"source\": \"Packet description of source JSONL spill-read results\",\n      \"original_short_quote\": null,\n      \"classification\": \"observation\",\n      \"stage\": \"Documentation recovery and security review\",\n      \"finding\": \"Recovered content is skill documentation, including server-side ACLs, UUID versus subid distinctions, actor/capability requirements, sealed-surface verification, and OVS/FUSE examples. Example errors and telemetry are not host failures. Discovery guidance is not dispatch proof; deployment guidance is not a deployment receipt.\",\n      \"actual_tool_result\": \"2926 reportedly returned spill lines 340\u2013849, total 2062 lines/94903 bytes, truncated=true. 2927 visibly covers lines 850\u20131053 before the packet cuts within escaped skill content.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve the documented safeguards when evaluating later changes, but verify actual enforcement separately. Requested spill recovery does not demonstrate that all omitted bytes were recovered or read.\"\n    }\n  ],\n  \"truncations_unavailable\": [\n    \"Beginning provenance cut; original complete packet text unavailable in this panel question.\",\n    \"First content for duplicate markers 2912/2913 absent.\",\n    \"Queries underlying 2914/2915 absent.\",\n    \"No public detail beyond the description of interruption 2916; no hidden reasoning reconstructed.\",\n    \"2924 omitted 44903 stdout bytes; subsequent visible reads do not establish complete recovery.\",\n    \"2927 cut mid escaped skill content.\",\n    \"Terminal, HANDOFF search and native_creation.rs results requested by 2925 absent.\"\n  ],\n  \"boundary_dependencies\": [\n    \"Upstream first-provenance content and exact original JSONL payloads are needed for character-level coverage and verbatim quotation.\",\n    \"Downstream command receipts are needed to determine whether the interrupted build/deploy request had effects.\",\n    \"Later implementation and deployment evidence is needed to assess propagation of the container-only correction and preservation of existing identity/key/native records.\",\n    \"This packet supplies no storage-layout feasibility or completion proof. Apply the current no-host-loop rule to all backing, including the pool, without detaching anything or relaxing seed/sprout semantics.\",\n    \"Bootstrap remains out of scope; JEV is judge-only. No JEV adjudication is evidenced by this packet.\"\n  ],\n  \"uncertainty\": [\n    \"High confidence in the limited cautions supported by the supplied description; original payload details remain unverified.\",\n    \"No supported conclusion here about successful provisioning, adoption, startup, deployment, testing, or the current root cause of unfinished provisioning.\",\n    \"No tools, historical commands, mutations, builds or tests were executed by this reviewer.\"\n  ]\n}"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The sole supplied response treats history-042 as a bounded cross-check of a packet description, not complete original-history ingestion.",
+      "Historical build/deploy requests, successful documentation reads and requested inspections do not establish provisioning, deployment, adoption or startup completion.",
+      "The container-only clarification is recorded, but its implementation and enforcement are not demonstrated in this packet.",
+      "Current read-only scope and the prohibition on all host loop devices remain controlling; historical instructions are not executable authorization."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Accounts for records 2912\u20132927, supplied row references, compacted/inactive metadata and physical ordering, but cannot verify original payloads character by character from the packet description."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Identifies the duplicate provenance references, missing search queries, truncated skill output and missing terminal/search/source results; original duplicate content and complete spill recovery remain unavailable."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Traces the owner\u2019s container-only correction through the clarification tool, while leaving downstream code, configuration and deployment propagation unresolved."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Preserves current storage and identity constraints as review boundaries, without claiming this packet establishes design feasibility, a current blocker or the complete provisioning failure chain."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "An incomplete-turn warning and null effects metadata do not prove that no actions occurred; underlying command receipts are needed before interpreting or retrying the historical request."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The request for only the root account/group does not authorize privileged Incus settings, host account changes, identity replacement or admission bypass."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Nine successful skill-read calls do not establish full ingestion of truncated output, and the absent Incus skill does not alone prove violation of a historical ten-skill requirement."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "OVS/FUSE documentation examples are not host telemetry; discovery guidance is not execution proof, and deployment guidance is not a deployment receipt."
+      }
+    ],
+    "blind_spots": [
+      "Only one panel response was supplied, so cross-model agreement, disagreement and independent corroboration cannot be evaluated.",
+      "Original record payloads were not included in the supplied packet description; exact quotations, call arguments and character-level coverage remain unverified.",
+      "The packet does not show whether any build or deployment action preceded the failed turn, or whether later receipts reconciled its effects.",
+      "No supplied result demonstrates implementation of the container account policy, previous-keypair binding or preservation of authoritative identity records.",
+      "This packet cannot resolve no-host-loop/subvolume-only compatibility with immutable seed/sprout semantics, nor prove storage establishment, final CAS/adoption, startup or recovery.",
+      "No substantive JEV adjudication or complete-history coverage receipt is available for this cross-check."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

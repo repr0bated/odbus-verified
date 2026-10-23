@@ -1,0 +1,83 @@
+{
+  "request": 15,
+  "started": "2026-10-19T04:40:42.649630+00:00",
+  "finished": "2026-10-19T04:41:45.616521+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0379927c3d4d3e5b016ad59f82e19087d097340aaf2dcfa427",
+    "created": 1792384898,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory review skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt\"}",
+                "name": "read"
+              },
+              "id": "call_XyjzxP7oTBDQo2eKx84oMg0E",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading packet review contract\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt\"}",
+                "name": "read"
+              },
+              "id": "call_UqdpZyEMtZf3fmdp7TcJaqf5",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading stateless completion interface\",\"path\":\"xd://eval/judge\"}",
+                "name": "read"
+              },
+              "id": "call_JbtVkf44inOa1m9LIdFQcZ1E",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 340,
+      "prompt_tokens": 27344,
+      "total_tokens": 27684,
+      "completion_tokens_details": {
+        "reasoning_tokens": 140
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 10303
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:41:38.611299+00:00",
+  "stream_chunks": 8
+}

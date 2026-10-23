@@ -1,0 +1,64 @@
+{
+  "request": 29,
+  "started": "2026-10-20T17:09:12.112912+00:00",
+  "finished": "2026-10-20T17:09:23.678755+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-021145000c37176f016ad7a03fbd8087d182804cd23c426eea",
+    "created": 1792516159,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading repository handoff claims\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:570-630\"}",
+                "name": "read"
+              },
+              "id": "call_mL150S4svwmq2ym0F5ZN6Uro",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: read the execution guidance and handoff claim; compare catalog/report pins and generator provenance; run the existing generator once with closed stdin, persistent logs, and a completion receipt; report output hashes, changed files, and coverage limits without running tests or runtime operations."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 356,
+      "prompt_tokens": 28091,
+      "total_tokens": 28447,
+      "completion_tokens_details": {
+        "reasoning_tokens": 94
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 19663
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:09:23.677141+00:00",
+  "stream_chunks": 5
+}

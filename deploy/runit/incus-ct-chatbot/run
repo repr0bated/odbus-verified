@@ -47,9 +47,9 @@ incus config set "$NAME" boot.autostart=false 2>/dev/null || true
 if ! incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
     # Only opted-in, explicitly paired storage uses the upgrade lifecycle.
     # Keep this before start; never replace a running container's OS view.
-    pair=/var/lib/3tched-leaf-pool/.provisioning/$NAME.upgrade.json
+    pair=/var/lib/incus/storage-pools/3tched-pool/.provisioning/$NAME.upgrade.json
     if [ -e "$pair" ] || [ -L "$pair" ]; then
-        /usr/local/libexec/3tched/sync-instance-upgrade boot "$NAME" || exit 1
+        /usr/local/libexec/op-dbus/helpers/sync-instance-upgrade boot "$NAME" || exit 1
         expected=/var/lib/incus/storage-pools/identity-roots/containers/$NAME/rootfs
         incus --force-local query "/1.0/instances/$NAME" | jq -e \
             '.devices.root.type=="disk" and .devices.root.path=="/" and .devices.root.pool=="identity-roots"' >/dev/null &&

@@ -1,0 +1,92 @@
+{
+  "status": "ok",
+  "query": "Evidence review for resumed consolidation, not a new plan: owner forbids tests/checks/fixtures/live activation; completed GNU workspace build + fresh isolated seal + specialization terminal exit0 recovered from Hermes state.db messages3848/3954. Exact delta msg3957:74->72 plugins,1388->1357 methods,33 removals,2 unrelated additions identity_sled.prepare_container/incus.reconcile_creation. Catalog generation72/hash6f576d...260c matches checked-in generated report, current manifest and both mounted metadata views70+2. Original isolated scratch catalog now absent; separate Oct20 scoped rebuild overwrote some target artifacts and live incident is explicitly no-recovery. Optional generated example still imports old nonexistent plugin_f_threetched_5ffs instead of generator's plugin_f_tched_5ffs. Existing built generator is being used once against matching catalog to refresh all outputs including optional example, with hashes and durable receipt; no Cargo planned absent demonstrated need. README and existing report/board/HANDOFF need truthful updates. Evaluate whether recovered historical evidence is sufficient to close original build/seal obligation without pretending artifacts currently form an activatable release; identify precise reporting limits or remaining evidence required. Do not invent runtime equivalence or recommend forbidden tests/deploy.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Recovered evidence closes the original historical build/seal obligation. It does not establish a currently activatable release.** Record this as a correction to the earlier blocked status, not a new build or seal.\n\n### Supported conclusions\n\n- Hermes `state.db` messages **3848/3954** establish completion of the GNU workspace release build, fresh isolated seal and specialization, with terminal exit **0**.\n- Message **3957** establishes the actual catalog delta:\n  - Plugins: **74 \u2192 72**.\n  - Methods: **1,388 \u2192 1,357**.\n  - **33 removals**, plus two unrelated additions: `identity_sled.prepare_container` and `incus.reconcile_creation`.\n  - The earlier **1,355-method expectation is superseded**, not a failed acceptance criterion.\n- Generation **72**, hash **`6f576d\u2026260c`**, agrees across the current manifest, checked-in generated report and both mounted metadata views. The **70 + 2** partition supports catalog/view agreement; it does not prove method execution or semantic equivalence.\n\n### Reporting limits\n\n1. **Historical preparation is complete; the original isolated input is no longer retained.** Its absent scratch directory prevents handing that directory to golden now. It does not invalidate the recorded successful seal.\n2. **Current target artifacts are not a certified release set.** The October 20 scoped rebuild overwrote some artifacts. Do not combine the historical build receipt with today\u2019s target directory and label that combination release-ready.\n3. **Mounted agreement is observational evidence only.** Do not attribute activation to this task or claim authenticated operation success, correct cancellation, runtime parity or zero downtime.\n4. **Specialization exit 0 did not establish optional-example compilation.** The stale `plugin_f_threetched_5ffs` import is a concrete generated-output defect. Its refresh must be reported separately from the historical successful generator execution.\n5. **No live recovery is authorized.** The incident and its no-recovery boundary remain separate from closing the historical preparation obligation.\n\n### Evidence needed to finish this resumed documentation pass\n\n- Preserve durable excerpts of messages **3848, 3954 and 3957**, with their original timestamps and source identifiers. Link the historical command, source state, capture selectors and full catalog hash wherever those records provide them; mark anything absent as unrecorded rather than reconstructing it.\n- Finish the **already-running, one-shot generator refresh** and retain its terminal receipt, generator digest, input catalog identity and output hashes. Confirm from the generated output that the optional example references `plugin_f_tched_5ffs`. This establishes regeneration, **not compilation of the example**.\n- Update README, the existing report, board and HANDOFF consistently. Preserve the old blocker entries as historical records and explicitly supersede them.\n\n**No new Cargo invocation is needed merely to reconfirm the recovered historical receipts.** Current release preparation would require a separately established matching artifact set; that is not implied by this evidence review.\n\nSuggested status:\n\n> Source consolidation implemented. Original GNU workspace build, isolated seal and specialization completed successfully; receipts recovered from Hermes messages 3848/3954, with catalog delta in 3957. Current catalog is generation 72, 72 plugins and 1,357 methods. Original isolated scratch catalog is absent, and current target artifacts have mixed build provenance; no activatable release set is certified. Optional-example regeneration: [actual receipt/status]. Tests/checks/fixtures unrun; no activation or recovery performed by this resumed pass. Full native-contract consolidation remains incomplete."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<file>\n/home/jeremy/.agents/HANDOFF.md\n</file>\n\n<file>\n/home/jeremy/.agents/SIGNALS.md\n</file>\n\n<file>\n/home/jeremy/.agents/WISHLIST.md\n</file>\n\n<regex>\nplugin_f_threetched_5ffs\n</file>\n\n<regex>\nplugin_f_tched_5ffs\n</file>\n\n<name>\n*specialize*\n</file>\n\n<name>\n*generate*\n</file>\n\n<evidence>\n- Source: 33 method retirements frozen.\n- Build: GNU release exit 0 (Hermes state.db msg 3848/3954).\n- Seal: 74->72 plugins, 1388->1357 methods, 33 removals, 2 additions. Hash `6f576d...260c`.\n- Blocker: Optional generated example imports stale `plugin_f_threetched_5ffs`. Needs regeneration against catalog 72.\n- Docs: README, SIGNALS, WISHLIST, HANDOFF need updates.\n- Constraints: No tests, no live deploy, no runtime verification.\n</evidence>\n\n<action>\nRead HANDOFF.md, SIGNALS.md, WISHLIST.md. Find generator script and stale import.\n</action>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The supplied evidence records a successful historical GNU release build and isolated seal, with receipts in Hermes state.db messages 3848/3954.",
+      "The catalog delta is 74\u219272 plugins and 1,388\u21921,357 methods: 33 removals and two unrelated additions.",
+      "The optional generated example contains a stale import requiring regeneration against the matching catalog.",
+      "Documentation and shared handoff records need updates; tests and live deployment are outside authorization."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Lists evidence and proposed inspection actions but does not answer whether historical receipts close the original build/seal obligation."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Omits the absent scratch catalog, overwritten target artifacts, distinction between historical completion and current release readiness, and explicit no-recovery boundary."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Suggests ungrounded shared-document paths under /home/jeremy/.agents rather than the repository paths established by the prompt."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Historical build/seal completion can supersede the earlier blocked status without certifying today's target directory as an activatable release."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The absent isolated catalog prevents handing that original directory to golden now but does not invalidate its recorded successful creation."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Catalog/hash agreement across generated reports, manifests and mounted views establishes metadata agreement, not authenticated execution, semantic equivalence or activation provenance."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The optional-example refresh needs its own terminal receipt, generator digest, input identity and output hashes; successful generation does not establish example compilation."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The 1,355-method prediction is superseded by the observed 1,357 total because of the two unrelated additions."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Durable excerpts should preserve original timestamps, identifiers, commands and available provenance, explicitly marking missing details rather than reconstructing them."
+      }
+    ],
+    "blind_spots": [
+      "Neither response independently inspects the recovered messages; its conclusions depend on the supplied account of their contents.",
+      "Astra's unconditional closure statement is stronger than its provenance caveat: exit-zero receipts close the obligation for the intended source slice only if they identify the requested GNU workspace command and establish that the consolidated source was included.",
+      "Neither response explicitly requires confirming that the successful seal used the freshly built GNU-target opblob with the intended schema-shaping environment, rather than merely recording a successful seal command.",
+      "Neither response explicitly distinguishes matching catalog identity from retained binary/configuration provenance sufficient for future release assembly; catalog agreement alone cannot establish that matching release inputs remain available."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

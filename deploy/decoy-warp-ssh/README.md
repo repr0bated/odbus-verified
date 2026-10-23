@@ -8,6 +8,22 @@ capability. Application identities, TLS credentials and existing wgcf keys remai
 not a second MASQUE carrier. Xray moves externally. The historical procedures
 below are not authorization to recreate MASQUE, GRE or a host WireGuard peer.
 
+## Current host-local endpoint prerequisite
+
+The restored host uses independent runit `op-warp-endpoint` only to restore
+the local endpoint declared in the existing `/etc/op-dbus/warp-ssh.json`.
+Its run script calls `endpoint.sh up`; its read-only check verifies the
+persistent TUN's declared owner, alias, MTU and exact local/peer addresses.
+It does not start SSH, MASQUE, WARP, firewall or policy-routing helpers.
+The current receipt is local rtly-lungs/tun5,10.0.0.2 peer192.168.255.2,
+UP/NO-CARRIER: that is sufficient for local address ownership, not evidence
+of a remote carrier or authenticated application ingress.
+
+This base prerequisite stays outside application overlay ownership. The
+historical carrier procedures and receipts below do not authorize restoring
+their retired components or changing the working management route.
+
+
 ## Retained wgcf selected-egress policy
 
 `../decoy/decoy-fabric-egress` restores the existing IPv4 selector at priority41:
@@ -96,7 +112,7 @@ inventory; these files are not a replacement deployment script.
 Helpers use `/etc/op-dbus/warp-ssh.json` and `/run/op-warp-ssh`. Disposable
 fixtures override OP_WARP_SSH_CONFIG and OP_WARP_SSH_STATE_DIR.
 
-- endpoint.sh: persistent owned TUN and unique aliases (up/status/down).
+- endpoint.sh: persistent owned TUN and unique aliases (up/check/status/down).
 - namespace.sh: owned namespace/veths, scoped carrier allowances, NAT and data
   failure guard (prepare/check/down). Teardown refuses foreign state/resident PIDs.
 - admission.sh: exact scoped entries in existing base chains (install/check/remove).

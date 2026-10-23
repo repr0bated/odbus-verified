@@ -1,0 +1,80 @@
+{
+  "request": 57,
+  "started": "2026-10-19T04:41:54.743926+00:00",
+  "finished": "2026-10-19T04:42:06.307809+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0de177746cd13798016ad59f956a3887d08f1d29575ffd5859",
+    "created": 1792384917,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory filesystem guidance\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:1201-1500:raw\"}",
+                "name": "read"
+              },
+              "id": "call_YKdjBnmvS8ZhebCmagW48HO3",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory container guidance\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:1501-1800:raw\"}",
+                "name": "read"
+              },
+              "id": "call_N29Obiak5Z2o3nYTohwT8WUm",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory diagnostic guidance\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:1801-2100:raw\"}",
+                "name": "read"
+              },
+              "id": "call_ViZrpemCLV8OP9nqdwLI2iwn",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 657,
+      "prompt_tokens": 70816,
+      "total_tokens": 71473,
+      "completion_tokens_details": {
+        "reasoning_tokens": 224
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 53030
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:42:06.305481+00:00",
+  "stream_chunks": 8
+}

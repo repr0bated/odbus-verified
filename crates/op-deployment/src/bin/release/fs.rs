@@ -139,7 +139,24 @@ pub fn detached_btrfs(uuid: &str, subvolume: u64, readonly: bool) -> Result<Owne
     Ok(mount)
 }
 
-pub fn detached_overlay(lower: BorrowedFd<'_>, tag: &str, noexec: bool) -> Result<OwnedFd> {
+pub fn release_base() -> Result<File> {
+    let base = secure_absolute(Path::new(crate::release::model::RELEASE_BASE),
+        libc::O_RDONLY | libc::O_DIRECTORY)?;
+    let metadata = base.metadata()?;
+    ensure!(metadata.is_dir(), "release base is not a directory");
+    ensure!(metadata.uid() == 0 && metadata.gid() == 0, "release base is not root-owned");
+    ensure!(metadata.mode() & 0o7022 == 0, "release base has set-id/sticky or group/world write bits");
+    // Enumerating through the pinned fd's /proc/self/fd link never re-resolves the path.
+    ensure!(std::fs::read_dir(format!("/proc/self/fd/{}", base.as_raw_fd()))?.next().is_none(),
+        "release base is not empty");
+    // SAFETY: null size query on a live borrowed directory descriptor.
+    let size = unsafe { libc::flistxattr(base.as_raw_fd(), std::ptr::null_mut(), 0) };
+    ensure_syscall(size as libc::c_long).context("release base xattr query")?;
+    ensure!(size == 0, "release base has extended attributes");
+    Ok(base)
+}
+
+pub fn detached_overlay(lower: BorrowedFd<'_>, base: BorrowedFd<'_>, tag: &str, noexec: bool) -> Result<OwnedFd> {
     ensure!(!tag.is_empty() && tag.bytes().all(|c| c.is_ascii_alphanumeric()
         || b":-_.".contains(&c)), "invalid release mount tag");
     let context = context(c"overlay")?;
@@ -152,6 +169,12 @@ pub fn detached_overlay(lower: BorrowedFd<'_>, tag: &str, noexec: bool) -> Resul
     ensure_syscall(unsafe { libc::syscall(libc::SYS_fsconfig, context.as_raw_fd(),
         FSCONFIG_SET_FD, c"lowerdir+".as_ptr(), std::ptr::null::<libc::c_char>(),
         lower.as_raw_fd()) }).context("overlay descriptor layers require Linux 6.13+")?;
+    // Without an upper, overlayfs requires a second lower; the verified empty base
+    // supplies it without changing the merged view (first lowerdir+ stays topmost).
+    // SAFETY: base is a live, verified empty directory fd, borrowed until mount creation.
+    ensure_syscall(unsafe { libc::syscall(libc::SYS_fsconfig, context.as_raw_fd(),
+        FSCONFIG_SET_FD, c"lowerdir+".as_ptr(), std::ptr::null::<libc::c_char>(),
+        base.as_raw_fd()) }).context("overlay descriptor layers require Linux 6.13+")?;
     finish_context(context.as_fd(), MOUNT_ATTR_RDONLY | MOUNT_ATTR_NOSUID
         | MOUNT_ATTR_NODEV | if noexec { MOUNT_ATTR_NOEXEC } else { 0 })
 }
@@ -258,9 +281,16 @@ fn sync_directory(fd: BorrowedFd<'_>) -> Result<()> {
 }
 
 pub fn mkdir_at(parent: BorrowedFd<'_>, name: &Path, mode: u32) -> Result<()> {
-    let name = basename(name)?;
+    let component = basename(name)?;
     // SAFETY: name is a single normal component beneath the pinned parent.
-    ensure_syscall(unsafe { libc::mkdirat(parent.as_raw_fd(), name.as_ptr(), mode) } as libc::c_long)?;
+    ensure_syscall(unsafe { libc::mkdirat(parent.as_raw_fd(), component.as_ptr(), mode) } as libc::c_long)?;
+    // The launcher's private umask must not remove traversal permissions from
+    // service/logger directories. Apply the caller's exact mode only to this
+    // newly created, descriptor-bound directory; 0700 administration stays private.
+    let created = open_beneath(parent, name, libc::O_RDONLY | libc::O_DIRECTORY)?;
+    // SAFETY: created owns the new directory descriptor for the entire call.
+    ensure_syscall(unsafe { libc::fchmod(created.as_raw_fd(), mode) } as libc::c_long)?;
+    created.sync_all()?;
     sync_directory(parent)
 }
 

@@ -1,0 +1,64 @@
+{
+  "request": 114,
+  "started": "2026-10-18T22:04:14.854058+00:00",
+  "finished": "2026-10-18T22:04:22.572791+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0208fe1b1d4124c3016ad54261c05487d0bb964aae104303b5",
+    "created": 1792361057,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading changed provisioning ownership\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:425-438:raw\"}",
+                "name": "read"
+              },
+              "id": "call_E9G4T5BARHTh54JNQA7osgEK",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 136,
+      "prompt_tokens": 350052,
+      "total_tokens": 350188,
+      "completion_tokens_details": {
+        "reasoning_tokens": 37
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 229552
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:22.571539+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,63 @@
+{
+  "request": 53,
+  "started": "2026-10-18T21:59:22.681510+00:00",
+  "finished": "2026-10-18T21:59:32.281163+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-07ace461448d9032016ad5413da70887d09e4a78c745489081",
+    "created": 1792360765,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Coordinating shared backing tests\",\"path\":\"agent://RetireAccessors\",\"content\":\"LLM search found facade callers/helper in tests/tched_router_backing.rs (invoke_llm at ~450, facade schema fixture ~546). I need migrate facade behavioral calls there; you own provider assertion. Please avoid these regions; I will read current ranges before surgical edits. No mutation_engine edits from me.\"}",
+                "name": "write"
+              },
+              "id": "call_qArjBxljBwlc1hTTHl0hFqgW",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 285,
+      "prompt_tokens": 188143,
+      "total_tokens": 188428,
+      "completion_tokens_details": {
+        "reasoning_tokens": 70
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 170883
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:32.279734+00:00",
+  "stream_chunks": 4
+}

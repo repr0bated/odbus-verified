@@ -1,0 +1,64 @@
+{
+  "request": 227,
+  "started": "2026-10-19T04:43:19.076037+00:00",
+  "finished": "2026-10-19T04:43:32.862316+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-01c7b4dc1dfb2238016ad59fea1a7087d0bd23b09eb1f36b1b",
+    "created": 1792385002,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"code\":\"def save_result(pid,result):\\n    raw=result if isinstance(result,str) else json.dumps(result,ensure_ascii=False)\\n    (reviewdir/f'{pid}.raw.txt').write_text(raw)\\n    rec=records[pid]\\n    rec['raw_output_path']=str(reviewdir/f'{pid}.raw.txt')\\n    rec['output_sha256']=hashlib.sha256(raw.encode()).hexdigest()\\n    text=raw.strip()\\n    if text.startswith('```'):\\n        text=text.split('\\\\n',1)[1].rsplit('```',1)[0].strip()\\n    try:\\n        data=json.loads(text)\\n        (reviewdir/f'{pid}.json').write_text(json.dumps(data,indent=2,ensure_ascii=False))\\n        rec['review_path']=str(reviewdir/f'{pid}.json')\\n        rec['fully_reviewed']=data.get('fully_reviewed')\\n        rec['status']='success' if data.get('fully_reviewed') is True and data.get('packet_id')==pid else 'incomplete'\\n        rec['finding_count']=len(data.get('findings',[]))\\n    except Exception as e:\\n        rec['status']='parse_error'; rec['error']=str(e)\\n    (reviewdir/f'{pid}.receipt.json').write_text(json.dumps(rec,indent=2))\\n    return {k:rec[k] for k in ('packet_id','status','finding_count') if k in rec}\\nfor pid in ids[:3]:\\n    try: print(save_result(pid,handles[pid].wait()))\\n    except Exception as e:\\n        records[pid].update(status='completion_error',error=str(e)); print(pid,str(e))\",\"title\":\"Saving first packet reviews\",\"timeout\":0}",
+                "name": "eval"
+              },
+              "id": "call_ylmLyXG8aMe473PCMujJuiVB",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 974,
+      "prompt_tokens": 110081,
+      "total_tokens": 111055,
+      "completion_tokens_details": {
+        "reasoning_tokens": 154
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 102314
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:32.861113+00:00",
+  "stream_chunks": 4
+}

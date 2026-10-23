@@ -1,0 +1,66 @@
+{
+  "request": 6,
+  "started": "2026-10-18T21:50:07.435035+00:00",
+  "finished": "2026-10-18T21:51:26.771864+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 4,
+    "panel_failures": 1,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-040512279751bef1016ad53f59e48487d0be18c0d98873d8a0",
+    "created": 1792360282,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading startup skill\",\"path\":\"skill://using-superpowers\"}",
+                "name": "read"
+              },
+              "id": "call_rASi9V7zu6N3sgtlz5yvkr6z",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 95,
+      "prompt_tokens": 32137,
+      "total_tokens": 32232,
+      "completion_tokens_details": {
+        "reasoning_tokens": 23
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 12813
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:51:22.067576+00:00",
+  "stream_chunks": 4
+}

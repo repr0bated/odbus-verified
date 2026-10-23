@@ -1,0 +1,64 @@
+{
+  "request": 19,
+  "started": "2026-10-18T21:31:18.566538+00:00",
+  "finished": "2026-10-18T21:31:30.663207+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-019611c396cbb81c016ad53aa9e57c87d0a88c3f957dab381a",
+    "created": 1792359082,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating exact admission expressions\",\"pattern\":\"split\\\\('\\\\|'\\\\)|split\\\\(\\\"\\\\|\\\"\\\\)|required_capability|\\\"threetched\\\" =>\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs\"}",
+                "name": "grep"
+              },
+              "id": "call_luIN3L6RoNtDWayuCiXqALcs",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 279,
+      "prompt_tokens": 243156,
+      "total_tokens": 243435,
+      "completion_tokens_details": {
+        "reasoning_tokens": 137
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 200889
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:31:30.661653+00:00",
+  "stream_chunks": 4
+}

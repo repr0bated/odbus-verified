@@ -1,0 +1,174 @@
+{
+  "window": {
+    "start": "2026-10-19T00:49:55.382Z",
+    "end": "2026-10-19T05:49:55.382Z"
+  },
+  "reported_by_owner": "Weekly allowance and approximately20000 of40000 credits consumed in about5hours; accepted as reported, not independently reconstructed from billing.",
+  "owner_reported_hermes_spend": "14 dollars for the time being discussed. Separate provider bill from the reported OpenAI weekly allowance and20000-credit depletion; do not convert or equate them.",
+  "packet_review_provenance_limit": "Saved recovery-history-001-to-history-004-result.json requests smol but resolved_model is null: native completion API returned text only. Native OpenAI scout calls are directly evidenced; packet-reader backend and exact token debits are not fully established.",
+  "scope": "Local recorded native OpenAI assistant usage in inspected OMP project histories and Fusion report sessions. Not account-wide billing reconciliation.",
+  "categories": {
+    "This conversation and evidence-recovery workers": {
+      "recordedResponses": 163,
+      "uncachedInput": 938041,
+      "cachedInput": 19795456,
+      "output": 97856,
+      "catalogCostEstimate": 34.068665999999986
+    },
+    "Incus disk inspection and repair session/workers": {
+      "recordedResponses": 213,
+      "uncachedInput": 980725,
+      "cachedInput": 25024512,
+      "output": 91745,
+      "catalogCostEstimate": 39.419011999999995
+    },
+    "Fusion source-research workers": {
+      "recordedResponses": 72,
+      "uncachedInput": 1221448,
+      "cachedInput": 6192256,
+      "output": 45533,
+      "catalogCostEstimate": 20.683386000000006
+    },
+    "Other recent native session": {
+      "recordedResponses": 13,
+      "uncachedInput": 69137,
+      "cachedInput": 599168,
+      "output": 2030,
+      "catalogCostEstimate": 1.3920379999999999
+    },
+    "Seed/FUSE preparation session": {
+      "recordedResponses": 73,
+      "uncachedInput": 238750,
+      "cachedInput": 10249088,
+      "output": 30334,
+      "catalogCostEstimate": 14.153287999999998
+    }
+  },
+  "nativeCompletionProbes": [
+    {
+      "file": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-18T20-24-17-092Z_01a150af-bdc4-7339-8976-1da60668dd2e/ProvisionScriptHistory.jsonl",
+      "id": "c94d8365",
+      "timestamp": 1792383973754,
+      "purpose": "task-completion-probe",
+      "model": "gpt-6-astra",
+      "usage": {
+        "input": 403,
+        "output": 6,
+        "cacheRead": 175616,
+        "cacheWrite": 0,
+        "totalTokens": 176025,
+        "cost": {
+          "input": 0.004030000000000001,
+          "output": 0.00030000000000000003,
+          "cacheRead": 0.175616,
+          "cacheWrite": 0,
+          "total": 0.179946
+        },
+        "premiumRequests": 0
+      }
+    },
+    {
+      "file": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-18T20-24-17-092Z_01a150af-bdc4-7339-8976-1da60668dd2e/ClaudeKiroHistory.jsonl",
+      "id": "ba67f79f",
+      "timestamp": 1792383972442,
+      "purpose": "task-completion-probe",
+      "model": "gpt-6-astra",
+      "usage": {
+        "input": 397,
+        "output": 6,
+        "cacheRead": 197888,
+        "cacheWrite": 0,
+        "totalTokens": 198291,
+        "cost": {
+          "input": 0.0039700000000000004,
+          "output": 0.00030000000000000003,
+          "cacheRead": 0.19788799999999998,
+          "cacheWrite": 0,
+          "total": 0.20215799999999998
+        },
+        "premiumRequests": 0
+      }
+    },
+    {
+      "file": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-18T20-24-17-092Z_01a150af-bdc4-7339-8976-1da60668dd2e/AstraHistory.jsonl",
+      "id": "92e81eca",
+      "timestamp": 1792383971849,
+      "purpose": "task-completion-probe",
+      "model": "gpt-6-astra",
+      "usage": {
+        "input": 726,
+        "output": 6,
+        "cacheRead": 151808,
+        "cacheWrite": 0,
+        "totalTokens": 152540,
+        "cost": {
+          "input": 0.007260000000000001,
+          "output": 0.00030000000000000003,
+          "cacheRead": 0.151808,
+          "cacheWrite": 0,
+          "total": 0.159368
+        },
+        "premiumRequests": 0
+      }
+    },
+    {
+      "file": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905/ProvisionShellConsumers.jsonl",
+      "id": "c45ae5ad",
+      "timestamp": 1792381405506,
+      "purpose": "task-completion-probe",
+      "model": "gpt-6-astra",
+      "usage": {
+        "input": 461,
+        "output": 6,
+        "cacheRead": 100864,
+        "cacheWrite": 0,
+        "totalTokens": 101331,
+        "cost": {
+          "input": 0.00461,
+          "output": 0.00030000000000000003,
+          "cacheRead": 0.100864,
+          "cacheWrite": 0,
+          "total": 0.10577399999999999
+        },
+        "premiumRequests": 0
+      }
+    },
+    {
+      "file": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905/ProvisionOwnerPaths.jsonl",
+      "id": "906fd7ac",
+      "timestamp": 1792381404420,
+      "purpose": "task-completion-probe",
+      "model": "gpt-6-astra",
+      "usage": {
+        "input": 409,
+        "output": 6,
+        "cacheRead": 96768,
+        "cacheWrite": 0,
+        "totalTokens": 97183,
+        "cost": {
+          "input": 0.004090000000000001,
+          "output": 0.00030000000000000003,
+          "cacheRead": 0.09676799999999999,
+          "cacheWrite": 0,
+          "total": 0.101158
+        },
+        "premiumRequests": 0
+      }
+    }
+  ],
+  "extra_root_events": [],
+  "enumeration": {
+    "initial_files": 200,
+    "initial_truncated": true,
+    "focused_recent_roots_and_fusion_files": 36,
+    "focused_truncated": false
+  },
+  "limitations": [
+    "Catalog dollar estimates are NOT actual OpenAI credit debits or invoices.",
+    "Usage clients returned no attribution records.",
+    "Historical archive imports and other clients/providers may be outside this local sample.",
+    "Packet-review result artifacts need separate model/usage accounting; do not silently assume their token usage is zero.",
+    "Fusion outer requests via Hermes and native OpenAI research calls use different provider routes."
+  ],
+  "paused": "bg_4 cancelled to contain further background spend; no new model judges, completion batches or subagents used for this local accounting."
+}

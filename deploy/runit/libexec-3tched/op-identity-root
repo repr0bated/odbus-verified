@@ -45,8 +45,8 @@
 #   POOL=identity-roots                    Incus dir pool for identity roots
 #   LUNGS_RUN=/run/opdbus-lungs
 #   LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock    the bridge's shared lungs socket
-#   THREETCHED_FS=/usr/local/libexec/op-dbus/bin/threetched-fs    the host release binary
-#   OP_IDENTITY_IMAGE_HELPER=/usr/local/libexec/3tched/op-identity-image
+#   THREETCHED_FS=/usr/local/libexec/op-dbus/bin/3tched-fs    the host release binary
+#   OP_IDENTITY_IMAGE_HELPER=<selected helper sibling>/op-identity-image
 set -u
 
 RACCOON_UUID=${RACCOON_UUID:-b6561d54-3c69-4897-a2f3-79b867e33601}
@@ -61,7 +61,7 @@ LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
 # Backing socket inside the dedicated Incus directory bind. Guest tmpfiles
 # exposes it at /run/3tched-lungs.socket; never bind the host's entire /run.
 GUEST_LUNGS_SOCKET=${GUEST_LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
-THREETCHED_FS=${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/threetched-fs}
+THREETCHED_FS=${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}
 STATE=/dev/shm/opdbus/state
 CATALOG=/dev/shm/opdbus/plugin-blobs
 
@@ -74,7 +74,7 @@ valid_session() {
 }
 
 validate_seed_defaults() {
-    binary=$SEEDS_IDMAP/usr/local/bin/threetched-fs
+    binary=$SEEDS_IDMAP/usr/local/bin/3tched-fs
     agents=$SEEDS_IDMAP/agent/rules/AGENTS.md
     [ -f "$binary" ] && [ ! -L "$binary" ] && [ -x "$binary" ] || {
         log "identity seed 3tchedFS binary is missing or not a regular executable: $binary"
@@ -582,7 +582,15 @@ seed_profile() (
     printf '3tched-lungs profile ready; shared socket calls require authenticated host or native container identity\n'
 )
 seed_image_helper_ready() {
-    image_helper=$(realpath -e -- "${OP_IDENTITY_IMAGE_HELPER:-/usr/local/libexec/3tched/op-identity-image}") ||
+    # A selected release must use its own dependency closure, not a stale base
+    # helper. Resolve source/received siblings once; missing siblings fail closed.
+    helper_self=$(realpath -e -- "$0") || seed_fail "cannot resolve root helper"
+    helper_dir=$(dirname -- "$helper_self")
+    case "$helper_dir" in
+        /usr/local/libexec/3tched)
+            helper_dir=/usr/local/libexec/op-dbus/helpers ;;
+    esac
+    image_helper=$(realpath -e -- "${OP_IDENTITY_IMAGE_HELPER:-$helper_dir/op-identity-image}") ||
         seed_fail "image verifier path is absent"
     seed_secure_path "$image_helper"
     [ -f "$image_helper" ] && [ -x "$image_helper" ] || seed_fail "image verifier unavailable; install the reviewed host helper"
@@ -818,10 +826,26 @@ seed_boot_selection() {
     jq --argjson start "$1" '{version,layout,image,members,persist,name,session,instance_uuid,root,seed_fsid,seed_generation,sprout_fsid,leaf,leaf_inode,leaf_size,start_on_boot:$start}' "$seed_dir/state.json"
 }
 seed_boot_name() {
-    [ "$seed_name" = "$seed_session" ] || {
-        [ "$seed_name" = 3tchedChatbot ] &&
-            [ "$seed_session" = b0c777e3-0955-cd8b-3d01-ca12998cae28 ]
-    } || seed_fail "boot completion requires canonical session name or the pinned chatbot"
+    [ "$seed_name" != "$seed_session" ] || return 0
+    # Names select the native target; the existing receipt/native pins below
+    # validate the same configured chatbot regardless of its display name.
+    printf '%s' "$seed_name" | grep -Eq '^(3tchedCtlChatbot|3tchedChatbot|ID-[1-9][0-9]*)$' &&
+        [ "${#seed_name}" -le 63 ] &&
+        [ "$seed_session" = b0c777e3-0955-cd8b-3d01-ca12998cae28 ] ||
+        seed_fail "boot completion requires canonical session name or the pinned chatbot"
+    # This check can run before seed_instance during seed_read. Read the native
+    # identity now and pin it to the existing storage receipt; never authorize a
+    # name from syntax alone or allocate/change its identity here.
+    boot_native=$(timeout --kill-after=5s 30s incus --force-local query "/1.0/instances/$seed_name") ||
+        seed_fail "cannot inspect chatbot boot identity"
+    printf '%s\n' "$boot_native" | jq -e --arg name "$seed_name" --arg sid "$seed_session" \
+        --slurpfile receipt "$seed_dir/state.json" '
+        .name==$name and .type=="container" and
+        .config["user.opdbus.session_id"]==$sid and
+        .config["user.opdbus.wireguard_public_key"]=="Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=" and
+        (.config["volatile.uuid"]|type=="string" and test("^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$")) and
+        .config["volatile.uuid"]==$receipt[0].instance_uuid and $receipt[0].session==$sid and $receipt[0].name==$name
+    ' >/dev/null || seed_fail "chatbot boot UUID/session/key binding differs"
 }
 seed_verify_boot_marker() {
     [ -e "$seed_dir/boot-ready.json" ] || [ -L "$seed_dir/boot-ready.json" ] || return 0
@@ -1263,6 +1287,7 @@ seed_mode() (
     boot_id=$(cat /proc/sys/kernel/random/boot_id)
     valid_session "$boot_id" || seed_fail "invalid current boot ID"
     mode=$1 seed_name=$2
+
     seed_allow_running=false
     case "$mode" in seed-check|seed-lungs|seed-enable-boot) seed_allow_running=true ;; esac
     printf '%s' "$seed_name" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$' || seed_fail "unsafe instance name"
@@ -1373,7 +1398,10 @@ up)
     for session in "$@"; do
         up_one "$session" || failed=$((failed + 1))
     done
-    [ "$failed" -eq 0 ] || log "$failed identity(ies) did not come up"
+    if [ "$failed" -ne 0 ]; then
+        log "$failed identity(ies) did not come up"
+        exit 1
+    fi
     exit 0
     ;;
 down)

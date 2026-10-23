@@ -1,0 +1,53 @@
+#!/bin/sh
+# op-dbus-release: application
+# Loopback/nftables owner. Control plane is the shared lungs socket; this
+# process must not bind or replace /run/opdbus/lungs/lungs.sock.
+exec 2>&1
+rm -f -- /run/opdbus/runit-ready/rust-network-mgr
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 90 ] && {
+            echo "dependency $1 not ready after 90s" >&2
+            exit 1
+        }
+        sleep 1
+    done
+}
+
+wait_dep opdbus-rundirs
+# Bridge owns lungs.sock; network-mgr declares that path and serves HTTP locally.
+wait_dep op-grpc-bridge
+
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+set +a
+
+export RUST_LOG="${RUST_LOG:-info}"
+export PATH="/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
+export RUST_NETWORK_MGR_CONFIG="${RUST_NETWORK_MGR_CONFIG:-/usr/share/op-dbus/etc/rust-network-mgr/config.yaml}"
+
+# Prefer a host override when present; otherwise use the golden default.
+if [ -r /etc/rust-network-mgr/config.yaml ]; then
+    export RUST_NETWORK_MGR_CONFIG=/etc/rust-network-mgr/config.yaml
+fi
+
+ready=/run/opdbus/runit-ready/rust-network-mgr
+cleanup() { rm -f -- "$ready"; }
+trap cleanup EXIT INT TERM HUP
+
+# Mark ready once the local HTTP control plane answers; lungs demux proxies here.
+(
+    i=0
+    until curl -fsS --max-time 1 http://127.0.0.1:9100/health >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 60 ] && exit 0
+        sleep 0.5
+    done
+    : >"$ready"
+) &
+
+exec /usr/local/libexec/op-dbus/bin/rust-network-mgr

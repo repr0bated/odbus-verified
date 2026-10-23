@@ -1,0 +1,80 @@
+{
+  "request": 87,
+  "started": "2026-10-18T22:02:16.772970+00:00",
+  "finished": "2026-10-18T22:02:30.963997+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-056ea30ab14c084a016ad541ec432c87d0b3fcb49f422c9b49",
+    "created": 1792360940,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting opaque grant validation\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/interceptor.rs:1762-1806\"}",
+                "name": "read"
+              },
+              "id": "call_uOLxSpWbmeSMO9J2S4z5GMeQ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting sealed method admission\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/method_contract_admission.rs:159-201\"}",
+                "name": "read"
+              },
+              "id": "call_6Xi82wGBSXxKdIzq9apN5I7Z",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting retained stream contract\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/generation_admission.rs:23-46,145-163\"}",
+                "name": "read"
+              },
+              "id": "call_5Xr3rt1E9EFskVW6abrgFx6G",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 630,
+      "prompt_tokens": 282072,
+      "total_tokens": 282702,
+      "completion_tokens_details": {
+        "reasoning_tokens": 112
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 191186
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:02:30.962052+00:00",
+  "stream_chunks": 8
+}

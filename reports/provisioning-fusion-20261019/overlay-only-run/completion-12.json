@@ -1,0 +1,54 @@
+{
+  "request": 12,
+  "started": "2026-10-19T06:07:04.537689+00:00",
+  "finished": "2026-10-19T06:07:17.127283+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0b4531dc0b1d623a016ad5b38b722087d0bc7ff987a8c9bee0",
+    "created": 1792390027,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Created under `reports/provisioning-fusion-20261019/analysis/`:\n\n- `upgrade-overlay.md`\n- `upgrade-overlay-receipt.json`\n\nSpecification covers retained send/receive ancestry, read-only upgrade-over-seed composition, separate persistence, stopped activation, interrupted-publication recovery, known-good rollback and boot restoration using the existing helpers.\n\nPending owner handoff: actual paths, mounted FSIDs/subvolume identities, retained generations, native stopped-state confirmation and authoritative baseline receipt. Baseline completion is not assumed.\n\nVerification: source review and current-helper comparisons only. No source/runtime/storage changes, builds, tests, deployment or new model/judge calls.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 363,
+      "prompt_tokens": 260360,
+      "total_tokens": 260723,
+      "completion_tokens_details": {
+        "reasoning_tokens": 65
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 197138
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:07:17.126232+00:00",
+  "stream_chunks": 3
+}

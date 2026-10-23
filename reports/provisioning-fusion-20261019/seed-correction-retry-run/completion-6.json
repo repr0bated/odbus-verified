@@ -1,0 +1,64 @@
+{
+  "request": 6,
+  "started": "2026-10-19T05:39:40.849510+00:00",
+  "finished": "2026-10-19T05:39:49.336787+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-07427c86ae5cf07d016ad5ad1fad3887d0ada077ff5f98036a",
+    "created": 1792388383,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading prior ingestion receipt\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/ingestion-receipt.json\"}",
+                "name": "read"
+              },
+              "id": "call_Sr6f8ELPPX933ymGM1OvONnp",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 222,
+      "prompt_tokens": 147496,
+      "total_tokens": 147718,
+      "completion_tokens_details": {
+        "reasoning_tokens": 99
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 99463
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T05:39:49.335406+00:00",
+  "stream_chunks": 4
+}

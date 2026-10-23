@@ -1,0 +1,64 @@
+{
+  "request": 30,
+  "started": "2026-10-20T17:09:24.322878+00:00",
+  "finished": "2026-10-20T17:09:34.146133+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-006feee262c1ad2d016ad7a04a507487d1aa02c21a30a603c4",
+    "created": 1792516170,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading local execution guidance\",\"path\":\"/srv/git/odbus-verified/AGENTS.md:1-220\"}",
+                "name": "read"
+              },
+              "id": "call_sJKDXWKVUdoMN1St3Z09xFMG",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: read the execution guidance, establish catalog/report pin equality and generator provenance, then run the existing generator once with closed stdin and persistent `/var/tmp` logs/receipt. Compare pre/post hashes and report the changed outputs and coverage limits; no builds or runtime operations.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 311,
+      "prompt_tokens": 38682,
+      "total_tokens": 38993,
+      "completion_tokens_details": {
+        "reasoning_tokens": 92
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 25772
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:09:34.144263+00:00",
+  "stream_chunks": 5
+}

@@ -1,0 +1,64 @@
+{
+  "request": 44,
+  "started": "2026-10-20T17:12:58.446507+00:00",
+  "finished": "2026-10-20T17:13:17.664187+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0c4b5feb25414bb2016ad7a121597487d189106345a6a74cd5",
+    "created": 1792516385,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Creating persistent authoring receipt directory\",\"command\":\"mktemp -d /var/tmp/threetched-generated-example-20261020.XXXXXX\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_tRZwikHLAfauLqO7aEspXZwh",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: compare the catalog pins and establish the existing generator\u2019s provenance; run it once with closed stdin and persistent `/var/tmp` logging; then report the terminal receipt, pre/post hashes, changed outputs, and coverage limitations. No builds, tests, runtime operations, or catalog writes."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 970,
+      "prompt_tokens": 121375,
+      "total_tokens": 122345,
+      "completion_tokens_details": {
+        "reasoning_tokens": 699
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 112720
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:13:17.662035+00:00",
+  "stream_chunks": 5
+}

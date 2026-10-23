@@ -1,0 +1,87 @@
+{
+  "request": 19,
+  "started": "2026-10-18T21:52:49.330277+00:00",
+  "finished": "2026-10-18T21:53:01.288978+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0dd1ad59e661b94e016ad53fb5574487d09ca1a452a64e3f03",
+    "created": 1792360373,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting capture artifact digests\",\"command\":\"sha256sum target/threetched-artifacts/tched-router/threetched target/threetched-artifacts/tched-router/manifest.json\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_3nzL2WKGcGPqj2mqCLbCnbFg",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading schema environment defaults\",\"path\":\"/srv/git/odbus-verified/deploy/runit/op-grpc-bridge/run:243-260\"}",
+                "name": "read"
+              },
+              "id": "call_PS9gv2TmgA1ZtQwXtjsA6CKi",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading pinned native provenance\",\"path\":\"/srv/git/odbus-verified/vendor/tched-router/source.pin:1-90\"}",
+                "name": "read"
+              },
+              "id": "call_IYG2uA7MwZ9uukVImH50WuTK",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting installed service directory\",\"path\":\"/etc/sv/op-grpc-bridge\"}",
+                "name": "read"
+              },
+              "id": "call_VTccBnBJTDg1blJm271X3kaL",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 716,
+      "prompt_tokens": 228485,
+      "total_tokens": 229201,
+      "completion_tokens_details": {
+        "reasoning_tokens": 335
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 221107
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:53:01.286893+00:00",
+  "stream_chunks": 10
+}

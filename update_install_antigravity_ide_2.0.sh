@@ -1,0 +1,368 @@
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Target installation directories (permanent user-space paths)
+INSTALL_DIR_APP="$HOME/.local/share/antigravity"
+INSTALL_DIR_IDE="$HOME/.local/share/antigravity-ide"
+DESKTOP_DIR="$HOME/.local/share/applications"
+DOWNLOADS_DIR="$HOME/Downloads"
+
+# Color codes for pretty terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}===============================================${NC}"
+echo -e "${BLUE}    Antigravity & Antigravity IDE Updater      ${NC}"
+echo -e "${BLUE}===============================================${NC}\n"
+
+# Helper functions for messaging
+info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+
+# Step 1: Check for running processes (excluding this script's PID) and terminate if requested
+info "Checking for running instances of Antigravity or Antigravity IDE..."
+MY_PID=$$
+# Find all matching PIDs except our own
+RUNNING_PIDS=$(pgrep -f "antigravity" | grep -v "^$MY_PID$" || true)
+
+if [ -n "$RUNNING_PIDS" ]; then
+    warn "Antigravity or Antigravity IDE is currently running."
+    read -p "Would you like to close them automatically to proceed with the update? (y/n): " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        info "Closing applications..."
+        for pid in $RUNNING_PIDS; do
+            kill "$pid" 2>/dev/null || true
+        done
+        sleep 2
+        
+        # Verify and force kill if still running
+        REMAINING_PIDS=$(pgrep -f "antigravity" | grep -v "^$MY_PID$" || true)
+        if [ -n "$REMAINING_PIDS" ]; then
+            info "Force-closing remaining processes..."
+            for pid in $REMAINING_PIDS; do
+                kill -9 "$pid" 2>/dev/null || true
+            done
+            sleep 1
+        fi
+        success "Closed all instances."
+    else
+        error "Please save your work, close the applications, and run the script again."
+    fi
+fi
+
+# Ensure target folders exist
+mkdir -p "$INSTALL_DIR_APP"
+mkdir -p "$INSTALL_DIR_IDE"
+
+# Set up temporary directory for tarball extraction
+TEMP_DIR="/tmp/antigravity_updates"
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR"
+
+cleanup() {
+    if [ -d "$TEMP_DIR" ]; then
+        info "Cleaning up temporary files..."
+        rm -rf "$TEMP_DIR"
+    fi
+}
+trap cleanup EXIT
+
+# Function to search and find the best source (either raw tarball or pre-extracted folder)
+# It compares modification times to always pick the newest update package.
+find_source() {
+    local exec_name="$1"
+    local tar_pattern="$2"
+    local exclude_pattern="$3"
+
+    # Find the newest tarball matching pattern
+    local tar_file=""
+    if [ -n "$exclude_pattern" ]; then
+        tar_file=$(find "$DOWNLOADS_DIR" -maxdepth 1 -type f -name "$tar_pattern" -printf "%T@ %p\n" 2>/dev/null | grep -v "$exclude_pattern" | sort -rn | head -n 1 | cut -d' ' -f2-)
+    else
+        tar_file=$(find "$DOWNLOADS_DIR" -maxdepth 1 -type f -name "$tar_pattern" -printf "%T@ %p\n" 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)
+    fi
+
+    # Find the newest pre-extracted executable matching the name under Downloads (excluding bin/ directories)
+    local ext_exec=""
+    ext_exec=$(find "$DOWNLOADS_DIR" -maxdepth 3 -type f -name "$exec_name" ! -path "*/bin/*" -printf "%T@ %p\n" 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)
+
+    local ext_dir=""
+    if [ -n "$ext_exec" ]; then
+        ext_dir=$(dirname "$ext_exec")
+    fi
+
+    # Compare modification times
+    local tar_time=0
+    if [ -n "$tar_file" ]; then
+        tar_time=$(stat -c %Y "$tar_file" 2>/dev/null || echo 0)
+    fi
+
+    local ext_time=0
+    if [ -n "$ext_dir" ]; then
+        ext_time=$(stat -c %Y "$ext_dir" 2>/dev/null || echo 0)
+    fi
+
+    if [ "$tar_time" -gt "$ext_time" ]; then
+        echo "tarball:$tar_file"
+    elif [ -n "$ext_dir" ]; then
+        echo "directory:$ext_dir"
+    else
+        echo "none"
+    fi
+}
+
+# ---------------------------------------------------------
+# UPDATE: Antigravity (App)
+# ---------------------------------------------------------
+echo -e "\n${BLUE}--- Updating Antigravity (App) ---${NC}"
+SOURCE_INFO_APP=$(find_source "antigravity" "Antigravity*.tar.gz" "IDE")
+
+if [ "$SOURCE_INFO_APP" != "none" ]; then
+    SRC_TYPE_APP=$(echo "$SOURCE_INFO_APP" | cut -d':' -f1)
+    SRC_VAL_APP=$(echo "$SOURCE_INFO_APP" | cut -d':' -f2-)
+    SRC_DIR_APP=""
+
+    if [ "$SRC_TYPE_APP" = "tarball" ]; then
+        info "Found newer tarball update: $(basename "$SRC_VAL_APP")"
+        info "Extracting..."
+        mkdir -p "$TEMP_DIR/app"
+        tar -xzf "$SRC_VAL_APP" -C "$TEMP_DIR/app"
+        EXEC_PATH=$(find "$TEMP_DIR/app" -maxdepth 3 -type f -name "antigravity" ! -path "*/bin/*" 2>/dev/null | head -n 1 || true)
+        if [ -n "$EXEC_PATH" ]; then
+            SRC_DIR_APP=$(dirname "$EXEC_PATH")
+        else
+            error "Could not find 'antigravity' executable inside extracted tarball."
+        fi
+    else
+        info "Found newer pre-extracted folder: $SRC_VAL_APP"
+        SRC_DIR_APP="$SRC_VAL_APP"
+    fi
+
+    info "Installing to $INSTALL_DIR_APP..."
+    # Empty current install directory to avoid file clutter from older versions
+    rm -rf "${INSTALL_DIR_APP:?}"/*
+    # Copy files
+    cp -a "$SRC_DIR_APP/." "$INSTALL_DIR_APP/"
+    chmod +x "$INSTALL_DIR_APP/antigravity"
+    success "Antigravity App files installed."
+
+    # Create wrapper launcher script to handle single-instance lingering processes
+    LAUNCHER_SCRIPT="$INSTALL_DIR_APP/antigravity-launcher.sh"
+    cat <<EOF > "$LAUNCHER_SCRIPT"
+#!/bin/bash
+# Wrapper to kill lingering antigravity processes before starting
+MY_PID=\$\$
+RUNNING_PIDS=\$(pgrep -f "$INSTALL_DIR_APP/antigravity" | grep -v "^\$MY_PID\$" || true)
+
+if [ -n "\$RUNNING_PIDS" ]; then
+    if command -v wmctrl >/dev/null 2>&1; then
+        if ! wmctrl -xl | grep -i "antigravity" >/dev/null 2>&1; then
+            for pid in \$RUNNING_PIDS; do
+                kill "\$pid" 2>/dev/null || true
+            done
+            sleep 1
+        fi
+    else
+        for pid in \$RUNNING_PIDS; do
+            kill "\$pid" 2>/dev/null || true
+        done
+        sleep 1
+    fi
+fi
+exec "$INSTALL_DIR_APP/antigravity" --no-sandbox "\$@"
+EOF
+    chmod +x "$LAUNCHER_SCRIPT"
+
+    # Handle desktop shortcut and icons
+    DESKTOP_FILE_APP="$DESKTOP_DIR/antigravity.desktop"
+    ICON_PATH_APP="$HOME/.local/share/icons/antigravity.png"
+    ICON_VALUE_APP="$ICON_PATH_APP"
+
+    # If the local user icon does not exist, look for one in the installation directory or use a fallback
+    if [ ! -f "$ICON_PATH_APP" ]; then
+        found_icon=$(find "$INSTALL_DIR_APP" -type f \( -name "antigravity.png" -o -name "antigravity.svg" \) 2>/dev/null | head -n 1 || true)
+        if [ -n "$found_icon" ]; then
+            mkdir -p "$HOME/.local/share/icons"
+            cp "$found_icon" "$ICON_PATH_APP"
+            info "Copied icon to $ICON_PATH_APP"
+        else
+            ICON_VALUE_APP="accessories-text-editor"
+            warn "No custom icon found in package. Using system fallback icon: accessories-text-editor"
+        fi
+    fi
+
+    if [ -f "$DESKTOP_FILE_APP" ]; then
+        info "Updating existing desktop shortcut: $DESKTOP_FILE_APP"
+        sed -i "s|^Exec=.*|Exec=$INSTALL_DIR_APP/antigravity-launcher.sh %U|g" "$DESKTOP_FILE_APP"
+        sed -i "s|^Icon=.*|Icon=$ICON_VALUE_APP|g" "$DESKTOP_FILE_APP"
+    else
+        info "Creating new desktop shortcut: $DESKTOP_FILE_APP"
+        cat <<EOF > "$DESKTOP_FILE_APP"
+[Desktop Entry]
+Name=Antigravity
+Comment=Antigravity IDE / Desktop App
+Exec=$INSTALL_DIR_APP/antigravity-launcher.sh %U
+Icon=$ICON_VALUE_APP
+Terminal=false
+Type=Application
+Categories=Development;TextEditor;Utility;
+MimeType=text/plain;
+StartupNotify=true
+StartupWMClass=antigravity
+EOF
+        chmod +x "$DESKTOP_FILE_APP"
+    fi
+    success "Antigravity (App) updated successfully."
+else
+    warn "No update package (tarball or extracted folder) found for Antigravity App."
+fi
+
+# ---------------------------------------------------------
+# UPDATE: Antigravity IDE
+# ---------------------------------------------------------
+echo -e "\n${BLUE}--- Updating Antigravity IDE ---${NC}"
+SOURCE_INFO_IDE=$(find_source "antigravity-ide" "Antigravity*IDE*.tar.gz" "")
+
+if [ "$SOURCE_INFO_IDE" != "none" ]; then
+    SRC_TYPE_IDE=$(echo "$SOURCE_INFO_IDE" | cut -d':' -f1)
+    SRC_VAL_IDE=$(echo "$SOURCE_INFO_IDE" | cut -d':' -f2-)
+    SRC_DIR_IDE=""
+
+    if [ "$SRC_TYPE_IDE" = "tarball" ]; then
+        info "Found newer tarball update: $(basename "$SRC_VAL_IDE")"
+        info "Extracting..."
+        mkdir -p "$TEMP_DIR/ide"
+        tar -xzf "$SRC_VAL_IDE" -C "$TEMP_DIR/ide"
+        EXEC_PATH=$(find "$TEMP_DIR/ide" -maxdepth 3 -type f -name "antigravity-ide" ! -path "*/bin/*" 2>/dev/null | head -n 1 || true)
+        if [ -n "$EXEC_PATH" ]; then
+            SRC_DIR_IDE=$(dirname "$EXEC_PATH")
+        else
+            error "Could not find 'antigravity-ide' executable inside extracted tarball."
+        fi
+    else
+        info "Found newer pre-extracted folder: $SRC_VAL_IDE"
+        SRC_DIR_IDE="$SRC_VAL_IDE"
+    fi
+
+    info "Installing to $INSTALL_DIR_IDE..."
+    # Empty current install directory to avoid file clutter from older versions
+    rm -rf "${INSTALL_DIR_IDE:?}"/*
+    # Copy files
+    cp -a "$SRC_DIR_IDE/." "$INSTALL_DIR_IDE/"
+    chmod +x "$INSTALL_DIR_IDE/antigravity-ide"
+    success "Antigravity IDE files installed."
+
+    # Handle desktop shortcut and icons
+    DESKTOP_FILE_IDE="$DESKTOP_DIR/antigravity-ide.desktop"
+    ICON_PATH_IDE="$HOME/.local/share/icons/antigravity-ide.png"
+    ICON_VALUE_IDE="$ICON_PATH_IDE"
+
+    # If the local user icon does not exist, look for one in the installation directory or use a fallback
+    if [ ! -f "$ICON_PATH_IDE" ]; then
+        local found_icon=""
+        found_icon=$(find "$INSTALL_DIR_IDE" -type f \( -name "antigravity-ide.png" -o -name "antigravity-ide.svg" -o -name "antigravity.svg" \) 2>/dev/null | head -n 1 || true)
+        if [ -n "$found_icon" ]; then
+            mkdir -p "$HOME/.local/share/icons"
+            cp "$found_icon" "$ICON_PATH_IDE"
+            info "Copied icon to $ICON_PATH_IDE"
+        else
+            ICON_VALUE_IDE="accessories-text-editor"
+            warn "No custom icon found in package. Using system fallback icon: accessories-text-editor"
+        fi
+    fi
+
+    if [ -f "$DESKTOP_FILE_IDE" ]; then
+        info "Updating existing desktop shortcut: $DESKTOP_FILE_IDE"
+        sed -i "s|^Exec=.*|Exec=$INSTALL_DIR_IDE/antigravity-ide --no-sandbox %F|g" "$DESKTOP_FILE_IDE"
+        sed -i "s|^Icon=.*|Icon=$ICON_VALUE_IDE|g" "$DESKTOP_FILE_IDE"
+    else
+        info "Creating new desktop shortcut: $DESKTOP_FILE_IDE"
+        cat <<EOF > "$DESKTOP_FILE_IDE"
+[Desktop Entry]
+Name=Antigravity IDE
+Comment=Antigravity Integrated Development Environment
+Exec=$INSTALL_DIR_IDE/antigravity-ide --no-sandbox %F
+Icon=$ICON_VALUE_IDE
+Terminal=false
+Type=Application
+Categories=Development;IDE;
+StartupNotify=true
+MimeType=text/plain;inode/directory;
+EOF
+        chmod +x "$DESKTOP_FILE_IDE"
+    fi
+    success "Antigravity IDE updated successfully."
+else
+    warn "No update package (tarball or extracted folder) found for Antigravity IDE."
+fi
+
+# ---------------------------------------------------------
+# Ensure Terminal Commands (CLI Wrappers) are Set Up
+# ---------------------------------------------------------
+echo -e "\n${BLUE}--- Setting up terminal commands ---${NC}"
+BIN_DIR="$HOME/.local/bin"
+mkdir -p "$BIN_DIR"
+
+# For Antigravity App
+if [ -f "$INSTALL_DIR_APP/antigravity-launcher.sh" ]; then
+    CLI_APP="$BIN_DIR/antigravity"
+    rm -f "$CLI_APP"
+    cat <<EOF > "$CLI_APP"
+#!/bin/bash
+exec "$INSTALL_DIR_APP/antigravity-launcher.sh" "\$@"
+EOF
+    chmod +x "$CLI_APP"
+    success "Terminal command 'antigravity' is set up."
+else
+    warn "Antigravity App launcher not found at $INSTALL_DIR_APP/antigravity-launcher.sh. Skipping command setup."
+fi
+
+# For Antigravity IDE
+if [ -f "$INSTALL_DIR_IDE/antigravity-ide" ]; then
+    CLI_IDE="$BIN_DIR/antigravity-ide"
+    rm -f "$CLI_IDE"
+    cat <<EOF > "$CLI_IDE"
+#!/bin/bash
+exec "$INSTALL_DIR_IDE/antigravity-ide" --no-sandbox "\$@"
+EOF
+    chmod +x "$CLI_IDE"
+    success "Terminal command 'antigravity-ide' is set up."
+else
+    warn "Antigravity IDE executable not found at $INSTALL_DIR_IDE/antigravity-ide. Skipping command setup."
+fi
+
+# ---------------------------------------------------------
+# Optional Cleanup of Downloaded Packages
+# ---------------------------------------------------------
+echo -e "\n${BLUE}--- Cleanup ---${NC}"
+read -p "Would you like to delete the extracted folders and tarball update files from your Downloads folder? (y/n): " cleanup_confirm
+if [[ "$cleanup_confirm" =~ ^[Yy]$ ]]; then
+    # Clean up all tarballs matching Antigravity in Downloads
+    find "$DOWNLOADS_DIR" -maxdepth 1 -type f \( -name "Antigravity*.tar.gz" -o -name "Antigravity*IDE*.tar.gz" \) | while read -r tar_file; do
+        info "Deleting tarball: $tar_file"
+        rm -f "$tar_file"
+    done
+
+    # Clean up all extracted folders matching Antigravity/Antigravity IDE in Downloads
+    find "$DOWNLOADS_DIR" -maxdepth 1 -type d \( -name "Antigravity*" -o -name "Antigravity IDE*" \) | while read -r dir; do
+        if [ -n "$dir" ] && [ "$dir" != "$DOWNLOADS_DIR" ]; then
+            info "Deleting folder: $dir"
+            rm -rf "$dir"
+        fi
+    done
+
+    success "Cleaned up Downloads folder."
+else
+    info "Skipped cleanup of downloaded packages."
+fi
+
+echo -e "\n${GREEN}===============================================${NC}"
+echo -e "${GREEN}       All updates completed successfully!     ${NC}"
+echo -e "${GREEN}===============================================${NC}"

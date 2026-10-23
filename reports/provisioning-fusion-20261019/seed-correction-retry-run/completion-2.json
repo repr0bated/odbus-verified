@@ -1,0 +1,64 @@
+{
+  "request": 2,
+  "started": "2026-10-19T05:37:41.100018+00:00",
+  "finished": "2026-10-19T05:37:47.724626+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-09860e156ba53b82016ad5aca7fbe887d0a8d99609aee106f4",
+    "created": 1792388264,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading subvolume preference\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/subvolume-preference.json\"}",
+                "name": "read"
+              },
+              "id": "call_Ldx6lWFOL4dmlXXEHZJFPlDc",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 128,
+      "prompt_tokens": 142334,
+      "total_tokens": 142462,
+      "completion_tokens_details": {
+        "reasoning_tokens": 17
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 94856
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T05:37:47.723541+00:00",
+  "stream_chunks": 4
+}

@@ -27,7 +27,7 @@ pub fn revert_activation(state: &mut State, resolve_stacks: bool) -> Result<()> 
     let from = state.journal.as_ref().unwrap().from;
     if let Some(slot) = from {
         let release = state.release(slot)?.clone();
-        let inventory = inventory::load(&state.root(slot)?)?;
+        let inventory = inventory::load(&*state.root(slot)?)?;
         services::catalog(state, &release)?;
         services::reload_loggers(state)?;
         loggers::cleanup_created(state)?;

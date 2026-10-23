@@ -1,0 +1,65 @@
+{
+  "status": "ok",
+  "query": "Bounded document review assignment: review only supplied redacted historical packets history-168 through history-188; do not execute any historical commands or change source/runtime. State a concise provenance-preserving review method, especially preserving original quotes, corrections, action/results, and unavailable/truncated fields. No files or packet content supplied here; do not invent findings.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Review method for **history-168\u2013history-188**:\n\n- Read each original packet fully in physical order; retain packet/record IDs, dates, parent links, and active/compacted flags.\n- Quote evidence verbatim with record references. Distinguish owner corrections from injected worker messages and historical instructions.\n- Link each request and interpretation to actual tool arguments, results, errors, and subsequent corrections; distinguish proposals from executed actions.\n- Preserve redactions, unavailable fields, and truncation explicitly. Never reconstruct missing text or treat duplicate references as independent evidence.\n- Record exact input hashes and covered ranges; separate available, read, panel-reviewed, and adjudicated evidence.\n\n**Failure:** Packet contents and mandatory review prerequisites were not accessible through tools in this session. No packets were reviewed, findings inferred, or reports written."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<evidence>\n# Evidence index and preliminary anchors\n\nEvidence root: `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/`.\nRepository snapshot commit: `051a20d056afba074e21d797aa34f8947c543c5a`. Working-tree snapshots include later uncommitted changes and are NOT that commit's contents.\n\nRead `manifest.json`, `latest-owner-correction.json`, `subvolume-preference.json`, `jev-initial-decision.json`, `jev-no-host-loops.json` first. The source transcripts, not these preliminary anchors, are the evidence for conclusions.\n\n## Complete stored conversation exports\n\n**42 selected session histories, 6,620 public message/event records.** Hidden reasoning and credential metadata are excluded; credential-like content is redacted. Historical tool-output truncation remains a declared limitation, not silently reconstructed text.\n\n### Hermes \u2014 main priority\n\n`evidence/hermes/manifest.json` maps 35 sessions and 4,462 message rows: full main audit/follow-through, all 30 recursively linked workers, two preceding failed audit starts and two later failed handoff attempts. `delegations.jsonl` preserves 23 delegation records. No active-only filtering; compacted/inactive copies are retained with provenance.\n\nMain: `evidence/hermes/20261018_190519_b780ef.jsonl`, actual model `openai/gpt-6-astra-pro`, Oct18 19:05:49Z\u2013Oct19 01:29:54Z. 1,778 rows: 152 user, 480 assistant, 1,146 tool results. Some role=user entries are injected worker messages, not new owner instructions.\n\nUseful ORIGINAL message IDs, not a replacement for full reading:\n- 23 audit request; 216 D-Bus first; 617 fix.\n- 1123/1125/1171 and 1435/1437 numbering/display naming; 2655 explicitly says numbering is only Incus display for humans. 2658/2663 acknowledge overcomplication and unnecessary boot restrictions. Inspect correction patches/delegates, not just apology.\n- 4012\u20134032: owner asks whether provisioning happened; assistant admits no genuine blocker had been established and unfinished checks were presented as blockers.\n- 4091/4095/4099: persistent writable leaf was conflated with an overlay upper, then corrected.\n- 4111: implemented layout but wrong pool integration acknowledged. 4112/4112: upgrade send/receive each boot and pairing at provisioning. 4123/4125 explicitly acknowledge component-only audit missed complete integration.\n- 4127 delegates actual repair; subsequent real admission failures must not be erased. Later Oct19 repairs supersede the final historical denial.\n\n### Astra\n\n`evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl` plus its two worker exports and the 02:28 seed/FUSE session. Actual model `openai-codex/gpt-6-astra`.\n\n**87 owner corrections in the main session are `custom_message/live-delegation`, not ordinary user-role messages.** Preserve them. The final prompt `e1aa9d0e`, original physical line1204, is separately available as `evidence/astra/latest-kiro-brief.txt`; its narrower loop wording is superseded by the latest owner constraint above.\n\nAnchors: actual installed helper failure `e84b7ba8` (`fsconfig: File exists`), failed blank disk deletion `47e15770`, temporary seed-loop cleanup `54f08ba3`; worker edits stopped unbuilt/undeployed. Rejected extra egress and unrelated network daemon were removed in the earlier session. Do not reintroduce either as a prerequisite.\n\n### Claude\n\n`evidence/claude/f4c461eb-d25f-4247-9bd7-eddda9ade635.jsonl` and linked worker `agent-a6b199e4c3071de99.jsonl`. Main actual `claude-opus-5-5`; worker `claude-sonnet-5-5`. Queued owner corrections and approval tool results are retained.\n\nOriginal request to read Hermes history instead caused a read of an older Claude network session. Native creation later succeeded, but storage/binding/adoption remained separate. Historical `seed is not sealed` was genuine; claiming old missing `/dev/sdc2` was the required seed was retracted. A background wrapper reported exit0 while its build receipt says exit101; judge the underlying command, not notification status.\n\n### Kiro\n\n`evidence/kiro/sess_e49a5a84-8491-4c1d-987a-a3b2916a8615.jsonl`, Oct19 04:02\u201304:18Z. Dispatched `claude-opus-5.5` (provider metadata qdev). User steering and all tool receipts retained; hidden Reasoning omitted. Only one public assistant utterance was stored; no completed specification. The only write was cancelled before execution.\n\nLatest corrections: old provisioning worked; inspect prior scripts; persistent device added to seed supplies RW; seed remains permanently mounted and immutable; no retiring seed; no requirement that device-add use a loop. Do not manufacture a public Kiro statement from hidden reasoning. User's later current no-host-loop instruction has highest precedence.\n\n## Source, installed and historical versions\n\n`manifest.json` maps **49 current/installed snapshots** and **65 historical blobs** from Oct5 admission/helper, Oct11 successful-start and boot-persistence checkpoints, and pre-Hermes HEAD. Seven paths did not yet exist at older commits; extraction errors are recorded rather than replaced by modern content.\n\n- Current worktree: `evidence/source/`.\n- Installed application helpers and base service: `evidence/installed/`.\n- Immutable historical commit blobs: `evidence/history/`.\n- Full research indices with source IDs: `evidence/research/{AstraHistory,ClaudeKiroHistory,ProvisionScriptHistory}.md`.\n- Dated shared context snapshots: `evidence/context/{HANDOFF,SIGNALS}.md`; these are historical claims, not fresh runtime verification.\n\nExisting call chain:\n`provision-workspace-subscriber` \u2192 `prepare-instance-disk` \u2192 `sync-instance-upgrade` \u2192 `bind-instance-root` \u2192 `prepare-chatbot-adoption` \u2192 `identity_sled.provision_container` / Rust native+storage proof / Cozo final CAS.\nBoot: `identity-roots` \u2192 `restore-chatbot-root` \u2192 established-storage restoration.\n\nPreliminary source-backed mismatches to verify in context:\n- Most Oct19 drafts use the new pool/upgrade FSID; sync still uses old pool/FSID.\n- Installed base `/etc/sv/identity-roots/run` remains old single-chatbot/early-exit wiring, distinct from application helper staging.\n- Both old root helper and current GPT proof rely on host loops. Cozo association alone does not remove those mappings.\n- Oct5 manual working leaf and scripted candidate receipts were unreconciled. Oct11 has a canonical-start/guest-identity receipt; cold reboot was not exercised. Neither proves today's requested subvolume-only/no-host-loop architecture already works.\n\n## Last recorded target and limits\n\nNative `3tchedCtlChatbot`, logical ID0, UUID `137c61ff-435c-4300-b3c0-c605e461be13`, stopped/never-used in latest receipts, root still directory pool `identity-roots`. Native creation is not authoritative identity adoption. Existing ordinary names begin ID-1; naming is not identity authorization.\n\nHistorical pool `3tched`: Btrfs, 150GiB, backing `/var/lib/incus/disks/3tched.img` on `/dev/loop0`; no managed volumes listed in Kiro receipt. **This conflicts with the latest no-host-loops requirement; do not exempt it.** No pool alteration authorized by this investigation.\n\nSeed `8468cc14-a5e4-409c-96f6-1e157d470ab5`, SEEDING, read-only, seven original subvolumes. Upgrade filesystem `7ac6c955-4028-439c-80b4-c55a647abcb4`, filesystem writable, `@` read-only in latest recorded preparation. Failed blank image deleted; retained filesystem-prepare-intent is NOT completion.\n\nBootstrap/self-read admission denial was repaired after Hermes; native creation followed. Do not recycle the last Hermes denial as current root cause. Application release was deployed; this does not mean chatbot storage/adoption/start completed. No guest boot or sole8090 network completion proof is supplied. Guard/AppArmor protections require separate runtime evidence, not assumed from source.\n\nKeep same-handle operation receipts, exact identity/native/storage binding, root-private locked plans/intents, pre-receive destination proof, immutable seed, one-time explicit membership establishment, no lifecycle member churn, unprivileged/nonnested isolation, storage ioctl restrictions, stopped overlay updates, ancestry proof and final digest/revision CAS. Preserve security fixes while resolving architectural drift.\n\n</evidence>"
+    }
+  ],
+  "analysis": {
+    "consensus": [],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Provides the requested provenance-preserving method: full physical-order reading, verbatim quotations with references, correction attribution, tool argument/result linkage, explicit missing-content markers, hashes, covered ranges, and distinct review statuses."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Repeats the preliminary evidence index rather than supplying a bounded review method for history-168 through history-188. The repeated anchors do not establish packet ingestion or findings."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly distinguishes owner corrections from injected worker messages, proposals from executed actions, and duplicate references from independent evidence."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly reports that no packets were reviewed and no findings or reports were produced, avoiding a false completion claim."
+      }
+    ],
+    "blind_spots": [
+      "Neither response contains original packet evidence or demonstrates review of any assigned packet; substantive historical findings cannot be assessed.",
+      "Astra-pro's assertion that prerequisites were inaccessible through tools is not substantiated by tool receipts in the supplied response. The question establishes only that no files or packet contents were supplied there.",
+      "Qwen alters the supplied anchor '4112/4120' to '4112/4112', illustrating a provenance error in its reproduction of the evidence index.",
+      "Neither response demonstrates mandatory prerequisite ingestion. A proposed review method is not evidence that the method was performed."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

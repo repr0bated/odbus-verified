@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-19T04:34:29.936Z",
+  "task": "provisioning-fusion-20261019",
+  "repository_commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+  "files_checked": 156,
+  "checks": "Exported byte SHA256 and declared JSONL row counts against export manifests; no code test, runtime provisioning or deployment.",
+  "errors": [],
+  "source_read_limit": "No original source re-read or re-execution; byte hashes identify exported evidence snapshots."
+}

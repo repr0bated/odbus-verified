@@ -1,12 +1,13 @@
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
-use std::{collections::{BTreeMap, BTreeSet}, fs::File, os::fd::AsFd, path::{Path, PathBuf}};
+use std::{collections::{BTreeMap, BTreeSet}, fs::File, os::fd::{AsFd, OwnedFd}, path::{Path, PathBuf}};
 use super::fs;
 
 pub const STATE: &str = "/var/lib/opdbus-release/slots.json";
 pub const LOCK: &str = "/var/lib/opdbus-release/lock";
 pub const READY: &str = "/run/opdbus-release/ready";
 pub const APPROVAL: &str = "/var/lib/opdbus-release/first-activation.json";
+pub const RELEASE_BASE: &str = "/var/lib/opdbus-release/base";
 pub const GOLDEN: &str = "/opt/op-dbus/golden";
 pub const SEND: &str = "/opt/op-dbus/release-send";
 pub const FSID: &str = "d53eeac0-949b-499c-b051-9fecf8678f59";
@@ -34,6 +35,11 @@ pub struct Parent { pub fsid: String, pub subvolume: u64, pub device: u64, pub m
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Target { pub path: PathBuf, pub source: PathBuf, pub noexec: bool, pub parent: Option<Parent> }
+/// Verified slot root; keeps the detached fsmount alive (closing it dissolves the
+/// anonymous mount namespace and overlayfs can no longer clone layers from it).
+pub struct SlotRoot { dir: File, _mount: OwnedFd }
+impl std::ops::Deref for SlotRoot { type Target = File; fn deref(&self) -> &File { &self.dir } }
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Release {
@@ -157,11 +163,11 @@ impl State {
     pub fn intent(&mut self, step: impl Into<String>) -> Result<()> {
         self.journal.as_mut().context("mutation without transaction journal")?.step = step.into(); self.save()
     }
-    pub fn root(&self, slot: Slot) -> Result<File> {
+    pub fn root(&self, slot: Slot) -> Result<SlotRoot> {
         let release = self.release(slot)?;
         let mount = fs::detached_btrfs(FSID, release.id, true)?;
         let root = fs::directory(mount.as_fd())?;
         super::transfer::verify_root(&root, release)?;
-        Ok(root)
+        Ok(SlotRoot { dir: root, _mount: mount })
     }
 }

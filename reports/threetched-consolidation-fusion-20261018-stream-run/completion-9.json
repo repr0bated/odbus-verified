@@ -1,0 +1,89 @@
+{
+  "request": 9,
+  "started": "2026-10-18T21:28:40.413444+00:00",
+  "finished": "2026-10-18T21:28:59.828693+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-02e149f469d622d1016ad53a0aef5087d098c4be44c326a6f3",
+    "created": 1792358923,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading ownership rows precisely\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:423-450:raw\"}",
+                "name": "read"
+              },
+              "id": "call_th6nRwvwWl4B4PPENhloeJiK",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading native mounted schema\",\"path\":\"/run/mounts/threetched/plugins/threetched/schema.json:1-45\"}",
+                "name": "read"
+              },
+              "id": "call_05l4SHsNvL880I7mtSUDHgM2",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading selected mount adapter\",\"path\":\"/srv/git/odbus-verified/deploy/runit/libexec-3tched/mount-3tchedfs:1-135\"}",
+                "name": "read"
+              },
+              "id": "call_R5X5Yu6KBGTT6QLaMwFXqtNG",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording source revision\",\"command\":\"git rev-parse HEAD\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_NI4QNr6Lw3l4xIeIqmdWv8Ox",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "JEV classified this as complex cross-crate work and favored proven command-level admission equivalence over blanket capability aliases. The mounted identity metadata is readable, but scanning the native plugin directory returned EIO; I have not invoked operations or changed the mount.\n\nTwo read-only scouts are mapping wrapper admission/callers and the next consolidation slice. Build, isolated sealing, and source changes remain authorized; tests and live activation remain excluded."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1200,
+      "prompt_tokens": 187427,
+      "total_tokens": 188627,
+      "completion_tokens_details": {
+        "reasoning_tokens": 167
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 138718
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:28:59.825703+00:00",
+  "stream_chunks": 13
+}

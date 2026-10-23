@@ -1,6 +1,7 @@
 #!/bin/sh
-# Install the socket-owning Rust network manager into an existing Incus
-# identity container.  This project is not installable by crate name alone;
+# Install rust-network-mgr into an existing Incus identity container.
+# Control plane is the shared lungs socket (bridge-owned); this binary must
+# not bind its own UDS. This project is not installable by crate name alone;
 # the pinned Cargo Git source is part of the provisioning contract.
 set -eu
 
@@ -70,11 +71,15 @@ fi
 incus exec "$CONTAINER" -- env STATUS_COMMAND="$STATUS_COMMAND" sh -lc '
     set -eu
     for _ in $(seq 1 50); do
-        [ -S /run/rust-network-manager/rust-network-manager.sock ] && exit 0
+        if [ -S /run/opdbus/lungs/lungs.sock ] || [ -S /run/3tched-lungs.socket ]; then
+            if pgrep -x rust-network-mgr >/dev/null 2>&1; then
+                exit 0
+            fi
+        fi
         sleep 0.2
     done
     sh -c "$STATUS_COMMAND" >&2 || true
     exit 1
 '
 
-echo "$CONTAINER: rust-network-mgr socket is ready"
+echo "$CONTAINER: rust-network-mgr ready (lungs socket)"

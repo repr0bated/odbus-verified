@@ -1,0 +1,64 @@
+{
+  "request": 165,
+  "started": "2026-10-19T04:42:46.718288+00:00",
+  "finished": "2026-10-19T04:42:55.817031+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0ff70798b65792c7016ad59fc9bba087d08cb9529dab77b26d",
+    "created": 1792384969,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Listing supplied packet files\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets\"}",
+                "name": "read"
+              },
+              "id": "call_tXUZuzuwkv1GCAsFxZ6DuRrl",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 304,
+      "prompt_tokens": 91951,
+      "total_tokens": 92255,
+      "completion_tokens_details": {
+        "reasoning_tokens": 124
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 84481
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:42:55.815924+00:00",
+  "stream_chunks": 4
+}

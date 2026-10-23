@@ -129,7 +129,6 @@ impl TchedRouterLegacyMethods {
         let represented_state = represented_state(observed, &assignments)?;
         let output = match method {
             "GetModelRoutes" => json!({"model_routes": observed.model_routes.clone()}),
-            "GetProviderCatalog" => json!({"providers": observed.providers.clone()}),
             "ResolveRoute" => {
                 let input: ResolveRouteInput =
                     serde_json::from_value(args.clone()).context("invalid ResolveRoute input")?;

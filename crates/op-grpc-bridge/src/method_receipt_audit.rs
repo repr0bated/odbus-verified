@@ -8,8 +8,9 @@ use op_plugins::state_plugins::runtime_documents::RuntimeDocuments;
 #[cfg(not(test))]
 use op_plugins::state_plugins::runtime_documents::runtime_documents;
 use op_state_store::method_receipt::{
-    MAX_METHOD_RECEIPT_BYTES, MethodEventProof, MethodExecutionReceipt, MethodReceiptRecovery,
-    MethodRecoveryStatus, validate_json_size, validate_method_result,
+    AuditedMethodRefusal, MAX_METHOD_RECEIPT_BYTES, MethodEventProof, MethodExecutionReceipt,
+    MethodReceiptRecovery, MethodRecoveryStatus, UnsupportedBeforeEffect, validate_json_size,
+    validate_method_result,
 };
 use op_state_store::{ChainEvent, Decision, OperationType};
 use serde::{Deserialize, Serialize};
@@ -19,6 +20,11 @@ use super::{AdmittedMethodCall, MutationEngine, event_to_footprint, require_boun
 
 const JOURNAL_NAMESPACE: &str = "__method_operation_v1";
 const MAX_JOURNAL_BYTES: usize = 8192;
+
+/// Error text, including a copied public refusal, cannot prove no effects.
+fn before_effect_refusal(error: &anyhow::Error) -> Option<UnsupportedBeforeEffect> {
+    error.downcast_ref::<UnsupportedBeforeEffect>().copied()
+}
 
 /// Closed diagnostic vocabulary. Backend error text can contain possession
 /// material; only matched source conditions leave this boundary, never text.
@@ -388,7 +394,7 @@ impl JournalCursor {
                     None => "method_reservation_unknown",
                 };
                 anyhow::bail!(
-                    "{code}; operation_id={operation_id}; use threetched_fs.get_receipt; do not retry automatically"
+                    "{code}; operation_id={operation_id}; use tched_fs.get_receipt; do not retry automatically"
                 );
             }
         };
@@ -520,8 +526,8 @@ impl MutationEngine {
             .as_ref()
             .map(serde_json::to_value)
             .transpose()?;
-        // This check occurs before calling a backend. Later failures are
-        // conservatively unknown: an error is not evidence of rollback.
+        // This check occurs before calling a backend. Later failures remain
+        // unknown unless the backend explicitly certifies a pre-effect refusal.
         let before_effect = async {
             if let Some(proof) = &call.bound_oracle {
                 crate::interceptor::revalidate_bound_oracle(
@@ -559,23 +565,9 @@ impl MutationEngine {
         let mut envelope = match outcome {
             Ok(Ok(value)) => value,
             Ok(Err(error)) => {
-                tracing::error!(
-                    operation_id = %operation_id,
-                    failure_kind = safe_backend_failure_kind(&error),
-                    "Admitted backend failed; outcome remains unknown"
-                );
-                self.record_method_terminal(
-                    &attempt,
-                    &operation_id,
-                    "unknown",
-                    None,
-                    "backend_or_publication_failed",
-                    &mut journal,
-                )
-                .await?;
-                anyhow::bail!(
-                    "method_outcome_unknown; operation_id={operation_id}; do not retry automatically"
-                );
+                return self.record_method_failure(
+                    &attempt, &operation_id, &mut journal, error,
+                ).await;
             }
             Err(_) => {
                 self.record_method_terminal(
@@ -643,6 +635,35 @@ impl MutationEngine {
         )?;
         validate_json_size(&envelope, MAX_METHOD_RECEIPT_BYTES)?;
         Ok(envelope)
+    }
+
+    async fn record_method_failure(
+        &self,
+        attempt: &ChainEvent,
+        operation_id: &str,
+        journal: &mut JournalCursor,
+        error: anyhow::Error,
+    ) -> anyhow::Result<Value> {
+        if let Some(refusal) = before_effect_refusal(&error) {
+            // Only the typed, static diagnostic is public. Context and arbitrary
+            // backend text cannot certify the absence of effects or leave here.
+            let id = uuid::Uuid::parse_str(operation_id)?;
+            self.record_method_terminal(
+                attempt, operation_id, "failed", None, refusal.code(), journal,
+            ).await?;
+            return Err(AuditedMethodRefusal::new(id, refusal).into());
+        }
+        tracing::error!(
+            operation_id = %operation_id,
+            failure_kind = safe_backend_failure_kind(&error),
+            "Admitted backend failed; outcome remains unknown"
+        );
+        self.record_method_terminal(
+            attempt, operation_id, "unknown", None, "backend_or_publication_failed", journal,
+        ).await?;
+        anyhow::bail!(
+            "method_outcome_unknown; operation_id={operation_id}; do not retry automatically"
+        );
     }
 
     async fn record_method_terminal(
@@ -768,6 +789,44 @@ mod tests {
                 terminal: None,
                 result_digest: None,
             },
+        }
+    }
+
+    #[tokio::test]
+    async fn typed_pre_effect_refusal_survives_worker_and_context() {
+        for contextual in [false, true] {
+            let backend = tokio::task::spawn_blocking(|| -> anyhow::Result<Value> {
+                Err(UnsupportedBeforeEffect::new(
+                    "threetched_skills_add_editor_unsupported", "omit --edit",
+                ).into())
+            }).await.context("execution worker failed").unwrap().unwrap_err();
+            let backend = if contextual { backend.context("private backend context") } else { backend };
+            let refusal = before_effect_refusal(&backend).expect("typed pre-effect refusal");
+            assert_eq!(refusal.code(), "threetched_skills_add_editor_unsupported");
+            assert_eq!(refusal.to_string(), "threetched_skills_add_editor_unsupported; omit --edit");
+        }
+    }
+
+    #[tokio::test]
+    async fn ordinary_nested_and_worker_failures_remain_unknown() {
+        let cancelled = tokio::spawn(std::future::pending::<()>());
+        cancelled.abort();
+        let cancelled = anyhow::Error::new(cancelled.await.unwrap_err()).context("worker failed");
+        let panicked = tokio::task::spawn_blocking(|| -> () { panic!("private worker failure") });
+        let panicked = anyhow::Error::new(panicked.await.unwrap_err()).context("worker failed");
+        let nested = AuditedMethodRefusal::new(
+            uuid::Uuid::parse_str(OPERATION).unwrap(),
+            UnsupportedBeforeEffect::new("editor_unsupported", "omit --edit"),
+        );
+        for backend in [
+            anyhow::anyhow!("threetched_skills_add_editor_unsupported; omit --edit"),
+            anyhow::anyhow!("threetched command exited with 1"),
+            anyhow::anyhow!("operation completed but SHM publication failed"),
+            anyhow::Error::new(nested).context("outer backend may already have effects"),
+            cancelled,
+            panicked,
+        ] {
+            assert!(before_effect_refusal(&backend).is_none());
         }
     }
 

@@ -20,11 +20,22 @@ state afterward. This helper does not mount, snapshot, clone, unseal, reprovisio
 start services or change grants.
 
 Memory links target the existing cognitive MCP memory operations in the guest's
-identity-bound 3tchedFS mount at `/run/mount/3tchedfs`. Shared owner links expose
-cognitive MCP agent operations and agent configuration. Skills link to the
-existing tched-router owner; its current sealed interface does not expose native
-SkillsService inventory/contents, so a skill projection remains unfinished.
-Do not confuse GetTools with effective skill inventory or add a frozen duplicate.
+identity-bound main view at `/run/mount/3tchedfs`. The shared `cognitive` and
+`agent-config` links also use that view. Upstream plugins live in the separate
+guest view at `/run/mount/threetched`: `shared/threetched-plugins` and
+`skills/skills` target its `plugins/threetched` directory; `skills/runtime`
+targets its `plugins/tched_router` directory. Both views preserve the guest's
+identity and use the same lungs endpoint.
+
+These links expose the sealed native interfaces, not the retired SkillsService
+inventory/contents API. Do not confuse GetTools with effective skill inventory
+or add a frozen duplicate.
+
+After normal image preparation and guest FUSE startup, manually inspect
+`readlink /agent/shared/threetched-plugins /agent/skills/runtime /agent/skills/skills`
+and confirm all three links resolve to directories in `/run/mount/threetched`.
+Existing populated bases are not rewritten by this change; use the storage
+owner's image-update lifecycle rather than rerunning `populate.sh` against them.
 
 `@agent_user/identity` is the private destination reserved for the matching
 human or machine identity sled during provisioning. The shared base deliberately

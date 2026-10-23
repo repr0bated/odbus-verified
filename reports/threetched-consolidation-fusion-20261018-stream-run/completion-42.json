@@ -1,0 +1,104 @@
+{
+  "request": 42,
+  "started": "2026-10-18T21:39:43.889731+00:00",
+  "finished": "2026-10-18T21:40:00.626294+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-064c0e105047537f016ad53ca3b79487d08fc5a062b0632e25",
+    "created": 1792359587,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading current shared ownership\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:410-435\"}",
+                "name": "read"
+              },
+              "id": "call_LTA80Efx2j6AyUuKHK9cVyXY",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading workspace wrapper consumers\",\"path\":\"/srv/git/odbus-verified/deploy/workspace-agent/populate.sh:35-58\"}",
+                "name": "read"
+              },
+              "id": "call_mAFdK2FIPpUVb2hragfXef9K",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading workspace extension guidance\",\"path\":\"/srv/git/odbus-verified/deploy/config/agents/workspace/shared/README.md:1-45\"}",
+                "name": "read"
+              },
+              "id": "call_ULsX6qWiButnd9b6QOyRtnBX",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading workspace skill guidance\",\"path\":\"/srv/git/odbus-verified/deploy/config/agents/workspace/skills/README.md:1-45\"}",
+                "name": "read"
+              },
+              "id": "call_jd9mPvs8LxCsGIVqDATFtcAC",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading retired plugin implementation\",\"command\":\"git show HEAD:crates/op-plugins/src/state_plugins/tched_plugins.rs\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_8xdRFWAUIn5o7fbNUOBy7gca",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading release mount documentation\",\"path\":\"/srv/git/odbus-verified/docs/src/getting-started/local-release-activation.md:210-235\"}",
+                "name": "read"
+              },
+              "id": "call_QIVcNFekgxaKF5fKC105QCHg",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 663,
+      "prompt_tokens": 198626,
+      "total_tokens": 199289,
+      "completion_tokens_details": {
+        "reasoning_tokens": 146
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 105977
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:40:00.622155+00:00",
+  "stream_chunks": 14
+}

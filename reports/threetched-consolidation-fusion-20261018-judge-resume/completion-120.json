@@ -1,0 +1,64 @@
+{
+  "request": 120,
+  "started": "2026-10-18T22:04:36.329346+00:00",
+  "finished": "2026-10-18T22:04:51.793989+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-02c5fdee5d174702016ad5427720e487d098192290f0c6523d",
+    "created": 1792361079,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reporting source correction prerequisite\",\"path\":\"agent://Main\",\"content\":\"Bounded read confirms HANDOFF:432 supersedes compiler-owner blocker: isolated worker completed/no active child; first missing uuid dependency, second timeout; mixed bridge18:11/opblob artifacts MUST NOT ship. Current prerequisite is explicit Hermes correction/freeze of over-scoped task-local source: ID-1 numbering must remain human-facing Incus naming only, not identity/storage/lifecycle authority, while preserving earlier independent provisioning repairs and storage/guard hold. Targeted HANDOFF search found no correction-complete/frozen entry for provision-fix-20261018; latest corresponding Hermes Handoff is still 19:25Z audit at6886\u20136896, not fix completion. Thus source correction remains unrecorded; don't start workspace build until Hermes records correction complete/source stable and consolidation source freeze is granted. No process probe/Cargo or shared edits.\"}",
+                "name": "write"
+              },
+              "id": "call_EXdD4NdAdN8UAtPEUf5o4wFM",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 537,
+      "prompt_tokens": 99068,
+      "total_tokens": 99605,
+      "completion_tokens_details": {
+        "reasoning_tokens": 98
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 67724
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:51.792206+00:00",
+  "stream_chunks": 4
+}

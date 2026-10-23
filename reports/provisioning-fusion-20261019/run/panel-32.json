@@ -1,0 +1,134 @@
+{
+  "status": "ok",
+  "query": "For a bounded historical document review of provided packets, give concise safeguards for distinguishing secondary historical claims from fresh runtime proof, preserving source citations and later corrections, and explicitly classifying unrelated content. No tools, repository exploration, or commands are needed.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Report paths: none.\n\nFailure: Mandatory preload and review-contract files could not be read because this session exposes no tools. No packets were reviewed, findings persisted, or runtime claims verified."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Safeguards for bounded historical document review\n\n**1. Separate claim classes explicitly.**\nTag every statement as one of: (a) primary tool receipt (actual command, args, output, error), (b) agent narrative/interpretation, (c) owner instruction or correction, (d) later retraction/supersession, (e) context-file claim (HANDOFF/SIGNALS snapshots are dated claims, not verification). Only (a) and (c) are evidence of what happened or what was required; (b) is a hypothesis to check against (a).\n\n**2. Fresh runtime proof requires a dated, specific receipt.**\n\"X works\" is proven only by a tool result showing X executed at a stated time with the expected output \u2014 not by an assistant summary, an exit-0 notification wrapper (verify the underlying build receipt; e.g. exit101 under a reported exit0), a source file's existence, or a deployment of unrelated components. Distinguish: source snapshot \u2260 installed helper \u2260 installed base service \u2260 historical commit blob. None substitutes for another; record which one each claim rests on.\n\n**3. Prefer later corrections; never quote a superseded claim as current.**\nOrder of precedence: latest owner instruction > latest owner correction > later repair receipts > earlier assistant admissions/denials. When a correction exists (e.g. \"no host loops\" broadened, overlay-upper conflation fixed, final historical denial superseded by later repairs), cite both the original record ID and the correcting record ID, and mark the original as superseded \u2014 do not silently drop it or repeat it.\n\n**4. Preserve citations at the point of use.**\nEvery finding carries: file path, record/message ID, physical line or row index, timestamp, and an exact excerpt (not a paraphrase) when it reaches a panel or judge. Distinguish exported/available/actually-read/panel-reviewed/adjudicated status per file; a supplied path is not a read.\n\n**5. Classify unrelated content, don't discard it silently.**\nContent outside the assigned chain (e.g. rejected egress rules, unrelated network daemon, numbering/display naming, older sessions read by mistake) gets an explicit \"out-of-scope, do not reintroduce\" entry with its citation, so it cannot resurface as a prerequisite and its duplicate references stay accounted for.\n\n**6. Treat absence of evidence as a classified state, not a conclusion.**\n\"Never exercised\" (e.g. cold reboot), \"intent recorded but not executed\" (filesystem-prepare-intent), \"truncated historical tool output\" \u2014 each is a declared limitation, never silently reconstructed or upgraded into a success or a current blocker.\n\n**7. No replay to close gaps.**\nHistorical scripts and approvals are evidence only; a missing proof is reported as missing, not re-derived by running anything."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Safeguards for Historical Document Review\n\n**1. Runtime Proof vs. Historical Claim**\n*   **Rule:** A historical log (e.g., \"provisioning succeeded at 19:05\") is a *claim of past action*, not proof of *current state*.\n*   **Safeguard:** Any assertion about the system's current operational status (e.g., \"container is running,\" \"subvolume is mounted\") must be backed by a direct, timestamped observation of the live environment. If live observation is unavailable, the claim must be explicitly marked as `HISTORICAL-CLAIM` and cannot be used to assert current readiness or completion.\n\n**2. Correction Supremacy and Citation**\n*   **Rule:** Owner corrections (e.g., `custom_message/live-delegation`) and retracts supersede all prior agent interpretations.\n*   **Safeguard:** Every conclusion must cite the exact message ID or file hash of the *latest* authoritative constraint. If a correction exists (e.g., \"no host loops\"), the review must explicitly state: *\"Corrected by [ID] at [Time]: [Text].\"* Unmodified historical claims that contradict a correction are treated as `DISCARDED`.\n\n**3. Explicit Content Classification**\n*   **Rule:** The corpus contains 6,620+ records; not all are relevant to the provisioning workflow.\n*   **Safeguard:** Every piece of evidence must be classified as:\n    *   `CORE`: Directly impacts admission, storage, binding, adoption, or startup.\n    *   `SECONDARY`: Contextual (e.g., model routing, network daemon setup) but does not alter the provisioning logic.\n    *   `UNRELATED`: Explicitly excluded (e.g., old failed audits, superseded proposals, credential management).\n*   Unrelated content must be explicitly listed and excluded from the diagnostic reasoning to prevent scope creep.\n\n**4. Source vs. Snapshot Integrity**\n*   **Rule:** Historical commit blobs (`evidence/history/`) and installed helpers (`evidence/installed/`) are static snapshots.\n*   **Safeguard:** Do not treat a historical source file as proof of current behavior. If the current worktree differs from the historical blob, the review must note the `DRIFT` and rely on the *current* worktree for logic analysis, while using the historical blob only to explain *why* a specific implementation choice was made.\n\n**5. No Silent Assumptions**\n*   **Rule:** Gaps in the evidence (e.g., missing runtime logs) must not be filled with plausible inferences.\n*   **Safeguard:** If a required step (e.g., \"Cozo adoption\") lacks a direct receipt, it must be marked as `UNVERIFIED` rather than assumed. The review must explicitly list all `UNVERIFIED` steps as blockers or open questions."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "glm-5-3 and qwen-3-6-35b-a3b distinguish historical claims and source snapshots from evidence of current runtime state.",
+      "Both substantive responses require traceable citations, explicit handling of later owner corrections, and visible classification of irrelevant material.",
+      "Both reject assuming successful completion where direct evidence is missing."
+    ],
+    "contradictions": [
+      {
+        "topic": "Whether the bounded question requires file access",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Reports inability to read mandatory files as a blocker and provides no safeguards."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Answers the safeguards question directly without requiring tools."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Answers the safeguards question directly without requiring tools."
+          }
+        ]
+      },
+      {
+        "topic": "Treatment of superseded evidence",
+        "stances": [
+          {
+            "model": "glm-5-3",
+            "stance": "Retains the original claim alongside its correcting record and marks it superseded."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Labels conflicting historical claims DISCARDED and includes superseded proposals among unrelated content, risking exclusion of evidence needed to explain drift."
+          }
+        ]
+      },
+      {
+        "topic": "Missing evidence versus a demonstrated blocker",
+        "stances": [
+          {
+            "model": "glm-5-3",
+            "stance": "Explicitly warns against turning absent or truncated evidence into a current blocker."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Says unverified steps should be listed as blockers or open questions without specifying the evidence needed to distinguish those categories."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Does not address the requested safeguards; its response concerns packet-review execution rather than the bounded conceptual question."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Requires dated runtime receipts but does not clearly emphasize that an authentic historical execution receipt still cannot establish present state."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Clearly separates past events from current observations, but its preference for current worktree logic does not adequately preserve the independent relevance of installed versions."
+      },
+      {
+        "models": [
+          "glm-5-3",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Both propose explicit relevance classifications, but their examples are overbroad: display-naming corrections, failed audits, and superseded proposals can remain relevant to historical drift even when they are not implementation prerequisites."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "glm-5-3",
+        "insight": "Distinguishes exported, available, actually read, panel-reviewed, and adjudicated evidence; supplying a path does not establish ingestion."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Separates underlying command results from wrapper notifications and distinguishes current source, installed helpers, installed base services, and historical commit blobs."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Explicitly prohibits replaying historical commands or treating historical approvals as authorization to close evidence gaps."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly states that even a historical success record cannot establish current readiness without a current observation."
+      }
+    ],
+    "blind_spots": [
+      "Neither substantive response fully separates normative authority from empirical proof: owner instructions establish requirements, not independently verified runtime outcomes.",
+      "Neither fully specifies preservation of physical order, parent links, active/compacted flags, duplicate provenance, and unavailable ranges.",
+      "Neither explicitly distinguishes an owner correction from an injected worker message solely on provenance rather than message role.",
+      "Neither clearly states that supplied current-observation receipts may be assessed while obtaining new runtime observations remains outside the read-only document-review authorization.",
+      "Neither explicitly separates relevance from evidentiary strength: unrelated, superseded, secondary, and unverified describe different dimensions and should not be interchangeable exclusion labels."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

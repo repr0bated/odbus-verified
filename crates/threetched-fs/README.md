@@ -54,7 +54,12 @@ in `threetched-surface.rs`. Its methods and capture evidence enter the plugin's
 `PluginSchema`; `opblob` seals that contract. Production mounts project it from
 the catalog through the ordinary namespace builder. No extra mount argument,
 mount-time command discovery or separately written schema file is needed.
-The `threetched_fs` plugin continues to describe the filesystem protocol itself.
+The `tched_fs` plugin describes our filesystem protocol itself. Our executable
+is `3tched-fs` (Cargo package `tched-fs`); the upstream executable remains
+`threetched`. Host mounts separate our OP-DBUS plugins at
+`/run/mounts/3tchedFS` from the upstream integration plugins at
+`/run/mounts/threetched`, using `capture --exclude-plugin` and
+`capture --include-plugin` with the same sealed catalog pin.
 
 Calls use the identity-bound lungs connection, canonical method admission,
 exact per-command capabilities and the existing operation receipt. Queued calls
@@ -112,31 +117,31 @@ cd /srv/git/odbus-verified
 CXXFLAGS="-include cstdint" cargo build --workspace --release
 ```
 
-The executable is `target/release/threetched-fs`.
+The executable is `target/release/3tched-fs`.
 
 ## Quick start
 
 Capture and activate a coherent view:
 
 ```sh
-./target/release/threetched-fs capture
-./target/release/threetched-fs verify
-./target/release/threetched-fs views
+./target/release/3tched-fs capture
+./target/release/3tched-fs verify
+./target/release/3tched-fs views
 ```
 
 Inspect the projected tree without mounting:
 
 ```sh
-./target/release/threetched-fs tree
-./target/release/threetched-fs inspect --plugin adc
+./target/release/3tched-fs tree
+./target/release/3tched-fs inspect --plugin adc
 ```
 
 Create and mount a writable workspace:
 
 ```sh
-./target/release/threetched-fs workspace new --name experiment
+./target/release/3tched-fs workspace new --name experiment
 mkdir -p /tmp/3tchedfs
-./target/release/threetched-fs mount /tmp/3tchedfs --workspace experiment
+./target/release/3tched-fs mount /tmp/3tchedfs --workspace experiment
 ```
 
 Scalar files contain JSON values. Strings therefore include JSON quotes:
@@ -144,16 +149,16 @@ Scalar files contain JSON values. Strings therefore include JSON quotes:
 ```sh
 printf 'true\n' > /tmp/3tchedfs/plugins/adc/data/configured
 cat /tmp/3tchedfs/plugins/adc/data/configured
-./target/release/threetched-fs verify --workspace experiment
+./target/release/3tched-fs verify --workspace experiment
 ```
 
 Unmount, then either commit or abort:
 
 ```sh
 fusermount3 -u /tmp/3tchedfs
-./target/release/threetched-fs workspace commit experiment
+./target/release/3tched-fs workspace commit experiment
 # or, before commit:
-./target/release/threetched-fs workspace abort experiment
+./target/release/3tched-fs workspace abort experiment
 ```
 
 An immutable view can be mounted with `--view <view-id>`, or with no target to
@@ -171,7 +176,7 @@ that host setting.
 FUSE is optional. A JSON pointer can be staged directly:
 
 ```sh
-./target/release/threetched-fs workspace stage experiment adc \
+./target/release/3tched-fs workspace stage experiment adc \
   --pointer /configured --json true
 ```
 
@@ -184,7 +189,7 @@ Operation inputs are validated against the JSON Schema sealed into the selected
 view or workspace before D-Bus dispatch:
 
 ```sh
-./target/release/threetched-fs call adc get_status --args '{}'
+./target/release/3tched-fs call adc get_status --args '{}'
 ```
 
 Mutation and external operations additionally require
@@ -216,11 +221,11 @@ path relative to the selected mount. Absolute paths, shortcut symlinks,
 noncanonical encodings and traversal are rejected. A call reads only its target
 plugin's object and schema; unrelated catalog members are not opened.
 
-The `threetched_fs` plugin (display name `3tchedFS`) at
-`/org/opdbus/v1/plugins/threetched_fs` declares one
+The `tched_fs` plugin (display name `3tchedFS`) at
+`/org/opdbus/v1/plugins/tched_fs` declares one
 `get_protocol` method describing this filesystem invocation protocol. When the
 mount's pinned catalog contains that plugin, `.3tchedfs.json` includes an
-`invocation` reference to `/plugins/threetched_fs/data/invocation/.value.json`; the descriptor
+`invocation` reference to `/plugins/tched_fs/data/invocation/.value.json`; the descriptor
 remains defined by the plugin's sealed schema. Exposing the new plugin requires
 catalog sealing and release activation. The `invoke` helper also works with
 existing compatible identity mounts that do not yet contain that plugin.
@@ -417,9 +422,9 @@ been run for this integration while the owner's build hold is in effect.
    ```sh
    threetched_review=$(mktemp -d /var/tmp/threetched-review.XXXXXX)
    mkdir "$threetched_review/state"
-   target/release/threetched-fs --store "$threetched_review/store" capture \
+   target/release/3tched-fs --store "$threetched_review/store" capture \
      --schema-only --catalog "$threetched_release_catalog" --state "$threetched_review/state"
-   target/release/threetched-fs --store "$threetched_review/store" inspect \
+   target/release/3tched-fs --store "$threetched_review/store" inspect \
      --plugin threetched > "$threetched_review/threetched.json"
    jq '.schema.methods | keys' "$threetched_review/threetched.json"
    ```
@@ -466,13 +471,21 @@ the bridge does not reseal it.
 
 `examples/typed_specialize.rs` derives `generated/plugin_types.rs` and
 `docs/typed-specialization-report.json` from a manifest-pinned sealed catalog,
-not from a second schema definition. The checked-in capture records catalog
-generation 1494 and its original names and hashes. It is historical evidence,
-not the replacement cognitive release contract.
+not from a second schema definition. The checked-in report records generation
+72, catalog hash `6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c`,
+and 72 plugins after the consolidation. Its 1,182 generated method bindings
+and 175 unsupported method entries account for 1,357 sealed methods; 11
+unsupported state/public-state entries are separate. Native threetched's 147
+methods remain declared but unsupported by static specialization (`allOf`).
+Router methods are specialized; its full State exceeds the generator's 128 MiB
+limit, while PublicState is supported. Generation is not compilation or runtime
+verification.
 
-After compiling and sealing the cognitive source cutover, regenerate these
-artifacts from that matching catalog before using `examples/typed_use_generated.rs`
-with the replacement release. Do not mechanically rename a captured plugin ID
-while retaining its old schema hash. Runtime filesystem discovery continues to
-derive plugin paths and operation contracts from the selected authoritative
-catalog; this source change does not mutate an existing mounted namespace.
+For a replacement catalog, use the existing `typed_specialize` generator with
+`--catalog <catalog>`, `--out-file crates/threetched-fs/generated/plugin_types.rs`,
+`--report crates/threetched-fs/docs/typed-specialization-report.json`, and
+`--use-example crates/threetched-fs/examples/typed_use_generated.rs` together.
+The optional last output keeps the example's module name aligned with the
+sealed plugin ID. Do not mechanically rename a captured ID while retaining an
+old schema hash. Runtime discovery derives paths and contracts from the selected
+authoritative catalog; generating source does not mutate a mounted namespace.

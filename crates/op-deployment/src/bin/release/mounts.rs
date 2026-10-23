@@ -54,12 +54,13 @@ pub fn build(state: &mut State, slot: Slot) -> Result<Vec<Candidate>> {
     ensure!(inventory.graph_sha256 == release.graph_sha256 && inventory.tree_sha256 == release.tree_sha256, "slot inventory differs from received record");
     ensure!(std::fs::read_to_string("/proc/filesystems")?.lines().any(|l| l.split_whitespace().last() == Some("overlay")), "overlay module is not loaded; explicit base installation approval is required");
     let started = Instant::now(); let mut candidates = Vec::with_capacity(release.targets.len());
+    let base = fs::release_base()?;
     for (index, target) in release.targets.iter().enumerate() {
         verify_parent(target)?;
         let lower = fs::open_beneath(root.as_fd(), &target.source, libc::O_RDONLY | libc::O_DIRECTORY)?;
         ensure!(lower.metadata()?.dev() == root.metadata()?.dev() && btrfs_uapi::subvolume::subvolume_info(lower.as_fd())?.id == release.id, "lower escaped verified slot");
         state.intent(format!("build-overlay:{index}:{}", release.tag(slot,index)))?;
-        let mount = fs::detached_overlay(lower.as_fd(), &release.tag(slot,index), target.noexec)?;
+        let mount = fs::detached_overlay(lower.as_fd(), base.as_fd(), &release.tag(slot,index), target.noexec)?;
         let device = fs::directory(mount.as_fd())?.metadata()?.dev();
         state.slots.get_mut(&slot).and_then(Option::as_mut).unwrap().devices.insert(device);
         state.save()?; candidates.push(Candidate { index, mount });
@@ -108,6 +109,7 @@ pub fn revert(state: &mut State, resolve_stacks: bool) -> Result<()> {
     let candidate = state.release(to)?.clone();
     let from_release = journal.from.map(|s| state.release(s).cloned()).transpose()?;
     let from_root = journal.from.map(|s| state.root(s)).transpose()?;
+    let base = fs::release_base()?;
     let mut unresolved_stack = false;
     for (index, target) in candidate.targets.iter().enumerate().rev() {
         verify_parent(target)?;
@@ -133,7 +135,7 @@ pub fn revert(state: &mut State, resolve_stacks: bool) -> Result<()> {
                 "missing committed target contains unrecorded content or a foreign parent");
             let lower = fs::open_beneath(root.as_fd(), &release.targets[index].source, libc::O_RDONLY | libc::O_DIRECTORY)?;
             state.intent(format!("recover-missing-target-build:{index}"))?;
-            let mount = fs::detached_overlay(lower.as_fd(), &release.tag(slot,index), release.targets[index].noexec)?;
+            let mount = fs::detached_overlay(lower.as_fd(), base.as_fd(), &release.tag(slot,index), release.targets[index].noexec)?;
             state.slots.get_mut(&slot).and_then(Option::as_mut).unwrap().devices.insert(fs::directory(mount.as_fd())?.metadata()?.dev());
             state.intent(format!("recover-missing-target-place:{index}"))?;
             fs::place(mount.as_fd(), destination.as_fd(), false)?;
@@ -158,7 +160,7 @@ pub fn revert(state: &mut State, resolve_stacks: bool) -> Result<()> {
         if let (Some(root), Some(release), Some(slot)) = (&from_root, &from_release, journal.from) {
             let lower = fs::open_beneath(root.as_fd(), &release.targets[index].source, libc::O_RDONLY | libc::O_DIRECTORY)?;
             state.intent(format!("revert-build:{index}"))?;
-            let replacement = fs::detached_overlay(lower.as_fd(), &release.tag(slot,index), release.targets[index].noexec)?;
+            let replacement = fs::detached_overlay(lower.as_fd(), base.as_fd(), &release.tag(slot,index), release.targets[index].noexec)?;
             let device = fs::directory(replacement.as_fd())?.metadata()?.dev();
             state.slots.get_mut(&slot).and_then(Option::as_mut).unwrap().devices.insert(device);
             state.intent(format!("revert-place:{index}"))?;

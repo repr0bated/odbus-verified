@@ -18,6 +18,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 schemars = { workspace = true }
 sha2 = { workspace = true }
+uuid = { workspace = true }
 op-identity = { path = "../op-identity" }
 
 [[bin]]

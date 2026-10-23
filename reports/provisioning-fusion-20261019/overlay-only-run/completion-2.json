@@ -1,0 +1,89 @@
+{
+  "request": 2,
+  "started": "2026-10-19T06:03:23.084339+00:00",
+  "finished": "2026-10-19T06:03:39.347266+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01ff144332837bc4016ad5b2add26c87d083fa72bdacb7b716",
+    "created": 1792389805,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Tracking overlay specification work\",\"op\":\"init\",\"items\":[\"Resolve overlay behavior from retained evidence and original helper sections\",\"Write upgrade-overlay specification and baseline handoff contract\",\"Write evidence receipt with verification and coverage limits\"]}",
+                "name": "todo"
+              },
+              "id": "call_zZpdzsMIPQmAfuI8c8lRBd6X",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating retained overlay evidence\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/SourceChain.md\",\"pattern\":\"^#|sync-instance|restore-chatbot|identity-roots|rollback\"}",
+                "name": "grep"
+              },
+              "id": "call_dstBP9rZtCiVhoTmeAzawZLf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading existing overlay proposals\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/proposed-changes.md:1-82\"}",
+                "name": "read"
+              },
+              "id": "call_Qsb9GW0Tk7pHtvKNUF6IhR9j",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading acknowledged correction receipt\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/seed-mechanism-panel-receipt.json\"}",
+                "name": "read"
+              },
+              "id": "call_AskdpwhPfg2TFyKkG0uHVK1g",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "I\u2019ll specify only the upgrade overlay in the existing helper workflow. Baseline paths and storage identities will remain pending owner handoff values, not assumptions derived from older receipts.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 675,
+      "prompt_tokens": 186378,
+      "total_tokens": 187053,
+      "completion_tokens_details": {
+        "reasoning_tokens": 113
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 61624
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:03:39.344816+00:00",
+  "stream_chunks": 11
+}

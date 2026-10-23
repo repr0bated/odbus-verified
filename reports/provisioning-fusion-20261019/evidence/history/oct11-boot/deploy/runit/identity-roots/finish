@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stopping this service does not stop identities or detach their roots.
+# Physical roots use explicit `op-identity-root seed-down <session>` only after
+# the container is stopped; seed-down does not stop it. Legacy roots use down.
+rm -f /run/opdbus/runit-ready/identity-roots

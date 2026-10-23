@@ -1,0 +1,582 @@
+SOURCE evidence/context/HANDOFF.md character range 1400000-1500000
+off now. Owner will use the existing chatbot identity for the first week and explicitly needs internet on it then. Production internet removal is a separate later transition; this is not a request to cut it off after seven days. Preserve development access. No group membership, grant, role, network, execution, memory, service or deployment change was performed.
+
+Verified source: interceptor.rs GRANT_GROUPS includes ROOT/SUPERADMIN/AGENT-L1..L4 and capabilities_for_principal expands a principal's named groups before admission. Existing orchestration agent capabilities are DelegateToAgents plus WorkflowManagement. Specialist already avoids recall/activity/shared refreshed pieces when UiRender.has_memory is false. mcp_policy singleton direct-tool denial covers file_/shell_/dbus_call names; this narrow name filter is not proof of a complete no-execution boundary. Tracked deploy/security/capability-grants.json ROOT group has48capabilities and no json_render.* grants; SUPERADMIN has209 and json_render.gallery/promote. This is tracked policy, not verified live grant state or proof of the current browser's membership. Do not overwrite current live authority from it.
+
+Root had promised implementation too early while owner was clarifying the design. No application source edits have been made. Exact next work: reconcile existing orchestrator/worker contracts, group-derived UI rights and active chat/view confinement before changing rendering/dispatch. Preserve the corrected architecture, first-week development internet, sole ROOT, existing identities, group authority and no-memory behavior. Functional-control scope includes the already-recorded Btrfs method bindings and withdrawn globalfive cap; neither a prompt-only fix nor added grants alone completes it. Async identity question is superseded by these explicit role corrections; do not ask it again.
+### 2026-10-12T03:44Z — Codex /root with gpt-6-luna — OD-06 assessment source compiles; fourth field batch incorporated
+
+Task `schema-tagged-routing-20261011`, backend HEAD
+`34ff9a502d953bb7b1520d530eed849b507e266a`, branch `feat/schema-tagged-routing`.
+This entry supersedes the earlier next-step claim that no resolver source exists.
+The bounded foundation is implemented, not the full routing or classification
+lifecycle. New source: `crates/op-plugins/src/state_plugins/oscal_field_classification.rs`
+and `_tests.rs`. Existing shared OSCAL owner/schema/methods and bridge
+`oscal_dispatch.rs` now declare/admit read-only `assess_fields`; narrow
+`state_plugins/mod.rs` wiring is included. Source version is2.1.0; no deployed
+catalog version or granted capability was changed.
+
+Assessment pins the exact sealed schema/catalog and reviewed private rule
+revision, separates state/input/result/signal and opaque metadata roots, applies
+explicit inherited selectors and map-key opt-in, preserves private/secret floors,
+and bounds schema/rule/report work. Missing authority returns unavailable;
+corruption fails. No implicit public classification, guessed taxonomy, live
+initialization or permission follows. Candidate evaluation and two-PluginSchema
+protection comparison are pure APIs: neither proves raw producer preservation.
+`source_preservation_verified` and `grants_disclosure` remain false. Review/CAS
+publication, first-seal seed, raw producer/adaptor preservation, full metadata
+walk, delegated targets, payload-time branch evaluation and creation/seal gates
+are still required before migration/enforcement. Fixtures were authored but not
+run. No existing fields were classified or migrated by this pass.
+
+Luna reviewed the implementation; root corrected map-key opt-in, incremental
+report serialization bounds, ancestry work accounting and stale/unmatched rule
+diagnostics. Luna's fourth read-only batch adds btrfs, cozo, memory, mcp and
+cognitive_mcp: twenty distinct source audits total. `code_index` is a method,
+not an additional plugin. Concrete dynamic-map, opaque-query, full/previous-value,
+imported-contract and retrieved-content cases are now in design §2c.4. Source
+shapes do not establish inherited live coverage. OD-119 owns the unrelated
+withdrawn Btrfs count limit and UI operation capabilities.
+
+Build worker `/root/field_contract_build`, temporary model gpt-6-luna/medium,
+ran the native GNU check with `CARGO_CALLER_FAMILY=gpt CARGO_DISPATCHED=1
+CXXFLAGS="-include cstdint" cargo check -p op-plugins -p op-grpc-bridge
+--target x86_64-unknown-linux-gnu`. Final exit0 in4m31s; root inspected exit receipt
+and log. Earlier attempts exposed existing routing compile errors, repaired
+without behavioral expansion: calculate idempotency before moving effect,
+return Ok after constraint validation, remove unreachable exhaustive arm, import
+shadow builder/reservation from their owning modules, use Uuid::now_v7.
+Files: routing_decision.rs/_methods.rs, schema_tag_registry.rs/_methods.rs,
+and bridge routing_dispatch.rs. Scoped rustfmt/check and whitespace checks pass.
+Existing warnings remain in vendored jsonschema, op-snowball and bridge
+routing-store/wake-doorbell code. Evidence:
+`/var/tmp/odbus-field-contract-final-check.4JNYXO/{cargo-check.log,exit-code}`.
+This is not a release build, full /verify, test pass, seal or deployment.
+
+Kiro design/tasks and WISHLIST now distinguish source completion from remaining
+contracts. No backend activation, grants, vector calls, remounts, network/service
+changes or unknown-operation replays occurred. NotebookLM sync remains unavailable
+through the owner-deferred mounted projection; repository notes are the shared
+record, not a claimed successful sync. Next routing work is reviewed-authoring/
+bootstrap publication and raw producer preservation, followed by bounded reviewed
+migration batches; canonical Qdrant mappings and real redaction execution remain
+unverified. No commits made; other agents' dirty work preserved.
+
+### 2026-10-12T03:44Z — Codex /root — OD-84 whole-site startup repair published
+
+Task `whole-site-startup-20261012`, UI checkout `/srv/git/3tched.com`, branch
+`claude/ui-gallery-promotion`, HEAD `31eae4be68ce437e5c0d5c90c0a08d4a319630fa`.
+Owner reported the whole site unchanged after publishing/reloading
+`http://10.0.0.2:8080/`. Prior index/23-asset hash matches proved publication;
+source still defaulted to Chat and hid the new menu. That diagnosis is now
+superseded by the startup repair below. The separate routing compile changes
+do not implement the visual redaction demo.
+
+Connected App now renders the existing Svelte/json-render Shell with immediate
+manifest-built ten-section navigation, catalog-rendered brand/mode/model controls,
+a selected-view-only data canvas and chat as a sibling outside that canvas.
+Removed the fixed connected header/Settings toggle. `/` selects the last allowed
+saved route or Overview. Menu state uses reactive `/shell/openMenu`; route and
+active-section state remain shared. No new catalog component types or actions
+were added: menuBar/menuSection/menuItem, routeView, container, pageHeader,
+chatModeSelector, tchedRouterPicker and antigravityChatContainer are reused.
+Existing component implementation/gallery declarations remain authoritative.
+Capability-required manifest items stay hidden until the resolved context grants
+them; this presentation filter grants no backend rights.
+
+Generated pages remain mounted across navigation. A chat render is delivered to
+the page selected when that turn began, with scope/epoch checks and counters to
+prevent a late background generation overwriting the chat replacement. Separate
+modes/sessions do not inherit each other's page cache. Session storage holds only
+route/candidate references, not specs, credentials, prompts or page values.
+A saved page is reread through the existing authenticated gallery and revalidated,
+including mode/title match, before restoration. Failed/unknown generations are
+not automatically replayed; the error view owns explicit retry. Prompts no longer
+ask for invented sample metrics or successful operations when no data exists.
+
+Limits: a gallery-denied save leaves the rendered page available only in memory.
+A later unsaved chat replacement removes its prior saved reference and persists
+only while that shell session remains mounted. Restoration of session-only named
+compositions still depends on those components being available in the current
+catalog; no automatic promotion or capability expansion was added. Pages without
+live reads/actions can show availability/read-only results; functional backend
+controls and their action contracts remain OD-119. Boot/connection/error UI and
+the existing runtime feed status are still outside the connected application
+spec. No new whole-page authoring permission or universal functional-page claim.
+
+Owned UI changes in this pass: src/svelte/{App.svelte,Shell.svelte,
+shell-view-memory.ts,runtime.svelte.ts,chat-session.ts,chat.css,Chat.svelte},
+three catalog wrappers {chatModeSelector,menuBar,routeView}.svelte,
+src/json-render/navigation/manifest.ts, pages/shell.pagespec.ts,
+catalog/chat-catalog.ts, src/routes/ui-catalog/+page.svelte, package.json,
+and existing App/manifest tests adjusted but unrun. Pre-existing shared edits
+within several files were preserved, so full checkout diffs are not solely this
+pass. Runtime docs and Svelte/Vite/json-render skills informed the changes.
+
+Validation: npm run type-check passed (0 errors, existing FeedBoundCanvas initial
+spec warning). Scoped ESLint and git diff --check passed. Official Svelte
+svelte-autofixer on all changed components returned issues=[]; nonblocking effect,
+DOM-reference and existing chat-scroll suggestions were reviewed. Type-check now
+uses the explicit app Vite config, avoiding discovery of ignored cloned upstream
+configs. Two narrow existing type/parser failures were corrected (Chat each
+expression parentheses and catchall route resolution in ui-catalog).
+`URL_PREFIX=/ npm run publish:op-web` built successfully and published root03:40Z.
+Build retains existing FeedBoundCanvas, >500kB chunk and color-env warnings.
+Index SHA256535e891dfac5aa3a6589410d67b968ea9160e10d26d9fc07bd01d2c9b2fca15a;
+root and all23 assets on .2 match, and .4 root matches. Cache-Control is no-cache,
+must-revalidate. Receipt `/var/tmp/whole-site-startup-20261012/served-files.json`;
+logs `/var/tmp/whole-site-{type-check,eslint,publish}.log` and autofixer logs.
+
+Only static UI publication occurred. No backend release/reseal, op-web/bridge
+restart, identity/model credential/grant change or auth request replay. This does
+not refresh the pinned vendor UI archive or Btrfs backend release. Automated tests
+and full /verify remain with the owner's deferred/downtime testing arrangement;
+no fresh authenticated browser interaction/provider turn was attempted. Next UI
+verification is owner reload/navigation/model/selected-view check plus deferred
+regressions, including menu keyboard/focus, scope cancellation and gallery restore.
+No commits made. Shared notes retained because NotebookLM projection is unavailable.
+
+### 2026-10-12T03:54Z — Codex /root — reported UI loading failure not reproduced; anchor exists
+
+Task `whole-site-startup-20261012` / OD-84. Owner says UI is not loading, proposes
+single canvas/layer binding or an anchor, and suggests hosting it inside the
+existing page. No exact screen state or loading/error text supplied yet; optional
+question remains unanswered. Existing src/app.html has #root, SvelteKit's catchall
+mounts App there, and App mounts the catalog shell. Do not add a speculative
+second root, alternate renderer or extra page based solely on the hypothesis.
+
+Fresh public root returns200 and03:40:44 Last-Modified. Ephemeral Playwright1.64 /
+Chromium headless loaded the actual published bundle at .2:8080 with backend and
+issuer requests blocked in this diagnostic browser (no credentials/fake identity
+sent). It showed the expected connection screen; selecting the existing local
+workbench rendered ten menus, model controls, generated Overview, canvas and chat
+at /overview with zero page errors. Screenshot /var/tmp/ui-startup-browser.png
+is explicitly an offline/sample view, not owner's authenticated session or real
+metrics. Errors receipt /var/tmp/ui-startup-browser-errors.json. Browser support
+installed only in npx/browser cache, no project dependency changes.
+
+Focused post-publication diagnosis: existing src/svelte/App.test.ts passes1test;
+new src/svelte/App.remote.test.ts passes1test, proving an asynchronous mocked
+remote context plus returned spec binds once into Control/Overview's existing
+canvas with menu/composer retained. No live provider request involved. Scoped
+ESLint for the new fixture and UI whitespace check pass. Logs are
+/var/tmp/ui-startup-diagnostic.log, /var/tmp/ui-remote-startup-diagnostic.log and
+/var/tmp/ui-remote-startup-lint.log. The new regression fixture is this follow-up's
+only UI source-tree edit. No application repair, build or republication followed
+because no failing application condition has yet been reproduced.
+
+Bounded infrastructure maintenance probe: an empty, credential-free gRPC-Web
+request through the page's documented CallMethod connector returned HTTP200 /
+gRPC16 Missing Oracle identity assertion, trace01a12e3e-93c0-7e03-afb4-961fa3ca4057.
+This proves the connector reaches admission, not that owner's browser identity
+is rejected or accepted. No plugin operation was admitted or retried. Opera
+connector reports not connected; Desktop Commander artix is offline114h. Cannot
+inspect the owner's actual browser through those tools. Mounted NotebookLM
+value.json still returns EIO; no repair or alternate memory transport attempted.
+
+Backend HEAD34ff9a502d953bb7b1520d530eed849b507e266a and UI HEAD31eae4be68ce437e5c0d5c90c0a08d4a319630fa
+remain dirty/uncommitted; foreign edits preserved. Source skill/reference checks
+used current SvelteKit3 paths implementation and json-render renderer, not stale
+React examples. Mandatory nine skill preloads completed under replacement AGENTS.
+Broad tests/full verify remain deferred; no seal, grant, model, storage, service
+or deployment changes. Next action requires owner's visible screen state/error
+or screenshot to select bootstrap, identity/catalog, model readiness, generation
+or renderer diagnosis. Report the failure as unresolved rather than calling the
+passing fixture an end-to-end browser fix.
+
+### 2026-10-12T03:58Z — Codex /root — OD-84 concurrent UI commit reconciled
+
+UI HEAD advanced to `e741fe4` during diagnosis (aggregate commit by another process). All 17 startup source files still match the 03:44 verification hashes; `App.remote.test.ts` is now tracked in that commit. Served root remains HTTP200 with SHA256 `535e891dfac5aa3a6589410d67b968ea9160e10d26d9fc07bd01d2c9b2fca15a` and 03:40:44 Last-Modified. This changes source commit provenance, not the observed deployment or unreproduced owner symptom. No extra app changes, build, publication or backend operation performed. Next action remains obtaining owner-visible loading/error text or screenshot and diagnosing that phase.
+
+### 2026-10-12T04:02Z — Codex /root — umbrella group/NotebookLM recovery; operator authorization pending
+
+Owner narrows work to recovering the chat/design conversation, ROOT role and assigning it to the current existing chatbot identity. Existing groups are umbrella authority for all applicable operations, including SUPERADMIN and other groups; do not solve by per-principal/per-widget grant exceptions. Menu must appear for ROOT and SUPERADMIN using verified group membership. Owner identifies prior author as Astra-Ultra, approximately20minutes of work, and says a specification/paper is in docs. Owner reminds that a collector syncs conversations/tool histories into NotebookLM notebooks grouped by model; search that corpus for prior work. Current key is described as the existing chatbot identity. Preserve one ROOT; humans may be SUPERADMIN. Development internet stays on, including owner's first week using chatbot identity. Root orchestrates, agents execute; UI mode must not remember previous turns or access normal Control Plane memory. Root's own earlier proposed executor switch is superseded.
+
+No application source edits were made. Proposed turn-isolation file claim is superseded; beforeimages are at /var/tmp/ui-turn-isolation-20261012/source-before. Source investigation proved visible transcript is forwarded on UiRender despite has_memory=false; implementation remains outstanding, not performed. No grant, membership, role, filesystem mode, service, network or deployment change.
+
+Live grouped authority verified through the supported grant-policy source as separate authorized role-maintenance inventory: /etc/opdbus/capability-grants.json and /dev/shm/opdbus/capability-grants.json byte-identical. ROOT group48caps; includes notebooklm.read/invoke, chat.context/control_plane and cognitive_mcp.read; no json_render.* UI grants. SUPERADMIN209caps; includes json_render.gallery/promote and NotebookLM access. Exactly one live ROOT member:1262e982-14c1-44d4-0771-7ce74213211b. Do not add another ROOT or relabel chatbot SUPERADMIN. The current browser key's binding was NOT separately queried, so membership of its authenticated principal must still be matched rather than inferred from a display label. Source interceptor already expands group grants; menu currently filters on mode-effective capability names and lacks verified group membership output.
+
+NotebookLM plugin has declared read methods notebook_list/query/cross_notebook_query. Actual assigned-mount attempt current/bin/threetched-fs invoke plugins/notebooklm/operations/notebook_list/call --mount /run/mount/3tchedFS --args '{}' returned open-call Permission denied (os13) at UID1001; no remote NotebookLM query executed. Mount local owner1000000, declared operator0; bound hostsession414fbc56-03fb-20ab-758a-bcc7a7cbdc0e, instance44c6002f-b4e7-4593-8f61-45537c638b46, catalog generation2550. Dynamic NotebookLM value.json stillEIO. Declared notebooklm.read grant in ROOT means this observed local denial is not proof that NotebookLM role capability is missing. Source sync README says model-sorted conversations+tool records and raw per-model/project-topic sync; formatted exports/journal directories absent locally. README's 3tchedFS-native path does not exist; current tracked sync run uses3tchedFS. Do not claim sync freshness or successful NotebookLM search.
+
+Read-only local conversation archive recovery identified Astra thread01a129ee-7859-7cd0-8733-2c1ce831d046 under /root/.codex/sessions/2026/10/11, with actual gpt-6-astra ultra turns among other effort levels. Its document references include docs/schema-tagged-routing-whitepaper.md and schema-from-structs.md; inspected routing whitepaper is not the requested ROOT/SUPERADMIN group specification. No matching group paper found in docs/.kiro/.specs searches. Grok Oct7 group entry at HANDOFF759 corroborates original sole development chatbot ROOT/human SUPERADMIN design, but is historical and does not substitute for Astra's specification. Raw transcripts were not copied/published; only filtered metadata and relevant prose read, no credentials exposed.
+
+A concise async permission question is pending: may root use the mount's already declared operatorUID0 for READ-ONLY NotebookLM searches while retaining its existing bound identity/session and grants? AGENTS prohibits privileged-command bypass after denial; requested explicit authority rather than silently switching UID. Do not run operator0 mounted calls without answer. Prepared read path is notebook_list then model-filtered Astra notebook_query with Ultra conversation provenance; no uploads/deletions/membership/grant changes. If granted, verify actual receipt and fresh projection status; do not retry uncertain operations. Next independent work is exact model-correlated source/document recovery; menu/group implementation and current-key role-binding verification remain outstanding, not claimed complete.
+
+### 2026-10-12 — Codex /root — OD-84 existing browser subscription repaired in source
+
+Task `whole-site-startup-20261012`. Owner rejects the pasted historical egui/CatalogStore diagnosis and directs continuation on the current UI subscription. UI pulls were already current; checkout main/e741fe4. Backend feat/schema-tagged-routing/34ff9a502d953bb7b1520d530eed849b507e266a remains a shared dirty tree. The real defect is explicit: DoorClient refused every receiver-bound Oracle StateSync subscription, and the receiver admitted that binding only for canonical methods. Existing Svelte RuntimeHost/PluginFeedStore/FeedBoundCanvas wiring and op-web's streaming connector already exist. No new renderer, anchor, proto service or transport is needed.
+
+Implemented the exact existing Subscribe path with a fresh one-use Oracle assertion on every connection, receiver mode/session headers checked before frame delivery, continuing proof/target/credential validation on each frame including existing heartbeats, renewable expiry and terminal revocation/binding failure. Concurrent method binding failure cancels active subscriptions and clears feed data. Headerless RPC errors remain actual status errors without poisoning the canonical method client. Existing private selection/capability gates are unchanged; no grants, identity, provider/model or mutation route changes. Production bridge files: interceptor.rs, grpc_server.rs and new bound_state_subscription.rs. Frontend: grpc/door.ts plus identity/subscription/render fixtures. One unrelated existing routing_store test fixture needed default_disposition: None to compile against the already changed TagDescriptor; production routing is untouched.
+
+Verified 37 focused UI tests across five files; typecheck, scoped ESLint and Vite build pass. New Svelte test harness autofixer reports no issues; the existing FeedBoundCanvas initial-value warning and bundle-size warning remain. Focused receiver tests are still compiling under delegated gpt-6-luna/medium; no backend test success or release success claimed yet. First check attempt identified only the now-fixed fixture field and MetadataMap assertion access errors. Broad tests/full /verify remain deferred to the owner's downtime arrangement. Evidence: /var/tmp/whole-site-startup-20261012/state-subscription-*.log.
+
+Important scope limit: generated Canvas admission currently accepts static props only and rejects dynamic $state bindings. Tests separately prove trusted renderer feed binding and actual App admission of a static generated page. Do not describe the passing transport tests as permission for dynamic generated specs or as a verified owner browser render. That action/binding contract remains OD-119.
+
+Release preparation derives from the exact previous deployed backend source at /var/tmp/cozo-prompt-repair-20261011/backend, copied into /var/tmp/whole-site-startup-20261012/backend with only the three subscription files changed. This excludes shared routing drafts. The selected release remains 20261011T224126Z-chat-prompt-limit; live, persisted and received manifests match with 72 plugins, generation2910 and catalog hash06ab835fbcf12acfbcbc4c08012bd8dcc2dd8077fe5316c2534ec40c35323741. Prepared snapshot20261012T043625Z-bound-state-subscription exists but is not activated. Rollback catalog/UI copies are under /opt/op-dbus/recovery/bound-state-subscription-20261012. After focused tests pass, Luna builds matching GNU bridge/opblob, then root compares contracts, explicitly reseals, transfers the snapshot and activates only the affected bridge before publishing the matching UI. No activation or UI republication has occurred in this follow-up yet. Mounted NotebookLM remains unavailable/deferred; no alternate identity or memory transport was used.
+
+### 2026-10-12T05:03Z — Codex /root — OD-84 browser subscription activated and UI published
+
+Task `whole-site-startup-20261012`. This entry supersedes the pending test/build/activation statements in the preceding subscription handoff. Backend HEAD remains `34ff9a502d953bb7b1520d530eed849b507e266a`; UI main remains `e741fe47dd7c36ebd5310a14f698d9ebf756a5e0`. Changes are uncommitted; unrelated shared work is preserved. The existing Svelte feed pipeline is the implementation authority; the pasted historical egui/CatalogStore diagnosis is superseded.
+
+Delegated GNU verification/build worker was gpt-6-luna/medium. Three focused receiver tests passed (784 filtered, exit0, 960.073s including compilation), covering exact read-only path admission, single-use proof and response binding, continuing peer/target revocation, and renewable expiry. UI 37 tests across five files passed, including transport cancellation/binding and renderer/feed invalidation. Typecheck, scoped ESLint, Svelte test-harness analysis, whitespace checks and Vite production build passed. Existing FeedBoundCanvas initial-spec and bundle-size warnings remain. The isolated bridge/opblob release build passed in827.724s on x86_64-unknown-linux-gnu. Broad full `/verify` remains owner-deferred; no full-suite or authenticated-browser pass is claimed.
+
+Prepared snapshot `20261012T043625Z-bound-state-subscription` was transferred by Btrfs send/receive, verified read-only with matching source/received UUID `8fd0fdb1-a6ca-444e-aca1-c6d3be32028b`, then selected through `/opt/op-dbus/current`. Source derives from the deployed parent plus only `interceptor.rs`, `grpc_server.rs` and new `bound_state_subscription.rs`; shared routing drafts and the compilation-only routing_store fixture correction were excluded. Fresh opblob explicitly sealed and persisted the live catalog. All72 plugin blobs are byte-identical across received, live and persisted stores and to the parent schemas; generation2982, catalog hash `06ab835fbcf12acfbcbc4c08012bd8dcc2dd8077fe5316c2534ec40c35323741`. Compiled contracts retain72 plugins/1373 methods, including json_render3.2.0 and model_registry1.2.0.
+
+Activation completed at04:59:23Z. Only op-grpc-bridge restarted; readiness passed, PID11454 executes the received binary with SHA256 `e76abd02041df95b325099365b1c52d863b1850e1b6f5b947c7ac88783d516f7`. Router26769, op-web30916 and threetched-fs30926 kept their PIDs. No identity/grant/provider/model route changes or unknown-operation retries occurred. Previous release `20261011T224126Z-chat-prompt-limit`, old UI overlay and recoverable catalog copies remain retained.
+
+The normal UI publish command rebuilt the six verified UI source changes and published to `/var/lib/op-dbus/dashboard-overlay-20261012T043625Z-bound-state-subscription`. Changed UI files: `src/grpc/door.ts`, `src/grpc/door-identity.test.ts`, new `src/grpc/door-subscription.test.ts`, `src/svelte/App.feeds.test.ts`, `src/test/FeedRendererHarness.svelte`, and `src/test/state-stream.ts`. At05:02:50Z, .2:8080 root index and all23 assets match local dist; .4 root matches too. Old If-Modified-Since returns200 with the new index, SHA256 `9a44664edb15a90e97c17f4d6f271372fc47372eb092d52e80b6f34db16a76b8`. Backend snapshot retains its parent packaged UI; this matching UI is the separately verified supported static overlay, not falsely attributed to the received asset archive.
+
+Evidence: `/var/tmp/whole-site-startup-20261012/final-verification.json`, `live-runtime-verification.json`, `state-subscription-served-files.json`, focused test/build logs and source beforeimages/diffs. Final receipts are copied to `/opt/op-dbus/recovery/bound-state-subscription-20261012/` beside rollback inputs. Mounted NotebookLM remains unavailable/deferred; no alternate identity or memory transport used.
+
+Next action is owner reload at `http://10.0.0.2:8080/` and authenticated loading/navigation/feed verification. The transport repair is deployed and tested, but an actual owner session has not been exercised. Generated Canvas still permits static props only; dynamic generated bindings/actions remain the separate OD-119 contract work. Do not infer that a static placeholder view is now a complete live dashboard or weaken that validator as part of this repair.
+
+### 2026-10-12T05:13Z — Codex /root — local conversation collector restored; remote catch-up active
+
+Task notebook-local-recovery-20261012 / OD-119. Owner explicitly authorized the declared operator UID0, then corrected the recovery source: use local NotebookLM source/sync files in their home, not NotebookLM model queries. Owner requested getting the collector/sync up and covering retained histories both before and after recovery. The original ROOT/group specification remains unfound in the available local Astra history; do not substitute a newly invented design or claim the menu/role changes are done.
+
+Observed failures and corrections: /home/jeremy/.notebooklm-sources was absent; keep/.notebooklm-sources is a dangling symlink. Sync was down with an explicit down marker; its log directory and shared filesystem opt-in were absent. Its old readiness check expected UID1001 despite mounted owner1000000/operator0. Authorized notebook_list at operator0 returned outcome_unknown d04ac17e-36a8-475c-b6c6-0e288a3faae9; recovery get_receipt was denied for cap.storage.3tchedfs.receipt.read@v1. No grant was added, identity substituted, or unknown mutation replayed. A separate declared get_health receipt diagnosed the missing pinned interpreter: /usr/local/bin/nlm targeted an absent /opt/opdbus/nlm-cli-0.11.2-86f23f282d04e632a10d5612e29b3a0d4f8166320c74337bd9f2e0a5cd0dac12. The exact runtime already existed in the received release. Restored its activation symlink to current/opt/opdbus, verified version0.11.2/artifact marker, then admitted health confirmed configured authentication and123notebooks. No package install, upgrade, copied authentication material or direct provider-operation fallback.
+
+Maintained the existing grandfathered Python collector, not a new automation language/file: added explicitly configured native history roots /root and /home/jeremy/keep alongside Jeremy's current home, preserving read-only external conversation-table access and model-metadata attribution. Private chunk/state writes inherit Jeremy's output ownership when the service reads root archives. New .local-capture raw files refresh independently of the frozen .grouped-sync upload plan/journal. Current capture:63groups,247chunks,513distinct native transcript paths, including249retained keep paths and20root paths. Existing input coverage is not proof every deleted pre-recovery conversation survived; local Astra originals found here are fromOct11. The zero legacy-export gap count must not be presented as universal historical completeness.
+
+Restored the scheduler/log directory and interrupted sleep cancellation. The old scheduler delayed TERM until a foreground300s sleep completed; force-stop was used only while its cycle was blocked and had no mutation intents. The corrected scheduler stopped in0.3s through supported sv down. Local capture remains active if remote dependencies or ownership are blocked. The remote service now has a dedicated root-owned0400 notebook-sources-sync.enabled opt-in, preserving the chatbot's absent threetched-filesystem.enabled flag. The worker uses this mount's declared operator0 and bound hostsession414fbc56-03fb-20ab-758a-bcc7a7cbdc0e through the existing helper with expected-session checks and canonical method admission. Application ROOT membership/capabilities were not changed. Restored persistent runit enable by retaining the old down file in the component receipt and adding the already enabled collector to source enabled-services.
+
+The lost upload journal was rebuilt as an explicit operator reconciliation from completed account-list receipt2111fcf5-4f2d-4d17-b6f5-8994c17f1101:62exact unique model/topic notebook associations,913existing remote sources kept outside newly managed slots. Admitted Astra notebook_get receipt45fa7d2f-76f6-44af-95a4-ea36a33a1087 verifies notebookc5c7f347-77cd-464d-bb02-50f422a74df4 and141existing content-addressed sources. The initial legacy-title adoption failed because processed content did not reproduce frozen raw bytes. No mutation had occurred in that attempt (sources/pending/create-intents all zero); preserved its plan/journal before clearing that failed read-only freeze. Kept the exact-byte recovery guard and introduced one explicit20261012-recovery capture namespace for new uploads. Prior sources remain unmanaged and retained; this is a fresh recovery batch, not a replay of unresolved legacy mutations or proof that processed text equals original raw bytes.
+
+Deployment was prepared snapshot -> btrfs send/receive -> read-only received component. Final run/log links select /opt/op-dbus/releases/20261012T050100Z-notebook-sync-recovery; helper code derives from that received service location. Global current was not changed by this task: another owner independently activated20261012T043625Z-bound-state-subscription while this repair ran, briefly making readiness unavailable; collector captured locally and resumed once the existing check passed. No bridge/router/FUSE/network restart, schema reseal, identity/storage membership change or UI publish from this task. Intermediate received collector components and rollback link receipts remain retained. Current source HEAD34ff9a502d953bb7b1520d530eed849b507e266a; all foreign dirty work preserved. Modified own files: scripts/uv-tools/notebook_sync.py, scripts/README-llm-session-export.md, deploy/runit/notebook-sources-sync/{run,log/run}, deploy/runit/enabled-services and shared notes.
+
+Verification: shell syntax, Python AST parse, scoped diff whitespace, source-vs-received comparisons, all247local chunk SHA256 checks passed. Live collector/log are supervised and persistent; first bounded remote cycle created1new model notebook and returned54completed upload receipts,54processing-pending,0replacements and0quarantines. First source_add completed operationadf5e2b1-bfae-45ad-a47a-a7f9a990308d; independent source_get_content completed1f268b0d-786f-4560-afe6-085cb22539fb for its exact new source title and5,844,705readable characters. Subsequent cursor progression shows2sources verified and86pending with no unresolved diagnostics. Full catch-up remains active; status pending is not failure or full synchronization proof. No NotebookLM model/context question was issued; the remote calls above were sync-maintenance inventory/readback. Grant policy and SHM projection still match SHA650ac72b35318b4f5948e02ac42adeeb6555c179ef73abee318189ce6dbe1559. Full Cargo/workspace /verify remains with the owner's deferred testing work; no global pass claimed.
+
+Private evidence: /var/tmp/notebook-local-recovery-20261012/{final-local-evidence,final-scheduler-status,final-sync-evidence,final-readback-evidence}.json; capture hashes, beforeimages, explicit notebook-association proposal and canonical receipts in that directory. Component/rollback receipt: /opt/op-dbus/recovery/20261012T050100Z-notebook-sync-recovery. Actual source files: /home/jeremy/.notebooklm-sources/.local-capture/plan.json and its chunks; frozen pending work: .grouped-sync/{plan,remote-state}.json. Next: let bounded sync/readback processing advance; preserve any future unknown outcomes without replay. Continue original OD-119 ROOT/group conversation recovery from local files, then verified current-key role binding and menu visibility for ROOT/SUPERADMIN. UI actions, per-turn isolation, Root delegation-only production policy and original paper/menu remain outstanding. Normal Control Plane memory and development internet were not changed.
+
+Collector follow-up at05:20Z: second bounded cycle returned58new uploads and59processing-pending,0replacements/quarantines; cumulative accepted recovery uploads112, worker journal2verified/110pending with no unresolved diagnostics. Scheduler correctly publishes pending/exit2 and keeps current local capture independent. This is an active catch-up, not a full synchronization pass. Runtime/root menu work remains pending as above.
+
+### 2026-10-12 — Codex /root: local conversation recovery and owner architecture corrections
+
+Task generative-learning-zero-20261012 / OD-120, coordinated with OD-119. User redirected implementation to reading today's actual local Codex, Claude and Cursor conversations after the Btrfs recovery. Three parallel readers inventoried 72 Codex inputs (16 today-active threads including this team), 40 Claude JSONLs (one main and three subagents today), and 49 captured Cursor transcripts (four today-active threads). Readers examined original dialogue and selected tool receipts; root independently checked key owner statements and source paths. Full scope, primary file/record locators, historical verification boundaries and present gaps: [reports/conversation-recovery-20261012.md](reports/conversation-recovery-20261012.md). Original ROOT/group paper remains unfound. Existing subscribed-browser release receipts do not prove authenticated generated controls.
+
+Owner corrections are controlling: identity is chatbot; schema is code; container is identity shuttle. Sockets are lungs; FUSE is spinal cord; gRPC is arms. One schema/blob per plugin drives UI, data, ledger/audit, memory/learning, compliance enforcement and tag routing. D-Bus first through FUSE operation files; all blob methods exposed in filesystem. No internal MCP protocol despite legacy module names. One Tonic endpoint and common lungs/grant path for both internal and external access; sole external MCP adapter and existing $EXTERNAL-MCP group. 3tched is owner code; native ZeroClaw-backed command/flag passthrough preserves sealed authority. Current executable/service/plugin names are distinguished in the report.
+
+Concrete source gaps: generated UI prompt/validators still forbid approved dynamic bindings/actions; generateView waits for complete response. Current gRPC dispatches directly to MutationEngine, external MCP creates private per-call D-Bus pair, and FUSE uses shared lungs. Common listener/authorization does not prove common lungs execution. External group exists with one checked-in capability/no members; ROOT/SUPERADMIN direct principal capabilities duplicate group arrays, so membership removal alone does not revoke them. No fresh live grants read or permission change. Source-only consolidation design preserves verified proof/origin rather than substituting root Bind(session); not implemented. Current Cursor config lacks opdbus-context, unlike older documentation.
+
+Owner transport model: separate decoy terminates WireGuard, peer key anchors identity and identity is minted there; wgcf/fwmark forces WireGuard-origin traffic through WARP, remaining traffic uses MASQUE/WARP with SSH inside. No host WireGuard. Xray provides outbound REALITY/SNI cover. EMQX/OpenFlow IPs belong to ovsbr0 itself. Read-only local kernel/source inventory currently has only MQTT 10.0.0.3/32; network.conf explicitly reserves/inactivates OpenFlow. Record this mismatch; no network changes or live decoy verification occurred.
+
+Earlier frontend additions remain isolated/uncommitted: connection12, runtime/learning34 and Zero-adapter4 focused tests reported passing with scoped checks; fixture-only learning, no Cozo durability or weight training. Zero0.3.4 remains limited experiment with observed concurrent-patch lost updates. New root controller is not wired into the active catalog or existing Shell; use existing generated-chat flow after reconciliation. No backend application code, grants, operation-file writes, identities, services, networks, seals or deployments changed during this recovery audit. Own main edits are this handoff, WISHLIST row, SIGNALS and evidence report; frontend architecture document updated. Foreign dirty work preserved. Documentation diff whitespace checked; no new application tests/builds in the audit.
+
+### 2026-10-12 — Owner correction to execution-path audit
+
+The human principal and machine principal paths are separate BY DESIGN. The earlier inference that different gRPC/MCP/FUSE call chains require physical shared-socket consolidation is withdrawn; no implementation followed it. Preserve each principal's proof/binding and the common sealed-schema/grant authority. The owner explains rapid consolidation in two major passes (blobs, then FUSE), plus transport/network: six former sockets became one shared socket; identity containers use socket networking without individual IPs, and only one identity container exists currently. Per-request private IPC connections are not additional exposed network endpoints. The report and UI architecture notes have been corrected. Do not implement the withdrawn request-handoff proposal as an approved architecture change.
+
+Narrow route tracing confirms interceptor.rs remains active source through make_ghostbridge_interceptor and canonical/generated with_interceptor registrations. The bare ghostbridge_interceptor function is a legacy/test entry. External MCP intentionally has its own HTTP authenticator sharing the same AssertionValidator. Selected-release provenance matches the historical deployment; dirty checkout and denied /proc executable access prevent claiming current source/live parity. No code, permissions, sockets or service behavior changed. Admission remains WireGuard-key based with no required email; mounted register_key schema requires human_pubkey and allows optional display_alias.
+
+### 2026-10-12 — Seed/leaf and Cargo capacity discovery
+
+Task generative-learning-zero-20261012 / OD-120, with capacity findings relevant to OD-82. Owner explicitly describes two incident factors: absent repeatedly requested automatic Cargo reclamation and 100% disk use concurrent with the loop/send-receive UUID problem. Actual October11 Claude record1254 preserves the same two-factor account; older September24/October4 records corroborate repeated near-full disks and manual build-cache cleanup. The precise original destructive/collision chain is still not forensically established.
+
+Three read-only workers inspected Cozo storage ownership/lifecycle, current cleanup scheduling, and incident records. Root verified selected source and original transcript outputs plus fresh public mount/device inventory. Current kernel inventory shows distinct active host/root/upgrade filesystem IDs, a read-only physical-seed loop paired with the chatbot leaf, and the existing seven mounted members. Source pins distinct UUIDs and Cozo identity_sessions retains the storage/native-instance mappings. Direct private Btrfs inspection was denied; live Cozo bindings, storage receipts and restart durability remain unverified. Full paths, UUIDs and evidence boundaries are in reports/conversation-recovery-20261012.md.
+
+Current host46%, separate Cargo target5%: this is present headroom, not a cleanup guarantee. Correction to older OD-82 notes: /etc/cron.d/3tched-disk-retention now schedules daily03:15 release/cache age retention. No successful-run receipt was established, and its source lacks active-build locking, a build-triggered capacity gate and coverage of all Cargo targets. The five-minute monitor observes root and never reclaims. The older reclaimer remains stale. Reliable automatic Cargo capacity management is not completed. Preserve this distinction before choosing an implementation; do not run the old destructive helper unchanged.
+
+Status given to owner: preliminary frontend discovery/runtime/learning/Zero code exists but remains unintegrated; this follow-up was discovery and documentation only. No new application code, Cargo builds, tests, cleanup, storage changes, grants, services or deployment. Documentation whitespace validation only. Next work remains integration into the existing schema/blob/FUSE-authorized chat flow, with the newly reconciled persistence and capacity constraints; this audit does not authorize broad storage cleanup.
+
+Owner follow-up: the separate disk/subvolume has supported many builds over the last week, including many today. Current target is /dev/sdc1[/release-target]; root remains /dev/sda3. The older main-pool exhaustion is incident history. "No builds" above means no new builds launched by this audit, not an absence of existing build activity or a claim that current builds fail.
+
+### 2026-10-12T07:50Z — Two-demo focus and successful Luna builds
+
+Task `generative-learning-zero-20261012` / OD-120. Owner prioritizes two demos:
+Accountability through attributable mutation evidence and chatbot questioning,
+and document redaction through schema-tagged routing. Normalize grants and
+capabilities across existing groups while preserving ROOT/SUPERADMIN/external
+boundaries. The generator supports these and broader business applications;
+owner reports a roughly ten-minute schema-only CMS and varied industry examples.
+Healthcare generation and helping both EU enforcers and audited organizations
+are product goals, not verified conformance. Zero is explicitly deferred.
+
+Owner clarifies SHM live state, change-driven wakes, and intentional Btrfs
+transport/cache/persistence. Audit vectors serve memory and Accountability;
+full system/dependency JSON reconstruction via D-Bus/PackageKit is future work.
+Read-only review confirms AccountabilityEvidence is still a local draft UI;
+backend scoped audit search is not connected through citations to chatbot
+confrontation. Universal mutation durability and production off-site vector
+transport scheduling were not verified. Details/source references are in the
+recovery report.
+
+Owner handles backup recovery of the reported roughly75GB compliance corpus.
+Maintained `compliance-index` package is absent at its recorded paths; surviving
+contracts identify source mappings, generation filtering and historical state.
+Do not substitute old vector scripts or assume all vectors are lost. No backup
+inspection beyond the bounded inventory, restore, cleanup, reindex or paid job
+was started. Preserve compatible cached embeddings and provenance.
+
+Explicit Luna worker finished backend GNU workspace release at07:48:07Z,
+exit0, Cargo31m26s; HEAD34ff9a502d953bb7b1520d530eed849b507e266a and before/after
+dirty fingerprint unchanged. Log `/var/tmp/luna-build-20261012-071634-backend-isolated.log`.
+UI private-source-snapshot `npm run build` finished07:30:44Z, exit0; original and
+snapshot source fingerprints matched. Log `/var/tmp/luna-build-20261012-073028-ui-snapshot.log`;
+output `/srv/git/odbus-verified/target/luna-ui-snapshot-20261012-073028/dist`.
+Root inspected both logs. Initial attempts hit protected output directories;
+successful reruns used writable locations on the separate build disk without
+permission changes or dependency installs. Warnings remain. No tests, lint,
+fmt, source edits, seal, deployment, services, grants or cleanup by the worker.
+Tests follow the owner's after-deployment downtime preference; no deployment
+was performed. Root's five documentation updates followed build completion.
+
+Next: reconcile current live sealed audit/routing contracts and OD-119 group
+ownership before connecting the demos through the existing catalog/ChatAdapter.
+Existing isolated exploration/learning code is not proof of product integration.
+
+### 2026-10-12T07:54Z — Sole ROOT clarification; continue in GPT desktop
+
+Owner correction for OD-119 / OD-120: **the control-plane chatbot is the only
+ROOT**. It observes, researches, recommends and delegates; it cannot execute
+operations itself. Delegated agents execute under existing grants. Do not
+equate orchestration with execution privileges or add ROOT identities. This
+is the required architecture; this documentation update does not establish
+live enforcement or authorize grant changes.
+
+Owner requests continuation in GPT desktop. Read the active OD-120 row, the
+07:50Z build/demo entry above and `reports/conversation-recovery-20261012.md`.
+Main backend: `/srv/git/odbus-verified`; UI: `/srv/git/3tched.com`. Two demos:
+Accountability and schema-tagged document redaction, supported by normalized
+existing group capabilities and schema-generated UI. Luna builds passed;
+no deployment performed; tests deferred to owner downtime. Zero deferred.
+Owner handles corpus backups; no embedding job or destructive recovery.
+Accountability depends on searchable audit vectors linked to canonical mutation
+records. Verify or recover compatible existing vectors and their provenance
+before treating UI wiring as sufficient for the demo. Audit vectors and the
+broader regulatory corpus remain distinct; neither current availability nor
+total loss is established by these notes. Backup recovery stays owner-led.
+
+Owner emphasizes tight cost and time constraints. Recover and reuse existing
+work first, keep scope to the two demos, and do not start paid embedding or
+training without explicit authorization. Do not assume a full corpus rebuild
+is required for the demo. Use Luna for authorized builds/tests and preserve the
+owner's downtime testing preference.
+
+Next action: establish audit-vector availability through the authorized surface
+and owner recovery findings, then reconcile current sealed contracts and OD-119
+ownership before connecting evidence retrieval, citations and chatbot responses.
+
+### 2026-10-12 — Original UI-generation objective clarified
+
+Preserve the owner's independent generative experiment alongside the two demos:
+give the model owner-selected schema/data/semantic context, ask it to make the
+information accessible across people and industries, and allow unexpected
+functionality, relationships and workflows. Do not predesign pages, build a site
+map or prescribe the business. Owner-supplied examples may provide content and
+structural references with their visual design stripped away; do not copy the
+finished design. Explicit feedback, outside critique and requested research
+are allowed steering, distinct from automatic history carryover. Normal use generates
+only the surfaces requested. Functional and interpretive diversity matters,
+not just different aesthetics or a large candidate count.
+
+UI-generation attempts have no previous-turn/design memory; control-plane memory
+is separate. Retain outputs/evaluations outside the next attempt's context.
+The owner may choose schema-only or richer context. A six-hour exploration is
+an illustrative option, not an active job request. Schema-only generation must
+not be blocked on audit-vector recovery. Earlier deterministic enumeration is
+an optional baseline, not the intended primary generator.
+
+Owner reports one canvas containing the chat panel; visually unverified here.
+The larger concept may eventually extend beyond screens and aims to help people
+share and understand information across communities with less polarization.
+These aspirations do not change current Svelte/catalog/door/grant boundaries.
+Updated UI ledger: `/srv/git/3tched.com/docs/generative-ui-architecture.md`.
+Documentation only; no new model run, build, tests, deployment or paid job.
+
+### 2026-10-12 — Btrfs generation baseline inspected; source inference corrected
+
+Owner identifies `/home/jeremy/Desktop/GLM5.3BTRFintrface.html` as the working
+generation example. Root and read-only worker parsed all eight messages without
+scripts or network resources. First response contains three separately rendered
+designs: fleet console, grouped explorer, and snapshot/lifecycle policy manager.
+The raw-JSON follow-up rendered three more variants and changed illustrative
+values; it is not a faithful export. A seventh result proposed action bindings.
+The first three have19 disabled form controls, but enabled tab/gallery controls
+also exist in the DOM. Do not describe the creative generation as prebuilt or
+infer all running UI behavior from a static-prop restriction in one source path.
+
+Current mounted `btrfs`2.0.0 schema was read directly:12 declared methods include
+create_subvolume, delete_subvolume, snapshot, balance_start and scrub_start,
+with per-method capabilities and typed arguments. The model's blanket claim of
+missing Btrfs mutations is not supported. This does not prove the captured
+session's grants. Dynamic Btrfs state paths still return EIO; no bypass or
+operation execution. Source, selected release, separately published UI and
+historical capture are different evidence sources. No fresh visual/browser
+verification: installed Playwright/browser support was unavailable to root.
+
+Owner wants the existing design made operational through the sole ROOT
+control-plane chatbot's delegation, existing group grants and canonical
+execution/receipt path. Do not add another ROOT or give ROOT direct execution.
+The schema carries the operation/routing contract; richer blob/gRPC metadata
+feeds session-linked Snowball evidence, vectorized as events occur. Contextual
+errors, drill-down and in-place operations are intended compositions of that
+loop. Preserve owner-selected steering and future visual flexibility; the
+"two weeks" remark was expressly an exaggeration, not a deadline.
+
+## Handoff — 2026-10-15T07:31Z — Codex /root — seed-bootstrap-20261015
+
+Owner explicitly switched from Qdrant installation to seed preparation. Latest deployment direction is selected directories, not a whole-root overlay; deployment design is deferred. Do not resume the canceled whole-root plan from older headers.
+
+Recovered LVM mappings `seed` (20 GiB), `ct-upgrade` (20 GiB), and `vectors` (32 GiB) at their exact archived physical extents, with zeroing/signature wiping disabled. Original filesystem UUIDs verified. Metadata backup: `/mnt/mapper-recovery/3tched-vg-before-lv-recovery-20261015.vg`. Current mounts/fstab: seed UUID e9cf9d60-2c1a-435c-9f0b-b93229d94b3e at `/run/mount/3tched-seed` rw; upgrade UUID 0d7e3795-81c7-49d1-96c0-8e651bbde296 at `/run/mount/3tched-ct-upgrade` ro; vectors UUID 3b3fd476-2711-4e20-a39e-6c90fc8d8dfd at `/srv/vectors` ro. Runtime mount directories use fstab x-mount.mkdir. Host fstab backups retained under `/etc/fstab.before-*20261015`.
+
+Seed root is `@`, Ubuntu 26.04.1 LTS. Created exactly six top-level sibling Btrfs subvolumes per shared-seed spec: @agent_memory, @agent_rules, @agent_shared, @agent_skills, @agent_soul, @agent_user (IDs257-262, root @ ID256). Ordinary guest mountpoint directories `/agent/{memory,rules,shared,skills,soul,user}` and `/opt/run-mounts/persist` exist. `@agent_user/persist` is an ordinary mode0700 directory. No per-instance identity, leaf, seed sealing, subvolume snapshots, or guest bind mounts created. Future guest shared/soul mounts must retain the spec's read-only policy.
+
+Initial root subvolume create was denied EPERM by GLOBAL guard. Owner explicitly approved temporary trust of only a dedicated maintenance cgroup and only seed FSID. Six creates succeeded through that scoped maintenance process; trust revoked and empty cgroup removed immediately. guardctl status confirms mode2 GLOBAL and original five trust entries only. Storage daemon currently crash-loops with `host source does not match pinned layout`; observed, not repaired in this task.
+
+Installed guest `/usr/local/bin/threetched-fs`, `/usr/local/libexec/3tched/3tchedfs-mount-preflight`, and `/usr/lib/systemd/system/3tchedfs.service` from existing workspace-image templates. Unit enabled via guest multi-user.target.wants link. Native locked release build by gpt-6-luna worker /root/seed_fuse_build passed (Rust1.95 GNU; dispatcher required explicit native CARGO_REAL_BINARY and toolchain PATH). Binary SHA256 918b9101b9a138eb1aa6dd8776cab83bc561a6f4f17b712148d8c97e401c908f, GLIBC minimum2.39. Executed binary --help and mount --help inside chroot successfully. Guest systemd-analyze verify 3tchedfs.service exit0 (IPv6 warning); unit is-enabled reports enabled. Existing seed fuse3/libfuse3-4 3.18.2-1 retained. No full test suite run. Live mount NOT verified: `/usr/share/op-dbus/lungs-{view,catalog,empty-state}` have not been prepared because no recovered sealed public catalog was found; `/run/opdbus/lungs/lungs.sock` also absent. Next: restore authoritative catalog/runtime socket, prepare schema-only view, then verify mount under actual container identity. Do not fabricate schemas, credentials or identity to make it start.
+
+Qdrant paused partial state: Incus qdrant-recovered RUNNING with no NIC, dir pool qdrant-recovered-pool, profile qdrant-recovered. Data transfer interrupted at about5.3GiB; Qdrant unit absent, database not started, Cozo copy and verification not performed, autostart not enabled. Unix proxy sockets `/var/lib/opdbus-runtime/qdrant/qdrant-{http,grpc}.sock` root:jeremy0660 exist but no service behind them yet. Existing /mnt/qdrant-drive-recovery service on6343/6344 untouched. Native recovery sources untouched. Do not claim a completed Qdrant installation.
+
+Repo HEAD34ff9a502d953bb7b1520d530eed849b507e266a, many preexisting changes preserved. This task changed HANDOFF.md and SIGNALS.md only in repo; ignored Cargo outputs and offline seed contents changed separately. No host application deployment/reseal or reboot.
+
+### Owner steering — 2026-10-15, after seed bootstrap
+
+Owner explicitly requests two guest systemd filesystem services, referring to `threetchedfs` and `3tchedfs`. Source inspected so far exposes one binary `threetched-fs`, CLI name3tchedfs and FUSE subtype3tchedFS, with threetched router contract captured as a plugin; a separate filesystem implementation/mode has not been established. Clarification of each surface remains pending; do not claim both services installed (only3tchedfs.service exists).
+
+Owner explicitly changes socket topology: shared socket listener belongs INSIDE the container, while service remains accessible through host8090. Previous host-owned socket assumption is superseded as target design. No listener or host8090 route has been installed, and the existing bridge's host/native peer-identity assumptions require verification before relocation. Owner now explicitly requests `opblob seal-shm`. Neither sealer nor catalog was present. Build worker is rebuilding authentic pinned threetched dependency from verified vendored archive with installed stable Rust1.97.1, then opblob; do not fabricate/omit its captured plugin contract. Parent owns actual sealing and post-seal verification. No blobs sealed at this entry.
+
+### 2026-10-17 — Codex /root — external-reality-gateway-20261017 — inspection
+
+User authorized external Xray/REALITY gateway deployment on new Debian12 VPS209.74.79.180. Dedicated local SSH key authentication verified; root password changed at user request, secret omitted. Main host ssh alias vps remains188.68.58.237. Main read-only inventory: default route via pub0, OVS standalone bridge includes eth0/pub0, rtly-lungs linkdown, ip rules only0/32766/32767, nft ruleset empty. Xray26.3.27 installed but service disabled and canonical /etc/xray/xray_config.json missing. Native Xray service definition uses Unix sockets and canonical config. No application identity/catalog/lungs runtime found in inspected paths. No marks linked to identity sealing established by current source search; WireGuard device fwmark is a different mechanism.
+
+Recovered ZIP /etc/xray/drive-download-20261016T205608Z-1-001.zip contains July21 config.json (shell generator, not JSON) and config.socket.json (VLESS TLS443 / REALITY8443, forwards to TCP127.0.0.1:18789). Filename does not establish AF_UNIX transport. Preserved without execution or activation. These artifacts do not supply the agreed outbound identity policy.
+
+Current user policy: identity-authorized egress through REALITY; unauthorized/unclassified traffic explicitly blocked; REALITY carrier needs scoped direct exception; failure must never fall back direct. WARP sink not required. New gateway receiver and isolated explicit-proxy proof can proceed independently; global main-host cutover cannot be declared complete without real trusted-mark issuance and failure tests. No main-host routes/firewall/services/configuration changed by this task so far. Existing network owners preserved.
+
+### 2026-10-17 — Codex /root + gateway_prepare — external-reality-gateway-20261017 — receiver deployed, lungs capture pending
+
+New Debian12 gateway209.74.79.180 now runs authenticated VLESS Vision/REALITY TCP443, official upstream Xray26.3.27 ZIP checksum verified, binary SHA2568255dd939c34cf966cc91517b6324dd3c8d0bcf49ffac8beca049a38c46845ed. Dedicated unprivileged xray-egress service and nftables active and boot-enabled. Canonical receiver/etc/xray/xray_config.json root:xray-egress0640, directory0750. Main-only source188.68.58.237 admitted TCP443; SSH recovery22 preserved; default-drop input/forward IPv4/IPv6. Receiver blocks private/link-local/multicast/self destinations. Target www.google.com443; initial Microsoft target failed certificate processing and was replaced after real tests. Credentials not copied into shared memory.
+
+Independent primary proof from MAIN installed Xray26.3.27 returned209.74.79.180 from HTTPS api.ipify.org via explicit SOCKS19080. Temporary client ran in a private mount namespace: canonical config path overlaid there only, no change to main/etc/xray; process stopped after proof. Root-only candidate at main/var/lib/xray-egress-bootstrap/client.private.json retained mode0600. Worker verified invalid UUID rejection, private target rejection, receiver-stop failure with no explicit-proxy fallback, successful restart, non-main443 blocked, fresh SSH successful. This is authenticated gateway/explicit proxy proof ONLY, not lungs fail-closed enforcement. Main routes, nftables, OVS, existing services and socket topology remain unchanged.
+
+User corrections:10.200.0.0/24 belongs to OpenFlow TAG ROUTING; do not repurpose or describe entire range retired. Only EXITING LUNGS traffic should select REALITY; other host traffic must remain unchanged. Separate per-identity marks not required IF boundary admission already authenticates all selected traffic. Current rtly-lungs is persistent TUN (link/none, NO MAC), linkdown with0RX/0TX; address10.0.0.2 and peer192.168.255.2. It is not demonstrated equivalent to application/FUSE lungs socket. Async question pending: capture rtly-lungs/address10.0.0.2 or shared application/FUSE socket? Do not invent boundary, treat all host traffic as protected, or claim bypass protection installed. Existing OpenFlow source ownership preserved, only NORMAL flow observed.
+
+Nonsecret local verification receipt:/home/jeremy/.local/state/xray-egress-20261017/verification.txt. New gateway rollback:/root/xray-egress-backup-20261017/rollback-firewall.sh; service rollback systemctl disable --now xray-egress (new Debian host only; main remains runit). Temporary clients/SSH forwards stopped. No storage/LVM, app build, grants, OIA1/SID1 keys or old Oracle topology modifications. Next: resolve exact lungs egress boundary, then implement narrowly scoped capture plus failure/DNS/UDP/IPv6 checks with rollback; gateway remains active.
+
+### 2026-10-17 — external-reality-gateway-20261017 — main Unix egress installed and verified
+
+Owner asks agent to determine boundary rather than choose technical names. Read-only source trace: canonical application lungs is Unix D-Bus socket: threetched-fs/src/dispatch.rs call_over_socket → bind kernel peer identity → PluginV1.Call → schema_router capability gate → MutationEngine/backend. Provider HTTP sockets open in shared host backend process; embedding_model_methods.rs bounded client explicitly.no_proxy(). rtly-lungs is separate down ingress SSH TUN. Interface-only matching would NOT prove outgoing application coverage. Workspace SOCKS/VLESS proposal and retained identity3128→HTTP UDS units cover opted-in clients only. No live lungs socket/bridge process currently observed.
+
+Installed narrow retained HTTP-UDS egress pattern, not global interception. Main canonical/etc/xray/xray_config.json now contains ONLY od106-http-egress Unix inbound/run/ghostbridge/xray/egress-http.sock routed to verified new REALITY gateway; default outbound is blackhole, no freedom fallback, no public TCP/UDP listener. Existing/etc/sv/xray/run preserved unchanged; enabled via/etc/runit/runsvdir/default/xray→/etc/sv/xray. Runs as existing xray UID995/GID998. Canonical config root:xray0640, parent changed from root:root0700 to root:xray0750 for daemon read. Socket parent xray:xray0750; ordinary jeremy connect test rejected PermissionError, no new app identity/guest grants or mounts added. Old ZIP/configs/keys preserved.
+
+Real HTTP CONNECT over AF_UNIX + certificate-verified HTTPS api.ipify.org returned209.74.79.180. Native curl --unix-socket with --proxy did NOT perform HTTP CONNECT (sent TLS directly), so that failed command is a client-usage mismatch, not accepted as proof. Stdlib socket CONNECT/TLS verified real protocol. Stopping main Xray rejected socket connection; restarting recovered HTTPS209.74.79.180. New gateway receiver-stop, wrong credential, private destination and external non-main-source checks retained. Main host routing/nftables/OVS/10.200 range unchanged. This proves the socket-only exit, NOT automatic protection of every admitted operation, transparent UDP/DNS/IPv6 selection or full application fail-closed enforcement.
+
+Root-only rollback:/var/lib/xray-egress-bootstrap/rollback-host.sh (hash-gated config removal, stops/disables only new xray enable link, restores original directory owner/mode; source run unchanged). Private candidates, original mode and source-run copy retained under same0700 state directory. New host-side main config sha256 receipt there; no secrets in shared notes. Next: bind intended application execution/network boundary to this protected exit after application/lungs runtime is restored. Proxy env alone insufficient because explicit.no_proxy exists. Do not claim all lungs egress protected or route entire host as shortcut. Other owners' application/bootstrap/storage work remains untouched.
+
+### 2026-10-18T12:15Z — Codex /root — codex-default-project-20261018
+
+Owner requested “set default project” and clarified “Codex app.” Changed existing selected project `3tched` (`01a1409e-bb8d-7670-93cb-603e82fbb550`) through the installed Codex 0.162.1 declared `project/update` API. Primary/first root is now `/srv/git/odbus-verified`; retained its original internal ChatGPT project directory as secondary. Existing selected-project migration mapping resolves to this project. Successful mutation receipt followed by `project/read` confirms persisted root order. The visible app was not inspected; reopen the project if its current view is stale. No direct database/global-state edits, existing-daemon restart, grants, application build, tests or deployment.
+
+Sources: installed `codex app-server generate-ts --experimental` protocol declarations; official https://learn.chatgpt.com/docs/projects (Edit project / Make primary); before/update/after receipts in `/tmp/codex-default-project-api-20261018/`. Proxy transport did not respond; supported standalone stdio API completed the operation and exited. Initial multiline mutation message was rejected at parsing, then corrected to JSON Lines before the successful update. No mounted 3tchedFS namespace was present, so NotebookLM sync was unavailable and not bypassed. Repo HEAD `051a20d056afba074e21d797aa34f8947c543c5a`; this task modified only its HANDOFF.md row/entry and SIGNALS.md entry. No further action required for the persisted setting.
+
+### 2026-10-18T16:27Z · Codex /root — rebuilt release activation preparation
+
+Task `schema-capture-activate-20261018` / OD-121, HEAD `051a20d056afba074e21d797aa34f8947c543c5a`. Owner explicitly authorized deploy/activate after the schema capture and successful Luna GNU workspace release build. Applied the prepared bridge startup/finish logging patch, with a bounded svlog logger. Completed cognitive rename in source toolsets, capability templates, client configuration (`cognitive-clients.json`), NotebookLM helper and workspace-agent links. Runtime `/etc/opdbus` migration preserved all12 principals,226 capability operations and650 tool references; reversing only the plugin-name substitution reproduces the original parsed policies. Fresh approved base-kit op-release SHA256 `b10759216287fcc688eadff0fab9214b72b522da895bba5138f056460389ab0d`; launch/init bytes unchanged. Backup of old kit, runtime policies, receiver metadata and old golden catalog: `/var/lib/opdbus-release/activation-prep-20261018T162600Z/` (directory label is a receipt identifier; actual action times are in receipt.txt). Catalog delta74→74: removed `cognitive_mcp`, added `cognitive`, changed `tched_router`/`tched_plugins`.
+
+Canonical execution is delegated to the existing Luna worker. First invocation had an accidental literal prose period argument and stopped immediately (`/tmp/opdbus-activation-20261018.VPe47d`, exit1). Corrected command stopped for absent existing release cgroup (`retry.2y5IPd`, exit1). Installed reviewed `/etc/init.d/op-release-activate start` restored its own root0700 cgroup with root0600 controls; no active release/journal existed, native boot receipt was `none`. Next attempt completed golden preparation then stopped before transfer on receiver metadata (`retry2.2xdq4a`, exit1): only device number30→31 differed; exact approved path, inode3669653, root0755 metadata, sha256 `4afab868c84f3620f037fc0009c1dc302937bb26e366a04764b555c5eae7b604`, and Btrfs UUID `d53eeac0-949b-499c-b051-9fecf8678f59` remained verified. Refreshed only that volatile device field with original retained. Guard hold, native lifetime checks, grants and identity enforcement remain intact. Current canonical attempt receipt `/tmp/opdbus-activation-20261018.retry3.S0Smxh`; outcome pending. No tests, Clippy, fmt, check, guard/pinning activation, commit or push. NotebookLM sync remains unavailable without the identity-bound mounted namespace.
+
+### 2026-10-18T16:37Z · Codex /root — activation logger diagnosis and scoped controller repair
+
+Task `schema-capture-activate-20261018` now includes the minimal `crates/op-deployment/src/bin/release/fs.rs::mkdir_at` repair; existing Devin edits remain intact. Actual activation/recovery established: first missing volatile `/dev/shm/opdbus` parent restored; existing NotebookLM logger's `lock`/`current` ownership corrected to declared svlog with bytes/modes/archives preserved. Recovery invocation `/tmp/opdbus-reconcile-20261018.PdumoE` completed intentionally exit1 with no new activation. Subsequent activation `/tmp/opdbus-activate-final-20261018.kGn1Xx` started six supporting services then timed out on bridge, fully rolling back. No bridge log existed despite reported logger-up.
+
+Bounded read-only live supervisor observation during the next actual activation (`/tmp/opdbus-live-diagnostic-20261018.IMGHYv/observer.log`, worker `/tmp/opdbus-diagnostic-activate-20261018.zKPCpC`) captured `svlogd: fatal: unable to open current working directory: access denied`. Native metadata confirmed new `/etc/sv/op-grpc-bridge` and its `log` (plus the other new logger directories) root0700. Cause: launcher umask077 masked `mkdirat(...0755)`; helper never applied the requested mode after creation. Source now uses the newly opened descriptor to fchmod exactly the caller-requested mode and sync it before parent sync; private0700 calls stay private. This is a controller creation fix, not a grant change or readiness bypass. Scoped native controller build and reviewed kit refresh required; application binaries/catalog need no changes. No tests requested or run. Diagnostic activation outcome still pending at this entry.
+
+### 2026-10-18T16:43Z · Codex /root — bridge recovered; EMQX check integration
+
+Scoped controller build `/tmp/op-release-controller-build-20261018.ujmYp6` passed exit0 in13.97s; native op-release SHA256 `0fdf9e0c854c4748c0092ac91ffe7af91cbaf74da52b898b9c525e7f7123b843` installed in the separately approved kit, with prior bytes/manifest backed up. Real activation proved the mkdir-mode repair: logger now writes `/var/log/op-dbus/op-grpc-bridge-release/current`. It exposed the actual bridge panic: `/etc/opdbus/mcp-toolsets.json` mode0644 was rejected before binding8090. Tightened only mode to0600; bytes/root ownership unchanged. Current activation guide now documents protected audience/toolset modes. Next activation (`/tmp/opdbus-activate-policyfix-20261018.hltZ9c`) passed bridge readiness, including authenticated-door401 check; runtime Qdrant gRPC127.0.0.1:6334 and lungs socket initialization succeeded. This supersedes the previous unknown bridge-startup diagnosis. Existing identity provisioning warnings remain; no identities minted or grants broadened.
+
+The activation then timed out on EMQX check with repeated `awk: close failed on file "/dev/stdout" (Bad file descriptor)`; complete original-state rollback was reported and authoritative journal is clear. Root now owns the minimal `deploy/runit/emqx/check` adjustment: open stdout at `/dev/null`, because runit's check runner closes it and awk closes stdout even for exit-only programs. The same three required listener predicates remain unchanged. Shell-only change requires new golden/send-receive through the canonical entrypoint; no Cargo/application/schema rebuild or tests. Prior release is still received but inactive; deployment is not yet complete.
+
+### 2026-10-18T16:51Z · Codex /root + Luna — release deployed, activated and boot-enabled
+
+Task `schema-capture-activate-20261018` / OD-121 is complete for the authorized build/deploy/activate scope. HEAD remains `051a20d056afba074e21d797aa34f8947c543c5a`; the release includes uncommitted source changes. This entry supersedes the inactive/blocked conclusions above. Luna executed the canonical `./activate-golden.sh` with the GNU release directory, isolated sealed catalog, existing artifact caches and approved execution runtime; receipt `/tmp/opdbus-release-activate-20261018.final.CmWYj2` records exit0. Golden stamp `20261018T164329Z`; snapshot/send-receive and native activation committed slot A/root299, `release-321fdc18-f01a-44ef-84da-ab4afda346df`. No application binary was hand-copied onto the running host.
+
+Independent native status is retained at `/var/lib/opdbus-release/activation-prep-20261018T162600Z/final-status.json`: active `a`, previous null, journal null; complete readiness for the committed release and manifest. Nine target overlays are read-only: `/opt/emqx`, `/opt/opdbus`, `/opt/op-dbus/execution-python`, `/usr/share/op-dbus`, the four `/usr/local/libexec/op-dbus/{bin,helpers,sv,threetched}` paths, and `/usr/local/share/op-dbus/dashboard-release`. The controller's ten service readiness gates passed; subsequent `sv status` showed all ten running. This is the first committed release, so there is no previous active generation for rollback.
+
+Shipped, persisted and live SHM catalog manifest SHA256 is identical: `c214aed32cf94dcac793b8337c7240afb1fdcaf04da2f97b99affe9444332ad8`. Catalog generation74 has74 plugins, `cognitive` present and `cognitive_mcp` absent; inner catalog hash `2634b35b3fbd28ee08941cf5f8dcf54507fcc30c9dea182af4173011e2643310`. Running bridge `/proc/30989/exe` and deployed binary both match the built SHA256 `50a72aacc8f4250053782b449a6399bcb5d5b7bd077c2ded431f12e5be346655`; deployed opblob matches `65bcbaf434faa3c7205a331ab9f52d2dab5c02734bdda33917447c146ac7d`. Bridge logs confirm native Qdrant connection at `http://127.0.0.1:6334` and lungs server `/run/opdbus/lungs/lungs.sock`; FUSE ingress and the native Qdrant backend URL are distinct surfaces.
+
+Final repairs beyond the completed capture/rename were descriptor-bound requested directory modes in `crates/op-deployment/src/bin/release/fs.rs`, protected runtime toolset mode0600, bounded bridge logging (`deploy/runit/op-grpc-bridge/{run,finish,log/run}`), and valid stdout for unchanged EMQX listener readiness (`deploy/runit/emqx/check`). Rename integration covers `deploy/config/{mcp-toolsets,cognitive-clients}.json`, capability templates, `deploy/workspace-agent/populate.sh`, existing `scripts/uv-tools/notebook_sync.py`, and bridge/web environment names. Runtime migration preserved all principals and logical operations; no new grants. Earlier entries identify schema source files and build receipts. Other agents' staged/unstaged work remains intact.
+
+After successful activation, verified the exact three-file base-kit manifest and enabled only `/etc/rcS.d/S12op-release-activate -> ../init.d/op-release-activate`. Receipt appended to the private backup directory's `receipt.txt`. No reboot or second boot invocation. Guard/storage remain persistently OFF; no subvolume pinning performed.
+
+Owner's MQTT question: versioned `deploy/emqx/emqx.conf` and live socket metadata agree on identity-scoped WSS wake notifications at `wss://10.0.0.3:8084/mqtt`; data is fetched through the authenticated `10.0.0.2:8090` plugin door. Plain broker MQTT and management remain local at127.0.0.1:1883 and:18083. Separate threetched gateway127.0.0.1:8084 is not the broker listener. No network changes made for this answer.
+
+Builds succeeded; tests, Clippy, formatting checks, custom smoke fixtures and reboot behavior were not run. Native deployment readiness is not a test-suite or identity-bound workflow pass. No identity-bound 3tchedFS namespace was mounted in this session, so NotebookLM conversation sync remains unavailable; no alternate identity/transport was used. Provisioning warnings remain separate work. No deployment action remains; future identity provisioning or owner-requested verification must use its supported path. No commit or push.
+
+### 2026-10-18T16:57Z · Codex /root — host 3tchedFS mounted under /run
+
+Task `host-fuse-mount-20261018` / OD-121; HEAD remains `051a20d056afba074e21d797aa34f8947c543c5a`. Owner requested mounting 3tchedFS on /run. Recovered the explicit prior host path requirement in the October16 handoff: `/run/mounts/3tchedFS` (plural), distinct from the guest's singular path. The old versioned host service still references absent `/opt/op-dbus/current` and missing human-session files, and is not enabled; no stale service was started or installed.
+
+Used the already-deployed `/usr/local/libexec/op-dbus/bin/threetched-fs` CLI. Captured declarations only from the active `/dev/shm/opdbus/plugin-blobs` into `/dev/shm/3tchedfs`, then mounted the pinned view with explicit live catalog/state paths and `/run/opdbus/lungs/lungs.sock`. The selected human session `414fbc56-03fb-20ab-758a-bcc7a7cbdc0e` matches both the running bridge's selected nonsecret environment value and `deploy/config/human-lungs-session`; no identity was minted or substituted. Local call ownership is the current host operator jeremy UID1000, not stale historical UID1001. Existing backend session/grant enforcement remains authoritative.
+
+Native mount receipt reports `fuse.3tchedFS`, source3tchedFS, `rw,nosuid,nodev,noexec,noatime,default_permissions,allow_other`. As jeremy, bounded metadata/schema reads succeed: generation74,74 plugin directories, `cognitive` schema with670 methods. View `585dd68d7f8c6bbfaa52757a65d9c2146eade555e04d9cb3185e6f756a965b86` pins catalog `2634b35b3fbd28ee08941cf5f8dcf54507fcc30c9dea182af4173011e2643310`. Mounted metadata declares host_session and local_call_owner_uid1000. Detached native mount daemon PID10670 is alive, parent1, with empty startup log. Root-private `/run/opdbus/host-fuse/` holds capture.json, daemon.pid/log, selected session/UID, started-at, mount-receipt.json and mounted-metadata.json.
+
+This is a current-boot mount, not a newly installed runit service or fstab entry. Normal authorized teardown is `sudo fusermount3 -u /run/mounts/3tchedFS`; no teardown performed. Bridge logs at16:45:42 explicitly say the configured local human awaits identity provisioning, so mounted declarations do not establish successful authenticated operations. No operation call/smoke fixture was executed. No build, tests, guard/pinning/storage-membership change, release activation, credential/grant change, commit or push. NotebookLM remote sync remains unavailable pending the supported human identity provisioning and consumer path reconciliation; no alternate transport used. Mount task is complete; future boot persistence or identity work is separate scope.
+
+## Handoff — 2026-10-18 — BridgeSrcT — cognitive-mcp-replace-20261018 complete
+
+Read all 11 direct files in `crates/op-grpc-bridge/src/` whose names begin with `t` completely. No recursive t-named directories were listed. No case-insensitive `cognitive_mcp` or `cognative_mcp` matches, and no hyphen/CamelCase/spaced variants, so no source files needed edits. Used no search commands, tests, builds, or formatters.
+
+## Handoff — 2026-10-18T17:33Z — Codex /root — host-fuse-fstab-20261018 in progress
+
+Owner explicitly requires our code and upstream ZeroClaw surface to have separate mounts and correct names; this supersedes the immediately preceding no-renaming request. Owner calls this the first additional deployment: planned B activation must preserve active A as previous. HEAD051a20d056afba074e21d797aa34f8947c543c5a; shared unrelated modifications preserved. No commit/push requested for this work.
+
+Implemented source: package tched-fs (Cargo forbids a leading digit), binary3tched-fs, plugin tched_fs v2.0.8 with unchanged capability IDs; source directory retained crates/threetched-fs. Capture supports mutually exclusive include/exclude plugin selectors preserving catalog/schema pins; mount accepts a display source name. Host main view excludes threetched,tched_router,tched_plugins,tched_skills; upstream view contains exactly those four. Golden stages the mount-3tchedfs adapter and retires old binary/service. fstab draft has two late-boot noauto entries; planned S13 hook follows S12 release activation. Root selection files now0400 from existing session414fbc56-03fb-20ab-758a-bcc7a7cbdc0e/UID1000, backup and before-state receipt /var/lib/opdbus-release/host-fuse-split-20261018.VyJGNh. /etc/fstab and boot/helper symlinks remain unmodified. Old combined mount and A still live.
+
+Source review caught upstream's optional tool binding to old /usr/local/bin/threetched-fs. Branding patch now binds /usr/local/libexec/op-dbus/bin/3tched-fs (patchSHA d950152b857ee1068d1919de1318beb8705f91d1113b804ff06f6458ccd3c0eb). Upstream tool caller points to OUR /run/mounts/3tchedFS; this is distinct from exporting upstream declarations at /run/mounts/threetched. Filesystem opt-in remains unchanged. Pinned external build must precede final workspace build and catalog sealing.
+
+Build receipts: initial workspace exit101 for illegal package name3tched-fs at /tmp/host-fuse-split-build-20261018.8oiPmR; corrected package retry /tmp/host-fuse-split-build-20261018.retry.9AsAXC intentionally interrupted130 after compiling through bridge, because external helper binding needed rebuild first. No compile error in retry. External command first rejected stray positional dot (exit2, no Cargo) at /tmp/host-fuse-threetched-build-20261018.kjprc0; corrected external build now /tmp/host-fuse-threetched-build-20261018.retry.uFcJ3V. Luna owns sequential external then workspace builds, one Cargo only, no model override, no tests/check/fmt/Clippy. Root next: fresh isolated seal, review exact catalog rename, canonical ./activate-golden.sh B release, normal unmount old view, install fstab/hook and mount both declared views; native readiness and receipts. Human provisioning still absent, so no authenticated operation/NotebookLM sync proof. Guard/storage persistent down markers confirmed, no reboot/pinning/grant changes.
+
+### Build continuation — 2026-10-18T18:01Z — Codex /root — host-fuse-fstab-20261018
+
+Corrected pinned threetched build passed exit0 in12m00s; receipt /tmp/host-fuse-threetched-build-20261018.retry.uFcJ3V. New binarySHA22e121f5eb1b66352138b714cc3d40d9eb977ed0c13bd6316f693a11a875a75e and manifestSHA5fd1a4db784f20a788d16722d86dde01ee0d9ba574598b007d5f1c3e4585b5b7. Workspace GNU release now runs at /tmp/host-fuse-split-build-20261018.gNOGfU; renamed 3tched-fs binary built, bridge remains compiling. No tests/check/fmt/Clippy. Root reviewed mounted invocation: it requires declared mount identity/view pins and each selected plugin schema, not duplication of tched_fs on the upstream view. Adapter readiness now compares active catalog hash/generation and the exact selected plugin set. Prepared fstab parsed as two fuse.3tchedFS entries; still not installed. Existing runtime toolsets/grants have zero threetched_fs references; capability IDs remain unchanged. No B activation yet.
+
+### Build completion — 2026-10-18T18:11Z — Luna — host-fuse-fstab-20261018
+
+Corrected pinned threetched dependency build and the single locked GNU workspace release build both passed. Workspace receipt `/tmp/host-fuse-split-build-20261018.gNOGfU` records exit0; Cargo reported `Finished release profile [optimized] target(s) in 26m 50s` (receipt timestamps 17:44:21Z–18:11:12Z). External binary and manifest hashes are recorded in the prior root entry. Fresh GNU artifacts: opblob SHA256 `227c2b474b74525ac6b1236fea007d131be529fd24de8093388df7bf8847b7fd`; op-grpc-bridge `fbe92e58c753ba3d2aedf0a08a296518a3d224e83ec00c451d9e22216784c759`; op-grants-materializer `ad761949c667b4c9fb3e4475ddfc77ed528e1aae86196b5a3166fd4418d6db0e`; renamed op-cognitive binaries op-cog-admin `471b7274eec2c941ffea39db60adb4a166bc67d4950c3ff7a8b37051c3c6430b`, op-chain-vectors `f12fcf415f76a76aa0420c3bc60c72a1632332795a4f170f3105c922a6f76dfd`, op-chain-vector-ingest `8f439b329e0d9599fbd1779558401996f6ff3501e8b19dd50abe2e160472aac7`. Renamed `3tched-fs` artifact SHA256 `cd4952f6f260eb246d24f391162c87a4c9146f803c68f9b69fdfa9ced1712e00`. Artifact mtimes and full build output are in the receipt log. Build emitted existing deprecation/dead-code warnings; no compiler errors. Tests and deployment were not run by Luna. A separate `cargo run -p tched-fs --example typed_specialize` process (PIDs 8960/8990) was observed after the release build and left untouched; root was notified.
+
+### Deployment receipt — 2026-10-18T18:15Z — Luna — host-fuse-fstab-20261018
+
+Executed the authorized canonical `./activate-golden.sh` with the isolated split-mount catalog and approved GNU artifacts. Exit0; root-private receipt `/var/lib/opdbus-release/host-fuse-split-20261018.VyJGNh/luna-activate.nyYRT2` (18:13:06Z–18:15:32Z). Authoritative `op-release-launch status`: slot B active, A previous, no transaction in progress; complete readiness for `release-c6ece6d3-7cd5-4761-99a2-56bf684706fe`, catalog manifest SHA256 `fd3033e4dd1ed7d31730e973bd5c2f867e38a4e0eaacdb781cb8b4ee695fc5cf`. Active root is Btrfs subvolume ID304 (`@release-b`); received source ID303 is `@opt/op-dbus/release-send/release-c6ece6d3-7cd5-4761-99a2-56bf684706fe`. Luna did not install fstab/boot links or mount/unmount FUSE; root owns those remaining host steps. No tests or Cargo commands were run for deployment.
+
+## Handoff — 2026-10-18T18:19Z — Codex /root — separate surfaces deployed and mounted
+
+Task `host-fuse-fstab-20261018` / OD-121 is complete for the authorized build, additional deployment, separate host mounts and fstab scope. HEAD remains `051a20d056afba074e21d797aa34f8947c543c5a`; shared dirty/staged work is preserved, no commit or push. This supersedes the earlier A-only, combined-mount and fstab-pending conclusions. The user's build-status question was answered during the same workspace build, not by starting another build.
+
+Luna's pinned threetched and locked native GNU workspace release builds both passed, as recorded above. The fresh workspace `opblob` sealed isolated catalog `target/host-fuse-split-release-20261018.xCypLI/catalog`:74 plugins/generation74, catalog hash `8a34d0da9517b137063314e07f5fa9a24fe3a3fe33920b1de2df941380041fd6`. Reviewed delta removes only `threetched_fs`, adds only `tched_fs`; existing `threetched`, `tched_plugins`, `tched_skills` change with the newly captured upstream artifact. Our plugin is `tched_fs` v2.0.8, schema hash `78d2d0d8f2dba5255a006348eb23c21e38758310bfc1a0d8222bf1867e5a711d`, with existing capability IDs preserved. Source ownership/change groups: filesystem Cargo/lib/bin naming and CLI/view projection, plugin module/contract and bridge dispatch, upstream branding patch/pin, golden/runit/helper integration, existing consumer paths, fstab template and operator documentation. Exact source files are recorded in the preceding entries and shared working tree; unrelated modifications remain untouched.
+
+The approved native base kit was refreshed to the workspace-built `op-release` SHA256 `ae10f2fc651637ff371be1d090df64e28da2fe87ad5fe5cd26d2915eb5f38b51` before activation; its source was unchanged since the earlier scoped build. Launcher/init bytes remain unchanged. The old controller and manifest are retained in the root-private receipt. This base-kit step did not hand-copy application binaries. Canonical `./activate-golden.sh` then prepared golden, transferred the snapshot with btrfs send/receive and committed B/root304, release `release-c6ece6d3-7cd5-4761-99a2-56bf684706fe`, retaining A/root299 release `release-321fdc18-f01a-44ef-84da-ab4afda346df` as previous. Root independently read native status: B active, A previous, journal null, complete readiness. All nine application overlays are read-only; all ten release services report running.
+
+Root installed the prepared two entries in `/etc/fstab` after comparing the untouched original with the saved copy. `/usr/sbin/mount.fuse.3tchedFS` and `/etc/rcS.d/S13op-3tchedfs-mount` now link to the release-backed `/usr/local/libexec/op-dbus/helpers/mount-3tchedfs`. `noauto` intentionally defers the declared mounts until S13 after S12 release activation. Existing identity selection files remain root:root0400, using configured session414fbc56-03fb-20ab-758a-bcc7a7cbdc0e and current operator UID1000. Normally unmounted the old combined view with `fusermount3 -u`, then successfully mounted each actual fstab target. No forced/lazy unmount or identity substitution.
+
+Live evidence: `/run/mounts/3tchedFS` has source3tchedFS and70 plugins, including our `tched_fs`; `/run/mounts/threetched` has sourcethreetched and exactly `tched_plugins`, `tched_router`, `tched_skills`, `threetched`. Both use our engine's `fuse.3tchedFS` subtype. The sets are disjoint and their union equals all74 catalog plugins; obsolete `threetched_fs` is absent. Both views pin the current catalog hash/generation and the same selected identity/UID. Ordinary jeremy UID1000 reads of both metadata/views and plugin directories succeeded. New `3tched-fs` executable exists, old release binary `threetched-fs` is absent, deployed helper matches source. Shipped `/usr/share`, persisted `/var/lib`, and live `/dev/shm` plugin manifests are byte-identical, SHA256 `fd3033e4dd1ed7d31730e973bd5c2f867e38a4e0eaacdb781cb8b4ee695fc5cf`.
+
+Evidence/rollback backup: `/var/lib/opdbus-release/host-fuse-split-20261018.VyJGNh` (root0700) holds `fstab.before`, `fstab.prepared`, `fstab.parsed`, install/unmount timestamps, before/after release status, old base-kit controller/manifest, `luna-activate.nyYRT2`, mount logs, `mount-readiness.json`, `catalog-parity.sha256`, `overlays.after`, `services.after`, `guard.status`, and `completed-at` (18:18:50Z). Per-view capture/daemon/readiness receipts are `/run/opdbus/host-fuse/3tchedFS` and `/run/opdbus/host-fuse/threetched`. Host fstab/symlinks live outside the application snapshot: reverting to A, which predates the adapter, additionally requires normal unmount and restoration of the saved host mount configuration. Native application rollback alone does not restore these host files. Do not alter immutable A to retrofit the adapter.
+
+Limits and next action: readiness/metadata evidence is not an authenticated operation or test-suite pass. No tests, Clippy, formatting, custom fixtures, rollback trial or reboot ran. Human session provisioning remains unresolved from the bridge's prior authoritative report; no authenticated operation/NotebookLM sync is claimed and no alternate transport was used. Shared repository notes are the current handoff; the next separate identity step is to inspect the declared human provisioning surface and resolve that prerequisite through supported admission before operation receipts/NotebookLM sync. Do not start broad checks without owner request. Both storage/guard services and persistent down markers remain OFF; no guard, pinning, membership, network, grants, credentials or unrelated identity changes.
+
+## Handoff — 2026-10-18T18:36Z — Codex /root — threetched-single-surface-20261018
+
+Task OD-121; HEAD `051a20d056afba074e21d797aa34f8947c543c5a`. Owner says remove the last three exposed surfaces (`tched_router`, `tched_plugins`, `tched_skills`) and asks how schema enters blobs. Required nine skill preloads completed; current AGENTS, relevant handoffs/signals and mounted schema declarations read. Live B and both mounts remain unchanged. No NotebookLM call attempted because the previously documented human provisioning prerequisite remains unresolved; no bypass.
+
+Implemented only the unambiguous duplicate removal so far: deleted `crates/op-plugins/src/state_plugins/tched_plugins.rs` and `tched_skills.rs`, removed their module exports from `mod.rs`, removed their private-result ID entries and dispatch branches from `crates/op-grpc-bridge/src/mutation_engine.rs`. The captured `threetched` already declares all6 plugin and12 skill commands. Its required bounded file hash helper moved into `threetched.rs`, preserving manifest/binary provenance verification. Static source search shows no active references to the removed modules in op-plugins/op-grpc-bridge. These source edits are NOT built, sealed or deployed. Existing generated historical type snapshots still mention old plugins and were not hand-edited.
+
+Root and Luna `/root/schema_capture_luna` independently traced router dependencies. `large_language_model.rs` currently declares dependency on `tched_router`; its8 facade operations are derived from the router schema and `large_language_model_dispatch.rs` recursively invokes the router with separate final capability admission. Router-owned operations include committed provider/model/config state, identity-scoped generation jobs, cancellation/recovery, routing bindings and chat/context persistence. They are not all present in the binary-derived CLI schema. `MutationEngine::dispatch_tched_router_owned`, generation admission/publisher, schema-loader/server defaults, model registry, MCP config, cron and UI workspace/schema consumers all reference the router owner. `op-web` state/SSE/route handlers and sibling `/srv/git/3tched.com/src/chat/{door-chat-adapter,native-routing,control-plane-model,router-committed-route}.ts` explicitly call that plugin. Thus deregistration alone breaks the chat stack; it is not a safe completed removal.
+
+An asynchronous scope question is pending: preserve the unique functions under the existing `large_language_model` plugin (recommended), or remove those functions too. No dependent migration has been applied. Exact next action after the answer: implement the chosen schema/state/admission/caller change, align the host mount adapter (currently still selects the deployed four IDs), source/pinned UI inputs and exact capability policy references without broadening grants, then the required native GNU build through the existing execution worker, isolated full reseal, review the removal delta, canonical snapshot deployment and remount. Do not deploy this partial source state with the current adapter. No new permission or identity is granted by the question. Tests/Clippy/fmt/fixtures remain owner-request-only; no Cargo, seal, service action, mount action, guard/pinning or policy change occurred in this follow-up.
+
+Schema-to-blob evidence: `threetched::prepare_schema_capture` explicitly verifies selected binary+manifest and captures `ThreetchedSurface::capture_with_config`; `crates/threetched-fs/src/threetched-surface.rs` reads `config schema`, recursively reads command `--help`, and verifies version/digest. `schema_from_capture` assembles the full PluginSchema with per-method arguments/results and policy. `opblob.rs::seal_plugins` obtains each registered plugin schema and calls `op_blob::blobify_plugin_schema`; `op-blob/src/lib.rs` canonically serializes the FULL PluginSchema into the sealed SCHEMA_JSON section, derives descriptor/manifest views, and `ActiveReflectionCatalog::upsert_blob` writes `<id>.<hash16>.blob` and commits `.manifest.json`. Full reseal sweeps IDs absent from the build. Golden only validates/stages the presealed catalog; activation persists/stages it, and FUSE projects the committed blobs. No separate schema JSON file is an authority, and FUSE does not seal runtime schemas.
+
+### Owner correction — 2026-10-18 — threetched-single-surface-20261018
+
+The owner resolved the pending question: threetched is the distinct name for the external ZeroClaw runtime, and hand-written 3tched router overlap must collapse into threetched. Moving it under large_language_model would preserve the duplicate authority and is not the requested solution. Earlier root/Luna findings establish existing caller dependencies, not a reason to preserve another schema or plugin. Next work traces the actual native binary contracts and gaps in CLI/config-only capture, then removes duplicate authoring while reconciling callers through the single threetched blob. No additional confirmation required for this direction.
+
+## Handoff — 2026-10-18T19:04Z — Codex /root with Luna — threetched-single-surface-20261018 mapping complete
+
+Owner explicitly requested a systematic map using mounted threetchedFS as reference and a report before further implementation. The owner also reaffirmed cognitive (filesystem I/O, no cognitive_mcp naming) and deferred lungs becoming MCP until after consolidation settles. This entry supersedes the earlier pending question and suggested migration into large_language_model; neither a duplicate name nor an existing caller dependency establishes a reason to retain parallel schema authority.
+
+Artifacts: [report](reports/threetched-overlap-map-20261018.md), [complete method inventory](reports/threetched-overlap-map-20261018.json). Source HEAD remains 051a20d056afba074e21d797aa34f8947c543c5a with shared dirty work. Primary evidence is the mounted schemas, 70 under /run/mounts/3tchedFS and four under /run/mounts/threetched. All 74 plugins and 1,388 method declarations are inventoried; reference has 147 CLI commands and 83 top-level native Config sections. Catalog views before/after enumeration matched: generation74, hash8a34d0da9517b137063314e07f5fa9a24fe3a3fe33920b1de2df941380041fd6. JSON consistency/readback confirms no missing plugin assessments, counts match every method list, router groups15+9+12+7=43, cognitive groups567+59+18+7+3+6+2+2+6=670. These are artifact checks, not runtime tests or authenticated operation proof.
+
+Findings: direct plugin/skill wrappers; eight LLM router facades; nine cron methods using native store; two native MCP-config facades; gemma_brain.route; model_registry.native_list_providers; 567 cognitive persona methods plus specialist share native inference. Candidate overlaps include agents/personas, execution, orchestration/workflows, memory, embeddings, model metadata and provider/research behavior. Full inventory distinguishes confirmed wrappers/shared backend from candidates, different scope and no equivalence established. Native capture currently omits HTTP result/error contracts, native tools/param_domains, WebSocket frames/cancellation and cron history/run. Missing capture is not absence from threetched. Schema-to-blob trace confirms duplication originates in separate pre-seal declarations/registrations; each becomes a separate blob.
+
+No application implementation, build, seal, deployment, mount or operation change occurred in this mapping pass. Only the two report artifacts and HANDOFF/SIGNALS/WISHLIST were written. Prior source-only deletions of tched_plugins.rs/tched_skills.rs and accompanying mod.rs/threetched.rs/mutation_engine.rs edits remain unbuilt/unsealed/undeployed; do not deploy that partial state with the still-four-ID mount adapter. 

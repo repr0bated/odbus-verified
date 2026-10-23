@@ -1,0 +1,64 @@
+{
+  "request": 231,
+  "started": "2026-10-19T04:43:22.678339+00:00",
+  "finished": "2026-10-19T04:43:37.416291+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-098d7ae30ffbb581016ad59fed75f887d09f1b8df33d315de6",
+    "created": 1792385005,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"code\":\"def save_packet(pid, result):\\n    rec=next(r for r in receipts if r['packet_id']==pid)\\n    text=result if isinstance(result,str) else json.dumps(result,ensure_ascii=False)\\n    rawpath=base/'reviews'/f'{pid}.raw.txt'\\n    write(str(rawpath),text)\\n    rec.update(output_raw_path=str(rawpath),output_raw_bytes=len(text.encode()),output_raw_sha256=sha(text.encode()))\\n    try:\\n        parsed=json.loads(text)\\n        path=base/'reviews'/f'{pid}.json'\\n        write(str(path),json.dumps(parsed,ensure_ascii=False,indent=2))\\n        rec.update(status='success' if parsed.get('fully_reviewed') is True else 'incomplete',report_path=str(path),fully_reviewed=parsed.get('fully_reviewed'),findings_count=len(parsed.get('findings',[])))\\n    except Exception as e:\\n        rec.update(status='parse_error',error=str(e),report_path=str(rawpath))\\n    return {k:rec[k] for k in ('packet_id','status','report_path')}\\nresults=wait([handles[p] for p in ids[:3]],raise_errors=False)\\nfor pid,result in zip(ids[:3],results):\\n    if isinstance(result,Exception):\\n        next(r for r in receipts if r['packet_id']==pid).update(status='failure',error=str(result))\\n        print(pid,str(result))\\n    else: print(save_packet(pid,result))\\nfor pid in ids[3:6]: start_packet(pid)\",\"title\":\"Saving first packet reviews\",\"timeout\":3600}",
+                "name": "eval"
+              },
+              "id": "call_hgrx7y84WIeB9CmMLWeMlHua",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 987,
+      "prompt_tokens": 102188,
+      "total_tokens": 103175,
+      "completion_tokens_details": {
+        "reasoning_tokens": 224
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 94426
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:37.414893+00:00",
+  "stream_chunks": 4
+}

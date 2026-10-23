@@ -1,7 +1,7 @@
 {
   "authority": "manifest-pinned OPBLOB01 PluginSchema via SourceCatalog::capture_schema_only",
-  "catalog_hash": "db7419ea95627f90a3d1f85b061d9dc12420ac3267a2cb32820dd78624f1cc77",
-  "catalog_generation": 1494,
+  "catalog_hash": "6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c",
+  "catalog_generation": 72,
   "status": "generated source; compilation/runtime verification is separate",
   "plugins": {
     "adc": {
@@ -49,7 +49,7 @@
       ]
     },
     "antigravity": {
-      "schema_hash": "a603465416c28bcd6e9a661363b38f7661612716c691cc8ea9e496e896a6590a",
+      "schema_hash": "16c3b69f5b39b099c768399f202067d1f547aeb9065622f490b3e8591cec445a",
       "state": true,
       "public_state": true,
       "methods": [
@@ -78,7 +78,7 @@
       ]
     },
     "antigravity_chat": {
-      "schema_hash": "5a5e698385bbacee82576378a74c5f1d388e5a68b848f630b514ecf03547eb58",
+      "schema_hash": "81b6f4b1690f430a57d8306f48b0e0c2cda5333bc01b9dfcbbf6faeb9f30ff66",
       "state": true,
       "public_state": true,
       "methods": [
@@ -103,7 +103,7 @@
       ]
     },
     "btrfs": {
-      "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+      "schema_hash": "9d26885d737184dd4f730c658c63c0d3740f4bca1f6001cf7abc5f567a949b1d",
       "state": true,
       "public_state": true,
       "methods": [
@@ -155,8 +155,8 @@
         "respond_to_user: explicit true schema retains arbitrary JSON"
       ]
     },
-    "cognitive_mcp": {
-      "schema_hash": "1f5de0384b4a2e4d25d3b7e6c02fb7e208ba3ac03b293c0e9de19a208754884d",
+    "cognitive": {
+      "schema_hash": "e6bff360afbc2c0c5665a543a43a6999e155cba8639e74f22997f90a34f05e50",
       "state": true,
       "public_state": true,
       "methods": [
@@ -2589,7 +2589,7 @@
       ]
     },
     "gemma_brain": {
-      "schema_hash": "def76727673dc9afd34bdc6427b04886b9b764e822d605eceb630ee15dfe9c3f",
+      "schema_hash": "107ffbac3b403dd1d17072b314f798908a82ca14092d361e7bc6af61bbceae8d",
       "state": true,
       "public_state": true,
       "methods": [
@@ -2608,7 +2608,6 @@
         "rebind_ui_renderer",
         "recover_ui_workspace",
         "register_tag",
-        "route",
         "update_ui_spec"
       ],
       "unsupported": [],
@@ -2625,9 +2624,6 @@
         "handle_ui_event: explicit true schema retains arbitrary JSON",
         "list_ui_specs: explicit true schema retains arbitrary JSON",
         "recover_ui_workspace: explicit true schema retains arbitrary JSON",
-        "route: unconstrained authored schema retains arbitrary JSON",
-        "route: explicit true schema retains arbitrary JSON",
-        "route: explicit true schema retains arbitrary JSON",
         "update_ui_spec: explicit true schema retains arbitrary JSON",
         "update_ui_spec: explicit true schema retains arbitrary JSON"
       ]
@@ -2748,7 +2744,7 @@
       ]
     },
     "identity_sled": {
-      "schema_hash": "9b40ad1493ca52e4c75ab154a2f729459c05a325cc641cc9c986a3690188624a",
+      "schema_hash": "bb45d8f4ddc6edecbdcf820d3a9de14bd29e22747456d6a0ccafa92d9f7e99bc",
       "state": true,
       "public_state": true,
       "methods": [
@@ -2758,6 +2754,7 @@
         "inspect_own_physical_root_migration_preflight",
         "inspect_own_root_repair_preflight",
         "migrate_own_physical_root",
+        "prepare_container",
         "record_session_event",
         "refresh_credential",
         "repair_own_root"
@@ -2832,13 +2829,14 @@
         "inspect_own_root_repair_preflight: explicit true schema retains arbitrary JSON",
         "inspect_own_root_repair_preflight: explicit true schema retains arbitrary JSON",
         "migrate_own_physical_root: explicit true schema retains arbitrary JSON",
+        "prepare_container: explicit true schema retains arbitrary JSON",
         "record_session_event: explicit true schema retains arbitrary JSON",
         "refresh_credential: explicit true schema retains arbitrary JSON",
         "repair_own_root: explicit true schema retains arbitrary JSON"
       ]
     },
     "incus": {
-      "schema_hash": "6b61f31457c954dbd42d98a6866ef311fbc6223d19e50407c6b34c6b45ed6998",
+      "schema_hash": "ac34bedf59ab5237b0a16ffc2838529015ba20afa4b7ec5a7f806e26b0231210",
       "state": true,
       "public_state": false,
       "methods": [
@@ -2846,6 +2844,7 @@
         "exec_instance",
         "freeze_instance",
         "modify_instance",
+        "reconcile_creation",
         "remove_device",
         "restart_instance",
         "snapshot_instance",
@@ -2911,6 +2910,7 @@
         "freeze_instance: explicit true schema retains arbitrary JSON",
         "modify_instance: explicit true schema retains arbitrary JSON",
         "modify_instance: explicit true schema retains arbitrary JSON",
+        "reconcile_creation: explicit true schema retains arbitrary JSON",
         "remove_device: explicit true schema retains arbitrary JSON",
         "remove_device: explicit true schema retains arbitrary JSON",
         "remove_device: explicit true schema retains arbitrary JSON",
@@ -2932,7 +2932,7 @@
       ]
     },
     "json_render": {
-      "schema_hash": "66f3d52e82994d452ebccec74bb7471e081673e4774f2c6f2d5526ad42944e61",
+      "schema_hash": "432df833c5d794c82dbf98db69855214e6594ca87ae8f174c58812ef07e84ec0",
       "state": true,
       "public_state": true,
       "methods": [
@@ -2962,6 +2962,8 @@
       ],
       "unsupported": [],
       "dynamic_slots": [
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
         "State: explicit true schema retains arbitrary JSON",
         "State: explicit true schema retains arbitrary JSON",
         "State: explicit true schema retains arbitrary JSON",
@@ -3061,33 +3063,15 @@
       ]
     },
     "large_language_model": {
-      "schema_hash": "1af93bac3373c8ea0515849638a5a3082c074bc39f0954881529b4b8d76aca65",
+      "schema_hash": "c5010c681bcf6681b402afdd445f1fc6b9574859064501ea6a586ef0c9cbf608",
       "state": true,
       "public_state": true,
       "methods": [
-        "generate",
-        "get_config",
-        "get_provider",
-        "list_models",
-        "list_providers",
-        "set_provider",
-        "stream_generate",
-        "update_config"
+        "stream_generate"
       ],
       "unsupported": [],
       "dynamic_slots": [
-        "State: explicit true schema retains arbitrary JSON",
-        "generate: explicit true schema retains arbitrary JSON",
-        "generate: unconstrained authored schema retains arbitrary JSON",
-        "generate: explicit true schema retains arbitrary JSON",
-        "get_provider: explicit true schema retains arbitrary JSON",
-        "list_models: unconstrained authored schema retains arbitrary JSON",
-        "list_models: explicit true schema retains arbitrary JSON",
-        "list_models: explicit true schema retains arbitrary JSON",
-        "list_providers: explicit true schema retains arbitrary JSON",
-        "list_providers: explicit true schema retains arbitrary JSON",
-        "set_provider: explicit true schema retains arbitrary JSON",
-        "update_config: explicit true schema retains arbitrary JSON"
+        "State: explicit true schema retains arbitrary JSON"
       ]
     },
     "login1": {
@@ -3183,7 +3167,7 @@
       ]
     },
     "mail_server": {
-      "schema_hash": "28073849a39709dadc2385c7c65a3a9f6de5c14812f3e44d821f1141e2f8694c",
+      "schema_hash": "e94e868a3a473d1098aae4c4f1e8de9e99c79ecf757f76735cc79667fae65c01",
       "state": true,
       "public_state": true,
       "methods": [
@@ -3303,7 +3287,7 @@
       ]
     },
     "model_registry": {
-      "schema_hash": "c31074ce361b0800f25fa6e937c54a0ae6d285fbeed3d53567859e26f68e831f",
+      "schema_hash": "f33b07353767bf3b6e9fac8027b9374ae17ad179f5e6f5b1be33b0b828c56429",
       "state": true,
       "public_state": true,
       "methods": [
@@ -3516,7 +3500,7 @@
       ]
     },
     "openflow": {
-      "schema_hash": "66ff8ff4454713191d4139dabeb1a8b41eeacfb4f22c7fa32f3a4c0a92dd1bd5",
+      "schema_hash": "acd6e52ff5abc6a8651be486513c166798cb1f49baae90e362a20ba54fc30db3",
       "state": true,
       "public_state": true,
       "methods": [
@@ -3575,10 +3559,11 @@
       ]
     },
     "oscal_subid_registry": {
-      "schema_hash": "1359e53ac08479e6cc7a845cc7645ed9337668f82f9dff7be0ab016af6438661",
+      "schema_hash": "becaba4461708b6b814934dcdbbc4fbfc0a12eeaa1ac9404e683a26fcc862026",
       "state": true,
       "public_state": true,
       "methods": [
+        "assess_fields",
         "export",
         "list_by_category",
         "lookup",
@@ -3958,6 +3943,30 @@
         "upsert_points: explicit true schema retains arbitrary JSON"
       ]
     },
+    "routing_decision": {
+      "schema_hash": "e8c810cd666d3189e441bc8d41300eac6a84780f580ca0ce217ab691c85038b6",
+      "state": true,
+      "public_state": true,
+      "methods": [
+        "get_decision",
+        "list_decisions",
+        "record_shadow_decision"
+      ],
+      "unsupported": [],
+      "dynamic_slots": [
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON"
+      ]
+    },
     "rovs_commands": {
       "schema_hash": "ab7ea992f8a5c38c4e1ee692700f687df69d015cd9f6133926370bdbed95714f",
       "state": true,
@@ -4049,6 +4058,30 @@
         "render_schema: explicit true schema retains arbitrary JSON"
       ]
     },
+    "schema_tag_registry": {
+      "schema_hash": "efda4ac1ab2e6a22b3d1498f83dd2e99b785cd705ed1941e4677b91a60b4372a",
+      "state": false,
+      "public_state": true,
+      "methods": [
+        "author_policy",
+        "get_policy",
+        "get_protected_method_marker",
+        "get_tag",
+        "list_policies",
+        "list_tags",
+        "register_tag_semantics",
+        "revoke_policy",
+        "set_protected_method_marker",
+        "update_policy"
+      ],
+      "unsupported": [
+        {
+          "subject": "State",
+          "reason": "unsupported/custom type unsupported_context_dependent_state_one_of"
+        }
+      ],
+      "dynamic_slots": []
+    },
     "service": {
       "schema_hash": "eac528bb81f8a2bf2b5217478c480dde11c25151dd00fa5e718acbc095e261e3",
       "state": true,
@@ -4104,17 +4137,19 @@
       ]
     },
     "snowball": {
-      "schema_hash": "76c360ab54448d4906411863e6fd6b7942b0b76660a5020c66c728d7828fa8fc",
+      "schema_hash": "007f4cae9e83acfbaf1cbb6d91538ca6cc35262ca584ad34190317e1eea5b92d",
       "state": true,
       "public_state": true,
       "methods": [
         "create_snapshot",
         "get_current_state",
+        "get_projector_stats",
         "get_snapshot",
         "get_stats",
         "list_snapshots",
         "query_events",
         "rollback",
+        "search_own_events",
         "set_retention",
         "verify_chain"
       ],
@@ -4128,6 +4163,8 @@
         "create_snapshot: explicit true schema retains arbitrary JSON",
         "get_current_state: explicit true schema retains arbitrary JSON",
         "get_current_state: explicit true schema retains arbitrary JSON",
+        "get_projector_stats: explicit true schema retains arbitrary JSON",
+        "get_projector_stats: explicit true schema retains arbitrary JSON",
         "get_snapshot: explicit true schema retains arbitrary JSON",
         "get_snapshot: explicit true schema retains arbitrary JSON",
         "get_snapshot: explicit true schema retains arbitrary JSON",
@@ -4141,6 +4178,9 @@
         "query_events: explicit true schema retains arbitrary JSON",
         "rollback: unconstrained authored schema retains arbitrary JSON",
         "rollback: explicit true schema retains arbitrary JSON",
+        "search_own_events: explicit true schema retains arbitrary JSON",
+        "search_own_events: explicit true schema retains arbitrary JSON",
+        "search_own_events: explicit true schema retains arbitrary JSON",
         "set_retention: explicit true schema retains arbitrary JSON",
         "set_retention: explicit true schema retains arbitrary JSON",
         "verify_chain: explicit true schema retains arbitrary JSON",
@@ -4172,17 +4212,37 @@
         "update: explicit true schema retains arbitrary JSON"
       ]
     },
+    "tched_fs": {
+      "schema_hash": "78d2d0d8f2dba5255a006348eb23c21e38758310bfc1a0d8222bf1867e5a711d",
+      "state": true,
+      "public_state": true,
+      "methods": [
+        "get_protocol",
+        "get_receipt"
+      ],
+      "unsupported": [
+        {
+          "subject": "get_contract",
+          "reason": "allOf intersections are reported rather than inferred"
+        }
+      ],
+      "dynamic_slots": [
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "State: explicit true schema retains arbitrary JSON",
+        "PublicState: explicit true schema retains arbitrary JSON",
+        "PublicState: explicit true schema retains arbitrary JSON"
+      ]
+    },
     "tched_router": {
-      "schema_hash": "3a6634173a4e616ee4b39d50f5906de2a89be1b69d7ff2404335b9c6c62663a7",
+      "schema_hash": "60345942852e5b8fa0ee3d87d5ca578b5edd2d4e113964008cffab682a5d533e",
       "state": false,
       "public_state": true,
       "methods": [
         "Chat",
         "GetConfig",
-        "GetConfigSchema",
         "GetMcpConfig",
         "GetModelRoutes",
-        "GetProviderCatalog",
         "GetRouter",
         "GetState",
         "GetStructuredOutput",
@@ -4219,7 +4279,7 @@
       "unsupported": [
         {
           "subject": "State",
-          "reason": "generated source exceeds 64 MiB"
+          "reason": "generated source exceeds 128 MiB"
         }
       ],
       "dynamic_slots": [
@@ -4232,9 +4292,6 @@
         "GetConfig: explicit true schema retains arbitrary JSON",
         "GetConfig: unconstrained authored schema retains arbitrary JSON",
         "GetConfig: explicit true schema retains arbitrary JSON",
-        "GetConfigSchema: explicit true schema retains arbitrary JSON",
-        "GetConfigSchema: unconstrained authored schema retains arbitrary JSON",
-        "GetConfigSchema: explicit true schema retains arbitrary JSON",
         "GetMcpConfig: explicit true schema retains arbitrary JSON",
         "GetMcpConfig: unconstrained authored schema retains arbitrary JSON",
         "GetMcpConfig: explicit true schema retains arbitrary JSON",
@@ -4242,9 +4299,6 @@
         "GetModelRoutes: unconstrained authored schema retains arbitrary JSON",
         "GetModelRoutes: explicit true schema retains arbitrary JSON",
         "GetModelRoutes: explicit true schema retains arbitrary JSON",
-        "GetProviderCatalog: explicit true schema retains arbitrary JSON",
-        "GetProviderCatalog: explicit true schema retains arbitrary JSON",
-        "GetProviderCatalog: explicit true schema retains arbitrary JSON",
         "GetRouter: explicit true schema retains arbitrary JSON",
         "GetRouter: unconstrained authored schema retains arbitrary JSON",
         "GetRouter: explicit true schema retains arbitrary JSON",
@@ -4300,26 +4354,604 @@
         "config_set: explicit true schema retains arbitrary JSON"
       ]
     },
-    "threetched_fs": {
-      "schema_hash": "67c6dc94f8d8df3db4dced188ed07e0f3d0775f144c22625afa41b7cb05b3c79",
+    "threetched": {
+      "schema_hash": "5e27757d2c046632f9dcda0866fd58a6a0d38b14fc96ba19625f61166975149c",
       "state": true,
       "public_state": true,
-      "methods": [
-        "get_protocol",
-        "get_receipt"
-      ],
+      "methods": [],
       "unsupported": [
         {
-          "subject": "get_contract",
+          "subject": "acp",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "agent",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "agents.create",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "agents.delete",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "agents.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "agents.rename",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.email-login",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.login",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.logout",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.paste-redirect",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.paste-token",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.refresh",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.setup-token",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.status",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "auth.use",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "browse",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channel.add",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channel.bind-telegram",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channel.doctor",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channel.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channel.remove",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channel.send",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channel.start",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channels.create",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channels.delete",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channels.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "channels.rename",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "completions",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.docs",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.generate",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.get",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.init",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.migrate",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.patch",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.schema",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "config.set",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.add",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.add-at",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.add-every",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.once",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.pause",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.remove",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.resume",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "cron.update",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "daemon",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "desktop",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "doctor",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "doctor.models",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "doctor.traces",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "doctor.update-context-windows",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "estop",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "estop.resume",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "estop.status",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "eval.run",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "gateway",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "gateway.get-paircode",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "gateway.restart",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "gateway.start",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "hardware.discover",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "hardware.info",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "hardware.introspect",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "integrations.info",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "locales.fetch",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "memory.clear",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "memory.get",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "memory.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "memory.reindex",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "memory.stats",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "migrate.openclaw",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "models.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "models.refresh",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "models.set",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "models.status",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.agents",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.channels",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.cron",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.embedding_routes",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.hardware",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.knowledge_bundles",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.mcp",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.mcp.servers",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.mcp_bundles",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.memory",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.model_routes",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.onboard_state",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.peer_groups",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.providers.models",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.providers.transcription",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.providers.tts",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.risk_profiles",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.runtime_profiles",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.skill_bundles",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.skills",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.storage",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "onboard.tunnel",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "peripheral.add",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "peripheral.flash",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "peripheral.flash-nucleo",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "peripheral.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "peripheral.setup-uno-q",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "plugin.info",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "plugin.install",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "plugin.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "plugin.migrate",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "plugin.remove",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "plugin.search",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "providers",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "providers.create",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "providers.delete",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "providers.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "providers.rename",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "quickstart",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "security.status",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "self-test",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "service.install",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "service.logs",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "service.restart",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "service.start",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "service.status",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "service.stop",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "service.uninstall",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.add",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.audit",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.bundle.add",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.bundle.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.bundle.remove",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.bundle.rename",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.bundle.show",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.edit",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.install",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.remove",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "skills.test",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.approve",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.delete",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.deny",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.graph",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.list",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.pending",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.show",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "sop.validate",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "status",
+          "reason": "allOf intersections are reported rather than inferred"
+        },
+        {
+          "subject": "update",
           "reason": "allOf intersections are reported rather than inferred"
         }
       ],
       "dynamic_slots": [
         "State: explicit true schema retains arbitrary JSON",
-        "State: explicit true schema retains arbitrary JSON",
-        "State: explicit true schema retains arbitrary JSON",
-        "PublicState: explicit true schema retains arbitrary JSON",
-        "PublicState: explicit true schema retains arbitrary JSON"
+        "State: explicit true schema retains arbitrary JSON"
       ]
     },
     "unix_socket": {
@@ -4358,7 +4990,7 @@
       ]
     },
     "web_ui": {
-      "schema_hash": "ef2926f725b748fc1eaa7082b3d85e31d3baa1c625a051e75613b6417224b1cf",
+      "schema_hash": "3eef636a185a51333188a9d253cfd06dda962b1e0fbb92fcb8df750467281e7e",
       "state": true,
       "public_state": true,
       "methods": [

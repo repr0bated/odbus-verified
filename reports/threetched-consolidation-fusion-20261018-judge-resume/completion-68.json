@@ -1,0 +1,63 @@
+{
+  "request": 68,
+  "started": "2026-10-18T22:00:36.222138+00:00",
+  "finished": "2026-10-18T22:00:56.586187+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0bc888fe2813c136016ad54187354087d08dda80da9443d644",
+    "created": 1792360839,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reconciling actual plugin owners\",\"input\":\"[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/antigravity.rs#E6B2]\\nPUT 6.=6:\\n+//! `tched_router`) \u2014 this plugin only holds `llm_plugin` /\\nPUT 639.=639:\\n+    \\\"tched_router\\\".to_string()\\nPUT 660.=660:\\n+    /// Plugin that owns the model catalog (default tched_router).\\nPUT 663.=664:\\n+        description = \\\"Catalog plugin Antigravity delegates to for Gemini models (default tched_router).\\\",\\n+        example = &\\\"tched_router\\\",\\nPUT 789.=789:\\n+        \\\"Google Antigravity provider \u2014 sanitized native auth, applied safety policy, and local response usage; model catalog delegated to tched_router\\\",\\nPUT 812.=812:\\n+    // llm_plugin (default tched_router) via provider_route.\\n[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/antigravity_chat.rs#C43D]\\nPUT 73.=73:\\n+    \\\"tched_router\\\".to_string()\\nPUT 83.=83:\\n+/// `provider_route` (default `tched_router` / `gemini`). This plugin\\nPUT 98.=98:\\n+    /// Plugin that owns the model catalog (default tched_router).\\nPUT 101.=102:\\n+        description = \\\"Generation/catalog plugin Antigravity delegates to for models (default tched_router). Catalog lives there; this plugin holds no Gemini model list.\\\",\\n+        example = &\\\"tched_router\\\",\\nPUT 199.=199:\\n+        \\\"Antigravity Chat \u2014 native Google credential and OpenAI-compatible bridge control; model catalog delegated to tched_router\\\",\\n[/srv/git/odbus-verified/crates/op-grpc-bridge/src/antigravity_dispatch.rs#84A6]\\nPUT 36.=36:\\n+        llm_plugin: \\\"tched_router\\\".to_string(),\\nPUT 74.=74:\\n+        llm_plugin: \\\"tched_router\\\".to_string(),\\n[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/gemma_brain.rs#4390]\\nPUT 6.=9:\\n+//! surface; its retained taxonomy and private UI workspace methods are local,\\n+//! not inference wrappers. Model selection and inference belong to\\n+//! [`super::tched_router`]; \\\"gemma\\\" is a brain brand, not a model binding.\\nPUT 179.=179:\\n+        \\\"Gemma cognitive brain: local tag taxonomy, subid classification, reasoning perspectives, and private JSON-render UI workspace\\\",\\nCUT 197.=202\\nPUT 254.=254:\\n+    schema.dependencies = vec![\\\"json_render\\\".into()];\\nPUT 260.=260:\\n+            description: \\\"Grants: classify, register_tag, analyze_intent and canonical private UI workspace mutations/recovery.\\\".to_string(),\\n[/srv/git/odbus-verified/crates/op-grpc-bridge/src/owned_method_task_tests.rs#6137]\\nPUT 201.=203:\\n+        spawn(operation(\\\"large_language_model\\\", \\\"stream_generate\\\"), async {\\n+            let target = spawn(operation(\\\"tched_router\\\", \\\"start_generation\\\"), async {\\n+                Ok(serde_json::json!({\\\"job_id\\\":\\\"fixture\\\"}))\\nPUT 214.=214:\\n+    assert_eq!(result[\\\"result\\\"][\\\"job_id\\\"], \\\"fixture\\\");\"}",
+                "name": "edit"
+              },
+              "id": "call_12FV3d9sO9XQbPNGpie2bNRu",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1762,
+      "prompt_tokens": 335681,
+      "total_tokens": 337443,
+      "completion_tokens_details": {
+        "reasoning_tokens": 268
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 216610
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:56.584832+00:00",
+  "stream_chunks": 4
+}

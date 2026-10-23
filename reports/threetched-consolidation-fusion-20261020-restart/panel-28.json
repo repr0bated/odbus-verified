@@ -1,0 +1,81 @@
+{
+  "status": "ok",
+  "query": "Resume consolidation delivery evidence decision, advisory only. Exact authoritative evidence: recovered Hermes state.db messages3848 workspace GNU release exit0;3954 isolated seal/typed-specialize/typed-export exit0;3957 baseline74 plugins1388methods to72plugins1357methods,33 removals+2 unrelated provisioning additions. Current catalog and generated report hash6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c gen72. Original isolated scratch catalog now absent, full receipts retained in DB. Existing optional generated example imports nonexistent plugin_f_threetched_5ffs; generator supports actual plugin_f_tched_5ffs but prior command omitted --use-example. Executing existing generator once with matching catalog and --use-example, no tests/checks/fmt/Cargo. No live actions authorized; separate owner no-restore hold. Need final truthful delivery after docs/report updates: distinguish historical build/seal/deploy receipts vs current readiness, coverage1182 generated+175unsupported methods+11unsupported states. Assess whether any obligation requires rebuilding unchanged production artifacts or resealing solely due stale report; identify evidence caveats without expanding scope or suggesting unauthorized checks.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**No rebuild or reseal is required solely to refresh stale delivery documentation or regenerate the optional example.** The supplied evidence supports historical build/seal completion, not unconditional current release readiness.\n\n### Evidence and limits\n\n- Hermes message **3848** records the GNU workspace release build exiting **0**.\n- Message **3954** records isolated sealing, `typed-specialize`, and `typed-export` exiting **0**.\n- Message **3957** records **74 \u2192 72 plugins** and **1,388 \u2192 1,357 methods**: **33 consolidation removals plus two unrelated provisioning additions**.\n- Current catalog and generated report share hash `6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c`, generation **72**.\n- Generated method coverage reconciles exactly: **1,182 generated + 175 unsupported = 1,357**. Report **11 unsupported states** separately; do not describe generation as complete coverage.\n- The original isolated scratch catalog is absent. Retained database receipts establish historical execution but cannot supply that missing release directory or independently reproduce its contents.\n- These facts contain **no deployment receipt**. Any separately recovered historical deployment receipt must identify its release and must not be presented as evidence of present activation or authorization.\n\n### Optional example correction\n\nThe stale import `plugin_f_threetched_5ffs` is a generated-example defect; the generator supports `plugin_f_tched_5ffs`. Run the existing generator once against the matching catalog with `--use-example`, as specified.\n\nUntil its completion receipt exists, describe that correction as **pending**, not executed. After successful generation, describe the example as **regenerated, not compiled or tested**. Historical build success does not cover this subsequently changed example. This does not itself require rebuilding unchanged production artifacts.\n\n### Delivery decision\n\nUpdate the report and shared handoff to supersede the earlier \u201cbuild/seal blocked\u201d conclusion with the recovered receipts, retaining their provenance. Record the missing scratch catalog, generation coverage exclusions, and the optional example\u2019s actual execution result.\n\nUse this status distinction:\n\n> Consolidation source implemented; historical GNU workspace build and isolated seal/export succeeded according to recovered Hermes receipts. Current catalog/report hash agreement is established. Original isolated catalog directory is unavailable. Optional example regeneration status is recorded separately. Current deployable artifact-set provenance is not established by catalog/report agreement alone. Tests, checks, formatting and new Cargo execution were not run. No live action or restoration performed; owner no-restore hold remains in force.\n\nDo not rebuild, reseal, restore, or activate merely to make the report appear current. A changed production input or an explicitly requested new release preparation would be a separate reason\u2014not stale prose or the optional example."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<read path=\"/srv/git/odbus-verified/HANDOFF.md\" />\n<read path=\"/srv/git/odbus-verified/SIGNALS.md\" />\n<read path=\"/srv/git/odbus-verified/WISHLIST.md\" />\n<bash command=\"cd /srv/git/odbus-verified && git status --short\" />\n<bash command=\"cd /srv/git/odbus-verified && git log --oneline -5\" />"
+    }
+  ],
+  "analysis": {
+    "consensus": [],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Addresses the delivery decision, historical receipt provenance, current readiness limits, coverage exclusions, optional example regeneration, and the no-live-action boundary."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Provides only proposed read and shell calls, with no results or substantive assessment. These do not establish inspection, execution, or agreement with the other response."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Stale documentation and regeneration of an optional example do not independently require rebuilding unchanged production artifacts or resealing."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Recovered messages 3848, 3954, and 3957 support historical build, seal, and generation success; catalog/report hash agreement alone does not establish a currently deployable, provenance-matched artifact set."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The catalog delta reconciles as 1,388 minus 33 consolidation removals plus two unrelated provisioning additions, yielding 1,357 methods. Coverage also reconciles: 1,182 generated plus 175 unsupported methods; 11 unsupported states are a separate measure."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Retained database receipts establish historical execution but do not replace the absent isolated catalog directory."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Successful example regeneration should be reported as regenerated, not compiled or tested; the historical build does not cover that subsequent change."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The supplied evidence contains no specific deployment receipt. Any separately recovered historical deployment must be tied to its release and distinguished from current activation, readiness, and authorization."
+      }
+    ],
+    "blind_spots": [
+      "Neither response supplies an actual completion receipt for the proposed generator invocation with --use-example; its outcome remains unestablished in the panel evidence.",
+      "Neither response establishes that HANDOFF, SIGNALS, WISHLIST, or the existing report has been updated; advisory recommendations are not completed delivery work.",
+      "The second response does not answer the advisory question and proposes repository inspection without explaining its necessity for the bounded evidence decision.",
+      "The supplied evidence does not identify the current catalog's full provenance relationship to the historical sealed artifact set beyond the stated catalog/report hash agreement."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "status": "ok",
+  "query": "For a source-only Rust API retirement limited to five owned files, remove GetProviderCatalog and GetConfigSchema schema/dispatch/output structs and exclusive capability while retaining ListProviders providers.read, observer usage by GetModelRoutes/ResolveRoute and shared ConfigSchema state descriptor. Migrate behavioral provider caller to ListProviders preserving content and sibling-state assertions. What key source-only pitfalls should I check? No builds/tests or live operations allowed.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Key source-only pitfalls to check\u2014not claims of completed inspection:\n\n- **Remove declarations and dispatch together.** Trace both names through schema registration, dispatch branches, fallback handling, imports and output types. In particular, the brief identifies `GetConfigSchema` as already retired in the engine but still present in schema/fallback code; avoid leaving that split contract.\n- **Distinguish methods from shared state.** Retiring `GetConfigSchema` does **not** retire the shared `ConfigSchema` state descriptor. Do not mechanically delete similarly named state fields, publication logic or descriptor references.\n- **Preserve observer dependencies.** Keep provider/config observation helpers used by `GetModelRoutes` and `ResolveRoute`. A helper previously reached through a retired accessor is not necessarily exclusive to that accessor.\n- **Delete only exclusive authority.** Remove the capability belonging solely to the retired operation, after checking its references. Preserve `ListProviders`\u2019 exact `providers.read` requirement; neither remove it nor add the retired capability as an alternative. Leave grants unchanged.\n- **Prove output types are exclusive.** Search each output struct\u2019s symbol references, including re-exports, serialization wrappers and generated-contract inputs. Retire only types whose remaining consumers disappear with these methods.\n- **Migrate the behavioral caller, not just its spelling.** Use `ListProviders`\u2019 actual response shape and preserve the original provider-content assertions. Retain assertions that publication preserves sibling state\u2014particularly durable assignments or other fields asserted by the existing caller. Do not weaken the test to merely accepting a successful response.\n- **Keep schema discovery canonical.** Any remaining schema-discovery consumer must use the sealed `native_config` authority identified in the brief, not a new locally authored replacement or live fallback.\n- **Respect the five-file boundary.** Search references beyond the owned files without editing them. A required caller or registration outside those files is a concrete scope dependency to report, not permission to leave an alias, suppress a warning or silently expand ownership.\n- **Separate source retirement from catalog retirement.** Existing sealed catalogs and generated outputs can still advertise the old methods. Do not hand-edit those artifacts or claim removal from the running surface.\n\nWith builds, tests and live operations prohibited, the defensible result is **source changes plus reference evidence**, with compilation, behavioral execution, regeneration, sealing and deployment explicitly unverified."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Key source-only pitfalls for this retirement\n\n**1. Schema/dispatch/output struct removal is not just deletion.**\n- `GetProviderCatalog` and `GetConfigSchema` likely have entries in the router schema attachment (`tched_router.rs`), dispatch match arms (`tched_router_legacy_dispatch.rs` / `tched_config_dispatch.rs`), and typed output structs. A removed match arm with a surviving schema entry (or vice versa) compiles fine in some patterns (fallthrough `MutationError::NotFound`) but silently changes behavior \u2014 verify both sides die together.\n- Check for `#[allow(dead_code)]` or trait-default impls that keep orphaned output structs compiling after their last producer is gone. Dead output structs are the classic residue here.\n\n**2. Capability strings are exact-hash, not name-derived.**\n- The exclusive capabilities are `cap.software.threetched.call.c<sha256(method-name)>@v1`-style hashed declarations (per the command_policy formula). Removing the *declaration* without removing *grant references* leaves dangling grants; removing grants without the declaration can break grant-loading. Neither is a wildcard expansion, but a stale grant entry referencing a now-undefined capability may fail at seal time, not compile time \u2014 so grep for the literal capability strings, not just method names.\n- `ListProviders`' `providers.read` capability must not silently absorb GetProviderCatalog's broader/different grant surface. If the behavioral caller previously held a catalog-specific grant, migrating the caller to `ListProviders` requires the caller to actually hold `providers.read` \u2014 verify the grant, don't assume method-name proximity implies admission.\n\n**3. Observer usage retention (GetModelRoutes / ResolveRoute).**\n- These consume the provider-catalog *observer/helper*, not the method. Confirm they call a shared function/type, not the `GetProviderCatalog` dispatch path or its output struct. If they destructure the output struct, you must refactor them onto the shared state descriptor before deleting the struct \u2014 otherwise you're deleting a dependency, not a duplicate.\n- The shared `ConfigSchema` state descriptor: confirm it's genuinely shared (used by retained `config_get`/`GetConfig` masking paths) and not only reachable through the two removed methods. \"Shared\" per the brief means the descriptor stays; the *method* wrappers go.\n\n**4. Behavioral provider caller migration to ListProviders.**\n- Content parity: the brief says `model_registry.native_list_providers` applies agent-owned-profile/selectability filtering \u2014 if the migrating caller had similar filtering, `ListProviders` typed output must preserve it; a bare passthrough is a behavior change.\n- Sibling-state assertions: the caller's assertions on provider state (assignments, selectability) must be re-pointed at ListProviders' output shape. If output struct field names differ, mechanical rename is wrong \u2014 map fields explicitly and keep assertion semantics (e.g., \"provider present and selectable\" vs \"provider listed\").\n- Don't leave a compatibility alias method that re-exports ListProviders under the old name \u2014 the brief forbids that establishing a second authored surface.\n\n**5. Five-file scope discipline.**\n- Registry/module lists (`mod.rs`, plugin method registry arrays) are the usual sixth file people forget. If your five files don't include the registry that enumerates method names for schema generation, the removed methods will still be *declared* while undispatchable \u2014 a fake-success/NotFound trap.\n- Generated surfaces: bridge generated contracts regenerate via build script; since no builds are allowed, note explicitly in HANDOFF that generated views are now stale relative to source and must regenerate before any seal. Do not hand-edit generated files to \"match.\"\n\n**6. Documentation/consistency residue.**\n- SIGNALS/HANDOFF/WISHLIST: the prior addendum already lists `GetProviderCatalog` as \"next bounded removal candidate\" and `GetConfigSchema` as \"independently actionable next removal\" \u2014 update those entries to implemented-source status so a later agent doesn't re-plan it.\n- The overlap map/report files reference these methods; per repo rules reports are evidence records \u2014 leave dated reports alone, but note the delta in HANDOFF (expected router count 38\u219236 if both land).\n\n**7. No-build verification limits.**\n- Without `cargo check`, you cannot confirm the removal compiles. Mitigate source-only: grep for every removed identifier (method name, struct name, capability literal, output type) across the workspace including the sibling `/srv/git/3tched.com` UI (`src/chat/*.ts` may reference `GetProviderCatalog` via the door adapter \u2014 the brief says UI typed consumers were unchanged, but re-grep since this is a new removal). Any hit outside your five files is either a caller to migrate or a blocker to record.\n- Record in HANDOFF: source-only, unbuilt, unsealed, undeployed; expected catalog delta now 72 plugins / 1,363 methods (two more router methods removed than the addendum's 1,365 arithmetic) \u2014 as expectation, not receipt.\n\n**Highest-risk items:** dangling hashed-capability grant references, and GetModelRoutes/ResolveRoute secretly depending on the removed output struct rather than the shared descriptor. Grep both before declaring the slice coherent."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "Here are the key source-only pitfalls to check when retiring `GetProviderCatalog` and `GetConfigSchema` while migrating to `ListProviders` within a strict five-file boundary:\n\n### 1. Exhaustive Pattern Matching & Enum Drift\nRust requires all `match` arms to be exhaustive. Removing `GetProviderCatalog` and `GetConfigSchema` from request/response enums, dispatch tables, or `tonic` service definitions will immediately break compilation in the remaining files.\n* **Check:** Scan all `match` statements on the removed types. Ensure they are either fully removed, replaced with a wildcard `_` (if semantically safe), or explicitly handled via a new unified variant. Do not leave dangling `match` arms that reference deleted structs.\n\n### 2. Capability/Grant String or Enum Consistency\n\"Exclusive capability\" implies a capability registry, middleware check, or string constant. If it's a hardcoded string, ensure no other module (even outside the five files) references it for admission or logging. If it's an enum variant, removing it breaks the enum definition.\n* **Check:** Verify that `ListProviders`'s capability (`providers.read`) is correctly wired to the new caller. Ensure no residual capability checks, policy maps, or middleware guards still reference the retired capability strings/variants. A dangling reference will cause a compile error or a silent policy bypass if the check is skipped.\n\n### 3. Type Shape Mismatch in Caller Migration\nMigrating the behavioral provider caller to `ListProviders` requires exact alignment of input/output types. `GetProviderCatalog` likely returned a specific catalog structure, while `ListProviders` returns a list. The caller's \"sibling-state assertions\" (e.g., `assert!`, `expect`, or field-access checks) will fail at runtime if the new shape doesn't match.\n* **Check:** Compare the exact field names, optionality, and nesting of `ListProviders`'s response against the caller's assertion conditions. If `ListProviders` returns `Vec<Provider>` instead of a keyed map, update the caller's destructuring and assertion logic to match the new shape. Do not assume field names are interchangeable.\n\n### 4. Observer State Ownership & Borrow Conflicts\n`GetModelRoutes` and `ResolveRoute` use `GetProviderCatalog` as an observer. If they call a function or read a state variable tied to the retired method, that state must be migrated to `ListProviders` or a shared container. Rust's borrow checker will catch compile-time issues, but logical pitfalls remain.\n* **Check:** Ensure the observer files no longer import or reference the removed state descriptors. If they read from a shared `LazyLock` or `Arc`, verify that `ListProviders` updates the same state path. A mismatch here causes stale reads or `Deref`/`Borrow` compilation errors.\n\n### 5. Shared `ConfigSchema` Descriptor Lifetimes\n`ConfigSchema` is retained as a shared state descriptor. If it's a `static`, `const`, or `LazyLock`, ensure the five files don't create circular dependencies or borrow conflicts when migrating observer usage.\n* **Check:** Verify that `ConfigSchema` is not behind a feature flag or conditional compilation that might be inadvertently removed. Ensure all imports point to the retained descriptor, and that no file attempts to re-initialize or shadow it.\n\n### 6. Macro-Generated Code & Re-exports\nIf the code uses `tonic`, `serde`, or custom procedural macros, removing structs may leave behind generated code that references them. Additionally, check `mod.rs` or central type files: if the five files rely on re-exports, removing the re-export breaks the build.\n* **Check:** Ensure all `use` statements are updated to point to retained types. If `tonic::Service` or `serde` derives are involved, verify that the generated `impl` blocks don't reference removed fields or methods. Re-exports in `mod.rs` must be cleaned up to avoid \"unused import\" warnings or hidden dependency breaks.\n\n### 7. Async Return Type & Error Handling Changes\nIf the provider caller is an `async fn`, changing the underlying method from `GetProviderCatalog` to `ListProviders` changes the `impl Future` output type. Rust requires explicit `BoxFuture` or `Pin<Box<dyn Future>>` if the return type changes dynamically, or simply updating the `async fn` signature.\n* **Check:** Ensure the caller's `await` and error handling (`?` operator) match the new method's `Result` type. If `ListProviders` returns a different error kind (e.g., `io::Error` vs. a custom `ProviderError`), update the `?` propagation or `match` arms accordingly.\n\n### 8. Five-File Constraint & Hidden Dependencies\nThe constraint limits changes to five files. A major pitfall is assuming the change is isolated. If a type is used in a sixth file (e.g., a test harness, a bridge adapter, or a shared config module), the retirement will fail to compile.\n* **Check:** Perform a global grep for the removed struct/method names across the repository. If any references exist outside the five files, explicitly document the necessary sixth-file change. Do not silently leave broken imports or dangling references.\n\n### Summary Recommendation\nFocus first on **enum exhaustiveness** and **capability string/enum consistency**, as these will cause immediate compile failures. Then verify **type shape alignment** for the caller migration to preserve sibling-state assertions. Finally, audit **re-exports and macro-generated code** to ensure the five-file boundary doesn't leak broken references. Since builds are not allowed, treat compiler errors as the primary verification mechanism; any source change that leaves a dangling reference, mismatched type, or non-exhaustive match will fail at the first build attempt."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Remove both retired methods consistently across schema declarations, dispatch paths, output types, imports and references.",
+      "Preserve ListProviders and its providers.read admission requirement.",
+      "Retain shared observer dependencies and the ConfigSchema state descriptor rather than deleting them by name association.",
+      "Migrate the behavioral caller using ListProviders' actual response shape while preserving provider-content and sibling-state assertions.",
+      "Search beyond the five owned files for dependencies, but report ownership conflicts rather than silently expanding edits.",
+      "Reference inspection cannot establish successful compilation or behavioral execution."
+    ],
+    "contradictions": [
+      {
+        "topic": "Capability authority for the retired router methods",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Identify and remove only the exclusive capability, preserve providers.read, and leave grants unchanged."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Asserts that the retired methods use hashed threetched CLI capabilities and suggests removing grant references. The supplied brief establishes that formula for native CLI commands, not these retained typed router methods."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Treats the capability representation as unknown and recommends tracing strings or enum variants, without establishing the actual declaration."
+          }
+        ]
+      },
+      {
+        "topic": "Preserving shared observer state versus migrating it",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Preserve existing observation helpers used by GetModelRoutes and ResolveRoute; accessor retirement does not imply state retirement."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Check whether retained consumers depend on the removed output struct and refactor only if that dependency actually exists."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Suggests migrating state to ListProviders or a shared container and removing references to removed state descriptors, which risks exceeding the requested accessor-only retirement."
+          }
+        ]
+      },
+      {
+        "topic": "Verification under the no-build restriction",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Explicitly limits evidence to source changes and reference inspection, with compilation and execution unverified."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Acknowledges that compilation cannot be confirmed and recommends recording unbuilt, unsealed and undeployed status."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Concludes that compiler errors should be the primary verification mechanism despite builds being prohibited, contradicting the allowed source-only boundary."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Distinguish source retirement from generated, sealed and deployed surfaces; do not hand-edit generated artifacts or claim live removal."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Identify the existing GetConfigSchema engine/schema/fallback inconsistency as a concrete retirement concern."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Addresses historical handoff wording and expected catalog counts, but its arithmetic depends on an older baseline and its proposed documentation edits may exceed this worker's ownership."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Discusses enum exhaustiveness, conditional compilation and async return types, but these are hypothetical mechanisms rather than established features of the five-file slice."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Names sealed native_config as the replacement schema-discovery authority and warns against creating a new locally authored or live fallback."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Notes that dead-code allowances can conceal orphaned output structs after their producers are removed."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Highlights conditional compilation as a source-only dependency dimension to inspect, if present, when retaining the shared descriptor."
+      }
+    ],
+    "blind_spots": [
+      "No response inspected the current five files, so exact output-struct names, capability literals, response shapes and reference completeness remain unestablished.",
+      "None clearly separates removable live references from intentional historical evidence or negative assertions that retired methods are absent.",
+      "The responses do not consistently distinguish provider-content assertions on a returned payload from sibling-state preservation assertions on committed state; changing the former must not relocate or weaken the latter.",
+      "The panel does not consistently respect parent-owned shared-note integration; documentation recommendations should be handed to the parent rather than automatically expanding the five-file edit scope.",
+      "Several suggestions introduce unsupported implementation assumptions, including hashed router capabilities, tonic request enums, LazyLock state and dynamic future boxing.",
+      "No response explicitly warns that reference tooling must also avoid launching implicit Cargo checks under the source-only restriction."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

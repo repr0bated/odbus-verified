@@ -1,0 +1,103 @@
+{
+  "request": 50,
+  "started": "2026-10-18T21:59:12.844021+00:00",
+  "finished": "2026-10-18T21:59:22.610551+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-074d06a64cbb07dc016ad54133908c87d0a094d9f1f31621cd",
+    "created": 1792360755,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Tracing facade symbols and consumers\",\"pattern\":\"large_language_model|add_forwarded_method|GetProviderOutput|SelectionConfig\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src;/srv/git/odbus-verified/crates/op-grpc-bridge/tests;/srv/git/odbus-verified/crates/op-grpc-bridge/src;/srv/git/odbus-verified/deploy;/srv/git/odbus-verified/scripts;/srv/git/3tched.com/src\"}",
+                "name": "grep"
+              },
+              "id": "call_dZsHVp8dSMbFDvX0JIBIKjre",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading facade test remainder\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model_methods.rs:288-314\"}",
+                "name": "read"
+              },
+              "id": "call_ZInPK6WukfSvS4Ur3O5j3DnD",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Antigravity owner metadata\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/antigravity.rs:615-685\"}",
+                "name": "read"
+              },
+              "id": "call_eiufbwctPOZ95KLIvc2RTftA",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading chat owner metadata\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/antigravity_chat.rs:1-125\"}",
+                "name": "read"
+              },
+              "id": "call_WNYrP58ZBFTC4I3RPDYQ1zVC",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading bridge owner metadata\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/antigravity_dispatch.rs:1-110\"}",
+                "name": "read"
+              },
+              "id": "call_02hTGbZs4IebVvNdyltllSyK",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Gemma dependency metadata\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/gemma_brain.rs:1-65,225-275\"}",
+                "name": "read"
+              },
+              "id": "call_rXDnhQUYQ5zfLCVvzYxzQcsO",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 565,
+      "prompt_tokens": 167314,
+      "total_tokens": 167879,
+      "completion_tokens_details": {
+        "reasoning_tokens": 101
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 146930
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:22.607334+00:00",
+  "stream_chunks": 14
+}

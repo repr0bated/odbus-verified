@@ -1,0 +1,22 @@
+LATEST OWNER DIRECTION — supersedes broad diagnostic/finalization work:
+Owner: "why dont i implement what works and update [them so] they only have to do the upgrade overlay".
+
+Split ownership: the OWNER implements the known-working provisioning baseline and supplies its resulting interface/receipts. FUSION handles ONLY the upgrade overlay. Do not audit or redesign provisioning, recreate the identity/container, select new writable-member infrastructure, change Cozo provisioning proofs, or resume corpus packet processing. Do not claim the owner has already implemented the baseline. Prior saved findings are context, not current runtime receipts.
+
+Deliver a focused upgrade-overlay specification in analysis/upgrade-overlay.md and analysis/upgrade-overlay-receipt.json, not another broad diagnosis. No code/storage/service/runtime changes authorized. If the current source already implements a part, identify it rather than invent a parallel implementation.
+
+Required scope:
+- Separate Btrfs send/receive upgrade replica with retained ancestry and generation identity.
+- Read-only root composition, upgrade ABOVE inherited seed root. Ordinary private persistence remains separately bound; NEVER convert it into a writable overlay upper.
+- Existing sync-instance-upgrade.sh / bind-instance-root.sh / restore-chatbot-root / identity-roots workflow only. Specify necessary changes narrowly: mounted destination identity, received UUID/generation, layer order, existing idmap/security contract, stopped-instance activation, interrupted-receive/publication recovery, rollback to retained known-good generation and boot restoration without new device membership.
+- Preserve existing caller/identity/native UUID, immutable seed, inherited siblings and authoritative receipts. No new orchestrator or grants.
+- Owner's no-host-loops rule still applies. Provisioning/backing implementation belongs to the owner now; do not spend this run choosing it or assert an unproven no-image topology.
+- Define the MINIMUM baseline handoff interface needed for overlay integration (actual paths, mounted FSIDs/subvolume identities and read-only modes, retained upgrade baseline/ancestry, native UUID/stopped state, persistence mount location, authoritative baseline receipt). Reuse facts already established by current authoritative evidence; mark items awaiting the owner's implementation. Never force the baseline to conform to stale hardcoded old pool paths/FSIDs.
+- Separate work that can be specified now from exact integration values that await that handoff. Do not call pending owner implementation a newly discovered architectural blocker.
+
+Reuse recovery/{SourceChain,BackendProof,HistoricalScripts,NativeFeasibility}.md, existing analysis/proposed-changes.md and acknowledged seed correction panels. Consult only original source/history sections necessary to resolve overlay behavior. Full corpus remains available, but do not claim full semantic review. Do not regenerate exports, packets or completed reviews.
+
+EXECUTION/SPEND BOUNDARY:
+No task agents, workpools, completion() calls, native OpenAI requests, packet batches, provider probes, account resets, hidden HTTP model calls or routing/config changes. Use the configured single Hermes Fusion outer agent; do not solicit another panel simply to acknowledge this scope. Reuse existing JEV judgments; JEV is decision/evidence judge only, not routing. If an actually new consequential overlay decision needs adjudication, at most one small typed JEV call, recording its real result. Do not invent judge approval.
+
+Only write the two analysis/upgrade-overlay files. Do not edit HANDOFF/SIGNALS, other analysis deliverables, application source or owner provisioning work. Finish the useful bounded overlay specification and state actual verification and pending baseline values. No builds/tests/deployment/provisioning operations.

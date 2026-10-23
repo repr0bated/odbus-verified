@@ -1,12 +1,14 @@
 #!/bin/sh
-# The guest owns exactly one 3tchedFS mount; a host disk at this path is drift.
+# The guest owns two 3tchedFS mounts (3tchedfs, threetched); a host disk at either path is drift.
+mountpoint=${1:-/run/mount/3tchedfs}
+store=${2:-/usr/share/op-dbus/lungs-view}
 set -eu
 fail() { printf '3tchedfs-mount-preflight: %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || fail 'mount owner must be root'
 [ -c /dev/fuse ] || fail 'missing /dev/fuse'
 [ -S /run/3tched-lungs.socket ] || fail 'missing runtime lungs socket'
 [ -f /usr/share/op-dbus/lungs-catalog/.manifest.json ] || fail 'missing sealed catalog'
-[ -d /usr/share/op-dbus/lungs-view/objects ] || fail 'missing schema-only view'
+[ -d "$store/objects" ] || fail 'missing schema-only view'
 [ -d /usr/share/op-dbus/lungs-empty-state ] || fail 'missing empty state directory'
 # Incus's tmpfs starts with 1777 independently of the underlying /run mode.
 # Normalize only the known guest-owned tmpfs; refuse every unexpected shape.
@@ -17,7 +19,7 @@ case "$(stat -c %a -- /run)" in
     755) ;;
     *) exit 1 ;;
 esac
-for path in /run /run/mount /run/mount/3tchedfs; do
+for path in /run /run/mount "$mountpoint"; do
     if [ -e "$path" ] || [ -L "$path" ]; then
         [ -d "$path" ] && [ ! -L "$path" ] || exit 1
     else
@@ -25,8 +27,8 @@ for path in /run /run/mount /run/mount/3tchedfs; do
     fi
     [ "$(stat -c '%u:%g:%a' -- "$path")" = 0:0:755 ] || exit 1
 done
-[ -z "$(findmnt -rn -M /run/mount/3tchedfs -o FSTYPE)" ] || {
+[ -z "$(findmnt -rn -M "$mountpoint" -o FSTYPE)" ] || {
     echo '3tchedFS mountpoint is already occupied' >&2
     exit 1
 }
-[ -z "$(find /run/mount/3tchedfs -mindepth 1 -maxdepth 1 -print -quit)" ] || exit 1
+[ -z "$(find "$mountpoint" -mindepth 1 -maxdepth 1 -print -quit)" ] || exit 1

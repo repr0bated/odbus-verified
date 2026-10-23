@@ -50,7 +50,6 @@ mod event_chain_access;
 mod accountability_search;
 pub(crate) mod external_mcp_session;
 mod freedesktop_dispatch;
-mod gemma_brain_dispatch;
 #[cfg(test)]
 mod gemma_taxonomy_dispatch_tests;
 mod generation_admission;
@@ -69,6 +68,7 @@ pub mod human_principal_dispatch;
 mod identity_nextdns;
 pub mod identity_sled_dispatch;
 mod incus_observer;
+mod native_container_creation;
 pub mod interceptor;
 mod json_render_gallery_dispatch;
 mod json_schema_proto;

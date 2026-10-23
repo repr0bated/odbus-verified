@@ -4,7 +4,7 @@
 prepare-groups snapshots native chat/tool records and raw external conversation
 database rows, with explicit legacy-only gaps; no summaries/redaction/truncation.
 sync-groups requires an explicit session UUID and identity-bound mounted 3tchedFS.
-The installed threetched-fs helper validates the mounted schema and receipt.
+The installed 3tched-fs helper validates the mounted schema and receipt.
 Remote writes never use direct nlm execution, change grants, or create identities.
 """
 
@@ -32,7 +32,7 @@ from typing import Any
 
 BRIDGE_BUS_NAME = "org.opdbus.v1.plugins"
 PLUGIN_INTERFACE = "org.opdbus.v1.PluginV1"
-COGNITIVE_OBJECT_PATH = "/org/opdbus/v1/plugins/cognitive_mcp"
+COGNITIVE_OBJECT_PATH = "/org/opdbus/v1/plugins/cognitive"
 DEFAULT_SESSION_BUS_ADDRESS = "unix:path=/run/opdbus/session-bus.sock"
 
 CREATE_NOTEBOOK_TOOL = "create_notebook"
@@ -72,7 +72,7 @@ def session_bus_address(environ: Mapping[str, str] | None = None) -> str:
     env = os.environ if environ is None else environ
     return (
         env.get("DBUS_SESSION_BUS_ADDRESS")
-        or env.get("COGNITIVE_MCP_BUS_ADDRESS")
+        or env.get("COGNITIVE_BUS_ADDRESS")
         or DEFAULT_SESSION_BUS_ADDRESS
     )
 
@@ -474,7 +474,7 @@ def grouped_call(method: str, arguments: Mapping[str, Any], session: str) -> Any
     if not mount or not Path(mount).is_absolute():
         raise NotebookSyncError("OPDBUS_NOTEBOOK_FS_ROOT must name the configured absolute mount")
     command = [
-        "/usr/local/bin/threetched-fs", "call", "notebooklm", method,
+        "/usr/local/bin/3tched-fs", "call", "notebooklm", method,
         "--mount", mount, "--expected-session", session, "--args", "-",
     ]
     if method in write:

@@ -18,7 +18,7 @@ op-core = { path = "../op-core" }
 # Sealed plugin-object blobs: the blob catalog IS the plugin surface.
 op-blob = { workspace = true }
 op-plugin-lint = { path = "../op-plugin-lint" }
-threetched-fs = { path = "../threetched-fs" }
+tched-fs = { path = "../threetched-fs" }
 op-dbus-model = { workspace = true }
 op-state = { path = "../op-state" }
 op-state-store = { path = "../op-state-store" }

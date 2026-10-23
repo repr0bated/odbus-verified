@@ -10,9 +10,10 @@ Usage:
   prepare-instance-disk inspect NAME
   prepare-instance-disk prepare NAME --seed-device /dev/disk/by-uuid/UUID
 
-Pool: /var/lib/3tched-leaf-pool (mounted @3tched-leaf-pool)
+Pool: /var/lib/incus/storage-pools/3tched-pool (existing loop-backed Btrfs filesystem)
 Image: NAME.img, sparse raw, GPT root + upgrade partitions
 Defaults: 20 GiB root, remaining approximately 40 GiB upgrade.
+GPT creation uses sgdisk (GPT fdisk); sfdisk supplies JSON inspection receipts.
 Existing images are never adopted, repartitioned or overwritten by create.
 inspect reads the image and reports its partition table; it does not modify it.
 USAGE
@@ -37,16 +38,26 @@ while [[ $# -gt 0 ]]; do
     shift 2
 done
 [[ $(id -u) == 0 ]] || fail 'host root owns disk preparation'
-for tool in qemu-img sfdisk jq findmnt realpath stat flock date sync; do
+for tool in qemu-img sgdisk sfdisk jq findmnt realpath stat flock date sync; do
     command -v "$tool" >/dev/null || fail "missing $tool"
 done
 for size in "$root_gib" "$upgrade_gib"; do
     [[ $size =~ ^[1-9][0-9]{0,3}$ ]] && (( size <= 1024 )) || fail 'partition size must be 1 to 1024 GiB'
 done
-pool=/var/lib/3tched-leaf-pool
+pool=/var/lib/incus/storage-pools/3tched-pool
 [[ -d $pool && ! -L $pool && $(realpath -e "$pool") == "$pool" ]] || fail 'leaf pool is absent or noncanonical'
-[[ $(findmnt -rn -M "$pool" -o FSTYPE) == btrfs && $(findmnt -rn -M "$pool" -o FSROOT) == /@3tched-leaf-pool ]] || fail 'expected mounted @3tched-leaf-pool; refusing a root-directory fallback'
-[[ $(stat -c '%u %a' "$pool") == '0 700' ]] || fail 'leaf pool must be root-owned mode 0700'
+[[ $(findmnt -rn -M "$pool" -o FSTYPE) == btrfs &&
+   $(findmnt -rn -M "$pool" -o FSROOT) == / &&
+   $(findmnt -rn -M "$pool" -o UUID) == a1ab7b42-12a8-437c-8f65-d0469892c8dd &&
+   $(findmnt -rn -M "$pool" -o UUID) != "$(findmnt -rn -M / -o UUID)" ]] ||
+    fail 'expected mounted Incus loop filesystem; refusing a root-directory fallback'
+path=$pool
+while :; do
+    [[ ! -L $path && $(stat -c %u:%g "$path") == 0:0 &&
+       $(( 8#$(stat -c %a "$path") & 022 )) == 0 ]] || fail 'pool ancestry must be root-controlled'
+    [[ $path != / ]] || break
+    path=$(dirname -- "$path")
+done
 image=$pool/$name.img
 if [[ $action == inspect ]]; then
     [[ -f $image && ! -L $image ]] || fail 'image is absent or not a regular file'
@@ -65,7 +76,7 @@ exec 9>"$lock"
 flock -n 9 || fail 'another preparation owns this instance'
 receipt=$receipt_root/$name.json
 if [[ $action == prepare ]]; then
-    for tool in losetup blkid blockdev btrfs mkfs.btrfs mount umount rg sed install; do
+    for tool in losetup lsblk blkid blockdev btrfs mkfs.btrfs mount umount rg sed install; do
         command -v "$tool" >/dev/null || fail "missing $tool"
     done
     [[ $seed_device == /dev/disk/by-uuid/* && -b $seed_device ]] || fail 'stable seed UUID path required'
@@ -81,6 +92,18 @@ if [[ $action == prepare ]]; then
     seed_fsid=$(blkid -p -s UUID -o value "$seed_device")
     [[ $seed_device == /dev/disk/by-uuid/"$seed_fsid" ]] || fail 'seed UUID mismatch'
     btrfs inspect-internal dump-super "$seed_device" | sed -n '/flags/,/fsid/p' | rg -q SEEDING || fail 'seed is not sealed'
+    # UUID aliases may point at an existing loop view. Resolve the physical
+    # partition/LV independently and keep the protected backing device explicit.
+    physical_seed=$(lsblk -J -o PATH,TYPE,UUID | jq -er --arg uuid "$seed_fsid" \
+        '[..|objects|select(.uuid==$uuid and (.type=="part" or .type=="lvm"))|.path] |
+         unique | select(length==1) | .[0]') || fail 'physical seed is not unique'
+    physical_seed=$(realpath -e "$physical_seed")
+    [[ -b $physical_seed ]] || fail 'physical seed is unavailable'
+    if findmnt -rn -S "$physical_seed" -o TARGET; then
+        fail 'standalone physical seed is mounted; unmount it before preparing its read-only loop view'
+    else
+        [[ $? == 1 ]] || fail 'cannot inspect physical seed mounts'
+    fi
     root_mount=$pool/.mounts/$name/root
     upgrade_mount=$pool/.mounts/$name/upgrade
     [[ ! -e $pool/.mounts/$name ]] || fail 'mount directory already exists'
@@ -91,8 +114,8 @@ if [[ $action == prepare ]]; then
     }
     phase filesystem-prepare-intent
     mkdir -p "$root_mount" "$upgrade_mount"
-    blockdev --setro "$seed_device"
-    seed_loop=$(losetup --find --show --read-only "$seed_device")
+    blockdev --setro "$physical_seed"
+    seed_loop=$(losetup --find --show --read-only "$physical_seed")
     disk_loop=$(losetup --find --show --partscan "$image")
     root_partition=${disk_loop}p1 upgrade_partition=${disk_loop}p2
     jq --arg seed "$seed_device" --arg sf "$seed_fsid" --arg sl "$seed_loop" --arg dl "$disk_loop" \
@@ -116,8 +139,13 @@ if [[ $action == prepare ]]; then
     mkfs.btrfs -L 3tched-upgrade "$upgrade_partition"
     mount -o rw,subvolid=5 "$upgrade_partition" "$upgrade_mount"
     btrfs subvolume create "$upgrade_mount/@"
-    for member in @agent_memory @agent_rules @agent_skills @agent_user; do
-        btrfs property set -ts "$root_mount/$member" ro false
+    private_fsid=$(blkid -p -s UUID -o value "$root_partition")
+    [[ -n $private_fsid && $private_fsid != "$seed_fsid" &&
+       $(findmnt -rn -M "$root_mount" -o UUID) == "$private_fsid" ]] || fail 'root is not the private sprout'
+    # These are private writable descendants, not incremental receive bases.
+    # Clear their inherited received_uuid; never change the sealed seed copy.
+    for member in @ @agent_memory @agent_rules @agent_skills @agent_user; do
+        btrfs property set -f -ts "$root_mount/$member" ro false
     done
     for member in @agent_shared @agent_soul; do
         btrfs property set -ts "$root_mount/$member" ro true
@@ -149,15 +177,12 @@ jq -n --arg name "$name" --arg image "$image" --arg pool "$pool" --arg time "$cr
 # slightly. All commands address only the newly created image, never a host disk.
 qemu-img create -f raw "$image" "${total_gib}G"
 chmod 0600 "$image"
-sfdisk "$image" <<PARTITIONS
-label: gpt
-unit: sectors
-
-size=${root_gib}G, type=L, name="3tched-root"
-type=L, name="3tched-upgrade"
-PARTITIONS
+sgdisk --clear \
+    --new="1:0:+${root_gib}G" --typecode=1:8300 --change-name=1:3tched-root \
+    --new="2:0:$((total_gib * 2097152 - 2049))" --typecode=2:8300 --change-name=2:3tched-upgrade \
+    "$image"
 partition_table=$(sfdisk --json "$image")
-# Pin partition identities now; loop numbers are runtime attachments, not owners.
+# Record preparation evidence; the final adoption plan is made after all mounts.
 jq --arg inode "$(stat -c %i "$image")" --argjson bytes "$(stat -c %s "$image")" \
     --argjson partition_table "$partition_table" \
     '.phase="disk-partitioned" | .image_inode=$inode | .image_bytes=$bytes |

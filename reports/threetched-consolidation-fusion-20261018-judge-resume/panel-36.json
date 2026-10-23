@@ -1,0 +1,128 @@
+{
+  "status": "ok",
+  "query": "Advisory decision review for threetched consolidation OD-121. Current evidence: 18 redundant plugin/skill wrappers and five short router namespace methods already removed in source; no build/seal/deploy. Implementing two accessors now: GetProviderCatalog duplicates retained tched_router.ListProviders with same providers.read grant and provider vector; retained ListProviders coherently observes/publishes complete SHM state. GetConfigSchema claims exact native JSON Schema but reachable fallback serializes metadata descriptor; retire callable accessor/exclusive capability, preserve shared state ConfigSchema descriptor and authoritative sealed native_config field. Four existing versioned config-schema.read grants cannot be edited under explicit no-grants instruction; record inert obsolete refs. Also implementing seven large_language_model outer facade removals whose targets remain tched_router methods: list_providers,ListProviders;get_provider/get_config,GetState;set_provider,SetProvider;generate,Chat;list_models,ListModels;update_config,SetSelection. No production hardcoded callers found; migrate meaningful existing tests and inference-owner metadata. Keep stream_generate unchanged because llm.invoke/origin is revalidated throughout execution, private jobs/cancellation and owned task lifetime remain. Keep shared observed_tched_router_state helper used by canonical router paths. No speculative native CLI/HTTP remaps. Preserve exact grants, SID1/OIA1 and private partitions. Compiler ownership retained by external Hermes provisioning worker sa-0-32370f11 pending authoritative terminal receipt; no repeated process/log polling. Authorized only eventual GNU workspace release, fresh isolated seal and existing catalog-derived generator, no tests/checks/fmt/smoke/live activation. Original brief explicitly allows bounded deferrals but demands concrete method/group dispositions. Identify material correctness risks in this bounded source cutover and reporting requirements; do not propose unauthorized execution or blanket defer reachable cleanup.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Decision: proceed with the bounded source cutover.** The supplied evidence supports these removals without inventing native replacements. This is an advisory assessment; I have not independently inspected the current diff.\n\n### Material correctness risks\n\n1. **Equivalent provider data does not establish an identical response contract.** Before retiring `GetProviderCatalog`, reconcile its envelope, filtering, ordering guarantees and error behavior with `ListProviders`. Preserve the latter\u2019s complete-state observation/publication; do not replace it with a provider-vector-only SHM write. Migrate meaningful assertions to consumer-visible behavior, not merely a different method name.\n\n2. **Remove the misleading schema accessor, not the shared descriptor.** Retire `GetConfigSchema` declaration, dispatch, exclusive implementation and exclusive capability declaration. Preserve the shared `ConfigSchema` state descriptor and sealed `native_config`. Document that `native_config` is the authoritative schema field\u2014not an automatically equivalent callable replacement with identical access rights.\n\n3. **Inert grants need precise treatment.** Leave the four versioned `config-schema.read` grants unchanged under the no-grants boundary. Record their exact files and capability identifiers as obsolete references. Inspect whether catalog/materializer handling rejects references to removed capabilities: rejection would be a release blocker, not permission to restore a fake accessor or broaden grants. Do not claim the references are harmless without that evidence.\n\n4. **Facade removal can change effective authorization.** Each retired LLM method previously crossed outer admission and potentially nested router admission. Describe migration as use of the retained router contract and its existing grants\u2014not as authorization-equivalent renaming. A principal holding only the former facade grant may lose access. Do not compensate automatically.\n\n5. **`stream_generate` makes `large_language_model` a retained owner.** Keep its plugin registration, schema, dispatch, required capability declarations, generation-origin handling and private state integration. Preserve `llm.invoke` revalidation throughout execution, cancellation semantics and owned task lifetime. Removing seven facades must not remove shared helpers or imports still required by this path.\n\n6. **Metadata must distinguish public entry point from inference backend.** Updating inference-owner metadata must not rewrite persisted generation origin pins, state partition keys or recovery expectations. A retained job originating at `large_language_model.stream_generate` must not be relabelled as a router-origin job merely because execution ultimately uses router infrastructure.\n\n7. **Retired names must fail truthfully.** Remove exclusive declarations, dispatch branches, discovery entries and obsolete fallback paths together. Stale callers should receive the existing unknown/unsupported-method error, not empty success, generic dispatch or an implicit CLI substitution. \u201cNo production hardcoded callers found\u201d is a bounded search result, not proof that external clients do not exist.\n\n### Reachable cleanup and dispositions\n\n| Surface | Disposition |\n|---|---|\n| `GetProviderCatalog` | Retire; migrate demonstrated consumers to retained `ListProviders`. |\n| `GetConfigSchema` | Retire misleading callable accessor; retain shared descriptor and authoritative sealed schema field. |\n| Seven LLM facades | Retire; reconcile demonstrated callers and meaningful existing tests with their retained router targets. |\n| `stream_generate` | Retain for existing admission, origin, lifetime and private-job integration. |\n| `observed_tched_router_state` | Retain wherever canonical router paths use it. |\n| Four obsolete grants | Leave unchanged; document inert references and any release-validation consequence. |\n| Native capture expansion, OD-122, OD-123 | Deferred; no speculative remapping or storage substitution. |\n\nRemove tests whose sole purpose is asserting retired wiring or incidental schema text. Preserve meaningful coverage by migrating behavioral assertions where the retained contract actually supports them. **Editing tests does not authorize running them.**\n\n### Required reporting and release evidence\n\n- Record current commit, exact owned files and the additional **nine method removals** separately from the previously implemented 23 removals.\n- Conditional arithmetic against the supplied historical baseline: **72 plugins / 1,356 methods**, with **36 router methods** and **one LLM method** remaining. These are expectations only; unrelated shared changes can alter the actual catalog delta.\n- Report exact argument/result differences, authorization consequences and surviving local responsibilities. Do not label the remaining router surface native-derived consolidation.\n- Build remains **not started by this execution** pending the authoritative terminal receipt from Hermes worker `sa-0-32370f11`; do not describe a historical PID observation as current process evidence.\n- After that receipt, use the required pre-start compiler exclusion check, then the authorized GNU workspace release build, fresh isolated seal and existing catalog-derived generator. Record actual command results, provenance, catalog delta and matching generated inputs.\n- Until those receipts exist: **implemented source only; not built, not sealed, not runtime-verified, not installed or deployed**. Tests, checks, formatting and smoke fixtures remain unrun.\n- Update HANDOFF, SIGNALS and OD-121 with these dispositions, blockers and next action; keep OD-122/OD-123 deferred and the guard/storage hold unchanged.\n\nThis advances consolidation coherently. It does **not** establish complete consolidation, unchanged client authorization, authenticated operation success or deploy readiness."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Advisory review \u2014 OD-121 bounded cutover\n\nOverall the dispositions are defensible and match the brief's rules (one native schema authority, no fake parity, no grant edits). Material risks below, ordered by severity.\n\n### 1. GetConfigSchema retirement \u2014 capability orphaning is the real risk, not the state field\n- You retire the callable accessor and its exclusive capability but keep the shared state `ConfigSchema` descriptor. Risk: any consumer that currently *calls* `GetConfigSchema` (not reads state) now gets an unavailable method. The brief requires \"truthful unsupported/unavailable outcomes instead of fake success\" \u2014 verify the dispatch path returns a real `UNIMPLEMENTED`/not-found status, not a silent fallthrough to the metadata-descriptor serialization that motivated the retirement. If the fallback is still reachable via any route, you've retired the declaration but not the behavior, which is worse than keeping it.\n- Four versioned `config-schema.read` grants become inert. Correct to not edit them, but the report MUST enumerate: grant id, owning principal, the now-dead method it referenced, and a proposed smallest-concrete-change for the owner to approve later. \"Record inert obsolete refs\" is only acceptable if it's a per-grant table, not a sentence.\n\n### 2. GetProviderCatalog vs ListProviders \u2014 \"same grant + same vector\" is not equivalence\n- Same `providers.read` capability and same provider vector does not establish identical result contracts. Check: field names, masking, ordering, presence/absence of selectability/agent-owned-profile filtering (the brief explicitly warns `model_registry.native_list_providers` filtering must survive; confirm GetProviderCatalog carries no analogous filtering that ListProviders drops). If GetProviderCatalog applied any caller-scoped filtering, removing it silently narrows or widens what a caller observes under the *same* grant \u2014 a capability-semantics change disguised as deduplication.\n- Also confirm no consumer branches on the *method name* (e.g., UI adapter, toolset metadata, generated bridge contracts). \"No production hardcoded callers found\" for the LLM facades \u2014 was the same search run for GetProviderCatalog and GetConfigSchema? State it per-method in the report; a blanket \"no callers\" claim is the most common false step in this kind of cutover.\n\n### 3. Seven LLM facade removals \u2014 verify each target actually covers the caller's contract\n- `generate\u2192Chat`: Chat is retained local orchestration (conversation/mode/context/episode). The facade's callers presumably expected provider-only completion semantics. Removing the facade and pointing callers at `Chat` changes semantics unless the callers are themselves being removed. If the facades had no production callers, this is fine \u2014 but then say \"removed with no callers\" rather than \"migrated to Chat\", which implies a live semantic mapping.\n- `get_provider/get_config\u2192GetState`: GetState is a whole-state projection. Old facade callers got a narrow slice. If any test/toolset consumed the narrow shape, migrating it to GetState means parsing a larger object under the same grant \u2014 check the grant on the old facade was not narrower than `GetState`'s. Grant-narrowing or widening via target substitution is the exact hazard the brief flags (\"a hashed CLI capability is not automatically equivalent to an old typed read capability\" \u2014 same logic applies router-internally).\n- `update_config\u2192SetSelection`: confirm SetSelection's admission (actor/session, CAS semantics) matches what update_config callers held. SetSelection is described as atomic selection validation with SHM commit; if update_config was a looser write, removal tightens behavior \u2014 acceptable, but report it as a behavior change, not a rename.\n\n### 4. stream_generate retained \u2014 correct, but state the reason in the receipt\n- Keeping it because `llm.invoke/origin` is revalidated through execution and private job/cancellation ownership is local is the right call. The report should record this as \"retained: local integration responsibility (admission revalidation + private job lifetime)\", not merely \"deferred\", so a later agent doesn't re-litigate it as an overlooked duplicate.\n\n### 5. Build blocker handling \u2014 the report's weakest spot\n- Compiler ownership by external Hermes worker `sa-0-32370f11` \"pending authoritative terminal receipt\" is fine, but the previous execution already yielded once on this. The handoff MUST record: exact pgrep receipt, PID, command line, timestamp, and the precise next action (the full build command, then seal command with `COGNITIVE_QDRANT_URL=http://127.0.0.1:6334` and runtime-matched selectors). Without that, the next agent repeats the discovery loop.\n- Do not start the build in parallel on the assumption the check is stale. One Cargo process rule is absolute.\n\n### 6. Catalog delta arithmetic must be recomputed for this slice\n- The prior addendum's expected delta (74\u219272, 1,388\u21921,365) covered only the wrapper + 5 router removals. This slice adds GetProviderCatalog, GetConfigSchema, and 7 LLM facades \u2014 expected delta is now 72\u219271 plugins (if `large_language_model` loses all 8 of its methods, does the plugin itself disappear from the catalog? An empty-methods plugin is skipped by `build.rs` and swept by full reseal \u2014 confirm whether `large_language_model` retains `stream_generate` + anything else, or becomes an empty shell that the reseal removes). Method arithmetic: 1,365 \u2212 2 (router) \u2212 7 (LLM) = 1,356, subject to actual schema counts. State expected numbers *before* sealing so the seal receipt can be diffed against prediction \u2014 that's your correctness check in lieu of tests.\n\n### 7. Generated surfaces and mount consistency\n- Bridge generated contracts regenerate via build script \u2014 fine. But the FUSE specialization (generation1494 evidence) must be regenerated from the *new isolated catalog* via typed_specialize; the prior addendum already flagged that regenerating against the old live catalog would resurrect removed wrappers. This slice's report must repeat that blocker explicitly since it now covers more removals.\n- Mount adapter already selects `threetched,tched_router` \u2014 consistent with wrapper removal, unaffected by this slice. Confirm no toolset/schema-loader references the retired LLM facade subids (subid registry uniqueness means removed subids leave gaps; verify no dangling registry entries in `oscal_subid_registry.rs`).\n\n### 8. Reporting requirements (minimum bar for the handoff)\nPer-method table with: old method \u2192 disposition (migrated/retired/retained-local/deferred) \u2192 canonical target \u2192 exact old capability \u2192 exact new capability \u2192 caller reconciliation result. Explicit sections for: inert grants (per-grant), behavior changes disguised as renames (\u00a73 above), expected-vs-actual catalog delta, unrun checks labeled unrun, and the build blocker receipt. Distinguish implemented / built / sealed / deployed at every claim \u2014 the prior addendum's discipline here was correct; maintain it.\n\n### Bottom line\nNo unauthorized execution proposed; dispositions are concrete. The two things most likely to be wrong: (a) GetConfigSchema's fallback path still reachable after declaration retirement, and (b) grant-scope drift hidden inside \"same grant, same vector\" GetProviderCatalog\u2192ListProviders substitution. Both are verifiable by reading dispatch code before the build unblocks \u2014 do that now while Cargo is occupied, rather than idling on the blocker."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "read path=/srv/git/odbus-verified/HANDOFF.md\nread path=/srv/git/odbus-verified/SIGNALS.md\nread path=/srv/git/odbus-verified/WISHLIST.md\nread path=/srv/git/odbus-verified/reports/threetched-overlap-map-20261018.md\nread path=/srv/git/odbus-verified/reports/threetched-overlap-map-20261018.txt"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The two accessor retirements and seven LLM facade removals are a defensible bounded cutover, not complete threetched consolidation.",
+      "GetProviderCatalog retirement requires comparing result envelopes, filtering, masking and error semantics; matching capability and provider vectors alone do not establish contract equivalence.",
+      "GetConfigSchema retirement must remove reachable callable dispatch and fallback behavior while preserving the shared ConfigSchema descriptor and authoritative sealed native_config field.",
+      "The four obsolete config-schema.read grants must remain unchanged under the no-grants boundary and be documented precisely.",
+      "Facade removal must not be reported as authorization-equivalent renaming: retained router targets have their own contracts and admission requirements.",
+      "stream_generate must remain for admission revalidation, generation-origin handling, private jobs, cancellation and task lifetime; shared router state helpers must survive.",
+      "Generated surfaces must derive from the new isolated catalog, not the old live catalog.",
+      "Build, seal and generation remain dependent on compiler ownership clearance; tests, checks, formatting, smoke fixtures and live activation are unauthorized.",
+      "Reporting must distinguish source implementation, build, seal, deployment and runtime verification, with concrete dispositions and exact remaining actions."
+    ],
+    "contradictions": [
+      {
+        "topic": "Expected plugin count after the additional removals",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Predicts 72 plugins and 1,356 methods against the historical baseline, with 36 router methods and one retained LLM method."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Suggests a possible reduction to 71 plugins if all eight LLM methods disappear, despite the question explicitly retaining stream_generate. It also conflates omission of empty-method services from bridge generation with removal of a registered plugin from the sealed catalog."
+          }
+        ]
+      },
+      {
+        "topic": "Meaning of generate \u2192 Chat",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats Chat as the established retained target and focuses on documenting contract and authorization consequences."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Speculates that facade consumers expected provider-only completion and that migration to Chat would change semantics. The supplied evidence already identifies Chat as the facade's existing target, so that particular semantic change is not established."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Provides only proposed read commands, without tool results, risk analysis, dispositions or reporting guidance; it supplies no substantive advisory review."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Both identify contract and authorization risks but neither independently inspects the source or establishes exact per-method capability, response-shape or caller differences."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly distinguishes editing meaningful tests from executing them and recommends deleting retired wiring-only tests rather than repinning them."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Requests per-method caller-search scope, per-grant inventory and inspection of residual toolset, schema-loader and subid references."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Obsolete grants may affect catalog or materializer validation. Their operational inertness must be established rather than assumed; any rejection is a release blocker, not permission to restore the misleading accessor or modify grants."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Inference-owner metadata cleanup must not rewrite persisted generation-origin pins, private partition keys or recovery expectations for retained stream_generate jobs."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The sealed native_config field is authoritative schema data, but its presence does not establish a callable replacement with identical access rights."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Caller reconciliation evidence should be stated separately for each retired accessor and facade rather than extending a bounded LLM caller search into a blanket no-callers claim."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "stream_generate should be classified as retained local integration responsibility, not merely deferred, so future work does not mistake deliberate ownership preservation for an overlooked duplicate."
+      }
+    ],
+    "blind_spots": [
+      "No panel response supplies independent current-source evidence; the analysis remains conditional on the implementing agent's observations.",
+      "Neither substantive response establishes whether the four obsolete grant references are accepted by current release/catalog validation or identifies their exact files and principals.",
+      "Neither substantive response traces how an old sealed catalog interacts with the newly compiled method declarations before deployment; source removal alone does not establish the precise stale-client error path.",
+      "The distinction between facade input/output adaptation and its already-existing router delegation needs source-level comparison; target-name correspondence alone cannot determine migration behavior.",
+      "Expected method arithmetic remains conditional on unrelated shared schema changes and cannot replace an actual isolated-catalog delta.",
+      "The authoritative Hermes terminal receipt and eventual build/seal results are absent; historical process observations must not be presented as current compiler status."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

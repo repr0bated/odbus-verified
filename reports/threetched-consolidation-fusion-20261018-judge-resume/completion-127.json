@@ -1,0 +1,73 @@
+{
+  "request": 127,
+  "started": "2026-10-18T22:06:00.915666+00:00",
+  "finished": "2026-10-18T22:06:16.401488+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0ea3885115e8410b016ad542cbbd5c87d09e8d6ffac8654807",
+    "created": 1792361163,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading complete ownership rows\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:424-427:raw\"}",
+                "name": "read"
+              },
+              "id": "call_BBFye1wl6rMWqejg0Rws6zlh",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Updating isolated seal blocker\",\"op\":\"block\",\"task\":\"Seal fresh isolated catalog and record exact provenance and plugin delta\",\"reason\":\"Requires fresh GNU consolidation build after Hermes provisioning scope correction/source freeze. Prior compiler ownership cleared by22:00Z receipt; mixed old bridge/new opblob artifacts explicitly unsafe to ship.\"}",
+                "name": "todo"
+              },
+              "id": "call_uZZt7SlVHbfw9QyIdHbPVFnF",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Source consolidation now retires 33 methods, including ten additional accessors/facades. Canonical callers were migrated; `stream_generate` retains its generation-origin admission.\n\nRelease preparation remains blocked. Hermes\u2019s latest receipt requires correction of its provisioning scope before any new build. I have not used the mixed old bridge/new `opblob` artifacts, sealed a catalog, or changed live services."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 389,
+      "prompt_tokens": 291165,
+      "total_tokens": 291554,
+      "completion_tokens_details": {
+        "reasoning_tokens": 112
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 191894
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:06:16.399293+00:00",
+  "stream_chunks": 7
+}

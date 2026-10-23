@@ -245,7 +245,7 @@ impl StatePlugin for IdentitySledPlugin {
     // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "4.6.0"
+        "4.7.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -297,7 +297,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "4.6.0",
+        "4.7.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -367,9 +367,24 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
+    pub struct PrepareContainerInput {
+        pub wireguard_pubkey: String,
+        pub operation_id: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct PrepareContainerOutput {
+        pub session_id: String,
+        pub name: String,
+        pub native_uuid: String,
+        pub operation_id: String,
+        pub phase: String,
+        pub replayed: bool,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
     pub struct ProvisionContainerInput {
-        /// WireGuard public key (base64). session_id — and therefore the
-        /// container name — is DERIVED from this, never supplied.
+        /// WireGuard public key (base64). Session UUID remains key-derived;
+        /// native names come from the durable creation binding.
         pub wireguard_pubkey: String,
         /// Digest of the root-owned version-2 external adoption plan. The
         /// bridge only verifies prepared storage/native state and atomically
@@ -510,6 +525,13 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
     use op_state_store::SideEffect;
 
+    schema.methods.insert(
+        "prepare_container".to_string(),
+        method_decl_from_schemars_with_output::<PrepareContainerInput, PrepareContainerOutput>(
+            "prepare_container", SideEffect::Mutation, true,
+            "identity_sled.write", "mut.service.identity-sled.container.prepare@v1",
+        ),
+    );
     schema.methods.insert(
         "get_identity".to_string(),
         method_decl_from_schemars_with_output::<GetIdentityInput, GetIdentityOutput>(
@@ -842,7 +864,7 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "4.6.0");
+        assert_eq!(schema.version, "4.7.0");
         for method in [
             "get_identity",
             "get_own_identity",

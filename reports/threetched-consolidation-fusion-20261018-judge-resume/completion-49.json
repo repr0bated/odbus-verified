@@ -1,0 +1,87 @@
+{
+  "request": 49,
+  "started": "2026-10-18T21:59:03.401961+00:00",
+  "finished": "2026-10-18T21:59:12.560257+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-07e3e12c945d550c016ad5412a1c2c87d085c0c96c11c2a846",
+    "created": 1792360746,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading facade schema definitions\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model.rs:1-300\"}",
+                "name": "read"
+              },
+              "id": "call_hFh6zmCLR8HwlkHy5aZkXXCB",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading facade dispatch planning\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model_methods.rs:1-300\"}",
+                "name": "read"
+              },
+              "id": "call_NV1VTrDKwLQa74OXdfmcbSzV",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading bridge facade execution\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/large_language_model_dispatch.rs:1-200\"}",
+                "name": "read"
+              },
+              "id": "call_XzigGmLCy9Gtm3q2Qa1yK8JN",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading recent source signals\",\"path\":\"/srv/git/odbus-verified/SIGNALS.md:150-175\"}",
+                "name": "read"
+              },
+              "id": "call_hgLHaBPtAMp6NVPCU1SWEhDe",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 577,
+      "prompt_tokens": 140543,
+      "total_tokens": 141120,
+      "completion_tokens_details": {
+        "reasoning_tokens": 45
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 132707
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:12.558194+00:00",
+  "stream_chunks": 10
+}

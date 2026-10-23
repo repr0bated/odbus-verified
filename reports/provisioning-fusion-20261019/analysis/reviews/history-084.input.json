@@ -1,0 +1,13 @@
+{
+  "packet_id": "history-084",
+  "input_path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-084.txt",
+  "input_bytes": 100000,
+  "input_sha256": "e240423cd7b80dd268661a99d59ba2c105061c0bb3c64bffa4ce787d5e68dba5",
+  "contract_path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+  "contract_bytes": 97062,
+  "contract_sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+  "prompt_prefix": "\n\nReview the FULL original packet below semantically, not merely parse it. Preserve physical provenance and exact short quotes. Distinguish source edits, commands issued, returned output, claims, and proven deployment. Report all relevant findings in physical order. Include a coverage object listing first/last provenance, row/fragment range and whether any content was skipped. Boundary duplicate references not available here must remain explicit dependencies. Output one JSON object, no markdown fences.\n\n",
+  "prompt_sha256": "e2623703638d4e05551893847aca573ab61a201eb4746ac86b4914705e68d665",
+  "system_equals_full_review_contract": true,
+  "status": "submitted"
+}

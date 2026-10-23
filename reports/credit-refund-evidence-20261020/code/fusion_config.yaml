@@ -1,0 +1,29 @@
+model_list:
+  - model_name: astra-pro
+    litellm_params:
+      model: hermes/openai/gpt-6-astra-pro
+  - model_name: opus-5-5
+    litellm_params:
+      model: hermes/anthropic/claude-opus-5.5
+  - model_name: kimi-k3
+    litellm_params:
+      model: hermes/moonshotai/kimi-k3
+  - model_name: glm-5-3
+    litellm_params:
+      model: hermes/z-ai/glm-5.3
+  - model_name: qwen-3-6-35b-a3b
+    litellm_params:
+      model: openai/qwen3.6-35b-a3b
+      api_base: https://ai.salad.cloud/v1
+      api_key: os.environ/SALAD_API_KEY
+  - model_name: litellm/fusion-1
+    litellm_params:
+      model: fusion_router
+      fusion_router_config:
+        outer_model: astra-pro
+        analyst_model: astra-pro
+        panel_models: [astra-pro, opus-5-5, kimi-k3, glm-5-3, qwen-3-6-35b-a3b]
+        invocation: required
+        temperature: 0
+        max_completion_tokens: 16000
+        panel_timeout_seconds: 300

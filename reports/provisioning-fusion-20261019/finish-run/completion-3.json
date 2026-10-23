@@ -1,0 +1,44 @@
+{
+  "request": 3,
+  "started": "2026-10-19T06:00:49.672510+00:00",
+  "finished": "2026-10-19T06:01:28.682419+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [],
+  "response": {
+    "id": "chatcmpl-0a08111b6b016fe1016ad5b235441c87d08e738bdc7f36d65e",
+    "created": 1792389685,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "<title>Trace and preserve Btrfs seed/sprout provisioning</title>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 207,
+      "prompt_tokens": 4898,
+      "total_tokens": 5105,
+      "completion_tokens_details": {
+        "reasoning_tokens": 147
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1234
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:01:24.734444+00:00",
+  "stream_chunks": 3
+}

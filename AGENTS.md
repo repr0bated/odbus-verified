@@ -4,7 +4,7 @@ This file provides guidance to the AI agent when working with code in this repos
 
 ## Mandatory skill preload — every agent and model
 
-At the start of every session, before any analysis, planning, edits, or subagent work, read these nine files completely:
+At the start of every session, before any analysis, planning, edits, or subagent work, read these files completely:
 
 - `.agents/skills/grpc-expert/SKILL.md`
 - `.agents/skills/grpc-protocol-expert/SKILL.md`
@@ -13,13 +13,43 @@ At the start of every session, before any analysis, planning, edits, or subagent
 - `.agents/skills/kernel-fuse-diagnosis/SKILL.md`
 - `.agents/skills/fuse/SKILL.md`
 - `.agents/skills/btrfs/SKILL.md`
+- `.agents/skills/incus/SKILL.md`
 - `.agents/skills/rust-memory-optimization/SKILL.md`
 - `.agents/skills/memory-safety-patterns/SKILL.md`
+- `.agents/skills/requesting-code-review/SKILL.md`
+- `.agents/skills/requesting-code-review/code-reviewer.md`
+- `.agents/skills/receiving-code-review/SKILL.md`
+- `.agents/skills/quality-auditor/SKILL.md`
+- `.agents/skills/quality-auditor/references/verification-gap-protocol.md`
+- `.agents/skills/quality-auditor/references/audit-rubric.md`
+- `.agents/skills/quality-auditor/references/anti-patterns-guide.md`
+- `.agents/skills/verification-before-completion/SKILL.md`
+- `.agents/skills/agent-self-evaluation/SKILL.md`
+- `.agents/skills/application-security/SKILL.md`
+- `.agents/skills/rust/SKILL.md`
+- `.agents/skills/rust-patterns/SKILL.md`
+- `.agents/skills/rust-testing/SKILL.md`
+- `.agents/skills/svelte/SKILL.md`
+- `.agents/skills/svelte-code-writer/SKILL.md`
+- `.agents/skills/web-design-guidelines/SKILL.md`
+- `.agents/skills/unified-memory/SKILL.md`
+- `.agents/skills/using-superpowers/SKILL.md`
 
 Mandatory even when the task does not mention these domains. Every subagent and model handoff must repeat the preload for its own session — a parent's preload does not count for a child. For OP-DBUS PluginSchema, generated plugin services, reflection, and seal/freeze/hot work, `grpc-expert` takes precedence over the generic `grpc-protocol-expert`; use the generic skill for protocol, channel, TLS, streaming, and observability concerns. For a live 3tchedFS mount failure, EIO, hang, or kernel FUSE diagnosis, `kernel-fuse-diagnosis` takes precedence over the generic `fuse` skill; use `fuse` for libfuse userspace API, callbacks, and mount debugging. Use `btrfs` for the designed cache subvolumes, snapshots, and send/receive. For the mount's 256-slot table, byte budget, `Drop` charges, arenas, and Rust allocation, `rust-memory-optimization` takes precedence over the general `memory-safety-patterns` skill; use `memory-safety-patterns` for cross-language ownership, RAII, and resource lifetime.
 
+For Incus instance/profile configuration, disk declarations and managed storage volumes, read `incus` before applying lower-level Btrfs operations. Its Btrfs container filesystem volumes are subvolumes; VM disks use backing files. Distinguish a subvolume containing a partitioned disk image from a subvolume used directly as a filesystem, and distinguish pool-level backing from per-instance storage. Do not assume a native volume declaration implements an external seeded-leaf/GPT layout. The skill is project-local guidance sourced from official Incus documentation; it does not authorize bypassing identity-bound provisioning.
+
 The container is the identity. 3tchedFS is its lungs: the local, typed
 filesystem interface projected from the sealed blobs and live SHM state.
+
+**Owner naming distinction (2026-10-18):** our filesystem is `3tched-fs`
+(Cargo package `tched-fs`, plugin `tched_fs`, retained source directory
+`crates/threetched-fs`). The external ZeroClaw-derived executable and surface
+are `threetched`. Host views are separated: `/run/mounts/3tchedFS` exposes our
+OP-DBUS plugins; `/run/mounts/threetched` exposes `threetched`, `tched_router`,
+`tched_plugins` and `tched_skills`. Both views use our FUSE engine and preserve
+the same sealed catalog and identity enforcement. Source definitions do not
+establish that either mount is currently deployed; verify runtime receipts.
 
 - Begin with the identity's mounted 3tchedFS namespace.
 - Use its declared state and operation files for supported actions.
@@ -88,7 +118,6 @@ filesystem interface projected from the sealed blobs and live SHM state.
   speculative optimization or unrelated cleanup.
 
 
-```
 ### Memory routing and authority
 - Maintain a map of each memory source: its purpose, scope, owner, and
   how to retrieve and update it.
@@ -103,7 +132,7 @@ filesystem interface projected from the sealed blobs and live SHM state.
   verification status, and uncertainty. Mark superseded conclusions.
 - Store secrets only in the designated secret store, never in general
   conversation memory.
-```
+
 ## Host-service policy (runit)
 
 This server runs **Artix Linux with glibc**, not Chimera or a musl-based host.
@@ -126,7 +155,6 @@ Network topology, Xray policy, decoy/WARP transport and network-critical
 service rules are in `docs/src/operations/network.md`. Read it before any
 network work; it is not needed otherwise.
 
-## Deployment (btrfs send/receive)
 
 **Owner clarification (2026-09-13): there is no deployment script. Deployment
 is btrfs send/receive of the prepared filesystem snapshot.** The release
@@ -160,7 +188,7 @@ sudo target/release/opblob seal-shm            # explicitly reseal after the bui
 sudo target/release/opblob persist             # retain the catalog across reboot
 ```
 
-After builds, explicitly run the freshly built `opblob seal-shm`; bridge startup only consumes sealed blobs and never reseals. Use the service's schema-shaping environment when sealing: on this host, `sudo env COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334 target/release/opblob seal-shm` matches `deploy/runit/op-grpc-bridge/run`. Verify the live and persisted catalogs match after restart. Review catalog removals and keep a recoverable copy before a full reseal, which sweeps plugin IDs absent from the build.
+After builds, explicitly run the freshly built `opblob` to seal the release catalog; bridge startup only consumes sealed blobs and never reseals. For isolated release preparation, use `seal-plugins <new-catalog-dir>` and pass that catalog as `OP_PERSISTED_CATALOG_SOURCE`; publishing live SHM remains part of activation. Match the service's schema-shaping environment. The renamed cognitive code reads `COGNITIVE_*`: `COGNITIVE_QDRANT_URL` defaults to `http://127.0.0.1:6334`, matching the current `deploy/runit/op-grpc-bridge/run`; the historical `COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334` instruction is obsolete. After an explicit GNU-target build, use `target/x86_64-unknown-linux-gnu/release/opblob`, not an older default-target artifact. Verify the live and persisted catalogs match after activation. Review catalog removals and keep a recoverable copy before a full reseal, which sweeps plugin IDs absent from the build.
 
 The commands above describe build/catalog preparation, not deployment. Do not
 infer a live install or restart from a successful build or snapshot preparation.
@@ -181,8 +209,8 @@ The workspace has **37 member crates under `crates/`, plus the root `op-dbus`
 package** (38 workspace packages total). The root package has no application
 binary. Binary targets live in members: for example `op-grpc-bridge` and
 `op-grants-materializer` in `op-grpc-bridge`, `op-web-server` and `opdbus` in
-`op-web`, `opblob` in `op-plugins`, `threetched-fs` (the 3tchedFS schema filesystem,
-imported 2026-09-27, Rust 2024 edition) in `threetched-fs`, and `op-runit-systemctl`/`svd` in
+`op-web`, `opblob` in `op-plugins`, `3tched-fs` (our 3tchedFS schema filesystem,
+package `tched-fs`, Rust 2024 edition) in the retained `crates/threetched-fs` directory, and `op-runit-systemctl`/`svd` in
 `op-runit-systemctl`. A binary target or runit directory is source inventory,
 not proof that it is deployed; reconcile it with `enabled-services` and
 `retired-services`. There is no `op-projection` crate. `[patch.crates-io]`
@@ -291,7 +319,7 @@ require an explicit workspace request. CI does not establish these results.
 
 - **Identity storage lifecycle (owner correction 2026-10-05).** Cozo owns identity-to-leaf/loop assignment and isolation. One immutable physical seed is shared through read-only views; each identity keeps its own writable leaf and the existing seven subvolumes. Only the external host provisioner may add a new blank leaf once, during explicit creation. Login, start, stop, logout, restart, bridge recovery and failed-start cleanup must NEVER add/remove Btrfs members. Start verifies/remounts the existing pair through the host mount owner; stop leaves membership and data intact. The bridge only verifies externally mounted storage and records logical attachment. Do not interpret `attached=false` as device removal. No root copies, snapshots, new subvolumes or OverlayFS fallback during identity provisioning. Never modify a seed while retained leaves depend on it. Older add-on-start/remove-on-stop guidance in source, handoffs and signals is superseded; do not restore it. Host release snapshot/send/receive below is a separate deployment mechanism.
 - **D-Bus is the only control plane.** Every plugin is a D-Bus object at `/org/opdbus/v1/plugins/<name>` under `org.opdbus.v1`. No `Command::new(...)` subprocesses, no direct file reads for live state, no polling loops in plugin/service code. New backend capabilities register as plugins in `crates/op-plugins/src/default_registry.rs` — never as new gRPC proto service packages.
-- **The plugin IS the schema — one source of truth, nonnegotiable.** That single schema is sealed into the blob, which IS the plugin. D-Bus method signatures, MCP tool inputs, gRPC shapes, and UI field renderers derive from it. Validate inputs against it. Each plugin defines its schema under `crates/op-plugins/src/state_plugins/`, using `plugin_scaffold_helpers.rs`. **There must be no parallel plugin schema source in a repository-level or plugin `schemas/` directory.** The former plugin capture directories, separate section files, and JSON-file loader have been removed. `crates/op-grpc-bridge/src/schema_loader.rs` still exists by name, but it reads only a manifest-pinned `PluginSchema` from the sealed blob catalog; it is not a file-schema fallback. The tched_router upstream document is imported once into `tched_router_contract.rs`; current router accessors derive from that plugin-owned contract. The per-section generator and generated surface were retired on 2026-10-04. Importing a new binary schema requires validating the verified binary's `config schema` output and replacing only that embedded UPSTREAM IMPORT block and version; it must not create a second captured-schema authority. Older docs claiming a single `plugin_schema_defs.rs` are also stale — that file does not exist. Owner reaffirmed this rule on 2026-09-13.
+- **The plugin IS the schema — one source of truth, nonnegotiable.** That single schema is sealed into the blob, which IS the plugin. D-Bus method signatures, MCP tool inputs, gRPC shapes, and UI field renderers derive from it. Validate inputs against it. Each plugin defines its schema under `crates/op-plugins/src/state_plugins/`, using `plugin_scaffold_helpers.rs`. **There must be no parallel plugin schema source in a repository-level or plugin `schemas/` directory.** The former plugin capture directories, separate section files, and JSON-file loader have been removed. `crates/op-grpc-bridge/src/schema_loader.rs` still exists by name, but it reads only a manifest-pinned `PluginSchema` from the sealed blob catalog; it is not a file-schema fallback. **Owner correction (2026-10-18): capture threetched's full `config schema` from the verified binary on every seal.** The shared capture fixes the runtime config directory, checks the binary and manifest, and supplies native_config, MCP, model_routes, plugins and skill_bundles. `tched_router_contract.rs` contains only access/section helpers; the embedded UPSTREAM IMPORT is retired. Build-time generated bridge contracts explicitly prepare the same capture; runtime consumes the sealed catalog and never starts capture as a fallback. Do not restore an embedded schema or add independent captures using the sealer's ambient environment. The per-section generator and generated surface were retired on 2026-10-04. Older docs claiming a single `plugin_schema_defs.rs` are also stale — that file does not exist.
 - **The sealed blob IS the plugin.** Present state lives in the sealed blob catalog at `/dev/shm/opdbus/plugin-blobs/<plugin_id>.<schema_hash16>.blob`. A plugin exists ⟺ its blob is in the catalog. The sole writer is the blob sealer in `op-blob`. Consumers read SHM directly (zero-copy) — they never re-hash and never consult the Rust registry for existence. The old `/dev/shm/opdbus/schemas` folder and `live-schema.json` are gone.
 - **MutationEngine owns state; streaming comes from SHM (owner reaffirmed 2026-09-13).** MutationEngine folds authoritative backend results into the complete state tree, including child objects, and commits that state to canonical SHM before change notifications. Child updates/deletions must preserve unrelated children and parent fields. Existing subscriptions derive their values from committed SHM; an in-memory event payload, method argument, or generator buffer is not a second state authority. Preserve verified principal/session scope for private state. Do not add a separate per-method streaming control plane or claim a buffered unary response provides state streaming.
 - **MCP gateway (settled).** One public MCP door: `:8090` on `op-grpc-bridge` (cognitive MCP is in-process there; no standalone `op-cognitive-mcp` runit service). `compact_mcp` is a retired plugin id. Compact *mode* (4 meta-tools) is in-process in op-web for the singleton control-plane chatbot; it is not an MCP plugin and not a second listener. Never create new shims or point external clients at `op-assistant-grpc`.
@@ -354,6 +382,15 @@ and avoid long blocking tool calls on the primary. User messages steer active
 work; answer them promptly while delegated work continues. Small immediate
 edits and decisions can remain with the primary when delegation would add
 overhead.
+
+**Owner requirement (2026-10-20), general across tasks:** long-running execution
+must survive interruption or exit of the chat. Use an execution subagent or
+background worker, with the actual host command detached from the chat/tool
+process group, closed stdin, persistent logs and a durable completion receipt.
+A background subagent alone does not establish process survival. Keep this chat
+available; after reconnecting, reconcile the existing process and receipt rather
+than rerunning creation or mutations. Preserve JEV Cargo routing, single-Cargo
+exclusion and authorization boundaries; detachment grants no additional access.
 
 For non-Cargo delegation, choose the appropriate agent role:
 

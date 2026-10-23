@@ -1,0 +1,198 @@
+{
+  "status": "ok",
+  "query": "Read-only diagnostic second perspective. Given this packet summary, identify evidence-bound issues without claiming runtime execution: historical Hermes records row615/id1187 boot script accepts UUID or 3tchedChatbot, uses completion boot markers, suppresses legacy on physical/GPT receipt; row616/id1188 source durable Cozo intent phase tables truncated220/1800; row617/id1189 prepared graph explicitly not deployed state truncated140/2063; row618/id1190 lifecycle source requires durable name binding, ordinary names=session UUID or special key/service-bound chatbot, storage verifies only, truncated130-414/4730; row620/id1192 delegates golden helper packaging and read-only design for latest reported naming ID-1, ID-2 no renames; row621/id1193 dispatched 2 workers no completion shown; row624/id1260 provision script system path expects .instances[].name/config/devices from public incus value.json, while delegation says projection intentionally omits those, identity path fixed chatbot and explicit preflight. Opening orphan source fragment lines87-377 has host losetup seed and GPT image partition loops, durable send/restore intents, FSID/ancestry checks, RO mapped overlay lowers and persistent siblings, scope only host mount namespace. Latest review contract forbids ALL host loops including pools, preserve seed/sprout and other storage/security/CAS. row625/id1261 actual search fails Path not found identity_inventory.rs; row626/id1262 terminal output cut mid JSON inventory schema. Need distinguish source guard error strings from real errors, naming correction propagation gaps, no deployment evidence. Provide concise independent cautions.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"provisioning-fusion-20261019/current_question\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"source\": \"Opening orphan source fragment, lines 87\u2013377; original path and record ID unavailable\",\n      \"quote\": \"host losetup seed and GPT image partition loops\",\n      \"quote_provenance\": \"Supplied summary, not independently inspected original source\",\n      \"classification\": \"observation_of_summary\",\n      \"stage\": \"Storage establishment and root restoration\",\n      \"observation\": \"The described implementation conflicts with the latest prohibition on all host loops. Preserving durable intents, FSID/ancestry checks, read-only lowers and persistent siblings does not resolve that architectural conflict.\",\n      \"actual_tool_result\": \"No execution result supplied. Source commands and guard error strings do not establish that operations ran or guards failed.\",\n      \"correction_propagation_or_discrepancy\": \"No loop-free replacement is evidenced. Host mount-namespace scope is not proof of guest isolation or storage-ioctl enforcement. Neither pool detachment nor replacement of seed/sprout with snapshots is authorized.\"\n    },\n    {\n      \"source\": \"Hermes main, row615/id1187\",\n      \"quote\": \"boot script accepts UUID or 3tchedChatbot\",\n      \"quote_provenance\": \"Supplied summary\",\n      \"classification\": \"inference\",\n      \"stage\": \"Stopped boot restoration\",\n      \"observation\": \"Legacy name acceptance and completion-marker handling require reconciliation with later display-name corrections. Markers and physical/GPT receipts must be distinguished from verified current mount, identity and storage state.\",\n      \"actual_tool_result\": \"Historical source description only; no boot result supplied.\",\n      \"correction_propagation_or_discrepancy\": \"The summary does not establish that later naming changes reached this boot path or that suppression of legacy restoration remains recoverable after partial completion.\"\n    },\n    {\n      \"source\": \"Hermes main, row616/id1188 and row617/id1189\",\n      \"quote\": \"prepared graph explicitly not deployed state\",\n      \"quote_provenance\": \"Supplied summary\",\n      \"classification\": \"observation_of_summary\",\n      \"stage\": \"Durable intents, recovery and deployment\",\n      \"observation\": \"Intent phase tables and a prepared graph support design/source progress, not completed adoption, recovery or deployment.\",\n      \"actual_tool_result\": \"Source outputs reported truncated at 220/1800 and 140/2063 respectively; omitted content is unavailable here.\",\n      \"correction_propagation_or_discrepancy\": \"Do not elevate these records into proof that the installed boot service, final CAS or recovery paths were updated.\"\n    },\n    {\n      \"source\": \"Hermes main, row618/id1190\",\n      \"quote\": \"storage verifies only\",\n      \"quote_provenance\": \"Supplied summary\",\n      \"classification\": \"observation_of_summary\",\n      \"stage\": \"Admission and lifecycle\",\n      \"observation\": \"The described source preserves durable name binding and distinguishes ordinary session-bound names from the special key/service-bound chatbot. Verification-only lifecycle behavior is consistent with avoiding lifecycle storage allocation or membership churn.\",\n      \"actual_tool_result\": \"Partial source output, reported as truncated130-414/4730; no successful lifecycle invocation supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Human display numbering must not replace identity authorization. The partial excerpt cannot establish all exceptions, recovery behavior or deployed enforcement.\"\n    },\n    {\n      \"source\": \"Hermes main, row620/id1192 and row621/id1193\",\n      \"quote\": \"ID-1, ID-2 no renames\",\n      \"quote_provenance\": \"Supplied summary\",\n      \"classification\": \"observation_of_summary\",\n      \"stage\": \"Correction delegation and helper packaging\",\n      \"observation\": \"The naming clarification reached a delegation, and two workers were reportedly dispatched. Dispatch is not evidence of completed edits, installed packaging or corrected runtime behavior.\",\n      \"actual_tool_result\": \"Two worker dispatches reported; no worker completion shown.\",\n      \"correction_propagation_or_discrepancy\": \"Propagation beyond assignment remains unproven. This excerpt's naming instruction must also be reconciled with later owner corrections identifying numbering as display-only.\"\n    },\n    {\n      \"source\": \"Hermes main, row624/id1260\",\n      \"quote\": \".instances[].name/config/devices\",\n      \"quote_provenance\": \"Supplied summary\",\n      \"classification\": \"inference\",\n      \"stage\": \"Provisioning discovery and native preflight\",\n      \"observation\": \"A system path consuming fields that the public projection intentionally omits suggests a producer/consumer contract mismatch. The identity path's fixed chatbot target and explicit preflight form a separate branch and do not demonstrate that the system path works.\",\n      \"actual_tool_result\": \"Source/delegation comparison only; no invocation failure attributable to the mismatch supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Confirm exact schema versions and branches before calling this an encountered blocker. Repair must preserve private configuration boundaries rather than expose omitted fields indiscriminately.\"\n    },\n    {\n      \"source\": \"Hermes main, row625/id1261\",\n      \"quote\": \"Path not found\",\n      \"quote_provenance\": \"Error text reproduced in supplied summary\",\n      \"classification\": \"observation_of_reported_tool_result\",\n      \"stage\": \"Source investigation\",\n      \"observation\": \"The search for identity_inventory.rs failed. This is a research lookup failure, not proof that identity inventory, admission or provisioning is absent.\",\n      \"actual_tool_result\": \"Reported search failure: Path not found identity_inventory.rs.\",\n      \"correction_propagation_or_discrepancy\": \"The actual implementation location and projection contract remain unresolved in this packet.\"\n    },\n    {\n      \"source\": \"Hermes main, row626/id1262\",\n      \"quote\": \"cut mid JSON inventory schema\",\n      \"quote_provenance\": \"Supplied summary\",\n      \"classification\": \"observation_of_summary\",\n      \"stage\": \"Inventory contract inspection\",\n      \"observation\": \"The incomplete schema output cannot establish the complete inventory shape or resolve the suspected consumer mismatch.\",\n      \"actual_tool_result\": \"Terminal output reportedly ended mid-JSON; underlying command completion status unavailable.\",\n      \"correction_propagation_or_discrepancy\": \"Do not interpret the display cutoff as malformed authoritative JSON or as proof of missing schema fields.\"\n    }\n  ],\n  \"truncations_unavailable\": [\n    \"Only the supplied summary was reviewed; original packet text, tool arguments and complete results were not supplied.\",\n    \"Opening fragment provenance is missing.\",\n    \"Rows616\u2013618 and row626 contain reported truncations.\",\n    \"Worker IDs, parent links, active/compacted flags, timestamps and completion records are unavailable.\",\n    \"Original short quotations cannot be independently verified from this packet summary.\"\n  ],\n  \"boundary_dependencies\": [\n    \"Complete original records and linked worker returns are needed to establish correction propagation.\",\n    \"Compare historical source, current worktree, installed helpers and installed base boot service separately.\",\n    \"Loop-free feasibility requires evidence for actual seed/sprout and native Incus primitives; neither metadata nor a native root declaration alone supplies those semantics.\",\n    \"Completion requires authoritative storage proofs, adoption/CAS and start receipts, not source guards, boot markers or delegation acknowledgments.\",\n    \"Later admission repairs must be considered before treating historical denials as current blockers.\"\n  ],\n  \"uncertainty\": [\n    \"No runtime execution, file access, deployment or JEV adjudication was performed in this response.\",\n    \"The packet supports cautions and candidate discrepancies, not a complete root-cause finding.\",\n    \"No whole-conversation or complete original-packet review is claimed.\"\n  ]\n}"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "{\n  \"packet_id\": \"provisioning-fusion-20261019-diagnostic-2\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"id\": \"row615/id1187\",\n      \"source\": \"evidence/hermes/20261018_190519_b780ef.jsonl\",\n      \"original_short_quote\": \"boot script accepts UUID or 3tchedChatbot, uses completion boot markers, suppresses legacy on physical/GPT receipt\",\n      \"observation_vs_inference\": \"Observation: Boot script logic explicitly suppresses legacy physical/GPT receipts and relies on completion boot markers. Inference: This mechanism is incompatible with the latest owner constraint forbidding host loops and disk images, as it assumes legacy block-device/GPT semantics for boot validation.\",\n      \"stage\": \"boot/restoration\",\n      \"actual_tool_result\": \"Unverified / Truncated\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Legacy GPT/physical receipt suppression was not updated to align with the subvolume-only/no-host-loop mandate. No evidence of propagation to the new seed/sprout immutable semantics.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"Incus native root binding, Btrfs send/receive, identity adoption\",\n      \"uncertainty\": \"High - exact boot marker behavior under new storage layout unverified.\"\n    },\n    {\n      \"id\": \"row616/id1188\",\n      \"source\": \"evidence/hermes/20261018_190519_b780ef.jsonl\",\n      \"original_short_quote\": \"source durable Cozo intent phase tables truncated220/1800\",\n      \"observation_vs_inference\": \"Observation: Durable Cozo intent phase tables are truncated at row 220/1800. Inference: Critical intent/phase tracking data is missing, preventing verification of whether durable intents were fully committed or recovered.\",\n      \"stage\": \"adoption/intent\",\n      \"actual_tool_result\": \"Truncated\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Truncation blocks verification of durable intent completion. No fallback or explicit error handling for truncated intent tables is evident in the provided excerpts.\",\n      \"truncations_unavailable\": \"220/1800 rows truncated\",\n      \"boundary_dependencies\": \"Cozo identity-to-storage binding, durable recovery\",\n      \"uncertainty\": \"Medium - truncation limits visibility into intent phase progression.\"\n    },\n    {\n      \"id\": \"row617/id1189\",\n      \"source\": \"evidence/hermes/20261018_190519_b780ef.jsonl\",\n      \"original_short_quote\": \"prepared graph explicitly not deployed state truncated140/2063\",\n      \"observation_vs_inference\": \"Observation: Prepared graph state is explicitly marked as 'not deployed' but truncated at 140/2063. Inference: The provisioning pipeline halted or was explicitly paused before deployment, contradicting any claim of completed integration.\",\n      \"stage\": \"deployment/preparation\",\n      \"actual_tool_result\": \"Truncated / Explicitly not deployed\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: State explicitly marks 'not deployed', yet subsequent worker dispatches (row621) proceeded without resolving this deployment gate. No correction propagated to halt or resume the pipeline.\",\n      \"truncations_unavailable\": \"140/2063 rows truncated\",\n      \"boundary_dependencies\": \"Incus instance lifecycle, Cozo adoption\",\n      \"uncertainty\": \"Low - explicit 'not deployed' state is clear, but truncation obscures intermediate steps.\"\n    },\n    {\n      \"id\": \"row618/id1190\",\n      \"source\": \"evidence/hermes/20261018_190519_b780ef.jsonl\",\n      \"original_short_quote\": \"lifecycle source requires durable name binding, ordinary names=session UUID or special key/service-bound chatbot, storage verifies only, truncated130-414/4730\",\n      \"observation_vs_inference\": \"Observation: Lifecycle source mandates durable name binding (session UUID or service-bound chatbot) and restricts storage to verification only. Inference: The current workflow conflates storage provisioning with identity binding, violating the separation of concerns required by the constraint.\",\n      \"stage\": \"lifecycle/naming\",\n      \"actual_tool_result\": \"Truncated\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Storage verification is treated as sufficient for adoption, but durable name binding requirements are truncated. No evidence that session UUIDs or service-bound keys were correctly propagated to the storage layer.\",\n      \"truncations_unavailable\": \"130-414/4730 rows truncated\",\n      \"boundary_dependencies\": \"Identity admission, Incus native declarations\",\n      \"uncertainty\": \"Medium - truncation obscures exact name-binding propagation.\"\n    },\n    {\n      \"id\": \"row624/id1260\",\n      \"source\": \"evidence/hermes/20261018_190519_b780ef.jsonl\",\n      \"original_short_quote\": \"Opening orphan source fragment lines87-377 has host losetup seed and GPT image partition loops, durable send/restore intents, FSID/ancestry checks, RO mapped overlay lowers and persistent siblings, scope only host mount namespace\",\n      \"observation_vs_inference\": \"Observation: Orphan source fragment explicitly uses `host losetup seed` and `GPT image partition loops`. Inference: Direct violation of the latest owner constraint 'NO HOST LOOP DEVICES including pool'. The fragment assumes legacy block-device provisioning.\",\n      \"stage\": \"storage establishment\",\n      \"actual_tool_result\": \"Orphan source fragment / Direct conflict\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Latest review contract forbids ALL host loops including pools, yet this fragment retains host losetup and GPT loops. No correction propagated to replace these with subvolume-only semantics. This is a primary architectural blocker.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"Btrfs seed/sprout, Incus native storage, no-host-loop constraint\",\n      \"uncertainty\": \"Low - explicit conflict with owner constraint is clear.\"\n    },\n    {\n      \"id\": \"row625/id1261\",\n      \"source\": \"evidence/hermes/20261018_190519_b780ef.jsonl\",\n      \"original_short_quote\": \"actual search fails Path not found identity_inventory.rs\",\n      \"observation_vs_inference\": \"Observation: Search for `identity_inventory.rs` fails with 'Path not found'. Inference: The expected Rust module for identity inventory is missing or misnamed in the current source snapshot, breaking the provisioning helper chain.\",\n      \"stage\": \"source inspection\",\n      \"actual_tool_result\": \"Path not found\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Missing source file halts helper chain inspection. No evidence of a renamed or relocated module in the provided manifest or source index.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"Rust source tree, provisioning helpers\",\n      \"uncertainty\": \"Medium - file may exist under a different path or name.\"\n    },\n    {\n      \"id\": \"row626/id1262\",\n      \"source\": \"evidence/hermes/20261018_190519_b780ef.jsonl\",\n      \"original_short_quote\": \"terminal output cut mid JSON inventory schema\",\n      \"observation_vs_inference\": \"Observation: Terminal output for the JSON inventory schema is truncated mid-stream. Inference: Schema validation or inventory generation failed or was interrupted, preventing verification of the expected JSON structure.\",\n      \"stage\": \"inventory/schema\",\n      \"actual_tool_result\": \"Truncated mid-stream\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Incomplete schema output blocks verification of inventory compliance. No retry or error handling for truncated schema generation is evident.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"JSON schema validation, inventory generation\",\n      \"uncertainty\": \"Medium - truncation obscures schema completeness.\"\n    },\n    {\n      \"id\": \"astra_e84b7ba8\",\n      \"source\": \"evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl\",\n      \"original_short_quote\": \"actual installed helper failure fsconfig: File exists\",\n      \"observation_vs_inference\": \"Observation: Installed helper failed with `fsconfig: File exists`. Inference: A previous provisioning attempt left residual state (e.g., mounted overlay, existing subvolume, or locked config) that blocks fresh initialization.\",\n      \"stage\": \"helper execution\",\n      \"actual_tool_result\": \"fsconfig: File exists\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Residual state was not cleaned up before retry. No evidence of idempotent cleanup or state reconciliation in the helper chain.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"Incus native storage, overlay management\",\n      \"uncertainty\": \"Low - clear state conflict.\"\n    },\n    {\n      \"id\": \"astra_47e15770\",\n      \"source\": \"evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl\",\n      \"original_short_quote\": \"failed blank disk deletion\",\n      \"observation_vs_inference\": \"Observation: Attempt to delete a blank disk failed. Inference: Disk/image-based provisioning attempts are actively failing or blocked, reinforcing the need to abandon image-based workflows.\",\n      \"stage\": \"storage cleanup\",\n      \"actual_tool_result\": \"Failed\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Failed deletion was not followed by a rollback or state reset. No evidence of automated cleanup for failed disk operations.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"Btrfs pool, disk image lifecycle\",\n      \"uncertainty\": \"Low - explicit failure recorded.\"\n    },\n    {\n      \"id\": \"astra_54f08ba3\",\n      \"source\": \"evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl\",\n      \"original_short_quote\": \"temporary seed-loop cleanup\",\n      \"observation_vs_inference\": \"Observation: Temporary seed-loop cleanup was performed. Inference: Previous iterations relied on host loops for the seed, which directly conflicts with the latest 'NO HOST LOOP DEVICES' constraint.\",\n      \"stage\": \"seed management\",\n      \"actual_tool_result\": \"Temporary cleanup\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Cleanup was temporary and did not address the architectural reliance on host loops. No permanent subvolume-only seed replacement was implemented.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"Immutable seed, Btrfs sprout\",\n      \"uncertainty\": \"Medium - temporary fix does not resolve architectural conflict.\"\n    },\n    {\n      \"id\": \"claude_seed_not_sealed\",\n      \"source\": \"evidence/claude/f4c461eb-d25f-4247-9bd7-eddda9ade635.jsonl\",\n      \"original_short_quote\": \"seed is not sealed\",\n      \"observation_vs_inference\": \"Observation: `seed is not sealed` was a genuine failure. Inference: The immutable seed contract was not met, breaking the durable recovery and upgrade replica chain.\",\n      \"stage\": \"seed management\",\n      \"actual_tool_result\": \"Genuine failure\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Seed sealing failure was acknowledged but not fully resolved in subsequent steps. No evidence of successful reseal or immutable seed verification.\",\n      \"truncations_unavailable\": \"N/A\",\n      \"boundary_dependencies\": \"Immutable seed, Btrfs send/receive\",\n      \"uncertainty\": \"Low - genuine failure confirmed.\"\n    },\n    {\n      \"id\": \"source_mismatch_fsid\",\n      \"source\": \"evidence/source/ / evidence/installed/\",\n      \"original_short_quote\": \"Oct19 drafts use the new pool/upgrade FSID; sync still uses old pool/FSID\",\n      \"observation_vs_inference\": \"Observation: Drafts reference a new pool/upgrade FSID, but the sync helper still uses the old pool/FSID. Inference: Synchronization is operating against stale storage identifiers, causing drift between provisioning intent and actual storage state.\",\n      \"stage\": \"sync/upgrade\",\n      \"actual_tool_result\": \"FSID mismatch\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: FSID mismatch indicates incomplete propagation of storage updates. Sync helpers were not updated to reflec",
+      "truncated": true
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Both responses identify the described host losetup and GPT partition-loop implementation as conflicting with the latest no-host-loop constraint.",
+      "Both recognize that truncated source and inventory outputs limit verification of provisioning and recovery behavior.",
+      "Both distinguish prepared state from deployed state and identify unresolved naming or binding propagation questions.",
+      "Both report the identity_inventory.rs lookup failure and acknowledge uncertainty about the implementation's location.",
+      "Neither response claims complete history review or reports performing runtime operations."
+    ],
+    "contradictions": [
+      {
+        "topic": "Mandatory no-host-loops versus conditional subvolume preference",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats all host loops as prohibited while retaining the conditional nature of subvolume-only feasibility and the requirement not to replace seed/sprout with snapshots."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Describes a constraint forbidding disk images and a subvolume-only mandate. The supplied owner instructions instead make no disk images/subvolume-only a preference conditional on preserving required semantics."
+          }
+        ]
+      },
+      {
+        "topic": "Boot restoration logic and its implications",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Flags boot markers and legacy-restoration suppression for reconciliation with naming corrections and current storage proofs; does not establish incompatibility from those mechanisms alone."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Says the script suppresses legacy physical/GPT receipts and infers incompatibility with no-host-loops. The packet says legacy behavior is suppressed on a physical/GPT receipt, and receipt handling alone does not establish loop dependence."
+          }
+        ]
+      },
+      {
+        "topic": "Source safeguards versus demonstrated lifecycle defects",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats durable name binding and verification-only lifecycle storage behavior as described safeguards, with deployed enforcement unproven."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Infers conflation of provisioning with identity binding and says storage verification is treated as sufficient for adoption. Those behaviors are not established by the supplied source summary."
+          }
+        ]
+      },
+      {
+        "topic": "Research lookup failure versus provisioning failure",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Classifies Path not found as an investigation failure, not evidence that inventory or provisioning is absent."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Infers that a missing or misnamed module breaks the provisioning helper chain, despite acknowledging that the file may be elsewhere."
+          }
+        ]
+      },
+      {
+        "topic": "Output truncation versus execution failure",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats truncation as an evidence limitation and explicitly declines to infer malformed JSON or command failure."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Infers schema validation or inventory generation failed or was interrupted, and criticizes absent truncation handling. The packet only establishes incomplete displayed output."
+          }
+        ]
+      },
+      {
+        "topic": "Prepared graph and subsequent worker dispatch",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats the prepared graph and worker dispatches as partial progress without deployment or completion proof."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Infers a halted pipeline and an unresolved deployment gate that subsequent dispatches improperly bypassed. No such gate or prohibition on further design work is supplied."
+          }
+        ]
+      },
+      {
+        "topic": "Provenance of the opening orphan fragment",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Preserves the fragment as orphaned, with its original path and record ID unavailable."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Assigns the fragment to row624/id1260, although that row is identified in the packet as the provisioning-script inventory consumer."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Addresses row624/id1260's specific producer/consumer mismatch: the script expects name/config/devices fields that the delegation says the public projection intentionally omits. It appropriately leaves an actual invocation failure unproven."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly covers row620/id1192 and row621/id1193, distinguishing correction delegation and two worker dispatches from completed edits, packaging or deployment."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Expands into broader Astra, Claude and FSID anchors, but supplies unsupported causal or current-state conclusions: residual state causing fsconfig failure, cleanup not occurring, and seed sealing remaining unresolved. These require original receipts and later corrections."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Both rely on the supplied summary rather than original records. Astra-pro explicitly labels its quotations as summary-derived; qwen labels them original_short_quote without equivalent provenance qualification."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "The supplied response is truncated mid-finding and is not a complete JSON object. Its unseen remainder cannot be assessed."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Repairing the public projection consumer must preserve private configuration boundaries rather than indiscriminately exposing omitted fields."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Host mount-namespace scope does not prove guest isolation or storage-ioctl enforcement."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Boot completion markers and physical/GPT receipts must be distinguished from verified current mounts, identity binding and recoverable partial-completion state."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Historical source, current worktree, installed application helpers and installed base boot service require separate comparison; source progress does not establish final CAS or installed recovery behavior."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Brings the broader packet's old-versus-new pool/upgrade FSID mismatch into the discussion as a potential correction-propagation issue, although the visible response overstates it as evidence of synchronization actually operating against stale identifiers."
+      }
+    ],
+    "blind_spots": [
+      "Neither response can verify exact original quotations, command arguments, physical record metadata, worker completion or correction propagation from this summary alone.",
+      "Neither establishes an evidence-backed loop-free implementation preserving immutable seed/sprout semantics; the architectural conflict is identified, not resolved.",
+      "Neither traces the complete authoritative chain through admission, preparation, receive/pairing, root binding, final adoption/CAS, start and recovery.",
+      "No saved JEV question, rubric, answer or adjudication receipt is evaluated.",
+      "The phrase failed blank disk deletion is ambiguous in the preliminary anchors, while the broader packet explicitly says the failed blank image was deleted. Qwen's assertion that deletion failed and no cleanup followed does not reconcile those statements.",
+      "The packet's latest recorded read-only SEEDING state and later admission repairs must be reconciled before historical failures are presented as unresolved current blockers.",
+      "No deployed readiness, guest boot, cold-reboot recovery or runtime security enforcement can be established from these responses."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

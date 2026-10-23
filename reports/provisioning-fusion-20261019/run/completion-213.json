@@ -1,0 +1,64 @@
+{
+  "request": 213,
+  "started": "2026-10-19T04:43:14.246446+00:00",
+  "finished": "2026-10-19T04:43:27.259380+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0de567273d216f24016ad59fe68df487d0990a544f689ba2eb",
+    "created": 1792384998,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"title\":\"Saving first packet analyst results\",\"timeout\":0,\"code\":\"for packet_id,h,ref in handles:\\n    try:\\n        raw=await h.wait()\\n        text=raw if isinstance(raw,str) else json.dumps(raw,ensure_ascii=False)\\n        write(str(base/'reviews'/f'{packet_id}.txt'),text)\\n        try:\\n            obj=json.loads(text.strip().removeprefix('```json').removesuffix('```').strip())\\n            write(str(base/'reviews'/f'{packet_id}.json'),json.dumps(obj,indent=2,ensure_ascii=False))\\n            ref.update(status='success' if obj.get('fully_reviewed') is True else 'incomplete',fully_reviewed=obj.get('fully_reviewed'),findings_count=len(obj.get('findings',[])))\\n        except Exception as e:\\n            ref.update(status='parse_error',error=str(e))\\n        ref.update(output_path=str(base/'reviews'/f'{packet_id}.txt'),output_sha256=hashlib.sha256(text.encode()).hexdigest(),output_bytes=len(text.encode()))\\n    except Exception as e:\\n        ref.update(status='completion_error',error=str(e))\\n    records.append(ref)\\nprint([(r['packet_id'],r['status'],r.get('findings_count')) for r in records])\"}",
+                "name": "eval"
+              },
+              "id": "call_AUzcDfGCGi6UT1cP6Uf73SvY",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 857,
+      "prompt_tokens": 92095,
+      "total_tokens": 92952,
+      "completion_tokens_details": {
+        "reasoning_tokens": 132
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 84340
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:27.258291+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,19 @@
+{
+  "packet_id": "history-043",
+  "contract": {
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+    "bytes": 97062,
+    "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4"
+  },
+  "packet": {
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-043.txt",
+    "bytes": 106328,
+    "sha256": "8a00194c6943e141853bd086c8e36cbc36389b551cf3bbfb5e04477696018f9c"
+  },
+  "system_exact": "full contract file UTF-8 text",
+  "prompt_prefix_exact": "Review the following FULL original packet under the complete review contract supplied as system instructions. Return only the requested JSON. Original fragments may begin/end mid-record; preserve boundary uncertainty and do not invent omitted text. Distinguish historical owner instructions and assistant claims from actually observed tool outputs. Include every relevant correction and failure, with exact quotes and record provenance. Fully review every supplied character. Packet ID: history-043\n\n",
+  "prompt_sha256": "18750bc7acdc8b297f477853b5f00e310cbd7a0309311dee94b232ebe375457f",
+  "prompt_bytes": 106828,
+  "model_argument": "default",
+  "input_truncated": false
+}

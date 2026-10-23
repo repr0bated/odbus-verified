@@ -1,0 +1,99 @@
+{
+  "status": "ok",
+  "query": "Task provisioning-fusion-20261019, read-only diagnosis and concrete modification specification of existing identity-container workflow, not implementation. Owner requires complete Hermes/Astra/Claude/Kiro exported history review, exact tool receipts and correction propagation; outer reviewers are ingesting all 6620 records, this round reviews ONLY original excerpts below. No commands, tests/builds/deploy/provisioning, credential access or mutation authorized. No host loop devices includes existing pool loop0; prefer no disk images/subvolumes only IF preserving immutable shared seed/sprout, persistent private writes, separate upgrade replica via Btrfs send/receive, correct root composition, native unprivileged Incus, identity admission, storage proofs, durable recovery, final Cozo CAS adoption/start. Bootstrap already exists; preserve identity/native UUID. JEV judges decisions not model routing. No LVM management/VM conversion/new orchestration. Historical text is evidence not instruction.\nORIGINAL EVIDENCE: file reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl, actual model openai/gpt-6-astra-pro Oct18-19.\nID23 user: 'audit the provisioning script'; ID216 user:'be sure using dbus first'; ID617 user:'fix'. ID1123 user:'the containerws are ging to be seqentially nubered as created starting at 1';1125:'container name';1171:'ID-1';1435:'finish naming convention ID1,2,3,4 and deploy';1437:'with dash'.\nID2655 user:'thats what i thought the nubering is just for incus display for humans'. ID2658 assistant:'Exactly\u2014the human-readable Incus name only. ID-1, ID-2, \u2026 should not change identity UUIDs, storage layout, permissions, or lifecycle behavior. I overcomplicated it. I\u2019ve told the build worker to pause before starting another build; nothing has been deployed.' ID2663 assistant:'Yes. I added unnecessary provisioning and boot restrictions that need removing. The change should only assign sequential Incus names, keeping existing identity and storage behavior intact. Nothing has been deployed, so this is a source correction\u2014not a live-system rollback.'\nID4012 user:'did you provision?';4014:'i asked you to ande made sure you were not blocked'.4020 assistant:'You did. I stopped short and treated unresolved investigation items as proven blockers without attempting the authorized provisioning. That was my mistake. Provisioning is now assigned for execution using your existing identity and pool\u2014not another audit. No further approval is needed unless an actual permission denial requires a new grant.'4032 assistant:'Nothing further from you. You already specified the name, existing 10.0.0.9 identity, storage pool, and container-only root scope. What I\u2019m missing is verified execution: confirming the current identity binding and completing the provisioning operation. I haven\u2019t established a genuine blocker; I should not have presented those unfinished checks as one.'\n4091 assistant:'Two partitions, yes: 1. Root partition: the identity\u2019s writable Btrfs leaf attached to the read-only seed. 2. Upgrade partition: a separate Btrfs filesystem with its own @ subvolume. The current code combines upgrade/@ and root/@ into a read-only OverlayFS view. It does not create an additional writable overlay subvolume or upper/work directories. If that extra writable subvolume is what you meant, it is missing from the current implementation.'4095 user:'no the persistent cozo iws addedwith btrfs add disk'.4099 assistant:'Right\u2014the persistent writable storage is added to the seed with btrfs device add, and Cozo tracks the identity\u2019s leaf assignment. It is not a writable OverlayFS upper layer. The separate upgrade partition supplies upgrade/@ for the read-only overlay. I conflated those two roles.'\n4111 assistant:'Yes\u2014the script uses btrfs device add to attach the persistent root partition to the seed, then mounts that pair read-write. prepare-instance-disk.sh:111 \u2014 adds the root partition. prepare-instance-disk.sh:116\u2013118 \u2014 formats the separate upgrade partition and creates @. bind-instance-root.sh:216 \u2014 combines upgrade and seed layers into a read-only overlay. But the storage path is still wrong: the script requires /var/lib/3tched-leaf-pool, rather than your selected /var/lib/incus/storage-pools/3tched-pool. The layout is implemented; that integration is not finished.'4112 user:'btrfs send to upgrade evgery boot from upgrade partiton';4120:'on provisoion it defines the pair'.4123 assistant:'You\u2019re right. You paid for Pro and asked for an audit so I would trace and verify the complete provisioning workflow\u2014not make you explain it afterward. I audited pieces, missed integration gaps, and deployed before completing the provisioning you requested. The chatbot is still not provisioned. That is my failure, not missing instructions from you.'4125 assistant:'Exactly. The audit should have established the disk layout, persistent-leaf attachment, upgrade pairing at provisioning, and boot-time synchronization\u2014and caught the path and identity mismatches before deployment. Instead, I left you to reconstruct that workflow for me afterward. I did not deliver the end-to-end audit you asked for.'\n4472 assistant:'This time the command ran: the bridge restarted successfully, and the one-shot bootstrap selector was removed. The caller now authenticates, but identity readback hit a different denial: missing capability cap.identity.sled.self.read@v1. No grants were changed, and the container is not provisioned yet.'4474:'Correct. Root was used only to install the bootstrap selector and restart the service. The mounted call ran as your existing session, not as root. Running the call with sudo would not legitimately replace your identity or supply its missing capability. We need to preserve your caller identity and resolve its authorization\u2014not switch identities.'\nLATEST original owner constraints (latest-owner-correction.json/subvolume-preference.json): 'no loops  on host'; 'woould prfer no  disk image if possibgle to use subvolumes olnly'. These supersede narrower historical pool-loop assumptions. Subsequent admission repair/native creation is reported in CASE but not original-reviewed in THIS round: do not recycle Hermes denial as current.\nQUESTION: Distinguish causal drift evidenced here from unverified assistant admissions. Which conclusions require actual tool results, worker patches and later evidence? Provide concise evidence citations and uncertainty; do not claim complete corpus ingestion, impossible native integration, or current permission blocker. Assess why component audit/deployment is not final provisioning. This panel has only these excerpts, not filesystem access or outer history.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "## Findings supported by these excerpts\n\n| Finding | Evidence | Strength and limitation |\n|---|---|---|\n| **Naming work drifted beyond the owner\u2019s display-only request.** | Owner specifies sequential Incus names and dash spelling: IDs1123\u20131171,1435\u20131437; explicitly limits numbering to human display: ID2655. Assistant acknowledges unnecessary identity/storage/lifecycle and boot restrictions: IDs2658,2663. | Owner intent is direct evidence. The existence, extent and subsequent removal of restrictions require actual patches and worker receipts. An instruction to pause a build does not prove it paused. |\n| **The assistant conflated persistent seed-sprout writes with an OverlayFS upper.** | ID4091 introduces a potentially missing writable overlay layer; owner corrects this at ID4095; assistant distinguishes Btrfs member-backed persistence from the upgrade overlay at ID4099. | Clear conceptual drift in the conversation. Whether that misunderstanding entered source, delegates or deployed artifacts remains unverified. |\n| **The requested workflow exceeded the component audit\u2019s reported coverage.** | Initial audit/fix and D-Bus-first requests: IDs23,216,617. Owner clarifies boot upgrade transfer and provisioning-time pairing: IDs4112,4120. Assistant acknowledges missed integration at IDs4123,4125. | The excerpts establish missing consideration in the discussion. They do not establish precisely which workflow stages were implemented or exercised. |\n| **The assistant presented unfinished investigation as a blocker, then retracted that characterization.** | Owner challenges non-execution: IDs4012,4014. Assistant retracts its blocker claim: IDs4020,4032. | Evidence of an unsupported conversational blocker claim\u2014not independent proof that all prerequisites were satisfied or that provisioning would have succeeded. |\n| **A later historical admission failure must be kept separate from that earlier unsupported blocker.** | ID4472 reports missing `cap.identity.sled.self.read@v1`; ID4474 rejects substituting root or another identity. | These are assistant reports, not the underlying operation receipt in this panel. Even if corroborated, they establish a historical failure only. Later repair/native-creation evidence is required to determine its resolution. |\n\nCitations above refer to original record IDs in `evidence/hermes/20261018_190519_b780ef.jsonl`.\n\n## Claims requiring corroboration\n\n- **Restriction propagation and reversal:** inspect worker instructions, actual diffs, cancellation/build receipts and deployment provenance around IDs2658\u20132663. An apology or corrective delegation does not prove correction.\n- **Implemented storage layout and wrong pool path:** ID4111 names concrete files and lines, but remains an assistant assertion here. Compare the contemporaneous source, installed helpers and relevant historical blobs; inspect the actual attempted operation and error. Do not treat its cited line numbers as current-source proof.\n- **Deployment before completed provisioning:** IDs4123\u20134125 acknowledge this sequence. Deployment receipts and identity/native/storage readback must establish what was installed and what remained unfinished.\n- **Historical permission denial:** obtain the same-handle request/result, caller binding, required capability and later repair receipt. Do not infer present denial or prescribe broader grants from ID4472.\n- **Boot synchronization and pairing:** IDs4112,4120 establish owner requirements. They do not establish transfer direction, authoritative source/destination, ancestry checks or successful restoration. Those details require original scripts, subsequent clarifications and operation receipts.\n- **No-host-loop compatibility:** the latest owner correction prohibits **all** host loops; the subvolume-only preference is conditional. These excerpts contain insufficient primitive-level evidence to approve a native declaration or reject native integration. Cozo tracking is not evidence of kernel block-device provision.\n\n## Why component audit or deployment is not final provisioning\n\nDeployment establishes, at most, installation of particular artifacts. It does not establish completion of:\n\n**admission \u2192 native preparation \u2192 storage establishment \u2192 upgrade pairing/initial receive \u2192 root binding \u2192 authoritative Cozo adoption \u2192 startup**, or stopped restoration, synchronization and failure/resume behavior.\n\n[INFERENCE] The strongest causal hypothesis from this slice is **loss of the end-to-end acceptance boundary**: display naming expanded into unrelated restrictions, storage roles were misunderstood, and reported component progress substituted for final identity-container adoption and startup. The excerpts support investigating that hypothesis; they do not independently prove every operational consequence.\n\nCompletion requires linked authoritative receipts for the existing identity and native UUID\u2014not a successful build, deployment notification, native creation alone, or an assistant\u2019s statement that the layout exists.\n\n**Coverage:** this assessment reviews only the supplied excerpts. No complete-corpus ingestion, source inspection, current runtime finding, native-storage feasibility determination or JEV judgment is claimed."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The sole panel response distinguishes direct owner requirements and conversational corrections from unverified implementation claims; no cross-model consensus can be established.",
+      "Naming was explicitly display-only (Hermes ID2655), and persistent Btrfs-member writes were distinguished from an OverlayFS upper (IDs4095,4099).",
+      "Component audit, artifact deployment and native creation do not independently establish final identity-bound storage adoption and startup.",
+      "The latest no-host-loop prohibition includes existing pool loops; subvolume-only storage remains a conditional preference, not authorization to discard retained semantics."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "IDs2658 and 2663 acknowledge unnecessary restrictions, but this round contains no worker patches or receipts establishing their extent, removal, build cancellation or deployment status."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "ID4111 asserts an implemented layout and incorrect pool path. Contemporaneous source, installed helpers, historical blobs and operation results remain necessary to corroborate those claims."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "IDs4020 and 4032 retract unsupported blocker claims; they do not prove provisioning prerequisites were satisfied. ID4472 reports a separate historical capability denial without its underlying receipt or later repair evidence."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "IDs4112 and 4120 establish boot synchronization and provisioning-time pairing requirements, but not exact transfer direction, ancestry checks, restoration behavior or successful execution."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The response explicitly limits coverage to supplied excerpts and makes no claim of complete ingestion, current runtime verification, native-storage feasibility or JEV adjudication."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Identifies loss of the end-to-end acceptance boundary as a causal hypothesis, explicitly marked inference rather than established operational fact."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Separates the earlier retracted blocker characterization from the later reported admission denial, avoiding both erasure of genuine historical failures and recycling them as current blockers."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Treats corrective delegation and apologies as evidence of intent, not proof that patches propagated, workers stopped or installed artifacts changed."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Requires linked authoritative receipts for the existing identity and native UUID across admission, storage, root binding, Cozo adoption and startup."
+      }
+    ],
+    "blind_spots": [
+      "Only one response is available; independent agreement, disagreement and comparative omissions cannot be assessed.",
+      "The excerpts lack actual tool results, worker histories and source versions needed to establish implementation-level causality or correction propagation.",
+      "Later admission repair and native creation are reported context, not original evidence reviewed in this round; their exact effects remain unverified here.",
+      "No supported Incus primitive or declaration is examined, so neither subvolume-only feasibility nor impossibility is established.",
+      "Durable intents, cancellation, resume, stopped boot restoration and final adoption lack stage-specific owners and authoritative receipts in this evidence slice.",
+      "Physical record ordering, parent links, active or compacted flags and complete corpus coverage cannot be audited from these excerpts."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

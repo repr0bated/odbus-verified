@@ -1,0 +1,53 @@
+{
+  "request": 52,
+  "started": "2026-10-18T21:59:21.370263+00:00",
+  "finished": "2026-10-18T21:59:34.692619+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01048565e7fa9846016ad5413c257c87d0b62138cc4e3c8c69",
+    "created": 1792360764,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Implemented only the five assigned files:\n\n- `tched_router.rs`: removed both exclusive output structs, method declarations, fallback dispatch arms, and exclusive `config-schema.read@v1` carried capability.\n- `tched_router_legacy_methods.rs`: removed `GetProviderCatalog` observation arm.\n- `tched_router_legacy_dispatch.rs`: removed its legacy-observer membership; retained `GetModelRoutes`/`ResolveRoute`.\n- `mutation_engine.rs`: removed its legacy dispatch membership.\n- `tests/tched_router_backing.rs:1373`: migrated behavioral caller to `ListProviders`; provider-content and sibling-state assertions unchanged.\n\nPreserved `ListProviders`\u2019 exact `cap.software.3tched-router.providers.read@v1`, existing admission/filtering, coherent observation/publication, durable assignment merging, shared `ConfigSchema` descriptor, and exact `native_config` schema.\n\n**Source-only validation:** literal searches across Rust source, scripts, deploy inputs and sibling UI found no remaining exclusive output-type references or callable retired method/subid references. No UI caller found or edited.\n\n**Remaining references intentionally untouched:**\n- Four obsolete grants: `deploy/security/capability-grants.json:7,86,338,533`.\n- Retirement comments: `tched_config_engine.rs:318`, backing test `:1547`.\n- Historical ZeroClaw schema examples and FUSE specialization report.\n- Generated bridge/FUSE artifacts remain untouched; build regeneration and fresh isolated sealing remain necessary.\n\nNo builds, tests, formatting, Clippy, fixtures, LSP startup, grants, or runtime changes performed. Parent owns documentation and shared-handoff integration.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 906,
+      "prompt_tokens": 166940,
+      "total_tokens": 167846,
+      "completion_tokens_details": {
+        "reasoning_tokens": 204
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 158850
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:34.691817+00:00",
+  "stream_chunks": 3
+}

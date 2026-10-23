@@ -1,0 +1,53 @@
+{
+  "request": 121,
+  "started": "2026-10-18T22:04:43.576070+00:00",
+  "finished": "2026-10-18T22:04:53.057971+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-088b9cf8aafb0882016ad5427e3b8487d09333dfc2b6f2f72c",
+    "created": 1792361086,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Cleanup applied; source frozen. No Cargo or tests run.\n\nReceipts: `large_language_model.rs#BCF1`, `large_language_model_methods.rs#A3DB`, bridge `large_language_model_dispatch.rs#59E9`. Removed incidental counts/wiring assertions and unused target-name helper; retained substantive rejection/admission coverage.\n\nExact edited source/test files:\n- `crates/op-plugins/src/state_plugins/large_language_model.rs`\n- `crates/op-plugins/src/state_plugins/large_language_model_methods.rs`\n- `crates/op-plugins/src/state_plugins/antigravity.rs`\n- `crates/op-plugins/src/state_plugins/antigravity_chat.rs`\n- `crates/op-plugins/src/state_plugins/gemma_brain.rs`\n- `crates/op-grpc-bridge/src/large_language_model_dispatch.rs`\n- `crates/op-grpc-bridge/src/antigravity_dispatch.rs`\n- `crates/op-grpc-bridge/src/owned_method_task_tests.rs`\n- `crates/op-grpc-bridge/tests/large_language_model_dispatch.rs`",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 387,
+      "prompt_tokens": 203559,
+      "total_tokens": 203946,
+      "completion_tokens_details": {
+        "reasoning_tokens": 48
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 131949
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:53.057132+00:00",
+  "stream_chunks": 3
+}

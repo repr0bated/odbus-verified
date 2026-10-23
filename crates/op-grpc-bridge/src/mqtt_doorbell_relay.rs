@@ -21,8 +21,8 @@ use tokio_rustls::{TlsConnector, rustls};
 use tokio_tungstenite::{WebSocketStream, tungstenite, tungstenite::protocol::WebSocketConfig};
 
 pub(crate) const PUBLIC_LISTENER: &str = "wss://10.0.0.2:8090/mqtt";
-const BROKER_HOST: &str = op_plugins::state_plugins::emqx::EMQX_ALIAS_IP;
-const BROKER_PORT: u16 = 8084;
+const BROKER_HOST: &str = op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_HOST;
+const BROKER_PORT: u16 = op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_PORT;
 const BROKER_CA: &str = "/etc/op-dbus/tls/tonic-svc0-ca.crt";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const FIRST_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);

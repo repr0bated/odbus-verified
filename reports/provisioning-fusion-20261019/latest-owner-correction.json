@@ -1,0 +1,11 @@
+{
+  "task": "provisioning-fusion-20261019",
+  "latest_mechanism_correction": "owner-seed-device-add-correction.md",
+  "required_panel_emphasis": "The seed is the backing. The previously working arrangement achieves writable sprout storage through btrfs device add. Trace that actual path; do not assume each exposed Incus subvolume must itself be the block-device operand.",
+  "owner_text": "no loops  on host",
+  "precedence": "Latest owner correction supersedes narrower no-per-container-loop interpretations in historical conversations and draft briefs.",
+  "required_design_constraint": "No host loop devices. Do not silently exempt pool-level backing, seed wrappers, per-container images or device mappings described as stored in Cozo.",
+  "observed_conflict": "Historical Oct19 receipts show /dev/loop0 backing existing Incus pool 3tched at /var/lib/incus/disks/3tched.img. This is evidence of current-versus-required drift, not permission to preserve it as an architectural exemption.",
+  "mutation_scope": "Evidence and diagnostic handoff only. No detach, pool migration, deletion, seed modification or other storage operation authorized by this correction.",
+  "jev_requirement": "Judge each proposal against no-host-loops and the complete retained provisioning, immutable-seed, identity and upgrade requirements. A database association alone is not proof that a host kernel loop mapping has been eliminated. Return exact evidence or uncertainty; do not invent impossibility proofs."
+}

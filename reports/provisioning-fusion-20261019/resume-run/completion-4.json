@@ -1,0 +1,88 @@
+{
+  "request": 4,
+  "started": "2026-10-19T04:49:09.835001+00:00",
+  "finished": "2026-10-19T04:49:31.487379+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-093ca497aa2ff8c3016ad5a148851c87d092c3f230a24a7066",
+    "created": 1792385352,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading remaining source findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/SourceChain.md:281-546:raw\"}",
+                "name": "read"
+              },
+              "id": "call_55RfzUjZCP0zolTYbq7DpYnZ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading remaining feasibility findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/NativeFeasibility.md:261-572:raw\"}",
+                "name": "read"
+              },
+              "id": "call_9CnJcrAh3ZDzPEmJtm27Ra5O",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading saved backend findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/BackendProof.md:1-300:raw\"}",
+                "name": "read"
+              },
+              "id": "call_FwPWttFYwrh3f3o25uJmUpz0",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading remaining historical findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/HistoricalScripts.md:130-350:raw\"}",
+                "name": "read"
+              },
+              "id": "call_r5XaFXJ44XFh5UkJ4hSw0KAU",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 806,
+      "prompt_tokens": 332137,
+      "total_tokens": 332943,
+      "completion_tokens_details": {
+        "reasoning_tokens": 202
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 217229
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:49:31.485368+00:00",
+  "stream_chunks": 10
+}

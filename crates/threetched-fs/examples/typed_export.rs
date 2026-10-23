@@ -1,6 +1,6 @@
 //! Derive review artifacts from the plugin-owned contract; JSON is never an input.
-#[path = "../../op-plugins/src/state_plugins/threetched_fs_contract.rs"]
-mod threetched_fs_contract;
+#[path = "../../op-plugins/src/state_plugins/tched_fs_contract.rs"]
+mod tched_fs_contract;
 
 use std::path::{Path, PathBuf};
 
@@ -8,15 +8,15 @@ use anyhow::{Context, Result, bail, ensure};
 use serde_json::json;
 
 fn exports() -> Result<Vec<(&'static str, Vec<u8>)>> {
-    let contract = threetched_fs_contract::document();
+    let contract = tched_fs_contract::document();
     ensure!(
-        contract["versioning"]["schema_version"] == threetched_fs_contract::schema_version()
-            && contract["versioning"]["source_commit"] == threetched_fs_contract::source_commit(),
+        contract["versioning"]["schema_version"] == tched_fs_contract::schema_version()
+            && contract["versioning"]["source_commit"] == tched_fs_contract::source_commit(),
         "contract accessors and embedded versioning disagree"
     );
     jsonschema::draft202012::meta::validate(&contract)
         .map_err(|error| anyhow::anyhow!("invalid embedded JSON Schema: {error}"))?;
-    let schema = threetched_fs_contract::schema_document();
+    let schema = tched_fs_contract::schema_document();
     jsonschema::Validator::new(&schema)?
         .validate(&contract)
         .map_err(|error| anyhow::anyhow!("embedded contract fails its own schema: {error}"))?;
@@ -123,18 +123,18 @@ mod tests {
 
     #[test]
     fn owned_document_has_no_reused_mutable_decode() {
-        let mut first = threetched_fs_contract::document();
+        let mut first = tched_fs_contract::document();
         first["types"] = json!({});
-        let second = threetched_fs_contract::document();
+        let second = tched_fs_contract::document();
         assert!(!second["types"].as_object().unwrap().is_empty());
-        assert_eq!(second["authority"]["owner_plugin"], "threetched_fs");
+        assert_eq!(second["authority"]["owner_plugin"], "tched_fs");
         assert_eq!(second["authority"]["deployment"]["status"], "source-only");
     }
 
     #[test]
     fn flattened_schema_and_exact_sealed_constant_validate() {
-        let contract = threetched_fs_contract::document();
-        let mut schema = threetched_fs_contract::schema_document();
+        let contract = tched_fs_contract::document();
+        let mut schema = tched_fs_contract::schema_document();
         assert_eq!(schema["type"], "object");
         assert!(schema.get("$ref").is_none());
         assert_eq!(schema["$defs"], contract["$defs"]);
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn all_review_artifacts_derive_current_authority_and_preserve_history() {
-        let source = threetched_fs_contract::document();
+        let source = tched_fs_contract::document();
         let output = exports().unwrap();
         assert_eq!(output.len(), 8);
         let document = |name: &str| -> Value {
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn u64_bound_is_exact_through_protobuf_schema_numbers() {
-        let contract = threetched_fs_contract::document();
+        let contract = tched_fs_contract::document();
         let too_large: Value = serde_json::from_str("18446744073709551616").unwrap();
         for schema in [
             contract["$defs"]["U64"].clone(),
@@ -252,13 +252,13 @@ mod tests {
 
     #[test]
     fn protobuf_value_roundtrip_preserves_exact_contract_semantics() {
-        let source = threetched_fs_contract::document();
+        let source = tched_fs_contract::document();
         let transported = protobuf_numbers(&source);
         let exact_schema = json!({"const": source});
         let validator = jsonschema::Validator::new(&exact_schema).unwrap();
         assert!(validator.is_valid(&transported));
         let transported_exact_schema = protobuf_numbers(&exact_schema);
         let transported_validator = jsonschema::Validator::new(&transported_exact_schema).unwrap();
-        assert!(transported_validator.is_valid(&threetched_fs_contract::document()));
+        assert!(transported_validator.is_valid(&tched_fs_contract::document()));
     }
 }

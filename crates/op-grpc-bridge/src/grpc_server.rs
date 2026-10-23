@@ -64,6 +64,11 @@ use crate::proto::{
 use op_state_store::{Decision, DenyReason, PluginSchema};
 use zbus::Proxy;
 
+fn method_refusal_status(error: &anyhow::Error) -> Option<Status> {
+    error.downcast_ref::<op_state_store::method_receipt::AuditedMethodRefusal>()
+        .map(|refusal| Status::unimplemented(refusal.to_string()))
+}
+
 /// Plugin schema provider.
 ///
 /// The provider reads only from the sealed blob catalog. A blob in the
@@ -315,6 +320,20 @@ fn validate_generated_arguments(
 #[cfg(test)]
 mod generated_argument_tests {
     use super::*;
+
+    #[test]
+    fn unsupported_method_status_requires_audited_typed_refusal() {
+        use op_state_store::method_receipt::{AuditedMethodRefusal, UnsupportedBeforeEffect};
+        let refusal = UnsupportedBeforeEffect::new("editor_unsupported", "omit --edit");
+        assert!(method_refusal_status(&anyhow::Error::new(refusal)).is_none());
+        let audited = AuditedMethodRefusal::new(uuid::Uuid::nil(), refusal);
+        let message = audited.to_string();
+        assert!(method_refusal_status(&anyhow::anyhow!(message.clone())).is_none());
+        let error = anyhow::Error::new(audited).context("private transport context");
+        let status = method_refusal_status(&error).unwrap();
+        assert_eq!(status.code(), tonic::Code::Unimplemented);
+        assert_eq!(status.message(), message);
+    }
 
     #[test]
     fn cli_flag_aliases_return_to_sealed_keys_before_validation() {
@@ -1069,10 +1088,10 @@ impl OperationGrpcServer {
             )
             .await
             .map_err(|error| {
-                Status::internal(format!(
+                method_refusal_status(&error).unwrap_or_else(|| Status::internal(format!(
                     "plugin method {}.{} failed: {}",
                     plugin_id, method_name, error
-                ))
+                )))
             })?;
 
         let method_result = result.get("result").unwrap_or(&result);
@@ -2059,17 +2078,22 @@ impl PluginService for OperationGrpcServer {
                 interceptor::mark_bound_oracle_response(&mut response, bound_oracle.as_ref())?;
                 Ok(response)
             }
-            Err(e) => Ok(Response::new(CallMethodResponse {
-                success: false,
-                result: None,
-                event_id: 0,
-                event_hash: String::new(),
-                error: Some(ProtoMutationError {
-                    code: ProtoErrorCode::Internal as i32,
-                    message: e.to_string(),
-                    deny_reason: None,
-                }),
-            })),
+            Err(e) => {
+                if let Some(status) = method_refusal_status(&e) {
+                    return Err(status);
+                }
+                Ok(Response::new(CallMethodResponse {
+                    success: false,
+                    result: None,
+                    event_id: 0,
+                    event_hash: String::new(),
+                    error: Some(ProtoMutationError {
+                        code: ProtoErrorCode::Internal as i32,
+                        message: e.to_string(),
+                        deny_reason: None,
+                    }),
+                }))
+            }
         }
     }
 

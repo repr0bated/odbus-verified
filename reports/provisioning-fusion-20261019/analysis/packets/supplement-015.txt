@@ -1,0 +1,798 @@
+SOURCE evidence/context/HANDOFF.md character range 400000-500000
+les root:root0755 regular single-link files; manifest root:root0600 with exactly three canonical `<64 lowercase hex>  <absolute path>` records for `/usr/local/libexec/opdbus-release/op-release`, `/usr/local/libexec/opdbus-release/op-release-launch`, `/etc/init.d/op-release-activate`. The init script is also root:root0755, regular/single-link. Parent must approve the independently built op-deployment controller and these source scripts together; publish the authorization manifest only after reviewing the complete set, with callers inactive. No auto-generated approval or legacy fallback. Existing installed policy's exact XanMod6.18.56 and Debian6.12.111 kernel/BTF pairs are retained, not broadened. Native receiver/first-activation authorization remains separate.
+
+Source tracing: `release/preserve.rs::stub` directly execs `/usr/local/libexec/op-dbus/sv/<service>/<member>` with readiness gates; it does not invoke any release controller. Native boot/transactions select the new controller through the fixed launcher. Parent was notified that native `inventory.rs::validate_targets` must protect the new base prefix from overlays. Read-only inventory observed old installed `op-release`, `op-release-launch`, `bootstrap-check.sh`, mixed `manifest.sha256` and `/etc/init.d/op-release-activate`; new base absent. Reading old manifest was permission-denied and not retried. Parent reports removal of ONLY the old S12 symlink; no other live removal performed by this worker. No Cargo/build/tests/lint/formatter/smoke or live action ran. Parent owns remaining integration, artifact approval, live legacy removal and authorized verification; no deployment or runtime success claimed.
+
+
+### 2026-10-17 · RemoveOldRelease — historical application coordinator removed
+
+Source-only scope: `/srv/git/odbus-btrfs-enforcement-20261013`. Deleted `crates/op-storage/src/golden.rs` (Coordinator, Pair/Pending/Ledger, prepare/publish/retiring_pair/retire_previous) and `src/bin/op-release.rs`. Removed golden exports, engine backend wiring and verify/prepare/publish/retire APIs, service/delegated methods, protocol receipts/client, admission operations, authorization variants, policy fields/validation, plugin schema/dispatch/types and obsolete golden test. Updated historical `deploy/opdbus-storage/policy/storage-policy.json` and both storage Polkit inputs. No main controller, launcher, kernel or installed file was edited.
+
+The existing 50-line locally generated send/pinned-receiver primitive now lives only as private `capture::receive_generated`, called by the unchanged enrolled capture flow. This preserves vector/development capture transport without any application lifecycle or exported helper. Host snapshot retirement remains separate and intact. Existing host journal `golden_source_uuid`/`golden_received_uuid` fields remain inert recovery provenance to preserve strict deserialization of saved host state; no release object is opened or managed through them. Seven host members, vector policies, identity storage, snapshots, journals, recovery trees and build artifacts remain untouched.
+
+Source-only rust-analyzer references were requested before storage export removals using an inline project with Cargo/check/build scripts disabled; requests returned empty despite known lexical callers, so they are not proof of reference absence. Source searches supplied the caller map, including historical btrfs plugin and policy inputs. No Cargo/build/test/lint/formatter or runtime verification ran.
+
+Before deploying this source, the authorized owner must migrate `/etc/op-dbus/storage-policy.json` to omit top-level `golden` and `golden_transfer` (strict unknown-field rejection remains), remove obsolete golden grants/Polkit actions, and retire installed old executable/bootstrap dependencies through the parent's scoped workflow. Preserve `host_members` including its golden host snapshot member, capture receiver pins/scopes, admission identity/grants for retained functions, and all state/data. Root-only policy was not read; actual installed differences are unverified. Parent owns source build/integration and deployment verification; no runtime/removal claim for installed files.
+
+
+### 2026-10-17 · KernelLifetime — stopped; executable-path participation reported
+
+Parent stopped new implementation while reconciling the user's rejected-path removal requirement. Read-only reference tracing confirms `op-release.rs` → `release/mod.rs` → `lifetime.rs`, with `transfer.rs` calling `lifetime::destroy`; this is executable source inclusion, not evidence of a deployed binary. No caller of the kernel patch/config/build recipe was found in deployment scripts; `build-native.sh` is manually executable only. No kernel artifacts were built, installed or loaded. Source is preserved; saved patch/provenance still predate the scratch orphan/root-constructor integration. The resumed scratch edit added synchronized closure-list updates, duplicate-constructor rejection and readiness handling; no source export, build or VM fixture followed before this second stop.
+
+
+### 2026-10-17T23:31:23Z · Codex — prior Astra build recovered; deployment-stage distinction corrected
+
+Owner questioned the delay because another Astra supposedly completed/staged the work. Parent temporarily paused new controller/kernel edits to reconcile; this was not an explicit owner cancellation. Recovered session `01a1479a-2f60-70a9-bb5a-a5d0ca576512`, file `/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-17T02-04-09-440Z_01a1479a-2f60-70a9-bb5a-a5d0ca576512.jsonl`: actual bash receipt at03:38:32.679Z says `Finished release profile [optimized] target(s) in 15m31s`; final at03:38:37.505Z reports exit0. Correct executable is `op-web-server`, not `op-web`. Existing `target/release/{op-web-server,op-grpc-bridge,opblob,threetched-fs,op-grants-materializer,opdbus}` and pinned threetched manifest are present. Supersedes stale failed-build conclusions, not evidence that subsequent edits compile.
+
+That session explicitly performed no seal, persist, golden preparation, activation or restart. Current `/opt/op-dbus/golden`, `/opt/op-dbus/staging` and the old public bootstrap receive directory list empty. `/var/lib/opdbus-release/slots.json` read was denied; no privileged retry or claim about its current contents. No independently staged replacement controller was found in the relevant sessions. Existing application artifacts/cache must be carried forward rather than discarded. Parent explained that the additional controller/lifetime implementation, not rebuilding those apps, accounts for current delay; narrowly scoped continuation was requested after reconciliation.
+
+Current additions remain SOURCE ONLY: native controller/fs primitives and canonical inventory; direct-target golden/path migration; host ingress/readiness; journal-aware wrapper; `/etc/sv` authority shared by op-core/op-plugins/op-services/op-runit-systemctl; notebook local-capture readiness separate from optional remote status. Parent's latest edits include `activate-golden.sh`, `crates/op-core/src/runit.rs`, `crates/op-plugins/src/service_def.rs`, `crates/op-services/{Cargo.toml,src/manager/service_manager.rs}`, `crates/op-runit-systemctl/src/dbus.rs`, `crates/op-chat/src/system_prompt.rs`, `crates/op-tools/src/builtin/sv.rs`, inventory mod.rs and notebook run/check. No Rust build, tests, fmt, Clippy or deployment ran for these edits.
+
+Safety blockers: kernel patch saved so far is linked-root-only and does NOT satisfy adapter/controller orphan-aware ENOENT assumptions; do not activate it. opblob's random copy/exchange staging is not yet caller-journaled for crash cleanup. Guard/daemon remain off; no reboot or kernel installation approved/performed. LLVM/pahole/QEMU preparation was simulated only; no VM tooling installed or run. The independent static receiver WAS built successfully (superseding worker's earlier unbuilt status): binary SHA256 `4afab868c84f3620f037fc0009c1dc302937bb26e366a04764b555c5eae7b604`, manifest `c4880e3b4142935feedecf1e96a93f2fd3b904e66872318352dbbe6598b9626a`; output `target/btrfs-receiver-artifacts/`. Only liblzo2-dev2.10-3+b1 was installed (0 upgrades/removals); receiver not installed or exercised in receive.
+
+Read-only ingress evidence: decoy currently runs web-bridge pointing private10.0.0.2:8444; unmarked route selects wg-opdbus, whose exact10.0.0.2 peer has no endpoint/handshake; mark0x51820 selects wgcf-ingress/table51820. This does not invalidate historical successful identity handoff, but does not establish a current private8090 receiver. No decoy, WireGuard, routes, services, identity/grants or host interface changes made. Next: finish bounded controller/publisher/lifetime integration against the recovered application baseline, resolve the actual private receiver contract without adding a second tunnel, and build/deploy only with truthful readiness and lifetime proof.
+
+### 2026-10-17 · KernelLifetime — paused for staged-replacement reconciliation
+
+Parent requested a temporary pause in further implementation/build/provisioning after the user questioned the delay; the user did not explicitly order a pause. Preserved source artifacts: `deploy/release/lifetime/{0001-btrfs-quiescent-destroy.patch,source-pin.json,native.config,build-native.sh}` and `crates/op-deployment/src/bin/release/lifetime.rs`. The saved patch/pin are an earlier linked-root-only snapshot (patch SHA256 `b6d1229008911503822cca9be442d31565d86aa393ca79fe68829c54b21e39ac`), NOT a completed orphan-aware enforcement implementation. Adapter comments describe the intended orphan-aware contract, which the saved patch does not yet implement. ReleaseController was explicitly warned not to treat checked ENOENT as a delivered zero-lifetime guarantee.
+
+Pinned upstream XanMod tag `6.18.56-xanmod1`, commit `95d03facd0b1f7aa185682797863b4a2e639d5f2`; pristine Btrfs archive `/tmp/op-release-lifetime-btrfs-95d03fac.tar.gz`, pristine UAPI `/tmp/op-release-lifetime-btrfs-uapi-original.h`. Latest unfinished kernel source is `/tmp/linux-95d03facd0b1f7aa185682797863b4a2e639d5f2-95d03facd0b1f7aa185682797863b4a2e639d5f2-fs-btrfs/`. It adds inode census/publication closure and a partial root-constructor/orphan registry. Remaining safety-critical integration: atomically populate/remove the quiescing-root list when closing/reopening roots; reject other same-ID constructors during linked-root closure; handle not-yet-READY roots before reading mutable identity; finish absent-generation proof across final-free/root-constructor races; regenerate patch/pin afterward. Current scratch/source must not be represented as sufficient or activated.
+
+Native config was copied completely (289082 bytes; SHA256 `a62c2dad1ba4d2275dcdb5545952f51883362c750a3587e62a12fc5ad51eb6db`). Build recipe is unexecuted and its manifest update is unfinished (`native_config_sha256` is not yet present in saved source-pin.json). No runnable VM fixture was created before the pause. Native Btrfs is built-in and livepatch disabled: real use requires a separately approved replacement-kernel boot after isolated VM proof. This worker performed no builds, tests, formatter, install, guard load, service action or reboot. Parent subsequently recovered Seed Astra session `01a1479a-2f60`'s successful application release-build receipt at `2026-10-17T03:38:32Z` (15m31s), and confirmed existing app binaries. That session explicitly did not seal, persist, populate golden, activate or restart: it is a prior application-build baseline, not a staged replacement controller/kernel. Source remains preserved pending parent completion of reconciliation.
+
+
+### 2026-10-17 · InventoryReviewFixes — helper arguments and catalog consumers
+
+Source-only fixes in `crates/op-cozo-store/src/bin/inventory/{mod.rs,tests.rs}` and `deploy/runit/{op-grpc-bridge,opdbus-rundirs}/run`. Function-local positional path declarations now union literal call arguments without executing shell; scope does not leak into the script, and unknown/missing/mixed unbounded arguments remain blockers. Actual emqx helper is exercised as prepared fixture input, alongside negative dynamic-path cases. Service-local `# op-dbus-consumes:` declarations produce ordinary canonical graph path edges, require present staged inputs, and select both bridge and rundirs for catalog-only changes. Rundirs owns publication; bridge retains its existing dependency/start relationship to rundirs, and downstream services retain their existing graph closure.
+
+Compiled-source evidence: `op-plugins/src/bin/opblob.rs:111-136` stages persisted `/var/lib/opdbus/plugin-blobs` into SHM; bridge `schema_loader.rs:40-80` caches manifest-pinned schema at construction, and `server.rs:559-576` GetSchema returns that cache. The explicit declarations describe the controller's shipped → persisted → SHM data lineage, not fake runtime environment variables. Catalog transition fixture changes manifest/blob bytes while retaining both consumers and startup dependency, and rejects an absent declared catalog. No builds/tests/formatters/runtime changes ran; complete staged inventory and consumer-visible deployment behavior remain unverified, with no dynamic blocker waived. Parent owns integration and all deferred checks/docs.
+
+
+### 2026-10-17 · StaticReceiver — pinned upstream static receiver preparation
+
+Baseline HEAD `34ff9a502d953bb7b1520d530eed849b507e266a`, shared worktree preserved. Added only `vendor/btrfs-receiver/{source.pin,upstream-sha256sums.asc,provenance.json,build-receiver.sh}` plus own handoff. Primary upstream kernel.org v7.1 tar.xz downloaded under `target/btrfs-receiver-cache/`; actual SHA256 `d1f55cc2971398c9142eaa79d203e63d586a3b4b867f956664a1d68322cd4e34` equals upstream published checksum. Captured upstream checksum artifact; PGP signature retained but not independently verified.
+
+Recipe uses upstream `btrfs.static`, native GNU/glibc, full zlib/LZO/zstd receive fallbacks and fsverity; disables only nonreceiver dependencies. Emits `target/btrfs-receiver-artifacts/{btrfs,manifest.json}` with input hashes, executable absolute path/digest/version/ELF constraints, actual toolchain/static archive hashes. Requires absence of PT_INTERP and DT_NEEDED before executing candidate version check. It does not install or author `/var/lib/opdbus-release/receiver.json`; authorized bootstrap must separately pin installed path/hash/device/inode/uid/gid/full st_mode.
+
+Read-only prerequisite facts: native GCC14.2.0/glibc2.41, static libc/pthread/m/gcc/blkid/uuid/z/zstd available; native `liblzo2.a` and `/usr/include/lzo` missing. Supply LZO2 development headers/static archive (Debian `liblzo2-dev`) under separate dependency authorization, then parent may run `vendor/btrfs-receiver/build-receiver.sh --cache-dir target/btrfs-receiver-cache`. No configure/build/tests/format/lint/installation/service/mount/guard action was performed here.
+
+Source-derived receiver constraint (communicated to ReleaseController): after controller `fchdir`/`chroot('.')`/`chdir('/')`, static-FD exec with `btrfs receive -e -m / /.release-incoming` bypasses `/proc` discovery and uses stdin; no `/dev` path is required by inspected entry/receive/UUID-lookup code. Root must be Btrfs top-level ID5 with unchanged received parents and clone sources reachable; TREE_SEARCH/INO_LOOKUP resolve parent paths and openat('/') opens them. Kernel execveat support is required instead of procfd fallback. This is not a runtime receive proof. Upstream ignores FILEATTR and rejects encoded encryption; no additional capability claims. Exact source anchors and provenance are in `provenance.json`.
+
+### 2026-10-17 · Codex — host-only ingress/overlay scope and independent release source
+
+Task `host-ingress-overlay-20261017` / OD-121. Owner explicitly excludes decoy
+and wgcf from host development/deployment. No ARM build or decoy installation
+is a prerequisite. Existing decoy work is preserved, not deployed by this task.
+
+ReleaseBaseline scout establishes that the historical `op-release.rs` imports
+`golden::receive_generated` from the same `golden.rs` that retains the rejected
+`retire_previous` lifecycle. Exact independent eligibility is unestablished;
+the old package/dependency closure will not be copied. Implementation baseline:
+the existing main-tree `op-deployment` package plus the existing canonical
+op-cozo-store inventory, with fresh release-controller source and upstream
+libc/Btrfs APIs. No new package, no replacement inventory, no retirement store.
+The installed op-storage daemon and its separate checkout are not silently
+claimed as restored into main. See ReleaseBaseline report for source/history
+evidence; old implementation is diagnostic evidence only.
+
+Fresh host address evidence supersedes older missing-interface records:
+pub0 owns188.68.58.237/22, ovsbr0 owns10.0.0.3/32 and10.0.0.4/32; rtly-lungs
+(alt tun5) has10.0.0.2 peer192.168.255.2 but NO-CARRIER/operstate DOWN.
+HostIngress source edits remove old tunnel service/env coupling, correct the
+wrong .3 client endpoint and strengthen local TLS/application readiness.
+These do not repair remote delivery/return routing. No address move or public
+listener widening is approved by inference. Existing OVS owners remain intact.
+
+Current `/opt/op-dbus/golden` parent is @opt, subvolume271 on Btrfs
+d53eeac0-949b-499c-b051-9fecf8678f59. Reading root-only storage-policy.json
+as the assigned tool identity returned EACCES; no alternate-identity retry.
+Guard remains OFF and both storage services stay boot-held as authorized.
+No implementation build, test, mount switch or activation has run in this phase.
+
+### 2026-10-17T21:32:17Z · Codex — Cargo model allocation removed; JEV owns routing
+
+Owner: “take the cargo model allocation out, I got JEV for routing now.”
+Task `cargo-routing-jev-20261017`. Updated `AGENTS.md` and the actual loaded
+Composer mandate, `.cursor/rules/subagent-cargo.mdc`. Keep one Cargo process,
+repo-root execution, native GNU target, release CXXFLAGS, explicit workspace
+scope and no implicit installs/publish/restarts. No Cargo-specific model or
+caller-family mapping remains in these active policies.
+
+Removed obsolete `scripts/cargo-dispatch.sh`, `scripts/cargo-aliases.bash`,
+`scripts/tests/test-cargo-dispatch.sh` and `/home/jeremy/.local/bin/cargo`.
+Removed the old allocation/source blocks from `.bashrc`/`.profile`, retaining
+small inherited-function cleanup. Updated `scripts/cargo-dispatch.md`,
+`crates/threetched-fs/docs/typed-filesystem-build.sh` and its README to remove
+caller-family requirements. Historical execution receipts/generated evidence
+remain provenance, not current routing instructions. JEV implementation,
+provider configuration and unrelated shell setup are unchanged.
+
+Smoke evidence: current shell after clearing its old function, fresh login
+shell and fresh interactive shell all resolve Cargo as a file at
+`/home/jeremy/.cargo/bin/cargo`. Interactive non-TTY smoke emitted the normal
+no-job-control warnings and exited0. Active-scope search found no fixed model
+IDs/caller-family allocation/obsolete dispatcher references. No Cargo command,
+test suite, Clippy, formatting check or service action was executed.
+
+This supersedes the previous requirement to restore Composer access before
+the wgcf build; that Rust change is still unbuilt, not newly verified. Next
+network action is the scoped native build through JEV's existing routing,
+then ARM artifact/base-system activation and receiver-path work. Existing
+agent sessions may retain the previously injected rule until reloaded.
+Last observed commit remains34ff9a502d953bb7b1520d530eed849b507e266a; no commit.
+
+### 2026-10-17T21:16:50Z · Codex — native wgcf source cutover; required build worker unavailable
+
+Task `single-wgcf-cutover-20261017` / OD-113. Last observed commit remains
+`34ff9a502d953bb7b1520d530eed849b507e266a`; no new commit or deployment.
+Owner explicitly corrects execution order: implement, build, deploy; Clippy,
+formatting checks and the test suite afterward. Historical docs cleanup and
+baseline publication also remain deferred. None of those checks ran in this
+native-unification phase.
+
+Source changes: new `crates/op-network/src/wgcf_egress.rs` implements retained
+IPv4 mark0x51820/table51820/priority41 policy using native rtnetlink. It checks
+selector/table ownership, requires the existing WARP default, adds terminal
+unreachable metric32766 before the selector, and reads back kernel state.
+`lib.rs` exports it. `op-rtnetlink-init wgcf-policy <interface>` calls it only
+with explicit OP_NETWORK_ROLE=decoy. `deploy/decoy/decoy-fabric-egress` now calls
+that binary instead of duplicating routing policy with ip/jq; default executable
+is `/usr/local/bin/op-rtnetlink-init`, with explicit OP_RTNETLINK_INIT override.
+Packet marking/MSS code is unchanged. No peer/key/profile, plugin schema,
+identity admission, OVS or external-Xray edit. Native policy is UNBUILT and
+UNVERIFIED. Earlier shell-helper namespace/ping evidence does not verify this
+new Rust implementation. The changed source helper must not be installed
+without its matching target-native binary.
+
+Build attempt: harness task rejected model override for ordinary tasks, so no
+worker was spawned there; reported tool/schema mismatch. Launched the installed
+Cursor `agent --print --model composer-2.5` execution worker (job bg_29), with
+one exact command requested:
+`CARGO_DISPATCHED=1 CARGO_CALLER_FAMILY=gpt CXXFLAGS="-include cstdint" /usr/bin/cargo build -p op-network --bin op-rtnetlink-init --target x86_64-unknown-linux-gnu --release`.
+It exited1 after23.73s with `ActionRequiredError: Increase limits for faster
+responses You're out of usage. Switch to Auto, or ask your admin to increase
+your limit to continue.` Cargo never ran in this worker. No alternate model,
+parent Cargo, tests, format or Clippy was used. Before launch an unrelated
+rust-analyzer Cargo check was active (PID19106); worker instructions required
+event-driven waiting and exclusive availability, never killing/polling it.
+Do not treat that unrelated check or existing old binaries as this build.
+
+Additional read-only compatibility evidence: the decoy is aarch64/glibc2.39,
+root ext4. `/opt/op-dbus/releases` is an existing Btrfs loop6 mount with older
+Oct4/Oct11 releases (IDs256–266); none was modified or removed. No current
+overlay mount, `/opt/op-dbus/current`, installed op-release-launch or native
+op-rtnetlink-init was found in checked locations. No compiler was found on
+the decoy. Host has the aarch64 GNU Rust target and bundled Rust LLVM linker,
+but no checked GNU cross sysroot/compiler. Existing decoy-network artifact kit
+hardcodes x86 GNU loader and runit; do not deploy it unchanged to this decoy.
+Application overlay R13 excludes network/WARP/Xray bootstrap. This is not
+authorization to invent another helper snapshot or hand-copy a live binary.
+
+Next action requires restored Composer2.5 build access: run the exact scoped
+native build, resolve compiler errors if any, then prepare a genuine aarch64
+GNU artifact and reconcile the base-system activation path. Deploy first;
+exercise changed policy/identity workflow afterward; comprehensive checks and
+docs then follow. Private .2/return-path ownership remains unresolved, and the
+prior marked TCP22 timeout remains a failure. Existing live selector/terminal
+repair remains runtime-only. Storage guard stays OFF with persistent runit
+down markers; no additional snapshot, pinning, service restart or live policy
+change occurred during this source phase.
+
+### 2026-10-17 · Codex — unification and bootstrap priority; documentation deferred
+
+Owner clarifies that historical transport details are replaceable; the priority
+is codebase unification and bootstrap. Deploy and verify first, then clean up
+docs and document the correct baseline. Leave historical exports intact now.
+
+Correction to20:50 source review: `crates/op-network/src/lib.rs:13-32` exports
+native wireguard_kernel/rtnetlink and OVS modules, but not door, identity,
+transport or error. Cargo.toml has neither tonic nor op-identity dependencies.
+The transport directory contains only mod.rs, which declares absent masque,
+warp and ssh_tunnel implementations. The metadata-dropping proxy is therefore
+an uncompiled historical leftover, not a demonstrated live code path. This
+agrees with the older explicit provenance note in the one-socket handoff.
+Do not wire that sketch into the crate merely to match NotebookLM text.
+
+Existing native boot binary op-rtnetlink-init uses op-network::rtnetlink and
+supports only public/services configuration; it intentionally works before
+op-grpc-bridge. The existing add_rule primitive is destination-CIDR based,
+not a fwmark policy owner. Parent is mapping the smallest real shared policy
+boundary. Read-only scouts NativeNetworkAdmission and NetworkBootstrapPaths
+trace plugin admission and boot/inventory paths respectively; neither may edit,
+build, run Cargo or touch live services.
+
+Read-only decoy compatibility check through ubuntu/vps_key reports aarch64,
+glibc2.39, with no op-rtnetlink-init/op-ovsbr0-setup/cargo/rustc on PATH.
+Host has the aarch64 GNU Rust target installed, but no aarch64 GNU linker or
+sysroot was found in the standard checked locations; only clang was found.
+Native verification remains x86_64-unknown-linux-gnu. No build or installation
+has occurred. LSP is configured but not started; avoid automatic Cargo runs
+outside the required Composer execution worker.
+
+
+### 2026-10-17T20:50:34Z · Codex — persistence checked; NotebookLM network exports partially aligned
+
+Owner asks whether changes persist and whether NotebookLM-related docs align.
+Host readback confirms `/etc/sv/op-storage/down` and
+`/etc/sv/op-storage-kernel-guard/down`, both root-owned0644; both services down,
+guard mode0 OFF with unchanged hooks/bindings. This is boot configuration
+verification, not a reboot test. Pinning remains deferred.
+
+The checksum/unit query ran over pinned SSH as
+`ubuntu@129.80.64.127` using existing vps_key: **the decoy, not the runit host**.
+It was read-only. Existing decoy helper SHA256
+91492d4e60f9fd7913f2675913c854bff0b9f64f794aafde58380b7d833e3d63 and
+unitc94d79745ef9056d6d3e3721d07c2264bbd846ef1324482de756f91875c8444a
+differ from the new source hashes recorded20:29. Enabled unit still executes
+`/usr/local/sbin/decoy-egress warp`. New helper/unit not installed: this task's
+wgcf route repair remains runtime-only. No systemctl command or host systemd
+operation was used.
+
+Read all three Oct15 NotebookLM chat exports in docs:
+- `notebooklm-chat-thoughts-expand-morei-have-created-the-technical-s-2026-10-15.md`
+- `notebooklm-chat-thoughts-expand-morehere-is-a-detailed-breakdown-o-2026-10-15.md`
+- `notebook-chat-rnetwork-topology.md`
+
+Partial alignment:
+- Breakdown23,39-43 agrees with decoy-only WireGuard termination, peer-bound
+  OIA1 and receiver identity validation; preserve this established design.
+- Breakdown54-57 and module-layout28-32,47 still include MASQUE/reverse-SSH
+  alternatives. They predate today's single-wgcf/MASQUE-removal instruction.
+- Module-layout78 says inject SID1 and OIA1. Actual
+  `op-network/src/identity/mod.rs:25-67` carries exactly one unchanged;
+  `op-grpc-bridge/src/interceptor.rs:484-505` rejects both. Do not implement
+  the export's wording literally.
+- Module-layout88-128 describes an IP/TLS proxy to10.0.0.2:8090 and contains a
+  placeholder Ok(()). Actual `op-network/src/door/proxy.rs:1-13,82-109`
+  targets a Unix socket. This concerns the local forwarding boundary, not
+  retirement of the external8090 admission door.
+- Source gap: forward_stream builds `_metadata` at90, then copies bytes at99.
+  It does not inject that generated metadata into the copied stream. This
+  function alone cannot substantiate the export's automatic-header-injection
+  claim; caller/pre-existing request metadata and live use were not proved.
+  Do not confuse this finding with a failure of the historically proven
+  decoy OIA1/client/receiver handoff.
+- `docs/network-topology.md:3` already withdraws an older NotebookLM export,
+  but17,40,70,72 still describe MASQUE and the superseded jeremy/decoy_key
+  maintenance login. New owner instructions/verified current access win.
+
+The ZIP is raw historical transcript material, not a current deployment
+receipt; its contents were not exhaustively audited. No live NotebookLM query,
+sync, authentication operation, Rust execution, code edit or network mutation
+was performed by this alignment review. Exports remain untouched historical
+evidence. Current deployment authority remains the rotated golden-snapshot/
+target-overlay contract read20:44, not the network export's proposals.
+
+
+### 2026-10-17T20:44:09Z · Codex — current rotated-snapshot OverlayFS contract inspected
+
+Owner redirects from the obsolete standalone network-component snapshot model
+to the current deployment. Read the actual current
+`.kiro/specs/release-overlay-target-rotation/requirements.md:1-34,948-978`,
+`design.md:1-155,157-170,210-250`, `tasks.md:1-95`, and
+`activate-golden.sh:1-31`.
+
+Contract: one prepared golden release snapshot is transferred by Btrfs
+send/receive into the inactive slot. Read-only overlays at the actual
+release-owned target directories rotate to the candidate; successful activation
+makes it active and the former active previous. Only those two generations are
+retained. Incoming receive is temporary staging, not another retained release.
+`./activate-golden.sh` remains the single entrypoint; no extra per-helper
+snapshot, component deployment list or per-file symlink hub is introduced.
+
+Important ownership boundary: requirements R13.4 explicitly excludes network,
+OVS, WARP, Xray and storage-guard bootstrap from application overlay targets.
+Therefore the application snapshot rule is not a reason to invent a separate
+snapshot procedure for this guard/network maintenance. The earlier standalone
+network-component preparation idea is withdrawn, not an implementation
+prerequisite.
+
+Do not treat old wrapper comments as the newer design: `activate-golden.sh`
+still describes one `/opt/op-dbus/current` overlay, while the current spec
+requires direct target-directory overlays. This investigation changes no
+deployment implementation or another owner's specification. Read-only
+`findmnt --json -t overlay -o TARGET,SOURCE,FSTYPE` returned an empty
+filesystems array in this host namespace; this is contract/source verification,
+not evidence of an activated release. No release command, mount or transfer
+was run. Guard remains OFF as verified in the20:41 handoff.
+
+
+### 2026-10-17T20:41:53Z · Codex — owner-authorized storage guard OFF; no snapshot required
+
+Owner explicitly directs the storage kernel guard to remain disabled until
+implementation is complete; pin all subvolumes and restore enforcement only
+afterward. This supersedes this task's earlier refusal to change the guard.
+It does not authorize disabling network firewalls or changing identity grants.
+
+Live baseline: guard supervisor running, guard mode2 GLOBAL, four pinned LSM
+hooks and five existing trusted cgroup/FSID bindings. Storage daemon was
+crash-looping. Process inventory showed no active op-release/op-storage-hourly
+or userspace btrfs operation. Direct cgroup file read was denied; no cgroup
+movement or alternate trust binding was used.
+
+Applied:
+- Added root-owned0644 `/etc/sv/op-storage/down` and
+  `/etc/sv/op-storage-kernel-guard/down`; these markers were previously absent.
+- `sudo sv -w 15 down /etc/sv/op-storage /etc/sv/op-storage-kernel-guard`.
+- `sudo /usr/local/libexec/opdbus-storage/guardctl mode off`.
+- Readback: both services down, mode0 OFF, same four hooks/five bindings.
+  Hooks/maps remain pinned but do not enforce; this is not subvolume pinning.
+  Existing hourly cron entry was not changed. Storage maintenance is held down,
+  not claimed available. No reboot performed.
+
+Actual smoke: the formerly denied
+`btrfs subvolume create /srv/git/.20261017T202427Z-wgcf-policy-prepare`
+succeeded as subvolume276. Directory read confirmed it empty; deleted only
+that task-created probe and verified its path absent. Final guard status still
+mode0. No retained subvolume, read-only snapshot, send/receive, helper install,
+service-unit replacement or decoy network change occurred in this follow-up.
+
+Owner asks why a snapshot was involved. Answer: it was an assistant-added
+persistent-network-deployment step based on the repository send/receive rule,
+not a requirement for guard suspension or functioning wgcf. Do not turn the
+guard instruction into a release procedure. Earlier Btrfs EPERM is resolved;
+the separate wgcf/private-delivery work remains partial, not deployed complete.
+
+**Later re-enablement, not authorized for now:** finish implementation, inventory
+and pin the intended subvolumes, and reconcile installed guard/bootstrap trust
+policy plus the storage daemon's pinned layout. Do not silently restore stale
+layout assumptions. For the currently attached hooks the supported switch is
+`guardctl mode global`; after a reboot the reviewed guard service must first
+load its hooks. Remove only the two task-added down markers when that phase is
+explicitly reached, bring up the guard, verify its exact readiness policy, then
+bring up storage consumers. Do not execute this sequence during implementation.
+No new trust entries, subvolume pins, guard binary changes or broad grants were
+introduced. Code HEAD/source changes remain as in the20:29 handoff.
+
+
+### 2026-10-17T20:29:45Z · Codex — single-wgcf-cutover-20261017 · selected policy restored; remaining cutover blocked
+
+**Access correction:** owner supplies ubuntu@129.80.64.127 with existing
+`/home/jeremy/.ssh/vps_key`; pinned known-host verification succeeds. Prior
+jeremy/decoy_key denial was wrong task credentials, not an outstanding decoy
+access problem. No keys, trust or grants changed.
+
+**Observed failure and live repair:** wg-opdbus10.0.0.1/24 and
+wgcf-ingress172.16.0.2/32 were UP; table51820 already had its wgcf default.
+FABRIC_EGRESS and Xray's existing outbound both selected packet mark0x51820,
+but all custom IPv4 rules were absent. Marked188.68.58.237 selected physical
+enp0s6; its existing physical guard blocked that path. Executed the tested
+source helper with `--policy-only` over the owner-corrected SSH connection.
+Added only priority41 `fwmark 0x51820 lookup 51820` and
+`unreachable default table 51820 metric 32766`. No default route, existing
+firewall, WireGuard peer/key, service or Xray configuration was changed.
+
+**Source implemented:** `deploy/decoy/decoy-fabric-egress` restores that exact
+selector, rejects foreign priority/table state and fails closed when WARP
+disappears; `--policy-only` leaves packet rules/counters alone. New
+`deploy/decoy/systemd/decoy-fabric-egress.service` replaces the old
+Xray-coupled ExecStart with the standalone helper. New
+`deploy/decoy/test-fabric-egress.sh` uses real isolated kernel routing.
+Updated `deploy/decoy-warp-ssh/README.md` to distinguish this repair from the
+historical MASQUE transport. Source helper SHA256
+303c24989baedb1fc76988b822ba1750d7c0000ea88403326b942fa12579190e;
+unit9f03fc9fdb6a5012563edaf112bd039c68d958d085dc5ebfc438e431e14deaba.
+Observed source HEAD remains34ff9a502d953bb7b1520d530eed849b507e266a;
+unrelated dirty work preserved.
+
+**Verification:** native regression and shell syntax pass: correct marked
+selection, unchanged unmarked management and peer return, idempotency,
+foreign-selector refusal and fail-closed interface loss. Initial fixture
+attempt lacked local sysctl/PATH/iptables prerequisites for the old helper;
+subsequent numeric table/type readback issues were corrected before applying
+the policy. Live route-get selects wgcf/table51820 for both local marked traffic
+and observed client10.0.0.9 entering wg-opdbus. Unmarked public VPS stays on
+enp0s6, client return stays on wg-opdbus.
+
+Remote ping requires a decimal mark: hexadecimal syntax was rejected before
+transmission. Corrected `ping -4 -n -c 3 -W 2 -w 8 -I wgcf-ingress -m 333856
+188.68.58.237` returned3/3 replies,0% loss. Handshake advanced from1791333512
+to1792268160; counters advanced consistently, but echo replies—not counters
+alone—establish the round trip.
+
+**SSH boundary:** no authenticated SSH session through wgcf was established.
+Installed socat has no so-mark option; its generic sockopt-int was shown by
+strace to run too late for connect. A temporary, read-back-verified nft route
+rule restricted to UID1001 and destination188.68.58.237:22 marked five SYN
+packets, but the bounded connection timed out. Explicit WARP-source binding
+also timed out. All task-owned probe tables were removed and final nft table
+inventory confirms their absence. Do not call this one-way WARP or a proven
+receiver-firewall cause; TCP/22 remains unresolved.
+
+**Persistence blocker:** no helper or unit was installed. Preparing the
+two-file send/receive release failed at
+`sudo -n btrfs subvolume create /srv/git/.20261017T202427Z-wgcf-policy-prepare`
+with `Operation not permitted`. Both preparation and snapshot paths remain
+absent. Did not disable the guard, enter trusted cgroups or hand-copy around
+the denial. Inspected fixed storage/release launchers: no verified isolated
+network-component preparation operation is available; system-bus inventory
+has no storage owner. The protected hourly helper also denied direct read.
+Source and native fixture are ready, but boot persistence is NOT deployed.
+
+**Full-cutover boundary:** retained private table28051 routes point at down
+masque-ssh; its policy is absent. Unmarked10.0.0.2 currently selects wg-opdbus,
+including a stale no-handshake .2 peer. Sanitized live web-bridge configuration
+still targets10.0.0.2:8444. The existing issuer listens on wg-opdbus51888;
+identity code and previous OIA1/SID1 proof are unchanged. No new credential or
+application call, no MASQUE/GRE/Xray restart/removal and no private-door
+restoration were performed. External gateway209.74.79.180 and main host
+socket-only egress are separately owned work; do not alter them here.
+
+Exact next actions: storage owner supplies the authorized two-file network
+snapshot preparation path, then receive/activate the helper and existing unit;
+resolve the private receiver delivery/return ownership without reintroducing
+a second outer tunnel. Investigate TCP/22 with new packet/receiver evidence,
+not unchanged retries. If explicitly rolling back this task's live repair,
+first verify ownership, remove only the priority41 fwmark selector, then its
+metric32766 unreachable default; preserve all original routes, rules and keys.
+No Cargo, full-suite tests, service restart or reboot ran.
+
+
+### 2026-10-17 · Codex — single-wgcf-cutover-20261017 · corrected login verified
+
+Owner supplies `ubuntu` with existing `/home/jeremy/.ssh/vps_key` for the decoy.
+The same strict known-host policy, disabled SSH agent and no host-key updates
+successfully read `ip -j -4 rule show` from129.80.64.127 (exit0).
+Observed only priorities0/local,32766/main,32767/default. This supersedes the
+previous access prerequisite: jeremy/decoy_key were the wrong task credentials;
+no authorization, key or trust repair was required. Continue live configuration
+inspection under this owner-corrected identity. External gateway209.74.79.180
+has a separate active owner and must not be changed by this task.
+
+
+### 2026-10-17 · Codex — single-wgcf-cutover-20261017 · live configuration selected
+
+Owner selected existing live configuration, not a saved capture, as the source
+for the missing receiving-side mapping. This does not report that access has
+already been repaired. No SSH retry or alternate identity was used.
+`ssh-keygen -lf /home/jeremy/.ssh/decoy_key` succeeds and identifies the retained
+ED25519 key as `SHA256:/2jz7hn2W7g5y97P5KVuIVQ1Mq+W4vnQZOUfPfZTNdc`.
+`stat` confirms jeremy ownership, SSH directory0700 and key/known_hosts0600;
+no private key contents were displayed or changed. These local checks do not
+establish remote authorized_keys acceptance or private-key signing availability.
+Exact prerequisite: restore the existing assigned jeremy@129.80.64.127
+maintenance login, then inspect its live receiver/forwarding path and implement
+the single-wgcf cutover under the authorization already given. Do not ask for
+the same implementation approval again. No production changes or deployment.
+
+
+### 2026-10-17T19:18:20Z · Codex — single-wgcf-cutover-20261017 · implementation prerequisite isolated
+
+Owner explicitly requests implementation after approving the earlier read-only
+diagnostic. Preserve the proven decoy-terminated WireGuard and decoy-signed OIA1
+handoff; MASQUE is going away and Xray moves externally. Prior identity research
+and successful September24 identity-chain evidence are settled, not reopened.
+Source HEAD observed: `34ff9a502d953bb7b1520d530eed849b507e266a`.
+
+Two read-only scouts investigated distinct unresolved implementation surfaces:
+historical receiving-path captures (including the retained NotebookLM ZIP) and
+native decoy network ownership/callers. Recovered
+`deploy/config/wgcf-ingress-no-netmaker.patch:4-17`: outer device mark is decimal
+51820, distinct from packet-selection mark0x51820; priority90 explicitly sends
+10.0.0.0/24 to main before priority100 selects WARP. This does not specify the
+main-table private route or the public receiving endpoint. Current
+`deploy/decoy/decoy-fabric-egress:10-13` similarly exempts10/8.
+
+Native decoy WireGuard/wgcf management is already wired, but does not supply the
+missing forwarding/boot-policy owner. Located historical public receivers depend
+on local Xray; later private delivery is explicitly GRE then SSH TUN.
+`deploy/xray-hardening/transform.jq:37-41` still targets private10.0.0.2:8444.
+`deploy/runit/op-grpc-bridge/run:48-49,145-155` still requires the SSH services
+and10.0.0.2 on rtly-lungs before binding8090. Removing those dependencies without
+the established replacement delivery contract would not implement working ingress.
+These are source-recovery limits, not a claim that the owner's integration never
+worked. Scout findings: `agent://PriorIngressPath`, `agent://NativeWgcfSurface`.
+
+Only live attempt in this continuation was the approved pinned
+jeremy@129.80.64.127 SSH requesting `ip -j -4 rule show`; exit255,
+`Permission denied (publickey)`. No unchanged retry, different account, private-key
+read, trust change or alternate transport. Therefore live interface/rules/routes,
+return path and the conditional marked probe remain unavailable, not passed.
+No new identity or application call was made.
+
+Modified repository files: HANDOFF.md and SIGNALS.md notes only. No production
+implementation, test/build, service, route/firewall, key/grant or deployment change.
+Exact next action: recover the non-secret successful mapping of client destination
+to wgcf-carried public receiver (IP/port/protocol), receiver-to10.0.0.2:8090 delivery
+and address/return ownership, from retained working configuration or the same
+assigned maintenance account after its access is restored. Do not replace that
+missing contract with a guessed tunnel or reopen settled identity design.
+
+
+### 2026-10-17T02:15:07Z · Codex — seed-fuse-fstab-20261017 · guest startup configuration installed
+
+Owner requested checking the seed's FUSE systemd service and an fstab mount at
+`/run/mount/3tchedfs`. Source HEAD: `34ff9a502d953bb7b1520d530eed849b507e266a`.
+Confirmed an enabled `3tchedfs.service` already existed, but used uppercase
+`/run/mount/3tchedFS` directly and had no fstab entry. Before the change, the
+actual guest `mount /run/mount/3tchedfs` failed with “can't find in /etc/fstab”.
+
+Installed configuration in `/run/mount/3tched-seed/@`: added
+`3tchedFS /run/mount/3tchedfs fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0`
+to `/etc/fstab`; changed `/usr/lib/systemd/system/3tchedfs.service` to invoke
+`/usr/bin/mount /run/mount/3tchedfs`; installed `/usr/sbin/mount.fuse.3tchedFS`;
+updated `/usr/local/libexec/3tched/3tchedfs-mount-preflight`; created the lowercase
+mountpoint. Existing multi-user wants symlink retained. The mount helper runs
+the existing client in the foreground under service supervision, preserves
+BindCurrentContainer, and rejects unsupported options. `noauto` prevents
+systemd's fstab generator from starting a second early-boot mount. No alias
+from the uppercase path was created; host mount paths are intentionally unchanged.
+
+Source files changed: `deploy/workspace-image/{3tchedfs.service,
+3tchedfs-mount-preflight,prepare-lungs-client.sh,README.md}`; new
+`deploy/workspace-image/{mount.fuse.3tchedFS,3tchedfs.fstab}`; matching assets in
+`deploy/lib/golden/build-golden.sh` (including previously unstaged
+`3tched-lungs.conf`); guest mount metadata in
+`deploy/runit/libexec-3tched/op-identity-image`; guest links/docs in
+`deploy/workspace-agent/{populate.sh,README.md}` and
+`deploy/config/agents/workspace/{rules/AGENTS.md,memory/MEMORY.md,shared/README.md}`.
+Preserved prior edits. No Rust/build changes or full test suite.
+
+Safety evidence: seed FSID `8468cc14-a5e4-409c-96f6-1e157d470ab5`, mounted rw,
+superblock flags `0x1` (not SEEDING), one device. Mounted filesystem membership,
+loop inventory and Incus inventory showed no dependent seed leaf; only the
+unrelated `qdrant-recovered` guest was present. No device/subvolume/SEEDING,
+storage-policy or grant mutation. Original fstab/unit/preflight preserved under
+`/var/tmp/seed-fuse-fstab-20261017.RP8rmJ/run/mount/3tched-seed/@/`.
+Unrelated guest root/swap fstab entries were retained, not certified as current.
+
+Verification: shell syntax passed for all changed shell inputs. Installed
+service resolves through its enabled wants link and passes guest
+`systemd-analyze verify`. Actual guest fstab parses with the exact target/type/
+options above. In an isolated mount namespace, the real guest
+`systemd-fstab-generator` produced `run-mount-3tchedfs.mount` without a local-fs
+wants/requires startup link; generated mount and service units both validated.
+Temporary proc/tmp mounts vanished with the namespace. Actual mount(8) now
+reaches the helper and fails explicitly with `missing /dev/fuse`; installed
+helper also rejects `-o dev` and a wrong mountpoint.
+
+Runtime is NOT verified or started: guest `/dev/fuse`, resolved
+`/run/3tched-lungs.socket`, `/usr/share/op-dbus/lungs-catalog/.manifest.json`,
+`lungs-view/objects` and `lungs-empty-state` are absent. Next action, after the
+separate bridge/bootstrap work: stage the real sealed public catalog/schema-only
+view, supply the existing identity's runtime socket and FUSE device through
+supported provisioning, then boot and verify mount type plus admitted identity
+state/receipt. No fake catalog, alternate identity, host mount, service restart,
+network change or NotebookLM sync attempted; no identity filesystem is mounted.
+
+
+### 2026-10-16T22:41:08Z · Codex — owner rejects retirement; two-generation rotation spec updated
+
+Task OD-121/release-overlay-review-20261016-1957; source HEAD last recorded this session34ff9a502d953bb7b1520d530eed849b507e266a. Owner explicitly authorized direct spec edits, then corrected the lifecycle: “retirement isnt a thing”, rotate overlays per release and keep active and previous. Owner additionally rejects the seven-hour Codex retirement work entirely as implementation input. This supersedes the earlier review suggestions to approve a retirement exception; those suggestions must not be revived from history.
+
+Changed `.kiro/specs/release-overlay-target-rotation/{requirements,design,tasks}.md`: owner contract at the top; strict R3.1; two-slot R6 replacement without rename-aside or post-delete permission; R5.2 delete/install recovery; R7.4 retained-generation acceptance; O3 limited to approved re-home/refusal, never more retained generations or deletion of referenced trees. Task1.6 now establishes pre-delete enforcement, including non-lazy unmount/SCM_RIGHTS boundaries, rather than using a delete-first experiment to justify production deletion. Unproven safe reuse must refuse. Existing readiness, lock, service-state, first-activation and scoped D9 corrections remain.
+
+R13.5 and task0.1 prohibit copying/cherry-picking/renaming/refactoring the rejected seven-hour work. Historical recovered source and matching installed binaries are not automatically approved implementation baselines; independent source eligibility must be established before Phase2. This session did not identify or delete that stint's concrete code artifacts, and does not claim a source-provenance audit is complete. WISHLIST OD-121 and the prominent current-contract header now carry the exclusion so old handoffs cannot silently reauthorize it.
+
+Verification: in-memory document validation found95 numbered acceptance criteria across33 mapped tasks, zero unresolved R references, zero uncovered criteria and no obsolete `.retired-*`/retire-aside/retire-rename or deleted-list reference-count claims. No code/runtime tests, Cargo, mounts, service actions or deployment were run; the changed surface is specification text.
+
+Final spec SHA256:
+- requirements.md:8f4d9c5c5639f509b3746a70c6693b10082aea3b45c576ac969920dfe79d6ebb
+- design.md:64625642ffee289797418598669966301e93a67eabf85141e00cfa2185ee6c11
+- tasks.md:c6f7223f727d0ba4e557c4911c009c0f32ae2bf6923f47b4baba7701737ff7ff
+
+Other changed files: HANDOFF.md, SIGNALS.md, WISHLIST.md and local review notes. No unrelated source changes reset or overwritten; network owners' work remains untouched. Next implementation action is the spec's eligible-source provenance gate, not resumption of rejected retirement work.
+
+### 2026-10-16T21:44:33Z · Codex — verify R3/R6 requirement edits, retain only consistency cleanup
+
+Same task OD-121/release-overlay-review-20261016-1957; source HEAD last recorded34ff9a502d953bb7b1520d530eed849b507e266a. Native sha256sum now reports requirements.md cd836e60e411dd5a2bad44cff7abe30dd606c8f1352d43710e07a6d25fe48e71; design.md and tasks.md are unchanged at1ccffe76c3a834ea2c9f66d0006d933721bd56f9675fffcff04e3e9825f51fea and7009d145234025c7b7526713f1bd3e499ffea78452284e23d6e9a60a853c239d. Verified the claimed R6.10 edits in `/srv/git/odbus-verified`; do not redo them in nonexistent `/srv/git/odbus`.
+
+Remaining bounded wording cleanup only: mirror R6.10's conditional exception and third-slot limitation into design.md:381–383 and670–677, which still say the alternatives close the gap completely. Clarify requirements.md:461 to prohibit retirement with any observed referencing overlay/holder, while placing the explicitly unobserved-holder exception solely under O3/R6.10. As written, “does not relax this rule for any slot an overlay still references” conflicts with the exception's admitted missed overlay references. Do not reopen corrections2–7 or initiate another broad design pass.
+
+The exception remains unapproved by the owner in this conversation, and kernel behavior remains untested here. No Kiro spec changes, builds, mounts or services. Updated only shared review notes; network agents' work and ownership untouched.
+
+### 2026-10-16T21:40Z · Grok 4.7 — OVS address persistence installed
+
+The bridge, `eth0` uplink, and `pub0` MAC already persist in `/etc/openvswitch/conf.db`. `openvswitch-switch` is `S03` and runit stage 2 runs `/etc/rc2.d`. Linux addresses do not persist there, so installed `/etc/init.d/ovsbr0-persist` as `S04` with helper `/usr/local/sbin/ovsbr0-persist` and config `/etc/op-dbus/ovsbr0-persist.conf`. It restores `188.68.58.237/22` and the default route on `pub0`, and `10.0.0.3/32` on `ovsbr0`. `start` and `status` succeeded against the live interfaces. NetworkManager remains disabled and installed (`down` file, `K01`, package present). No reboot was performed. Source copy: `deploy/runit/ovsbr0-persist/`.
+
+### 2026-10-16T21:33Z · Grok 4.7 — OVS brought up with op-ovsbr0-setup
+
+Used the existing release binary `/var/lib/cargo-build/odbus-verified/x86_64-unknown-linux-gnu/release/op-ovsbr0-setup --seed-only` with `UPLINK=eth0`, `PUBLIC_PORT=pub0`, and empty `INTERNAL_PORTS` (no `svc0`). Running package `ovs-vswitchd` applied the empty database. Public `188.68.58.237/22` and default via `188.68.56.1` are on `pub0`; `pub0` MAC matches `eth0` `36:f1:18:56:c4:6a`. EMQX alias `10.0.0.3/32` is on `ovsbr0`. Ping `1.1.1.1` succeeded. NetworkManager is disabled and still installed: runit `down` file, daemon stopped, package `1.52.1-1devuan1` remains, sysv `K01`. Public SSH on port 22 remains. OpenFlow, host Qdrant, and `rtly-lungs` are not configured. Script and log: `/root/ovs-bringup-20261016.sh`, `/root/ovs-bringup-20261016.log`.
+
+### 2026-10-16T21:23Z · Grok 4.7 — network topology document rewritten
+
+Task `network-topology-doc-20261016`. Replaced the NotebookLM export in `docs/network-topology.md` with the 2026-10-16 owner layout: `eth0` uplink, `pub0` public addressing, decoy WireGuard administrative SSH at `10.0.0.1` reversed to the host identified as `10.0.0.2`, no host WireGuard, `rtly-lungs` with transport/REALITY and tonic `10.0.0.2`, three `ovsbr0` aliases (EMQX, OpenFlow, host Qdrant), `/run/3tched-lungs.socket`, MASQUE SSH TUN distinct from the administrative reverse tunnel, native bootstrap until the bridge returns control to plugin D-Bus. OpenFlow, host Qdrant, and transport/REALITY numeric addresses stay unset. Retired `svc0`, `10.200.0.x`, GRE, and host `wgcf` are recorded as source drift; the three named hardcodes were rechecked and are still present. Live cutover was not performed. Claude's network staging ownership is unchanged.
+
+### 2026-10-16T21:03:51Z · Codex — hash-pinned Kiro follow-up supersedes the seven-item request
+
+Task `release-overlay-review-20261016-1957`, OD-121; last recorded source HEAD this session34ff9a502d953bb7b1520d530eed849b507e266a. Native sha256sum matches the user's current Kiro revision exactly:
+- requirements.md:10f5b311c1e981938f0255de9b05dce2c9e5af18ff35099b2e7b90160587106b
+- design.md:1ccffe76c3a834ea2c9f66d0006d933721bd56f9675fffcff04e3e9825f51fea
+- tasks.md:7009d145234025c7b7526713f1bd3e499ffea78452284e23d6e9a60a853c239d
+
+Read the cited changed sections. The earlier readiness, lock, transitive-Q/wanted-state, first-activation, scoped D9/guarded-creation and straddle findings are addressed in this revision. Close findings2–7 as specification corrections, not implementation/test results. The earlier83-criteria/33-task parser result belongs to the older revision, not these hashes. Do not resend the old list.
+
+Only slot lifetime remains disputed. Current R6 replaces the host-attached top-level mount with a detached descriptor and treats the process scan as advisory, both real corrections. However requirements:456–458 (R3.1) still forbids rename/delete while any overlay references a slot, while :660–695 deliberately renames/deletes and observes missed holders afterwards; :675–677 explicitly accepts failed lookups through a detached overlay. This is a proposed relaxation requiring owner approval, not compliance with the existing prohibition. R6.10 must not say the old rule is satisfied after the fact.
+
+The deleted-list reference-count claim at requirements:610–614 remains marked inferred and untested. Official btrfs-subvolume documentation describes a deletion/cleaning queue: directory removal is immediate, block cleanup asynchronous. Queue presence alone is not proof of a live process holder. Task1.6 must establish the exact kernel behavior before that mechanism is relied upon. Source: https://btrfs.readthedocs.io/en/latest/btrfs-subvolume.html .
+
+[INFERENCE] Neither a fixed third slot nor restarting only declared services proves lifetime expiry for arbitrary undeclared/SCM_RIGHTS-held references. A third slot delays reuse; a holder can outlive the extra generation. Likewise two namespace-scan passes are not by themselves a synchronization barrier against changes during the second pass. These are corrections to the remaining R6 safety claim, not new unrelated scope. Keep destructive retirement gated under the existing invariant unless the owner explicitly approves a narrower contract after fixture evidence.
+
+Only HANDOFF.md, SIGNALS.md and local review notes updated. No Kiro spec edits, builds, mount/kernel experiments, service changes or network work. Claude's network ownership and stage-only boundary are untouched.
+
+### 2026-10-16T19:57:15Z · Codex — revised Kiro release-overlay specification review
+
+Task `release-overlay-review-20261016-1957`, OD-121; HEAD recorded this session `34ff9a502d953bb7b1520d530eed849b507e266a`. Read every line of requirements.md F311 (843 lines), design.md 91A8 (575 lines), tasks.md E8BC (354 lines) under `.kiro/specs/release-overlay-target-rotation/`. Kiro owns those files; this review changes only HANDOFF.md, SIGNALS.md and local review notes. No code, builds, mounts, modules, service commands or network changes.
+
+Owner interruption: Claude is working on the network. Network restoration belongs to Claude; the earlier dashboard-transport diagnosis is historical evidence, not permission for this review to change networking.
+
+Verification: an in-memory JavaScript parser checked83 numbered acceptance criteria,33 task mappings, no unresolved numbered R references and no uncovered criteria. Corrected the parser's initial trailing-underscore word-boundary mistake before accepting that result. Executed the written one-hop Q formula on A-starts-B-starts-C with C changed: it selects B,C but omits A, which can restart B. Also enumerated the permitted per-target mixed-generation read contradicting task1.8's last assertion. These are specification checks/counterexamples, not tests of op-release or the kernel.
+
+Remaining findings for Kiro:
+- R6/design D do not establish unreachability: installed `/usr/local/libexec/opdbus-storage/op-release-launch:31-37` mounts the Btrfs top level in the host namespace until exit, and the design excludes that mount from holders. `top/@release-a` remains reachable to privileged readers. A sequential proc scan also misses a reference passed to an already-scanned process; identifying pre-existing holders does not make the scan atomic. R6.10's observable-only guarantee is weaker than R3.1. Require an enforceable lifetime boundary/proven kernel-retention guarantee or refusal; do not describe scan/delete safety as resolved.
+- R5.9/R9/design F can boot committed release A after candidate catalog B was persisted but before commit. Mount success alone publishes ready although persisted B survives. Existing `deploy/runit/libexec-3tched/opdbus-rundirs-up:28-41` stages persisted state at boot. Readiness must bind mounts and catalog to the permitted generation, fail closed on unresolved catalog state, and have a live first-activation/rotation lifecycle rather than being boot-only.
+- Whole launcher transaction locking is unspecified. Existing `op-release.rs:395-405` locks only the child command lifetime; design E splits planning, service actions, switch, catalog and commit. Specify one lock spanning the entire transaction, recovery and rollback, with child handoff and concurrent-command refusal.
+- R8.3 Q must close transitively over auto-start paths, with a start gate during the transaction. R8.6 must preserve supervisor wanted state, not only instantaneous running/down state, down files and links. Official runit sv documentation distinguishes wanted-up, down and once: https://smarden.org/runit/sv.8 . A wanted-up service between retries must not become administratively down.
+- R5.5 assumes a `from` release/catalog, but initial activation has none. R10 preservation mechanics do not specify the complete from=null failure/abort transition. Define restoration of pre-activation content/catalog/service state or a stopped, recoverable explicit state. Preserve optional runit check/finish/log semantics; several source service directories lack these hooks.
+- D9 changes HOST_FS used by out-of-scope `provision_host_subvolumes`, while the installed launcher still mounts STORAGE_FSID_A for that verb. Use the release-specific filesystem contract without silently changing Incus provisioning. Task3.2 also needs an explicit existing guarded owner/path for golden creation and correct dependency ordering; approval alone does not place a shell btrfs ioctl in the trusted release cgroup.
+- Task1.8 incorrectly forbids mixed changed generations for undeclared straddling readers; R4.3/R4.4 explicitly allow that. Separate per-open-file primitive checks from declared-consumer quiescence checks. Add the reboot/catalog, concurrent-launcher, transitive-autostart and first-activation interruption scenarios to scoped fixture verification.
+
+Disposition: structural mapping passes; not implementation/activation approval. Prior durable intent, stacked-target handling, catalog location separation and inventory-field corrections are recognized; do not reopen them wholesale. Next action is Kiro's bounded correction pass and the existing owner decisions. Network remains Claude-owned.
+
+### 2026-10-16T19:35:39Z · Codex — dashboard-transport-20261016 · transport failure distinguished from missing application
+
+Owner reports `10.0.0.2:8080` unreachable and suspects SSH inside WARP/MASQUE. Current source HEAD `34ff9a502d953bb7b1520d530eed849b507e266a`. Diagnosis used the existing approved decoy maintenance identity, pinned SSH host verification and read-only native commands. Modified repository files: HANDOFF.md and SIGNALS.md only; no code, builds, routes, rules, firewall, identities, services or deployment changed.
+
+Observed host `ip -br address`: only lo and eth0, public188.68.58.237/22. No rtly-lungs, tun5, ovsbr0 or10.0.0.2. Root `ss -lntp` has no2223,8080 or8090 listener. Thus the dashboard cannot work even if the outer carrier is healthy.
+
+Observed decoy: masque-ssh DOWN; op-warp-ssh.service repeatedly fails its pre-start with `warp-ssh remainder: IPv4 rule ownership differs`. Receipt `/run/op-warp-ssh/remainder/receipt.json` says incomplete=false/enabled=true; saved rules-4.json requires priority200/src=all/table28053. Actual root IPv4 rules contain only priorities0/32766/32767. This is real policy/receipt drift, not an SSH authentication failure. Configuration still points restricted SSH at188.68.58.237:2223, whose host listener is absent. No guard suppression, receipt rewriting or rule insertion attempted.
+
+Actual HTTPS request from decoy namespace op-warp to Cloudflare's trace endpoint succeeded with `warp=on`; outer WARP data connectivity is working. `warp-cli status` refused without Terms-of-Service acknowledgement; no acknowledgement/registration change was made and no CLI status success is claimed.
+
+Separate administrative reverse tunnel: runit service PID12532 running; decoy127.0.0.1:2222 responds with ED25519 fingerprint SHA256:CMTaLtPEfZj0uqHO5A4GcSYNTmerWvqWdrhWV5tn5LI, exactly matching host `/etc/ssh/ssh_host_ed25519_key.pub`. The decoy WireGuard-only listener10.0.0.1%wg-opdbus:2222 exists. This proves the reverse endpoint is serving the host SSH identity, not a fresh authenticated external WireGuard-client session.
+
+Next action for authorized restoration: reconcile the decoy's complete owned policy/receipt state and preserve management/marked-WireGuard exceptions before any change; restore the restricted host SSH/TUN/address prerequisites under the established network bootstrap and rollback contract. Then restore the application listener through its release/catalog deployment path. Merely restarting WARP or the SSH service cannot supply these missing prerequisites. The earlier instruction to stop at application-bridge deployment remains in force until explicitly superseded.
+
+### 2026-10-16T13:38Z · Codex — original Pi router now uses Jev every turn
+
+Task `pi-jev-router-20261016`; repository HEAD `34ff9a502d953bb7b1520d530eed849b507e266a`. Owner requested modifying the original Pi router, clarified **every turn**, and specified that Jev is already registered with its key in `bash_secrets`. Implemented in existing `~/.pi/agent/extensions/task-router/index.ts`, new `jev.ts`, and isolated `tests/{sandbox.ts,routing.test.ts}`. Updated only the TypeSafe credential-source entry in `~/.pi/agent/models.json`. `routing.json`, model candidate lists, subscription-only execution, quota/cooldown rules, fixed-tier/physical overrides and OMP configuration remain unchanged. Shared `policy.ts` keeps its heuristic for its existing OMP adapter consumer; Pi auto and preview paths no longer use it.
+
+Uses native `ctx.modelRegistry.findOfType("classifier", "typesafe", "jev-latest")` and `ctx.modelRegistry.classify()`, not a parallel HTTP client or new provider. Each auto request reclassifies, including user/steering/follow-up, tool continuation, retry and direct requests. No first-turn/planning-phase cache. State contains latest user text (up to16000 characters) plus up to6 recent public text messages (2000 each); system messages, hidden thinking, image bytes and tool-call arguments are excluded. Choice maps to existing quick/coding/reasoning tiers; confidence below0.7, invalid results, classifier failures and8-second timeout stop dispatch rather than silently selecting a heuristic or paid fallback. Caller cancellation preserved. TypeSafe classification usage is separate from execution-model estimates.
+
+Credentials: Pi's model config invokes child Bash to source existing `~/.local/bin/bash_secrets`, checks `TYPESAFE_API_KEY` is nonempty, and returns it only to Pi's resolver. Source returns status1 despite setting the key; initial `source && printf` therefore produced native invalid_state. Corrected to check variable presence. `pi auth check --provider typesafe --json` now returns ready/api_key. No key printed, copied into config, or changed in the secret store. Backup: `~/.pi/backups/jev-router-2026-10-16T13-28-10.600Z/`.
+
+Verification: pre-change regressions had4 expected failures/2 passes. Final `bun test ~/.pi/agent/extensions/task-router`:17 pass,0 fail,52 assertions. Covers every route reason, overrides, classifier errors/absence/incomplete results, unknown labels, confidence boundary/nonfinite values, cancellation before/during classification, plus existing budget/quota coverage. Real Pi RPC with actual TypeSafe/Codex: read request→Luna/low at100%; successful read tool continuation separately→Luna/low at89%; concurrency request→Astra/high at95%; next arithmetic question→Luna/low at100%, answered4. Normal extension discovery (no explicit -e) previewed CSV implementation as coding/100%, retaining existing Go/Codex ranking. Isolated empty-key native run produced a virtual pirouter error and no physical dispatch. Its CLI exit was0: the error message, not exit status, establishes the failure boundary.
+
+Smoke harness correction: initial isolated print-mode child calls timed out because piped stdin stayed open; ignoring stdin let Pi process its supplied prompt and demonstrate the failure path. Disposable directories removed. No standalone TypeScript compiler installed; no tsc pass claimed. Native Pi loaded/executed the extension. No Cargo/build/service/backend deployment, MCP authentication or OMP activation. New Pi sessions default to pirouter/auto; start a fresh Pi to load this change and use `/routing` or `/routing preview <task>` to inspect it.
+
+
+### 2026-10-16T11:17Z · Codex — scoped no-reboot deployment decision
+
+Task `scoped-live-deploy-design-20261016`, OD-121; HEAD `34ff9a502d953bb7b1520d530eed849b507e266a`. Owner corrected “whole root” to only used directories/files, selected no-reboot activation, and asked the agent to choose the most efficient flexible design. Recommendation: keep immutable Btrfs snapshots and incremental send/receive; select one complete received application generation atomically; expose only release-owned files and wholly owned directories through manifest-declared bindings. Do not blanket-overlay `/`, `/usr`, `/etc/op-dbus`, runit directories or application data, and do not rewrite every service's existing absolute paths.
+
+Evidence and corrections: `docs/src/getting-started/local-release-activation.md:232-282` already specifies host per-file symlinks, writable supervision/config directories and selective application activation. The earlier chat's “26 references prove configuration never reaches the host” was unsupported. Source for the two-slot tool was found at `/srv/git/odbus-btrfs-enforcement-20261013/crates/op-storage/src/bin/op-release.rs`: lines361-392 detach the old overlay before mounting the next and then save selection; lines302-323 replace the non-active slot before activation. `/usr/local/libexec/opdbus-storage/op-release-launch` restarts every packaged service already enabled, without changed-consumer selection or application-health rollback. This source was inspected, not built or proven byte-identical to the installed binary. The earlier symlink-only description of that two-slot implementation was wrong.
+
+Efficiency: `deploy/lib/golden/build-golden.sh:562-607` unconditionally reinstalls binaries and recreates UI/catalog trees; `deploy/runit/prepare-execution-python.sh:29-66` creates a fresh environment and writes its cache outside golden. Preparation therefore is not literally confined to golden. Preserve unchanged staged files/CoW extents and reuse verified pinned environments; retain matching immutable send/receive parents for deltas. Extend existing release inventory with owned destination, digest/mode/owner, service consumer, activation scope and action rather than inventing another deployment list. Avoid OverlayFS copy-up/whiteouts and multiple live mount switches when no directory union is needed. No transfer-time or physical-I/O speedup was benchmarked.
+
+Activation contract to implement: root-owned locked/journaled prepare and candidate verification; validate bindings and compatible rollback; quiesce changed consumers and dependency closure; atomic same-directory selector rename plus directory fsync; use the existing catalog owner to persist/stage the matching sealed catalog before admitting the new bridge; reload/restart only affected services and verify readiness plus identity-bound operation/state receipts. Commit last-good only afterward. Failure restores the prior compatible binary/config/catalog selection, never databases, identities, credentials or mutable application state. Existing FUSE mounts/seed ownership and network/SSH/storage bootstrap are explicit separate scopes, not collateral restarts. Keep active and last-good plus temporary candidate; never retire a still-used generation. Ordinary application updates need no reboot, but a bounded service pause may be necessary.
+
+Binding details: mixed `/etc` directories remain real/writable; immutable config gets per-file bindings, while credentials, grants and runtime configuration keep their existing owners. Runit service directories and supervision state stay writable with only definition files selected from the release. `deploy/runit/op-grpc-bridge/run:200-202` already uses a release path for a provider file whose final component must be regular. Preserve no-symlink checks; use an existing explicit generation-path setting where supported, and assess exact mount bindings only for consumers that cannot accept it. A bind mount pins an object and does not follow later selector changes. Separate opens across a rename can mix generations; quiesce consumers or resolve/pin the generation once, and retain it for their lifetime.
+
+Verification: a disposable ordinary-file fixture on Btrfs (`statfs` type0x9123683e) exercised real executable symlinks, same-directory rename, held file descriptors, resolved-generation paths, expected O_NOFOLLOW rejection, removed-file absence, failed-rename preservation and rollback without changing persistent state. All12 checks passed;128 swaps with512 concurrent reads observed A180/B332 with no missing/invalid contents. Repeated `install -Dm755` on identical input replaced the destination inode, confirming avoidable preparation churn, not a physical-block benchmark. Fixture removed. No snapshots/send/receive/mounts/services/catalogs/credentials were changed, no Cargo or suite ran, and no end-to-end deployment was claimed. `findmnt` showed no current release overlay or identity-bound FUSE namespace; NotebookLM sync through that surface was unavailable, so evidence remains here. Current sampled host application bindings are absent; previous build/source reconciliation remains unresolved.
+
+Authoritative semantics: [rename(2)](https://man7.org/linux/man-pages/man2/rename.2.html), [Btrfs send/receive](https://btrfs.readthedocs.io/en/latest/Send-receive.html), [kernel OverlayFS backing-tree restrictions](https://raw.githubusercontent.com/torvalds/linux/master/Documentation/filesystems/overlayfs.rst). Exact next implementation boundary: integrate the source-owned release selector/binding transaction and change-preserving golden staging; reconcile the held build artifacts before activation. This recommendation is not authorization to run the historical launcher unchanged.
+
+
+### 2026-10-16T11:08Z · Codex — class-router unavailable explained
+
+Task `class-router-unavailable-20261016`; HEAD `34ff9a502d953bb7b1520d530eed849b507e266a`. Current `~/.omp/class-router.json` uses hosted TypeSafe Jev and `TYPESAFE_API_KEY`, superseding the09:29 localhost setup. Both actual session decisions at11:05 reported classification-failed/unavailable in1ms. Running OMP PID12961 and child shell lack the variable. Installed upstream `src/classify/http.ts:45-70` reads only the environment and throws unavailable before HTTP when the configured key is missing; OMP provider registration is not consumed there.
+
+Sourced existing `/home/jeremy/.local/bin/bash_secrets` with output suppressed; child environment then reports key present. Executed the installed classifier against the configured hosted endpoint with synthetic arithmetic text:222ms, task_route trivial, confidence1. No secrets printed, no user prompt replay, no configuration changes. Start a fresh OMP from that sourced shell, or use existing `~/.omp/local-router/omp-with-classifier-env.sh --no-prewalk`; sourcing inside a tool cannot repair its already-running parent OMP.
+
+Deployment prerequisite review: `target/release/opblob` and live plugin catalog absent; golden directory empty, current is a stale selector. Prior workspace build restored owner-deleted socket files without authorization; reconcile those source changes before using its artifacts. No build/seal/deployment performed. Correction to this session's early commentary: latest seed-bootstrap entry explicitly defers deployment design and supersedes the older whole-root-overlay header; do not treat that header as current approval. No FUSE mount found; NotebookLM through identity-bound filesystem unavailable, so shared notes retain evidence.
+
+### 2026-10-16T09:29Z · Codex — local OMP router enabled; separate build source-boundary violation
+
+Task `omp-local-router-20261016`. Owner's final instruction: keep the present routing setup; hosted Jev was a reference, not permission to switch subscription execution to OpenRouter. Baseline repository commit observed at task start: `34ff9a502d953bb7b1520d530eed849b507e266a`; no commit made by this routing task.
+
+**Installed and exercised:** OMP 18.11.1, Ollama 0.40.4, unmodified npm `@ejstembler/pi-classifier-router@1.4.2`. No custom routing extension or protocol adapter. Old `extension-module:task-router` disabled, its files preserved. Existing authenticated credentials reused without printing or manually changing them. Original top-level OMP settings preserved. Planning default and prewalk were already off; no planning-to-implementation workflow added.
+
+Machine has 16 vCPUs, approximately 31.3 GiB RAM, no compute GPU, and initially 548 GiB disk available. No local Ollama models were initially installed. Downloaded approximately 834 MB `tev1:0.8b`; derived `omp-router-tev1:0.8b` with identical weights and `num_thread 4`. Local endpoint `http://127.0.0.1:11434/v1/systemone` accepted the upstream extension's Jev request format; empty `apiKeyEnvVar` sends no authorization header. Classifier server runs with `OLLAMA_NO_CLOUD=1`, loopback bind and persistent model residency. Tool-managed service `omp-local-router-ollama` is left persistent/running; no boot service was installed.
+
+Routing map, with all exact destinations resolved through OMP's authenticated model facade:
+
+| Category | Destination |
+| --- | --- |
+| Simple questions / lookups | `anthropic/claude-haiku-5-5` |
+| Routine coding | `cursor/composer-2.5` |
+| Complex debugging / architecture / security | `openai-codex/gpt-6-astra` |
+| Writing / documentation | `anthropic/claude-sonnet-5-5` |
+| Cargo build / test / check / Clippy / formatting verification / bench | `openrouter/openrouter/free` |
+
+Threshold 0.7, classifier timeout 10 seconds, main sessions only. Failure or low confidence retains the selected model. The extension does not automatically pin manual model choices; use `/class-router off` before `/model`. The owner accepted Free Router's random pool, which can include DeepSeek. No named DeepSeek route exists, but there is no exclusion guarantee. OpenCode HY3 failed live with 400 model unavailable; OpenCode Mimo failed with 403 explicitly restricting its free tier to OpenCode. No bypass attempted. Owner chose **no fallback**: native OMP fallback chain for `openrouter/openrouter/free` is empty and the extension chain contains only that same destination.
+
+**Evidence:** `/home/jeremy/.omp/local-router/` contains `destinations.json`, `dry-run-results.json`, `live-routing-results.json`, `classifier-failure-results.json` and `final-fallback-check.json`. Twelve local dry-run examples all matched expected categories; latency 2399–2863 ms, confidence 0.8236–0.9995. Classification requests stayed on localhost with no credential header. Initial default-thread/5-second timeout failures are preserved separately in `dry-run-initial-timeouts.json`, not hidden. Four-thread cold request was 8887 ms; concise final rubric warmed to the reported range.
+
+Real OMP RPC session loaded the installed upstream extension, preserved manually selected Astra while routing was off, then routed a synthetic Cargo-check request to OpenRouter Free at confidence 0.99275 / 2499 ms and streamed `ROUTING_OK`; process exit 0. This was a real provider request, not execution of Cargo. Separate real OMP request with a nonexistent local classifier model reported `classification-failed`, retained Astra, streamed `ROUTING_OK`, exit 0. A real low-confidence decision was suppressed in the component smoke. Exhausted Free Router circuit produced no substitute destination. No full Cargo suite was run for this user-environment change.
+
+**Changed user files:** `~/.omp/agent/config.yml`, `~/.omp/class-router.json`, plugin manager files under `~/.omp/plugins/`, `~/.omp/local-router/{serve-ollama.sh,Modelfile}` and evidence JSON. Ollama weights are under `~/.ollama/models/`. Backup: `~/.omp/backups/local-router-2026-10-16T08-54-50-838Z/{config.yml,manifest.json}`. Saved `~/.omp/local-router/class-router.dry-run.json` matches the final no-fallback policy with dry-run enabled.
+
+**Start:** Ollama is running now. After reboot, run `~/.omp/local-router/serve-ollama.sh` in a separate terminal, then start a fresh `omp --no-prewalk`. Inside OMP: `/class-router status`, `/class-router explain`; `/class-router off` disables routing for manual selection, `/class-router on` enables it. Persistent disable: `omp plugin disable @ejstembler/pi-classifier-router`, then start a new OMP session. Restore the saved configuration with:
+
+```sh
+omp plugin uninstall @ejstembler/pi-classifier-router
+cp -p "$HOME/.omp/backups/local-router-2026-10-16T08-54-50-838Z/config.yml" "$HOME/.omp/agent/config.yml"
+mv "$HOME/.omp/class-router.json" "$HOME/.omp/backups/local-router-2026-10-16T08-54-50-838Z/class-router.disabled.json"
+```
+
+Restore commands are provided, not executed: routing remains enabled. Restoring the whole config also discards later edits to that same config file. Model files can remain inert. Source references: [extension README](https://gitlab.com/ejstembler/pi-classifier-router/-/raw/main/README.md), [Ollama System One](https://docs.ollama.com/api/systemone), [Free Router](https://openrouter.ai/docs/guides/routing/routers/free-router), [hosted Jev reference](https://openrouter.ai/docs/guides/routing/routers/jev-router).
+
+**Separate earlier build — unresolved source-boundary violation:** the execution-only OpenCode worker ignored its no-edit instruction. Its completed log records restoring these previously deleted files with `git checkout --`: `crates/op-grpc-bridge/src/{shared_socket.rs,shared_socket_tests.rs}` and `crates/op-plugins/src/state_plugins/{unix_socket.rs,shared_unix_socket.rs,shared_unix_socket_methods.rs}`. It also added `pub mod shared_socket;` in bridge `src/lib.rs` and module declarations/reexports for those plugins in `state_plugins/mod.rs`. Temporary removals in `plugin_scaffold_helpers.rs` and plugins `src/lib.rs` were later restored; do not blindly remove their original exports. Parent has not reset or overwritten these files because the deletions were pre-existing user/agent work and intervening ownership must be reconciled.
+
+Worker evidence: session log `/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-16T06-58-52-198Z_01a14381-a4a6-76f9-a572-58fafe94b4a2/34.bash.log`, especially lines 2084 onward and final receipt. Build used native rustup toolchain Cargo because `/usr/bin/cargo` was absent, plus existing verified threetched artifact capture environment; reported release success took 18m18s. No installation, seal, restart, golden activation or mount occurred. Next action for the build task: reconcile only worker-introduced restorations/module declarations against the owning task's intended deletions before using the artifacts; preserve other agents' source and the storage guard. Current routing task is complete and does not authorize this source repair or deployment.
+
+### 2026-10-16 · Codex — read-only passthrough analysis authorized
+
+Owner reports building both `zeroclaw` runtime and `zeroclaw-config`, and requests analysis of maximum reuse/passthrough into existing 3tched code. Task `native-passthrough-analysis-20261016` authorizes source inspection and recommendations only. Earlier pause remains for implementation, build, configuration and deployment. No Cargo PATH symlink or deletion was performed after the owner noticed the active build.
+
+### 2026-10-16 · Codex — owner-reported ZeroClaw installation command
+
+For `seed-fuse-folders-20261016`, the owner reports using this exact command:
+
+```sh
+bash install.sh --prefix /var/lib/threetched --full --source --preset full --no-modify-path   --with-gateway
+```
+
+Recorded from the owner's message, not executed by the agent. Build/installation completion and resulting artifacts have not been independently verified. Owner retains build ownership; the pause on further configuration and deployment remains in effect.
+
+### 2026-10-16 · Codex — owner pauses further work while building
+
+Owner correction: “you are getting ahead of youreslf i am building the binary.” Owner owns the build, not just installation. Pause all further implementation, build, configuration and deployment until the owner resumes the collaboration. Eight remaining open tasks are blocked by this explicit pause, not completed. No further technical changes or execution after this correction; only task/handoff bookkeeping. This supersedes automatic continuation instructions in earlier entries.
+
+### 2026-10-16 · Codex — owner installation boundary and verified relay recovery
+
+Task `seed-fuse-folders-20261016`. Owner installs ZeroClaw; build/configuration must use that actual installation afterward. `NativeRuntimePrep` stopped and reported no edits/builds. No ZeroClaw installation or competing runtime copy was made.
+
+Recovered `crates/op-uds-relay/Cargo.toml` and `src/bin/op-uds-relay.rs` verbatim from `repr0bated/operation-dbus-proto` commit `7d881d25adeedace03250515c0e4dc30200698e0`. SHA256 checks matched the independent historical inventory at `docs/src/architecture/plugin-baseline-files.sha256:808-809`: manifest `b2df9a43d6f886359c947cb57d53cbc1e1a8f1dd131f66a2c02459aa798b6af6`, source `50f92b0a62aa2d69404d9773e08ea67d748c1bf90e4c30c31b8cf3ebd02c0839`. Added only `exclude = ["crates/op-uds-relay"]` to root Cargo workspace configuration so this dependency-free crate builds independently. Recovery source: agent://RecoverLoopbackRelay. Old assistant `rust_service.service` launches a different `socket_demo`; owner-named networkmanager-rs remains unidentified. The recovered relay implements raw TCP/Unix streams, not internet routing/SOCKS/HTTP CONNECT or UDP.
+
+Build blocked, not failed compilation: designated Composer2.5 execution worker rejected every Shell invocation, including its process check. It ran no Cargo command, generated no compiler output, and produced no artifact; parent did not bypass the denial. Parent's preceding process check found no cargo/rustc/clippy-driver. Exact pending build from repo root: `env CARGO_DISPATCHED=1 CARGO_CALLER_FAMILY=gpt CXXFLAGS="-include cstdint" RUSTC=/home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc CARGO_TARGET_DIR=/srv/git/odbus-verified/target/relay-recovery /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build --offline --manifest-path crates/op-uds-relay/Cargo.toml --release --target x86_64-unknown-linux-gnu --bin op-uds-relay`. Restore approved worker shell execution before rerunning; no parent Cargo fallback. Transport smoke, seed installation and service enablement remain unperformed.
+
+Socket correction supersedes the intermediate flat `GUEST_LUNGS_SOCKET` claim below: host and bind destination retain dedicated `/run/opdbus/lungs/lungs.sock`; the guest public entrypoint is `/run/3tched-lungs.socket`, created by new `deploy/workspace-image/3tched-lungs.conf` as a symlink to that backing path. `op-identity-root` rejects directory binds over `/` or `/run` and binds only the socket directory read-only. Seed unit/preflight, preparation helper and README use the public entrypoint. Installed tmpfiles rule was actually exercised with `sudo -n unshare --mount --propagation private --mount-proc=/run/mount/3tched-seed/@/proc chroot /run/mount/3tched-seed/@ /usr/bin/systemd-tmpfiles --create 3tched-lungs.conf`; chroot readlink returned `/run/opdbus/lungs/lungs.sock`. No persistent proc mount or host network mutation. Socket itself remains absent. Guest unit offline verification passed; no live mount/boot claim.
+
+Owner accepts independent host/guest projections of the same blobs; no copy/synchronization layer is needed. Host requested mount remains `/run/mounts/3tchedFS`, guest `/run/mount/3tchedFS`. Canonical provisioning currently uses `op-identity-root seed-profile`; it has only runtime tmpfs and dedicated socket-directory devices. Do not use the stale `container-template.json` as new authority. Config/runtime profile extension needs integration with strict profile admission and the owner-installed runtime; none applied. Historical seed-lungs code still binds a host FUSE disk over the guest mountpoint and must be reconciled with guest-owned mounting, not silently accepted as current.
+
+No seed SEEDING flag, profile creation, host FUSE mount, NetworkManager disablement, bridge deployment or network cutover occurred. Missing six seed subvolumes remain blocked by the guard; no grant bypass. Last recorded branch/commit `restore/devuan-storage-20261013` / `34ff9a5`, not refreshed here. Next: owner completes runtime install; inspect its actual layout/provenance, then configure the read-only Incus application mount and private guest runtime. Full tests/verify remain deferred.
+
+### 2026-10-17 · Claude Opus 5.5 — bridge-bootstrap-20261017 · handed off (owner switching to pi)
+
+Owner direction: get op-grpc-bridge built, installed and coming up after a reboot first; nothing else comes up until it does. Then the single socket (lungs.sock), network docs, commit and push. Owner is sole developer and has seen the tun5/lungs design working. **There is no GRE.** The 2026-10-03 "GRE retained" claims are stale.
+
+**Build:** detached `cargo build --workspace --release` (pid 24043, own session, reparented to PID 1) was compiling dependencies at handoff. Log: `/tmp/claude-1000/-srv-git-odbus-verified/21395764-6c41-441c-a0c1-16efb2466698/scratchpad/build-workspace.log` (under /tmp; lost on reboot). Artifacts land in `target/release` (= /var/lib/cargo-build/odbus-verified). Not yet built: `crates/op-uds-relay` (outside workspace: `cargo build --release --manifest-path crates/op-uds-relay/Cargo.toml`) and threetched (`vendor/tched-router/build-threetched.sh`). Note the 2026-10-16 GLM build receipt is not a clean tree build; do not deploy it.
+
+**Boot chain for the bridge (from deploy/runit run files):** opdbus-rundirs (needs /usr/local/bin/opblob + persisted sealed catalog; `opblob stage-shm`) → uplink-dhcp → ovsdb-server → ovs-vswitchd (op-ovsbr0-setup) → ovsbr0-cutover; bridge also waits on opdbus-grants, dbus, unified-execution, op-runit-systemctl, op-session-bus, identity-roots (incusd), op-warp-ssh-host, op-warp-ssh-routes, tched-router, plus 10.0.0.2 on rtly-lungs and 10.0.0.3 on ovsbr0. No dependency cycles back to the bridge. Order: build → `sudo env COGNITIVE_MCP_QDRANT_URL=… target/release/opblob seal-shm` + `persist` → activate-golden.sh → enable services → rtly-lungs transport (deploy/decoy-warp-ssh, host side: endpoint.sh, admission.sh, routing.sh, warp-ssh-sshd.conf from ssh-host.conf.example, warp-link user exists, authorized key must come from decoy /var/lib/op-warp-ssh/client_ed25519.pub) → bridge → reboot test.
+
+**BLOCKER needing owner decision (storage; owner said do not touch storage/LVM):** `op-release` (source /srv/git/odbus-btrfs-enforcement-20261013/crates/op-storage/src/bin/op-release.rs) hard-codes `HOST_FS = 083161be`, the wiped old system fs. It requires /opt/op-dbus/golden to be a subvolume on it; golden is now a plain directory inside @opt on d53eeac0. So activate-golden.sh → op-release-launch release will fail. `op-release-launch status` works (guard READY, both slots empty). Same cause: op-storage crash-loops "host source does not match pinned layout"; storage-policy.json pins logs/cargo-build/opt/golden/git/vectors to 083161be (now @logs 269, @opt 271, @git 273 on d53eeac0; cargo-build a18aafa3; vectors 6a20c81c). Proposed fix (not done): HOST_FS→d53eeac0, rebuild/install op-release+op-storage with manifest update, create golden subvolume from the trusted release cgroup, re-pin policy.
+
+**Seed (/run/mount/3tched-seed/@):** 3tchedfs.service installed+enabled, matches deploy/workspace-image; preflight matches repo. Preflight fails until these exist: /usr/share/op-dbus/lungs-catalog/.manifest.json, lungs-view/objects, lungs-empty-state (need sealed catalog + capture), plus runtime /run/3tched-lungs.socket. Seed fs ~1.5 GiB free; SEEDING flag not set.
+
+**One socket (owner decision 2026-10-17): lungs.sock** (/run/opdbus/lungs/lungs.sock). Design: bridge binds once; route each connection by first byte (D-Bus NUL → lungs handler as today; HTTP/2 or gRPC-Web → tonic routes, accepted only when kernel peer UID == bridge UID, preserving the old 0600 boundary); retire grpc.sock and container.sock; update deploy/config/identities/container-template.json and subid-registry.json. Not implemented: the per-socket mode edit to shared_socket.rs was blocked by the permission classifier pending owner approval; shared_socket.rs was restored to its committed content. crates/op-network/src/{door,identity,error.rs} (untracked, written 2026-10-15) already target lungs.sock; transport/ declares masque/warp/ssh_tunnel modules that do not exist and its "no kernel tunnel" premise contradicts the working rtly-lungs SSH TUN; none of these are declared in op-network lib.rs.
+
+**Xray (owner: new keys; native on host; sockets only):** Xray v26.3.27 from GitHub release (zip SHA2-256 23cd9af9…c8ae matched .dgst) at /usr/local/bin/xray, geo data /usr/local/share/xray. New key set /etc/xray/keys (root 0700/0600; never printed). System user xray. /etc/sv/xray (+log) from deploy/runit/xray-native/: chpst -u xray, sockets in /run/ghostbridge/xray/, refuses without valid /etc/xray/xray_config.json. NOT enabled; no config written. /etc/xray also holds owner-downloaded July configs (config.json is a bash generator; config.socket.json is TLS:443 + REALITY:8443 → 127.0.0.1:18789), both pre-redesign. Decoy still has old keys.
+
+**Other:** NotebookLM docs/network-topology.md is a spec, not as-built. As-built network (2026-10-04/05) recorded in memory: SSH TUN rtly-lungs/tun5 over WARP/MASQUE, host 10.0.0.2 peer 192.168.255.2, policy table 28051 prio 10, tun5 persistent on ovsbr0. No commits made. Next action: when the build finishes, build op-uds-relay + threetched, seal/persist the catalog, then resolve the storage blocker with the owner.
+
+### 2026-10-16 · Codex — seed boot policy and loopback relay recovery
+
+Owner supersedes agent installation work: “i will install, you can build and confg from there.” Owner now installs ZeroClaw; integrate/build/configure against that actual installation afterward rather than installing another copy. `NativeRuntimePrep` was immediately told to stop further pipeline edits and report any edits already applied; acknowledgment/results pending. `RecoverLoopbackRelay` remains read-only on relay recovery. Parent continues independent seed/socket/Incus work. No runtime installation or build completed.
+
+`NativeRuntimePrep` acknowledged the owner takeover and completed with no edits/builds. `RecoverLoopbackRelay` recovered authentic relay source from `repr0bated/operation-dbus-proto` commit `7d881d25adeedace03250515c0e4dc30200698e0`; parent now owns restoring only `crates/op-uds-relay/{Cargo.toml,src/bin/op-uds-relay.rs}` and its standalone workspace exclusion. Historical SHA256 inventory at `docs/src/architecture/plugin-baseline-files.sha256:808-809` supplies independent verification. No NetworkManager dependency in this std-only relay; no HTTP CONNECT/SOCKS/UDP implementation either.
+
+Owner now authorizes updating the seed FUSE mount, completing seed networking, then setting Btrfs SEEDING with `btrfstune`. Do not set it yet: the new requirements include the existing loopback-to-lungs adapter, all display managers disabled, and regular NetworkManager disabled unless that adapter depends on it. Owner identifies `networkmanager-rs` as the loopback adapter and suggests its code/config was in the old assistant container; do not substitute similarly named public D-Bus bindings or invent a new relay before recovering the actual implementation.
+
+Implementation ownership expanded for the authorized seed mount update: `deploy/workspace-image/{3tchedfs.service,3tchedfs-mount-preflight,prepare-lungs-client.sh,README.md}`, guest socket-path default in `deploy/runit/libexec-3tched/op-identity-root`, and their installed offline-seed equivalents. Preserve the existing executable and mount root; no plugin rename, bridge startup or host network change is implied. Host socket source and guest socket destination are independently configurable; guest path must match the seed unit.
+
+Actual offline seed changes: inside `/run/mount/3tched-seed/@`, masked both `/etc/systemd/system/sddm.service` and `display-manager.service` to `/dev/null`, and selected `/usr/lib/systemd/system/multi-user.target` via `/etc/systemd/system/default.target`. Chroot readlink verified all three exact targets. SDDM was the installed display manager found by unit inventory. Desktop packages untouched; no host/guest service started/stopped, no systemctl used, no boot test claimed. Regular NetworkManager remains enabled pending the adapter dependency decision. Updated source and installed seed `3tchedfs.service`/preflight to `/run/3tched-lungs.socket`; matching source preparation receipt and `GUEST_LUNGS_SOCKET` default updated. Chroot systemd-analyze verification of the installed unit passed with the IPv6 warning addressed below. No live FUSE mount, seed flag change or unmount.
+
+Relay evidence: `deploy/netmaker/op-uds-relay-8090.conf` has a guest `--tcp-to-unix 127.0.0.1:9091=/opt/run-mounts/ghostbridge/container.sock` leg and separate reverse service-publication legs. `deploy/workspace-network/README.md` records an isolated loopback/Unix VLESS proposal and past TCP/UDP fixture, explicitly not installed production egress. The current seed contains `systemd-socket-proxyd` and `socat`, but searches did not find op-uds-relay or configured egress units there. `crates/op-uds-relay` is absent in this restored checkout, and `git log --all -- crates/op-uds-relay` returned no history. Glob searches of restored repositories, seed/upgrade roots, /usr/local and /opt found only old relay service config files, not its executable/source.
+
+Old assistant inventory is retained at `deploy/config/container-socket-contracts.json:38-55`: rust-network-mgr.service plus rust_service.socket/service and `/tmp/rust_service.sock`. This does not establish their current availability. Direct non-root directory read of `/var/lib/incus/storage-pools/3tched/containers` was denied; no bypass. Previously approved sudo read-only Incus volume inventory (`incus storage volume list 3tched --format=json`) returned `[]`. `/mnt/recovery` and `/mnt/scratch` are empty/unmounted. Current mounted seed and upgrade filesystems remain available. Continue locating the legacy relay source/artifact; don't claim raw D-Bus socket or control-only network-manager code is already an internet gateway.
+
+Owner additionally requires host agents to access FUSE at `/run/mounts/3tchedFS` (plural mounts), while guest remains `/run/mount/3tchedFS`. Existing host runit service `deploy/runit/threetched-fs/{run,check,finish}` uses the old singular host path and named human-session binding; no host change yet. Its required release executable/catalog and `/etc/op-dbus/human-lungs-session` were not found in inspected installed paths; no host FUSE mount is present. Preserve identity admission, do not use another container's private mount as a shortcut.
+
+IPv6 correction after owner's challenge: running kernel is `6.18.56-x64v3-xanmod1`; `/boot/config-6.18.56-x64v3-xanmod1:1484` has `CONFIG_IPV6=y`; `/proc/sys/net/ipv6/conf/all/disable_ipv6` is0; host `/proc/net/if_inet6` lists ::1 on lo and link-local IPv6 on eth0. Actual `ping -6 -c 1 -W 2 ::1` succeeded, one reply, zero loss. The “kernel does not support IPv6” warning came from offline guest systemd-analyze, not proof of missing kernel support. Guest `/proc` is empty; the exact systemd detection branch has not been traced. No IPv6 setting changed.
+
+### 2026-10-16 · Codex — owner clarifies filesystem naming and sealing boundary
+
+Owner confirms existing `threetched_fs` plugin is the FUSE protocol plugin for OUR3tchedFS, not the ZeroClaw runtime. Requested own naming follows `tched-router`: `tched-fs` with identifier `tched_fs`. Preserve its filesystem contract; do not put ZeroClaw's runtime schema into that protocol plugin. Upstream runtime remains `threetched`; its authoritative schema must come directly from the actual runtime binary at explicit SHM sealing, not a separately authored/help-inferred replacement. Both use the same FUSE machinery and blob mechanism, not necessarily identical schema payloads. No plugin/executable rename, capture change, reseal or runtime installation performed. These clarifications supersede earlier tentative naming tables and the ambiguous statement that the schema should not be sealed.
+
+Owner's subsequent clarification: the ZeroClaw-backed filesystem/plugin discussed here is named `threetchedfs`; `tched-fs` / `tched_fs` is ours. `threetched` remains the ZeroClaw runtime executable. Keep the filesystem/plugin names distinct from the runtime executable; do not interpret this as requiring a second FUSE engine. N

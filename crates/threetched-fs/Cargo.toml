@@ -1,9 +1,16 @@
 [package]
-name = "threetched-fs"
+name = "tched-fs"
 version = "0.1.0"
 edition.workspace = true
 description = "Schema-driven FUSE projection over authoritative typed OP-DBUS blobs"
 license = "MIT"
+
+[lib]
+name = "tched_fs"
+
+[[bin]]
+name = "3tched-fs"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"

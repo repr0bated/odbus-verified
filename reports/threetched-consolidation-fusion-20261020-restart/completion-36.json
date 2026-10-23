@@ -1,0 +1,96 @@
+{
+  "request": 36,
+  "started": "2026-10-20T17:10:52.278571+00:00",
+  "finished": "2026-10-20T17:11:07.942169+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0f836f1f11aa26f5016ad7a0a26bdc87d1b6875b7f6fb84315",
+    "created": 1792516258,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating generator dependency receipt\",\"path\":\"/srv/git/odbus-verified/target/x86_64-unknown-linux-gnu/release/examples/typed_specialize*.d\",\"gitignore\":false}",
+                "name": "glob"
+              },
+              "id": "call_9fX6JRPqpFO0d3Q2YQYAItbL",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting generator ELF identity\",\"command\":\"file target/x86_64-unknown-linux-gnu/release/examples/typed_specialize\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_b1zM3pWOVBQRWccbNLpv0bqr",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading generated coverage counts\",\"path\":\"/srv/git/odbus-verified/crates/threetched-fs/docs/typed-specialization-report.json?q={plugins:(.plugins|length),methods:([.plugins[].methods|length]|add),unsupported:([.plugins[].unsupported|length]|add),dynamic_slots:([.plugins[].dynamic_slots|length]|add),tched_fs:.plugins.tched_fs}\"}",
+                "name": "read"
+              },
+              "id": "call_bzvHAs4iH8Qs2I6EQ1rP3muc",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading generator write contract\",\"path\":\"/srv/git/odbus-verified/crates/threetched-fs/examples/typed_specialize.rs:889-980\"}",
+                "name": "read"
+              },
+              "id": "call_tLs5lDIghXHIElxBgJpc6DPf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading claimed handoff context\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:1-42\"}",
+                "name": "read"
+              },
+              "id": "call_vK1y5LYmz7ndu6HA69fRBgXj",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: establish catalog-pin equality and generator provenance, capture pre-generation hashes, run the existing generator once with detached stdin and persistent receipts, then report changed outputs, resulting pins, and coverage limitations. No Cargo, tests, formatting, or runtime operations.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 969,
+      "prompt_tokens": 108111,
+      "total_tokens": 109080,
+      "completion_tokens_details": {
+        "reasoning_tokens": 161
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 99520
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:11:07.938198+00:00",
+  "stream_chunks": 13
+}

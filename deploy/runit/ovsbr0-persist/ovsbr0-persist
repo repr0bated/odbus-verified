@@ -1,7 +1,9 @@
 #!/bin/sh
-# Restore the public address on pub0 and the service aliases on ovsbr0.
+# Restore the host network after openvswitch-switch restores conf.db:
+# the public address on pub0, the OpenFlow address on ovsbr0, the door
+# address on its own TUN interface (warp0, peer 10.0.0.1), and the door port forward (pub0:8090 -> 10.0.0.2:8090).
 # The bridge, eth0 uplink, and pub0 MAC already persist in
-# /etc/openvswitch/conf.db. Linux addresses do not.
+# /etc/openvswitch/conf.db. Linux addresses and nftables tables do not.
 set -eu
 
 CONF=${OVSBR0_PERSIST_CONF:-/etc/op-dbus/ovsbr0-persist.conf}
@@ -23,6 +25,9 @@ while [ ! -d /sys/class/net/pub0 ] || [ ! -d /sys/class/net/ovsbr0 ]; do
     sleep 1
 done
 
+# OVS restores bridge membership, but the physical uplink must also be up.
+# NetworkManager is disabled and ifupdown configures only loopback here.
+ip link set eth0 up
 ip link set pub0 up
 ip link set ovsbr0 up
 ip addr replace "$PUB_ADDR" dev pub0
@@ -30,3 +35,24 @@ ip route replace default via "$PUB_GW" dev pub0 onlink
 for alias in $BRIDGE_ALIASES; do
     ip addr replace "$alias" dev ovsbr0
 done
+if [ -n "${DOOR_IF:-}" ]; then
+    # WARP traffic arrives for the door address on its own interface.
+    if ! ip link show "$DOOR_IF" >/dev/null 2>&1; then
+        case "${DOOR_IF_KIND:-tun}" in
+            tun) ip tuntap add dev "$DOOR_IF" mode tun ;;
+            dummy) ip link add "$DOOR_IF" type dummy ;;
+            *) echo "ovsbr0-persist: unknown DOOR_IF_KIND $DOOR_IF_KIND" >&2; exit 1 ;;
+        esac
+    fi
+    ip link set "$DOOR_IF" up
+    for addr in ${DOOR_ADDRS:-}; do
+        if [ -n "${DOOR_PEER:-}" ]; then
+            ip addr replace "$addr" peer "$DOOR_PEER" dev "$DOOR_IF"
+        else
+            ip addr replace "$addr" dev "$DOOR_IF"
+        fi
+    done
+fi
+if [ -n "${DOOR_NFT:-}" ]; then
+    nft -f "$DOOR_NFT"
+fi

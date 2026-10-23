@@ -20,12 +20,12 @@ notebook-sources-sync
 # lungs after incusd, then honor each explicit boot-completion start policy.
 identity-roots
 
-# Bridge boot (2026-10 rebuild): op-ovsbr0-setup --seed-only now runs inside
-# ovs-vswitchd/run itself, atomically. This is just the IP/route cutover +
-# bridge service-alias step that has to happen after vswitchd is up. The
-# service is supervised from runsvdir, so a golden apply starts it on every
-# boot.
-ovsbr0-cutover
+# Base network ownership is independent of application release activation.
+# The distro openvswitch-switch owner retains both daemons and conf.db;
+# ovsdb-server is its native-lifetime/readiness observer, not a second daemon.
+# The endpoint service restores only the already-configured local private IP.
+ovsdb-server
+op-warp-endpoint
 
 # Host Qdrant (2026-10-16). Serves the verified 2026-10-14 restore from
 # /var/lib/qdrant/storage, a copy; /mnt/qdrant-recovered/storage stays the

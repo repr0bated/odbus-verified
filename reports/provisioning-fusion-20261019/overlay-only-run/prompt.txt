@@ -1,0 +1,118 @@
+# REQUIRED FIRST PANEL ROUND — owner corrects seed/sprout interpretation
+
+# Latest owner correction — required panel emphasis
+
+Owner statements, in order:
+
+- “the seed is the lbacking . by adding the btrfs as a device to acieve the rw”
+- “that is haow it worked before”
+- “enphasooze that to the panel”
+- “specy the command btrfs device add”
+
+The mechanism to investigate and preserve is explicitly:
+
+```sh
+btrfs device add <writable-device> <mounted-seed-path>
+```
+
+This is explanatory command syntax, NOT an authorized command to execute and NOT a selection of actual device/path arguments. The immutable seed supplies the existing backing. Adding the writable device is how the previously working seed/sprout arrangement acquires writable storage. Trace the old provisioning implementation, its identity/Cozo association, and the subsequent sprout mount/remount; do not substitute an OverlayFS writable upper or copied root.
+
+The parent withdraws its implication that the owner's requested Incus/subvolume arrangement must be evaluated as though each subvolume itself had to be a standalone block device passed to device-add. Separate the seed backing, writable device/member, Cozo identity association, exposed subvolumes and upgrade replica. Do not turn a statement about the command's operand type into a blanket feasibility verdict about the complete arrangement.
+
+No host loop devices remains mandatory. Prefer no disk images and subvolumes only if the retained semantics can be preserved. Existing scripts may contain historical loops; trace their role without silently preserving or reintroducing them. Investigate exact implementation constraints, but do not erase the owner-confirmed previously working mechanism or demand an architecture replacement from an unverified interpretation.
+
+Panel must explicitly acknowledge `btrfs device add`, identify what the actual old script added and where, distinguish historical implementation from proposed no-loop changes, and revise any conclusion based on the incorrect layer conflation. JEV is decision/evidence judge only, not routing. This correction authorizes no storage mutation, provisioning replay, source repair, build, test or deployment.
+
+## Original implementation evidence, not a command to execute
+
+Commit26a4ad132fbbd4523b05724060bfdeb9ca661824, deploy/runit/libexec-3tched/op-identity-root:
+
+```text
+1172:    mount -t btrfs -o "ro,subvolid=5,device=$seed_view" "$seed_view" "$seed_dir/volume"
+1173:    # Validate the inherited siblings before creating the sprout. Nothing is
+1174:    # copied or snapshotted; all writes after ADD_DEV go to this new leaf.
+1175:    initial_members=$(seed_layout_pins) || seed_fail "seed lacks seven distinct sibling subvolumes"
+1176:    initial_image=$(seed_image_metadata verify) || seed_fail "seed image verification failed before device add"
+1177:    seed_write --argjson image "$initial_image" '.image=$image'
+1178:    [ "$(btrfs property get -ts "$seed_dir/volume/@" ro)" = ro=false ] || seed_fail "seed @ must be a normal writable subvolume"
+1179:    [ -d "$seed_dir/volume/@/etc" ] && [ ! -L "$seed_dir/volume/@/etc" ] || seed_fail "seed root lacks safe etc directory"
+1180:    seed_write --argjson members "$initial_members" '.members=$members'
+1181:    current_seed_super=$(btrfs inspect-internal dump-super "$seed_device")
+1182:    [ "$(blockdev --getro "$seed_device")" = 1 ] || seed_fail "physical seed lost block read-only enforcement"
+1183:    printf '%s\n' "$current_seed_super" | grep -q SEEDING &&
+1184:        [ "$(printf '%s\n' "$current_seed_super" | awk '$1 == "fsid" {print $2; exit}')" = "$source_fsid" ] &&
+1185:        [ "$(printf '%s\n' "$current_seed_super" | awk '$1 == "generation" {print $2; exit}')" = "$source_generation" ] || seed_fail "seed changed before sprout creation"
+1186:    seed_no_direct_mount
+1187:    seed_write '.phase="device-add-intent"'
+1188:    btrfs device add "$leaf_loop" "$seed_dir/volume"
+1189:    sync -f "$seed_dir/volume"
+1190:    umount "$seed_dir/volume"
+1191:    sprout_fsid=$(seed_super "$leaf")
+1192:    valid_session "$sprout_fsid" && [ "$sprout_fsid" != "$source_fsid" ] || seed_fail "invalid new sprout FSID"
+1193:    seed_write --arg fsid "$sprout_fsid" '.sprout_fsid=$fsid | .phase="layout-intent"'
+1194:    mount -t btrfs -o "rw,subvolid=5,device=$seed_view,device=$leaf_loop" "$leaf_loop" "$seed_dir/volume"
+1195:    seed_verify_volume
+1196:    [ "$(seed_layout_pins | jq -cS .)" = "$(printf '%s\n' "$initial_members" | jq -cS .)" ] || seed_fail "inherited sibling identities changed after sprout creation"
+```
+
+Hermes original acknowledgments:
+
+[
+  {
+    "id": 4095,
+    "role": "user",
+    "content": "no the persistent cozo iws addedwith btrfs add disk"
+  },
+  {
+    "id": 4099,
+    "role": "assistant",
+    "content": "Right—the persistent writable storage is added to the seed with btrfs device add, and Cozo tracks the identity’s leaf assignment. It is not a writable OverlayFS upper layer.\n\nThe separate upgrade partition supplies upgrade/@ for the read-only overlay. I conflated those two roles."
+  },
+  {
+    "id": 4111,
+    "role": "assistant",
+    "content": "Yes—the script uses btrfs device add to attach the persistent root partition to the seed, then mounts that pair read-write.\n\n  prepare-instance-disk.sh:111 — adds the root partition.\n  prepare-instance-disk.sh:116–118 — formats the separate upgrade partition and creates @.\n  bind-instance-root.sh:216 — combines upgrade and seed layers into a read-only overlay.\n\nBut the storage path is still wrong: the script requires /var/lib/3tched-leaf-pool, rather than your selected /var/lib/incus/storage-pools/3tched-pool. The layout is implemented; that integration is not finished."
+  }
+]
+
+## Required panel and continuation actions
+
+This fresh outer session is intentional so the first required Fusion panel receives this owner correction verbatim. First panel MUST name `btrfs device add`, acknowledge the demonstrated mechanism, and distinguish backing/member from exposed subvolumes. Do not extrapolate an operand-type fact into rejection of the complete arrangement. Save its original responses and actual successful/failed members to analysis/seed-mechanism-panel-receipt.json. Do not claim consensus from one successful model.
+
+The prior resumed runner was stopped only to deliver this latest owner correction, not because provisioning failed. Preserve all completed semantic reviews and four source-research outputs. Read analysis/recovery-semantic-coverage.json using its actual keys completedPackets, pending and supplements_pending. Reuse completed reviews; do not re-export histories, regenerate packets or redo them. Continue unfinished review and revise diagnosis/proposed-changes/drift-ledger to distinguish actual findings from the withdrawn layer inference. Parent judgment jev-seed-mechanism-correction.json is available. Old no-host-loop and no-image/subvolume preference remain, and no storage operation is authorized.
+
+Execution: NO new agents/workpools, only one explicit native scout/smol completion at a time for packet analysis; retain existing actual model receipts. Fusion remains outer synthesis, JEV evidence/decision judge only. Do not call internal Fusion after its per-request instructions prohibit it.
+
+# Provisioning Fusion: complete history, drift and evidence-backed decisions
+
+Work in `/srv/git/odbus-verified`. Task: `provisioning-fusion-20261019`.
+
+The owner wants LiteLLM Fusion to diagnose why the existing identity-container provisioning workflow remains unfinished, using the latest relevant Astra, Claude and Kiro conversations and especially the COMPLETE stored Hermes/Astra Pro audit and follow-through, including tool calls, arguments, results, errors, worker histories and owner corrections. Previous provisioning scripts are evidence, not commands to replay. Do not replace this task with another partial component audit.
+
+## Latest owner instructions — override historical interpretations
+
+1. **“no loops  on host”**: NO HOST LOOP DEVICES. Not merely no per-container loops. Do not silently exempt the existing pool loop, seed wrappers or a mapping described as stored in Cozo. Existing pool backing is a recorded conflict, not permission to detach it.
+2. **“woould prfer no  disk image if possibgle to use subvolumes olnly”**: prefer subvolumes only, without disk images, if compatible with the complete required behavior. This is a preference, not permission to silently replace immutable-seed/sprout semantics with copied roots or snapshots.
+3. JEV is the **decision judge**, NOT model routing. Never activate `jev-router`, class-router, a Cargo model dispatcher or Haiku fallback. Judge substantive proposals, evidence sufficiency, drift and completion with saved questions/answers and citations.
+4. Bootstrap already exists and is out of scope. Preserve existing identity/session/native UUID/creation records. Modify the design of the EXISTING Hermes workflow, not a new provisioning script, orchestrator, endpoint or control plane.
+
+Retain immutable shared seed, isolated persistent writes, separate upgrade replica, Btrfs send/receive, correct root composition, unprivileged Incus container, native instance/profile declarations, identity admission, storage proofs, durable intents/recovery, final authoritative adoption and startup. Do not introduce new LVM management or VM conversion. Do not infer that Cozo metadata itself supplies a kernel block device. Conversely, do not declare native Incus integration impossible merely because a familiar image-based implementation cannot do it: investigate the actual older scripts and exact supported primitives.
+
+## Scope and safety
+
+This run is **read-only diagnosis and a concrete modification specification**. You may write analysis, coverage and decision receipts only under `reports/provisioning-fusion-20261019/analysis/`. Do not edit application or host source, shared HANDOFF/SIGNALS owned by the parent, grants, credentials, service settings or storage. Do not run provisioning helpers, storage operations, builds, tests, formatters, deployments, service actions, or historical commands. Existing historical approvals are not current authorization. No direct database mutations or alternate-identity bypasses. Do not read authentication stores or unredacted history; use the supplied exports. No missing-prerequisite claim until evidence distinguishes a genuine current blocker from a stale or invented one.
+
+## Required workflow
+
+- Read the latest constraint files and corpus manifest. Write `analysis/ingestion-receipt.json` early, listing exact files/record IDs actually read, the two latest owner constraints, the judge-only role and known coverage gaps. A manifest read is NOT complete history ingestion.
+- Review the complete supplied Hermes main conversation and all linked workers, with the Astra, Claude and Kiro records. Use bounded batches/read-only research workers if needed. All workers must preload the ten mandatory repo skills and preserve this scope. Retain physical record order, IDs, parent links, correction events, active/compacted flags and source dates. Exact duplicate content can be read once only if every duplicate reference remains accounted for.
+- Maintain `analysis/coverage.json`: file hashes, covered record/byte ranges, duplicates, unavailable/truncated content and outstanding ranges. The corpus is too large for one model context. Never silently truncate it or claim every panel member read a file merely because a path was supplied.
+- The Fusion outer agent has tools; individual panel/analyst calls are stateless. Include the relevant ORIGINAL evidence excerpts and IDs in each panel question, not just filesystem paths or an outer-agent summary. Save which evidence actually reached each panel round. Separate exported/available/read/panel-reviewed/JEV-adjudicated status.
+- Trace the complete existing post-bootstrap chain: admission → native preparation → storage establishment → initial upgrade receive/pairing → root binding → authoritative Cozo adoption → start → stopped boot restoration/sync → failure/cancellation/resume. Identify the owner and authoritative receipt at every stage.
+- Compare current source snapshots, installed application helpers, installed base boot service and immutable historical commit blobs. They are not interchangeable. Where current state needs inspection, use read-only source inspection; runtime operations outside supplied receipts require a separately authorized follow-up, not speculative replay.
+- Build an explicit drift ledger: original ask; agent interpretation; actual tool action/result; owner correction; propagation into code/delegates/deployment; remaining discrepancy. Distinguish legitimate clarification, agent-added work, stale evidence, genuine encountered failures and incomplete execution.
+- Use JEV through native typed `judge`/`judge_batch` with the configured `typesafe/jev-latest` judge role. Read `xd://eval/judge`. For each substantive decision, save exact state/evidence refs, question/rubric, returned answer and uncertainty. Never use JEV to choose models or to grant mutation authority. Existing parent judgments cover scope and the no-host-loop rule, not root-cause or design feasibility.
+- Produce `analysis/diagnosis.md`, `analysis/drift-ledger.md`, `analysis/proposed-changes.md`, `analysis/decisions.jsonl`, final coverage and completion receipts. Concrete modifications must target existing scripts/modules, include exact proposed Incus declarations when supported, retain security checks, and expose unresolved requirement conflicts. A guessed YAML configuration is not a solution.
+- If subvolume-only native storage cannot preserve a required semantic, show the specific evidence and smallest decision needed. Do not silently relax no-host-loops, invent a pool-loop exemption, remove the seed contract, or call a copied root equivalent.
+
+Stop when the diagnostic/specification deliverables are complete and their limitations explicit. Do not start implementation or provisioning. Do not report the chatbot provisioned, built, deployed, started or tested based on this run.

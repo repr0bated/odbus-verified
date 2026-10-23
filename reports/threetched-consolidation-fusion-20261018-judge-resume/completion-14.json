@@ -1,0 +1,87 @@
+{
+  "request": 14,
+  "started": "2026-10-18T21:52:02.982864+00:00",
+  "finished": "2026-10-18T21:52:12.017643+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-03f26f28c72b5e5b016ad53f85dd1087d089886173ba100821",
+    "created": 1792360325,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading exact current ownership\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:423-430:raw\"}",
+                "name": "read"
+              },
+              "id": "call_AMgd4r5lIZZBGa64ZzY2GiuV",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading recent release evidence\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:747-805:raw\"}",
+                "name": "read"
+              },
+              "id": "call_d1I0GfcfWLZdcbXv58N5CCJ6",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading latest signals\",\"path\":\"/srv/git/odbus-verified/SIGNALS.md:840-867:raw\"}",
+                "name": "read"
+              },
+              "id": "call_0WzmqyYMHWq8Jm4XhKbMdV7F",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Finding provisioning final receipt\",\"pattern\":\"sa-0-32370f11|provision-fix-20261018|21:45|OP_THREET|THREET.*MANIFEST|THREET.*BIN|CAPTURE_MANIFEST\",\"path\":\"/srv/git/odbus-verified/reports;/srv/git/odbus-verified/HANDOFF.md;/srv/git/odbus-verified/deploy/runit;/srv/git/odbus-verified/.cargo\"}",
+                "name": "grep"
+              },
+              "id": "call_rT00OUrCeLlQ6EMYhNAcwIAq",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 580,
+      "prompt_tokens": 155191,
+      "total_tokens": 155771,
+      "completion_tokens_details": {
+        "reasoning_tokens": 115
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 124505
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:52:12.015440+00:00",
+  "stream_chunks": 10
+}

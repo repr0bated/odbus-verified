@@ -1,0 +1,50 @@
+{
+  "status": "ok",
+  "query": "Suggest a 3-6 word imperative coding-session title for a truncated chat about source consolidation (33 method retirements, canonical caller migration) and blocked release preparation awaiting corrected provisioning source and compiler ownership evidence, then authorized GNU release build, isolated seal, catalog review and specialization generation. Output title only.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "<title>Consolidate threetched native plugin schema</title>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The title identifies threetched native schema consolidation as the session's main goal."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The title covers consolidation but does not mention canonical caller migration or blocked release preparation."
+      }
+    ],
+    "unique_insights": [],
+    "blind_spots": [
+      "Only one panel response is provided, so cross-model agreement or disagreement cannot be assessed."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "TimeoutError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

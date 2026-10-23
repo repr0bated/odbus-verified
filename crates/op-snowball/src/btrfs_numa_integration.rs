@@ -56,6 +56,8 @@ pub struct OptimizedSnowball {
 
 impl OptimizedSnowball {
     /// Create optimized snowball with BTRFS cache and NUMA support.
+    /// Callers without snapshot-management authority must select
+    /// [`SnapshotInterval::Manual`]; durable appends do not require snapshots.
     ///
     /// NUMA topology is detected first so the snowball's dedicated writer
     /// thread can be pinned (CPU affinity + preferred memory policy) before it
@@ -66,6 +68,7 @@ impl OptimizedSnowball {
     pub async fn new(
         snowball_path: impl AsRef<Path>,
         cache_path: impl AsRef<Path>,
+        snapshot_interval: SnapshotInterval,
     ) -> Result<Self> {
         // Detect NUMA topology (best-effort)
         let detected = match NumaTopology::detect() {
@@ -125,7 +128,7 @@ impl OptimizedSnowball {
         let snowball = Arc::new(
             StreamingSnowball::new_with_placement(
                 snowball_path,
-                SnapshotInterval::from_env(),
+                snapshot_interval,
                 placement,
             )
             .await
@@ -471,9 +474,13 @@ mod tests {
         let snowball_path = fixture.0.path().join("snowball");
         let cache_path = fixture.0.path().join("cache");
 
-        let opt_bc = OptimizedSnowball::new(snowball_path, cache_path)
-            .await
-            .expect("create OptimizedSnowball on Btrfs fixture");
+        let opt_bc = OptimizedSnowball::new(
+            snowball_path,
+            cache_path,
+            SnapshotInterval::from_env(),
+        )
+        .await
+        .expect("create OptimizedSnowball on Btrfs fixture");
 
         let footprint = PluginFootprint::new(
             "systemd",

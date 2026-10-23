@@ -1,0 +1,63 @@
+{
+  "request": 62,
+  "started": "2026-10-20T17:20:05.414085+00:00",
+  "finished": "2026-10-20T17:20:19.273534+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0b0d033bc2acb273016ad7a2cb591487d19f3e40158302136c",
+    "created": 1792516811,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Observing Cargo process exclusion\",\"command\":\"pgrep -a -x 'cargo|rustc|clippy|clippy-driver|cargo-clippy'\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_Iu51JYck410QA2DF1DWhQZf4",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 231,
+      "prompt_tokens": 26645,
+      "total_tokens": 26876,
+      "completion_tokens_details": {
+        "reasoning_tokens": 100
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 18900
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:20:19.272193+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,53 @@
+{
+  "request": 64,
+  "started": "2026-10-20T17:20:10.152957+00:00",
+  "finished": "2026-10-20T17:20:21.287261+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0282e95c4cab1b34016ad7a2d0081487d19500a158624f0b91",
+    "created": 1792516816,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Stopped. `plugin_types.rs` was regenerated from the same pinned catalog, with a byte-identical specialization report, but its digest changed. Pre-run contents were not retained; HEAD has a different digest and cannot establish the delta. **No formatting-only or semantic-equivalence claim is supported.** No additional edits, checks or Cargo commands ran.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 305,
+      "prompt_tokens": 204930,
+      "total_tokens": 205235,
+      "completion_tokens_details": {
+        "reasoning_tokens": 50
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 134658
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:20:21.286331+00:00",
+  "stream_chunks": 3
+}

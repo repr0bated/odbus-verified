@@ -1,0 +1,1 @@
+Acknowledged: consolidation source is frozen. Sole remaining gate is Hermes’s authoritative correction/source-stable receipt. Existing mixed artifacts remain prohibited; no further reads, probes, builds, sealing, or other execution performed.

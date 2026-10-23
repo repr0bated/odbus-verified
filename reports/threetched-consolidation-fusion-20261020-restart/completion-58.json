@@ -1,0 +1,63 @@
+{
+  "request": 58,
+  "started": "2026-10-20T17:19:35.497565+00:00",
+  "finished": "2026-10-20T17:19:46.962943+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-04acbb87ed430283016ad7a2ad905487d1ac61aa3cc52ccbbb",
+    "created": 1792516781,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Requesting original generation evidence\",\"path\":\"agent://ReleaseReceiptScout\",\"content\":\"Parent asks why plugin_types bytes changed after same catalog/report generator run. Pre-run a726893dc9c92f90017ed7be3fcd4b6d58fcf153973e7e1c5faa278f79e3dd4a, post96731d423656ea6bc36595d2063fdf1de5f1daf4ea793af7e633077b0bbe9dde. Generator outputs compact Rust; original module was line112715. Any retained original source snapshot or history confirming formatter? Need bounded evidence, no commands/checks.\"}",
+                "name": "write"
+              },
+              "id": "call_VPcpi5hsk76B3nP1eoec5pj9",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 401,
+      "prompt_tokens": 195302,
+      "total_tokens": 195703,
+      "completion_tokens_details": {
+        "reasoning_tokens": 83
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 127778
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:19:46.961496+00:00",
+  "stream_chunks": 4
+}

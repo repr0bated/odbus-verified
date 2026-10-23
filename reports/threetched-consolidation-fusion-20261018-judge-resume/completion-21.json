@@ -1,0 +1,63 @@
+{
+  "request": 21,
+  "started": "2026-10-18T21:53:09.620409+00:00",
+  "finished": "2026-10-18T21:53:19.751500+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-05d6bb8ec22216bd016ad53fc9356887d089a3ef8d8655f728",
+    "created": 1792360393,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading installed schema selectors\",\"pattern\":\"THREETCHED|TCHED_ROUTER_CONFIG_DIR|QDRANT_HTTP_URL|QDRANT_GRPC_URL|COGNITIVE_QDRANT_URL|COGNITIVE_RAG_COLLECTION|COGNITIVE_COMPLETION_COLLECTIONS|COGNITIVE_SEARCH_COLLECTIONS|/etc/op-dbus/environment|/etc/op-dbus/decoy-network-client.env\",\"path\":\"/usr/local/libexec/op-dbus/sv/op-grpc-bridge/run\"}",
+                "name": "grep"
+              },
+              "id": "call_LLM7zPU96PDsVw14LH9u94ah",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 300,
+      "prompt_tokens": 231098,
+      "total_tokens": 231398,
+      "completion_tokens_details": {
+        "reasoning_tokens": 63
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 224300
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:53:19.749654+00:00",
+  "stream_chunks": 4
+}

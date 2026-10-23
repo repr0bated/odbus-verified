@@ -1,0 +1,72 @@
+{
+  "request": 112,
+  "started": "2026-10-18T22:04:00.387806+00:00",
+  "finished": "2026-10-18T22:04:14.812739+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0bbe277af36a4cdb016ad5425382c087d08bdf6c38eb488bbd",
+    "created": 1792361043,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Updating release prerequisite evidence\",\"path\":\"agent://ReleaseReadiness\",\"content\":\"Fresh HANDOFF read changed authoritative evidence: row432 now Hermes PROVISIONING FIX, SCOPE CORRECTION REQUIRED at22:00Z; isolated worker completed/no active child, first missing uuid dep, second timeout; parent verified no Cargo/rustc, mixed binaries MUST NOT ship. Exact note: 'Next: correct task-local source scope before any new build/activation'. Compiler ownership previous blocker cleared, BUT source correction/freeze now needed before shared workspace build. Please bounded read row432 and locate latest corresponding Handoff ONLY to determine whether explicit correction completed/frozen elsewhere. No process probe or Cargo. No repeated unchanged scans. Report current source prerequisite.\"}",
+                "name": "write"
+              },
+              "id": "call_RTTJcMc9XbIKtS71cJ4Zy9Dw",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading earlier disposition tables\",\"path\":\"/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md:360-430\"}",
+                "name": "read"
+              },
+              "id": "call_tIrPHbOOyvIhhRpHCeodERwF",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 766,
+      "prompt_tokens": 249314,
+      "total_tokens": 250080,
+      "completion_tokens_details": {
+        "reasoning_tokens": 245
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 161170
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:14.810983+00:00",
+  "stream_chunks": 6
+}

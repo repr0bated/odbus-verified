@@ -6,6 +6,7 @@ die() { printf 'workspace folders: %s\n' "$*" >&2; exit 1; }
 [[ $# == 1 && $1 =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$ ]] || die 'usage: CONTAINER'
 container=$1
 [[ $(id -u) == 0 ]] || die 'requires host root'
+incus() { command timeout --kill-after=5s 30s incus --force-local --project default "$@"; }
 safe_host_directory() {
     local path=$1 mode
     [[ -d $path && $(realpath -e -- "$path") == "$path" ]] || die 'host directory must exist at its canonical path'
@@ -20,9 +21,29 @@ safe_host_directory() {
 for directory in /etc/3tched /etc/3tched/skills /etc/3tched/rules /etc/3tched/user /etc/3tched/shared /etc/3tched/soul /etc/3tched/memory; do
     safe_host_directory "$directory"
 done
+client=$(realpath -e -- "${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}")
+[[ -f $client && -x $client && $(stat -c %u "$client") == 0 ]] || die 'unsafe mounted client'
+mode=$(stat -c %a "$client")
+(( (8#$mode & 022) == 0 )) || die 'mounted client is writable by another owner'
+safe_host_directory "$(dirname -- "$client")"
+control_mount=${OP_3TCHEDFS_MOUNT:-/run/mounts/3tchedFS}
+[[ $(findmnt -rn -M "$control_mount" -o FSTYPE) == fuse.3tchedFS ]] || die 'identity-bound control mount required'
+mount_id=$(findmnt -rn -M "$control_mount" -o ID)
+mount_pin=$(timeout 10s jq -ce 'select(.format=="3tchedfs/1" and
+    .mount_identity.kind=="host_session" and .mount_identity.session==.session_id)' \
+    "$control_mount/.3tchedfs.json") || die 'invalid control mount metadata'
+operator=${OP_3TCHEDFS_EXPECTED_SESSION:-$(jq -er .session_id <<<"$mount_pin")}
+jq -e --arg sid "$operator" '.session_id==$sid' <<<"$mount_pin" >/dev/null || die 'operator session mismatch'
+assert_mount() {
+    local current
+    current=$(timeout 10s jq -ce . "$control_mount/.3tchedfs.json") || die 'control namespace lost'
+    [[ $current == "$mount_pin" && $(findmnt -rn -M "$control_mount" -o ID) == "$mount_id" ]] || die 'control namespace changed; reconcile before retry'
+}
 expected='{"type":"disk","source":"/etc/3tched","path":"/etc/3tched","readonly":"true","shift":"true"}'
 observe() {
+    assert_mount
     native=$(incus query "/1.0/instances/$container")
+    assert_mount
     printf '%s\n' "$native" | jq -e --arg name "$container" --argjson expected "$expected" '
         .name==$name and .type=="container" and .status=="Stopped" and
         (.expanded_config["security.privileged"] // "false")=="false" and
@@ -46,8 +67,20 @@ observe() {
 observe
 native_uuid=$(printf '%s\n' "$native" | jq -er '.config["volatile.uuid"] | select(type=="string" and length>0)')
 if printf '%s\n' "$native" | jq -e '.devices["3tched-config"]==null' >/dev/null; then
-    incus config device add "$container" 3tched-config disk \
-        source=/etc/3tched path=/etc/3tched readonly=true shift=true
+    args=$(jq -cn --arg name "$container" --argjson device "$expected" \
+        '{instance_name:$name,device_name:"3tched-config",device:$device}')
+    assert_mount
+    receipt=$(timeout --kill-after=5s 30s "$client" invoke --mount "$control_mount" \
+        --expected-session "$operator" --confirm-side-effects --args "$args" \
+        plugins/incus/operations/add_device/call) || die 'admitted device add failed or is uncertain; no native fallback'
+    assert_mount
+    jq -e --arg name "$container" '
+        .plugin_id=="incus" and .method=="add_device" and
+        (.result | .success==true and .outcome=="completed" and
+            .plugin_id=="incus" and .method=="add_device" and
+            .result.instance_name==$name and .result.device_name=="3tched-config" and
+            (.result.changed|type)=="boolean")
+    ' <<<"$receipt" >/dev/null || die 'device receipt mismatch; reconcile before retry'
 fi
 observe
 printf '%s\n' "$native" | jq -e --arg uuid "$native_uuid" --argjson expected "$expected" '

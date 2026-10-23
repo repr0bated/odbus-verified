@@ -1,0 +1,54 @@
+{
+  "request": 102,
+  "started": "2026-10-18T22:03:21.253889+00:00",
+  "finished": "2026-10-18T22:03:29.592807+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-08c7bc6ec0e203c5016ad5422c003087d0b9322d5d32348d3b",
+    "created": 1792361004,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "External provisioning owner is not reachable through this session\u2019s registered-agent channel. `history://` lists only Main\u2019s consolidation agents; neither Hermes nor `sa-0-32370f11` is registered.\n\nReported this limitation to Main. Await authoritative completion from the external provisioning session through the shared compiler-release request/handoff. Compiler ownership and source-freeze gates remain uncleared; no process observation or build executed.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 245,
+      "prompt_tokens": 348792,
+      "total_tokens": 349037,
+      "completion_tokens_details": {
+        "reasoning_tokens": 37
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 229062
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:29.591932+00:00",
+  "stream_chunks": 3
+}

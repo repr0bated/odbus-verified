@@ -1,0 +1,64 @@
+{
+  "request": 39,
+  "started": "2026-10-20T17:11:37.496145+00:00",
+  "finished": "2026-10-20T17:11:51.160894+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0d47eb4743a93475016ad7a0cf488887d19d039acc7e926bc1",
+    "created": 1792516303,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"const dep = await Bun.file('/srv/git/odbus-verified/target/x86_64-unknown-linux-gnu/release/examples/typed_specialize.d').text(); print(dep.split(/\\\\s+/).filter(x=>x.includes('/crates/threetched-fs/')));\",\"title\":\"Reading generator dependency subset\"}",
+                "name": "eval"
+              },
+              "id": "call_el6nyehzTNoTa9cJQr6abdfV",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: establish matching catalog pins and current generator provenance; execute the existing binary once with closed stdin and persistent `/var/tmp` receipts; report pre/post hashes, changed outputs, and unsupported coverage without compiling or invoking mounted operations."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 520,
+      "prompt_tokens": 117602,
+      "total_tokens": 118122,
+      "completion_tokens_details": {
+        "reasoning_tokens": 184
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 109603
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:11:51.159427+00:00",
+  "stream_chunks": 5
+}

@@ -407,8 +407,8 @@ impl StreamingSnowball {
 
         debug!("Added block {} with hash {}", block_num, hash);
 
-        // Check if we should snapshot
-        let should_snapshot = {
+        // Manual writers do not acquire the snapshot scheduler's lock.
+        let should_snapshot = self.snapshot_interval != SnapshotInterval::Manual && {
             let last = self.last_snapshot_time.read().await;
             self.snapshot_interval.should_snapshot(last.elapsed())
         };

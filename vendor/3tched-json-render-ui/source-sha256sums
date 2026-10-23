@@ -204,7 +204,7 @@ d7cc4d11451de9738dc1b0de7fc0c3269f4b3211759d5226de92103cd40e181f  src/chat/chat-
 b530e1ee810217f50298772a839e7b76eef3a59c448caf5a23fe1988ac0f72fc  src/chat/control-plane-model.ts
 d99a1ea31d7d66380b9fd00a852f07fefe4fc81a92e7e634986ae8c15956a138  src/chat/door-chat-adapter.test.ts
 6134af718f961b9a9f467e40ac4fadd0de656e5a4d018823d468b28b3d2b066d  src/chat/door-chat-adapter.ts
-326fa1a2133331d46188e2694dd9c58c7cee877275f1bf3180e7a900e3dac97e  src/chat/door-config.test.ts
+c61500ad0fcb66f1566d3dd2b55bcf034a5d768be0654cd8255c90d6bc015d61  src/chat/door-config.test.ts
 93f14ac490d18acf42b3b8d707a7b5d81ec37e254e8e192922434a565f521fc1  src/chat/door-config.ts
 ce3c2dd54b1399b1d8d98132559049bab05a18b1cc429689d2ee138813afb77c  src/chat/door-live.test.ts
 be04eb375b1e39e74f5f128cc0219dc1bab9e53ea7722329df18c436df3b602b  src/chat/doorbell.test.ts
@@ -239,8 +239,8 @@ b2bbfbc980db098439a56f62819905c86d6f2082b55ce95f382f752a9c57484b  src/cli/native
 8c71eecff39ef9c98d14fe5594141a9c7ff897581b238809cce176a19e9682fe  src/cli/native-http.ts
 78efd3a54f75a3c479b6e335aa0271d86663c8eddb464c0a9ddfd94ab88cf787  src/cli/run.ts
 95ffef49301119c472cbdf0bdd4d368ce7331cb4ae14c126461be349004e2d52  src/grpc/door-identity.test.ts
-6c6c0d95d6fe9adf0050bda0a4ee41f7d7236b28345e84adc6c56b4420331381  src/grpc/door-url.test.ts
-ee2538cff5e7cae4b9f7c048112d6f8c62f68cc61bce416ef3809c15060a66a7  src/grpc/door.ts
+0d16f38ac80b98b5d7b031a008700440dee1911664a985da69533749fe229692  src/grpc/door-url.test.ts
+20a6909584c383e24a30fe72aa3f44adcf41d0ffffacce39c7f755d61972c5cf  src/grpc/door.ts
 b30e178acc743dabd669b19449b9c7c07c91cf2aa9fe45f66d3c575d513a1900  src/grpc/gen/google/protobuf/empty.ts
 bce60f83923541e038b803ed34e9d353242f0eb21a52f8a8c26953531e03d29f  src/grpc/gen/google/protobuf/struct.ts
 ac7763178c5606e5512dd4ce91c2c9c7b592c4d798323b16ec4d295b264a1dcc  src/grpc/gen/google/protobuf/timestamp.ts

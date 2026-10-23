@@ -1,0 +1,64 @@
+{
+  "request": 136,
+  "started": "2026-10-19T04:42:33.546952+00:00",
+  "finished": "2026-10-19T04:42:41.499092+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-070a545aff0f5eaf016ad59fbc78ac87d08ea6bd7493e9298b",
+    "created": 1792384956,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating assigned packet files\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-23*;/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-24*;/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-25*\",\"limit\":40}",
+                "name": "glob"
+              },
+              "id": "call_Nn6JGYgRibFt72gWz1HEMN59",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 353,
+      "prompt_tokens": 88053,
+      "total_tokens": 88406,
+      "completion_tokens_details": {
+        "reasoning_tokens": 168
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 77062
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:42:41.498107+00:00",
+  "stream_chunks": 4
+}

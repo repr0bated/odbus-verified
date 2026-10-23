@@ -1,0 +1,56 @@
+{
+  "request": 53,
+  "started": "2026-10-20T17:18:48.930870+00:00",
+  "finished": "2026-10-20T17:19:32.650817+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-04751db799ecdd77016ad7a2a2e69487d1bbfead96caa411d4",
+    "created": 1792516771,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Should I proceed with the detached Cargo example build, or keep it paused?",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 177,
+      "prompt_tokens": 27119,
+      "total_tokens": 27296,
+      "completion_tokens_details": {
+        "reasoning_tokens": 117
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 9791
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:19:28.044622+00:00",
+  "stream_chunks": 3
+}

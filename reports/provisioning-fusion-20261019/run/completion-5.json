@@ -1,0 +1,113 @@
+{
+  "request": 5,
+  "started": "2026-10-19T04:37:01.166099+00:00",
+  "finished": "2026-10-19T04:37:15.084253+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0787e1195ba4c166016ad59e703a1887d0990c56192bcc40d6",
+    "created": 1792384624,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading evaluation orchestration documentation\",\"path\":\"xd://eval/agents\"}",
+                "name": "read"
+              },
+              "id": "call_XTot4PQX2DkHrBHKLRBZEBmI",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading security interpretation skill\",\"path\":\"skill://application-security\"}",
+                "name": "read"
+              },
+              "id": "call_kl7nCuhqWNh97B4KZ12V5iCM",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Rust interpretation skill\",\"path\":\"skill://rust\"}",
+                "name": "read"
+              },
+              "id": "call_zAoor0YG1EGQPp2E9birslIY",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading initial judgment receipt\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/jev-initial-decision.json:raw\"}",
+                "name": "read"
+              },
+              "id": "call_M7ze5SruP4Ki5TxaRVWYTdEE",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading loop judgment receipt\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/jev-no-host-loops.json:raw\"}",
+                "name": "read"
+              },
+              "id": "call_5DwA3xE6w3DXKx0EfqiJroQI",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Hermes corpus structure\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/hermes/manifest.json:1-110\"}",
+                "name": "read"
+              },
+              "id": "call_ixlidNy0PmH72TzSXgTE1rzl",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading historical handoff context\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/context/HANDOFF.md:1-85\"}",
+                "name": "read"
+              },
+              "id": "call_MlhfcuPTr1m3voz0dTiBkxrz",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "I\u2019m separating chronology, implementation versions, and storage feasibility. Coverage will distinguish bytes exported, records reviewed, evidence sent to Fusion, and decisions actually judged by JEV. Historical commands will not be replayed.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 960,
+      "prompt_tokens": 166782,
+      "total_tokens": 167742,
+      "completion_tokens_details": {
+        "reasoning_tokens": 324
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 106998
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:37:15.080946+00:00",
+  "stream_chunks": 17
+}

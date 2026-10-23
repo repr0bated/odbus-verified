@@ -1,0 +1,53 @@
+{
+  "request": 40,
+  "started": "2026-10-18T21:38:08.383866+00:00",
+  "finished": "2026-10-18T21:38:23.407579+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e3943d3e1e01dfc016ad53c4403ac87d091d59e1cda4718c5",
+    "created": 1792359492,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Implemented the assigned retirement:\n\n- Deleted `binary_namespace.rs` (382 lines, including three module-local tests).\n- Removed `pub mod binary_namespace` from `mod.rs`.\n- Removed `attach_model_routes` and early namespace dispatch from `tched_router.rs`.\n- Updated my existing HANDOFF ownership row and added the required handoff entry; no new document.\n\n**Source-only evidence:** pre-edit symbol search found only the module\u2019s internal references and the three removed integration points. Caller searches across crates, scripts, deployment code, and sibling UI source found no demonstrated production caller of short `get/init/list/set/patch` methods.\n\nTyped `config_*` declarations/dispatch remain unchanged. Mounted canonical `threetched.config.get/init/list/set/patch` contracts were read; native capabilities remain untouched. Inline patch convenience is retired without replacement stdin handling or aliases.\n\nHistorical reports and generated `docs/crate-graph` snapshots retain references; left untouched for parent integration. No exposed LSP reference tool; no analyzer startup, build, tests, formatting, sealing, deployment, or grant changes.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 612,
+      "prompt_tokens": 193023,
+      "total_tokens": 193635,
+      "completion_tokens_details": {
+        "reasoning_tokens": 137
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 184867
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:38:23.406608+00:00",
+  "stream_chunks": 3
+}

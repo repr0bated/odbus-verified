@@ -33,7 +33,7 @@ struct Args {
     lungs_mount: PathBuf,
 
     /// MQTT broker host.
-    #[arg(long, env = "MQTT_HOST", default_value = "10.0.0.3")]
+    #[arg(long, env = "MQTT_HOST", default_value = "127.0.0.1")]
     mqtt_host: String,
 
     /// MQTT broker port.

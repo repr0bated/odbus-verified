@@ -3,47 +3,104 @@
 # No format, member changes, start, credentials, grants or identity-store writes.
 set -euo pipefail
 fail() { printf 'prepare-chatbot-adoption: %s\n' "$*" >&2; exit 1; }
-[[ $# == 1 && $1 == 3tchedChatbot && $(id -u) == 0 ]] || fail 'usage (host root): prepare-chatbot-adoption 3tchedChatbot'
+secure_path() (
+    path=$1
+    [[ $(realpath -e -- "$path") == "$path" ]] || fail "noncanonical path: $path"
+    while :; do
+        [[ ! -L $path && $(stat -c %u -- "$path") == 0 ]] &&
+            (( (8#$(stat -c %a -- "$path") & 022) == 0 )) || fail "unsafe owner/mode: $path"
+        [[ $path != / ]] || break
+        path=$(dirname -- "$path")
+    done
+)
+[[ $# == 1 && $1 =~ ^(3tchedCtlChatbot|3tchedChatbot|ID-[1-9][0-9]*)$ && ${#1} -le 63 && $(id -u) == 0 ]] || fail 'usage (host root): prepare-chatbot-adoption NAME (existing configured chatbot)'
 umask 077
 name=$1
+
 sid=b0c777e3-0955-cd8b-3d01-ca12998cae28
 key=Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=
-operator=414fbc56-03fb-20ab-758a-bcc7a7cbdc0e
-pool=/var/lib/3tched-leaf-pool
+operator=${OP_3TCHEDFS_EXPECTED_SESSION-414fbc56-03fb-20ab-758a-bcc7a7cbdc0e}
+client=${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}
+control_mount=${OP_3TCHEDFS_MOUNT:-/run/mounts/3tchedFS}
+# --expected-session checks the existing mounted caller; it does not inject an
+# identity or use a different principal when admission fails.
+[[ -x $client && $operator =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] || fail 'mounted client or canonical expected caller session absent'
+command -v timeout >/dev/null || fail 'timeout is required for bounded preflight'
+pool=/var/lib/incus/storage-pools/3tched-pool
+secure_path "$pool"
+[[ $(stat -c %u:%g "$pool") == 0:0 &&
+   $(findmnt -rn -M "$pool" -o FSTYPE) == btrfs &&
+   $(findmnt -rn -M "$pool" -o FSROOT) == / &&
+   $(findmnt -rn -M "$pool" -o UUID) == a1ab7b42-12a8-437c-8f65-d0469892c8dd &&
+   $(findmnt -rn -M / -o UUID) != a1ab7b42-12a8-437c-8f65-d0469892c8dd ]] ||
+    fail 'canonical loop pool is not mounted on its pinned filesystem'
+secure_path "$pool/.provisioning"
+[[ -d $pool/.provisioning && $(stat -c %u:%g:%a "$pool/.provisioning") == 0:0:700 ]] ||
+    fail 'preparation receipt directory must be private'
 disk=$pool/.provisioning/$name.json
 container=$pool/.provisioning/$name.incus.json
 plans=/var/lib/op-dbus/identity-provision-plans
 [[ -f $disk && ! -L $disk && -f $container && ! -L $container ]] || fail 'operator preparation receipts absent'
-jq -e '.phase=="filesystems-prepared" and .layout=="raw-gpt-root-upgrade-v1"' "$disk" >/dev/null || fail 'disk preparation incomplete'
-jq -e '.phase=="root-bound" and .root_bound and .upgrade_paired and .root_view_readonly and (.identity_registered|not)' "$container" >/dev/null || fail 'root preparation incomplete or already adopted'
+for file in "$disk" "$container"; do
+    secure_path "$file"
+    [[ $(stat -c %u:%g:%a "$file") == 0:0:600 ]] || fail "unsafe preparation receipt: $file"
+done
+[[ ! -L $pool/.provisioning/$name.lock ]] || fail 'unsafe instance lock'
 exec 9>"$pool/.provisioning/$name.lock"
 flock -n 9 || fail 'instance preparation active'
+jq -e --arg name "$name" --arg image "$pool/$name.img" '
+    .name==$name and .image==$image and .filesystem_prepared==true and
+    .phase=="filesystems-prepared" and .layout=="raw-gpt-root-upgrade-v1"
+' "$disk" >/dev/null || fail 'disk preparation incomplete'
+jq -e --arg name "$name" --arg sid "$sid" --arg key "$key" \
+    --arg root "/var/lib/incus/storage-pools/identity-roots/containers/$name/rootfs" \
+    --arg view "$pool/.mounts/$name/root-view" '
+    .version==1 and .name==$name and .session_id==$sid and .phase=="root-bound" and
+    .root_bound==true and .upgrade_paired==true and .root_view_readonly==true and .identity_registered==false and
+    .threetched_root==$root and .root_view==$view and .instance.name==$name and .instance.type=="container" and
+    .instance.config["user.opdbus.session_id"]==$sid and .instance.config["user.opdbus.wireguard_public_key"]==$key and
+    (.instance.config["volatile.uuid"]|type=="string" and test("^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$"))
+' "$container" >/dev/null || fail 'configured chatbot root binding differs or is already adopted'
+native_uuid=$(jq -er '.instance.config["volatile.uuid"]' "$container")
 if [[ ! -e $plans && ! -L $plans ]]; then mkdir -m 0700 "$plans"; fi
 [[ $(realpath -e "$plans") == "$plans" && $(stat -c %u:%g:%a "$plans") == 0:0:700 ]] || fail 'unsafe private plan directory'
 [[ ! -e $plans/$sid.json && ! -L $plans/$sid.json ]] || fail 'existing plan must be reconciled; never overwrite it'
 work=$(mktemp -d "$pool/.provisioning/$name.adoption.XXXXXX")
 printf 'Private preparation evidence: %s\n' "$work"
-client=/opt/op-dbus/current/bin/threetched-fs
 args=$(jq -cn --arg key "$key" '{wireguard_pubkey:$key}')
-"$client" invoke --mount /run/mount/3tchedFS --expected-session "$operator" --args "$args" \
-    plugins/identity_sled/operations/inspect_provision_preflight/call > "$work/preflight-receipt.json"
+if ! timeout --kill-after=5s 30s "$client" invoke --mount "$control_mount" --expected-session "$operator" --args "$args" \
+    plugins/identity_sled/operations/inspect_provision_preflight/call > "$work/preflight-receipt.json" \
+    2> "$work/preflight-diagnostic"; then
+    cat "$work/preflight-diagnostic" >&2
+    fail 'owner preflight failed; retain evidence and do not retry through another identity or transport'
+fi
 # Keep only revision/native metadata; no SID1 is read or copied.
+# V4 accepts only a fresh key or the exact explicit-deletion tombstone, as
+# validated by identity_clean_provision.rs. Existing bound identities stay out.
 jq -ce --arg sid "$sid" --arg key "$key" '
-    [.. | objects | select(.session_id==$sid and .wireguard_pubkey==$key and has("expected_revision_operation_id"))] |
-    select(length==1) | .[0] |
-    select(.expected_revision==0 and .expected_revision_operation_id=="" and .previous_instance==null) |
+    select(.plugin_id=="identity_sled" and .method=="inspect_provision_preflight") |
+    .result | select(.success==true and .plugin_id=="identity_sled" and .method=="inspect_provision_preflight") |
+    .result | select(.session_id==$sid and .wireguard_pubkey==$key) |
+    select(.previous_instance==null and .previous_native_instance==null and .previous_instance_etag=="") |
+    select((.expected_revision==0 and .expected_revision_operation_id=="") or
+        ((.expected_revision|type)=="number" and .expected_revision>1 and
+         .expected_revision<=9007199254740991 and .expected_revision==(.expected_revision|floor) and
+         .expected_revision_operation_id==("delete-provision-"+$sid+"-"+((.expected_revision-1)|tostring)))) |
     {expected_revision,expected_revision_operation_id,previous_instance,previous_instance_etag}
-' "$work/preflight-receipt.json" > "$work/preflight.json" || fail 'owner did not admit fresh configured-key preflight'
+' "$work/preflight-receipt.json" > "$work/preflight.json" || fail 'owner did not admit a fresh key or exact explicit-deletion preflight'
 socket=/var/lib/incus/unix.socket
 curl --silent --show-error --fail --noproxy '*' --max-time 30 --unix-socket "$socket" \
     --dump-header "$work/instance.headers" --output "$work/instance-response.json" \
     "http://unix.socket/1.0/instances/$name"
-jq -ce --arg name "$name" 'select(.type=="sync" and .status_code==200)|.metadata|
-    select(.name==$name and .status=="Stopped" and .status_code==102)' \
+jq -ce --arg name "$name" --arg sid "$sid" --arg key "$key" --arg uuid "$native_uuid" '
+    select(.type=="sync" and .status_code==200)|.metadata|
+    select(.name==$name and .type=="container" and .status=="Stopped" and .status_code==102 and
+        .config["volatile.uuid"]==$uuid and .config["user.opdbus.session_id"]==$sid and
+        .config["user.opdbus.wireguard_public_key"]==$key)' \
     "$work/instance-response.json" > "$work/instance.json" || fail 'stopped Incus definition absent'
 etag=$(awk 'tolower($1)=="etag:" {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print}' "$work/instance.headers")
 [[ -n $etag && $etag != *$'\n'* ]] || fail 'ambiguous Incus ETag'
-incus --force-local query /1.0/storage-pools/identity-roots > "$work/pool.json"
+timeout --kill-after=5s 30s incus --force-local query "/1.0/storage-pools/identity-roots?project=default" > "$work/pool.json"
 root=$(jq -er .root_mount "$disk")
 [[ $root == "$pool/.mounts/$name/root" && $(findmnt -rn -M "$root" -o FSTYPE) == btrfs ]] || fail 'prepared root mount absent'
 members='{}'
@@ -53,12 +110,32 @@ for member in @ @agent_memory @agent_rules @agent_shared @agent_skills @agent_so
     uuid=$(awk '$1=="UUID:" {print $2}' <<<"$show")
     members=$(jq -cn --argjson members "$members" --arg name "$member" --argjson id "$id" --arg uuid "$uuid" '$members+{($name):{id:$id,uuid:$uuid}}')
 done
-# The same seed UUID is exposed by both the physical partition and RO loop.
-# Resolve the unique physical partition, rather than udev's current UUID alias.
-seed=$(lsblk -J -o PATH,TYPE,UUID | jq -er --arg uuid "$(jq -er .seed_fsid "$disk")" \
-    '[..|objects|select(.uuid==$uuid and .type=="part")|.path]|select(length==1)|.[0]')
-generation=$(btrfs inspect-internal dump-super "$seed" | awk '$1=="generation" {print $2; exit}')
+# The UUID also identifies the RO loop. Resolve the unique physical partition
+# or LVM volume, then prove the retained loop still covers those sealed bytes.
+seed_fsid=$(jq -er .seed_fsid "$disk")
+seed=$(lsblk -J -o PATH,TYPE,UUID | jq -er --arg uuid "$seed_fsid" '
+    [..|objects|select(.uuid==$uuid and (.type=="part" or .type=="lvm"))|.path] |
+    unique | select(length==1) | .[0]') || fail 'unique physical seed source absent'
+seed=$(realpath -e -- "$seed")
+[[ -b $seed && $(blkid -p -s UUID -o value "$seed") == "$seed_fsid" &&
+   $(blockdev --getro "$seed") == 1 ]] || fail 'physical seed identity or read-only protection differs'
+seed_loop=$(jq -er .seed_loop "$disk")
+[[ $seed_loop =~ ^/dev/loop[0-9]+$ && -b $seed_loop &&
+   $(blockdev --getro "$seed_loop") == 1 && $(losetup --raw -n -O RO "$seed_loop") == 1 &&
+   $(realpath -e -- "$(losetup --raw -n -O BACK-FILE "$seed_loop")") == "$seed" &&
+   $(losetup --raw -n -O OFFSET "$seed_loop") == 0 &&
+   $(losetup --raw -n -O SIZELIMIT "$seed_loop") == 0 &&
+   $(blkid -p -s UUID -o value "$seed_loop") == "$seed_fsid" ]] ||
+    fail 'read-only seed loop backing differs'
+seed_super=$(btrfs inspect-internal dump-super "$seed")
+awk '/SEEDING/ {sealed=1} END {exit !sealed}' <<<"$seed_super" || fail 'physical seed is not sealed'
+generation=$(awk '$1=="generation" {print $2; exit}' <<<"$seed_super")
 image=$(jq -er .image "$disk")
+[[ -f $image && ! -L $image && $(realpath -e "$image") == "$image" &&
+   $(stat -c %i "$image") == "$(jq -r .image_inode "$disk")" &&
+   $(stat -c %s "$image") == "$(jq -r .image_bytes "$disk")" ]] || fail 'prepared image pins differ'
+# Names are neither allocated nor adopted here. The owner validates the
+# CleanPlan native UUID/session/key and storage pins when committing this plan.
 jq -n --arg sid "$sid" --arg key "$key" --arg seed "$seed" --arg etag "$etag" \
     --argjson generation "$generation" --argjson members "$members" \
     --argjson inode "$(stat -c %i "$image")" --argjson size "$(stat -c %s "$image")" \
@@ -76,7 +153,7 @@ jq -n --arg sid "$sid" --arg key "$key" --arg seed "$seed" --arg etag "$etag" \
      partitioned_overlay:{disk_guid:($d.partition_table.id|ascii_downcase),
       root_partition:{partuuid:($p[0].uuid|ascii_downcase),start_sector:$p[0].start,sectors:$p[0].size},
       upgrade_partition:{partuuid:($p[1].uuid|ascii_downcase),start_sector:$p[1].start,sectors:$p[1].size},
-      upgrade_fsid:$d.upgrade_fsid,host_upgrade_fsid:"5a88e7cd-9701-40a7-8301-ef076761886c"}}
+      upgrade_fsid:$d.upgrade_fsid,host_upgrade_fsid:"7de8757c-6b8e-43d0-82fc-47e9da564775"}}
 ' > "$work/plan.json"
 [[ $(stat -c %s "$work/plan.json") -le 32768 ]] || fail 'plan exceeds owner bound'
 # Stage on the plan directory's filesystem before exclusive publication.

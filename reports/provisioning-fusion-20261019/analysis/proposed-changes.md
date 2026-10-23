@@ -1,0 +1,82 @@
+# Existing workflow modification specification
+
+Proposed only. Source-research integration is complete enough to specify the affected interfaces, but corpus review and no-loop topology proof remain incomplete. Do not implement by replaying historical commands.
+
+## Invariants
+
+Preserve `3tchedCtlChatbot`, native UUID `137c61ff-435c-4300-b3c0-c605e461be13`, identity/session/key and creation-operation records. Bootstrap stays out of scope. Preserve current identity-bound mounted/D-Bus admission; no direct database or alternate-identity bypass. No new script, orchestrator, endpoint, model router, LVM manager or VM conversion.
+
+Retain an immutable shared seed, actual sprout membership, seven inherited siblings, ordinary private persistence directory, separate upgrade replica and send/receive ancestry. Root is a read-only overlay with upgrade above inherited seed root; private persistent writes are not an overlay upper. No lifecycle allocation or member churn.
+
+## Stage owners and authoritative completion
+
+| Stage | Existing owner | Required evidence |
+|---|---|---|
+| Admission | Mounted namespace, lungs socket, identity_sled dispatch | Same open descriptor terminal receipt; verified caller/session/genesis/grant and matching sealed declaration |
+| Native preparation | native_container_creation.rs and Cozo native_creation.rs | Durable original request before sole POST; same-operation reconciliation; UUID/readback and canonical publication before creation complete |
+| Storage establishment | prepare-instance-disk.sh / external host owner | Durable pre-effect intent; selected authorized non-loop backing; seed/member identity, immutable seed and inherited-subvolume proofs |
+| Upgrade pair | sync-instance-upgrade.sh | Correct mounted destination/FSID immediately before receive; protected baseline, received UUID, published ancestry and paired generation |
+| Root bind | bind-instance-root.sh | Stopped native UUID/ETag/security; idmapped read-only lowers in exact order; complete sibling and persistence bind identity |
+| Adoption | prepare-chatbot-adoption.sh; identity_clean_provision; Cozo clean_provision | Private digest-pinned plan; current revision and native/storage proof rechecked; deterministic operation, predecessor CAS and publication receipt |
+| Start | Existing identity lifecycle/touch_session | Completed adoption guard; bound UUID start, full native power readback, active-state CAS |
+| Cold restoration | identity-roots and restore-chatbot-root | Selected helper closure and linked storage/adoption/power receipt; restore established backing, stopped-only sync, full root proof before authorized start |
+| Failure/resume | Existing per-stage journals and lifecycle locks | Reconcile uncertain effects under original IDs; no fresh POST, repeated member-add, reformat or destructive cleanup from missing result alone |
+
+Sources: recovery/BackendProof.md architecture and §§3–4; recovery/SourceChain.md failure/resume and base boot sections. These are saved source investigations, not fresh runtime receipts.
+
+## Coordinated edits, not a shell-only workaround
+
+1. **provision-workspace-subscriber.sh:** make post-bootstrap progression and completion boundaries explicit. Reconcile the existing native operation and UUID. Carry one verified storage descriptor through preparation, pairing, binding, adoption and requested start. Native preparation alone must never be labelled provisioned.
+2. **prepare-instance-disk.sh:** replace prohibited allocation only after an authorized supported topology is selected. Preserve one-time establishment and pre-effect intent. Reconcile uncertain effects by observation. Use exclusive staging, file fsync, atomic publication and directory fsync consistently; do not create another image because an earlier intent lacks a terminal result.
+3. **sync-instance-upgrade.sh:** remove old/new pool and host-upgrade-FSID disagreement by consuming the selected descriptor. Preserve exact destination mount and FSID proof immediately before receive under exclusion. Retain stopped-only layer changes, baseline UUID ancestry and idmap handling. Specify recovery for received/unpublished, partially rotated and interrupted restoration phases; preserve generations rather than blindly rolling back.
+4. **bind-instance-root.sh:** validate both guest FUSE views, live replica FSID, exact lower order/modes/idmap and all effective sibling/persistence bindings. Reconcile retained intent; do not rerun mounts blindly.
+5. **prepare-chatbot-adoption.sh and identity_clean_provision.rs:** change the plan representation together. An image-free layout cannot claim file inode/GPT/loop evidence. Distinguish its version/type explicitly; retain deny_unknown_fields, digest, revision predecessor, native UUID/ETag, seed FSID/generation, inherited members, persistence and upgrade ancestry. Do not replay fresh-genesis behavior against existing identity state.
+6. **identity_clean_provision/storage.rs and partitioned.rs:** replace loop-specific proofs with equally strong held-descriptor proofs for the selected primitive. Verify actual protected seed and writable-member identities, access modes and complete ancestry; reject loop-backed ancestry. Keep seed SEEDING/generation/block-RO, exact member closure, ordinary persistence directory and native bind equality. If physical partitions remain, prove genuine parent/geometry; if separate objects replace partitions, prove their distinct ownership rather than fabricating GPT fields. Do not delete security checks simply to accept subvolumes.
+7. **Cozo identity_transactions/clean_provision.rs:** recognize only the new proven layout; retain deterministic digest operation, exact predecessor CAS, replay equivalence, publication recovery and completed-binding immutability. No grant broadening or direct Cozo patch.
+8. **restore-chatbot-root and identity-roots/run:** use one selected helper closure/storage contract; preflight all selections. Link boot authorization to adopted UUID, revision, storage proof and explicit power policy. Running instances are observation-only; stopped restoration must not allocate members. Base-service installation is separate from application staging. Never add an application ownership marker just to force the base service into golden.
+9. **prepare-lungs-client.sh, binder fstab validator, populate.sh and image metadata/docs:** align both guest views, schema-only stores and socket binding without capturing credentials. Explicitly distinguish older and newer layout metadata and align release-ID producer/consumer validation. Configured service files are not mounted identity-bound operations.
+10. **attach-host-workspace-folders, if retained in this workflow:** accept the exact permitted FUSE device alongside allowed disks; its disk-only observation conflicts with canonical native configuration. It is not a prerequisite for native creation.
+
+## Native declaration to preserve
+
+This is an excerpt of the existing historical native contract, not a complete replacement YAML and not proof of present installed equality. Source: original Hermes record 3077, exported physical line 80 of `20261018_222032_11fb9b.jsonl`, historical incus.rs:1464–1493; corroborating native_container_creation.rs:106–124 (BackendProof §1).
+
+```yaml
+type: container
+ephemeral: false
+source:
+  type: none
+profiles:
+  - 3tched-lungs
+config:
+  security.privileged: "false"
+  security.nesting: "false"
+  security.protection.shift: "true"
+  boot.autostart: "false"
+  security.syscalls.deny_default: "true"
+devices:
+  root:
+    type: disk
+    pool: identity-roots
+    path: /
+  runtime-run:
+    type: disk
+    source: "tmpfs:"
+    path: /run
+  fuse:
+    type: unix-char
+    source: /dev/fuse
+    path: /dev/fuse
+```
+
+Retain existing identity metadata, raw.lxc UTS binding, idmap and all three storage-ioctl denials; their absence from this excerpt is not a removal. Profile config remains empty; profile devices include runtime-run with initial.mode 0755 and readonly lungs-socket-dir from/to `/run/opdbus/lungs`. Never flatten expanded configuration into a blind replacement. Existing root pool is verified as `dir` at `/var/lib/incus-storage/identity-roots`; changing it to a Btrfs pool is a storage migration, not a one-line repair.
+
+## Unresolved topology — smallest decision
+
+Start from the owner's demonstrated mechanism: **the seed supplies backing; `btrfs device add <writable-device> <mounted-seed-path>` adds the writable member, followed by the sprout's read-write mount.** Historical `op-identity-root:1172–1196` confirms the sequence and preservation of inherited sibling identities. Trace the writable member/Cozo association separately from the Incus subvolume presentation and upgrade replica. Do not reject the complete subvolume arrangement merely because a subvolume is not itself the device-add operand. Preserve no-host-loops while identifying the actual required backing and proofs; historical loop variables are not authorization to restore loops. Investigate the documented seed-mount constraint against that concrete topology, without silently introducing dm-linear, new LVM, copied roots or a replacement architecture. See `../owner-seed-device-add-correction.md`; broader feasibility remains unresolved, not disproved by the earlier layer inference.
+
+All-host no-loop also requires a separately authorized, data-preserving resolution of existing pool backing. No detachment or migration is authorized here. Preserve the seed; do not silently retire it, copy it, clear its flag or replace it with snapshots.
+
+## Acceptance evidence for future authorized implementation
+
+Independent receipts must distinguish source, built artifact, installed application helpers, installed base service, operation acceptance, authoritative adoption, actual startup and cold restoration. Verify no loops across the complete backing chain, immutable seed/member provenance, isolated persistence, upgrade ancestry/lower ordering, admission denial behavior, uncertain-outcome reconciliation and power policy. These are future acceptance requirements, not tests or runtime operations executed in this diagnostic run.

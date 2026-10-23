@@ -1,0 +1,157 @@
+{
+  "status": "ok",
+  "query": "Review bounded implementation decision for OP-DBUS threetched consolidation, not an alternate plan. Source already deletes 18 plugin/skill wrapper methods. Mounted native CLI captures commands but all use exact hashed capabilities and stdout/stderr/exit, unlike old typed text output and grouped grants. Scouts found native skills.edit uses interactive editor, canonical dispatcher env_clear/null stdin; old wrapper contents used editor=tee piped stdin. Native skills.add has --edit not exposed by old wrapper. Decision: preserve native hashed grants unchanged, explicitly retire old edit_skill(contents) and inline router patch convenience; remove five unused binary_namespace router get/init/list/set/patch declarations and module, retaining typed config APIs/private job semantics. Consider rejecting editor-dependent native calls before spawn to make unavailable behavior explicit without modifying native schemas. No automatic tests/smokes authorized; required GNU workspace release build and isolated seal authorized; live activation forbidden. Is rejecting interactive editor calls (skills.edit, skills.add --edit true) within this migration a justified exact unsupported outcome, or unnecessary scope? Identify concrete security/contract risks. No guessed native endpoints, no aliases or grant broadening.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Rejecting editor-dependent calls is justified within this migration**, provided rejection is confined to operations the canonical noninteractive executor cannot support. It makes the retired editor bridge\u2019s limitation explicit; it must not become a general command-filtering policy.\n\nThe supplied evidence establishes `env_clear` and null stdin, but **those alone do not prove an editor cannot execute**. An editor may use `/dev/tty`, and native fallback selection may still launch a process. Base rejection on the executor\u2019s deliberately unsupported interactive-editor contract, not an assertion that these calls invariably fail.\n\n### Recommended boundary\n\n- Reject native `skills.edit` before spawning.\n- Reject `skills.add` **only when its effective parsed `edit` option is enabled**. Ordinary `skills.add` remains available.\n- Keep native-derived declarations and exact hashed capabilities unchanged.\n- Retire `edit_skill(contents)` explicitly. Do not translate its contents into shell input, restore `EDITOR=tee`, or silently discard contents.\n- Return the existing operation error/status representation for unsupported execution. Do not fabricate a native `{stdout, stderr, exit}` result for a process that never ran.\n\n### Concrete risks\n\n| Risk | Required treatment |\n|---|---|\n| **Authorization bypass or information disclosure** | Preserve canonical identity, capability and argument admission before the execution-layer rejection. Lack of authorization must still produce the normal denial, not a different unsupported-operation response. |\n| **Incorrect option detection** | Use canonical command identity and validated effective arguments. Raw substring matching against command text or checking merely for the presence of `edit` can incorrectly reject explicit false or miss an accepted encoding. Check actual defaults and accepted forms in the captured contract. |\n| **Partial native effects** | Reject before spawn. If `skills.add --edit` creates a skill before invoking its editor, rejection after launch would leave a mutation despite reporting unavailability. |\n| **False receipts or state publication** | Record the operation as rejected/not executed through existing receipt semantics. Do not publish successful skill changes or claim cancellation of a provider/native effect. |\n| **Contract ambiguity** | Retaining the native command declaration while refusing execution is truthful only if the error clearly identifies the local noninteractive execution limitation. Do not claim the native runtime lacks the command. Document this release restriction. |\n| **Accidental grant equivalence** | Preserving hashed capabilities avoids broadening access, but does not preserve old grouped-grant usability. Record that previously authorized wrapper callers may now be denied canonical operations. Do not conceal that difference with policy rewrites. |\n| **Editor injection workaround** | Do not introduce an editor executable override, shell interpolation, inherited editor environment, or arbitrary stdin support to recover the old contents API. Those would expand this slice\u2019s execution and security contract. |\n\n**Removing the five unused router `binary_namespace` conveniences is coherent with this boundary**, subject to the reported caller inventory being accurate. Their retirement must remain distinct from retained typed config APIs: no implication that the latter reproduce the removed inline patch syntax, masking behavior, or results. Remove corresponding dispatch and policy/tool references without altering private generation-job ownership.\n\n**Verification status:** advisory review of supplied evidence; no independent source inspection or execution. The authorized build and isolated seal can establish compilation and catalog contents, **not exercised rejection behavior or authenticated operation success**. Record that limitation; do not run unauthorized tests, smoke fixtures, or live activation."
+    },
+    {
+      "model": "kimi-k3",
+      "content": "Problem: review whether pre-spawn rejection of editor-dependent native calls (`skills.edit`, `skills.add --edit`) is a justified unsupported-outcome or scope creep. Need grounded evidence: mounted capture, dispatcher spawn semantics, deleted wrapper behavior, current shared state."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Verdict\n\nRejecting editor-dependent native calls before spawn is **justified and in-scope**, not scope creep \u2014 but only in the narrow form decided: a pre-spawn guard at the dispatch boundary, not a schema edit, not a new capability, not a grant change.\n\n## Why it's in-scope\n\nThe migration replaces typed wrappers (old `edit_skill(contents)` piped via `editor=tee`) with native CLI calls whose contract is `{stdout, stderr, exit}`. `skills.edit` and `skills.add --edit` are **interactive TTY operations**. Under the canonical dispatcher (`env_clear`, null stdin), these cannot succeed \u2014 the native tool will either fail, hang waiting on a closed stdin, or misbehave. Three concrete failure modes:\n\n1. **Hang/timeout risk:** an editor spawned with null stdin and no TTY can block indefinitely (e.g., editors that open `/dev/tty` or wait on input). A hung CLI call holds the dispatch worker and the operation receipt never resolves \u2014 this is a liveness defect introduced *by the migration*, not pre-existing behavior.\n2. **Ambiguous exit semantics:** if the editor fails fast, the caller gets `exit != 0` with stderr noise, which is indistinguishable from a real backend rejection (e.g., skill not found vs. editor unavailable). The old wrapper's contract was \"provide contents, get typed result\"; silently degrading that to \"opaque CLI failure\" is a contract regression that callers can't reconcile.\n3. **Receipt truthfulness:** the brief and prompt both require \"truthful unsupported/unavailable outcomes instead of fake success.\" Letting a call spawn and fail is technically truthful, but a deterministic pre-spawn rejection with a typed error (\"interactive editor unavailable in canonical dispatch; use skills.add with inline contents / native edit via other path\") is strictly more truthful and cheaper \u2014 no process spawn, no timeout accounting, no stderr parsing.\n\nThis is exactly the \"explicitly retire old edit_skill(contents)\" disposition's complement: you retired the old typed path; the native replacement for that specific operation mode is unavailable in this environment. Marking it unavailable *at the boundary* is the honest closure of that retirement, not new feature work.\n\n## Concrete risks to manage\n\n- **Don't modify native schemas or captures.** The guard lives in our dispatch layer (where `env_clear`/null-stdin is already imposed). Rejecting before spawn is a local policy decision about *our* invocation of a captured operation \u2014 consistent with \"keep as an integration responsibility.\" Editing the sealed capture or filtering the schema would violate the one-schema-authority rule.\n- **Don't broaden or narrow grants.** The rejection is an availability outcome, not a permission outcome. Return it as an unsupported/operation-unavailable error, not `PermissionDenied` \u2014 a denial could be misread as a capability boundary and trigger the \"diagnose the denial\" escalation path incorrectly. Use a distinct error kind.\n- **Match on exact invocation shape, not method name alone.** `skills.add` without `--edit` must remain fully callable. Guard condition: method `skills.edit`, or `skills.add` with `edit=true` in args. If the captured schema types `--edit` as a flag, check the typed arg, not string matching on a serialized command \u2014 avoid a guard that false-positives on a skill *named* \"edit\".\n- **Document the retirement pair together.** Old `edit_skill(contents)` retired + native `skills.edit`/`--edit` rejected = \"skill editing is unavailable through this surface pending a non-interactive native contract.\" Record it in HANDOFF/WISHLIST (candidate OD entry) so it's a tracked gap, not a silent hole. If a future native capture exposes a non-interactive edit (e.g., contents-accepting variant), the guard is the single removal point.\n- **Cancellation/receipt semantics:** the pre-spawn rejection must not create a job/revision or commit state \u2014 it should fail before any SHM publication, matching how other validation failures behave in the dispatcher. Verify it lands in the same pre-execution validation stage as argument validation, so no partial receipt is emitted.\n\n## The five binary_namespace removals\n\nSeparate decision, also sound: removing five *unused* declarations (no callers) is a clean retire disposition \u2014 no caller reconciliation needed beyond registry/module/dispatch reference cleanup. Confirm \"unused\" via LSP references before deletion, and confirm none appear in the sibling UI's adapter or generated surfaces (the brief warns against assuming one file holds every caller).\n\n## Bottom line\n\nKeep the guard. It's the minimal honest representation of an operation that cannot succeed under canonical dispatch, costs one branch at the existing validation point, and avoids introducing hang/ambiguous-failure modes into a migration whose whole point is truthful contracts. Risks are all in implementation placement (dispatch-layer policy, typed-arg matching, distinct error kind, no state commit) \u2014 none are reasons to drop it."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "**Verdict:** Justified exact unsupported outcome. Rejecting interactive editor calls is a necessary boundary condition, not unnecessary scope.\n\n### Security Risks\n1. **TTY Injection / Data Leakage:** The canonical dispatcher enforces `env_clear` and `null stdin`. If a deployment or future change passes a TTY, an interactive editor can read terminal input and environment variables, bypassing the strict sandbox. Explicit rejection enforces the `env_clear` boundary.\n2. **Sandbox Bypass via Workaround:** The old wrapper's `editor=tee` piped-stdin approach relies on shell piping and external process spawning. This introduces a fragile escape vector that can circumvent `env_clear` and `null stdin` constraints if not rigorously sandboxed.\n3. **Non-Deterministic Execution:** Interactive editors require user input and terminal state. Automating them in a programmatic dispatcher introduces race conditions, hangs, and unpredictable resource consumption.\n\n### Contract Risks\n1. **Programmatic API vs. Interactive CLI Mismatch:** The legacy `edit_skill(contents)` was a programmatic, non-interactive API. The native `skills.edit` is an interactive CLI tool. Exposing the latter as the former breaks the programmatic contract and violates the \"truthful unsupported/unavailable outcomes\" requirement.\n2. **Silent Failure / Hang:** If the dispatcher attempts to run an interactive editor under `null stdin`, it will either fail with a generic TTY error or hang indefinitely waiting for input. Explicit rejection provides a clear, immediate `UNAVAILABLE` or `INVALID_ARGUMENT` status, preventing silent failures.\n3. **Grant Misalignment:** The old wrapper grouped grants around a programmatic edit operation. The native command uses exact hashed capabilities tied to interactive CLI execution. Retaining the old wrapper to mask this mismatch would obscure the true capability boundary.\n\n### Implementation Decision\n- **Explicit Rejection:** Add a schema/dispatcher check for interactive/editor flags (e.g., `--edit`, `editor` env, or TTY detection). Return a clear `UNAVAILABLE` or `INVALID_ARGUMENT` status with a concise message: `Interactive editor calls are unsupported; use programmatic skill management.`\n- **Retire Legacy Wrapper:** Remove `edit_skill(contents)` and the inline router patch convenience. Do not attempt to replicate the `editor=tee` workaround.\n- **Preserve Native Hashed Grants:** Keep native capability hashing unchanged. Do not broaden grants to accommodate the retired interactive path.\n- **Document Unsupported Outcome:** Record the retirement of interactive editing in HANDOFF and SIGNALS. Mark it as an explicit unsupported boundary, not a missing feature.\n\n### Alignment\nThis decision enforces the `env_clear`/`null stdin` security model, eliminates a fragile shell-pipe workaround, and provides a truthful unsupported outcome. It aligns with the bounded migration scope and avoids speculative feature expansion. Proceed with explicit rejection logic and legacy wrapper retirement."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The three substantive responses support narrowly rejecting editor-dependent native calls before spawn as an in-scope unsupported outcome.",
+      "Those responses support retiring edit_skill(contents) rather than restoring the editor=tee workaround.",
+      "Native hashed capabilities should remain unchanged; the migration must not introduce aliases, grant broadening or a second schema authority.",
+      "Ordinary skills.add must remain available; rejection should apply only when its effective edit option is enabled.",
+      "The unsupported editing behavior and legacy contract retirement should be documented explicitly."
+    ],
+    "contradictions": [
+      {
+        "topic": "Whether env_clear and null stdin establish inevitable execution failure",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "They do not prove an editor cannot execute; an editor may open /dev/tty. Rejection should express the executor's unsupported interaction contract."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Claims these calls cannot succeed under canonical dispatch and treats failure or hanging as inevitable."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Likewise predicts failure or indefinite hanging and treats env_clear/null stdin as a strict sandbox boundary."
+          }
+        ]
+      },
+      {
+        "topic": "Placement and breadth of the guard",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Use a narrow execution-layer guard based on canonical command identity and validated effective arguments; preserve native declarations."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Use a dispatch-layer guard without changing schemas or captures."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Suggests a schema/dispatcher check and potentially broader checks for editor environment or TTY state, exceeding the other responses' exact two-invocation boundary."
+          }
+        ]
+      },
+      {
+        "topic": "Error representation",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Reuse existing operation error/status semantics and never fabricate a native process result."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Requests a distinct unsupported/unavailable error rather than PermissionDenied."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Suggests UNAVAILABLE or INVALID_ARGUMENT without establishing which existing error contract fits a valid but unsupported invocation."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "kimi-k3"
+        ],
+        "point": "Restates the review question and evidence needed but supplies no decision, security analysis or contract assessment."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Address retirement of the five router conveniences conditionally on caller/reference evidence; qwen-3-6-35b-a3b does not assess the complete five-method removal."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly preserves identity and capability admission before availability rejection, preventing unauthorized callers from receiving a different execution-availability response."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly distinguishes authorized build/catalog evidence from unexercised rejection behavior and authenticated operation success, while respecting the prohibition on tests, smoke fixtures and activation."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Discuss receipt and state effects, but neither establishes the actual dispatcher lifecycle or existing rejection receipt representation."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Rejecting skills.add with editing before spawn avoids possible partial creation before editor failure; this ordering matters even if the editor ultimately exits unsuccessfully."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Preserving native hashed grants does not preserve usability for principals holding only legacy grouped grants. That authorization discontinuity must be recorded rather than hidden by policy rewrites."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "A declared native operation can remain unavailable through the local executor, but the error must attribute the limitation to that executor rather than falsely claiming native functionality is absent."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Option detection must follow effective validated values, including defaults and explicit false, rather than key presence or textual command matching."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Availability rejection should remain distinguishable from authorization denial so callers do not interpret missing execution support as a grant problem."
+      }
+    ],
+    "blind_spots": [
+      "No response independently inspects source, mounted declarations or current ownership; conclusions remain advisory assessments of supplied evidence.",
+      "The actual native editor-selection behavior, controlling-terminal access and process timeout/cleanup behavior are not established. Claims of inevitable hangs or failure exceed the evidence.",
+      "env_clear and null stdin are process configuration, not proof of a security sandbox. The claimed shell-pipe escape vector and environment bypass are not demonstrated.",
+      "The existing error taxonomy and caller retry behavior are unknown. UNAVAILABLE could imply retryability, while INVALID_ARGUMENT could misrepresent a valid native invocation.",
+      "No response verifies whether rejection should create a failed operation receipt. Preventing successful state publication is distinct from suppressing required failure/audit receipts.",
+      "Suggested alternatives such as inline-content skills.add or another native editing path are not established by the supplied contract and should not appear in error guidance without evidence.",
+      "The exact invocation metadata and accepted edit-option encodings are not inspected, so the proposed guard condition is not yet an implementation-ready contract.",
+      "Removing router conveniences remains dependent on demonstrated consumer and policy-reference reconciliation; absence of source-level symbol references alone would not establish absence of dynamic string callers."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

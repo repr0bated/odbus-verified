@@ -41,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let generated_proto = out_dir.join("plugin_methods.proto");
     let generated_routes = out_dir.join("plugin_method_routes.rs");
     let generated_contracts = out_dir.join("compiled_method_contracts.json");
+    op_plugins::state_plugins::threetched::prepare_schema_capture()?;
     let plugin_methods = collect_plugin_methods();
 
     std::fs::write(

@@ -686,6 +686,8 @@ fn copy_catalog_with_stage(src: &Path, dst: &Path, stage: Option<&Path>) -> Resu
 }
 
 fn seal_plugins(dir: &Path) -> Result<(), String> {
+    op_plugins::state_plugins::threetched::prepare_schema_capture()
+        .map_err(|error| format!("capture threetched schema before sealing: {error:#}"))?;
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let mut cat = ActiveReflectionCatalog::open(dir).map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()

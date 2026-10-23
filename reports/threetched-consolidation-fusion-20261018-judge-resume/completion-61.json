@@ -1,0 +1,103 @@
+{
+  "request": 61,
+  "started": "2026-10-18T21:59:56.510832+00:00",
+  "finished": "2026-10-18T22:00:09.330680+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0deb553aca8e83df016ad5415f6fdc87d09900763c38886885",
+    "created": 1792360799,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading backing helper and fixture\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs:405-470,510-560\"}",
+                "name": "read"
+              },
+              "id": "call_5vTBX7DhfsRkRQRQTj88fdTH",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating backing helper callers\",\"pattern\":\"async fn|facade|\\\"get_config\\\"|\\\"get_provider\\\"|\\\"list_providers\\\"|\\\"update_config\\\"|\\\"set_provider\\\"|\\\"generate\\\"|\\\"list_models\\\"\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs\"}",
+                "name": "grep"
+              },
+              "id": "call_YAX5eHDFYYKT6T59pp9pq9JM",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading remaining metadata descriptions\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/antigravity.rs:1-8,780-815\"}",
+                "name": "read"
+              },
+              "id": "call_jZkZDxtan2g1ZFplQViyJAQM",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading chat schema description\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/antigravity_chat.rs:188-205\"}",
+                "name": "read"
+              },
+              "id": "call_DqvEZ98BM53sJJAwPLn9YyTF",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Gemma schema description\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/gemma_brain.rs:171-183\"}",
+                "name": "read"
+              },
+              "id": "call_Rw4CCqYoJqoTHsSX9rotMsOf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading workspace router admission\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/ui_workspace_dispatch.rs:45-83,370-444\"}",
+                "name": "read"
+              },
+              "id": "call_Pxnd69bTdNZb1xsVetm4zWyx",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 831,
+      "prompt_tokens": 307823,
+      "total_tokens": 308654,
+      "completion_tokens_details": {
+        "reasoning_tokens": 104
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 198808
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:09.326720+00:00",
+  "stream_chunks": 14
+}

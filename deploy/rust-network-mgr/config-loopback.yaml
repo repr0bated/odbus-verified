@@ -4,4 +4,6 @@ interfaces:
   - name: lo
     dhcp: false
 
-socket_path: /run/rust-network-manager/rust-network-manager.sock
+# Shared bridge-owned lungs socket. rust-network-mgr must not bind or replace it.
+socket_path: /run/opdbus/lungs/lungs.sock
+http_bind_addr: 127.0.0.1:9100

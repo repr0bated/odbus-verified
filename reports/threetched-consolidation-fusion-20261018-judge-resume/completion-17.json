@@ -1,0 +1,95 @@
+{
+  "request": 17,
+  "started": "2026-10-18T21:52:23.760111+00:00",
+  "finished": "2026-10-18T21:52:34.698397+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0f8308782ef8d0f2016ad53f9ac57087d084b83b88b029c33d",
+    "created": 1792360346,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading paired capture selectors\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_paths.rs:1-52\"}",
+                "name": "read"
+              },
+              "id": "call_nwgILLFvQM8E6FnJPKtYR9qU",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading prior capture command\",\"path\":\"/srv/git/odbus-verified/target/schema-capture-release-20261018.g7uixn/command.txt\"}",
+                "name": "read"
+              },
+              "id": "call_uRROwv1aHSFJ2cSuzv3MkFSb",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading verified candidate manifest\",\"path\":\"/srv/git/odbus-verified/target/threetched-artifacts/tched-router/manifest.json\"}",
+                "name": "read"
+              },
+              "id": "call_36vfEqXtGiam5iZMC5vu1pHv",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating service environment inputs\",\"pattern\":\"env|source|^\\\\. |THREETCHED|TCHED_ROUTER\",\"path\":\"/srv/git/odbus-verified/deploy/runit/op-grpc-bridge/run\"}",
+                "name": "grep"
+              },
+              "id": "call_4H0mf0LXigUjpKe18ZzaZLQJ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Finding durable provisioning outcomes\",\"pattern\":\"provision|sa-0-32370f11|21:45\",\"path\":\"/srv/git/odbus-verified/reports/*.md\"}",
+                "name": "grep"
+              },
+              "id": "call_vBkFDKVEof0eJnNnvQy4jnhY",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 700,
+      "prompt_tokens": 212583,
+      "total_tokens": 213283,
+      "completion_tokens_details": {
+        "reasoning_tokens": 193
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 200523
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:52:34.694573+00:00",
+  "stream_chunks": 12
+}

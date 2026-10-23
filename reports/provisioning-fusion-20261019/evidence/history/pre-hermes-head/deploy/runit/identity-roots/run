@@ -1,0 +1,115 @@
+#!/bin/sh
+# Mount physical-seed roots after Incus API readiness, then start only ready
+# session instances (including the fixed chatbot alias). Staging names remain
+# stopped. This is storage
+# readiness, without a bridge/lungs dependency. A service restart observes
+# running instances without stopping them; finish never detaches their roots.
+exec 2>&1
+rm -f /run/opdbus/runit-ready/identity-roots
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep incus
+
+i=0
+until incus info >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -ge 60 ]; then
+        echo "incusd API not ready" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+helper=/usr/local/libexec/3tched/op-identity-root
+gpt=/var/lib/3tched-leaf-pool/.provisioning/3tchedChatbot.boot.json
+if [ -e "$gpt" ] || [ -L "$gpt" ]; then
+    /usr/local/libexec/3tched/restore-chatbot-root || exit 1
+    /usr/local/libexec/3tched/runit-ready-signal identity-roots
+    exec pause
+fi
+physical=${OP_IDENTITY_SEED_STATE:-/var/lib/opdbus-runtime/seed-identities}
+legacy=${IDENTITIES:-/var/lib/opdbus-runtime/identities}
+physical_present=0
+seed_readonly_ready=0
+failed=0
+for receipt in "$physical"/*/state.json; do
+    [ -e "$receipt" ] || [ -L "$receipt" ] || continue
+    physical_present=1
+    name=$(basename "$(dirname "$receipt")")
+    if [ "$name" != 3tchedChatbot ] && ! printf '%s' "$name" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+        echo "physical seed staging receipt $name: boot disabled"
+        continue
+    fi
+    marker="$physical/$name/boot-ready.json"
+    if [ ! -e "$marker" ] && [ ! -L "$marker" ]; then
+        echo "physical seed $name: no authoritative-completion boot opt-in; skipped"
+        continue
+    fi
+    # A canonical name alone does not prove provisioning completed. The helper
+    # checks the owner attestation marker and all storage/native identity pins.
+    if ! jq -e --arg name "$name" '
+        .name == $name and .phase == "ready" and
+        (.session == $name or ($name == "3tchedChatbot" and .session == "b0c777e3-0955-cd8b-3d01-ca12998cae28"))
+    ' "$receipt" >/dev/null; then
+        echo "physical seed $name: invalid/incomplete receipt; legacy suppressed" >&2
+        failed=$((failed + 1))
+        continue
+    fi
+    start_on_boot=$(jq -er '.start_on_boot | select(type == "boolean") | tostring' "$marker") || {
+        echo "physical seed $name: invalid boot completion policy" >&2
+        failed=$((failed + 1))
+        continue
+    }
+    # The physical partition's kernel RO flag is volatile across reboot.
+    # The host owner restores it once, after ready/opt-in selection and before
+    # any seed-check/up; verification failures stop boot restoration closed.
+    if [ "$seed_readonly_ready" -eq 0 ]; then
+        "$helper" seed-readonly || { echo "physical seed read-only enforcement failed" >&2; exit 1; }
+        seed_readonly_ready=1
+    fi
+    state=$(incus query "/1.0/instances/$name/state" | jq -er '.status') || state=unknown
+    case "$state" in
+        Running)
+            if "$helper" seed-check "$name"; then
+                "$helper" seed-lungs "$name" || failed=$((failed + 1))
+            else failed=$((failed + 1)); fi
+            ;;
+        Stopped)
+            if "$helper" seed-up "$name" && "$helper" seed-lungs "$name"; then
+                if [ "$start_on_boot" = true ]; then incus start "$name" || failed=$((failed + 1))
+                else echo "physical seed $name: storage restored; boot start disabled"; fi
+            else failed=$((failed + 1)); fi
+            ;;
+        *) echo "physical seed $name: unsupported native status $state" >&2
+            failed=$((failed + 1)) ;;
+    esac
+done
+if [ "$physical_present" -eq 1 ]; then
+    # A direct legacy lower mount conflicts with sprouts from the SAME seed,
+    # even for a different identity. Do not invoke legacy `up` in this mode.
+    for image in "$legacy"/*/identity.img; do
+        [ -f "$image" ] || continue
+        name=$(basename "$(dirname "$image")")
+        if [ -e "$physical/$name/state.json" ] || [ -L "$physical/$name/state.json" ]; then
+            echo "legacy identity $name: suppressed by physical seed receipt"
+        else
+            echo "legacy identity $name: migration or independent lower required; shared seed direct mount suppressed" >&2
+            failed=$((failed + 1))
+        fi
+    done
+else
+    "$helper" up || failed=$((failed + 1))
+    "$helper" status || failed=$((failed + 1))
+fi
+[ "$failed" -eq 0 ] || { echo "$failed identity root startup check(s) failed" >&2; exit 1; }
+/usr/local/libexec/3tched/runit-ready-signal identity-roots
+exec pause

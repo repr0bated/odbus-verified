@@ -15,7 +15,7 @@ export OPDBUS_NOTEBOOK_PROJECT_ROOT=/srv/git/odbus-verified
 export OP_DBUS_ROOT=/usr/share/op-dbus/notebook-sync
 export NOTEBOOKLM_SOURCES_DIR=/home/jeremy/.notebooklm-sources
 export OPDBUS_NOTEBOOK_SYNC_MODE=per-model
-export OPDBUS_NOTEBOOK_FS_ROOT=/run/mount/3tchedFS
+export OPDBUS_NOTEBOOK_FS_ROOT=/run/mounts/3tchedFS
 export OPDBUS_NOTEBOOK_HISTORY_ROOTS=/root:/home/jeremy/keep
 # A new, explicit recovery batch does not adopt processed legacy text as proof
 # of an earlier raw upload. The prior sources remain unmanaged and retained.

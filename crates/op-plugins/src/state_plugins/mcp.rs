@@ -209,6 +209,10 @@ pub struct McpState {
 }
 
 pub(crate) fn mcp_schema() -> PluginSchema {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_schema("mcp")
+            .expect("MCP runtime requires its sealed schema");
+    }
     let root = serde_json::to_value(schemars::schema_for!(McpState))
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(

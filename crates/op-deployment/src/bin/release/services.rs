@@ -589,7 +589,8 @@ pub fn restore_boot_lost_shm(state: &mut State, expected: &str) -> Result<()> {
     let target = release.targets.iter().find(|t| t.path == Path::new("/usr/local/libexec/op-dbus/bin")).context("candidate has no catalog-owner target")?;
     let lower = fs::open_beneath(root.as_fd(), &target.source, libc::O_RDONLY | libc::O_DIRECTORY)?;
     state.intent("build-detached-catalog-owner-for-shm-restore")?;
-    let mount = fs::detached_overlay(lower.as_fd(), &format!("opdbus-release:{}:{}:catalog-recovery", slot.name(), release.name), false)?;
+    let base = fs::release_base()?;
+    let mount = fs::detached_overlay(lower.as_fd(), base.as_fd(), &format!("opdbus-release:{}:{}:catalog-recovery", slot.name(), release.name), false)?;
     let directory = fs::directory(mount.as_fd())?;
     state.slots.get_mut(&slot).and_then(Option::as_mut).unwrap().devices.insert(directory.metadata()?.dev());
     if !Path::new("/dev/shm/opdbus").try_exists()? {

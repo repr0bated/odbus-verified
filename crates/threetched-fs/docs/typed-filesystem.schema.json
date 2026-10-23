@@ -1150,10 +1150,10 @@
           ],
           "properties": {
             "owner_plugin": {
-              "const": "threetched_fs"
+              "const": "tched_fs"
             },
             "authoring_source": {
-              "const": "crates/op-plugins/src/state_plugins/threetched_fs_contract.rs"
+              "const": "crates/op-plugins/src/state_plugins/tched_fs_contract.rs"
             },
             "deployment": {
               "type": "object"
@@ -1566,7 +1566,7 @@
       },
       {
         "sha256": "2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b",
-        "path": "crates/op-plugins/src/state_plugins/threetched_fs.rs"
+        "path": "crates/op-plugins/src/state_plugins/tched_fs.rs"
       },
       {
         "sha256": "17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49",
@@ -1671,7 +1671,7 @@
     ],
     "source_hash_algorithm": "SHA-256",
     "assembly_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
-    "schema_version": "2.0.7",
+    "schema_version": "2.0.8",
     "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
     "derivation": "Incremental revision of the fs-core-20261005 audit. source_commit retains that audit baseline; reviewed filesystem source hashes were updated for threetched-inode-20261011 and threetched-source-authority-20261011 on baseline 2e0e714. Unrelated pins and historical citations remain pending reconciliation as described in latest_source_refresh. Generated review exports are outputs, not authorities.",
     "pin_exclusions": [
@@ -1679,7 +1679,7 @@
       "Derived docs and typed_bindings.rs are outputs and excluded from source input pins."
     ],
     "citation_policy": "Existing source references derive from the prior audit and require reconciliation after this incremental lifecycle update. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only. Do not treat in-bounds citations as fresh semantic verification.",
-    "latest_source_refresh": "2.0.7: inode/handle admission, bounded child lifecycle and sealed threetched integration source (threetched-production-graft-20261011 on 9778c32). Shared binary discovery supplies exact CLI paths, flags and literal-token contracts to the threetched plugin; opblob is the sole sealer. Production FUSE projects the sealed catalog and uses canonical capability admission and receipts. Local graft execution is test-only. Reviewed filesystem and mount-launcher pins were refreshed; unrelated backend pins and historical citations still require full provenance reconciliation. Build, tests, sealing and activation of this integration are pending under the owner build hold; authored source is not runtime proof. See HANDOFF."
+    "latest_source_refresh": "2.0.8: inode/handle admission, bounded child lifecycle and sealed threetched integration source (threetched-production-graft-20261011 on 9778c32). Shared binary discovery supplies exact CLI paths, flags and literal-token contracts to the threetched plugin; opblob is the sole sealer. Production FUSE projects the sealed catalog and uses canonical capability admission and receipts. Local graft execution is test-only. Reviewed filesystem and mount-launcher pins were refreshed; unrelated backend pins and historical citations still require full provenance reconciliation. Build, tests, sealing and activation of this integration are pending under the owner build hold; authored source is not runtime proof. See HANDOFF."
   },
   "convention": [
     {
@@ -4165,7 +4165,7 @@
           "kind": "canonical_method_call",
           "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
           "payload_type": "CallReceipt",
-          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared threetched_fs.get_receipt, not a result cache."
+          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
         },
         "source_refs": [
           "crates/threetched-fs/src/namespace.rs:844-873"
@@ -14268,7 +14268,7 @@
             "kind": "canonical_method_call",
             "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
             "payload_type": "CallReceipt",
-            "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared threetched_fs.get_receipt, not a result cache."
+            "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
           },
           "source_refs": [
             "crates/threetched-fs/src/namespace.rs:844-873"
@@ -15807,8 +15807,8 @@
     "Global EventChain lifetime RAM retention and long-run workload measurements are existing system-wide concerns outside this targeted filesystem repair."
   ],
   "authority": {
-    "owner_plugin": "threetched_fs",
-    "authoring_source": "crates/op-plugins/src/state_plugins/threetched_fs_contract.rs",
+    "owner_plugin": "tched_fs",
+    "authoring_source": "crates/op-plugins/src/state_plugins/tched_fs_contract.rs",
     "derived_exports": [
       "crates/threetched-fs/docs/typed-filesystem.schema.json",
       "crates/threetched-fs/docs/typed-filesystem-binding-input.json",
@@ -15995,8 +15995,8 @@
     }
   },
   "plugin_surface": {
-    "plugin_id": "threetched_fs",
-    "version": "2.0.7",
+    "plugin_id": "tched_fs",
+    "version": "2.0.8",
     "methods": [
       {
         "name": "get_protocol",
@@ -16020,8 +16020,8 @@
       }
     ],
     "source_refs": [
-      "crates/op-plugins/src/state_plugins/threetched_fs.rs:18-22",
-      "crates/op-plugins/src/state_plugins/threetched_fs.rs:241-338",
+      "crates/op-plugins/src/state_plugins/tched_fs.rs:18-22",
+      "crates/op-plugins/src/state_plugins/tched_fs.rs:241-338",
       "crates/op-grpc-bridge/src/mutation_engine.rs:4198-4221"
     ]
   },

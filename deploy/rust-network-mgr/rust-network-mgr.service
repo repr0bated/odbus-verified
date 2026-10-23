@@ -1,5 +1,5 @@
 [Unit]
-Description=Rust Network Manager and control socket owner
+Description=Rust Network Manager (lungs control plane)
 Documentation=https://github.com/sparesparrow/rust-network-mgr
 After=local-fs.target
 
@@ -9,8 +9,6 @@ ExecStart=/usr/local/bin/rust-network-mgr
 Restart=on-failure
 RestartSec=5s
 User=root
-RuntimeDirectory=rust-network-manager
-RuntimeDirectoryMode=0755
 Environment=RUST_LOG=info
 Environment=RUST_NETWORK_MGR_CONFIG=/etc/rust-network-mgr/config.yaml
 # Unprivileged Incus identity containers cannot create the mount namespace

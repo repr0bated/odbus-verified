@@ -1,0 +1,87 @@
+{
+  "request": 73,
+  "started": "2026-10-18T22:00:58.684792+00:00",
+  "finished": "2026-10-18T22:01:13.337909+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0fbcb4fca456d8c4016ad5419db0b087d085d4d6984c456dca",
+    "created": 1792360861,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating exact route input constraints\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs\",\"pattern\":\"struct ResolveRouteInput|hint:|min_length\"}",
+                "name": "grep"
+              },
+              "id": "call_GvY6aNgZaEBtkx3IiEqpiRlQ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading router admission errors\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_router_admission.rs:1-240\"}",
+                "name": "read"
+              },
+              "id": "call_qacxeowaaPDhewKSuWfa85hb",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading backing grants construction\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs:565-640\"}",
+                "name": "read"
+              },
+              "id": "call_3vI1mf5QerlxJphjCaBqdhIb",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating runtime paired provider projection\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src\",\"query\":\"TchedRouterRuntimeClient observe_config_and_state into_state_and_fields masking provider list\",\"grep_keywords\":[\"observe_config_and_state\",\"into_state_and_fields\"]}",
+                "name": "find"
+              },
+              "id": "call_ksG88GzMyNFOSgoxGckH2Ga5",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 778,
+      "prompt_tokens": 291070,
+      "total_tokens": 291848,
+      "completion_tokens_details": {
+        "reasoning_tokens": 226
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 194028
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:13.335443+00:00",
+  "stream_chunks": 10
+}

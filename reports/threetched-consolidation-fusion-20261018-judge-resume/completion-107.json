@@ -1,0 +1,80 @@
+{
+  "request": 107,
+  "started": "2026-10-18T22:03:39.284202+00:00",
+  "finished": "2026-10-18T22:03:52.352108+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0960b4df3cfe7883016ad5423e33c087d08aaa7b09b1339996",
+    "created": 1792361022,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting canonical migrated callers\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs:675-760,795-875\"}",
+                "name": "read"
+              },
+              "id": "call_8QQjPUS2axFuG0nWCQe5q9rk",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting final source ownership\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:423-440\"}",
+                "name": "read"
+              },
+              "id": "call_W9LiSXVwwWFkhseDNkfcEA6G",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Requesting exact source file receipt\",\"path\":\"agent://RetireAccessors\",\"content\":\"Need exact changed file list for durable report. Existing report docs updated disposition/policy consequences: source confirms orphan grant strings accepted no catalog-membership check, no current seal blocker; old deployed method still callable until aligned release. No extra code work.\"}",
+                "name": "write"
+              },
+              "id": "call_WqqcnbRF65NSUVBDibsqJiNm",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 529,
+      "prompt_tokens": 314264,
+      "total_tokens": 314793,
+      "completion_tokens_details": {
+        "reasoning_tokens": 129
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 203254
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:52.349555+00:00",
+  "stream_chunks": 8
+}

@@ -16,9 +16,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-const MAX_GENERATED_BYTES: usize = 64 * 1024 * 1024;
-const MAX_DEPTH: usize = 64;
+const MAX_GENERATED_BYTES: usize = 128 * 1024 * 1024;
 const MAX_TYPES: usize = 16_384;
+const MAX_DEPTH: usize = 64;
 
 #[derive(Debug, Serialize)]
 struct Issue {
@@ -53,7 +53,7 @@ fn append(out: &mut String, text: &str) -> Result<()> {
         out.len()
             .checked_add(text.len())
             .is_some_and(|size| size <= MAX_GENERATED_BYTES),
-        "generated source exceeds 64 MiB"
+        "generated source exceeds 128 MiB"
     );
     out.try_reserve(text.len())
         .context("reserve generated source")?;
@@ -859,7 +859,7 @@ fn generate(
                 literal(&object.source_schema_hash)
             ),
         )?;
-        if plugin_id == "threetched_fs"
+        if plugin_id == "tched_fs"
             && let (Some(protocol), Some(receipt)) = (
                 example_shapes.get("get_protocol"),
                 example_shapes.get("get_receipt"),
@@ -1025,7 +1025,7 @@ fn main() -> Result<()> {
     if example.is_some() {
         ensure!(
             generated.use_example.is_some(),
-            "sealed threetched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report"
+            "sealed tched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report"
         );
     }
     if let Some(path) = example {
@@ -1247,7 +1247,7 @@ mod tests {
                 ),
             ),
         ]));
-        schema.name = "threetched_fs".into();
+        schema.name = "tched_fs".into();
         let generated = generate(
             &snapshot(schema),
             &BTreeSet::new(),

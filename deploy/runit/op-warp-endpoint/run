@@ -1,0 +1,6 @@
+#!/bin/sh
+# Base-system local address owner; no SSH carrier, firewall or policy routing.
+set -eu
+exec 2>&1
+/usr/local/libexec/op-warp-ssh/endpoint.sh up
+exec sleep infinity

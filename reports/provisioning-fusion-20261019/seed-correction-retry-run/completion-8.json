@@ -1,0 +1,67 @@
+{
+  "request": 8,
+  "started": "2026-10-19T05:40:08.161163+00:00",
+  "finished": "2026-10-19T05:41:51.853541+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-02be6c41826efd50016ad5ad99970c87d08defaf4f1a444e17",
+    "created": 1792388505,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading completion and judge API\",\"path\":\"xd://eval/judge\"}",
+                "name": "read"
+              },
+              "id": "call_zpmMWmPGZktx7z7feC0aJ3mZ",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 250,
+      "prompt_tokens": 163365,
+      "total_tokens": 163615,
+      "completion_tokens_details": {
+        "reasoning_tokens": 172
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 100322
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T05:41:45.065993+00:00",
+  "stream_chunks": 4
+}

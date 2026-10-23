@@ -1,0 +1,72 @@
+{
+  "request": 31,
+  "started": "2026-10-18T21:57:11.504538+00:00",
+  "finished": "2026-10-18T21:57:25.214406+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0843409e401e59bb016ad540ba3e2c87d0b689a5ac30a10749",
+    "created": 1792360634,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading current compiler ownership\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:1-40,424-435\"}",
+                "name": "read"
+              },
+              "id": "call_iQAP7EW5OyuP3nzPt7Bfjmri",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Requesting remaining concrete dispositions\",\"path\":\"agent://ScopeReview\",\"content\":\"Accessor and seven-LLM-wrapper implementation now delegated; do not duplicate. Need bounded read-only remaining dispositions for report: exact gemma other16 names grouped local responsibilities, model_registry five decisions, cognitive nine group names/retain-vs-defer with evidence. Also assess whether gemma.route is immediately retireable (exact caller/capability nested pin) or concrete blocker unlike generic capture deferral. No edits/Cargo/checks/LSP. Parent owns report. No more accessor/LLM review.\"}",
+                "name": "write"
+              },
+              "id": "call_jV3v6qA9PZl1JiM5FIn1Cwj8",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 678,
+      "prompt_tokens": 231052,
+      "total_tokens": 231730,
+      "completion_tokens_details": {
+        "reasoning_tokens": 249
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 151335
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:57:25.212682+00:00",
+  "stream_chunks": 6
+}

@@ -1,0 +1,10 @@
+{
+  "task": "provisioning-fusion-20261019",
+  "owner_text": "woould prfer no  disk image if possibgle to use subvolumes olnly",
+  "precedence": "Latest owner storage preference; supplements the immediately preceding hard no-host-loops correction.",
+  "hard_constraint": "No host loop devices.",
+  "preferred_design": "Subvolumes only, without disk images, if feasible while retaining the required provisioning semantics.",
+  "retain": ["Existing already-bootstrapped identity and native container", "Immutable shared Btrfs seed and isolated persistent identity writes", "Separate upgrade replica delivered by Btrfs send/receive and the required root composition", "Native Incus container declarations and existing supported workflow", "Identity, admission, storage-proof, recovery and authoritative completion guarantees"],
+  "analysis_required": "Explain the exact storage and kernel primitives. Determine whether subvolume-only storage preserves the seed/sprout contract, or instead changes it. Do not silently substitute copying, snapshots, VM conversion, new LVM management or weakened proofs. If a requirement conflict remains, cite evidence and identify the smallest owner decision; do not treat preference as unconditional permission to redesign.",
+  "scope": "Evidence and diagnosis only; no pool migration, disk creation, device changes or source repair."
+}

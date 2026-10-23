@@ -84,7 +84,20 @@ case ${1:-} in
   ip link set dev "$device" mtu "$mtu" up
   ip_json -j -d link show dev "$device"
   ;;
+ check)
+  owned
+  aliases=$(jq -c '.aliases // []' "$config")
+  ip_json -j -4 addr show dev "$device" | jq -e \
+    --arg local "$local_address" --arg peer "$peer_address" \
+    --argjson mtu "$mtu" --argjson aliases "$aliases" '
+    length == 1 and (.[0] as $endpoint |
+      $endpoint.mtu == $mtu and ($endpoint.flags | index("UP") != null) and
+      any($endpoint.addr_info[]; .local == $local and .prefixlen == 32 and
+        ((.peer // .address) == $peer or (.peer // .address) == ($peer + "/32"))) and
+      all($aliases[]; . as $alias | any($endpoint.addr_info[]; .local == $alias)))
+  ' >/dev/null || fail 'configured local endpoint is not ready'
+  ;;
  status) owned; ip_json -j -d link show dev "$device"; ip_json -j addr show dev "$device" ;;
  down) owned; ip tuntap del dev "$device" mode tun ;;
- *) fail 'usage: endpoint.sh up|status|down' ;;
+ *) fail 'usage: endpoint.sh up|check|status|down' ;;
 esac

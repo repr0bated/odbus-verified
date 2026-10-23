@@ -1,0 +1,78 @@
+{
+  "status": "ok",
+  "query": "For a bounded read-only document review of exact history packets, give a short evidence-preservation checklist: preserve original quotations/provenance, distinguish actions from claimed results, retain unavailable/truncated fields, and record full-input hashes plus actual review outcomes. Do not access tools, files, history, or delegate.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "- Preserve original quotations verbatim with packet/file reference, record ID, physical order, timestamp, parent links, and active/compacted flags.\n- Separate owner instructions and corrections from agent interpretations, attempted tool actions, actual returned results, and unverified success claims.\n- Retain redactions, missing fields, export omissions, errors, and truncation markers explicitly; never reconstruct unavailable text.\n- Record a cryptographic hash of each complete original input and exactly which records/byte ranges reached each reviewer. Account for duplicate references without implying additional review.\n- Save actual review outputs, findings, citations, uncertainty, and failures. Distinguish available, read, reviewed, and adjudicated coverage; never claim completion from a manifest or file path alone."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "**Evidence-Preservation Checklist for Bounded Document Review**\n\n1. **Preserve Original Quotations & Provenance**\n   - [ ] Retain exact message IDs, timestamps, source models, and session identifiers for all quoted text.\n   - [ ] Maintain physical line numbers and structural context (JSONL/JSON keys) for every excerpt.\n   - [ ] Quote owner corrections, agent admissions, and tool errors verbatim; zero paraphrasing.\n\n2. **Distinguish Actions from Claimed Results**\n   - [ ] Explicitly separate the executed tool call/arguments (action) from the tool output/agent narrative (claim).\n   - [ ] Flag every instance where a success claim lacks an authoritative receipt (e.g., Cozo CAS, Incus state change, storage proof).\n   - [ ] Note discrepancies where tool errors were ignored, suppressed, or masked by agent narrative.\n\n3. **Retain Unavailable/Truncated Fields**\n   - [ ] Record exact truncation boundaries (byte/line counts) and mark omitted data as `[TRUNCATED]` or `[HIDDEN]`.\n   - [ ] Do not infer, reconstruct, or smooth over missing context (e.g., hidden reasoning, credential metadata, redacted fields).\n   - [ ] Explicitly state when a required field is absent from the export versus when it is genuinely missing from the source.\n\n4. **Record Full-Input Hashes & Actual Review Outcomes**\n   - [ ] Compute and log cryptographic hashes (SHA-256) for every input file/record reviewed.\n   - [ ] Document the precise review outcome per packet (e.g., \"Reviewed 1,778 rows; identified 12 drift events\").\n   - [ ] Map each hash to the specific analysis section, drift ledger entry, or decision it substantiates."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Preserve verbatim quotations with original record identifiers, timestamps, source references, and physical ordering.",
+      "Separate tool actions and returned evidence from agent interpretations and unsupported success claims.",
+      "Explicitly retain redactions, omissions, errors, and truncation; never reconstruct unavailable content.",
+      "Record cryptographic input hashes, precise review coverage, and actual review findings linked to evidence."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Omits explicit preservation of parent links and active/compacted flags, duplicate-reference accounting, and separate available/read/reviewed/adjudicated statuses."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Does not explicitly name source-model attribution, structural JSON context, or a hash-to-analysis-entry mapping."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Account for duplicate references without implying repeated review, and never treat a manifest or supplied path as evidence of completed ingestion."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Save review uncertainty and failures alongside findings and citations."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Check success claims against stage-specific authoritative receipts and flag errors masked by narrative."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Distinguish fields absent from an export from fields established as absent in the original source."
+      }
+    ],
+    "blind_spots": [
+      "Neither explicitly requires hashing and preserving the complete reviewer input, including instructions and evidence, separately from hashes of source packets.",
+      "The second response groups tool output with narrative as a claim; returned tool evidence should remain a separate category, with its authority and limitations evaluated.",
+      "Exact truncation boundaries and original-source absence may be unknowable from supplied exports; record them as unknown rather than manufacture precision.",
+      "Neither explicitly distinguishes an issued tool call from confirmed execution, cancellation, or an attempt with no returned result."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

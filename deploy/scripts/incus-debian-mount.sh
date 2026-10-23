@@ -1,5 +1,6 @@
 #!/bin/sh
-# Create a Debian container and mount a path from it locally.
+# Mount a path from an existing, running container locally.
+# Creation and lifecycle belong to the admitted plugin owner (ID-N allocation).
 #
 # Usage:
 #   ./incus-debian-mount.sh <container-name> <container-path> <local-mountpoint>
@@ -13,16 +14,13 @@ NAME="${1:-debian-work}"
 CONTAINER_PATH="${2:-/root}"
 LOCAL_MNT="${3:-/tmp/${NAME}-mount}"
 
-# Create and start container if it doesn't exist
-if ! sudo incus info "$NAME" >/dev/null 2>&1; then
-    echo "Creating container: $NAME"
-    sudo incus launch images:debian/12 "$NAME"
-    echo "Waiting for container to be ready..."
-    sleep 3
-else
-    echo "Container $NAME already exists"
-    sudo incus start "$NAME" 2>/dev/null || true
-fi
+# This maintenance helper never creates or starts a guest, including after a
+# failed read. Use the identity-bound declared create/start operations first.
+state=$(sudo incus --force-local query "/1.0/instances/$NAME/state?project=default") || exit "$?"
+printf '%s\n' "$state" | jq -e '.status=="Running"' >/dev/null || {
+    printf '%s\n' 'Container must already be running; use the admitted lifecycle operation.' >&2
+    exit 1
+}
 
 # Ensure local mountpoint exists
 mkdir -p "$LOCAL_MNT"

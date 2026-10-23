@@ -18,7 +18,7 @@ wait_dep() {
 # both gated on. Retiring it (3tched-network-install.sh) therefore took both
 # down. opdbus-rundirs is what actually creates the rundirs op-web needs.
 wait_dep opdbus-rundirs
-# The bridge owns CognitiveMcpServer and its single-writer RocksDB. Web must
+# The bridge owns CognitiveServer and its single-writer RocksDB. Web must
 # not start until the bridge has completed replay and opened its socket.
 wait_dep op-grpc-bridge
 
@@ -40,7 +40,6 @@ unset OP_WEB_TLS_BIND
 # Human browsers obtain OIA1 from the decoy's authenticated WireGuard pickup.
 # Host-local IP mappings do not prove a caller's identity, so no SID1 pickup
 # or HTTP admin grant is configured here.
-export COGNITIVE_MCP_CONTEXT_HTTP_DISABLED=1
 export RUST_LOG="${RUST_LOG:-op_web=info,info}"
 
 # NOTE the readiness token is written BEFORE the exec, so it asserts "the run

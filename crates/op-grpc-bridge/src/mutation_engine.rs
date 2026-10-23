@@ -43,7 +43,7 @@ use op_network::rovs_proxy::OvsdbDbusClient;
 use op_plugins::state_plugins::snowball_plugin::{
     AuditEventRecord, QueryEventsInput, QueryEventsOutput, VerifyChainInput, VerifyChainOutput,
 };
-use op_snowball::{OptimizedSnowball, PluginFootprint, StreamingSnowball};
+use op_snowball::{OptimizedSnowball, PluginFootprint, SnapshotInterval, StreamingSnowball};
 use op_state_store::{ChainEvent, Decision, EventChain, OperationType};
 
 /// Default on-disk location of the streaming snowball that backs the durable
@@ -189,6 +189,8 @@ fn audit_method_arguments(
     let private = matches!(
         plugin_id,
         "project"
+            | "incus"
+            | "identity_sled"
             | "cognitive"
             | "workflows"
             | "persona"
@@ -207,8 +209,6 @@ fn audit_method_arguments(
             | "wgcf"
             | "antigravity"
             | "antigravity_chat"
-            | "tched_skills"
-            | "tched_plugins"
             | "threetched"
             | "routing_decision"
             | "schema_tag_registry"
@@ -2038,7 +2038,15 @@ impl MutationEngine {
             return 0;
         }
 
-        let chain_store = match OptimizedSnowball::new(base_path, cache_path).await {
+        // The bridge owns durable audit appends, not Btrfs snapshot lifecycle.
+        // Keep both sink paths append-only; snapshots belong to the storage owner.
+        let chain_store = match OptimizedSnowball::new(
+            base_path,
+            cache_path,
+            SnapshotInterval::Manual,
+        )
+        .await
+        {
             Ok(chain) => {
                 tracing::info!(
                     path = %base_path,
@@ -2047,7 +2055,12 @@ impl MutationEngine {
                 );
                 AuditSink::Optimized(Arc::new(chain))
             }
-            Err(cache_error) => match StreamingSnowball::new(base_path).await {
+            Err(cache_error) => match StreamingSnowball::new_with_interval(
+                base_path,
+                SnapshotInterval::Manual,
+            )
+            .await
+            {
                 Ok(chain) => {
                     tracing::warn!(
                         error = %cache_error,
@@ -3900,17 +3913,6 @@ impl MutationEngine {
                 )
                 .await?
             }
-            "gemma_brain" if method == "route" => {
-                crate::gemma_brain_dispatch::dispatch(
-                    self,
-                    &serde_json::to_value(&parsed_value)?,
-                    actor_id,
-                    session_id,
-                    session_genesis,
-                    &admitted_schema,
-                )
-                .await?
-            }
             "gemma_brain" if crate::ui_workspace_dispatch::is_ui_workspace_method(method) => {
                 self.ui_workspace()?
                     .dispatch(
@@ -4356,7 +4358,7 @@ impl MutationEngine {
                 let args = serde_json::to_value(&parsed_value)?;
                 op_plugins::state_plugins::software::dispatch_software_method(method, &args).await?
             }
-            "threetched_fs" => {
+            "tched_fs" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 let output = if method == "get_receipt" {
                     let request: op_state_store::method_receipt::GetMethodReceiptInput =
@@ -4366,25 +4368,19 @@ impl MutationEngine {
                             .await?,
                     )?
                 } else {
-                    op_plugins::state_plugins::threetched_fs::dispatch(method, &args)?
+                    op_plugins::state_plugins::tched_fs::dispatch(method, &args)?
                 };
                 self.publish_plugin_projection_state(
                     plugin_id,
-                    op_plugins::state_plugins::threetched_fs::protocol_value()?,
+                    op_plugins::state_plugins::tched_fs::protocol_value()?,
                     ChangeType::PropertySet,
                     true,
                 )
                 .await?;
                 output
             }
-            "tched_skills" | "tched_plugins" | "threetched" => {
-                let feature_plugin: &'static str = match plugin_id {
-                    "tched_skills" => "tched_skills",
-                    "tched_plugins" => "tched_plugins",
-                    "threetched" => "threetched",
-                    _ => unreachable!("matched threetched-backed plugin"),
-                };
-                // Skills, plugins and router methods operate on the same threetched service
+            "threetched" => {
+                // Captured CLI commands and router methods operate on the same threetched service
                 // and config directory. Serialize them through the router's
                 // operation guard, then recheck the pinned seal and caller's
                 // current session/grant after any queue wait.
@@ -4401,7 +4397,7 @@ impl MutationEngine {
                 let pinned = crate::tched_router_admission::readmit_call(
                     self,
                     &admitted_schema,
-                    feature_plugin,
+                    "threetched",
                     method,
                     &caller,
                 )
@@ -4421,18 +4417,10 @@ impl MutationEngine {
                 let sealed_source = pinned.schema.example.as_ref()
                     .context("sealed threetched feature source descriptor missing")?;
                 let source_value = serde_json::to_value(sealed_source)?;
-                let result = if plugin_id == "tched_skills" {
-                    let source = serde_json::from_value(source_value)?;
-                    op_plugins::state_plugins::tched_skills::dispatch(method, &args, &source).await?
-                } else if plugin_id == "tched_plugins" {
-                    let source = serde_json::from_value(source_value)?;
-                    op_plugins::state_plugins::tched_plugins::dispatch(method, &args, &source).await?
-                } else {
-                    let source = serde_json::from_value(source_value)?;
-                    op_plugins::state_plugins::threetched::dispatch(
-                        method, &args, &source, operation.clone(),
-                    ).await?
-                };
+                let source = serde_json::from_value(source_value)?;
+                let result = op_plugins::state_plugins::threetched::dispatch(
+                    method, &args, &source, operation.clone(),
+                ).await?;
                 let declaration = pinned.schema.methods.get(method)
                     .context("pinned threetched feature method is absent")?;
                 crate::method_contract_admission::validate_admitted_output(
@@ -4912,7 +4900,12 @@ impl MutationEngine {
             }
             "incus" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                crate::incus_observer::dispatch_method(self, method, &args).await?
+                if matches!(method, "create_instance" | "reconcile_creation") {
+                    crate::native_container_creation::dispatch(self, method, &args, actor_id,
+                        session_id, session_genesis).await?
+                } else {
+                    crate::incus_observer::dispatch_method(self, method, &args).await?
+                }
             }
             "privacy_routes" => {
                 // Keep effect and publication in the same order. Otherwise a
@@ -5802,7 +5795,6 @@ impl MutationEngine {
         if matches!(
             method,
             "GetModelRoutes"
-                | "GetProviderCatalog"
                 | "GetTools"
                 | "ResolveRoute"
                 | "SetOvsRoutingModel"
@@ -7186,7 +7178,7 @@ impl MutationEngine {
             return crate::specialist::consult(self, caller, args, admitted_schema, method).await;
         }
         // Health answers from the in-process runtime itself. It used to read a
-        // `cognitive_mcp` SHM projection that nothing ever published, so it
+        // `cognitive` SHM projection that nothing ever published, so it
         // failed on every bridge. Starting the runtime is the health check:
         // it fails exactly when every other cognitive operation would.
         if method == "get_health" {

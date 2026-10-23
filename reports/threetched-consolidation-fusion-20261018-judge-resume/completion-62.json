@@ -1,0 +1,64 @@
+{
+  "request": 62,
+  "started": "2026-10-18T22:00:04.784588+00:00",
+  "finished": "2026-10-18T22:00:49.840488+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-08f9169ee47d27dd016ad5416835a487d0a8d45354a8e32198",
+    "created": 1792360808,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording concrete retained responsibilities\",\"input\":\"[/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md#E51F]\\nPUT >456:\\n+\\n+### Resumed scope reconciliation \u2014 2026-10-18\\n+\\n+The prior source slice is preserved, not repeated or described as complete\\n+consolidation. Compiler ownership is now explicitly recorded for Hermes's\\n+provisioning worker `sa-0-32370f11` (21:45Z dispatch). The earlier PID25761\\n+observation above is historical, not a current process receipt. ReleaseReadiness\\n+found no authoritative terminal receipt releasing that ownership; this resumed\\n+pass has not probed or polled compiler processes. Its scratch build excludes\\n+consolidation and cannot certify these source changes.\\n+\\n+The following decisions supersede the non-specific \u201cremoval candidate\u201d and\\n+\u201cremain distinct\u201d wording above. Source-only inspections do not prove execution.\\n+\\n+#### MCP and cron\\n+\\n+- **Defer native-contract migration:** `mcp.get_config` and\\n+  `mcp.configure_server`. Preserve both outer and nested exact grants and the\\n+  server-descendant-only patch restriction, currently delegating to\\n+  `tched_router.GetMcpConfig` / `PatchConfig`. Neither whole-config access nor\\n+  CLI stdout is an equivalent replacement. `mcp_methods.rs:36-109` owns these\\n+  restrictions; no caller, policy or method is removed by this deferral.\\n+- **Retain local projection policy:** `mcp.configure_tool_groups`; this is not\\n+  permission to implement the future lungs MCP interface.\\n+- **Defer native-contract migration, retain existing receipt/publication\\n+  integration:** cron `create_job`, `delete_job`, `disable_job`, `enable_job`,\\n+  `get_history`, `get_job`, `list_jobs`, `run_job`, `update_job`. Existing callers\\n+  and typed results remain unchanged. The original inventory records incomplete\\n+  native history/run capture; install-global scheduling is not re-described as\\n+  private scheduling or continuous initiator-grant enforcement.\\n+\\n+#### Gemma local responsibilities\\n+\\n+Retain these sixteen methods, rather than treating the whole plugin as native\\n+inference duplication:\\n+\\n+| Methods | Retained responsibility |\\n+|---|---|\\n+| `register_tag` | Revision-checked private taxonomy mutation. |\\n+| `list_tags`, `list_perspectives` | Validated taxonomy enumeration/counts. |\\n+| `classify`, `analyze_intent` | Deterministic keyword matching/ranking against registered taxonomy, not provider completion. |\\n+| `get_ui_workspace`, `get_ui_spec`, `get_ui_job`, `list_ui_specs` | Principal/session-owned committed workspace/spec/job reads. |\\n+| `create_ui_spec`, `update_ui_spec`, `handle_ui_event`, `delete_ui_spec`, `delete_ui_job` | Private durable json-render mutations, revisions, admission, publication and owned task lifetime. |\\n+| `rebind_ui_renderer`, `recover_ui_workspace` | Renderer/catalog-pin reconciliation and durable-to-private-SHM recovery. |\\n+\\n+Evidence: `gemma_brain_methods.rs:179-299`,\\n+`ui_workspace_dispatch.rs:51-78,370-545`, `ui_workspace_contract.rs`.\\n+Canonical `tched_router.ResolveRoute` is separate from these responsibilities.\\n+\\n+#### Model registry\\n+\\n+| Method | Disposition and caller impact |\\n+|---|---|\\n+| `list_providers` | Retain local governed-provider/Cozo catalog projection: discovery status/revision, credential class, availability counts and control-plane profiles. UI `model-catalog.ts:89-95` remains unchanged. |\\n+| `list_models` | Retain local Cozo catalog query, credential/enabled gates, availability, pagination, search and recorded profiles. UI `model-catalog.ts:118-124` remains unchanged. |\\n+| `refresh` | Retain credential-gated discovery ingestion and folding into Cozo, including discovery history and removed providers. |\\n+| `set_model_profile` | Retain validated per-provider/model control-plane profile assignment and catalog revision/readback; not global native selection. |\\n+| `maintain_credentials` | Retain governed provider classification/reference policy (`key`/`oauth`/`off`/`remove`), not credential values or replacement native authentication. |\\n+| `native_list_providers` | Defer native inventory contract migration; retain agent-owned-profile unselectability and door-policy filtering. CLI `providers.list` is not an equivalent filtered result. |\\n+\\n+Evidence: `model_registry_dispatch.rs:364-736,858-1078` and\\n+`tched_router_runtime.rs:1288-1326`. No methods or callers removed here.\\n+\\n+#### Cognitive: exhaustive nine-group disposition\\n+\\n+The original 670-method partition is retained: 567+59+18+7+3+6+2+2+6.\\n+These are source decisions, not a claim that native functionality is absent.\\n+\\n+| Group / names | Disposition and dependency |\\n+|---|---|\\n+| 567 persona consultations: 81 personas \u00d7 `advise`, `analyze`, `consult`, `explain`, `help`, `recommend`, `review` | Defer native persona/config translation under OD-122; retain current caller mode/route, scoped memory, dynamic persona/context, role/knowledge and guarded provider-only completion. No caller contract changes. |\\n+| 59 execution catalog methods | Retain exact-grant/project-restricted identity-bearing `UnifiedExecution.ExecuteCatalog` integration and process result semantics; defer unproven native-tools replacement. |\\n+| 18 orchestration methods: six agents \u00d7 `list_steps`, `run_workflow`, `validate` | Retain authenticated canonical child calls with original actor/session/genesis and each child's exact capability; defer native SOP/pipeline substitution. |\\n+| `memory_store`, `memory_retrieve`, `memory_query`, `memory_recall`, `memory_delete`, `memory_list_namespaces`, `memory_semantic_query` | Retain scoped Cozo ownership and explicit semantic-mirror errors; defer native memory under OD-123. `memory_recall` remains a local query alias, not independent native integration. |\\n+| `code_search`, `code_context`, `code_index` | Retain Voyage/Qdrant retrieval/indexing, collection/filter/context semantics and server-bound session context; defer native replacement until equivalent results are established. |\\n+| `rust_pro`, `python_pro`, `typescript_pro`, `sequential_thinking`, `context_manager`, `code_review_orchestrator` | Defer local alias retirement with demonstrated HOT-policy dependency. These normalize to catalog methods; migrate exact HOT entries/consumers together, not under OD-122/123. |\\n+| `workflow_query`, `workflow_run` | Defer outer-alias retirement with HOT-policy reconciliation; retain workstack owner and identity-bearing `query_workflows` / `start_workflow` calls. Not a missing-native-capture justification. |\\n+| `specialist`, `gemini_query` | Retain dynamic scoped consultation for `specialist`, native persona translation deferred under OD-122. Separately defer `gemini_query` migration pending a concrete equivalent for research answers/citations and incomplete-research errors. |\\n+| `get_health`, `list_tools`, `invoke_tool`, `schema_read`, `oscal_subids`, `toolsets` | Retain runtime health, admitted discovery/target-grant enforcement, sealed-schema/OSCAL reads and audience/toolset policy. Generic invocation never grants the target capability. |\\n+\\n+Evidence: `agent_catalog_dispatch.rs:19-169,204-236`,\\n+`agent_workflow.rs:28-111`, `specialist.rs:195-210,305-424`,\\n+`mutation_engine.rs:7109-7331,7495-7516`,\\n+`op-cognitive/src/{cognitive_tools,code_tools,gemini_fallback}.rs`,\\n+`mcp_policy.rs:293-307`. Versioned `deploy/config/mcp-toolsets.json` has no router,\\n+LLM, Gemma or removed wrapper entries; its HOT cognitive alias entries are real\\n+remaining dependencies. This does not certify separately installed policy.\\n+\\n+#### Verified release inputs, not release success\\n+\\n+ReleaseReadiness inspected the pinned capture inputs:\\n+\\n+- `THREETCHED_CAPTURE_BIN=/srv/git/odbus-verified/target/threetched-artifacts/tched-router/threetched`\\n+- `THREETCHED_CAPTURE_MANIFEST=/srv/git/odbus-verified/target/threetched-artifacts/tched-router/manifest.json`\\n+- `TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router`\\n+- Binary SHA256 `22e121f5eb1b66352138b714cc3d40d9eb977ed0c13bd6316f693a11a875a75e` matches manifest.\\n+- Manifest SHA256 `5fd1a4db784f20a788d16722d86dde01ee0d9ba574598b007d5f1c3e4585b5b7`; GNU v0.8.4 / upstream `a56c345d51dd8ab562e9351e0d4ab83f6a741db9`, provenance agrees with `source.pin`.\\n+\\n+Installed bridge launcher defaults agree with repository inputs:\\n+Qdrant HTTP6333/gRPC6334 on127.0.0.1, `COGNITIVE_QDRANT_URL` on6334,\\n+and all three cognitive collection defaults `opdbus_baseline_code_v1`.\\n+Optional launcher environment files were absent. Inherited live-process\\n+overrides were not inspected. No fresh compiler, catalog or operation success\\n+is inferred from these input observations.\\n\"}",
+                "name": "edit"
+              },
+              "id": "call_TlASkYSUxG6yp39smWlHL9ZJ",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 4449,
+      "prompt_tokens": 275233,
+      "total_tokens": 279682,
+      "completion_tokens_details": {
+        "reasoning_tokens": 270
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 177538
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:49.838774+00:00",
+  "stream_chunks": 4
+}

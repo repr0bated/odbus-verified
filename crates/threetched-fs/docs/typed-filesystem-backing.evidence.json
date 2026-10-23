@@ -1189,7 +1189,7 @@
           "kind": "canonical_method_call",
           "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
           "payload_type": "CallReceipt",
-          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared threetched_fs.get_receipt, not a result cache."
+          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
         },
         "source_refs": [
           "crates/threetched-fs/src/namespace.rs:844-873"

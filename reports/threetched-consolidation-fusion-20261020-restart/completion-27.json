@@ -1,0 +1,67 @@
+{
+  "request": 27,
+  "started": "2026-10-20T17:08:09.743175+00:00",
+  "finished": "2026-10-20T17:09:12.071599+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 1,
+    "panel_failures": 4,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0c4b0ef687db5d9c016ad7a034ac4887d19b58c2672d1733df",
+    "created": 1792516148,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading startup skill guidance\",\"path\":\"skill://using-superpowers\"}",
+                "name": "read"
+              },
+              "id": "call_c8EicDpWZ4AyFrMtubGzJ4s7",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: read the repository\u2019s execution guidance and ownership entry; compare catalog pins and establish the existing generator\u2019s provenance; run the authoring command once with closed stdin and durable log/receipt files; then report output hashes, changed files, and coverage limits without building or testing.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 283,
+      "prompt_tokens": 28774,
+      "total_tokens": 29057,
+      "completion_tokens_details": {
+        "reasoning_tokens": 91
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 10562
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:09:05.257476+00:00",
+  "stream_chunks": 5
+}

@@ -1,0 +1,88 @@
+{
+  "request": 10,
+  "started": "2026-10-19T04:51:24.231819+00:00",
+  "finished": "2026-10-19T04:51:32.653981+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-06d7e845643371b9016ad5a1cf23c487d080689d63e4c5c282",
+    "created": 1792385487,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading native completion interface\",\"path\":\"xd://eval/judge\"}",
+                "name": "read"
+              },
+              "id": "call_KTMqsxGqIMxIQQr5nFJvQwio",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading remaining backend findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/BackendProof.md:301-594:raw\"}",
+                "name": "read"
+              },
+              "id": "call_DGAOrJolFxErHTs5LnFXHKCf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading packet review contract\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt\"}",
+                "name": "read"
+              },
+              "id": "call_FifJlYLo9f63QLFPoFW2gxlV",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading recovery execution checkpoint\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/checkpoint.json\"}",
+                "name": "read"
+              },
+              "id": "call_qvLdFPSHD0znXxFn06C09p44",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 275,
+      "prompt_tokens": 177248,
+      "total_tokens": 177523,
+      "completion_tokens_details": {
+        "reasoning_tokens": 49
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 119453
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:51:32.651729+00:00",
+  "stream_chunks": 10
+}

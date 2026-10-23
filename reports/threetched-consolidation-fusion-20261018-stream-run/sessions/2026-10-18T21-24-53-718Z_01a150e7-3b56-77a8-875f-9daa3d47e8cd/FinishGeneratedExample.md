@@ -1,0 +1,1 @@
+Stopped. `plugin_types.rs` was regenerated from the same pinned catalog, with a byte-identical specialization report, but its digest changed. Pre-run contents were not retained; HEAD has a different digest and cannot establish the delta. **No formatting-only or semantic-equivalence claim is supported.** No additional edits, checks or Cargo commands ran.

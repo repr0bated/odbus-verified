@@ -49,6 +49,17 @@ that do not supply a chain event.
 Snapshots are published and deployed through Btrfs send/receive. Timing is written
 before optional vector attachment. A missing vector can be rebuilt from timing data.
 
+The bridge selects `SnapshotInterval::Manual` for both its optimized audit sink
+and its timing-only fallback. Each append still uses the serialized writer,
+atomic file replacement and file/directory `fsync`; a write failure still blocks
+method admission. Audit appends must not perform Btrfs snapshot-management
+operations, which belong to the authorized storage owner. `Manual` never becomes
+due, regardless of elapsed time or `OPDBUS_SNAPSHOT_INTERVAL`; it does not remove
+existing snapshots or disable explicit snapshot/send/receive APIs.
+
+Other `OptimizedSnowball` callers supply their snapshot interval explicitly.
+Standalone `StreamingSnowball::new` retains its environment-selected schedule.
+
 ## Hash behavior
 
 For current events, `EventChain::compute_hash` canonicalizes the direct event fields and

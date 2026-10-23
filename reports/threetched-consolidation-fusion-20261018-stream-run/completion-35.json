@@ -1,0 +1,63 @@
+{
+  "request": 35,
+  "started": "2026-10-18T21:37:05.619364+00:00",
+  "finished": "2026-10-18T21:37:17.071925+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01b03ca7d47ddb41016ad53c044dcc87d0b4eb2e15d80887b0",
+    "created": 1792359428,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Claiming namespace retirement files\",\"input\":\"[/srv/git/odbus-verified/HANDOFF.md#B4EE]\\nPUT >423:\\n+| RetireNamespace \u2014 ACTIVE | `threetched-consolidation-fusion-20261018` / OD-121 | Own only `crates/op-plugins/src/state_plugins/binary_namespace.rs` deletion, `crates/op-plugins/src/state_plugins/mod.rs` module removal, and `crates/op-plugins/src/state_plugins/tched_router.rs` namespace attachment/dispatch removal. Parent owns documentation/status integration and other consolidation files. | 2026-10-18 | Read mandatory skills and source; retiring five short CLI namespace facades, preserving typed config APIs. Source-only caller review; no Cargo/tests/LSP startup/deployment/grant changes. |\"}",
+                "name": "edit"
+              },
+              "id": "call_duzdsBeW1bodoCjTo4NoPIN2",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 491,
+      "prompt_tokens": 138045,
+      "total_tokens": 138536,
+      "completion_tokens_details": {
+        "reasoning_tokens": 101
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 116381
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:37:17.070293+00:00",
+  "stream_chunks": 4
+}

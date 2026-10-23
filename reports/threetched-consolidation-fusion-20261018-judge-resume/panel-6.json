@@ -1,0 +1,175 @@
+{
+  "status": "ok",
+  "query": "Release-readiness evidence discipline question: An existing Hermes provisioning scoped GNU build was dispatched at 21:45Z to worker sa-0-32370f11. We may only read HANDOFF/reports, capture selectors/verified manifest and service schema environment without secrets; no source edits, no compiler/log polling, no Cargo until authoritative final receipt plus parent source-freeze permission. What qualifies as authoritative completion and what exact ownership blocker should be returned if receipt absent? Do not suggest actions outside these constraints.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Authoritative completion** is a terminal receipt attributable to worker `sa-0-32370f11` for the Hermes provisioning scoped GNU build dispatched at **21:45Z**. It must identify:\n\n- The actual command, repository, build scope, GNU target and release flags.\n- Whether execution finished, with its actual exit status\u2014or an explicit failure/cancellation outcome.\n- Artifacts and provenance actually recorded, if claiming successful build outputs.\n- Release of that worker\u2019s compiler ownership.\n\nA dispatch acknowledgement, elapsed time, earlier build report, or existing binary is **not** completion evidence. A successful **scoped** build does not establish success of the requested **workspace** build. Completion also does not supply parent source-freeze permission; those are separate gates.\n\n**If the receipt is absent, return:**\n\n> **Blocked on compiler ownership:** the Hermes provisioning scoped GNU build dispatched at 21:45Z to `sa-0-32370f11` has no authoritative terminal receipt available in the permitted evidence. Its outcome and release of compiler ownership remain unestablished\u2014not confirmed still running. No new Cargo command is authorized until that receipt is available and the parent explicitly grants source-freeze permission. No build, fresh-artifact, sealing or release-readiness success is claimed.\n\nSelector, verified-manifest and secret-free service-environment observations can document preparation, but cannot clear either gate.\n\nThis assessment uses the supplied context; I have not independently inspected HANDOFF or reports."
+    },
+    {
+      "model": "opus-5-5",
+      "content": "<invoke name=\"bash\">\n<parameter name=\"command\">cd /srv/git/odbus-verified && for s in grpc-expert grpc-protocol-expert json-render ovs-db-analysis kernel-fuse-diagnosis fuse btrfs rust-memory-optimization memory-safety-patterns; do f=.agents/skills/$s/SKILL.md; echo \"== $f $(wc -l <$f) lines\"; done; wc -l HANDOFF.md SIGNALS.md AGENTS.md reports/threetched-consolidation-handoff-20261018.md</parameter>\n<parameter name=\"i\">Sizing mandatory preload files</parameter>\n</invoke>\n<invoke name=\"read\">\n<parameter name=\"path\">/srv/git/odbus-verified/.agents/skills/grpc-expert/SKILL.md</parameter>\n<parameter name=\"i\">Reading grpc-expert skill</parameter>\n</invoke>\n<invoke name=\"bash\">\n<parameter name=\"command\">cd /srv/git/odbus-verified && ls .agents/skills | head -50; wc -l HANDOFF.md SIGNALS.md AGENTS.md reports/threetched-consolidation-handoff-20261018.md 2>&1</parameter>\n<parameter name=\"i\">Listing skills and handoff sizes</parameter>\n</invoke>\n<invoke name=\"read\">\n<parameter name=\"path\">/srv/git/odbus-verified/HANDOFF.md</parameter>\n<parameter name=\"i\">Reading shared handoff</parameter>\n</invoke>\n<invoke name=\"write\">\n<parameter name=\"path\">xd://report_issue</parameter>\n<parameter name=\"content\">bash/read: calls on /srv/git/odbus-verified (wc, ls, read HANDOFF.md, read .agents/skills/grpc-expert/SKILL.md) returned completely empty output, no content and no error.</parameter>\n</invoke>\n<invoke name=\"grep\">\n<parameter name=\"pattern\">sa-0-32370f11|Hermes</parameter>\n<parameter name=\"path\">/srv/git/odbus-verified</parameter>\n<parameter name=\"i\">Locating Hermes build receipt</parameter>\n</invoke>\nI couldn't get any repository evidence for this answer. Every tool call returned empty output with no content and no error: `bash` (wc/ls), `read` on `HANDOFF.md` and `.agents/skills/grpc-expert/SKILL.md`, and `grep` for `sa-0-32370f11|Hermes`. I filed this with `xd://report_issue`.\n\nSo none of the following could be checked:\n- the nine mandatory skill preloads,\n- HANDOFF ownership,\n- SIGNALS,\n- the full handoff report,\n- capture selectors,\n- the verified manifest,\n- the service schema environment.\n\nEverything below comes from the brief in the assignment and the generic Cargo rules. Anything I could not observe is marked `[INFERENCE]`.\n\n## What counts as authoritative completion\n\nAll five of these must hold before the Hermes build counts as done:\n\n1. **A completion receipt from the execution worker that ran it.** That means worker `sa-0-32370f11`'s final completion receipt, published through the JEV/task channel (its `agent://` output or a receipt artifact) or recorded by the parent in HANDOFF/reports. The Cargo rule says \"use completion receipts instead of polling build processes or watching their logs.\" Process tables, `pgrep`, rustc activity, partial logs and target mtimes do not qualify. The earlier `artifact://16` `pgrep` snapshot is exactly this kind of non-receipt.\n2. **It identifies the run.** It must name:\n   - the dispatch (worker id `sa-0-32370f11`, ~21:45Z),\n   - the exact command line, including `CXXFLAGS=\"-include cstdint\"`, `--release`, `--target x86_64-unknown-linux-gnu` and its package/feature scope,\n   - the repository root,\n   - the source state the build ran against (HEAD plus a dirty-tree identifier, or the parent's freeze marker).\n3. **It reports a terminal outcome.** That is a process exit status (`0` or a nonzero code) or an explicit cancelled/killed outcome. \"Running\", \"dispatched\" or \"no errors so far\" are not terminal.\n4. **It states the artifact scope.** It must list which binaries were produced. The Hermes build is scoped `[INFERENCE]`, so unless the receipt says so, it does not establish:\n   - a workspace release build,\n   - a freshly built GNU `target/x86_64-unknown-linux-gnu/release/opblob` matching the consolidation source.\n   \n   A scoped success does not satisfy the requested `cargo build --workspace --release` for OD-121. It also does not authorize `seal-plugins` with any opblob it did not demonstrably produce from the frozen source.\n5. **The parent grants source-freeze permission after the receipt.** Only then may the next Cargo process start. This is a separate parent decision; a successful receipt alone is not permission.\n\n## Blocker to return if the receipt is absent\n\n> **BLOCKED \u2014 compiler ownership unresolved.** A scoped GNU release build for Hermes provisioning was dispatched at 21:45Z to execution worker `sa-0-32370f11`. No authoritative final receipt from that worker has been observed: no exit status, command/scope or source-state record. Ownership of the single Cargo slot therefore belongs to that dispatch, and its outcome is unknown.\n>\n> Under the one-Cargo-process rule and the no-polling constraint, OD-121 has not started its GNU release build:\n> `CXXFLAGS=\"-include cstdint\" cargo build --workspace --release --target x86_64-unknown-linux-gnu`\n>\n> As a consequence, OD-121 has:\n> - no fresh opblob,\n> - no isolated `seal-plugins` catalog,\n> - no catalog delta,\n> - no typed_specialize regeneration.\n>\n> Status: source **implemented**; **not built, sealed, deployed or tested** for OD-121.\n>\n> Required to unblock:\n> 1. Worker `sa-0-32370f11`'s terminal completion receipt, recorded by the parent.\n> 2. Explicit parent source-freeze permission.\n>\n> No process was killed, polled or started, and no older opblob was substituted.\n\nInclude in this blocker any selector, manifest or schema-environment captures that actually succeeded, with secrets omitted. In this session none succeeded, because every read returned empty.\n\n## Discipline notes\n\n- The \"Actual release receipt\" section in the handoff report records an earlier `cargo check --workspace` holder (PID 25761). It is not evidence about the Hermes dispatch, and it must not be relabeled as one.\n- Do not infer that Hermes finished from the absence of compiler processes. That would be polling.\n- Do not infer success from artifact timestamps.\n- Do not record the Hermes build's output as OD-121's build result."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "**Advisory answer \u2014 no actions taken, per constraints.**\n\n## What qualifies as authoritative completion\n\nA build dispatched to a worker is complete only when **all** of the following are present and mutually consistent:\n\n1. **A final receipt from the owning worker** (`sa-0-32370f11` or its parent Hermes dispatch), not an intermediate status, log tail, or process observation. Per the repo's execution rules, a completion receipt replaces polling; absence of a running process is *not* evidence of completion (it may have failed, been killed, or never started).\n2. **The exact command as dispatched**, verbatim: `CXXFLAGS=\"-include cstdint\" cargo build --workspace --release --target x86_64-unknown-linux-gnu`, run from the repository root, one Cargo process, no model override.\n3. **A terminal exit status** for that command (exit 0 or a concrete nonzero with the failing crate/error), plus the **fresh artifact path(s)** it produced \u2014 at minimum `target/x86_64-unknown-linux-gnu/release/opblob` with a binary digest/timestamp consistent with the receipt time.\n4. **Provenance of the source state built**: the commit/HEAD and confirmation that the shared uncommitted consolidation slice (wrapper removals, `binary_namespace.rs` deletion, mount-adapter change) was included \u2014 otherwise a green build proves nothing about the cutover.\n5. **No competing compiler ownership**: the receipt should state that no other cargo/rustc/clippy process was started or interfered (the prior blocker was exactly an unowned `cargo check` PID 25761; a new build must not have raced it).\n\nAnything less \u2014 e.g. \"the worker went idle,\" \"artifacts exist in target/,\" \"logs stopped updating\" \u2014 is `[INFERENCE]`, not completion. Stale `target/` artifacts from prior builds must not be mistaken for fresh output; only the receipt ties artifacts to this dispatch.\n\n## Exact blocker to return if the receipt is absent\n\nReturn a **blocked-on-receipt** status, not a failure, with this content:\n\n- **Blocker:** \"GNU release build dispatched 21:45Z to worker `sa-0-32370f11` (Hermes provisioning scope); no authoritative final receipt (terminal exit status + fresh artifact digest + built source provenance) has been published. Per constraints: no compiler/log polling, no second Cargo process, no source edits.\"\n- **What is NOT established:** build exit status; freshness/provenance of any `target/\u2026/release/opblob`; whether the consolidation source slice was the built state; whether the prior unowned `cargo check` (PID 25761 class) has cleared.\n- **What remains blocked downstream and why:** isolated `seal-plugins` catalog (requires freshly built opblob), catalog-delta review (74\u219272 plugins / 1,388\u21921,365 methods is *expected arithmetic*, not a receipt), typed_specialize regeneration, and any deployment handoff \u2014 all gated on the receipt **plus** parent source-freeze permission, which is a separate, explicitly required authorization even after the receipt arrives.\n- **Next authorized action (for the parent only):** obtain the final receipt from the worker/parent channel; on receipt + source-freeze permission, the next step is the isolated catalog seal with runtime-matched selectors and `COGNITIVE_QDRANT_URL=http://127.0.0.1:6334` \u2014 never an older opblob, never activation of the source-only cutover.\n\n**Key discipline point:** do not treat \"dispatched\" as \"running\" or \"completed.\" The state machine is *dispatched \u2192 receipted (exit + artifact + provenance) \u2192 parent-frozen \u2192 sealable*. Only the first state is currently evidenced; report exactly that and stop at the authorized boundary."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "**Authoritative completion** requires a verified, successful execution of the exact release build command (`CXXFLAGS=\"-include cstdint\" cargo build --workspace --release --target x86_64-unknown-linux-gnu`) yielding a fresh `target/x86_64-unknown-linux-gnu/release/opblob`, followed by a successful isolated catalog seal (`seal-plugins <new-catalog-dir>`) producing the expected delta (removal of `tched_plugins` and `tched_skills`, 74\u219272 plugins, 1,388\u21921,365 methods) and matching release inputs.\n\n**Exact ownership blocker if receipt absent:** `Unestablished compiler ownership / unverified build receipt.` The build was not initiated by the current execution, and the preceding check's owner/session remains unestablished. The precise blocker is the absence of an authoritative final receipt confirming the release build and catalog seal, pending explicit parent source-freeze permission."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Dispatch alone does not establish completion; an authoritative final receipt is required.",
+      "Absent that receipt, compiler ownership remains unresolved and a new Cargo invocation is not authorized.",
+      "Parent source-freeze permission is required independently of receipt availability."
+    ],
+    "contradictions": [
+      {
+        "topic": "Completion of the existing scoped build versus completion of the requested consolidation build",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "The receipt must describe the actual Hermes scoped command; scoped success does not establish workspace build success."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Requires the actual package/feature scope and explicitly distinguishes Hermes completion from the OD-121 workspace build."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Requires the workspace release command and fresh opblob for the Hermes receipt, conflating the existing scoped dispatch with the later consolidation build."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Defines completion as the workspace build plus isolated catalog sealing, rather than completion of the existing Hermes scoped dispatch."
+          }
+        ]
+      },
+      {
+        "topic": "Whether unsuccessful terminal outcomes establish completion",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "An attributable failure or cancellation receipt can establish termination and ownership release without establishing build success."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Accepts a nonzero exit or explicit cancellation/killing as a terminal outcome."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Accepts a nonzero exit but also requires fresh artifacts, leaving completion of a failed build inconsistently specified."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Requires successful build and sealing, excluding unsuccessful termination from its completion definition."
+          }
+        ]
+      },
+      {
+        "topic": "Parent permission as completion evidence or subsequent authorization",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Clearly separates the terminal receipt from permission to begin subsequent work."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Initially includes parent permission among conditions for the Hermes build to count as done, although later describes it as a separate gate."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Treats parent permission as a separate downstream gate, but incorrectly advances directly from the scoped receipt to sealing."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Mentions permission in the blocker without clearly separating terminal completion, authorization and release readiness."
+          }
+        ]
+      },
+      {
+        "topic": "Identity of the unresolved ownership blocker",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Names the 21:45Z Hermes dispatch and worker sa-0-32370f11; says ownership release is unestablished, not that the process is confirmed running."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Names the current dispatch and expressly rejects treating the historical cargo-check snapshot as its receipt."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Names the current dispatch but also carries forward uncertainty about the historical cargo-check process, which is not established as the current blocker."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Uses a generic blocker and references the preceding check's unidentified owner instead of precisely identifying the current Hermes ownership claim."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Explain why intermediate status, existing artifacts and process observations cannot substitute for an attributable terminal receipt."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5"
+        ],
+        "point": "Explicitly preserve the distinction between the Hermes scoped build and the separately requested workspace release build."
+      },
+      {
+        "models": [
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Discuss source-state provenance needed to attribute successful artifacts to the consolidation changes, although this exceeds what is necessary merely to establish termination."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5"
+        ],
+        "point": "Address permitted selector, manifest and secret-free environment observations without treating them as evidence that compiler ownership has cleared."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly identifies release of the owning worker's compiler claim as the relevant ownership fact, while avoiding an unsupported assertion that the build is still running."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Specifically distinguishes historical artifact://16 and PID 25761 evidence from the current Hermes dispatch; those records cannot be relabeled as its completion receipt."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Explicitly labels the catalog-count reduction as expected arithmetic rather than an observed catalog receipt, although those historical expectations are not needed to resolve the ownership question."
+      }
+    ],
+    "blind_spots": [
+      "No response supplies an independently established current receipt from the permitted HANDOFF/report evidence; the panel cannot determine whether one is actually present.",
+      "The opus-5-5 response contains purported tool calls and failure reports, but the supplied panel text provides no independent tool results establishing that those actions occurred.",
+      "Several responses overrequire successful artifacts, provenance or sealing to establish termination; these support success and release-readiness claims, not necessarily completion of a failed or cancelled execution.",
+      "The glm-5-3 response proposes sealing as the next step after the Hermes receipt, overlooking that a scoped build does not establish the required fresh workspace-build outputs and that the current assignment does not authorize sealing.",
+      "The qwen-3-6-35b-a3b response treats historical expected catalog counts as required actual results despite possible shared schema changes.",
+      "None consistently explains that any receipt encountered through HANDOFF or reports must remain attributable to the exact current dispatch rather than merely being a nearby build-success entry."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

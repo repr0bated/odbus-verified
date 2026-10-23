@@ -11,7 +11,7 @@
 #
 #   golden/                      the deployable subvolume
 #     bin/                       release binaries
-#     libexec/3tched/             application-only helpers
+#     libexec/3tched/             application and explicit provisioning helpers/assets
 #     usr/bin/threetched          pinned threetched dependency
 #     usr/share/op-dbus/          immutable config, catalog and provenance
 #     usr/local/share/op-dbus/dashboard/  pinned production UI assets at root
@@ -91,6 +91,34 @@ UI_ASSET_BUILD_HELPER="$UI_SOURCE_DIR/build-assets.sh"
 UI_ARTIFACT_DIR="$PROJECT_ROOT/target/ui-artifacts/3tched-json-render-ui"
 UI_ASSET_ARCHIVE="$UI_ARTIFACT_DIR/assets.tar.gz"
 UI_ASSET_MANIFEST="$UI_ARTIFACT_DIR/manifest.json"
+
+# Explicit source -> release-name inventory, relative to deploy/. Never copy
+# the whole host helper directory: network/storage bootstrap stays independent.
+# RELEASE_ROOTS maps libexec/3tched to /usr/local/libexec/op-dbus/helpers, NOT
+# the base-owned /usr/local/libexec/3tched. Guest files are inert image inputs;
+# staging them does not install/enable a host or guest service or prepare a seed.
+RELEASE_HELPER_INPUTS='0755 runit/libexec-3tched/emqx-prepare emqx-prepare
+0755 runit/libexec-3tched/runit-ready-signal runit-ready-signal
+0755 runit/libexec-3tched/prepare-salad-control-plane prepare-salad-control-plane
+0755 runit/libexec-3tched/opdbus-rundirs-up opdbus-rundirs-up
+0755 runit/libexec-3tched/mount-3tchedfs mount-3tchedfs
+0755 scripts/provision-workspace-subscriber.sh provision-workspace-subscriber
+0755 scripts/prepare-instance-disk.sh prepare-instance-disk
+0755 scripts/sync-instance-upgrade.sh sync-instance-upgrade
+0755 scripts/prepare-chatbot-adoption.sh prepare-chatbot-adoption
+0755 scripts/bind-instance-root.sh bind-instance-root
+0755 scripts/3tchedfs-invoke.sh 3tchedfs-invoke
+0755 runit/libexec-3tched/op-identity-root op-identity-root
+0755 runit/libexec-3tched/op-identity-image op-identity-image
+0755 runit/libexec-3tched/attach-host-workspace-folders attach-host-workspace-folders
+0755 runit/libexec-3tched/restore-chatbot-root restore-chatbot-root
+0755 workspace-image/prepare-lungs-client.sh prepare-lungs-client
+0755 workspace-image/3tchedfs-mount-preflight 3tchedfs-mount-preflight
+0755 workspace-image/mount.fuse.3tchedFS mount.fuse.3tchedFS
+0644 workspace-image/3tchedfs.service 3tchedfs.service
+0644 workspace-image/threetchedfs.service threetchedfs.service
+0644 workspace-image/3tchedfs.fstab 3tchedfs.fstab
+0644 workspace-image/3tched-lungs.conf 3tched-lungs.conf'
 
 is_application_service() {
     [ -f "$SCRIPT_DIR/$1/run" ] &&
@@ -307,6 +335,13 @@ while [ $# -gt 0 ]; do
 done
 
 # ── Preconditions ───────────────────────────────────────────────────────────
+printf '%s\n' "$RELEASE_HELPER_INPUTS" | while read -r mode source helper; do
+    input="$SCRIPT_DIR/../$source"
+    [ -f "$input" ] && [ ! -L "$input" ] && [ -r "$input" ] ||
+        die "missing or unsafe release helper input: $input"
+    # Some guest script sources are deliberately non-executable in Git.
+    # install_file applies the declared release mode, not the checkout mode.
+done
 [ -d "$RELEASE_DIR" ] || die "no $RELEASE_DIR — build first:
   CXXFLAGS=\"-include cstdint\" cargo build --workspace --release"
 
@@ -319,10 +354,10 @@ BINARIES=$(find "$RELEASE_DIR" -maxdepth 1 -type f -executable ! -name '*.d' ! -
         is_retired_binary "$(basename "$bin")" || printf '%s\n' "$bin"
     done)
 [ -n "$BINARIES" ] || die "$RELEASE_DIR contains no executables"
-[ -f "$RELEASE_DIR/threetched-fs" ] && [ -x "$RELEASE_DIR/threetched-fs" ] ||
-    die "release is missing threetched-fs required by identity provisioning"
-printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/threetched-fs" ||
-    die "threetched-fs is absent from the release binary inventory"
+[ -f "$RELEASE_DIR/3tched-fs" ] && [ -x "$RELEASE_DIR/3tched-fs" ] ||
+    die "release is missing 3tched-fs required by identity provisioning"
+printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/3tched-fs" ||
+    die "3tched-fs is absent from the release binary inventory"
 [ -x "$RELEASE_DIR/opblob" ] || die "release is missing opblob"
 [ -x "$RELEASE_DIR/system_graph_inventory" ] ||
     die "release is missing system_graph_inventory; rebuild the workspace"
@@ -527,9 +562,9 @@ jq -r '.plugins | to_entries[] | [.key, .value] | @tsv' \
     threetched_validation=$(mktemp -d "${TMPDIR:-/tmp}/threetched-release-catalog.XXXXXX") || exit 1
     trap 'rm -rf -- "$threetched_validation"' EXIT HUP INT TERM
     mkdir "$threetched_validation/state" || exit 1
-    "$RELEASE_DIR/threetched-fs" --store "$threetched_validation/store" capture --schema-only \
+    "$RELEASE_DIR/3tched-fs" --store "$threetched_validation/store" capture --schema-only \
         --catalog "$PERSISTED_CATALOG_DIR" --state "$threetched_validation/state" >/dev/null || exit 1
-    "$RELEASE_DIR/threetched-fs" --store "$threetched_validation/store" inspect --plugin threetched |
+    "$RELEASE_DIR/3tched-fs" --store "$threetched_validation/store" inspect --plugin threetched |
         jq -e --arg binary_sha "$THREETCHED_SHA256" --arg manifest_sha "$TCHED_ROUTER_MANIFEST_SHA256" '
             .plugin_id == "threetched" and .schema.name == "threetched" and
             (.schema.methods | type == "object" and length > 0) and
@@ -648,6 +683,7 @@ build_golden() {
         opt/op-mcp-providers opt/op-dbus/container-artifacts/mail-3tched-x86_64-linux-gnu-bundle.tar \
         usr/share/op-dbus/etc/opdbus/mcp-toolsets.json \
         usr/share/op-dbus/etc/op-dbus/model-providers.toml \
+        usr/share/op-dbus/etc/rust-network-mgr \
         usr/bin/opencode; do
         if [ -e "$GOLDEN_DIR/$legacy" ] || [ -L "$GOLDEN_DIR/$legacy" ]; then
             remove_owned "$GOLDEN_DIR/$legacy"
@@ -706,24 +742,23 @@ build_golden() {
         done
     install_file 0644 "$PERSISTED_CATALOG_DIR/.manifest.json" "$golden_catalog/.manifest.json"
 
-    # Dedicated application helper target; base network/storage helpers stay
-    # under the host-owned /usr/local/libexec/3tched and are not release inputs.
+    # One release-owned helper target. Only the explicit provisioning closure
+    # above joins the existing application helpers; base service definitions,
+    # host-installed helper copies, receipts and storage remain untouched.
     ensure_directory "$GOLDEN_DIR/libexec/3tched"
     for old in "$GOLDEN_DIR/libexec/3tched"/*; do
         [ -e "$old" ] || [ -L "$old" ] || continue
+        if printf '%s\n' "$RELEASE_HELPER_INPUTS" | cut -d ' ' -f3 | grep -Fxq "$(basename "$old")"; then
+            continue
+        fi
         case "$(basename "$old")" in
-            emqx-prepare|runit-ready-signal|prepare-salad-control-plane|opdbus-rundirs-up) continue ;;
-            xray-config-mount-up|mcp-provider-probe|op-identity-root|op-identity-image|\
-            op-identity-lungs-hook|op-lungs-check|attach-host-workspace-folders|restore-chatbot-root|\
-            provision-workspace-subscriber|prepare-instance-disk|sync-instance-upgrade|\
-            prepare-chatbot-adoption|bind-instance-root|prepare-lungs-client|3tchedfs.service|\
-            3tchedfs-mount-preflight|mount.fuse.3tchedFS|3tchedfs.fstab|3tched-lungs.conf) ;;
+            xray-config-mount-up|mcp-provider-probe|op-identity-lungs-hook|op-lungs-check) ;;
             *) die "unrecognized helper preserved: $old" ;;
         esac
         run rm -- "$old"
     done
-    for helper in emqx-prepare runit-ready-signal prepare-salad-control-plane opdbus-rundirs-up; do
-        install_file 0755 "$SCRIPT_DIR/libexec-3tched/$helper" "$GOLDEN_DIR/libexec/3tched/$helper"
+    printf '%s\n' "$RELEASE_HELPER_INPUTS" | while read -r mode source helper; do
+        install_file "$mode" "$SCRIPT_DIR/../$source" "$GOLDEN_DIR/libexec/3tched/$helper"
     done
     for helper in notebook-sync notebook-sources-sync-up notebook-sources-upload \
                   export-llm-sessions-to-notebooklm-sources.py uv-tools/notebook_sync.py; do

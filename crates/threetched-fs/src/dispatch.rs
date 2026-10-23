@@ -53,6 +53,8 @@ pub enum LungsError {
     Registration(String),
     #[error("call refused: {0}")]
     Refused(String),
+    #[error("call unsupported: {0}")]
+    Unsupported(String),
     #[error("dispatch failed: {0}")]
     Transport(String),
     #[error("operation outcome is unknown; do not retry automatically: {0}")]
@@ -65,8 +67,9 @@ impl LungsError {
     /// Correlation is retained even when the reply is lost. It never selects
     /// an identity or grants permission to the declared recovery operation.
     pub fn operation_id(&self) -> Option<&str> {
-        let Self::OutcomeUnknown(message) = self else {
-            return None;
+        let message = match self {
+            Self::OutcomeUnknown(message) | Self::Unsupported(message) => message,
+            _ => return None,
         };
         let id = message
             .split_once("operation_id=")?
@@ -84,6 +87,7 @@ impl LungsError {
             Self::Credential(_) => "credential",
             Self::Registration(_) => "register",
             Self::Refused(_) => "call",
+            Self::Unsupported(_) => "call",
             Self::Transport(_) => "transport",
             Self::OutcomeUnknown(_) => "outcome_unknown",
             Self::Contract(_) => "contract",
@@ -94,6 +98,7 @@ impl LungsError {
         match self {
             Self::Json(_) | Self::Arguments(_) => libc::EINVAL,
             Self::Credential(_) | Self::Registration(_) | Self::Refused(_) => libc::EACCES,
+            Self::Unsupported(_) => libc::EOPNOTSUPP,
             Self::Transport(_) | Self::OutcomeUnknown(_) => libc::EIO,
             Self::Contract(_) => libc::EPROTO,
         }
@@ -378,15 +383,7 @@ async fn plugin_call(
             "operation_id={operation_id}; method reply timed out; admitted work may continue"
         ))
     })?
-    .map_err(|error| {
-        if refusal(&error) {
-            LungsError::Refused(error.to_string())
-        } else {
-            LungsError::OutcomeUnknown(format!(
-                "operation_id={operation_id}; method reply unavailable: {error}"
-            ))
-        }
-    })?;
+    .map_err(|error| method_call_error(error, operation_id))?;
     if response.len() > op_state_store::method_receipt::MAX_METHOD_RECEIPT_BYTES {
         return Err(LungsError::OutcomeUnknown(format!(
             "operation_id={operation_id}; method reply exceeds 16 MiB"
@@ -397,6 +394,21 @@ async fn plugin_call(
             "operation_id={operation_id}; invalid method reply JSON: {error}"
         ))
     })
+}
+
+fn method_call_error(error: zbus::Error, operation_id: &str) -> LungsError {
+    if matches!(&error, zbus::Error::MethodError(name, _, _)
+        if name.as_str() == "org.freedesktop.DBus.Error.NotSupported")
+        || matches!(&error, zbus::Error::FDO(fdo) if matches!(**fdo, zbus::fdo::Error::NotSupported(_)))
+    {
+        LungsError::Unsupported(error.to_string())
+    } else if refusal(&error) {
+        LungsError::Refused(error.to_string())
+    } else {
+        LungsError::OutcomeUnknown(format!(
+            "operation_id={operation_id}; method reply unavailable: {error}"
+        ))
+    }
 }
 
 fn refusal(error: &zbus::Error) -> bool {
@@ -453,4 +465,28 @@ fn receipt(
         idempotent: method.idempotent,
         result,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unsupported_reply_retains_refusal_and_recovery_without_reclassifying_failures() {
+        let operation = "00000000-0000-4000-8000-000000000001";
+        let message = format!("method_failed_before_effect; operation_id={operation}; omit --edit");
+        let refused = method_call_error(zbus::fdo::Error::NotSupported(message.clone()).into(), operation);
+        assert!(matches!(&refused, LungsError::Unsupported(_)));
+        assert_eq!(refused.errno(), libc::EOPNOTSUPP);
+        assert_eq!(refused.stage(), "call");
+        assert_eq!(refused.operation_id(), Some(operation));
+        assert!(refused.to_string().contains("omit --edit"));
+        let uncertain = method_call_error(zbus::fdo::Error::Failed(message).into(), operation);
+        assert!(matches!(&uncertain, LungsError::OutcomeUnknown(_)));
+        assert_eq!(uncertain.errno(), libc::EIO);
+        assert_eq!(uncertain.operation_id(), Some(operation));
+        let denied = method_call_error(zbus::fdo::Error::AccessDenied("denied".into()).into(), operation);
+        assert!(matches!(&denied, LungsError::Refused(_)));
+        assert_eq!(denied.errno(), libc::EACCES);
+    }
 }

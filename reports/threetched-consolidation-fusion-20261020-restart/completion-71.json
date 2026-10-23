@@ -1,0 +1,65 @@
+{
+  "request": 71,
+  "started": "2026-10-20T17:20:47.382250+00:00",
+  "finished": "2026-10-20T17:20:57.864806+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-04c681669ccb8523016ad7a2f58c7487d1ae7951110b416cc9",
+    "created": 1792516853,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Awaiting targeted build receipt\"}",
+                "name": "wait"
+              },
+              "id": "call_RkS0iIbuaPsRG9WwKNWr8cEI",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The 33 retirements are already built and sealed; recovered terminal receipts supersede the old blocker. The remaining stale generated example has been regenerated. Its targeted build is pending; tests and live activation remain out of scope."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 260,
+      "prompt_tokens": 276561,
+      "total_tokens": 276821,
+      "completion_tokens_details": {
+        "reasoning_tokens": 92
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 182340
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:20:57.863103+00:00",
+  "stream_chunks": 5
+}

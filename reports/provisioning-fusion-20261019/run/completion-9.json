@@ -1,0 +1,65 @@
+{
+  "request": 9,
+  "started": "2026-10-19T04:38:37.125910+00:00",
+  "finished": "2026-10-19T04:39:07.324334+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0276f8b867b4f8fb016ad59ed0220087d09e07edc8ede3eb46",
+    "created": 1792384720,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var a=base+'analysis/'; await fs.mkdir(a+'packets',{recursive:true}); var seen=new Map(); var recordIndex=[], packets=[], current='', spans=[]; var flush=async()=>{if(!current)return;var name=`history-${String(packets.length).padStart(3,'0')}`;await fs.writeFile(a+'packets/'+name+'.txt',current);packets.push({id:name,path:a+'packets/'+name+'.txt',bytes:Buffer.byteLength(current),sha256:hash(current),spans});current='';spans=[];}; for(var h of histories){var raw=await fs.readFile(root+h.export_path);var rows=raw.toString().split('\\\\n').filter(Boolean), offset=0;for(var [i,line]of rows.entries()){var r=JSON.parse(line);var loc={file:h.export_path,row:i+1,id:r.id??r.uuid??r.entry?.id??null,byte_start:offset,byte_end_exclusive:offset+Buffer.byteLength(line)+1};offset=loc.byte_end_exclusive;var walk=(v,p)=>{if(typeof v==='string'&&v.length>200){var k=hash(v);if(seen.has(k))return {exact_duplicate_sha256:k,first:seen.get(k)};seen.set(k,{...loc,field:p});}if(Array.isArray(v))return v.map((x,j)=>walk(x,p+'.'+j));if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,walk(x,p+'.'+k)]));return v;};var text='\\\\nPROVENANCE '+JSON.stringify(loc)+'\\\\n'+JSON.stringify(walk(r,'$'))+'\\\\n';recordIndex.push(loc); for(var pos=0;pos<text.length;){var remaining=100000-current.length;var take=Math.min(remaining,text.length-pos);current+=text.slice(pos,pos+take);spans.push({...loc,encoded_character_start:pos,encoded_character_end:pos+take,encoded_total:text.length});pos+=take;if(current.length>=100000)await flush();}}}await flush();await fs.writeFile(a+'record-index.json',JSON.stringify(recordIndex));await fs.writeFile(a+'packet-index.json',JSON.stringify(packets,null,2));await fs.writeFile(a+'duplicate-index.json',JSON.stringify([...blobs.entries()].filter(([k,v])=>v.refs.length>1).map(([k,v])=>({sha256:k,refs:v.refs})),null,2));await fs.writeFile(a+'coverage.json',JSON.stringify({task:manifest.task,phase:'Mechanical full-file parsing complete; semantic analyst review pending',histories:inventory.map(x=>({...x,available:true,mechanically_parsed_byte_ranges:[[0,x.bytes]],analyst_read_ranges:[],panel_reviewed_ranges:[],jev_adjudicated_refs:[]})),records:recordIndex.length,packets:packets.length,deduplication:'Exact repeated JSON string values >200 characters replaced by hash+first provenance; metadata and small values preserved; full raw exports unchanged.',duplicate_index:'duplicate-index.json',record_index:'record-index.json',packet_index:'packet-index.json',outstanding:packets.map(x=>x.id)},null,2)); console.log({packets:packets.length,encodedBytes:packets.reduce((s,x)=>s+x.bytes,0),first:packets[0],last:packets.at(-1)});\",\"title\":\"Creating lossless bounded evidence packets\"}",
+                "name": "eval"
+              },
+              "id": "call_DTRzW4xBwxgeHMyBi0ab6yrT",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "I\u2019m separating conversation evidence from source, installed helpers and historical blobs. The coverage ledger will distinguish exported records, analyst-read evidence, Fusion-panel evidence and JEV judgments; manifest reads will not count as history review."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 2003,
+      "prompt_tokens": 207449,
+      "total_tokens": 209452,
+      "completion_tokens_details": {
+        "reasoning_tokens": 957
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 160797
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:39:07.322261+00:00",
+  "stream_chunks": 5
+}

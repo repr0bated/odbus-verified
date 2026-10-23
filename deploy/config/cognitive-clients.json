@@ -1,0 +1,131 @@
+{
+  "_comment": "One authenticated external door: TLS :8090 on bridge-owned canonical addresses. Host-local automation uses PluginV1.Call on the session bus.",
+  "endpoints": {
+    "cognitive": {
+      "url": "https://10.0.0.3:8090",
+      "bind_addresses": ["127.0.0.1:8090", "10.0.0.3:8090", "${NETMAKER_MESH_IP}:8090 when locally present"],
+      "description": "Bridge-owned authenticated ingress for external MCP, gRPC, and gRPC-Web clients",
+      "auth": {
+        "type": "oracle_identity_assertion",
+        "metadata": "x-oracle-identity-assertion-bin",
+        "capabilities": "schema_declared"
+      },
+      "protocols": ["mcp", "grpc", "grpc-web"],
+      "features": ["blob_schema", "memory", "rag", "session", "quota", "coding_context"]
+    },
+    "cognitive_local": {
+      "url": "unix:path=/run/opdbus/session-bus.sock",
+      "description": "Host-local PluginV1.Call door owned by op-grpc-bridge",
+      "auth": {
+        "type": "session_bus_policy",
+        "capabilities": "explicit_wildcard_grants"
+      },
+      "protocols": ["dbus"],
+      "bus_name": "org.opdbus.v1.plugins",
+      "object_path": "/org/opdbus/v1/plugins/cognitive",
+      "interface": "org.opdbus.v1.PluginV1"
+    }
+  },
+  "client_profiles": {
+    "notebooklm": {
+      "endpoint": "cognitive",
+      "quota_tier": "notebooklm",
+      "daily_limit": 50,
+      "description": "NotebookLM-compatible client per R11 spec"
+    },
+    "droid": {
+      "endpoint": "cognitive",
+      "quota_tier": "standard",
+      "daily_limit": 1000,
+      "pooling": {
+        "max_idle": 10,
+        "idle_timeout_secs": 90
+      },
+      "retry": {
+        "max_retries": 3,
+        "base_delay_ms": 100
+      },
+      "cache": {
+        "tools_ttl_secs": 300,
+        "resources_ttl_secs": 60
+      }
+    },
+    "cursor": {
+      "endpoint": "cognitive",
+      "quota_tier": "standard",
+      "daily_limit": 1000,
+      "low_latency": true,
+      "pooling": {
+        "max_idle": 20,
+        "idle_timeout_secs": 300
+      },
+      "timeout_secs": 5
+    },
+    "codex": {
+      "endpoint": "cognitive",
+      "quota_tier": "high_throughput",
+      "daily_limit": 10000,
+      "batch_operations": true
+    },
+    "gemini_cli": {
+      "endpoint": "cognitive",
+      "quota_tier": "standard",
+      "daily_limit": 1000,
+      "fallback_to_gemini": true
+    },
+    "local_chatbot": {
+      "endpoint": "cognitive_local",
+      "quota_tier": "unlimited",
+      "host_local_only": true
+    }
+  },
+  "optimization_defaults": {
+    "connection_pool": {
+      "max_idle_per_host": 10,
+      "idle_timeout_secs": 90,
+      "max_connections": 100,
+      "use_http2": true
+    },
+    "retry": {
+      "max_retries": 3,
+      "base_delay_ms": 100,
+      "max_delay_ms": 5000,
+      "backoff_multiplier": 2.0,
+      "use_jitter": true
+    },
+    "circuit_breaker": {
+      "failure_threshold": 5,
+      "success_threshold": 3,
+      "timeout_secs": 30
+    },
+    "cache": {
+      "tools_list_ttl_secs": 300,
+      "resources_list_ttl_secs": 60,
+      "max_entries": 1000,
+      "stale_while_revalidate": true
+    },
+    "timeouts": {
+      "request_default_secs": 30,
+      "connect_secs": 10,
+      "read_secs": 30,
+      "write_secs": 10
+    }
+  },
+  "security": {
+    "allowed_client_ids": [
+      "droid-*",
+      "cursor-*",
+      "codex-*",
+      "gemini-*",
+      "notebooklm-*",
+      "local-*"
+    ],
+    "require_oracle_identity_assertion": true,
+    "reject_self_asserted_identity_headers": true,
+    "audit_log": true,
+    "response_trace_metadata": [
+      "x-ghostbridge-genesis",
+      "x-ghostbridge-trace-id"
+    ]
+  }
+}

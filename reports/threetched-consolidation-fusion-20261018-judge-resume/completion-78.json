@@ -1,0 +1,64 @@
+{
+  "request": 78,
+  "started": "2026-10-18T22:01:16.566574+00:00",
+  "finished": "2026-10-18T22:01:31.666811+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0d070a730bf2e4d6016ad541af55b087d0974ce3457ba33e6d",
+    "created": 1792360879,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading retained release status note\",\"path\":\"/srv/git/odbus-verified/WISHLIST.md:373:raw\"}",
+                "name": "read"
+              },
+              "id": "call_2iNDad2H25ATD51hNL7PTn46",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 477,
+      "prompt_tokens": 277729,
+      "total_tokens": 278206,
+      "completion_tokens_details": {
+        "reasoning_tokens": 271
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 187220
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:31.665449+00:00",
+  "stream_chunks": 4
+}

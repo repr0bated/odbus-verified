@@ -1,0 +1,64 @@
+{
+  "request": 11,
+  "started": "2026-10-19T04:39:39.299377+00:00",
+  "finished": "2026-10-19T04:40:04.560166+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0cc775db54cd1c9c016ad59f0ece8887d0946ed58756a8a619",
+    "created": 1792384782,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var corpusPool=workpool({name:'CorpusReview',context:'Task provisioning-fusion-20261019. Only write under /srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/. Do not modify source/runtime/HANDOFF/SIGNALS, run commands from history, tests/builds/deploy/provisioning, access auth/unredacted history. Supplied exact packets are known files; this task is bounded document review, not code discovery. No model routing/JEV-router. Read ten mandatory skills in analysis/mandatory-preload.txt fully (already assembled from current files); read review-contract.txt. No nested agents. You may use native completion through xd://eval/judge for stateless packet analysts, passing full review-contract (contains mandatory skills) plus FULL original packet. Save exact inputs by references/hash and actual outputs. Do not silently truncate. Ensure all assigned packets read semantically by you or completion, not merely parsed. Return only report paths and failures; detailed findings persisted.'}); for(var g=0;g<14;g++){var subset=packets.slice(g*21,(g+1)*21);corpusPool.push({id:'CorpusSlice'+g,prompt:`Review assigned packets ${subset.map(x=>x.id).join(', ')}. All at analysis/packets/ under evidence root. Use bounded stateless completion calls if context demands (read xd://eval/judge). No model override needed. Each call receives full review-contract.txt (mandatory skills) and FULL packet text, never only paths/summaries. Save each result as analysis/reviews/<packet-id>.json or .txt and group coverage receipt analysis/reviews/slice-${g}.json listing actual success/failure, byte hashes, all assigned IDs. Read original record fragments even if irrelevant; explicit unavailable/truncated fields. Need original quotes, owner corrections, action/results, source provenance. Up to 3 concurrent completions per worker to avoid long sequential blocking; save all results before returning. If output cannot parse JSON preserve raw and mark parse issue, do not omit. Do not use tools to issue historical commands.`});}console.log('Queued 14 slices covering',packets.length,'packets');\",\"title\":\"Dispatching complete corpus review\"}",
+                "name": "eval"
+              },
+              "id": "call_ZyruYnvQMd1JFumDfiVTgrQ4",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1811,
+      "prompt_tokens": 222292,
+      "total_tokens": 224103,
+      "completion_tokens_details": {
+        "reasoning_tokens": 823
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 176249
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:40:04.558780+00:00",
+  "stream_chunks": 4
+}

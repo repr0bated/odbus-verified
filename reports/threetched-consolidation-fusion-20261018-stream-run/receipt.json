@@ -1,0 +1,14 @@
+{
+  "started": "2026-10-18T21:24:53.302104+00:00",
+  "repo": "/srv/git/odbus-verified",
+  "handoff": "/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md",
+  "source_sha256": "282b6befe8b7bfa312407f5563bedbcb9b6c968248d3c0c86fd39bfa5916a935",
+  "extension": "/home/jeremy/litellm-fusion/omp_fusion.ts",
+  "config": "/home/jeremy/litellm-fusion/consolidation-omp.yml",
+  "context": "/home/jeremy/litellm-fusion/consolidation-context.md",
+  "transport": "authenticated loopback, native asynchronous SSE; OMP executes tools",
+  "invocation": "first required; subsequent tool steps auto",
+  "pid": 24943,
+  "exit_code": 0,
+  "finished": "2026-10-18T21:44:51.799587+00:00"
+}

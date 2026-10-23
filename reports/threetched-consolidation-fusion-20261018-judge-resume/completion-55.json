@@ -1,0 +1,63 @@
+{
+  "request": 55,
+  "started": "2026-10-18T21:59:34.724325+00:00",
+  "finished": "2026-10-18T21:59:44.360595+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0c890c03ffc5e10c016ad5414a3bfc87d084075152ef1438f9",
+    "created": 1792360778,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming backing test ownership handoff\",\"path\":\"agent://RetireLlmFacades\",\"content\":\"My edits are complete; no further backing-test edits from me. Only changed provider call at line 1373 from GetProviderCatalog to ListProviders; all provider-content/sibling-state assertions preserved. Read fresh tags before your facade migration.\"}",
+                "name": "write"
+              },
+              "id": "call_JITt7Q1wZotAmrhg6IETZrTf",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 238,
+      "prompt_tokens": 248074,
+      "total_tokens": 248312,
+      "completion_tokens_details": {
+        "reasoning_tokens": 54
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 160131
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:44.359206+00:00",
+  "stream_chunks": 4
+}

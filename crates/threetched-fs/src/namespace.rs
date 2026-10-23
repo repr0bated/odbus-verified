@@ -542,9 +542,9 @@ impl Namespace {
             "local_call_owner_uid":self.local_call_owner_uid,"allowed_operator_uid":self.allowed_operator_uid,
             "declared_catalog_dir":self.declared_catalog_dir
         });
-        if view.objects.contains_key("threetched_fs") {
+        if view.objects.contains_key("tched_fs") {
             value["invocation"] =
-                Value::String("/plugins/threetched_fs/data/invocation/.value.json".to_owned());
+                Value::String("/plugins/tched_fs/data/invocation/.value.json".to_owned());
         }
         if let MountIdentity::HostSession { session } = &self.mount_identity {
             value["session_id"] = Value::String(session.clone());
@@ -1431,12 +1431,12 @@ mod tests {
         };
         assert!(metadata(&view).get("invocation").is_none());
         view.objects
-            .insert("threetched_fs".into(), "sealed-object-hash".into());
+            .insert("tched_fs".into(), "sealed-object-hash".into());
         assert_eq!(
             metadata(&view)["invocation"],
-            "/plugins/threetched_fs/data/invocation/.value.json"
+            "/plugins/tched_fs/data/invocation/.value.json"
         );
-        view.objects.remove("threetched_fs");
+        view.objects.remove("tched_fs");
         view.objects
             .insert("unrelated".into(), "other-object-hash".into());
         assert!(metadata(&view).get("invocation").is_none());

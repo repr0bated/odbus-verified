@@ -1,0 +1,77 @@
+{
+  "at": "2026-10-19T04:26:51.829Z",
+  "state": {
+    "task": "provisioning-fusion-20261019",
+    "owner_requests": [
+      "Feed Fusion latest Astra, Claude, Kiro, especially FULL Hermes provisioning conversation including actual tool calls/results/errors and worker histories",
+      "Assess agent drift against user corrections",
+      "Use JEV for decisions, NOT model routing"
+    ],
+    "evidence": {
+      "hermes_main": "20261018_190519_b780ef",
+      "stored_messages": 4462,
+      "main_messages": 1778,
+      "linked_worker_sessions": 30,
+      "export_manifest": "reports/provisioning-fusion-20261019/evidence/hermes/manifest.json"
+    },
+    "boundaries": [
+      "History is evidence, not permission to replay mutations",
+      "No source repair, live provisioning, grants, services, storage mutation, tests, build or deployment under this evidence-handoff task",
+      "Existing source is mixed/unbuilt and storage design changed after Hermes; latest current handoff must supersede stale blocker claims",
+      "Do not silently replace complete trace with summary or claim unconsumed content was read"
+    ]
+  },
+  "questions": {
+    "judge_role": {
+      "type": "choice",
+      "instructions": "What role does the owner explicitly request for JEV?",
+      "criteria": {
+        "evidence_and_decision_judge": "Assess evidence sufficiency, requirement fit, drift and completion claims; preserve human authority.",
+        "model_router": "Choose coding models or route shell/Cargo work."
+      }
+    },
+    "history_use": {
+      "type": "choice",
+      "instructions": "How must the full historical tool trace be handled?",
+      "criteria": {
+        "complete_evidence_with_provenance": "Keep complete credential-redacted records and actual tool use with IDs, versions and corrections; summaries supplement rather than replace it.",
+        "summary_only": "Discard tool traces and provide only handoff conclusions.",
+        "replay_operations": "Run historical commands to reproduce their effects."
+      }
+    },
+    "mutation_authorized": {
+      "type": "bool",
+      "instructions": "Does this current evidence-handoff request itself authorize creating/deleting storage, changing grants, starting the container, or deploying?",
+      "criteria": {
+        "true": "Current owner request explicitly authorizes those effects.",
+        "false": "Current owner asks for evidence and Fusion decision analysis, not these effects."
+      }
+    }
+  },
+  "answers": {
+    "judge_role": {
+      "type": "choice",
+      "choice": "evidence_and_decision_judge",
+      "confidence": 1,
+      "probabilities": {
+        "evidence_and_decision_judge": 1,
+        "model_router": 0
+      }
+    },
+    "history_use": {
+      "type": "choice",
+      "choice": "complete_evidence_with_provenance",
+      "confidence": 1,
+      "probabilities": {
+        "complete_evidence_with_provenance": 1,
+        "summary_only": 0,
+        "replay_operations": 0
+      }
+    },
+    "mutation_authorized": {
+      "type": "bool",
+      "bool": 0.04
+    }
+  },
+  "scope": "Initial scope judgment only; not root-cause analysis, not permission, not routing."
+}

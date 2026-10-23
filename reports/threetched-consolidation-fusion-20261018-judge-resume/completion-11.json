@@ -1,0 +1,67 @@
+{
+  "request": 11,
+  "started": "2026-10-18T21:51:30.411718+00:00",
+  "finished": "2026-10-18T21:54:11.351208+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 4,
+    "panel_failures": 1,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0455a581e68d754b016ad53ff5112887d0a85b40fd70834671",
+    "created": 1792360437,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Clarifying review cutover constraints\",\"path\":\"agent://ScopeReview\",\"content\":\"Review decisions: ListProviders remains tched_router typed method, NOT captured native CLI equivalent; any GetProviderCatalog removal must preserve actual exact router grants, no default hashed CLI remap. GetConfigSchema engine-retired doesn't prove fallback unreachable. Need concrete remaining callers/dynamic dispatch/toolsets/policy and methods with reachable cleanup; blanket deferring all LLM 8 merely because local orchestrations would improperly narrow. Please return bounded findings soon for source execution.\"}",
+                "name": "write"
+              },
+              "id": "call_XRiH9YXk7U9KtPzylwXugDxC",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 660,
+      "prompt_tokens": 244883,
+      "total_tokens": 245543,
+      "completion_tokens_details": {
+        "reasoning_tokens": 251
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 89186
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:53:57.181694+00:00",
+  "stream_chunks": 4
+}

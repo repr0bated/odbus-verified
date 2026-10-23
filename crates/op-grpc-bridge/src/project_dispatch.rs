@@ -130,11 +130,19 @@ async fn require_ready(project: &Project) -> Result<()> {
         bail!("project provisioning is incomplete");
     }
     IncusPlugin::verify_project_container(
+        &project.project_id,
         &project.container_id,
         &project.owner_session_id,
         &project.persistence_path,
     )
     .await
+}
+
+fn ensure_project_binding(binding: &op_cozo_store::NativeCreationRecord, project: &Project) -> Result<()> {
+    anyhow::ensure!(binding.phase == "complete" && binding.request.owner_kind == "project"
+        && binding.request.logical_target == project.project_id
+        && binding.request.caller_session == project.owner_session_id, "project native ownership differs");
+    Ok(())
 }
 
 fn view_for(mut project: Project, session: &str) -> Project {
@@ -184,6 +192,25 @@ pub(crate) async fn verified_session(
 }
 
 pub(crate) async fn dispatch(
+    engine: &MutationEngine,
+    method: &str,
+    args: &Value,
+    actor: &str,
+    session: Option<&str>,
+    genesis: Option<&str>,
+) -> Result<Value> {
+    if method != "create" { return dispatch_owned(engine, method, args, actor, session, genesis).await; }
+    let engine = engine.clone();
+    let args = args.clone();
+    let actor = actor.to_owned();
+    let session = session.map(str::to_owned);
+    let genesis = genesis.map(str::to_owned);
+    tokio::spawn(async move {
+        dispatch_owned(&engine, "create", &args, &actor, session.as_deref(), genesis.as_deref()).await
+    }).await.context("project creation owner failed; reconcile provisioning project")?
+}
+
+async fn dispatch_owned(
     engine: &MutationEngine,
     method: &str,
     args: &Value,
@@ -264,32 +291,50 @@ pub(crate) async fn dispatch(
             .context("project image fingerprint is not configured")?;
         let pool = std::env::var("OP_PROJECT_STORAGE_POOL")
             .context("project storage pool is not configured")?;
-        let id = uuid::Uuid::new_v4().to_string();
-        let mut project = Project {
+        // A failed/cancelled create is resumed from the exact private project
+        // document, not replaced with a new UUID/name. Ready projects remain
+        // separate projects when the caller explicitly creates again.
+        let pending = list_projects(engine).await?.into_iter().filter(|p|
+            p.status == ProjectStatus::Provisioning && p.owner_session_id == session
+            && p.title == input.title && p.capability_ceiling == input.capability_ceiling
+            && p.allowed_agents == input.allowed_agents).collect::<Vec<_>>();
+        anyhow::ensure!(pending.len() <= 1, "ambiguous pending project creation");
+        let id = pending.first().map(|p| p.project_id.clone())
+            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+        let persistence_path = project_path(&id)?.to_string_lossy().into_owned();
+        let mut project = pending.into_iter().next().unwrap_or_else(|| Project {
             project_id: id.clone(),
             title: input.title,
             owner_session_id: session.clone(),
             container_id: id.clone(),
             status: ProjectStatus::Provisioning,
-            persistence_path: project_path(&id)?.to_string_lossy().into_owned(),
+            persistence_path,
             members: vec![],
             invitations: vec![],
             capability_ceiling: input.capability_ceiling,
             allowed_agents: input.allowed_agents,
             selected_agent: None,
             created_at: chrono::Utc::now().timestamp(),
-        };
+        });
         save_project(engine, &project).await?;
         project_store(&project, true).await?;
-        IncusPlugin::create_project_container(
-            &id,
-            &session,
-            &fingerprint,
-            &pool,
-            &project.persistence_path,
-        )
-        .await
-        .with_context(|| format!("project {id} remains provisioning; inspect before retrying"))?;
+        let _host = engine.lock_host_observation().await;
+        let existing = crate::native_container_creation::records(engine).await?.into_iter()
+            .find(|row| row.request.operation_id == id);
+        let binding = if let Some(binding) = existing {
+            anyhow::ensure!(binding.request.owner_kind == "project" && binding.request.logical_target == id
+                && binding.request.actor_id == actor && binding.request.caller_session == session
+                && Some(binding.request.caller_genesis.as_str()) == genesis,
+                "pending project belongs to a different authenticated operation");
+            crate::native_container_creation::reconcile_locked(engine, binding).await?
+        } else {
+            let body = IncusPlugin::project_creation_body(&id, &session, &fingerprint, &pool, &project.persistence_path)?;
+            let request = crate::native_container_creation::request(&id, actor, &session,
+                genesis.context("project create requires verified genesis")?, "project", &id, body)?;
+            crate::native_container_creation::create_locked(engine, request).await?.0
+        };
+        project.container_id = binding.name.clone();
+        ensure_project_binding(&binding, &project)?;
         project.status = ProjectStatus::Ready;
         save_project(engine, &project).await?;
         return Ok(serde_json::to_value(ProjectOutput { project })?);

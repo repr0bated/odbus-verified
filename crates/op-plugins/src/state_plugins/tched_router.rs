@@ -541,14 +541,6 @@ pub struct GetModelRoutesOutput {
     pub model_routes: Vec<ModelRoute>,
 }
 
-/// Output for the provider catalog.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "exp.service.3tched-router.provider-catalog.result@v1"))]
-pub struct GetProviderCatalogOutput {
-    /// Declared providers.
-    pub providers: Vec<Provider>,
-}
-
 /// Output for the declared tool catalog.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "exp.service.3tched-router.tools.result@v1"))]
@@ -569,15 +561,6 @@ pub struct ListProvidersOutput {
 #[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.router.result@v1"))]
 pub struct GetRouterOutput {
     pub router: Router,
-}
-
-/// Output for the config schema accessor.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.config-schema.result@v1"))]
-pub struct GetConfigSchemaOutput {
-    /// Exact JSON Schema for the native configuration value, selected from
-    /// this same manifest-pinned plugin contract.
-    pub config_schema: JsonValue,
 }
 
 // Plugin-owned v2 contracts for the six retained config_* methods.
@@ -913,6 +896,13 @@ impl TchedRouterPlugin {
     }
 
     pub fn current_state() -> TchedRouterState {
+        if !super::threetched::is_schema_capture() {
+            let state = super::threetched::sealed_schema(PLUGIN_NAME)
+                .expect("tched_router runtime requires its sealed schema")
+                .example.expect("sealed tched_router schema has no declared state");
+            return simd_json::serde::from_owned_value(state)
+                .expect("sealed tched_router state must match its declared type");
+        }
         let selected_provider = Self::env_or("LLM_PROVIDER", "opencode");
         let selected_model = Self::env_or("LLM_MODEL", Self::DEFAULT_CHAT_MODEL);
         let chat_model = selected_model.clone();
@@ -1736,6 +1726,9 @@ impl StatePlugin for TchedRouterPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
+        if !super::threetched::is_schema_capture() {
+            return Some(tched_router_schema());
+        }
         let mut schema = tched_router_schema();
         super::common::llm_projection::rewrite_projection_subids_for_plugin(
             &mut schema,
@@ -1805,6 +1798,10 @@ impl StatePlugin for TchedRouterPlugin {
 
 /// Canonical `tched_router` schema derived from [`TchedRouterState`] via schemars.
 pub(crate) fn tched_router_schema() -> PluginSchema {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_schema(PLUGIN_NAME)
+            .expect("tched_router runtime requires its sealed schema");
+    }
     tched_router_schema_from_state(TchedRouterPlugin::current_state())
 }
 
@@ -1876,16 +1873,6 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
         ),
     );
     schema.methods.insert(
-        "GetProviderCatalog".to_string(),
-        method_decl_from_schemars_with_output::<EmptyTchedInput, GetProviderCatalogOutput>(
-            "GetProviderCatalog",
-            op_state_store::SideEffect::Read,
-            true,
-            "cap.software.3tched-router.providers.read@v1",
-            "obs.service.3tched-router.provider-catalog.list@v1",
-        ),
-    );
-    schema.methods.insert(
         "GetTools".to_string(),
         method_decl_from_schemars_with_output::<EmptyTchedInput, GetToolsOutput>(
             "GetTools",
@@ -1903,16 +1890,6 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
             true,
             "cap.software.3tched-router.router.read@v1",
             "obs.service.3tched-router.router.get@v1",
-        ),
-    );
-    schema.methods.insert(
-        "GetConfigSchema".to_string(),
-        method_decl_from_schemars_with_output::<EmptyTchedInput, GetConfigSchemaOutput>(
-            "GetConfigSchema",
-            op_state_store::SideEffect::Read,
-            true,
-            "cap.software.3tched-router.config-schema.read@v1",
-            "obs.service.3tched-router.config-schema.get@v1",
         ),
     );
     schema.methods.insert(
@@ -2154,8 +2131,6 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
         "/selector_policy".to_string(),
     ];
 
-    super::binary_namespace::attach_model_routes(&mut schema);
-
     schema
 }
 
@@ -2318,10 +2293,6 @@ const CARRIED_CAPABILITIES: &[(&str, &str)] = &[
         "Read the declared LLM tool catalog.",
     ),
     (
-        "cap.software.3tched-router.config-schema.read@v1",
-        "Read the config schema descriptor.",
-    ),
-    (
         "cap.software.3tched-router.ui-surfaces.read@v1",
         "List registered UI surfaces.",
     ),
@@ -2413,18 +2384,12 @@ pub fn dispatch_tched_router_method(
     json_args: &str,
     state: &TchedRouterState,
 ) -> std::result::Result<DispatchOutcome, TchedRouterError> {
-    if let Some(outcome) = super::binary_namespace::dispatch(method, json_args) {
-        return outcome.map(DispatchOutcome::plain);
-    }
     match method {
         "GetState" => Ok(DispatchOutcome::plain(serde_json::json!({
             "state": to_json(&ObservedTchedRouterState::from(state))
         }))),
         "GetModelRoutes" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "model_routes": to_json(&state.catalog.model_routes) }),
-        )),
-        "GetProviderCatalog" => Ok(DispatchOutcome::plain(
-            serde_json::json!({ "providers": to_json(&state.catalog.providers) }),
         )),
         "GetTools" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "tools": to_json(&state.catalog.tools) }),
@@ -2434,9 +2399,6 @@ pub fn dispatch_tched_router_method(
         )),
         "GetRouter" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "router": to_json(&state.catalog.router) }),
-        )),
-        "GetConfigSchema" => Ok(DispatchOutcome::plain(
-            serde_json::json!({ "config_schema": to_json(&state.catalog.config_schema) }),
         )),
         "ListUiSurfaces" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "ui_surfaces": to_json(&state.catalog.ui_surfaces) }),
@@ -3006,9 +2968,10 @@ inventory::submit! {
     crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(TchedRouterPlugin::new()))
 }
 
-/// Imported upstream version recorded in the plugin-owned contract.
+/// Bare upstream version verified against the manifest at seal.
 pub fn tched_router_binary_version() -> &'static str {
-    super::tched_router_contract::BINARY_SCHEMA_VERSION
+    super::threetched::binary_version()
+        .expect("threetched binary version must be captured at seal")
 }
 
 #[cfg(test)]

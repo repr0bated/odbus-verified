@@ -7,7 +7,7 @@ set -eu
 # Session selectors are operator input, never credentials or model arguments.
 filesystem_marker=/etc/op-dbus/threetched-filesystem.enabled
 filesystem_session_file=/etc/op-dbus/human-lungs-session
-filesystem_root=/run/mount/3tchedFS
+filesystem_root=/run/mounts/3tchedFS
 filesystem_root_receipt=/etc/op-dbus/threetched-filesystem.allowed-root-owned
 filesystem_enabled=false
 protected_filesystem_file() {
