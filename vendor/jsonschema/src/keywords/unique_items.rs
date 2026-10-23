@@ -30,6 +30,8 @@ impl Hash for HashedValue<'_> {
             Value::Bool(ref item) => item.hash(state),
             Value::Number(ref item) => {
                 if let Some(number) = item.as_f64() {
+                    // Numeric equality treats positive and negative zero alike.
+                    let number = if number == 0.0 { 0.0 } else { number };
                     number.to_bits().hash(state)
                 } else if let Some(number) = item.as_u64() {
                     number.hash(state);

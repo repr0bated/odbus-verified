@@ -679,6 +679,33 @@ impl CozoGraphShuttle {
         self.ui_gallery_read(|tx| get_entry(tx, entry_id))
     }
 
+    /// Read the complete active name projection and its revision in one snapshot.
+    /// Only key columns are loaded; catalog documents can be much larger.
+    pub fn active_ui_catalog_names(&self) -> std::result::Result<(u64, Vec<String>), CozoError> {
+        self.ui_gallery_read(|tx| {
+            let (revision, active, _) = catalog_state(tx)?;
+            let rows = run(
+                tx,
+                "?[entry_id, name] := *ui_catalog_entries{entry_id, name, status}, status = 'active' :order -entry_id",
+                BTreeMap::new(),
+                "active catalog names read",
+            )?;
+            let names = rows.rows.into_iter().map(|row| {
+                let [DataValue::Str(_), DataValue::Str(name)] = row.as_slice() else {
+                    return Err(error("corrupt ui catalog name row"));
+                };
+                if !bounded(name, MAX_NAME_BYTES) {
+                    return Err(error("invalid ui catalog name"));
+                }
+                Ok(name.to_string())
+            }).collect::<std::result::Result<Vec<_>, CozoError>>()?;
+            if u64::try_from(names.len()).ok() != Some(active) {
+                return Err(error("ui catalog active count differs from its names"));
+            }
+            Ok((revision, names))
+        })
+    }
+
     /// A page of the catalog, newest promotion first (entry IDs are UUIDv7).
     pub fn list_ui_catalog(
         &self,
@@ -856,6 +883,23 @@ mod tests {
             "not Bob's"
         );
         assert_eq!(store.list_ui_candidates(ALICE, None, 1).unwrap().total, 249);
+    }
+
+    #[test]
+    fn active_name_projection_includes_entries_beyond_the_first_page() {
+        let store = store();
+        for n in 1..=65 {
+            let candidate = candidate(ALICE, n);
+            store.insert_ui_candidate(&candidate).unwrap();
+            store.promote_ui_candidate(ALICE, &candidate.candidate_id, &|row| {
+                Ok(entry_for(row, n + 100, &format!("Catalog {n}")))
+            }).unwrap();
+        }
+        let (revision, names) = store.active_ui_catalog_names().unwrap();
+        assert_eq!(revision, 65);
+        assert_eq!(names.len(), 65);
+        assert!(names.contains(&"Catalog 1".to_string()));
+        assert!(names.contains(&"Catalog 65".to_string()));
     }
 
     #[test]
