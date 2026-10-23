@@ -25,7 +25,7 @@ use simd_json::OwnedValue as Value;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "tched_router";
-const PLUGIN_VERSION: &str = "4.1.0";
+const PLUGIN_VERSION: &str = "4.4.1";
 const PLUGIN_CATEGORY: &str = "llm";
 const PLUGIN_DESCRIPTION: &str = "3tched Router — schema/RPC-native model router for Antigravity UI, CLI providers, and structured JSON output";
 const PLUGIN_DISPLAY_NAME: &str = "GB.3tchedRouter";
@@ -47,9 +47,9 @@ pub struct LlmTransport {
     #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router-transport.grpc-target@v1"))]
     pub grpc_target: String,
     /// Incus / WireGuard container target for xray routing. Kept as a
-    /// published-schema field for backward compatibility, but zeroclaw's LLM
+    /// published-schema field for backward compatibility, but threetched's LLM
     /// transport now runs on the host (xray through its runit-managed service and
-    /// the gRPC-bridge via `op-grpc-bridge-zeroclaw`); there is no per-service
+    /// the gRPC-bridge via `op-grpc-bridge`); there is no per-service
     /// incus container. Defaults to the `"host"` sentinel.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router-transport.incus-container@v1"))]
@@ -267,10 +267,10 @@ pub struct UserContainerOptions {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.user-container.image@v1"))]
     pub image: String,
-    /// Cognitive MCP endpoint used by the user container memory flow.
+    /// Cognitive endpoint used by the user container memory flow.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.service.3tched-router-options.user-container.mcp-endpoint@v1"))]
-    pub cognitive_mcp_endpoint: String,
+    pub cognitive_endpoint: String,
     /// Feature flags declared for the user container flow.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router-options.user-container.features@v1"))]
@@ -322,6 +322,10 @@ pub struct ConfigurableOptions {
 #[schemars(extend("x-oscal-subid" = "sch.software.plugin.3tched-router.schema@v1"))]
 #[schemars(extend("x-oscal-category" = "llm"))]
 pub struct TchedRouterState {
+    /// Narrow reflected model binding, published by authoritative native observation.
+    /// Read-only and excluded from the public state projection.
+    #[serde(default)]
+    pub catalog_model_binding: Option<ResolveCatalogModelBindingOutput>,
     /// Owner-private generation document revision; excluded from public_state.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(extend("x-oscal-subid" = "obs.software.tched-router.generation-revision@v1"))]
@@ -390,6 +394,47 @@ pub struct TchedRouterState {
 /// Empty input for read-only 3tched Router methods.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct EmptyTchedInput {}
+
+/// Read the dedicated route selected by the verified caller's persisted mode.
+/// No agent, identity, profile or configuration path can be supplied.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetOwnAgentRouteInput {}
+
+/// Credential-free native route observation for the caller's own selected role.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetOwnAgentRouteOutput {
+    pub mode: super::project::ChatMode,
+    pub reference: String,
+    pub model: String,
+    /// Explicit HTTPS inference endpoint without credentials, query or fragment.
+    pub uri: String,
+}
+
+/// Resolve a catalog model against allowed native ordinary-selection profiles.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResolveCatalogModelBindingInput {
+    pub provider_id: String,
+    pub model_id: String,
+}
+
+/// A verified credential-free native profile for one current catalog model.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResolveCatalogModelBindingOutput {
+    pub provider_id: String,
+    pub model_id: String,
+    pub reference: String,
+    pub model: String,
+    pub uri: String,
+    /// Verified OpenAI subscription profile; its native auth owner chooses the
+    /// inference origin. This is not inferred from an empty URI or catalog label.
+    #[serde(default)]
+    pub oauth: bool,
+    pub catalog_revision: u64,
+}
 
 /// Input for resolving a model route by hint or model identifier.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -526,15 +571,6 @@ pub struct GetRouterOutput {
     pub router: Router,
 }
 
-/// Output for the config schema accessor.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.config-schema.result@v1"))]
-pub struct GetConfigSchemaOutput {
-    /// Exact JSON Schema for the native configuration value, selected from
-    /// this same manifest-pinned plugin contract.
-    pub config_schema: JsonValue,
-}
-
 // Plugin-owned v2 contracts for the six retained config_* methods.
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
@@ -642,6 +678,25 @@ pub enum ConfigPatchOperation {
 #[serde(deny_unknown_fields)]
 pub struct ConfigPatchInput {
     pub operations: Vec<ConfigPatchOperation>,
+}
+
+/// Output for `GetMcpConfig` — the current `mcp` configuration, observed
+/// live from the pinned runtime. Secrets masked by dispatch; the schema
+/// rides the sealed `native_config` field, not this receipt.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetMcpConfigOutput {
+    /// Current `mcp` configuration.
+    pub config: JsonValue,
+}
+
+/// Output for `GetConfig` — the full configuration, observed live from the
+/// pinned runtime and committed under the exact seal. Secrets are masked by
+/// dispatch; the config's schema rides the sealed `native_config` field, not
+/// this receipt.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetConfigOutput {
+    /// Full configuration.
+    pub config: JsonValue,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -849,6 +904,13 @@ impl TchedRouterPlugin {
     }
 
     pub fn current_state() -> TchedRouterState {
+        if !super::threetched::is_schema_capture() {
+            let state = super::threetched::sealed_schema(PLUGIN_NAME)
+                .expect("tched_router runtime requires its sealed schema")
+                .example.expect("sealed tched_router schema has no declared state");
+            return simd_json::serde::from_owned_value(state)
+                .expect("sealed tched_router state must match its declared type");
+        }
         let selected_provider = Self::env_or("LLM_PROVIDER", "opencode");
         let selected_model = Self::env_or("LLM_MODEL", Self::DEFAULT_CHAT_MODEL);
         let chat_model = selected_model.clone();
@@ -864,6 +926,7 @@ impl TchedRouterPlugin {
             selected_provider: selected_provider.clone(),
             selected_model,
             native_config: None,
+            catalog_model_binding: None,
             model_assignments: ModelAssignments {
                 ovs_routing: Self::DEFAULT_CHAT_MODEL.to_string(),
                 obfuscation: Self::DEFAULT_CHAT_MODEL.to_string(),
@@ -1151,9 +1214,9 @@ impl TchedRouterPlugin {
                     },
                 ],
                 config_schema: ConfigSchema {
-                    source: "zeroclaw config schema".to_string(),
+                    source: "threetched config schema".to_string(),
                     schema_crate: "schemars".to_string(),
-                    native_type: format!("zeroclaw config schema v{}", tched_router_binary_version()),
+                    native_type: format!("threetched config schema v{}", tched_router_binary_version()),
                     status: "available_via_cli_or_gateway".to_string(),
                     ..Default::default()
                 },
@@ -1596,7 +1659,7 @@ impl TchedRouterPlugin {
                 ],
                 container_id_template: "ws-{username}".to_string(),
                 image: "images:debian/12".to_string(),
-                cognitive_mcp_endpoint: "unix:path=/run/opdbus/session-bus.sock".to_string(),
+                cognitive_endpoint: "unix:path=/run/opdbus/session-bus.sock".to_string(),
                 feature_flags: vec!["ghostbridge".to_string(), "semantic_search".to_string()],
             },
             identity_chain: IdentityOptions {
@@ -1671,6 +1734,9 @@ impl StatePlugin for TchedRouterPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
+        if !super::threetched::is_schema_capture() {
+            return Some(tched_router_schema());
+        }
         let mut schema = tched_router_schema();
         super::common::llm_projection::rewrite_projection_subids_for_plugin(
             &mut schema,
@@ -1740,6 +1806,10 @@ impl StatePlugin for TchedRouterPlugin {
 
 /// Canonical `tched_router` schema derived from [`TchedRouterState`] via schemars.
 pub(crate) fn tched_router_schema() -> PluginSchema {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_schema(PLUGIN_NAME)
+            .expect("tched_router runtime requires its sealed schema");
+    }
     tched_router_schema_from_state(TchedRouterPlugin::current_state())
 }
 
@@ -1761,6 +1831,18 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
     )
     .expect("plugin-owned tched_router config contract is a valid exact field schema");
     schema.category = PLUGIN_CATEGORY.to_string();
+    let binding_field = schema
+        .fields
+        .get_mut("catalog_model_binding")
+        .expect("catalog binding field is present");
+    binding_field.read_only = true;
+    binding_field.field_type = op_state_store::FieldType::exact_json_schema(
+        serde_json::to_value(schemars::schema_for!(
+            Option<ResolveCatalogModelBindingOutput>
+        ))
+        .expect("catalog binding field schema serializes"),
+    )
+    .expect("catalog binding field has a valid exact nullable typed schema");
     schema.display_name = Some(PLUGIN_DISPLAY_NAME.to_string());
 
     if let Ok(state) = simd_json::serde::to_owned_value(state) {
@@ -1826,16 +1908,6 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
             true,
             "cap.software.3tched-router.router.read@v1",
             "obs.service.3tched-router.router.get@v1",
-        ),
-    );
-    schema.methods.insert(
-        "GetConfigSchema".to_string(),
-        method_decl_from_schemars_with_output::<EmptyTchedInput, GetConfigSchemaOutput>(
-            "GetConfigSchema",
-            op_state_store::SideEffect::Read,
-            true,
-            "cap.software.3tched-router.config-schema.read@v1",
-            "obs.service.3tched-router.config-schema.get@v1",
         ),
     );
     schema.methods.insert(
@@ -1991,13 +2063,66 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
         );
     }
 
-    // Complete config surface — generated from the upstream `zeroclaw` crate's
-    // real types, the single source of truth for configuration.
-    super::tched_router_config_surface::register_config_methods(&mut schema);
+    // Complete typed config surface, authored like every other plugin.
+    // The former 87 generated per-section getters (and their import bin)
+    // are retired; the two load-bearing operations remain, addressed by
+    // the same capability ids the grant table carries.
+    schema.methods.insert(
+        "GetConfig".to_string(),
+        method_decl_from_schemars_with_output::<EmptyTchedInput, GetConfigOutput>(
+            "GetConfig",
+            SideEffect::Read,
+            true,
+            "cap.software.3tched-router.config.read@v1",
+            "obs.service.3tched-router.config.get@v1",
+        ),
+    );
+    schema.capabilities.insert(
+        "cap.software.3tched-router.config.read@v1".to_string(),
+        CapabilityDecl {
+            id: "cap.software.3tched-router.config.read@v1".to_string(),
+            description: "Read the full 3tched Router configuration (secrets masked).".to_string(),
+        },
+    );
+    schema.methods.insert(
+        "PatchConfig".to_string(),
+        method_decl_from_schemars_with_output::<ConfigPatchInput, ConfigPatchOutput>(
+            "PatchConfig",
+            SideEffect::Mutation,
+            false,
+            "cap.software.3tched-router.config.write@v1",
+            "mut.service.3tched-router.config.patch@v2",
+        ),
+    );
+    schema.capabilities.insert(
+        "cap.software.3tched-router.config.write@v1".to_string(),
+        CapabilityDecl {
+            id: "cap.software.3tched-router.config.write@v1".to_string(),
+            description: "Apply bounded typed 3tched Router configuration property operations."
+                .to_string(),
+        },
+    );
 
     register_cli_config_methods(&mut schema);
     generation::declare_methods(&mut schema);
 
+    schema.methods.insert(
+        "GetMcpConfig".to_string(),
+        method_decl_from_schemars_with_output::<EmptyTchedInput, GetMcpConfigOutput>(
+            "GetMcpConfig",
+            SideEffect::Read,
+            true,
+            "cap.software.3tched-router.mcp-config.read@v1",
+            "obs.service.3tched-router.mcp-config.get@v1",
+        ),
+    );
+    schema.capabilities.insert(
+        "cap.software.3tched-router.mcp-config.read@v1".to_string(),
+        CapabilityDecl {
+            id: "cap.software.3tched-router.mcp-config.read@v1".to_string(),
+            description: "Read the 3tched Router `mcp` configuration (secrets masked).".to_string(),
+        },
+    );
     // Generic property writes are aliases for these real native operations.
     // Their existing method capabilities still apply to the original caller.
     for (property, method, argument) in [
@@ -2024,10 +2149,52 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
         "/selector_policy".to_string(),
     ];
 
+    super::binary_namespace::attach_model_routes(&mut schema);
+
     schema
 }
 
+/// Typed config methods authored by this plugin (the generated per-section
+/// getters retired); the bridge routes these by the same names.
+pub(crate) const NATIVE_CONFIG_METHODS: &[&str] = &["GetConfig", "PatchConfig"];
+
 fn register_cli_config_methods(schema: &mut PluginSchema) {
+    schema.methods.insert(
+        "apply_catalog_model_binding".to_string(),
+        method_decl_from_schemars_with_output::<
+            ResolveCatalogModelBindingInput,
+            ResolveCatalogModelBindingOutput,
+        >(
+            "apply_catalog_model_binding",
+            SideEffect::Mutation,
+            false,
+            "cap.software.tched-router.catalog.selection.set@v1",
+            "mut.software.tched-router.catalog-model-binding@v1",
+        ),
+    );
+    schema.methods.insert(
+        "resolve_catalog_model_binding".to_string(),
+        method_decl_from_schemars_with_output::<
+            ResolveCatalogModelBindingInput,
+            ResolveCatalogModelBindingOutput,
+        >(
+            "resolve_catalog_model_binding",
+            SideEffect::Read,
+            true,
+            "cap.software.tched-router.model.binding.read@v1",
+            "obs.software.tched-router.catalog-model-binding@v1",
+        ),
+    );
+    schema.methods.insert(
+        "get_own_agent_route".to_string(),
+        method_decl_from_schemars_with_output::<GetOwnAgentRouteInput, GetOwnAgentRouteOutput>(
+            "get_own_agent_route",
+            SideEffect::Read,
+            true,
+            "cap.software.tched-router.agent.route.self.read@v1",
+            "obs.software.tched-router.agent-route-self@v1",
+        ),
+    );
     let read_capability = "cap.software.tched-router.router.read@v1";
     let write_capability = "cap.software.tched-router.router.write@v1";
     schema.methods.insert(
@@ -2146,10 +2313,6 @@ const CARRIED_CAPABILITIES: &[(&str, &str)] = &[
         "Read the declared LLM tool catalog.",
     ),
     (
-        "cap.software.3tched-router.config-schema.read@v1",
-        "Read the config schema descriptor.",
-    ),
-    (
         "cap.software.3tched-router.ui-surfaces.read@v1",
         "List registered UI surfaces.",
     ),
@@ -2164,6 +2327,18 @@ const CARRIED_CAPABILITIES: &[(&str, &str)] = &[
     (
         "cap.software.tched-router.router.read@v1",
         "Read tched_router configuration via config_list/get.",
+    ),
+    (
+        "cap.software.tched-router.agent.route.self.read@v1",
+        "Read only the dedicated native route selected by the caller's persisted chat mode.",
+    ),
+    (
+        "cap.software.tched-router.model.binding.read@v1",
+        "Resolve one available catalog model to a verified ordinary native profile and safe endpoint.",
+    ),
+    (
+        "cap.software.tched-router.catalog.selection.set@v1",
+        "Apply one verified available catalog model only to an allowed ordinary native profile.",
     ),
     (
         "cap.software.tched-router.selection.set@v1",
@@ -2229,6 +2404,9 @@ pub fn dispatch_tched_router_method(
     json_args: &str,
     state: &TchedRouterState,
 ) -> std::result::Result<DispatchOutcome, TchedRouterError> {
+    if let Some(outcome) = super::binary_namespace::dispatch(method, json_args) {
+        return outcome.map(DispatchOutcome::plain);
+    }
     match method {
         "GetState" => Ok(DispatchOutcome::plain(serde_json::json!({
             "state": to_json(&ObservedTchedRouterState::from(state))
@@ -2248,9 +2426,6 @@ pub fn dispatch_tched_router_method(
         "GetRouter" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "router": to_json(&state.catalog.router) }),
         )),
-        "GetConfigSchema" => Ok(DispatchOutcome::plain(
-            serde_json::json!({ "config_schema": to_json(&state.catalog.config_schema) }),
-        )),
         "ListUiSurfaces" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "ui_surfaces": to_json(&state.catalog.ui_surfaces) }),
         )),
@@ -2268,12 +2443,14 @@ pub fn dispatch_tched_router_method(
         "SetQdrantRetrievalModel" => set_role_model_handler(json_args, state, "qdrant_retrieval"),
         "SetCozoRetrievalModel" => set_role_model_handler(json_args, state, "cozo_retrieval"),
         other => {
-            let native_method = super::tched_router_config_surface::config_method_backing(other)
-                .is_some()
+            let native_method = NATIVE_CONFIG_METHODS.contains(&other)
                 || generation::is_method(other)
                 || matches!(
                     other,
                     "Chat"
+                        | "get_own_agent_route"
+                        | "resolve_catalog_model_binding"
+                        | "apply_catalog_model_binding"
                         | "config_list"
                         | "config_get"
                         | "config_set"
@@ -2457,6 +2634,9 @@ fn set_role_model_handler(
 ) -> std::result::Result<DispatchOutcome, TchedRouterError> {
     let args = parse_args("SetRoleModel", json_args)?;
     let model_id = require_str(&args, "model_id", "SetRoleModel")?;
+    if !state.catalog.model_routes.iter().any(|route| route.model == model_id) {
+        return Err(TchedRouterError::ModelNotDeclared { model: model_id });
+    }
     let result = match role {
         "ovs_routing" => serde_json::json!({ "ovs_routing": model_id }),
         "obfuscation" => serde_json::json!({ "obfuscation": model_id }),
@@ -2485,6 +2665,104 @@ fn set_role_model_handler(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn catalog_binding_schema_is_narrow_and_state_is_readonly() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
+        let schema = super::tched_router_plugin_schema();
+        let method = &schema.methods["resolve_catalog_model_binding"];
+        let apply = &schema.methods["apply_catalog_model_binding"];
+        assert_eq!(
+            apply.required_capability.as_deref(),
+            Some("cap.software.tched-router.catalog.selection.set@v1")
+        );
+        assert_ne!(method.required_capability, apply.required_capability);
+        assert_eq!(method.side_effect, op_state_store::SideEffect::Read);
+        assert_eq!(apply.side_effect, op_state_store::SideEffect::Mutation);
+        assert!(method.idempotent);
+        assert!(!apply.idempotent);
+        assert_eq!(method.args, apply.args);
+        assert_eq!(method.returns, apply.returns);
+        assert_eq!(
+            method.required_capability.as_deref(),
+            Some("cap.software.tched-router.model.binding.read@v1")
+        );
+        assert!(schema.fields["catalog_model_binding"].read_only);
+        let op_state_store::FieldType::JsonSchema(field_schema) =
+            &schema.fields["catalog_model_binding"].field_type
+        else {
+            panic!("catalog binding requires its exact nullable typed schema");
+        };
+        let field_schema = serde_json::to_value(field_schema.as_ref()).unwrap();
+        let field_validator = jsonschema::Validator::new(&field_schema).unwrap();
+        assert!(field_validator.is_valid(&serde_json::Value::Null));
+        assert!(!schema
+            .public_state
+            .paths
+            .iter()
+            .any(|p| p.starts_with("/catalog_model_binding")));
+        for extra in ["reference", "path", "agent", "uri", "session_id"] {
+            let mut args = serde_json::json!({"provider_id":"openai", "model_id":"test-model"});
+            args[extra] = serde_json::json!("untrusted");
+            assert!(
+                serde_json::from_value::<super::ResolveCatalogModelBindingInput>(args).is_err()
+            );
+        }
+        let returns = serde_json::to_value(method.returns.as_ref().unwrap()).unwrap();
+        let validator = jsonschema::Validator::new(&returns).unwrap();
+        let mut output = serde_json::json!({"provider_id":"openai", "model_id":"test-model", "reference":"openai.dashboard", "model":"test-model", "uri":"https://inference.example/v1", "catalog_revision":7});
+        assert!(validator.is_valid(&output));
+        assert!(field_validator.is_valid(&output));
+        output["api_key"] = serde_json::json!("secret");
+        assert!(!validator.is_valid(&output));
+        assert!(!field_validator.is_valid(&output));
+        let mut state = super::TchedRouterPlugin::current_state();
+        state.catalog_model_binding = Some(super::ResolveCatalogModelBindingOutput {
+            provider_id: "PRIVATE_PROVIDER".into(),
+            model_id: "PRIVATE_MODEL".into(),
+            reference: "openai.private".into(),
+            model: "PRIVATE_MODEL".into(),
+            uri: "https://private.example/v1".into(),
+            oauth: false,
+            catalog_revision: 7,
+        });
+        let observed = super::dispatch_tched_router_method("GetState", "{}", &state).unwrap();
+        assert!(!observed.result.to_string().contains("PRIVATE_"));
+    }
+
+    #[test]
+    fn own_agent_route_has_narrow_typed_admission() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
+        let schema = super::tched_router_plugin_schema();
+        let method = &schema.methods["get_own_agent_route"];
+        assert_eq!(
+            method.required_capability.as_deref(),
+            Some("cap.software.tched-router.agent.route.self.read@v1")
+        );
+        let input =
+            serde_json::to_value(schemars::schema_for!(super::GetOwnAgentRouteInput)).unwrap();
+        assert_eq!(input["additionalProperties"], false);
+        for args in [
+            serde_json::json!({"agent":"accountability"}),
+            serde_json::json!({"path":"providers"}),
+            serde_json::json!({"session_id":"other"}),
+        ] {
+            assert!(serde_json::from_value::<super::GetOwnAgentRouteInput>(args).is_err());
+        }
+        let output =
+            serde_json::to_value(schemars::schema_for!(super::GetOwnAgentRouteOutput)).unwrap();
+        let fields = output["properties"].as_object().unwrap();
+        assert_eq!(fields.len(), 4);
+        for field in ["mode", "reference", "model", "uri"] {
+            assert!(fields.contains_key(field));
+        }
+        let returns = serde_json::to_value(method.returns.as_ref().unwrap()).unwrap();
+        let validator = jsonschema::Validator::new(&returns).unwrap();
+        let mut observed = serde_json::json!({"mode":"control_plane", "reference":"custom.test", "model":"test-model", "uri":"https://inference.example/v1"});
+        assert!(validator.is_valid(&observed));
+        observed["api_key"] = serde_json::json!("must-not-be-an-output-field");
+        assert!(!validator.is_valid(&observed));
+    }
+
     use super::*;
     use crate::state_plugins::common::oscal::validate_subid;
     use serde_json::Value as JVal;
@@ -2534,21 +2812,18 @@ mod tests {
 
     #[test]
     fn declared_routes_do_not_invent_factory_routing_or_availability() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let state = TchedRouterPlugin::current_state();
-        assert!(
-            state
-                .catalog
-                .model_routes
-                .iter()
-                .all(|route| !route.available)
-        );
-        assert!(
-            state
-                .catalog
-                .model_routes
-                .iter()
-                .all(|route| route.provider != "factory")
-        );
+        assert!(state
+            .catalog
+            .model_routes
+            .iter()
+            .all(|route| !route.available));
+        assert!(state
+            .catalog
+            .model_routes
+            .iter()
+            .all(|route| route.provider != "factory"));
         let factory = state
             .catalog
             .providers
@@ -2561,6 +2836,7 @@ mod tests {
 
     #[test]
     fn public_schema_accessor_returns_tched_router_schema() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         assert_eq!(schema.name, PLUGIN_NAME);
         assert_eq!(schema.version, PLUGIN_VERSION);
@@ -2573,6 +2849,7 @@ mod tests {
 
     #[test]
     fn generated_method_docs_include_input_and_output_field_descriptions() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         let chat = schema.methods.get("Chat").unwrap();
         let chat_returns = serde_json::to_value(chat.returns.as_ref().unwrap()).unwrap();
@@ -2594,7 +2871,8 @@ mod tests {
     }
 
     #[test]
-    fn native_config_uses_exact_private_imported_contract() {
+    fn native_config_uses_exact_private_captured_contract() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_schema();
         assert!(matches!(
             &schema.fields["native_config"].field_type,
@@ -2612,17 +2890,16 @@ mod tests {
             )
             .unwrap()
         );
-        assert!(
-            !schema
-                .public_state
-                .paths
-                .iter()
-                .any(|path| path == "/native_config" || path.starts_with("/native_config/"))
-        );
+        assert!(!schema
+            .public_state
+            .paths
+            .iter()
+            .any(|path| path == "/native_config" || path.starts_with("/native_config/")));
     }
 
     #[test]
     fn every_declared_method_has_a_domain_dispatcher() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         let state = TchedRouterPlugin::current_state();
 
@@ -2631,11 +2908,9 @@ mod tests {
                 // MutationEngine owns authenticated private generation state;
                 // the synchronous helper must not bypass that owner.
                 let error = dispatch_tched_router_method(method, "{}", &state).unwrap_err();
-                assert!(
-                    error
-                        .to_string()
-                        .contains("requires admitted native bridge dispatch")
-                );
+                assert!(error
+                    .to_string()
+                    .contains("requires admitted native bridge dispatch"));
                 continue;
             }
             if method == "Chat" {
@@ -2643,10 +2918,13 @@ mod tests {
                 // which owns provider credentials and the event chain.
                 continue;
             }
-            if super::super::tched_router_config_surface::CONFIG_METHODS.contains(&method.as_str())
+            if super::NATIVE_CONFIG_METHODS.contains(&method.as_str())
                 || matches!(
                     method.as_str(),
                     "config_list"
+                        | "get_own_agent_route"
+                        | "resolve_catalog_model_binding"
+                        | "apply_catalog_model_binding"
                         | "config_get"
                         | "config_set"
                         | "config_patch"
@@ -2691,6 +2969,7 @@ mod tests {
 
     #[test]
     fn generic_selection_writes_bind_to_existing_capability_gated_methods() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         for (field, method_name, argument) in [
             ("selected_provider", "SetProvider", "provider_id"),
@@ -2702,11 +2981,9 @@ mod tests {
             assert_eq!(binding.argument, argument);
             let method = &schema.methods[method_name];
             assert_eq!(method.side_effect, op_state_store::SideEffect::Mutation);
-            assert!(
-                schema
-                    .capabilities
-                    .contains_key(method.required_capability.as_ref().unwrap())
-            );
+            assert!(schema
+                .capabilities
+                .contains_key(method.required_capability.as_ref().unwrap()));
             let args = serde_json::to_value(&method.args).unwrap();
             assert!(args["properties"].get(argument).is_some());
         }
@@ -2715,6 +2992,7 @@ mod tests {
 
     #[test]
     fn undeclared_method_is_rejected() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let error =
             dispatch_tched_router_method("NotDeclared", "{}", &TchedRouterPlugin::current_state())
                 .unwrap_err();
@@ -2728,9 +3006,10 @@ inventory::submit! {
     crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(TchedRouterPlugin::new()))
 }
 
-/// Imported upstream version recorded in the plugin-owned contract.
+/// Bare upstream version verified against the manifest at seal.
 pub fn tched_router_binary_version() -> &'static str {
-    super::tched_router_contract::BINARY_SCHEMA_VERSION
+    super::threetched::binary_version()
+        .expect("threetched binary version must be captured at seal")
 }
 
 #[cfg(test)]
@@ -2738,10 +3017,10 @@ mod official_schema_tests {
     //! Guard against truncated upstream imports and missing generated method fields.
 
     use super::tched_router_binary_version;
-    use crate::state_plugins::tched_router_config_surface::GetGatewayConfigOutput;
 
     #[test]
-    fn imported_contract_is_not_a_stub() {
+    fn captured_contract_is_not_a_stub() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let value = super::super::tched_router_contract::document();
         let sections = value
             .get("properties")
@@ -2753,8 +3032,7 @@ mod official_schema_tests {
             .expect("imported contract has $defs");
         assert!(
             sections.len() >= 32,
-            "imported contract has only {} sections — import `zeroclaw config schema` \
-             through gen_tched_router_config_surface before rebuilding",
+            "captured contract has only {} sections — verify the pinned binary input before sealing",
             sections.len()
         );
         assert!(
@@ -2787,27 +3065,13 @@ mod official_schema_tests {
     }
 
     #[test]
-    fn sealed_method_schema_carries_real_section_fields() {
-        // With a stubbed source this passed while the payload was `{}`.
-        let schema = schemars::schema_for!(GetGatewayConfigOutput);
-        let text = serde_json::to_value(&schema)
-            .expect("schema serializes")
-            .to_string();
-        for field in ["port", "host", "require_pairing", "session_ttl_hours"] {
-            assert!(
-                text.contains(field),
-                "GetGatewayConfigOutput payload is missing `{field}` — generated from a stub?"
-            );
-        }
-    }
-
-    #[test]
-    fn imported_contract_records_the_binary_version() {
+    fn captured_contract_records_the_binary_version() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let version = tched_router_binary_version();
         assert!(!version.is_empty());
         assert_ne!(
             version, "unknown",
-            "record the upstream version during the plugin contract import"
+            "capture the upstream version from the verified binary"
         );
     }
 }
@@ -2873,6 +3137,7 @@ mod config_v3_contract_tests {
 
     #[test]
     fn config_contract_break_bumps_plugin_version() {
-        assert_eq!(tched_router_plugin_schema().version, "4.1.0");
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
+        assert_eq!(tched_router_plugin_schema().version, "4.4.1");
     }
 }
