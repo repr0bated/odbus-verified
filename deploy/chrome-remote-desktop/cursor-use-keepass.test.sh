@@ -13,7 +13,7 @@ cat > "$BIN/keepassxc" <<'EOF'
 #!/bin/sh
 exit 0
 EOF
-chmod +x "$BIN/keepassxc" "$HELPER"
+chmod +x "$BIN/keepassxc"
 
 USER_NAME=$(id -un)
 GROUP_NAME=$(id -gn)
@@ -81,10 +81,41 @@ test "$(awk '/^\[KSecretD\]/{s=1;next} /^\[/{s=0} s && /^Enabled=/{c++} END{prin
 
 # Missing keepassxc leaves the home untouched.
 EMPTY=$WORKDIR/empty-home
-mkdir -p "$EMPTY"
-PATH="$WORKDIR/missing:/usr/bin:/bin" "$HELPER" "$EMPTY" "$USER_NAME" "$GROUP_NAME"
+MISSING_BIN=$WORKDIR/missing
+mkdir -p "$EMPTY" "$MISSING_BIN"
+ln -s "$(command -v id)" "$MISSING_BIN/id"
+PATH="$MISSING_BIN" "$HELPER" "$EMPTY" "$USER_NAME" "$GROUP_NAME"
 test ! -e "$EMPTY/.cursor"
 test ! -e "$EMPTY/.config"
+
+# Commented keys and braces are not live settings. Nested settings stay intact.
+JSONC=$WORKDIR/jsonc
+mkdir -p "$JSONC/.cursor"
+cat > "$JSONC/.cursor/argv.json" <<'EOF'
+// Example: { "password-store": "kwallet6" }
+/* another { brace */
+{
+    "nested": {"password-store": "keep-nested"},
+    "description": "braces { } and // are text",
+    "enable-crash-reporter": true,
+}
+EOF
+PATH="$BIN:/usr/bin:/bin" "$HELPER" "$JSONC" "$USER_NAME" "$GROUP_NAME"
+grep -q '^// Example: { "password-store": "kwallet6" }$' "$JSONC/.cursor/argv.json"
+grep -q '"nested": {"password-store": "keep-nested"}' "$JSONC/.cursor/argv.json"
+test "$(grep -c '"password-store": "gnome-libsecret"' "$JSONC/.cursor/argv.json")" -eq 1
+
+# Failed parsing must preserve the original and skip the remaining setup.
+INVALID=$WORKDIR/invalid
+mkdir -p "$INVALID/.cursor"
+printf '%s\n' '{"password-store": false}' > "$INVALID/.cursor/argv.json"
+cp "$INVALID/.cursor/argv.json" "$WORKDIR/invalid-original"
+if PATH="$BIN:/usr/bin:/bin" "$HELPER" "$INVALID" "$USER_NAME" "$GROUP_NAME"; then
+    echo 'invalid password-store unexpectedly accepted' >&2
+    exit 1
+fi
+cmp "$INVALID/.cursor/argv.json" "$WORKDIR/invalid-original"
+test ! -e "$INVALID/.config"
 
 # Fresh home gets a valid argv file and does not turn the wallet subsystem off.
 FRESH=$WORKDIR/fresh

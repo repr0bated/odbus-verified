@@ -55,64 +55,45 @@ there is no systemd user manager and there should not be one.
 
 Neither is installed. Nothing on the host has been changed.
 
-## Applying it
+## Release preparation
 
-The vendor directory already carries one local patch (`chrome-remote-desktop`
-vs `chrome-remote-desktop.orig`, the Arch Xorg path), so in-place patching with
-a kept original is the established pattern here.
+These are source inputs. Stage the launcher and helper together, executable,
+at `/usr/local/lib/chrome-remote-desktop/` in the prepared release filesystem
+through an explicitly declared release manifest target. Apply the vendor patch
+only to that prepared filesystem. Deployment follows the repository snapshot
+and Btrfs send/receive workflow in [the deployment guide](../README.md); copying
+scripts onto the running host is not a deployment step.
 
-```sh
-# 1. Back up and patch the vendor script
-sudo cp /opt/google/chrome-remote-desktop/chrome-remote-desktop \
-        /opt/google/chrome-remote-desktop/chrome-remote-desktop.bak-pre-wayland
-sudo patch -d /opt/google/chrome-remote-desktop -p1 \
-     < deploy/chrome-remote-desktop/wayland-no-systemd.patch
+This PR does not add a release manifest target, change the active session mode,
+install the helper, or restart the remote desktop service. Keep X11 as the
+default unless a separate Wayland cutover is requested.
 
-# 2. Install the launcher and the KeePassXC helper beside it
-sudo cp deploy/chrome-remote-desktop/crd-launch \
-        deploy/chrome-remote-desktop/cursor-use-keepass \
-        /usr/local/lib/chrome-remote-desktop/
-sudo chmod 755 /usr/local/lib/chrome-remote-desktop/crd-launch \
-               /usr/local/lib/chrome-remote-desktop/cursor-use-keepass
+## Post-deployment verification
 
-# 3. Select the mode
-sudo mkdir -p /etc/opt/chrome-remote-desktop
-echo wayland | sudo tee /etc/opt/chrome-remote-desktop/session-mode
-```
-
-## Test before cutting over
-
-**Do not test by restarting the service if you are connected through CRD** —
-you will disconnect yourself, and a failed Wayland start means no remote
-desktop. Have SSH open first.
-
-```sh
-sudo sv stop chrome-remote-desktop-jeremy
-sudo CRD_SESSION=wayland /usr/local/lib/chrome-remote-desktop/crd-launch jeremy
-```
-
-Watch for, in order: `Launching wayland server`, `Found Wayland socket in
-XDG_RUNTIME_DIR: wayland-N`, `No systemd user manager; starting portals
-directly`, then the host coming online. The failure signature to look for is
-the 30-second timeout followed by a relaunch loop — that means the socket
-fallback did not find anything.
+Run checks only when explicitly requested by the owner. A Wayland cutover
+needs a separate request and an independent SSH connection: restarting CRD
+disconnects the remote desktop. If that cutover is requested, retain the
+operation receipts and confirm the compositor socket, portals, and remote
+host become ready. A source review or successful shell syntax check does not
+establish session readiness.
 
 ## Rollback
 
-```sh
-echo x11 | sudo tee /etc/opt/chrome-remote-desktop/session-mode
-sudo sv restart chrome-remote-desktop-jeremy
-```
-
-The patch is additive — x11 mode does not enter any of the changed code — so
-reverting the mode is enough. To remove the patch entirely, restore
-`chrome-remote-desktop.bak-pre-wayland`.
+Use the deployment controller to restore the prior release overlays. Preserve
+the service wanted/enabled state and use the controller receipt to identify
+what changed. Any deliberate session-mode change or remote-desktop restart
+belongs to the separately authorized cutover. These source changes do not
+create a live vendor-script backup or change the current session mode.
 
 ## Cursor and KeePassXC
 
-The helper runs as root at session start and then `chown`s the files it
-writes to the desktop user. It takes effect the next time this service
-starts. Do not restart `chrome-remote-desktop-jeremy` from inside the
+The launcher drops to the desktop user before running the helper. The helper
+refuses root and mismatched users/groups, so user-owned symlinks cannot cause
+privileged writes or ownership changes. It preserves JSONC comments and edits
+only the top-level Cursor setting; unsupported escaped keys or malformed
+top-level settings leave the file unchanged and the desktop still starts.
+It takes effect the next time this service starts. Do not restart
+`chrome-remote-desktop-jeremy` from inside the
 remote session; that disconnects the desktop. Have SSH open first.
 
 KeePassXC still needs one database setting, because the exposed group is
