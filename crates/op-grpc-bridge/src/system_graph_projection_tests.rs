@@ -181,6 +181,24 @@ fn incus_typed_effective_devices_and_mail_container_references_are_projected() {
 }
 
 #[test]
+fn typed_empty_effective_inventory_does_not_restore_local_devices() {
+    use op_plugins::state_plugins::incus::IncusInstance;
+    let mut instance: IncusInstance = serde_json::from_value(json!({
+        "name":"fixture", "status":"Stopped", "type":"container",
+        "devices":[{"name":"stale", "device":{"type":"disk", "source":"/stale", "path":"/stale"}}],
+        "expanded_devices":[],
+    })).unwrap();
+    let encoded = serde_json::to_value(&instance).unwrap();
+    assert_eq!(encoded["expanded_devices"], json!([]));
+    let empty = project(&[("incus", Some(json!({"instances":[encoded]})))]);
+    assert!(!empty.nodes.iter().any(|node| node.kind == "container_device"));
+
+    instance.expanded_devices = None;
+    let missing = project(&[("incus", Some(json!({"instances":[instance]})))]);
+    assert!(missing.nodes.iter().any(|node| node.kind == "container_device" && node.label == "stale"));
+}
+
+#[test]
 fn current_incus_public_policy_yields_aggregate_counts_without_private_names() {
     use op_plugins::state_plugins::incus::{IncusInstance, IncusPlugin, IncusState};
     use op_state::StatePlugin;

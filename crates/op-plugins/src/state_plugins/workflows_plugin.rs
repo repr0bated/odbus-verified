@@ -217,7 +217,7 @@ impl StatePlugin for WorkflowsPlugin {
         })
     }
     async fn rollback(&self, _checkpoint: &Checkpoint) -> Result<()> {
-        Ok(())
+        anyhow::bail!("workflows does not support rollback")
     }
     fn capabilities(&self) -> PluginCapabilities {
         PluginCapabilities {

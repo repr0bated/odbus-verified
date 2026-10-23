@@ -571,15 +571,6 @@ pub struct GetRouterOutput {
     pub router: Router,
 }
 
-/// Output for the config schema accessor.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.config-schema.result@v1"))]
-pub struct GetConfigSchemaOutput {
-    /// Exact JSON Schema for the native configuration value, selected from
-    /// this same manifest-pinned plugin contract.
-    pub config_schema: JsonValue,
-}
-
 // Plugin-owned v2 contracts for the six retained config_* methods.
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
@@ -913,6 +904,13 @@ impl TchedRouterPlugin {
     }
 
     pub fn current_state() -> TchedRouterState {
+        if !super::threetched::is_schema_capture() {
+            let state = super::threetched::sealed_schema(PLUGIN_NAME)
+                .expect("tched_router runtime requires its sealed schema")
+                .example.expect("sealed tched_router schema has no declared state");
+            return simd_json::serde::from_owned_value(state)
+                .expect("sealed tched_router state must match its declared type");
+        }
         let selected_provider = Self::env_or("LLM_PROVIDER", "opencode");
         let selected_model = Self::env_or("LLM_MODEL", Self::DEFAULT_CHAT_MODEL);
         let chat_model = selected_model.clone();
@@ -1736,6 +1734,9 @@ impl StatePlugin for TchedRouterPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
+        if !super::threetched::is_schema_capture() {
+            return Some(tched_router_schema());
+        }
         let mut schema = tched_router_schema();
         super::common::llm_projection::rewrite_projection_subids_for_plugin(
             &mut schema,
@@ -1805,6 +1806,10 @@ impl StatePlugin for TchedRouterPlugin {
 
 /// Canonical `tched_router` schema derived from [`TchedRouterState`] via schemars.
 pub(crate) fn tched_router_schema() -> PluginSchema {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_schema(PLUGIN_NAME)
+            .expect("tched_router runtime requires its sealed schema");
+    }
     tched_router_schema_from_state(TchedRouterPlugin::current_state())
 }
 
@@ -1903,16 +1908,6 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
             true,
             "cap.software.3tched-router.router.read@v1",
             "obs.service.3tched-router.router.get@v1",
-        ),
-    );
-    schema.methods.insert(
-        "GetConfigSchema".to_string(),
-        method_decl_from_schemars_with_output::<EmptyTchedInput, GetConfigSchemaOutput>(
-            "GetConfigSchema",
-            op_state_store::SideEffect::Read,
-            true,
-            "cap.software.3tched-router.config-schema.read@v1",
-            "obs.service.3tched-router.config-schema.get@v1",
         ),
     );
     schema.methods.insert(
@@ -2318,10 +2313,6 @@ const CARRIED_CAPABILITIES: &[(&str, &str)] = &[
         "Read the declared LLM tool catalog.",
     ),
     (
-        "cap.software.3tched-router.config-schema.read@v1",
-        "Read the config schema descriptor.",
-    ),
-    (
         "cap.software.3tched-router.ui-surfaces.read@v1",
         "List registered UI surfaces.",
     ),
@@ -2434,9 +2425,6 @@ pub fn dispatch_tched_router_method(
         )),
         "GetRouter" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "router": to_json(&state.catalog.router) }),
-        )),
-        "GetConfigSchema" => Ok(DispatchOutcome::plain(
-            serde_json::json!({ "config_schema": to_json(&state.catalog.config_schema) }),
         )),
         "ListUiSurfaces" => Ok(DispatchOutcome::plain(
             serde_json::json!({ "ui_surfaces": to_json(&state.catalog.ui_surfaces) }),
@@ -2679,6 +2667,7 @@ fn set_role_model_handler(
 mod tests {
     #[test]
     fn catalog_binding_schema_is_narrow_and_state_is_readonly() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = super::tched_router_plugin_schema();
         let method = &schema.methods["resolve_catalog_model_binding"];
         let apply = &schema.methods["apply_catalog_model_binding"];
@@ -2742,6 +2731,7 @@ mod tests {
 
     #[test]
     fn own_agent_route_has_narrow_typed_admission() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = super::tched_router_plugin_schema();
         let method = &schema.methods["get_own_agent_route"];
         assert_eq!(
@@ -2822,6 +2812,7 @@ mod tests {
 
     #[test]
     fn declared_routes_do_not_invent_factory_routing_or_availability() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let state = TchedRouterPlugin::current_state();
         assert!(state
             .catalog
@@ -2845,6 +2836,7 @@ mod tests {
 
     #[test]
     fn public_schema_accessor_returns_tched_router_schema() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         assert_eq!(schema.name, PLUGIN_NAME);
         assert_eq!(schema.version, PLUGIN_VERSION);
@@ -2857,6 +2849,7 @@ mod tests {
 
     #[test]
     fn generated_method_docs_include_input_and_output_field_descriptions() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         let chat = schema.methods.get("Chat").unwrap();
         let chat_returns = serde_json::to_value(chat.returns.as_ref().unwrap()).unwrap();
@@ -2878,7 +2871,8 @@ mod tests {
     }
 
     #[test]
-    fn native_config_uses_exact_private_imported_contract() {
+    fn native_config_uses_exact_private_captured_contract() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_schema();
         assert!(matches!(
             &schema.fields["native_config"].field_type,
@@ -2905,6 +2899,7 @@ mod tests {
 
     #[test]
     fn every_declared_method_has_a_domain_dispatcher() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         let state = TchedRouterPlugin::current_state();
 
@@ -2974,6 +2969,7 @@ mod tests {
 
     #[test]
     fn generic_selection_writes_bind_to_existing_capability_gated_methods() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_router_plugin_schema();
         for (field, method_name, argument) in [
             ("selected_provider", "SetProvider", "provider_id"),
@@ -2996,6 +2992,7 @@ mod tests {
 
     #[test]
     fn undeclared_method_is_rejected() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let error =
             dispatch_tched_router_method("NotDeclared", "{}", &TchedRouterPlugin::current_state())
                 .unwrap_err();
@@ -3009,9 +3006,10 @@ inventory::submit! {
     crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(TchedRouterPlugin::new()))
 }
 
-/// Imported upstream version recorded in the plugin-owned contract.
+/// Bare upstream version verified against the manifest at seal.
 pub fn tched_router_binary_version() -> &'static str {
-    super::tched_router_contract::BINARY_SCHEMA_VERSION
+    super::threetched::binary_version()
+        .expect("threetched binary version must be captured at seal")
 }
 
 #[cfg(test)]
@@ -3021,7 +3019,8 @@ mod official_schema_tests {
     use super::tched_router_binary_version;
 
     #[test]
-    fn imported_contract_is_not_a_stub() {
+    fn captured_contract_is_not_a_stub() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let value = super::super::tched_router_contract::document();
         let sections = value
             .get("properties")
@@ -3033,8 +3032,7 @@ mod official_schema_tests {
             .expect("imported contract has $defs");
         assert!(
             sections.len() >= 32,
-            "imported contract has only {} sections — import `threetched config schema` \
-             into tched_router_contract.rs's UPSTREAM IMPORT block before rebuilding",
+            "captured contract has only {} sections — verify the pinned binary input before sealing",
             sections.len()
         );
         assert!(
@@ -3067,12 +3065,13 @@ mod official_schema_tests {
     }
 
     #[test]
-    fn imported_contract_records_the_binary_version() {
+    fn captured_contract_records_the_binary_version() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let version = tched_router_binary_version();
         assert!(!version.is_empty());
         assert_ne!(
             version, "unknown",
-            "record the upstream version during the plugin contract import"
+            "capture the upstream version from the verified binary"
         );
     }
 }
@@ -3138,6 +3137,7 @@ mod config_v3_contract_tests {
 
     #[test]
     fn config_contract_break_bumps_plugin_version() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         assert_eq!(tched_router_plugin_schema().version, "4.4.1");
     }
 }
