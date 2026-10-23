@@ -4,8 +4,8 @@
 //! the generated service contract usable by embedded/internal consumers only.
 //!
 //! # Requirements
-//! Implements R1-R3 (core querying), R9-R11 (resilience/auth), and stubs for
-//! R4-R7 (lifecycle, advanced). Traces every RPC to the requirements doc.
+//! Retains legacy querying/lifecycle method shapes for internal compatibility.
+//! Health reporting, auth setup and private query history are unsupported here.
 //!
 //! # Design
 //! - gRPC → CognitiveToolRegistry → NotebookLM bridge + CognitiveMemoryStore
@@ -15,7 +15,7 @@
 //!
 //! # Security (R13)
 //! - No shell=True, no eval
-//! - Credentials stored 0o600
+//! - Compatibility health/auth setup is unsupported; use canonical admitted operations
 //! - Exponential backoff retries on bridge calls
 
 use std::sync::Arc;
@@ -34,7 +34,7 @@ use crate::session::{QueryTurn, SessionManager};
 
 /// The gRPC service implementation.
 ///
-/// Wired into the tonic server alongside health and reflection services.
+/// Retained for internal compatibility; not registered by the active bridge.
 /// Delegates to CognitiveMemoryStore for namespace/entry ops and to the
 /// NotebookLM MCP bridge (via ToolRegistry) for grounded queries.
 #[derive(Clone)]
@@ -46,6 +46,18 @@ pub struct CognitiveGrpcService {
 }
 
 impl CognitiveGrpcService {
+    /// Compatibility notebook IDs are canonical namespace names, matching the
+    /// memory store's lookup and entry keys. Never synthesize a second namespace
+    /// from a returned UUID or prepend a second kind prefix.
+    async fn notebook_namespace(&self, notebook_id: &str) -> Result<String, Status> {
+        self.memory_store
+            .get_namespace_by_name(notebook_id)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?
+            .map(|namespace| namespace.name)
+            .ok_or_else(|| Status::not_found("Notebook not found"))
+    }
+
     pub fn new(
         memory_store: Arc<CognitiveMemoryStore>,
         session_manager: Arc<SessionManager>,
@@ -95,7 +107,7 @@ impl CognitiveToolService for CognitiveGrpcService {
         // Attempt grounded query via memory store.
         // Phase 1: query entries matching the notebook namespace.
         // Phase 2+: this forwards through the NotebookLM bridge.
-        let namespace = format!("project:{}", req.notebook_id);
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
         let entries = self
             .memory_store
             .query_entries(crate::memory_store::EntryQuery {
@@ -176,7 +188,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             .session_manager
             .get_or_create(&req.conversation_id, &req.notebook_id);
 
-        let namespace = format!("project:{}", req.notebook_id);
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
         let limit = if req.max_results > 0 {
             req.max_results as i64
         } else {
@@ -269,7 +281,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             .skip(offset)
             .take(limit)
             .map(|ns| NotebookInfo {
-                id: ns.id,
+                id: ns.name.clone(),
                 name: ns.name,
                 kind: ns.kind.to_string(),
                 description: ns.description.unwrap_or_default(),
@@ -292,7 +304,7 @@ impl CognitiveToolService for CognitiveGrpcService {
         let req = request.into_inner();
         info!(notebook_id = %req.notebook_id, "GetNotebook");
 
-        // Try by ID-as-name first
+        // Public notebook IDs are the canonical namespace names.
         let ns = self
             .memory_store
             .get_namespace_by_name(&req.notebook_id)
@@ -307,7 +319,7 @@ impl CognitiveToolService for CognitiveGrpcService {
 
         Ok(Response::new(GetNotebookResponse {
             notebook: Some(NotebookInfo {
-                id: ns.id,
+                id: ns.name.clone(),
                 name: ns.name,
                 kind: ns.kind.to_string(),
                 description: ns.description.unwrap_or_default(),
@@ -355,7 +367,7 @@ impl CognitiveToolService for CognitiveGrpcService {
 
         Ok(Response::new(CreateNotebookResponse {
             notebook: Some(NotebookInfo {
-                id: ns.id,
+                id: ns.name.clone(),
                 name: ns.name,
                 kind: ns.kind.to_string(),
                 description: ns.description.unwrap_or_default(),
@@ -405,7 +417,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             {
                 Ok(ns) => {
                     created_notebooks.push(NotebookInfo {
-                        id: ns.id,
+                        id: ns.name.clone(),
                         name: ns.name,
                         kind: ns.kind.to_string(),
                         description: ns.description.unwrap_or_default(),
@@ -443,22 +455,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             "AddSource"
         );
 
-        let namespace = format!("project:{}", req.notebook_id);
-
-        // Ensure namespace exists
-        let kind = NamespaceKind::Project;
-        if self
-            .memory_store
-            .get_namespace_by_name(&namespace)
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?
-            .is_none()
-        {
-            self.memory_store
-                .upsert_namespace(&namespace, kind, None, None, None, serde_json::json!({}))
-                .await
-                .map_err(|e| Status::internal(e.to_string()))?;
-        }
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
 
         let source_id = Uuid::new_v4().to_string();
         let key = if req.title.is_empty() {
@@ -479,7 +476,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             .map_err(|e| Status::internal(e.to_string()))?;
 
         Ok(Response::new(AddSourceResponse {
-            source_id,
+            source_id: key,
             success: true,
         }))
     }
@@ -508,27 +505,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             )));
         }
 
-        let namespace = format!("project:{}", req.notebook_id);
-        // Ensure namespace exists
-        if self
-            .memory_store
-            .get_namespace_by_name(&namespace)
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?
-            .is_none()
-        {
-            self.memory_store
-                .upsert_namespace(
-                    &namespace,
-                    NamespaceKind::Project,
-                    None,
-                    None,
-                    None,
-                    serde_json::json!({}),
-                )
-                .await
-                .map_err(|e| Status::internal(e.to_string()))?;
-        }
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
 
         let mut added = 0i32;
         let mut skipped = 0i32;
@@ -603,7 +580,7 @@ impl CognitiveToolService for CognitiveGrpcService {
         let req = request.into_inner();
         info!(notebook_id = %req.notebook_id, "ListSources");
 
-        let namespace = format!("project:{}", req.notebook_id);
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
         let limit = if req.limit > 0 {
             req.limit as usize
         } else {
@@ -637,7 +614,7 @@ impl CognitiveToolService for CognitiveGrpcService {
                     .to_string();
 
                 SourceInfo {
-                    id: e.id,
+                    id: e.key.clone(),
                     title: e.key,
                     source_type,
                     tags: e.tags,
@@ -663,7 +640,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             "GetSourceContent"
         );
 
-        let namespace = format!("project:{}", req.notebook_id);
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
         let entry = self
             .memory_store
             .retrieve_entry(&namespace, &req.source_id)
@@ -702,7 +679,7 @@ impl CognitiveToolService for CognitiveGrpcService {
         let req = request.into_inner();
         info!(notebook_id = %req.notebook_id, "GenerateDataTable");
 
-        let namespace = format!("project:{}", req.notebook_id);
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
 
         // Step 1: Get all sources in the notebook
         let entries = self
@@ -776,46 +753,11 @@ impl CognitiveToolService for CognitiveGrpcService {
     // =========================================================================
     async fn get_health(
         &self,
-        request: Request<GetHealthRequest>,
+        _request: Request<GetHealthRequest>,
     ) -> Result<Response<GetHealthResponse>, Status> {
-        let req = request.into_inner();
-        info!(deep_check = req.deep_check, "GetHealth");
-
-        let (remaining, limit) = self.quota_manager.status().await;
-
-        let mut components = serde_json::json!({
-            "memory_store": "ok",
-            "session_manager": "ok",
-            "quota_manager": "ok",
-        });
-
-        if req.deep_check {
-            // Deep check — verify memory store connectivity
-            match self.memory_store.get_stats().await {
-                Ok(stats) => {
-                    components["memory_store_stats"] = serde_json::json!({
-                        "total_namespaces": stats.total_namespaces,
-                        "total_entries": stats.total_entries,
-                    });
-                }
-                Err(e) => {
-                    components["memory_store"] = serde_json::json!(format!("error: {}", e));
-                }
-            }
-
-            components["active_sessions"] = serde_json::json!(self.session_manager.active_count());
-            components["total_sessions"] = serde_json::json!(self.session_manager.count());
-        }
-
-        Ok(Response::new(GetHealthResponse {
-            healthy: true,
-            status: "operational".to_string(),
-            components_json: serde_json::to_string(&components)
-                .unwrap_or_else(|_| "{}".to_string()),
-            queries_remaining: remaining as i32,
-            queries_limit: limit as i32,
-            auth_status: "chrome_profile".to_string(),
-        }))
+        Err(Status::unimplemented(
+            "compatibility health reporting is unsupported; discover current health through the canonical identity-bound operation surface",
+        ))
     }
 
     // =========================================================================
@@ -823,62 +765,11 @@ impl CognitiveToolService for CognitiveGrpcService {
     // =========================================================================
     async fn setup_auth(
         &self,
-        request: Request<SetupAuthRequest>,
+        _request: Request<SetupAuthRequest>,
     ) -> Result<Response<SetupAuthResponse>, Status> {
-        let req = request.into_inner();
-        info!(auth_method = %req.auth_method, "SetupAuth");
-
-        // R9 — persistent auth: never wipe Chrome profile on failed launch
-        // R13 — credentials 0o600
-        // Phase 1: validate and store credential reference.
-        // Actual Chrome profile management is in the NotebookLM sidecar.
-
-        if req.auth_method.is_empty() {
-            return Err(Status::invalid_argument(
-                "auth_method is required (chrome_profile or cookie)",
-            ));
-        }
-
-        if req.credential.is_empty() {
-            return Err(Status::invalid_argument(
-                "credential is required (path to Chrome profile or cookie value)",
-            ));
-        }
-
-        // Validate Chrome profile path exists if using chrome_profile
-        if req.auth_method == "chrome_profile" {
-            let path = std::path::Path::new(&req.credential);
-            if !path.exists() {
-                return Err(Status::invalid_argument(format!(
-                    "Chrome profile path '{}' does not exist",
-                    req.credential
-                )));
-            }
-
-            // R13 — check permissions (0o600 for credential files)
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::MetadataExt;
-                if let Ok(metadata) = std::fs::metadata(path) {
-                    let mode = metadata.mode() & 0o777;
-                    if mode & 0o077 != 0 {
-                        warn!(
-                            path = %req.credential,
-                            mode = format!("{:o}", mode),
-                            "Chrome profile has overly permissive permissions; should be 0o600"
-                        );
-                    }
-                }
-            }
-        }
-
-        Ok(Response::new(SetupAuthResponse {
-            success: true,
-            message: format!(
-                "Auth configured: method={}, credential stored",
-                req.auth_method
-            ),
-        }))
+        Err(Status::unimplemented(
+            "compatibility auth setup is unsupported; use the canonical identity-bound operation surface",
+        ))
     }
 
     // =========================================================================
@@ -895,7 +786,7 @@ impl CognitiveToolService for CognitiveGrpcService {
             "RemoveSource"
         );
 
-        let namespace = format!("project:{}", req.notebook_id);
+        let namespace = self.notebook_namespace(&req.notebook_id).await?;
 
         self.memory_store
             .delete_entry(&namespace, &req.source_id)
@@ -1044,39 +935,14 @@ impl CognitiveToolService for CognitiveGrpcService {
     // =========================================================================
     async fn get_query_history(
         &self,
-        request: Request<GetQueryHistoryRequest>,
+        _request: Request<GetQueryHistoryRequest>,
     ) -> Result<Response<GetQueryHistoryResponse>, Status> {
-        let req = request.into_inner();
-        info!("GetQueryHistory");
-
-        let limit = if req.limit > 0 {
-            req.limit as usize
-        } else {
-            50
-        };
-
-        let history = crate::doctor::get_query_history(&self.session_manager, limit);
-        let total = history.len() as i32;
-
-        let entries = history
-            .into_iter()
-            .map(|v| QueryHistoryEntry {
-                conversation_id: v["conversation_id"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_string(),
-                notebook_id: v["notebook_id"].as_str().unwrap_or_default().to_string(),
-                query: v["query"].as_str().unwrap_or_default().to_string(),
-                answer_preview: v["answer_preview"].as_str().unwrap_or_default().to_string(),
-                timestamp: v["timestamp"].as_str().unwrap_or_default().to_string(),
-                citations_count: v["citations_count"].as_i64().unwrap_or(0) as i32,
-                grounded: v["grounded"].as_bool().unwrap_or(false),
-            })
-            // Filter by conversation_id if provided
-            .filter(|e| req.conversation_id.is_empty() || e.conversation_id == req.conversation_id)
-            .collect();
-
-        Ok(Response::new(GetQueryHistoryResponse { entries, total }))
+        // This unregistered compatibility service has no verified principal
+        // binding. A caller-supplied conversation ID cannot authorize access to
+        // the process-wide history, including its total or answer previews.
+        Err(Status::unimplemented(
+            "query history requires the canonical admitted session owner",
+        ))
     }
 }
 
