@@ -28,7 +28,7 @@ set +a
 
 export OP_WEB_BIND_ADDR="${OP_WEB_BIND_ADDR:-10.0.0.2}"
 export PORT="${PORT:-8080}"
-export OP_WEB_STATIC_DIR=/usr/local/share/op-dbus/dashboard-release
+export OP_WEB_STATIC_DIR=/usr/local/share/op-dbus/dashboard
 export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.2:8090}"
 export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}"
 # Serve the existing private HTTP endpoint. The ready bridge above proves

@@ -109,7 +109,10 @@ pub fn load(root: &File) -> Result<Inventory> {
             ensure!(services.get(consumer).is_some_and(|s| s.release_owned), "entry names non-release consumer {consumer}");
         }
         if protected(&entry.path) {
-            ensure!(entry.sha256.is_none() && entry.hash_status.as_deref() == Some("protected_content_not_read"), "protected content was hashed");
+            ensure!(entry.sha256.is_none(), "protected content was hashed");
+            if entry.file_type == "regular" {
+                ensure!(entry.hash_status.as_deref() == Some("protected_content_not_read"), "protected regular content lacks no-read marker");
+            }
             ensure!(entry.release_target.is_none(), "protected content cannot ship in a release target: {}", entry.path);
         }
     }
