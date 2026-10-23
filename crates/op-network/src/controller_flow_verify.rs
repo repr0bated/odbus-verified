@@ -1,7 +1,7 @@
 //! OpenFlow 1.5 flow-description readback, used inside the sole connection
 //! command queue. Layout: OVS include/openflow/openflow-1.5.h ofp15_flow_desc.
 //! A successful socket write is never an installation receipt.
-use super::{OF_VERSION, OfIo, build_barrier_request, build_echo_reply, recv_msg, send_msg};
+use super::{OF_VERSION, OfIo, TransportFailure, build_barrier_request, build_echo_reply, recv_msg, send_msg};
 use anyhow::{Context, Result, ensure};
 use rovs_openflow::{Flow, FlowStatsRequest, InstructionList, Match};
 use std::time::Duration;
@@ -91,7 +91,8 @@ pub(crate) async fn query(
     loop {
         let reply = timeout_at(deadline, recv_msg(stream))
             .await
-            .context("flow-description timeout")??;
+            .context(TransportFailure)?
+            .context(TransportFailure)?;
         if reply.msg_type == 2 {
             send_msg(stream, &build_echo_reply(reply.xid, &reply.payload)).await?;
             continue;
@@ -171,7 +172,8 @@ pub(crate) async fn apply(stream: &mut impl OfIo, flow: &Flow, xid: &mut u32) ->
     loop {
         let reply = timeout_at(deadline, recv_msg(stream))
             .await
-            .context("flow mutation barrier timeout; reconcile outcome")??;
+            .context(TransportFailure)?
+            .context(TransportFailure)?;
         if reply.msg_type == 2 {
             send_msg(stream, &build_echo_reply(reply.xid, &reply.payload)).await?;
         }
