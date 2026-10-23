@@ -119,9 +119,9 @@ impl<'a> Ecma262Translator<'a> {
             }
             ClassPerlKind::Space => {
                 let replacement = &if cls.negated {
-                    "[^ \t\n\r\u{000b}\u{000c}\u{00a0}\u{feff}\u{2003}\u{2029}]"
+                    "[^ \t\n\r\u{000b}\u{000c}\u{00a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}]"
                 } else {
-                    "[ \t\n\r\u{000b}\u{000c}\u{00a0}\u{feff}\u{2003}\u{2029}]"
+                    "[ \t\n\r\u{000b}\u{000c}\u{00a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}]"
                 };
                 self.replace_impl(&cls.span, replacement);
             }

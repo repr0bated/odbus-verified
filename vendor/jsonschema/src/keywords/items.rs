@@ -5,7 +5,7 @@ use crate::{
     node::SchemaNode,
     paths::LazyLocation,
     validator::{PartialApplication, Validate},
-    ValidationError,
+    Draft, ValidationError,
 };
 use serde_json::{Map, Value};
 
@@ -233,12 +233,14 @@ pub(crate) fn compile<'a>(
     match schema {
         Value::Array(items) => Some(ItemsArrayValidator::compile(ctx, items)),
         Value::Object(_) | Value::Bool(false) => {
-            if let Some(Value::Array(prefix_items)) = parent.get("prefixItems") {
-                return Some(ItemsObjectSkipPrefixValidator::compile(
-                    schema,
-                    prefix_items.len(),
-                    ctx,
-                ));
+            if ctx.draft() == Draft::Draft202012 {
+                if let Some(Value::Array(prefix_items)) = parent.get("prefixItems") {
+                    return Some(ItemsObjectSkipPrefixValidator::compile(
+                        schema,
+                        prefix_items.len(),
+                        ctx,
+                    ));
+                }
             }
             Some(ItemsObjectValidator::compile(ctx, schema))
         }

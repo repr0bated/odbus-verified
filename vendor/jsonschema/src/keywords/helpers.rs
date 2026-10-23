@@ -1,5 +1,5 @@
 use num_cmp::NumCmp;
-use serde_json::{Map, Value};
+use serde_json::{Map, Number, Value};
 
 use crate::{compiler, paths::Location, primitive_type::PrimitiveType, ValidationError};
 
@@ -16,21 +16,24 @@ macro_rules! num_cmp {
 }
 
 #[inline]
+pub(crate) fn equal_numbers(left: &Number, right: &Number) -> bool {
+    if let Some(a) = left.as_u64() {
+        num_cmp!(a, right)
+    } else if let Some(a) = left.as_i64() {
+        num_cmp!(a, right)
+    } else {
+        let a = left.as_f64().expect("Always valid");
+        num_cmp!(a, right)
+    }
+}
+
+#[inline]
 pub(crate) fn equal(left: &Value, right: &Value) -> bool {
     match (left, right) {
         (Value::String(left), Value::String(right)) => left == right,
         (Value::Bool(left), Value::Bool(right)) => left == right,
         (Value::Null, Value::Null) => true,
-        (Value::Number(left), Value::Number(right)) => {
-            if let Some(a) = left.as_u64() {
-                num_cmp!(a, right)
-            } else if let Some(a) = left.as_i64() {
-                num_cmp!(a, right)
-            } else {
-                let a = left.as_f64().expect("Always valid");
-                num_cmp!(a, right)
-            }
-        }
+        (Value::Number(left), Value::Number(right)) => equal_numbers(left, right),
         (Value::Array(left), Value::Array(right)) => equal_arrays(left, right),
         (Value::Object(left), Value::Object(right)) => equal_objects(left, right),
         (_, _) => false,
