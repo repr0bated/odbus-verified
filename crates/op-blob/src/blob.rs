@@ -49,6 +49,33 @@ pub const SECTION_META_JSON: u32 = 4;
 const HEADER_LEN: usize = 64;
 const SECTION_ENTRY_LEN: usize = 24;
 
+/// Return JSON with object keys inserted in lexical order at every depth.
+/// serde_json's `preserve_order` feature changes `Map` to an insertion-ordered
+/// map, so deterministic producers must sort explicitly instead of relying on
+/// the map implementation. Arrays and scalar values retain their input order
+/// and values.
+pub(crate) fn canonicalize_json_object_keys(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Array(values) => serde_json::Value::Array(
+            values
+                .into_iter()
+                .map(canonicalize_json_object_keys)
+                .collect(),
+        ),
+        serde_json::Value::Object(object) => {
+            let mut entries: Vec<_> = object.into_iter().collect();
+            entries.sort_unstable_by(|(left, _), (right, _)| left.cmp(right));
+
+            let mut canonical = serde_json::Map::with_capacity(entries.len());
+            for (key, value) in entries {
+                canonical.insert(key, canonicalize_json_object_keys(value));
+            }
+            serde_json::Value::Object(canonical)
+        }
+        scalar => scalar,
+    }
+}
+
 /// D-Bus identity carried by the blob (REQ-7.1/7.2).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DbusIdentity {
@@ -128,17 +155,37 @@ pub fn canonical_plugin_id(name: &str) -> String {
 /// Freeze one `PluginSchema` into a `PluginObjectBlob` (whitepaper "Blob
 /// Creation Pipeline" steps 3–9). The schema is the input and stays the
 /// authority; nothing here invents contract data.
+///
+/// Convenience API for trusted schemas. Panics on ambiguous field aliases;
+/// publication code must use `try_blobify` to report invalid schemas as errors.
 pub fn blobify(schema: &PluginSchema) -> PluginObjectBlob {
     blobify_with_identity(schema, None)
 }
 
+/// Freeze a schema, returning descriptor errors without publishing anything.
+pub fn try_blobify(schema: &PluginSchema) -> Result<PluginObjectBlob, String> {
+    try_blobify_with_identity(schema, None)
+}
+
 /// `blobify`, stamping the publishing account's WireGuard-keypair identity
 /// (public half only) into the manifest.
+///
+/// Requires a trusted schema with unambiguous aliases; use
+/// `try_blobify_with_identity` at publication boundaries.
 pub fn blobify_with_identity(
     schema: &PluginSchema,
     identity: Option<crate::identity::BlobIdentity>,
 ) -> PluginObjectBlob {
-    blobify_canonical(schema, schema.canonical_json(), identity)
+    try_blobify_with_identity(schema, identity)
+        .expect("trusted PluginSchema has unambiguous protobuf field aliases")
+}
+
+/// Fallible producer with the publishing account's public identity.
+pub fn try_blobify_with_identity(
+    schema: &PluginSchema,
+    identity: Option<crate::identity::BlobIdentity>,
+) -> Result<PluginObjectBlob, String> {
+    try_blobify_canonical(schema, schema.canonical_json(), identity)
 }
 
 /// `blobify` with the sealed canonical JSON supplied by the caller.
@@ -149,11 +196,25 @@ pub fn blobify_with_identity(
 /// working view this crate needs for descriptor synthesis. The sealed
 /// SCHEMA_JSON section — and therefore the schema hash — covers the complete
 /// contract, never a reduced projection of it.
+///
+/// Requires a trusted schema with unambiguous aliases; use
+/// `try_blobify_canonical` at publication boundaries.
 pub fn blobify_canonical(
     schema: &PluginSchema,
     schema_json: String,
     identity: Option<crate::identity::BlobIdentity>,
 ) -> PluginObjectBlob {
+    try_blobify_canonical(schema, schema_json, identity)
+        .expect("trusted PluginSchema has unambiguous protobuf field aliases")
+}
+
+/// Fallible descriptor synthesis for an already serialized canonical schema.
+/// The caller must supply JSON for the same complete schema as the working view.
+pub fn try_blobify_canonical(
+    schema: &PluginSchema,
+    schema_json: String,
+    identity: Option<crate::identity::BlobIdentity>,
+) -> Result<PluginObjectBlob, String> {
     let plugin_id = canonical_plugin_id(&schema.name);
     let schema_hash = {
         let mut h = Sha256::new();
@@ -161,7 +222,7 @@ pub fn blobify_canonical(
         hex(&h.finalize())
     };
 
-    let (descriptor_set, method_infos) = descriptor::descriptor_set_for_plugin(&plugin_id, schema);
+    let (descriptor_set, method_infos) = descriptor::try_descriptor_set_for_plugin(&plugin_id, schema)?;
 
     let mut methods: Vec<MethodManifest> = method_infos
         .iter()
@@ -208,20 +269,20 @@ pub fn blobify_canonical(
         methods,
     };
 
-    let meta = serde_json::json!({
+    let meta = canonicalize_json_object_keys(serde_json::json!({
         "blob_format": FORMAT_VERSION,
         "dialect": schema.dialect,
         "subids": schema.subids,
         "immutable_paths": schema.immutable_paths,
         "json_schema": schema.to_json_schema(),
-    });
+    }));
 
-    PluginObjectBlob {
+    Ok(PluginObjectBlob {
         manifest,
         schema_json,
         descriptor_set,
         meta_json: serde_json::to_string(&meta).expect("meta serializes"),
-    }
+    })
 }
 
 impl PluginObjectBlob {

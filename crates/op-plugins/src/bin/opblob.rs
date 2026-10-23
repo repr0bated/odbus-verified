@@ -14,7 +14,7 @@
 //! ```
 
 use op_blob::{
-    BlobRef, blob, blobify_plugin_schema, btrfs,
+    BlobRef, blob, btrfs, try_blobify_plugin_schema,
     catalog::{ActiveReflectionCatalog, DEFAULT_SHM_DIR},
     demo, descriptor,
     identity::WgKeypair,
@@ -87,9 +87,12 @@ fn demo_seal(dir: &Path) -> Result<(), String> {
     );
     println!("session   {} (account-persistent)", id.session.session_id);
 
+    let candidates = [demo::unix_socket_schema(), demo::wireguard_schema()]
+        .iter()
+        .map(|schema| blob::try_blobify_with_identity(schema, Some(id.clone())))
+        .collect::<Result<Vec<_>, _>>()?;
     let mut cat = ActiveReflectionCatalog::open(dir).map_err(|e| e.to_string())?;
-    for schema in [demo::unix_socket_schema(), demo::wireguard_schema()] {
-        let b = blob::blobify_with_identity(&schema, Some(id.clone()));
+    for b in candidates {
         let path = cat.upsert_blob(&b).map_err(|e| e.to_string())?;
         println!(
             "sealed    {}  ({} methods, schema {})",
@@ -463,8 +466,6 @@ fn copy_catalog(src: &Path, dst: &Path) -> Result<(), String> {
 }
 
 fn seal_plugins(dir: &Path) -> Result<(), String> {
-    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let mut cat = ActiveReflectionCatalog::open(dir).map_err(|e| e.to_string())?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -474,8 +475,7 @@ fn seal_plugins(dir: &Path) -> Result<(), String> {
         .block_on(registry.load_all_plugins())
         .map_err(|e| e.to_string())?;
 
-    let mut sealed = 0usize;
-    let mut sealed_ids = std::collections::HashSet::new();
+    let mut candidates = Vec::new();
     let mut missing_schema = Vec::new();
     for plugin in plugins {
         let plugin_id = plugin.name().to_string();
@@ -490,7 +490,17 @@ fn seal_plugins(dir: &Path) -> Result<(), String> {
                 continue;
             }
         };
-        let blob = blobify_plugin_schema(&plugin_id, schema);
+        candidates.push(try_blobify_plugin_schema(&plugin_id, schema)?);
+    }
+
+    // Construct every candidate before opening or mutating the catalog. An
+    // invalid later schema must not leave a partially replaced active catalog.
+    // Publication I/O remains fallible; this is schema preflight, not a batch
+    // transaction for filesystem failures.
+    let mut cat = ActiveReflectionCatalog::open(dir).map_err(|e| e.to_string())?;
+    let sealed = candidates.len();
+    let mut sealed_ids = std::collections::HashSet::new();
+    for blob in candidates {
         sealed_ids.insert(blob.manifest.plugin_id.clone());
         let path = cat.upsert_blob(&blob).map_err(|e| e.to_string())?;
         println!(
@@ -499,7 +509,6 @@ fn seal_plugins(dir: &Path) -> Result<(), String> {
             blob.manifest.methods.len(),
             &blob.manifest.schema_hash[..16]
         );
-        sealed += 1;
     }
 
     // A blob in the catalog IS the plugin: sweep blobs whose plugin no
