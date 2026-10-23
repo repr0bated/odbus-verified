@@ -1,0 +1,23 @@
+#!/bin/sh
+# Host storage owner: remount/receive existing GPT members, never mint/start.
+set -eu
+pool=/var/lib/3tched-leaf-pool
+receipt=$pool/.provisioning/3tchedChatbot.boot.json
+[ "$(id -u)" = 0 ]
+[ "$(findmnt -rn -M "$pool" -o FSROOT)" = /@3tched-leaf-pool ]
+[ -f "$receipt" ] && [ ! -L "$receipt" ]
+[ "$(stat -c %u:%g:%a "$receipt")" = 0:0:600 ]
+jq -e '.version==1 and .name=="3tchedChatbot" and
+    .session_id=="b0c777e3-0955-cd8b-3d01-ca12998cae28" and
+    .identity_registered==true and .restore_existing_pair==true' "$receipt" >/dev/null
+state=$(incus --force-local query /1.0/instances/3tchedChatbot/state | jq -er .status)
+root=/var/lib/incus/storage-pools/identity-roots/containers/3tchedChatbot/rootfs
+case "$state" in
+    Stopped) /usr/local/libexec/3tched/sync-instance-upgrade boot 3tchedChatbot ;;
+    Running)
+        # A service restart must not replace a running container's lowers.
+        [ "$(findmnt -rn -M "$root" -o FSTYPE)" = overlay ]
+        case ",$(findmnt -rn -M "$root" -o OPTIONS)," in *,ro,*) ;; *) exit 1 ;; esac
+        ;;
+    *) echo "unsupported chatbot state: $state" >&2; exit 1 ;;
+esac

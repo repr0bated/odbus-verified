@@ -1,0 +1,32 @@
+#!/bin/sh
+# Provision a dedicated native profile through the binary's config owner.
+# Catalog selection owns its model after initialization; never touch Personal.
+set -eu
+config=$1
+binary=/usr/local/libexec/op-dbus/threetched/threetched
+key=/etc/op-dbus/secrets/salad-api-key
+[ -f "$key" ] && [ ! -L "$key" ] || exit 0
+case "$(stat -c %u:%a "$key")" in 0:400|0:600) ;; *) exit 78 ;; esac
+native_config() {
+    chpst -u jeremy:jeremy env HOME="$config/home" USER=jeremy \
+        THREETCHED_CONFIG_DIR="$config" "$binary" config "$@" --config-dir "$config"
+}
+existing=$(native_config get providers.models.custom.salad_control_plane.model --json 2>/dev/null || true)
+created=true
+if printf '%s' "$existing" | jq -e '.value | strings | length>0' >/dev/null 2>&1; then
+    created=false
+    model=
+else
+    model=$(native_config get providers.models.custom.salad.model --json | jq -er '.value | strings | select(length>0)')
+fi
+native_config init providers.models.custom.salad_control_plane >/dev/null
+jq -n --rawfile key "$key" --argjson created "$created" --arg model "$model" '
+    ($key | gsub("[\\r\\n]+$"; "")) as $key |
+    if ($key | test("^[!-~]+$")) then . else error("invalid Salad key") end |
+    "/providers/models/custom/salad_control_plane" as $p |
+    (if $created then [{op:"add",path:($p+"/model"),value:$model}] else [] end) + [
+      {op:"add",path:($p+"/uri"),value:"https://ai.salad.cloud/v1"},
+      {op:"add",path:($p+"/wire_api"),value:"chat_completions"},
+      {op:"add",path:($p+"/native_tools"),value:false},
+      {op:"add",path:($p+"/api_key"),value:$key}
+    ]' | native_config patch - >/dev/null

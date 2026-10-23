@@ -25,6 +25,11 @@ wait_dep incusd
 wait_dep identity-roots
 
 NAME='b0c777e3-0955-cd8b-3d01-ca12998cae28'
+# Switch only after the host storage owner has verified a completed named
+# replacement. An incomplete candidate does not retire the existing identity.
+if [ -f /var/lib/opdbus-runtime/seed-identities/3tchedChatbot/boot-ready.json ]; then
+    NAME=3tchedChatbot
+fi
 
 i=0
 until incus info >/dev/null 2>&1; do
@@ -40,6 +45,20 @@ done
 incus config set "$NAME" boot.autostart=false 2>/dev/null || true
 
 if ! incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
+    # Only opted-in, explicitly paired storage uses the upgrade lifecycle.
+    # Keep this before start; never replace a running container's OS view.
+    pair=/var/lib/3tched-leaf-pool/.provisioning/$NAME.upgrade.json
+    if [ -e "$pair" ] || [ -L "$pair" ]; then
+        /usr/local/libexec/3tched/sync-instance-upgrade boot "$NAME" || exit 1
+        expected=/var/lib/incus/storage-pools/identity-roots/containers/$NAME/rootfs
+        incus --force-local query "/1.0/instances/$NAME" | jq -e \
+            '.devices.root.type=="disk" and .devices.root.path=="/" and .devices.root.pool=="identity-roots"' >/dev/null &&
+            [ "$(findmnt -rn -M "$expected" -o FSTYPE)" = overlay ] &&
+            findmnt -rn -M "$expected" -o OPTIONS | grep -Eq '(^|,)ro(,|$)' || {
+            echo "paired container needs its read-only overlay mounted at $expected; provisioning incomplete" >&2
+            exit 1
+        }
+    fi
     echo "starting container $NAME"
     if ! incus start "$NAME"; then
         echo "incus start failed for $NAME" >&2
