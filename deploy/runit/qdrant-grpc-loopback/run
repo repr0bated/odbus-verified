@@ -8,13 +8,16 @@ exec 2>&1
 
 HOST=${QDRANT_GRPC_HOST:-127.0.0.1}
 PORT=${QDRANT_GRPC_PORT:-6334}
+probe() {
+    timeout 3 /bin/bash -c 'exec 3<>"/dev/tcp/$1/$2"' qdrant-probe "$HOST" "$PORT"
+}
 
-until (exec 3<>"/dev/tcp/${HOST}/${PORT}") 2>/dev/null; do
+until probe 2>/dev/null; do
     echo "qdrant-grpc-loopback: waiting for ${HOST}:${PORT}"
     sleep 2
 done
 
 echo "qdrant-grpc-loopback: ${HOST}:${PORT} reachable"
 while sleep 30; do
-    (exec 3<>"/dev/tcp/${HOST}/${PORT}") 2>/dev/null || echo "qdrant-grpc-loopback: ${HOST}:${PORT} unreachable"
+    probe 2>/dev/null || echo "qdrant-grpc-loopback: ${HOST}:${PORT} unreachable"
 done
