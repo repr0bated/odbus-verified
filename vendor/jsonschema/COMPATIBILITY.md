@@ -34,3 +34,11 @@ advances through child properties and retains its successful compilation
 expectation; same-instance cycle cases explicitly expect compilation errors.
 Guard diagnostics retain the schema location and reason but use a null error
 instance, avoiding a copy of a potentially large or deeply nested schema.
+
+Each annotation-filter preflight also allows at most 4096 schema visits in
+total, including repeated references and inline boolean leaves. A shallow
+shared graph can otherwise expand exponentially without a path cycle. Crossing
+this work limit returns a compilation error, including for a valid acyclic
+schema. Traversal does not memoize by object identity: the same referenced
+object is revisited under each actual resolver and dynamic scope. This is a
+bound on one annotation preflight, not a global compilation-time guarantee.
