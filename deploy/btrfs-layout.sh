@@ -71,8 +71,8 @@ print_summary() {
     echo "  Deploy root:     $OPDBUS_ROOT"
     echo
     echo "Next step:"
-    echo "  sudo deploy/runit/build-golden.sh          # prepare golden subvolume only"
-    echo "  sudo deploy/runit/build-golden.sh --dry-run # review first"
+    echo "  sudo ./activate-golden.sh                  # prepare golden and release it"
+    echo "  sudo deploy/lib/golden/build-golden.sh --dry-run # review golden only"
     echo
     echo "build-golden.sh creates the golden subvolume at $OPDBUS_ROOT/golden,"
     echo "populates it with release binaries, runit service definitions, and config."

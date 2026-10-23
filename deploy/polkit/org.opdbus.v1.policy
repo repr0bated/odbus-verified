@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- op-dbus protected tasks. The ids match the elevation plugin's policy.
+     Door calls are elevated per task with the caller's sudo password
+     (elevation.authorize_task); these declarations let a polkit-backed
+     authority and local D-Bus callers use the same actions. auth_self asks
+     every time: no retained authorization. Install under
+     /usr/share/polkit-1/actions/. -->
+<policyconfig>
+  <vendor>op-dbus</vendor>
+  <action id="org.opdbus.v1.control-plane.configure">
+    <description>Change the Control Plane agent's configuration, including its model</description>
+    <message>Authentication is required to change the Control Plane configuration</message>
+    <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_self</allow_active></defaults>
+  </action>
+  <action id="org.opdbus.v1.router.providers.configure">
+    <description>Change the router's provider profiles</description>
+    <message>Authentication is required to change the router's providers</message>
+    <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_self</allow_active></defaults>
+  </action>
+  <action id="org.opdbus.v1.router.config.migrate">
+    <description>Migrate the router configuration</description>
+    <message>Authentication is required to migrate the router configuration</message>
+    <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_self</allow_active></defaults>
+  </action>
+  <action id="org.opdbus.v1.catalog.promote">
+    <description>Promote a gallery candidate into the system-wide UI catalog</description>
+    <message>Authentication is required to change the UI catalog</message>
+    <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_self</allow_active></defaults>
+  </action>
+  <action id="org.opdbus.v1.catalog.retire">
+    <description>Retire an entry from the system-wide UI catalog</description>
+    <message>Authentication is required to change the UI catalog</message>
+    <defaults><allow_any>no</allow_any><allow_inactive>no</allow_inactive><allow_active>auth_self</allow_active></defaults>
+  </action>
+</policyconfig>
