@@ -14,21 +14,127 @@
 //!   public/mesh address and forwards into the container's socket.
 //!
 //! Fail-closed: any listener that cannot bind aborts the process rather than
-//! serving a partial port set. Existing socket paths require owner cleanup.
+//! serving a partial port set. SIGTERM/SIGINT stop listener workers and remove
+//! only socket inodes bound by this process. Crash/SIGKILL leftovers require
+//! explicit lifecycle-owner cleanup; startup never removes an existing path.
+//! Socket directories must remain under the trusted service lifecycle owner's
+//! control. The device/inode guard detects replacement before cleanup; it is
+//! not an atomic compare-and-unlink against an adversary who can rename paths.
 //! `--max-connections` bounds dialing and active connections across all listeners
 //! (default 64). Existing connections have no added idle timeout.
 
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 const DEFAULT_MAX_CONNECTIONS: usize = 64;
+const ACCEPT_INTERVAL: Duration = Duration::from_millis(50);
+static SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+// POSIX signal ABI on the supported Linux GNU/musl targets. Keep this small
+// executable dependency-free; the handler performs only a lock-free store.
+extern "C" {
+    fn signal(number: std::ffi::c_int, handler: usize) -> usize;
+}
+
+extern "C" fn request_shutdown(_: std::ffi::c_int) {
+    SHUTDOWN_REQUESTED.store(true, Ordering::Relaxed);
+}
+
+fn install_shutdown_handlers() -> std::io::Result<()> {
+    for number in [2, 15] { // SIGINT, SIGTERM
+        // SAFETY: the process-lifetime handler has the C signal ABI and uses
+        // no allocation, locks, I/O or non-signal-safe library calls.
+        if unsafe { signal(number, request_shutdown as *const () as usize) } == usize::MAX {
+            return Err(std::io::Error::last_os_error());
+        }
+    }
+    Ok(())
+}
+
+struct ListenerWorker {
+    stop: Arc<AtomicBool>,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+impl ListenerWorker {
+    fn spawn(serve: impl FnOnce(Arc<AtomicBool>) + Send + 'static) -> std::io::Result<Self> {
+        let stop = Arc::new(AtomicBool::new(false));
+        let worker_stop = Arc::clone(&stop);
+        let thread = thread::Builder::new().spawn(move || serve(worker_stop))?;
+        Ok(Self { stop, thread: Some(thread) })
+    }
+
+    fn finished(&self) -> bool {
+        self.thread.as_ref().is_some_and(thread::JoinHandle::is_finished)
+    }
+}
+
+impl Drop for ListenerWorker {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(worker) = self.thread.take() {
+            if worker.join().is_err() {
+                eprintln!("op-uds-relay: listener worker panicked during shutdown");
+            }
+        }
+    }
+}
+
+fn stop_listeners(listeners: Vec<ListenerWorker>) {
+    for worker in &listeners {
+        worker.stop.store(true, Ordering::Relaxed);
+    }
+    drop(listeners);
+}
+
+struct UnixEndpoint {
+    listener: Option<UnixListener>,
+    path: PathBuf,
+    device: u64,
+    inode: u64,
+}
+
+impl UnixEndpoint {
+    fn bind(path: PathBuf) -> std::io::Result<Self> {
+        let listener = UnixListener::bind(&path)?;
+        let metadata = std::fs::symlink_metadata(&path)?;
+        if !metadata.file_type().is_socket() {
+            return Err(std::io::Error::other("bound socket pathname changed"));
+        }
+        let endpoint = Self {
+            listener: Some(listener), path, device: metadata.dev(), inode: metadata.ino(),
+        };
+        endpoint.listener.as_ref().unwrap().set_nonblocking(true)?;
+        Ok(endpoint)
+    }
+}
+
+impl Drop for UnixEndpoint {
+    fn drop(&mut self) {
+        // Close the listening descriptor before retiring its owned name.
+        // The service owner must control parent-directory mutations during
+        // bind/chmod/cleanup; POSIX unlink has no inode-conditional variant.
+        drop(self.listener.take());
+        match std::fs::symlink_metadata(&self.path) {
+            Ok(metadata) if metadata.file_type().is_socket()
+                && (metadata.dev(), metadata.ino()) == (self.device, self.inode) => {
+                if let Err(error) = std::fs::remove_file(&self.path) {
+                    eprintln!("op-uds-relay: cannot remove owned socket {}: {error}", self.path.display());
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            _ => eprintln!("op-uds-relay: socket {} changed; refusing cleanup", self.path.display()),
+        }
+    }
+}
 
 struct Config {
     specs: Vec<Spec>,
@@ -177,21 +283,33 @@ fn serve_unix_to_tcp(
     host: String,
     port: u16,
     budget: Arc<ConnectionBudget>,
-) -> std::io::Result<()> {
+) -> std::io::Result<ListenerWorker> {
     if let Some(parent) = sock.parent() {
         std::fs::create_dir_all(parent)?;
     }
     // bind atomically refuses an existing endpoint, including a live listener
     // or symlink. A stale socket requires explicit cleanup by its lifecycle
     // owner; a second relay must never unlink and replace the first one's path.
-    let listener = UnixListener::bind(&sock)?;
+    let endpoint = UnixEndpoint::bind(sock.clone())?;
     // The host side connects as a different uid than the container's root, so
     // the socket has to be world-connectable to be reachable across the idmap.
     std::fs::set_permissions(&sock, std::fs::Permissions::from_mode(0o666))?;
     let label = format!("{}->{}:{}", sock.display(), host, port);
     println!("op-uds-relay: unix-listen {label}");
-    thread::Builder::new().spawn(move || {
-        for client in listener.incoming().flatten() {
+    ListenerWorker::spawn(move |stop| {
+        while !stop.load(Ordering::Relaxed) {
+            let client = match endpoint.listener.as_ref().unwrap().accept() {
+                Ok((client, _)) => client,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::park_timeout(ACCEPT_INTERVAL);
+                    continue;
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) => {
+                    eprintln!("op-uds-relay: {label}: accept failed: {error}");
+                    break;
+                }
+            };
             let Some(permit) = budget.try_acquire() else {
                 // Drop excess connections without injecting protocol bytes.
                 continue;
@@ -204,8 +322,8 @@ fn serve_unix_to_tcp(
                 eprintln!("op-uds-relay: cannot start connection worker: {error}");
             }
         }
-    })?;
-    Ok(())
+        drop(endpoint);
+    })
 }
 
 fn serve_tcp_to_unix(
@@ -213,12 +331,25 @@ fn serve_tcp_to_unix(
     port: u16,
     sock: PathBuf,
     budget: Arc<ConnectionBudget>,
-) -> std::io::Result<()> {
+) -> std::io::Result<ListenerWorker> {
     let listener = TcpListener::bind((bind.as_str(), port))?;
+    listener.set_nonblocking(true)?;
     let label = format!("{}:{}->{}", bind, port, sock.display());
     println!("op-uds-relay: tcp-listen {label}");
-    thread::Builder::new().spawn(move || {
-        for client in listener.incoming().flatten() {
+    ListenerWorker::spawn(move |stop| {
+        while !stop.load(Ordering::Relaxed) {
+            let client = match listener.accept() {
+                Ok((client, _)) => client,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::park_timeout(ACCEPT_INTERVAL);
+                    continue;
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) => {
+                    eprintln!("op-uds-relay: {label}: accept failed: {error}");
+                    break;
+                }
+            };
             let Some(permit) = budget.try_acquire() else {
                 continue;
             };
@@ -230,8 +361,7 @@ fn serve_tcp_to_unix(
                 eprintln!("op-uds-relay: cannot start connection worker: {error}");
             }
         }
-    })?;
-    Ok(())
+    })
 }
 
 /// `<sock>=<host>:<port>` — the container end.
@@ -305,7 +435,12 @@ fn main() -> ExitCode {
         }
     };
 
+    if let Err(error) = install_shutdown_handlers() {
+        eprintln!("op-uds-relay: cannot install shutdown handlers: {error}");
+        return ExitCode::FAILURE;
+    }
     let budget = ConnectionBudget::new(config.max_connections);
+    let mut listeners = Vec::new();
     for spec in config.specs {
         let bound = match spec {
             Spec::UnixToTcp { sock, host, port } => serve_unix_to_tcp(sock, host, port, Arc::clone(&budget)),
@@ -313,18 +448,34 @@ fn main() -> ExitCode {
         };
         // Serving a partial port set silently is worse than not starting: mail
         // would look healthy while one protocol black-holed.
-        if let Err(e) = bound {
-            eprintln!("op-uds-relay: bind failed: {e}");
-            return ExitCode::FAILURE;
+        match bound {
+            Ok(listener) => listeners.push(listener),
+            Err(error) => {
+                eprintln!("op-uds-relay: bind failed: {error}");
+                stop_listeners(listeners);
+                return ExitCode::FAILURE;
+            }
+        }
+        if SHUTDOWN_REQUESTED.load(Ordering::Relaxed) {
+            stop_listeners(listeners);
+            return ExitCode::SUCCESS;
         }
     }
 
     println!("op-uds-relay: all listeners bound; max connections {}", config.max_connections);
-    // Listener threads are detached; park the main thread to keep the process
-    // alive under the supervisor.
-    loop {
-        thread::park();
+    while !SHUTDOWN_REQUESTED.load(Ordering::Relaxed) {
+        if listeners.iter().any(ListenerWorker::finished) {
+            eprintln!("op-uds-relay: listener stopped unexpectedly");
+            stop_listeners(listeners);
+            return ExitCode::FAILURE;
+        }
+        thread::park_timeout(ACCEPT_INTERVAL);
     }
+    // Connection workers terminate with this process, as under the previous
+    // supervisor stop behavior. Normal shutdown joins listeners first so their
+    // Unix socket cleanup completes before the supervisor can restart us.
+    stop_listeners(listeners);
+    ExitCode::SUCCESS
 }
 
 #[cfg(test)]
@@ -452,6 +603,64 @@ mod tests {
         std::fs::remove_dir(dir).expect("fixture cleanup");
     }
 
+    #[test]
+    fn stopped_listener_releases_its_owned_path_for_restart() {
+        let dir = std::env::temp_dir().join(format!("op-uds-relay-restart-test-{}", std::process::id()));
+        std::fs::create_dir(&dir).expect("exclusive fixture directory");
+        let sock = dir.join("owned.sock");
+        for _ in 0..2 {
+            let worker = serve_unix_to_tcp(
+                sock.clone(), "127.0.0.1".into(), 1, ConnectionBudget::new(1),
+            ).expect("bind owned listener");
+            assert!(sock.exists());
+            stop_listeners(vec![worker]);
+            assert!(!sock.exists());
+        }
+        std::fs::remove_dir(dir).expect("fixture cleanup");
+    }
+
+    #[test]
+    fn shutdown_retains_a_replaced_socket_path() {
+        let dir = std::env::temp_dir().join(format!("op-uds-relay-replaced-test-{}", std::process::id()));
+        std::fs::create_dir(&dir).expect("exclusive fixture directory");
+        let sock = dir.join("owned.sock");
+        let worker = serve_unix_to_tcp(
+            sock.clone(), "127.0.0.1".into(), 1, ConnectionBudget::new(1),
+        ).expect("bind owned listener");
+        let old = dir.join("old.sock");
+        std::fs::rename(&sock, &old).expect("retain old inode");
+        let replacement = UnixListener::bind(&sock).expect("replacement listener");
+        let before = std::fs::symlink_metadata(&sock).unwrap();
+        stop_listeners(vec![worker]);
+        let after = std::fs::symlink_metadata(&sock).expect("replacement retained");
+        assert_eq!((before.dev(), before.ino()), (after.dev(), after.ino()));
+        drop(replacement);
+        std::fs::remove_file(sock).unwrap();
+        std::fs::remove_file(old).unwrap();
+        std::fs::remove_dir(dir).unwrap();
+    }
+
+    #[test]
+    fn partial_startup_cleanup_keeps_the_preexisting_listener() {
+        let dir = std::env::temp_dir().join(format!("op-uds-relay-startup-test-{}", std::process::id()));
+        std::fs::create_dir(&dir).expect("exclusive fixture directory");
+        let owned = dir.join("owned.sock");
+        let occupied = dir.join("occupied.sock");
+        let other = UnixListener::bind(&occupied).expect("preexisting listener");
+        let worker = serve_unix_to_tcp(
+            owned.clone(), "127.0.0.1".into(), 1, ConnectionBudget::new(1),
+        ).unwrap();
+        assert!(serve_unix_to_tcp(
+            occupied.clone(), "127.0.0.1".into(), 1, ConnectionBudget::new(1),
+        ).is_err());
+        stop_listeners(vec![worker]);
+        assert!(!owned.exists());
+        assert!(occupied.exists());
+        drop(other);
+        std::fs::remove_file(occupied).unwrap();
+        std::fs::remove_dir(dir).unwrap();
+    }
+
     /// End-to-end through both hops: tcp -> unix -> tcp, the exact shape mail
     /// uses (host public port -> shared socket -> container loopback).
     #[test]
@@ -473,11 +682,11 @@ mod tests {
         });
 
         let budget = ConnectionBudget::new(DEFAULT_MAX_CONNECTIONS);
-        serve_unix_to_tcp(sock.clone(), "127.0.0.1".to_string(), backend_port, Arc::clone(&budget)).expect("unix hop");
+        let unix_hop = serve_unix_to_tcp(sock.clone(), "127.0.0.1".to_string(), backend_port, Arc::clone(&budget)).expect("unix hop");
         let front = TcpListener::bind("127.0.0.1:0").expect("front probe");
         let front_port = front.local_addr().expect("addr").port();
         drop(front);
-        serve_tcp_to_unix("127.0.0.1".to_string(), front_port, sock.clone(), budget).expect("tcp hop");
+        let tcp_hop = serve_tcp_to_unix("127.0.0.1".to_string(), front_port, sock.clone(), budget).expect("tcp hop");
 
         let mut client =
             TcpStream::connect(("127.0.0.1", front_port)).expect("connect through relay");
@@ -486,6 +695,7 @@ mod tests {
         client.read_exact(&mut got).expect("read echo");
         assert_eq!(&got, b"ping");
 
+        stop_listeners(vec![unix_hop, tcp_hop]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
