@@ -5,6 +5,14 @@ edition.workspace = true
 description = "Schema-driven FUSE projection over authoritative typed OP-DBUS blobs"
 license = "MIT"
 
+[features]
+# Requires plugin_types.rs generated from the selected sealed catalog.
+generated-example = []
+
+[[example]]
+name = "typed_use_generated"
+required-features = ["generated-example"]
+
 [dependencies]
 anyhow = "1"
 blake3 = "1"
