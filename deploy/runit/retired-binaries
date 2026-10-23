@@ -10,6 +10,8 @@ op-waypipe-grpc
 op-chat
 op-mcp-shim
 zeroclaw-gui
+# Native runtime renamed to threetched; keep the old executable out of releases.
+zeroclaw
 # Stale pre-runit build outputs: the current crate produces op-runit-systemctl
 # and svd. Scanning target/release must not resurrect earlier s6 executables.
 op-s6-systemctl

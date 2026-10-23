@@ -1,15 +1,23 @@
 #!/bin/sh
 set -eu
 
+# Qdrant is reached over TCP only. The retired /var/lib/opdbus-runtime sockets
+# are no longer used; the qdrant-recovered proxy binds 127.0.0.1:6333/6334.
+# This service only keeps the supervised readiness signal for the gRPC port.
 exec 2>&1
 
-SOCKET=${QDRANT_GRPC_SOCKET:-/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock}
+HOST=${QDRANT_GRPC_HOST:-127.0.0.1}
 PORT=${QDRANT_GRPC_PORT:-6334}
+probe() {
+    timeout 3 /bin/bash -c 'exec 3<>"/dev/tcp/$1/$2"' qdrant-probe "$HOST" "$PORT"
+}
 
-while [ ! -S "$SOCKET" ]; do
-    sleep 1
+until probe 2>/dev/null; do
+    echo "qdrant-grpc-loopback: waiting for ${HOST}:${PORT}"
+    sleep 2
 done
 
-exec socat \
-    "TCP-LISTEN:${PORT},bind=127.0.0.1,reuseaddr,fork" \
-    "UNIX-CONNECT:${SOCKET}"
+echo "qdrant-grpc-loopback: ${HOST}:${PORT} reachable"
+while sleep 30; do
+    probe 2>/dev/null || echo "qdrant-grpc-loopback: ${HOST}:${PORT} unreachable"
+done

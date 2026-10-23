@@ -1,0 +1,55 @@
+#!/bin/sh
+# Mount the identity's sealed namespace independently of bridge/network readiness.
+set -eu
+exec 2>&1
+
+THREETCHED=/opt/op-dbus/current/bin/threetched-fs
+catalog=/opt/op-dbus/current/var/lib/opdbus/plugin-blobs
+session_file=/etc/op-dbus/human-lungs-session
+[ -x "$THREETCHED" ] || { echo "missing $THREETCHED" >&2; exit 1; }
+[ -r "$catalog/.manifest.json" ] || { echo "missing sealed release catalog" >&2; exit 1; }
+threetched_schema_hash=$(jq -er '.plugins.threetched | select(type == "string" and test("^[0-9a-f]{64}$"))' "$catalog/.manifest.json") || {
+    echo "sealed release catalog is missing threetched; prepare it with opblob" >&2
+    exit 1
+}
+[ -r "$session_file" ] || { echo "missing $session_file" >&2; exit 1; }
+session=$(tr -d '[:space:]' <"$session_file")
+case "$session" in
+    ????????-????-????-????-????????????) ;;
+    *) echo "invalid human lungs session in $session_file" >&2; exit 1 ;;
+esac
+
+mountpoint=/run/mount/3tchedFS
+store=/dev/shm/3tchedfs
+state=/dev/shm/opdbus/state
+lungs=/run/opdbus/lungs/lungs.sock
+install -d -m 0755 "$mountpoint"
+# Explicit declaration-only capture does not fabricate missing live state.
+# State reads and operation calls
+# reach the authoritative bridge when it becomes available; mounting does not
+# establish authorization or fabricate a successful operation receipt.
+"$THREETCHED" --store "$store" capture --schema-only --catalog "$catalog" --state "$state" >/dev/null
+# Inspect the pinned sealed declaration; do not rediscover the backing binary
+# or require a backend connection on the mount's startup path.
+"$THREETCHED" --store "$store" inspect --plugin threetched |
+    jq -e --arg hash "$threetched_schema_hash" '
+        .plugin_id == "threetched" and .source_schema_hash == $hash and
+        .schema.name == "threetched" and
+        (.schema.methods | type == "object" and length > 0)
+    ' >/dev/null || { echo "sealed threetched method inventory is absent" >&2; exit 1; }
+owner_file=/etc/op-dbus/human-lungs-call-owner-uid
+owner_uid=1001
+if [ -r "$owner_file" ]; then
+    owner_uid=$(tr -d '[:space:]' <"$owner_file")
+    case "$owner_uid" in
+        ''|*[!0-9]*) echo "invalid local lungs owner in $owner_file" >&2; exit 1 ;;
+    esac
+fi
+exec "$THREETCHED" --store "$store" mount \
+    --allow-other \
+    --call-owner-uid "$owner_uid" \
+    --auto-unmount \
+    --state "$state" \
+    --lungs-socket "$lungs" \
+    --lungs-session "$session" \
+    "$mountpoint"

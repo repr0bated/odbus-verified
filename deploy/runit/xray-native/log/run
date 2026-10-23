@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+install -d -o xray -g xray -m 0750 /var/log/xray
+exec /usr/bin/chpst -u xray:xray /usr/bin/svlogd -tt /var/log/xray

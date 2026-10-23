@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+cd /home/jeremy
+exec /usr/bin/runuser -u jeremy -- \
+  /opt/op-dbus/current/opt/opdbus/paseo/0.10.3/node_modules/.bin/paseo \
+  daemon run --home /home/jeremy/.paseo
