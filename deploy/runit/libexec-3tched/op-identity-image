@@ -325,6 +325,7 @@ verify_full() {
 prepare() {
     local release_id=$1 provenance_input=$2 stage status id version packages_tmp components_tmp \
         critical release layout package_count artifact_hashes defaults id_value version_value fstab_status
+    local -a missing_components=()
     [[ $release_id =~ ^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$ ]] || fail 'invalid release ID'
     [[ $(id -u) == 0 ]] || fail 'prepare requires host root to create root-owned guest mountpoint directories'
     [[ -f $provenance_input && ! -L $provenance_input && -r $provenance_input ]] || fail 'provenance input must be an ordinary readable JSON file'
@@ -364,7 +365,12 @@ prepare() {
     printf 'component\tstatus\tversion\trequired_for\n' > "$components_tmp"
     for id in "${REQUIRED_COMPONENTS[@]}"; do
         version=$(awk -F '\t' -v package="$id" '$1==package {print $2; found=1; exit} END {if (!found) print "missing"}' "$IMAGE/packages.tsv")
-        if [[ $version == missing ]]; then status=missing; else status=present; fi
+        if [[ $version == missing ]]; then
+            status=missing
+            missing_components+=("$id")
+        else
+            status=present
+        fi
         case $id in
             base-files) release='OS identity and base filesystem metadata' ;;
             dpkg) release='offline installed-package inventory' ;;
@@ -374,6 +380,10 @@ prepare() {
         printf '%s\t%s\t%s\t%s\n' "$id" "$status" "$version" "$release" >> "$components_tmp"
     done
     mv -- "$components_tmp" "$IMAGE/components.tsv"
+    chmod 0444 -- "$IMAGE/components.tsv"
+    # Keep the complete failure inventory, but never publish a valid manifest
+    # for an image missing a component declared mandatory above.
+    ((${#missing_components[@]} == 0)) || fail "required image components missing: ${missing_components[*]}"
     critical=$(critical_file_records)
     printf '%s\n' "$critical" > "$IMAGE/critical-files.json"
     chmod 0444 -- "$IMAGE/components.tsv" "$IMAGE/critical-files.json"
