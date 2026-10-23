@@ -1,7 +1,10 @@
 //! ⚖️ Tool Profiles — R14
 //!
-//! Controls which tools are exposed to agents to reduce token cost.
-//! Minimal (5), Standard (10), Full (16).
+//! Legacy NotebookLM tool lists and token estimates: Minimal (5), Standard
+//! (10), Full (16). COGNITIVE_TOOL_PROFILE selects diagnostic estimates only;
+//! it does not filter the current CognitiveServer registry or authorize calls.
+//! A current canonical-tool mapping is required before using these lists as a
+//! runtime exposure policy. Admission and grants remain authoritative.
 
 use serde::{Deserialize, Serialize};
 
@@ -78,6 +81,7 @@ pub fn tools_for_profile(profile: ToolProfile) -> Vec<&'static str> {
     }
 }
 
+/// Membership in the legacy estimate, not a runtime authorization decision.
 pub fn is_tool_allowed(profile: ToolProfile, tool_name: &str) -> bool {
     tools_for_profile(profile).contains(&tool_name)
 }
