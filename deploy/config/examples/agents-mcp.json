@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-    "op-dbus-unified": {
-      "serverUrl": "https://10.0.0.3:8090/mcp",
+    "opdbus_compact": {
+      "serverUrl": "https://10.0.0.2:8090/mcp?opdbus_mode=compact",
       "transport": "http",
-      "description": "Unified authenticated MCP, including cognitive agents and memory"
+      "description": "Compact OP-DBUS MCP. Configure the caller's identity credential through the client's protected settings; this example contains no credential."
     }
   }
 }

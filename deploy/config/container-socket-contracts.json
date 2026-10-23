@@ -113,8 +113,7 @@
         "qdrant-socat-grpc.service"
       ],
       "unix_sockets": [
-        "/run/rust-network-manager/rust-network-manager.sock",
-        "/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock"
+        "/run/rust-network-manager/rust-network-manager.sock"
       ],
       "tcp_ports": [
         6333,
@@ -180,8 +179,7 @@
     {
       "name": "qdrant-grpc-loopback",
       "depends_on": [
-        "container:qdrant",
-        "socket:/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock"
+        "container:qdrant"
       ],
       "address": "127.0.0.1",
       "port": 6334
@@ -200,7 +198,7 @@
       "depends_on": [
         "service:op-grpc-bridge-zeroclaw"
       ],
-      "address": "10.200.0.2",
+      "address": "10.0.0.2",
       "port": 8090
     }
   ]

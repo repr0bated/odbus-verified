@@ -1,0 +1,3 @@
+ioctl errno 1 [1,0x4008941a,SCMP_CMP_MASKED_EQ,0xffffffff]
+ioctl errno 1 [1,0x5000940f,SCMP_CMP_MASKED_EQ,0xffffffff]
+ioctl errno 1 [1,0x5000943f,SCMP_CMP_MASKED_EQ,0xffffffff]
