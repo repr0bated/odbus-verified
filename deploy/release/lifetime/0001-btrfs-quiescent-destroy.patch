@@ -1,0 +1,1086 @@
+Subject: [PATCH] btrfs: exact-generation quiescent subvolume destruction
+Base-commit: cb444174e58f61ebed6c4140af0579cdcc6fa1e1
+Base-tag: 6.18.57-xanmod1
+Source: https://gitlab.com/xanmod/linux/-/tree/cb444174e58f61ebed6c4140af0579cdcc6fa1e1
+
+Lineage: completed preserved 6.18.56-xanmod1 scratch first; rebased onto
+the owner-approved full 6.18.57-xanmod1 stable update, not selected backports.
+The original scratch and completed original-base patch are preserved.
+
+Add the downstream 96-byte BTRFS_IOC_SNAP_DESTROY_QUIESCENT ABI, request
+0x406094ff on x86_64. Match FSID, subvolume ID, native UUID and received
+UUID, reject flags/reserved input, and require a readonly subvolume.
+This is not an upstream ioctl allocation or an ordinary-delete fallback.
+
+Count every production inode/root association until irreversible inode
+teardown, including I_NEW, unhashed synthetic directories and replaced or
+dying objects absent from the inode xarray. Dummy metadata inodes and new
+subvolume inodes are counted too; sanity-test inodes have their separate
+test destructor and never enter this production accounting. Count ownership
+includes a root reference. The xarray is only a cache-eviction aid.
+
+Close cached iget and new publication with a per-root rwsem. Admissions and
+closure use trylocks: do not wait behind deletion while holding transaction
+or inode locks. Internal relocation/cache walkers may take temporary inode
+references but cannot publish files, dentries or mounts. Canonical READY
+publication is required before a filesystem root can instantiate inodes.
+
+Register every root before reading its disk item. An immutable constructor
+ID avoids reading root_key while it is initialized. Registry removal happens
+only at final root put, under the same spinlock used to grab nonzero refs;
+zero references cannot revive and imply zero counted inodes. Linked deletion
+rejects preexisting same-ID constructors and publishes closure atomically.
+New constructors inherit closure; duplicates retry the canonical object,
+never publish a stale copy. READY is sampled under the registry lock before
+reading root-item identity. subvol_sem serializes identity/readonly changes.
+
+For linked deletion, hold parent/victim inode locks, then subvol_sem, then
+the nonblocking publication gate. Unhash (do not invalidate a foreign mount),
+drain pre-unhash RCU walks and prune unused clean dentries. Require exactly
+the administrative root inode, and inspect inode plus dentry counts together
+under i_lock then d_lock. Failure rehashes the same dentry and reopens only
+an intact pre-unlink root. Successful unlink leaves that incarnation closed.
+
+ENOENT requires a separate absent-generation proof, not pathname or radix
+absence. Pin any canonical root across the entire census; otherwise inspect
+the live root tree. A transient per-ID constructor barrier spans disk lookup
+and the complete orphan registry scan, including final-free gaps with no
+surviving root. All matching ready orphan objects must have exact identity,
+be readonly, have publication closed and have zero live inodes. Incomplete
+constructors return EBUSY without reading mutable identity. Clear the barrier
+atomically with the final registry scan; surviving objects remain closed.
+Subsequent external handle/mount lookup rejects missing or zero-ref roots.
+
+The registry spinlock is never held across sleeping work or root puts.
+Cursor and canonical references stabilize objects across cache pruning.
+No global VFS gate, new syscall dispatcher or process-owned lease is added.
+Normal VFS ownership covers mounts/private OverlayFS lowers, O_PATH, files,
+mappings, cwd/root/exe, SCM_RIGHTS, registered io_uring and loop backing files.
+Dirty cache is not discarded to manufacture quiescence. Busy or temporary
+constructor/cache activity may conservatively prevent deletion.
+
+Preserve the first unlink error through transaction teardown. Any error once
+unlink starts becomes EIO, never ENOENT or a safe pre-unlink rejection.
+Filesystem-error state also returns EIO; recovery must reconcile exact disk
+identity and transaction state. No old references survive a kernel reboot.
+
+Source implementation only: no compilation, tests, formatter, VM execution,
+installation, guard activation or reboot is represented by this artifact.
+Parent-owned review/build and isolated actual-operation safety smoke remain
+necessary before installing or booting a kernel on authoritative data.
+
+diff --git a/fs/btrfs/btrfs_inode.h b/fs/btrfs/btrfs_inode.h
+--- a/fs/btrfs/btrfs_inode.h
++++ b/fs/btrfs/btrfs_inode.h
+@@ -32,6 +32,7 @@
+ struct btrfs_bio;
+ struct btrfs_file_extent;
+ struct btrfs_delayed_node;
++struct btrfs_ioctl_quiescent_destroy_args;
+ 
+ /*
+  * Since we search a directory based on f_pos (struct dir_context::pos) we have
+@@ -567,6 +568,11 @@
+ 		   struct btrfs_inode *parent_inode, struct btrfs_inode *inode,
+ 		   const struct fscrypt_str *name, bool add_backref, u64 index);
+ int btrfs_delete_subvolume(struct btrfs_inode *dir, struct dentry *dentry);
++int btrfs_delete_subvolume_quiescent(struct btrfs_inode *dir,
++				    struct dentry *dentry,
++				    const struct btrfs_ioctl_quiescent_destroy_args *args);
++int btrfs_quiesce_absent_subvolume(struct btrfs_fs_info *fs_info,
++				  const struct btrfs_ioctl_quiescent_destroy_args *args);
+ int btrfs_truncate_block(struct btrfs_inode *inode, u64 offset, u64 start, u64 end);
+ 
+ int btrfs_start_delalloc_snapshot(struct btrfs_root *root, bool in_reclaim_context);
+diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -10,6 +10,7 @@
+ #include <linux/spinlock.h>
+ #include <linux/rbtree.h>
+ #include <linux/mutex.h>
++#include <linux/rwsem.h>
+ #include <linux/wait.h>
+ #include <linux/list.h>
+ #include <linux/atomic.h>
+@@ -145,6 +146,10 @@
+ 	BTRFS_ROOT_UNFINISHED_DROP,
+ 	/* This reloc root needs to have its buffers lockdep class reset. */
+ 	BTRFS_ROOT_RESET_LOCKDEP_CLASS,
++	/* Closed inode publication during/after quiescent subvolume deletion. */
++	BTRFS_ROOT_QUIESCING,
++	/* Fully initialized and admitted to the canonical filesystem-root index. */
++	BTRFS_ROOT_LIFETIME_READY,
+ };
+ 
+ /*
+@@ -225,6 +230,20 @@
+ 	/* Xarray that keeps track of in-memory inodes. */
+ 	struct xarray inodes;
+ 
++	/*
++	 * Counts every inode associated with this root, including I_NEW,
++	 * unhashed and dying inodes which are not represented by ->inodes.
++	 * External inode acquisition/publication holds quiesce_sem for read;
++	 * checked deletion holds it for write through the unlink.
++	 */
++	struct rw_semaphore quiesce_sem;
++	atomic_long_t live_inodes;
++	/* Immutable after allocation; root_key is filled by the disk reader. */
++	u64 lifetime_id;
++	/* Includes in-flight constructors and orphans until their final put. */
++	struct list_head lifetime_list;
++	struct list_head quiesce_list;
++
+ 	/* Xarray that keeps track of delayed nodes of every inode. */
+ 	struct xarray delayed_nodes;
+ 	/*
+diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -645,6 +645,11 @@
+ 	root->nr_ordered_extents = 0;
+ 	xa_init(&root->inodes);
+ 	xa_init(&root->delayed_nodes);
++	init_rwsem(&root->quiesce_sem);
++	atomic_long_set(&root->live_inodes, 0);
++	root->lifetime_id = objectid;
++	INIT_LIST_HEAD(&root->lifetime_list);
++	INIT_LIST_HEAD(&root->quiesce_list);
+ 
+ 	btrfs_init_root_block_rsv(root);
+ 
+@@ -689,6 +694,28 @@
+ 
+ 	spin_lock_init(&root->root_item_lock);
+ 	btrfs_qgroup_init_swapped_blocks(&root->swapped_blocks);
++	/*
++	 * Register before reading a root item, not just at radix insertion:
++	 * a stalled constructor must not publish a stale copy after deletion.
++	 * Allocation inherits closure under the same lock used by the deleter.
++	 */
++	spin_lock(&fs_info->fs_roots_radix_lock);
++	{
++		struct btrfs_root *closed;
++
++		if (fs_info->absent_quiesce_id == objectid)
++			set_bit(BTRFS_ROOT_QUIESCING, &root->state);
++		list_for_each_entry(closed, &fs_info->quiescing_roots, quiesce_list) {
++			if (closed->lifetime_id == objectid) {
++				set_bit(BTRFS_ROOT_QUIESCING, &root->state);
++				break;
++			}
++		}
++		if (test_bit(BTRFS_ROOT_QUIESCING, &root->state))
++			list_add_tail(&root->quiesce_list, &fs_info->quiescing_roots);
++	}
++	list_add_tail(&root->lifetime_list, &fs_info->lifetime_roots);
++	spin_unlock(&fs_info->fs_roots_radix_lock);
+ #ifdef CONFIG_BTRFS_DEBUG
+ 	INIT_LIST_HEAD(&root->leak_list);
+ 	spin_lock(&fs_info->fs_roots_radix_lock);
+@@ -1122,7 +1149,7 @@
+ 	return 0;
+ }
+ 
+-static struct btrfs_root *btrfs_lookup_fs_root(struct btrfs_fs_info *fs_info,
++struct btrfs_root *btrfs_lookup_fs_root(struct btrfs_fs_info *fs_info,
+ 					       u64 root_id)
+ {
+ 	struct btrfs_root *root;
+@@ -1180,12 +1207,18 @@
+ 		return ret;
+ 
+ 	spin_lock(&fs_info->fs_roots_radix_lock);
+-	ret = radix_tree_insert(&fs_info->fs_roots_radix,
+-				(unsigned long)btrfs_root_id(root),
+-				root);
++	/* A duplicate retries the canonical object, not its closed stale copy. */
++	if (radix_tree_lookup(&fs_info->fs_roots_radix, btrfs_root_id(root)))
++		ret = -EEXIST;
++	else if (test_bit(BTRFS_ROOT_QUIESCING, &root->state))
++		ret = -ESTALE;
++	else
++		ret = radix_tree_insert(&fs_info->fs_roots_radix,
++				       (unsigned long)btrfs_root_id(root), root);
+ 	if (ret == 0) {
+ 		btrfs_grab_root(root);
+ 		set_bit(BTRFS_ROOT_IN_RADIX, &root->state);
++		set_bit(BTRFS_ROOT_LIFETIME_READY, &root->state);
+ 	}
+ 	spin_unlock(&fs_info->fs_roots_radix_lock);
+ 	radix_tree_preload_end();
+@@ -1820,6 +1853,8 @@
+ 		return;
+ 
+ 	if (refcount_dec_and_test(&root->refs)) {
++		/* Inode ownership prevents final put until the census reaches zero. */
++		WARN_ON(atomic_long_read(&root->live_inodes));
+ 		if (WARN_ON(!xa_empty(&root->inodes)))
+ 			xa_destroy(&root->inodes);
+ 		if (WARN_ON(!xa_empty(&root->delayed_nodes)))
+@@ -1828,11 +1863,13 @@
+ 		if (root->anon_dev)
+ 			free_anon_bdev(root->anon_dev);
+ 		free_root_extent_buffers(root);
+-#ifdef CONFIG_BTRFS_DEBUG
+ 		spin_lock(&root->fs_info->fs_roots_radix_lock);
++		list_del_init(&root->lifetime_list);
++		list_del_init(&root->quiesce_list);
++#ifdef CONFIG_BTRFS_DEBUG
+ 		list_del_init(&root->leak_list);
+-		spin_unlock(&root->fs_info->fs_roots_radix_lock);
+ #endif
++		spin_unlock(&root->fs_info->fs_roots_radix_lock);
+ 		kfree(root);
+ 	}
+ }
+@@ -1913,6 +1950,7 @@
+ 	btrfs_extent_map_tree_init(&BTRFS_I(inode)->extent_tree);
+ 
+ 	BTRFS_I(inode)->root = btrfs_grab_root(fs_info->tree_root);
++	atomic_long_inc(&fs_info->tree_root->live_inodes);
+ 	set_bit(BTRFS_INODE_DUMMY, &BTRFS_I(inode)->runtime_flags);
+ 	__insert_inode_hash(inode, hash);
+ 	set_bit(AS_KERNEL_FILE, &inode->i_mapping->flags);
+@@ -2751,6 +2789,9 @@
+ 
+ 	INIT_LIST_HEAD(&fs_info->trans_list);
+ 	INIT_LIST_HEAD(&fs_info->dead_roots);
++	INIT_LIST_HEAD(&fs_info->lifetime_roots);
++	INIT_LIST_HEAD(&fs_info->quiescing_roots);
++	fs_info->absent_quiesce_id = 0;
+ 	INIT_LIST_HEAD(&fs_info->delayed_iputs);
+ 	INIT_LIST_HEAD(&fs_info->delalloc_roots);
+ 	INIT_LIST_HEAD(&fs_info->caching_block_groups);
+diff --git a/fs/btrfs/disk-io.h b/fs/btrfs/disk-io.h
+--- a/fs/btrfs/disk-io.h
++++ b/fs/btrfs/disk-io.h
+@@ -66,6 +66,8 @@
+ 			 struct btrfs_root *root);
+ void btrfs_free_fs_roots(struct btrfs_fs_info *fs_info);
+ 
++/* Cached-only lookup; the caller must put a non-NULL returned reference. */
++struct btrfs_root *btrfs_lookup_fs_root(struct btrfs_fs_info *fs_info, u64 root_id);
+ struct btrfs_root *btrfs_get_fs_root(struct btrfs_fs_info *fs_info,
+ 				     u64 objectid, bool check_ref);
+ struct btrfs_root *btrfs_get_new_fs_root(struct btrfs_fs_info *fs_info,
+diff --git a/fs/btrfs/fs.h b/fs/btrfs/fs.h
+--- a/fs/btrfs/fs.h
++++ b/fs/btrfs/fs.h
+@@ -473,6 +473,15 @@
+ 
+ 	spinlock_t fs_roots_radix_lock;
+ 	struct radix_tree_root fs_roots_radix;
++	/* Includes orphan roots removed from fs_roots_radix but still retained. */
++	struct list_head lifetime_roots; /* Protected by fs_roots_radix_lock. */
++	struct list_head quiescing_roots; /* Same lock; normally empty. */
++	/*
++	 * Transient constructor barrier for an absent-generation census, even
++	 * when no root object survives. subvol_sem serializes its owner; all
++	 * accesses also hold fs_roots_radix_lock. Zero means no census.
++	 */
++	u64 absent_quiesce_id;
+ 
+ 	/* Block group cache stuff */
+ 	rwlock_t block_group_cache_lock;
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -34,6 +34,7 @@
+ #include <linux/iomap.h>
+ #include <linux/unaligned.h>
+ #include <linux/fsverity.h>
++#include <linux/rcupdate.h>
+ #include "misc.h"
+ #include "ctree.h"
+ #include "disk-io.h"
+@@ -81,6 +82,24 @@
+ 	struct btrfs_root *root;
+ };
+ 
++/*
++ * Do not wait behind quiescent deletion: callers can already hold filesystem
++ * transaction/inode locks. A successful admission stays held until the inode
++ * is accounted and its reference has been handed to the caller.
++ */
++static int btrfs_inode_admit(struct btrfs_root *root)
++{
++	if (!down_read_trylock(&root->quiesce_sem))
++		return -EBUSY;
++	if (test_bit(BTRFS_ROOT_QUIESCING, &root->state) ||
++	    (btrfs_is_fstree(root->lifetime_id) &&
++	     !test_bit(BTRFS_ROOT_LIFETIME_READY, &root->state))) {
++		up_read(&root->quiesce_sem);
++		return -ESTALE;
++	}
++	return 0;
++}
++
+ struct btrfs_rename_ctx {
+ 	/* Output field. Stores the index number of the old directory entry. */
+ 	u64 index;
+@@ -4666,7 +4685,8 @@
+ 	struct btrfs_inode *inode;
+ 	u64 min_ino = 0;
+ 
+-	if (!BTRFS_FS_ERROR(fs_info))
++	if (!BTRFS_FS_ERROR(fs_info) &&
++	    !test_bit(BTRFS_ROOT_QUIESCING, &root->state))
+ 		WARN_ON(btrfs_root_refs(&root->root_item) != 0);
+ 
+ 	inode = btrfs_find_first_inode(root, min_ino);
+@@ -4685,7 +4705,104 @@
+ 	}
+ }
+ 
+-int btrfs_delete_subvolume(struct btrfs_inode *dir, struct dentry *dentry)
++static void btrfs_reopen_root(struct btrfs_root *root)
++{
++	spin_lock(&root->fs_info->fs_roots_radix_lock);
++	clear_bit(BTRFS_ROOT_QUIESCING, &root->state);
++	list_del_init(&root->quiesce_list);
++	spin_unlock(&root->fs_info->fs_roots_radix_lock);
++}
++
++static void btrfs_close_orphan_root(struct btrfs_root *root)
++{
++	spin_lock(&root->fs_info->fs_roots_radix_lock);
++	if (!test_and_set_bit(BTRFS_ROOT_QUIESCING, &root->state))
++		list_add_tail(&root->quiesce_list, &root->fs_info->quiescing_roots);
++	spin_unlock(&root->fs_info->fs_roots_radix_lock);
++}
++
++/*
++ * The caller holds the parent and victim inode locks and subvol_sem.
++ * On success quiesce_sem remains write-locked until the unlink completes.
++ *
++ * Counts are a census of inode objects, not opens. An inode remains counted
++ * while any mount, dentry, file, mapping or deferred file transfer retains it,
++ * including objects no longer present in root->inodes. New publication and
++ * cached btrfs_iget acquisitions cannot cross the write side of this gate.
++ */
++static int btrfs_quiesce_subvolume(struct dentry *dentry, bool *was_hashed)
++{
++	struct inode *inode = d_inode(dentry);
++	struct btrfs_root *root = BTRFS_I(inode)->root;
++	struct btrfs_root *other;
++	bool exclusive;
++	int ret = -EBUSY;
++
++	if (!down_write_trylock(&root->quiesce_sem))
++		return -EBUSY;
++	spin_lock(&root->fs_info->fs_roots_radix_lock);
++	if (test_bit(BTRFS_ROOT_QUIESCING, &root->state)) {
++		ret = -ESTALE;
++		goto unlock_registry;
++	}
++	/*
++	 * Reject a preexisting duplicate or unfinished constructor. New root
++	 * allocations inherit closure under this same registry lock; they
++	 * cannot subsequently publish a stale pre-unlink root-item copy.
++	 */
++	list_for_each_entry(other, &root->fs_info->lifetime_roots, lifetime_list) {
++		if (other != root && other->lifetime_id == root->lifetime_id &&
++		    refcount_read(&other->refs) != 0)
++			goto unlock_registry;
++	}
++	set_bit(BTRFS_ROOT_QUIESCING, &root->state);
++	list_add_tail(&root->quiesce_list, &root->fs_info->quiescing_roots);
++	spin_unlock(&root->fs_info->fs_roots_radix_lock);
++
++	/*
++	 * Do not invalidate: that would detach someone else's mounted tree.
++	 * Unhash only, then drain pre-unhash RCU path walks before interpreting
++	 * dentry reference counts. The parent inode lock excludes a replacement
++	 * lookup/rename, so failure can rehash this exact dentry for its holders.
++	 */
++	*was_hashed = !d_unhashed(dentry);
++	d_drop(dentry);
++	synchronize_rcu();
++	shrink_dcache_parent(dentry);
++	btrfs_prune_dentries(root);
++
++	if (atomic_long_read_acquire(&root->live_inodes) != 1)
++		goto busy;
++
++	/*
++	 * The deletion's own root is the only allowed object. It must have no
++	 * independently retained inode or dentry alias. Test both counts under
++	 * their locks together: separate samples could miss a reference being
++	 * transferred from a dentry to its inode. Unhashed + drained RCU + the
++	 * publication gate means no new external owner can appear after this.
++	 */
++	spin_lock(&inode->i_lock);
++	spin_lock(&dentry->d_lock);
++	exclusive = icount_read(inode) == 1 &&
++		    dentry->d_lockref.count == 1 && d_unhashed(dentry);
++	spin_unlock(&dentry->d_lock);
++	spin_unlock(&inode->i_lock);
++	if (exclusive)
++		return 0;
++busy:
++	if (*was_hashed)
++		d_rehash(dentry);
++	btrfs_reopen_root(root);
++	up_write(&root->quiesce_sem);
++	return ret;
++unlock_registry:
++	spin_unlock(&root->fs_info->fs_roots_radix_lock);
++	up_write(&root->quiesce_sem);
++	return ret;
++}
++
++static int __btrfs_delete_subvolume(struct btrfs_inode *dir, struct dentry *dentry,
++		const struct btrfs_ioctl_quiescent_destroy_args *args)
+ {
+ 	struct btrfs_root *root = dir->root;
+ 	struct btrfs_fs_info *fs_info = root->fs_info;
+@@ -4695,10 +4812,31 @@
+ 	struct btrfs_block_rsv block_rsv;
+ 	u64 root_flags;
+ 	u64 qgroup_reserved = 0;
+-	int ret;
++	int ret, end_ret;
++	bool quiesced = false;
++	bool was_hashed = false;
++	bool unlink_started = false;
+ 
+ 	down_write(&fs_info->subvol_sem);
+ 
++	if (args) {
++		if (btrfs_root_id(dest) != args->subvolid ||
++		    memcmp(dest->root_item.uuid, args->uuid, BTRFS_UUID_SIZE) ||
++		    memcmp(dest->root_item.received_uuid, args->received_uuid,
++			   BTRFS_UUID_SIZE)) {
++			ret = -ESTALE;
++			goto out_up_write;
++		}
++		if (!btrfs_root_readonly(dest)) {
++			ret = -EROFS;
++			goto out_up_write;
++		}
++		ret = btrfs_quiesce_subvolume(dentry, &was_hashed);
++		if (ret)
++			goto out_up_write;
++		quiesced = true;
++	}
++
+ 	/*
+ 	 * Don't allow to delete a subvolume with send in progress. This is
+ 	 * inside the inode lock so the error handling that has to drop the bit
+@@ -4710,7 +4848,7 @@
+ 		btrfs_warn(fs_info,
+ 			   "attempt to delete subvolume %llu during send",
+ 			   btrfs_root_id(dest));
+-		ret = -EPERM;
++		ret = args ? -EBUSY : -EPERM;
+ 		goto out_up_write;
+ 	}
+ 	if (atomic_read(&dest->nr_swapfiles)) {
+@@ -4718,7 +4856,7 @@
+ 		btrfs_warn(fs_info,
+ 			   "attempt to delete subvolume %llu with active swapfile",
+ 			   btrfs_root_id(dest));
+-		ret = -EPERM;
++		ret = args ? -EBUSY : -EPERM;
+ 		goto out_up_write;
+ 	}
+ 	root_flags = btrfs_root_flags(&dest->root_item);
+@@ -4753,6 +4891,7 @@
+ 
+ 	btrfs_record_snapshot_destroy(trans, dir);
+ 
++	unlink_started = true;
+ 	ret = btrfs_unlink_subvol(trans, dir, dentry);
+ 	if (unlikely(ret)) {
+ 		btrfs_abort_transaction(trans, ret);
+@@ -4799,10 +4938,13 @@
+ 
+ 	free_anon_bdev(dest->anon_dev);
+ 	dest->anon_dev = 0;
++	ret = 0;
+ out_end_trans:
+ 	trans->block_rsv = NULL;
+ 	trans->bytes_reserved = 0;
+-	ret = btrfs_end_transaction(trans);
++	end_ret = btrfs_end_transaction(trans);
++	if (!args || !ret)
++		ret = end_ret;
+ 	inode->i_flags |= S_DEAD;
+ out_release:
+ 	btrfs_block_rsv_release(fs_info, &block_rsv, (u64)-1, NULL);
+@@ -4817,6 +4959,28 @@
+ 		spin_unlock(&dest->root_item_lock);
+ 	}
+ out_up_write:
++	/*
++	 * The checked ABI reserves ordinary rejection errors for pre-unlink
++	 * failures. Once mutation starts, report an ambiguous outcome as EIO;
++	 * the transaction-abort path has already reported its original cause.
++	 */
++	if (args && unlink_started && ret)
++		ret = -EIO;
++	if (quiesced) {
++		/*
++		 * Reopen only an intact root after a pre-unlink failure. A dead
++		 * or transaction-aborted root must never admit new aliases.
++		 * The caller reconciles on-disk identity after any I/O error.
++		 */
++		if (ret && !(inode->i_flags & S_DEAD) &&
++		    btrfs_root_refs(&dest->root_item) != 0 &&
++		    !BTRFS_FS_ERROR(fs_info)) {
++			if (was_hashed)
++				d_rehash(dentry);
++			btrfs_reopen_root(dest);
++		}
++		up_write(&dest->quiesce_sem);
++	}
+ 	up_write(&fs_info->subvol_sem);
+ 	if (!ret) {
+ 		d_invalidate(dentry);
+@@ -4827,6 +4991,172 @@
+ 	return ret;
+ }
+ 
++int btrfs_delete_subvolume(struct btrfs_inode *dir, struct dentry *dentry)
++{
++	return __btrfs_delete_subvolume(dir, dentry, NULL);
++}
++
++int btrfs_delete_subvolume_quiescent(struct btrfs_inode *dir,
++				    struct dentry *dentry,
++				    const struct btrfs_ioctl_quiescent_destroy_args *args)
++{
++	return __btrfs_delete_subvolume(dir, dentry, args);
++}
++
++/*
++ * ENOENT from pathname lookup or fs_roots_radix is not lifetime absence.
++ * Legacy deletion can remove both while inode/mount/file aliases retain a
++ * root object. Every externally published fs root stays in lifetime_roots
++ * until its final put; the list holds no reference of its own.
++ */
++int btrfs_quiesce_absent_subvolume(struct btrfs_fs_info *fs_info,
++				  const struct btrfs_ioctl_quiescent_destroy_args *args)
++{
++	struct btrfs_root *root = NULL;
++	struct btrfs_root *cached = NULL;
++	struct list_head *cursor = &fs_info->lifetime_roots;
++	struct btrfs_path *path;
++	int ret = -ENOENT;
++
++	path = btrfs_alloc_path();
++	if (!path)
++		return -ENOMEM;
++	down_write(&fs_info->subvol_sem);
++	if (BTRFS_FS_ERROR(fs_info)) {
++		ret = -EIO;
++		goto out;
++	}
++
++	/*
++	 * Cover the disk lookup as well as the complete registry walk. A
++	 * per-object closed bit alone leaves a gap when its final owner frees
++	 * the last root while another constructor is starting. Registration
++	 * precedes reading any root item; new constructors inherit this barrier.
++	 */
++	spin_lock(&fs_info->fs_roots_radix_lock);
++	ASSERT(fs_info->absent_quiesce_id == 0);
++	fs_info->absent_quiesce_id = args->subvolid;
++	spin_unlock(&fs_info->fs_roots_radix_lock);
++
++	/*
++	 * Keep a canonical root alive until the census is complete. Its current
++	 * refs can be newer than the root-tree item before transaction commit.
++	 * Without one, inspect the live root tree, never the commit-root view.
++	 * A lost parent/name lookup (for example a rename) is not absence.
++	 */
++	cached = btrfs_lookup_fs_root(fs_info, args->subvolid);
++	if (!cached) {
++		struct btrfs_root_item item;
++		struct btrfs_key key = {
++			.objectid = args->subvolid,
++			.type = BTRFS_ROOT_ITEM_KEY,
++			.offset = (u64)-1,
++		};
++
++		ret = btrfs_find_root(fs_info->tree_root, &key, path, &item, NULL);
++		if (ret < 0)
++			goto out;
++		if (ret == 0) {
++			if (btrfs_root_refs(&item) != 0 ||
++			    memcmp(item.uuid, args->uuid, BTRFS_UUID_SIZE) ||
++			    memcmp(item.received_uuid, args->received_uuid,
++				   BTRFS_UUID_SIZE)) {
++				ret = -ESTALE;
++				goto out;
++			}
++			if (!(btrfs_root_flags(&item) & BTRFS_ROOT_SUBVOL_RDONLY)) {
++				ret = -EROFS;
++				goto out;
++			}
++		}
++	}
++	ret = -ENOENT;
++
++	for (;;) {
++		struct btrfs_root *next = NULL;
++		struct list_head *pos;
++		bool ready = false;
++
++		/*
++		 * Pin the cursor across sleeping cache eviction. Final removal
++		 * takes this lock, and grab_root cannot revive a zero refcount.
++		 * A zero-ref object has no live inode: each inode owns a root ref
++		 * until after its census decrement and irreversible teardown.
++		 */
++		spin_lock(&fs_info->fs_roots_radix_lock);
++		for (pos = cursor->next; pos != &fs_info->lifetime_roots;
++		     pos = pos->next) {
++			struct btrfs_root *candidate;
++
++			candidate = list_entry(pos, struct btrfs_root, lifetime_list);
++			if (candidate->lifetime_id != args->subvolid)
++				continue;
++			next = btrfs_grab_root(candidate);
++			if (next) {
++				ready = test_bit(BTRFS_ROOT_LIFETIME_READY, &next->state);
++				break;
++			}
++		}
++		/* This final census and reopening constructors are one event. */
++		if (!next)
++			fs_info->absent_quiesce_id = 0;
++		spin_unlock(&fs_info->fs_roots_radix_lock);
++		btrfs_put_root(root);
++		root = next;
++		if (!root)
++			break;
++		cursor = &root->lifetime_list;
++		/* Root-item identity is not stable until canonical publication. */
++		if (!ready) {
++			ret = -EBUSY;
++			goto out;
++		}
++
++		if (btrfs_root_refs(&root->root_item) != 0 ||
++		    memcmp(root->root_item.uuid, args->uuid, BTRFS_UUID_SIZE) ||
++		    memcmp(root->root_item.received_uuid, args->received_uuid,
++			   BTRFS_UUID_SIZE)) {
++			ret = -ESTALE;
++			goto out;
++		}
++		if (!btrfs_root_readonly(root)) {
++			ret = -EROFS;
++			goto out;
++		}
++		if (!down_write_trylock(&root->quiesce_sem)) {
++			ret = -EBUSY;
++			goto out;
++		}
++		/*
++		 * Orphans cannot be rolled back into linked subvolumes. Keep
++		 * admission closed even on EBUSY, allowing existing owners to
++		 * drain without permitting new inode publication.
++		 */
++		btrfs_close_orphan_root(root);
++		btrfs_prune_dentries(root);
++		ret = atomic_long_read_acquire(&root->live_inodes) ? -EBUSY : -ENOENT;
++		up_write(&root->quiesce_sem);
++		if (ret != -ENOENT)
++			goto out;
++	}
++	/*
++	 * Surviving objects stay closed. After their final put, a new canonical
++	 * reader can see only an orphan or no root item (check_ref rejects both).
++	 * Temporary commit-root readers cannot publish inodes without READY.
++	 */
++	if (BTRFS_FS_ERROR(fs_info))
++		ret = -EIO;
++out:
++	spin_lock(&fs_info->fs_roots_radix_lock);
++	fs_info->absent_quiesce_id = 0;
++	spin_unlock(&fs_info->fs_roots_radix_lock);
++	btrfs_put_root(root);
++	btrfs_put_root(cached);
++	up_write(&fs_info->subvol_sem);
++	btrfs_free_path(path);
++	return ret;
++}
++
+ static int btrfs_rmdir(struct inode *vfs_dir, struct dentry *dentry)
+ {
+ 	struct btrfs_inode *dir = BTRFS_I(vfs_dir);
+@@ -5838,6 +6168,7 @@
+ 
+ 	btrfs_set_inode_number(BTRFS_I(inode), args->ino);
+ 	BTRFS_I(inode)->root = btrfs_grab_root(args->root);
++	atomic_long_inc(&args->root->live_inodes);
+ 
+ 	if (args->root && args->root == args->root->fs_info->tree_root &&
+ 	    args->ino != BTRFS_BTREE_INODE_OBJECTID)
+@@ -5881,19 +6212,26 @@
+ 	struct btrfs_inode *inode;
+ 	int ret;
+ 
++	ret = btrfs_inode_admit(root);
++	if (ret)
++		return ERR_PTR(ret);
+ 	inode = btrfs_iget_locked(ino, root);
+-	if (!inode)
+-		return ERR_PTR(-ENOMEM);
+-
++	if (!inode) {
++		ret = -ENOMEM;
++		goto error;
++	}
+ 	if (!(inode->vfs_inode.i_state & I_NEW))
+-		return inode;
+-
++		goto out;
+ 	ret = btrfs_read_locked_inode(inode, path);
+ 	if (ret)
+-		return ERR_PTR(ret);
+-
++		goto error;
+ 	unlock_new_inode(&inode->vfs_inode);
++out:
++	up_read(&root->quiesce_sem);
+ 	return inode;
++error:
++	up_read(&root->quiesce_sem);
++	return ERR_PTR(ret);
+ }
+ 
+ /*
+@@ -5905,26 +6243,33 @@
+ 	struct btrfs_path *path;
+ 	int ret;
+ 
++	ret = btrfs_inode_admit(root);
++	if (ret)
++		return ERR_PTR(ret);
+ 	inode = btrfs_iget_locked(ino, root);
+-	if (!inode)
+-		return ERR_PTR(-ENOMEM);
+-
++	if (!inode) {
++		ret = -ENOMEM;
++		goto error;
++	}
+ 	if (!(inode->vfs_inode.i_state & I_NEW))
+-		return inode;
+-
++		goto out;
+ 	path = btrfs_alloc_path();
+ 	if (!path) {
+ 		iget_failed(&inode->vfs_inode);
+-		return ERR_PTR(-ENOMEM);
++		ret = -ENOMEM;
++		goto error;
+ 	}
+-
+ 	ret = btrfs_read_locked_inode(inode, path);
+ 	btrfs_free_path(path);
+ 	if (ret)
+-		return ERR_PTR(ret);
+-
++		goto error;
+ 	unlock_new_inode(&inode->vfs_inode);
++out:
++	up_read(&root->quiesce_sem);
+ 	return inode;
++error:
++	up_read(&root->quiesce_sem);
++	return ERR_PTR(ret);
+ }
+ 
+ static struct btrfs_inode *new_simple_dir(struct inode *dir,
+@@ -5934,13 +6279,20 @@
+ 	struct timespec64 ts;
+ 	struct inode *vfs_inode;
+ 	struct btrfs_inode *inode;
++	int ret;
+ 
++	ret = btrfs_inode_admit(root);
++	if (ret)
++		return ERR_PTR(ret);
+ 	vfs_inode = new_inode(dir->i_sb);
+-	if (!vfs_inode)
++	if (!vfs_inode) {
++		up_read(&root->quiesce_sem);
+ 		return ERR_PTR(-ENOMEM);
++	}
+ 
+ 	inode = BTRFS_I(vfs_inode);
+ 	inode->root = btrfs_grab_root(root);
++	atomic_long_inc(&root->live_inodes);
+ 	inode->ref_root_id = key->objectid;
+ 	set_bit(BTRFS_INODE_ROOT_STUB, &inode->runtime_flags);
+ 	set_bit(BTRFS_INODE_DUMMY, &inode->runtime_flags);
+@@ -5964,6 +6316,7 @@
+ 	vfs_inode->i_uid = dir->i_uid;
+ 	vfs_inode->i_gid = dir->i_gid;
+ 
++	up_read(&root->quiesce_sem);
+ 	return inode;
+ }
+ 
+@@ -6553,13 +6906,20 @@
+ 			return ret;
+ 	}
+ 
++	root = args->subvol ? BTRFS_I(inode)->root : BTRFS_I(dir)->root;
++	ret = btrfs_inode_admit(root);
++	if (ret)
++		return ret;
+ 	path = btrfs_alloc_path();
+-	if (!path)
++	if (!path) {
++		up_read(&root->quiesce_sem);
+ 		return -ENOMEM;
++	}
+ 
+-	if (!args->subvol)
+-		BTRFS_I(inode)->root = btrfs_grab_root(BTRFS_I(dir)->root);
+-	root = BTRFS_I(inode)->root;
++	if (!args->subvol) {
++		BTRFS_I(inode)->root = btrfs_grab_root(root);
++		atomic_long_inc(&root->live_inodes);
++	}
+ 
+ 	ret = btrfs_init_file_extent_tree(BTRFS_I(inode));
+ 	if (ret)
+@@ -6774,6 +7134,7 @@
+ 		}
+ 	}
+ 
++	up_read(&root->quiesce_sem);
+ 	return 0;
+ 
+ discard:
+@@ -6788,6 +7149,7 @@
+ 		xa_release(&root->inodes, objectid);
+ 
+ 	btrfs_free_path(path);
++	up_read(&root->quiesce_sem);
+ 	return ret;
+ }
+ 
+@@ -8085,6 +8447,8 @@
+ 	btrfs_del_inode_from_root(inode);
+ 	btrfs_drop_extent_map_range(inode, 0, (u64)-1, false);
+ 	btrfs_inode_clear_file_extent_range(inode, 0, (u64)-1);
++	/* Publish final teardown before a quiescent deleter observes the count. */
++	atomic_long_dec_return(&root->live_inodes);
+ 	btrfs_put_root(inode->root);
+ }
+ 
+@@ -8095,6 +8459,16 @@
+ 	if (root == NULL)
+ 		return 1;
+ 
++	/*
++	 * An unsuccessful quiescence attempt may prune clean cache entries,
++	 * but must not discard dirty data from an otherwise linked root.
++	 */
++	if (test_bit(BTRFS_ROOT_QUIESCING, &root->state) &&
++	    !(inode->i_state & (I_DIRTY_ALL | I_SYNC | I_NEW)) &&
++	    !mapping_tagged(inode->i_mapping, PAGECACHE_TAG_DIRTY) &&
++	    !mapping_tagged(inode->i_mapping, PAGECACHE_TAG_WRITEBACK))
++		return 1;
++
+ 	/* the snap/subvol tree is on deleting */
+ 	if (btrfs_root_refs(&root->root_item) == 0)
+ 		return 1;
+@@ -10572,6 +10946,10 @@
+  *
+  * Find the first inode in the @root with a number >= @min_ino and return it.
+  * Returns NULL if no such inode found.
++ *
++ * Internal cache maintenance only: the result must not be used to publish a
++ * dentry, file or mount. Unlike btrfs_iget(), this must not skip live inodes
++ * while quiescent deletion is attempted (relocation needs their extent maps).
+  */
+ struct btrfs_inode *btrfs_find_first_inode(struct btrfs_root *root, u64 min_ino)
+ {
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -656,6 +656,7 @@
+ 	/* anon_dev is owned by new_root now. */
+ 	anon_dev = 0;
+ 	BTRFS_I(new_inode_args.inode)->root = new_root;
++	atomic_long_inc(&new_root->live_inodes);
+ 	/* ... and new_root is owned by new_inode_args.inode now. */
+ 
+ 	ret = btrfs_record_root_in_trans(trans, new_root);
+@@ -2251,7 +2252,8 @@
+ 
+ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
+ 					     void __user *arg,
+-					     bool destroy_v2)
++					     bool destroy_v2,
++					     const struct btrfs_ioctl_quiescent_destroy_args *expected)
+ {
+ 	struct dentry *parent = file->f_path.dentry;
+ 	struct dentry *dentry;
+@@ -2275,20 +2277,22 @@
+ 	}
+ 
+ 	if (destroy_v2) {
+-		vol_args2 = memdup_user(arg, sizeof(*vol_args2));
+-		if (IS_ERR(vol_args2))
+-			return PTR_ERR(vol_args2);
++		if (!expected) {
++			vol_args2 = memdup_user(arg, sizeof(*vol_args2));
++			if (IS_ERR(vol_args2))
++				return PTR_ERR(vol_args2);
+ 
+-		if (vol_args2->flags & ~BTRFS_SUBVOL_DELETE_ARGS_MASK) {
+-			ret = -EOPNOTSUPP;
+-			goto out;
++			if (vol_args2->flags & ~BTRFS_SUBVOL_DELETE_ARGS_MASK) {
++				ret = -EOPNOTSUPP;
++				goto out;
++			}
+ 		}
+ 
+ 		/*
+ 		 * If SPEC_BY_ID is not set, we are looking for the subvolume by
+ 		 * name, same as v1 currently does.
+ 		 */
+-		if (!(vol_args2->flags & BTRFS_SUBVOL_SPEC_BY_ID)) {
++		if (!expected && !(vol_args2->flags & BTRFS_SUBVOL_SPEC_BY_ID)) {
+ 			ret = btrfs_check_ioctl_vol_args2_subvol_name(vol_args2);
+ 			if (ret < 0)
+ 				goto out;
+@@ -2299,8 +2303,9 @@
+ 				goto out;
+ 		} else {
+ 			struct inode *old_dir;
++			u64 subvolid = expected ? expected->subvolid : vol_args2->subvolid;
+ 
+-			if (vol_args2->subvolid < BTRFS_FIRST_FREE_OBJECTID) {
++			if (subvolid < BTRFS_FIRST_FREE_OBJECTID) {
+ 				ret = -EINVAL;
+ 				goto out;
+ 			}
+@@ -2311,7 +2316,7 @@
+ 
+ 			dentry = btrfs_get_dentry(fs_info->sb,
+ 					BTRFS_FIRST_FREE_OBJECTID,
+-					vol_args2->subvolid, 0);
++					subvolid, 0);
+ 			if (IS_ERR(dentry)) {
+ 				ret = PTR_ERR(dentry);
+ 				goto out_drop_write;
+@@ -2362,7 +2367,7 @@
+ 			}
+ 
+ 			subvol_name_ptr = btrfs_get_subvol_name_from_objectid(
+-						fs_info, vol_args2->subvolid);
++						fs_info, subvolid);
+ 			if (IS_ERR(subvol_name_ptr)) {
+ 				ret = PTR_ERR(subvol_name_ptr);
+ 				goto free_parent;
+@@ -2458,7 +2463,10 @@
+ 	}
+ 
+ 	btrfs_inode_lock(BTRFS_I(inode), 0);
+-	ret = btrfs_delete_subvolume(BTRFS_I(dir), dentry);
++	if (expected)
++		ret = btrfs_delete_subvolume_quiescent(BTRFS_I(dir), dentry, expected);
++	else
++		ret = btrfs_delete_subvolume(BTRFS_I(dir), dentry);
+ 	btrfs_inode_unlock(BTRFS_I(inode), 0);
+ 	if (!ret)
+ 		d_delete_notify(dir, dentry);
+@@ -2480,6 +2488,33 @@
+ 	return ret;
+ }
+ 
++static int btrfs_ioctl_snap_destroy_quiescent(struct file *file, void __user *arg)
++{
++	struct btrfs_fs_info *fs_info = inode_to_fs_info(file_inode(file));
++	struct btrfs_ioctl_quiescent_destroy_args expected;
++	int ret;
++
++	if (!capable(CAP_SYS_ADMIN))
++		return -EPERM;
++	if (copy_from_user(&expected, arg, sizeof(expected)))
++		return -EFAULT;
++	if (expected.flags || memchr_inv(expected.reserved, 0, sizeof(expected.reserved)))
++		return -EINVAL;
++	if (expected.subvolid < BTRFS_FIRST_FREE_OBJECTID ||
++	    expected.subvolid > BTRFS_LAST_FREE_OBJECTID)
++		return -EINVAL;
++	if (memcmp(fs_info->fs_devices->fsid, expected.fsid, BTRFS_FSID_SIZE))
++		return -ESTALE;
++	if (BTRFS_FS_ERROR(fs_info))
++		return -EIO;
++	ret = btrfs_ioctl_snap_destroy(file, NULL, true, &expected);
++	if (ret == -ENOENT)
++		ret = btrfs_quiesce_absent_subvolume(fs_info, &expected);
++	if (ret && BTRFS_FS_ERROR(fs_info))
++		ret = -EIO;
++	return ret;
++}
++
+ static int btrfs_ioctl_defrag(struct file *file, void __user *argp)
+ {
+ 	struct inode *inode = file_inode(file);
+@@ -5249,9 +5284,11 @@
+ 	case BTRFS_IOC_SUBVOL_CREATE_V2:
+ 		return btrfs_ioctl_snap_create_v2(file, argp, true);
+ 	case BTRFS_IOC_SNAP_DESTROY:
+-		return btrfs_ioctl_snap_destroy(file, argp, false);
++		return btrfs_ioctl_snap_destroy(file, argp, false, NULL);
+ 	case BTRFS_IOC_SNAP_DESTROY_V2:
+-		return btrfs_ioctl_snap_destroy(file, argp, true);
++		return btrfs_ioctl_snap_destroy(file, argp, true, NULL);
++	case BTRFS_IOC_SNAP_DESTROY_QUIESCENT:
++		return btrfs_ioctl_snap_destroy_quiescent(file, argp);
+ 	case BTRFS_IOC_SUBVOL_GETFLAGS:
+ 		return btrfs_ioctl_subvol_getflags(BTRFS_I(inode), argp);
+ 	case BTRFS_IOC_SUBVOL_SETFLAGS:
+diff --git a/include/uapi/linux/btrfs.h b/include/uapi/linux/btrfs.h
+--- a/include/uapi/linux/btrfs.h
++++ b/include/uapi/linux/btrfs.h
+@@ -1085,6 +1085,25 @@
+ #define BTRFS_SUBVOL_SYNC_PEEK_FIRST		(3)
+ #define BTRFS_SUBVOL_SYNC_PEEK_LAST		(4)
+ 
++/*
++ * Downstream quiescent-destroy ABI. No flags are currently defined.
++ * Identity is checked again under the kernel's subvolume serialization.
++ * Live objects or in-flight acquisition are rejected before root unlink.
++ * Success closes admission to this incarnation permanently before unlink.
++ * EIO can mean that unlink started; userspace must reconcile exact identity.
++ * EBUSY, ESTALE, EROFS and EINVAL are always pre-unlink rejections.
++ * ENOENT also checks orphan root objects through final free: it authorizes
++ * absence only after exact-generation inode lifetime zero, not index absence.
++ */
++struct btrfs_ioctl_quiescent_destroy_args {
++	__u64 subvolid;
++	__u8 fsid[BTRFS_FSID_SIZE];
++	__u8 uuid[BTRFS_UUID_SIZE];
++	__u8 received_uuid[BTRFS_UUID_SIZE];
++	__u64 flags;
++	__u64 reserved[4];
++};
++
+ /* Error codes as returned by the kernel */
+ enum btrfs_err_code {
+ 	BTRFS_ERROR_DEV_RAID1_MIN_NOT_MET = 1,
+@@ -1219,6 +1238,9 @@
+ 				     struct btrfs_ioctl_encoded_io_args)
+ #define BTRFS_IOC_SUBVOL_SYNC_WAIT _IOW(BTRFS_IOCTL_MAGIC, 65, \
+ 					struct btrfs_ioctl_subvol_wait)
++/* Downstream only; not an upstream Btrfs ABI allocation. */
++#define BTRFS_IOC_SNAP_DESTROY_QUIESCENT _IOW(BTRFS_IOCTL_MAGIC, 255, \
++					struct btrfs_ioctl_quiescent_destroy_args)
+ 
+ #ifdef __cplusplus
+ }
