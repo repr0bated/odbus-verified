@@ -29,8 +29,9 @@ pub use transactions::{
     PrivateDocumentCommit, PrivateDocumentPublication, PrivateProjectionDirectory,
     ProjectionCommit, ProjectionSnapshot, commit_identity_projection_durable_in,
     pending_identity_publication_in, prepare_projection_directory_in, read_projection_snapshot,
-    read_projection_snapshot_in, recover_identity_projection_in, restrict_projection_file_in,
-    update_projection, update_projection_in, update_projection_with_credentials_in,
+    read_projection_snapshot_bounded_in, read_projection_snapshot_in,
+    recover_identity_projection_in, restrict_projection_file_in, update_projection,
+    update_projection_in, update_projection_with_credentials_in,
 };
 
 /// Canonical directory for per-plugin present-state files (one JSON file per
@@ -274,8 +275,8 @@ mod tests {
     #[test]
     fn projection_file_path_under_canonical_dir() {
         assert_eq!(
-            projection_file_path("cognitive_mcp"),
-            "/dev/shm/opdbus/state/cognitive_mcp.json"
+            projection_file_path("cognitive"),
+            "/dev/shm/opdbus/state/cognitive.json"
         );
     }
 

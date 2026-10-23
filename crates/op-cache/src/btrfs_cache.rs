@@ -14,15 +14,18 @@ use std::collections::HashMap;
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use std::sync::{
     Mutex,
     atomic::{AtomicUsize, Ordering},
 };
+use std::time::Duration;
 use tracing::{debug, info, warn};
 
+use super::managed_process;
 use super::numa::{NumaMemoryPolicy, NumaNode, NumaOptimizer, NumaStats, NumaTopology};
-use super::snapshot_manager::{CACHE_MEMBERS, COMPLETE_MARKER, SnapshotConfig, SnapshotManager};
+use super::snapshot_manager::{
+    CACHE_MEMBERS, COMPLETE_MARKER, SnapshotConfig, SnapshotManager, TemporarySet, transfer_permit,
+};
 
 fn is_btrfs_filesystem(path: &Path) -> Result<bool> {
     let file = std::fs::File::open(path)
@@ -114,13 +117,31 @@ fn validate_remote_path(path: &str) -> Result<()> {
     Ok(())
 }
 
-async fn checked_ssh(remote_host: &str, command: &str) -> Result<Vec<u8>> {
-    let output = tokio::process::Command::new("ssh")
-        .arg("--")
+fn ssh_command(remote_host: &str, script: &str) -> tokio::process::Command {
+    let mut command = tokio::process::Command::new("ssh");
+    command
+        .args([
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=15",
+            "-o",
+            "ServerAliveInterval=15",
+            "-o",
+            "ServerAliveCountMax=3",
+            "--",
+        ])
         .arg(remote_host)
-        .arg(command)
-        .output()
-        .await?;
+        .arg(script);
+    command
+}
+
+async fn checked_ssh(remote_host: &str, command: &str) -> Result<Vec<u8>> {
+    let output = managed_process::output(
+        &mut ssh_command(remote_host, command),
+        managed_process::COMMAND_TIMEOUT,
+    )
+    .await?;
     anyhow::ensure!(
         output.status.success(),
         "remote Btrfs operation failed: {}",
@@ -129,51 +150,62 @@ async fn checked_ssh(remote_host: &str, command: &str) -> Result<Vec<u8>> {
     Ok(output.stdout)
 }
 
-async fn pipe_btrfs_stream(
-    mut sender: tokio::process::Child,
-    mut receiver: tokio::process::Child,
-) -> Result<()> {
-    let mut stream = sender.stdout.take().context("missing Btrfs send output")?;
-    let mut sink = receiver
-        .stdin
-        .take()
-        .context("missing Btrfs receive input")?;
-    let transfer = tokio::spawn(async move {
-        let result = tokio::io::copy(&mut stream, &mut sink).await;
-        drop(sink);
-        result
-    });
-    let (send_output, receive_output, transfer_output) = tokio::join!(
-        sender.wait_with_output(),
-        receiver.wait_with_output(),
-        transfer
-    );
-    let send_output = send_output?;
-    let receive_output = receive_output?;
-    transfer_output.context("Btrfs forwarding task failed")??;
+fn transfer_timeout() -> Result<Duration> {
+    let seconds = std::env::var("OPDBUS_CACHE_TRANSFER_TIMEOUT_SECS")
+        .map(|value| {
+            value
+                .parse::<u64>()
+                .context("invalid OPDBUS_CACHE_TRANSFER_TIMEOUT_SECS")
+        })
+        .unwrap_or(Ok(300))?;
     anyhow::ensure!(
-        send_output.status.success() && receive_output.status.success(),
-        "Btrfs transfer failed (send: {}; receive: {}): {}{}",
-        send_output.status,
-        receive_output.status,
-        String::from_utf8_lossy(&send_output.stderr),
-        String::from_utf8_lossy(&receive_output.stderr)
+        seconds > 0 && seconds <= 86400,
+        "cache transfer timeout must be 1..=86400 seconds"
     );
-    Ok(())
+    Ok(Duration::from_secs(seconds))
 }
 
-/// A single entry in the in-memory fast path.
+/// Identity of a backing file. File mtime is the cache's durable last-access
+/// timestamp; inode/size/mtime also prevent stale hits across cache handles.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct FileStamp {
+    device: u64,
+    inode: u64,
+    bytes: u64,
+    modified_seconds: i64,
+    modified_nanos: i64,
+}
+
+impl FileStamp {
+    fn from_metadata(metadata: &std::fs::Metadata) -> Self {
+        Self {
+            device: metadata.dev(),
+            inode: metadata.ino(),
+            bytes: metadata.len(),
+            modified_seconds: metadata.mtime(),
+            modified_nanos: metadata.mtime_nsec(),
+        }
+    }
+}
+
 struct CacheEntry {
     data: Vec<u8>,
     accessed_at: chrono::DateTime<chrono::Utc>,
+    stamp: Option<FileStamp>,
 }
 
-/// In-memory fast path for recently accessed cache entries.
-///
-/// Bounded by `max_entries` (default 1000) and `max_memory_bytes` (default 100 MB).
-/// Eviction is LRU: entries with the oldest `accessed_at` are removed first.
+/// BTree nodes can contain eleven entries and twelve child pointers. Charging
+/// a whole node per entry conservatively covers partially occupied nodes.
+/// This is an allocation budget, not an RSS or kernel-page-cache guarantee.
+const MEMORY_ENTRY_OVERHEAD: usize =
+    11 * std::mem::size_of::<(String, CacheEntry)>() + 16 * std::mem::size_of::<usize>();
+const DEFAULT_INDEX_MAX_ENTRIES: usize = 4096;
+const DEFAULT_MAX_PAYLOAD_BYTES: usize = 64 * 1024 * 1024;
+const DEFAULT_MAX_EMBEDDING_DIMENSIONS: usize = 4 * 1024 * 1024;
+const MAINTENANCE_BATCH: usize = 128;
+
 struct MemoryCache {
-    entries: Mutex<HashMap<String, CacheEntry>>,
+    entries: Mutex<std::collections::BTreeMap<String, CacheEntry>>,
     max_entries: usize,
     max_memory_bytes: usize,
     current_memory: AtomicUsize,
@@ -182,118 +214,173 @@ struct MemoryCache {
 impl MemoryCache {
     fn new(max_entries: usize, max_memory_bytes: usize) -> Self {
         Self {
-            entries: Mutex::new(HashMap::new()),
+            entries: Mutex::new(std::collections::BTreeMap::new()),
             max_entries,
             max_memory_bytes,
             current_memory: AtomicUsize::new(0),
         }
     }
 
-    /// Return a copy of the cached bytes for `key`, updating `accessed_at` on hit.
+    fn charge(key_capacity: usize, data_capacity: usize) -> usize {
+        MEMORY_ENTRY_OVERHEAD
+            .saturating_add(key_capacity)
+            .saturating_add(data_capacity)
+    }
+
+    fn admits(&self, key_bytes: usize, data_bytes: usize) -> bool {
+        self.max_entries > 0
+            && MEMORY_ENTRY_OVERHEAD
+                .checked_add(key_bytes)
+                .and_then(|bytes| bytes.checked_add(data_bytes))
+                .is_some_and(|bytes| bytes <= self.max_memory_bytes)
+    }
+
+    #[cfg(test)]
     fn get(&self, key: &str) -> Option<Vec<u8>> {
+        self.get_with_stamp(key, None)
+    }
+
+    fn get_with_stamp(&self, key: &str, stamp: Option<FileStamp>) -> Option<Vec<u8>> {
         let mut entries = self.entries.lock().ok()?;
-        if let Some(entry) = entries.get_mut(key) {
-            entry.accessed_at = chrono::Utc::now();
-            Some(entry.data.clone())
-        } else {
-            None
+        if entries.get(key).is_some_and(|entry| entry.stamp != stamp) {
+            if let Some((old_key, entry)) = entries.remove_entry(key) {
+                self.current_memory.fetch_sub(
+                    Self::charge(old_key.capacity(), entry.data.capacity()),
+                    Ordering::Relaxed,
+                );
+            }
+            return None;
+        }
+        let entry = entries.get_mut(key)?;
+        entry.accessed_at = chrono::Utc::now();
+        Some(entry.data.clone())
+    }
+
+    fn set_stamp(&self, key: &str, stamp: FileStamp) {
+        if let Ok(mut entries) = self.entries.lock()
+            && let Some(entry) = entries.get_mut(key)
+        {
+            entry.stamp = Some(stamp);
         }
     }
 
-    /// Insert or replace `key` with `data`, then evict if over limits.
+    #[cfg(test)]
     fn put(&self, key: String, data: Vec<u8>) {
-        let data_len = data.len();
-        let mut entries = match self.entries.lock() {
-            Ok(e) => e,
-            Err(_) => return,
-        };
+        self.put_with_stamp(key, data, None);
+    }
 
-        // Subtract the old entry's size if the key already exists.
-        if let Some(old) = entries.get(&key) {
-            self.current_memory
-                .fetch_sub(old.data.len(), Ordering::Relaxed);
+    fn put_slice(&self, key: &str, data: &[u8], stamp: FileStamp) {
+        // Disabled/oversized entries do not create a second payload allocation.
+        if self.admits(key.len(), data.len()) {
+            self.put_with_stamp(key.to_owned(), data.to_vec(), Some(stamp));
+        }
+    }
+
+    fn put_with_stamp(&self, key: String, data: Vec<u8>, stamp: Option<FileStamp>) {
+        let charge = Self::charge(key.capacity(), data.capacity());
+        let Ok(mut entries) = self.entries.lock() else {
+            return;
+        };
+        if let Some((old_key, old)) = entries.remove_entry(&key) {
+            self.current_memory.fetch_sub(
+                Self::charge(old_key.capacity(), old.data.capacity()),
+                Ordering::Relaxed,
+            );
+        }
+        if self.max_entries == 0 || charge > self.max_memory_bytes {
+            return;
         }
 
+        // Evict before insertion under this same lock: concurrent readers
+        // cannot observe an over-budget map.
+        while entries.len() >= self.max_entries
+            || self.current_memory.load(Ordering::Relaxed) > self.max_memory_bytes - charge
+        {
+            let Some(lru) = entries
+                .iter()
+                .min_by_key(|(_, entry)| entry.accessed_at)
+                .map(|(key, _)| key.clone())
+            else {
+                break;
+            };
+            if let Some((old_key, old)) = entries.remove_entry(&lru) {
+                self.current_memory.fetch_sub(
+                    Self::charge(old_key.capacity(), old.data.capacity()),
+                    Ordering::Relaxed,
+                );
+            }
+        }
         entries.insert(
             key,
             CacheEntry {
                 data,
                 accessed_at: chrono::Utc::now(),
+                stamp,
             },
         );
-        self.current_memory.fetch_add(data_len, Ordering::Relaxed);
-
-        // Release the lock before evicting (evict re-acquires it).
-        drop(entries);
-        self.evict();
+        self.current_memory.fetch_add(charge, Ordering::Relaxed);
     }
 
-    /// Remove `key` from the fast path, returning whether it was present.
     fn remove(&self, key: &str) -> bool {
-        let mut entries = match self.entries.lock() {
-            Ok(e) => e,
-            Err(_) => return false,
+        let Ok(mut entries) = self.entries.lock() else {
+            return false;
         };
-        if let Some(entry) = entries.remove(key) {
-            self.current_memory
-                .fetch_sub(entry.data.len(), Ordering::Relaxed);
+        if let Some((old_key, entry)) = entries.remove_entry(key) {
+            self.current_memory.fetch_sub(
+                Self::charge(old_key.capacity(), entry.data.capacity()),
+                Ordering::Relaxed,
+            );
             true
         } else {
             false
         }
     }
 
-    /// Drop entries with the oldest `accessed_at` until both size limits are satisfied.
-    fn evict(&self) {
-        let mut entries = match self.entries.lock() {
-            Ok(e) => e,
-            Err(_) => return,
-        };
-
-        while entries.len() > self.max_entries
-            || self.current_memory.load(Ordering::Relaxed) > self.max_memory_bytes
-        {
-            let lru_key = entries
-                .iter()
-                .min_by_key(|(_, e)| e.accessed_at)
-                .map(|(k, _)| k.clone());
-
-            match lru_key {
-                Some(key) => {
-                    if let Some(entry) = entries.remove(&key) {
-                        self.current_memory
-                            .fetch_sub(entry.data.len(), Ordering::Relaxed);
-                    }
-                }
-                None => break,
-            }
-        }
-    }
-
-    /// Drop all entries and reset the memory counter.
     fn clear(&self) {
         if let Ok(mut entries) = self.entries.lock() {
-            entries.clear();
+            // Drop container allocations as well as values.
+            *entries = std::collections::BTreeMap::new();
             self.current_memory.store(0, Ordering::Relaxed);
         }
     }
 }
 
+/// A cross-handle/process lock outside every cleared category. All synchronous
+/// file/index/memory transactions finish before an async method yields.
+struct CacheFileLock(std::fs::File);
+
+impl Drop for CacheFileLock {
+    fn drop(&mut self) {
+        unsafe { libc::flock(self.0.as_raw_fd(), libc::LOCK_UN) };
+    }
+}
+
+struct IndexEntry {
+    embedding: bool,
+    hash: String,
+    access_count: i64,
+    created_at: String,
+}
+
 pub struct BtrfsCache {
     cache_dir: PathBuf,
-    /// In-memory CozoDB index for the embedding cache.
-    /// `CozoGraphShuttle` wraps an `Arc<DbInstance>` so it is cheaply
-    /// cloneable and safe to share without an external `Mutex`.
+    /// Compact derived metadata only. Rows are bounded independently of the
+    /// payload fast path; deterministic disk lookup survives eviction/reopen.
     index: CozoGraphShuttle,
+    index_max_entries: usize,
+    index_lru: Mutex<std::collections::VecDeque<IndexEntry>>,
+    operation: Mutex<()>,
+    total_accesses: std::sync::atomic::AtomicU64,
+    max_payload_bytes: usize,
+    max_embedding_dimensions: usize,
     snapshot_manager: SnapshotManager,
     numa_topology: NumaTopology,
     placement_strategy: CachePlacementStrategy,
     memory_policy: MemoryPolicy,
-    cpu_affinity: Vec<u32>, // CPU cores for affinity binding
+    cpu_affinity: Vec<u32>,
     current_node_index: AtomicUsize,
     #[allow(dead_code)]
     numa_stats: Mutex<NumaStats>,
-    /// In-memory LRU fast path for recently accessed entries (embeddings + KV).
     memory_cache: MemoryCache,
 }
 
@@ -327,13 +414,15 @@ impl BtrfsCache {
             return Ok(());
         }
         if existing {
-            let output = tokio::process::Command::new("btrfs")
-                .args(["property", "get", "-ts"])
-                .arg(path)
-                .arg("ro")
-                .output()
-                .await
-                .context("Failed to execute btrfs command")?;
+            let output = managed_process::output(
+                tokio::process::Command::new("btrfs")
+                    .args(["property", "get", "-ts"])
+                    .arg(path)
+                    .arg("ro"),
+                managed_process::COMMAND_TIMEOUT,
+            )
+            .await
+            .context("Failed to execute btrfs command")?;
             if output.status.success()
                 && String::from_utf8_lossy(&output.stdout).trim() == "ro=false"
             {
@@ -349,12 +438,14 @@ impl BtrfsCache {
             );
         }
 
-        let output = tokio::process::Command::new("btrfs")
-            .args(["subvolume", "create"])
-            .arg(path)
-            .output()
-            .await
-            .context("Failed to execute btrfs command")?;
+        let output = managed_process::output(
+            tokio::process::Command::new("btrfs")
+                .args(["subvolume", "create"])
+                .arg(path),
+            managed_process::COMMAND_TIMEOUT,
+        )
+        .await
+        .context("Failed to execute btrfs command")?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -367,13 +458,15 @@ impl BtrfsCache {
     }
 
     async fn enable_compression(path: &Path) -> Result<()> {
-        let output = tokio::process::Command::new("btrfs")
-            .args(["property", "set"])
-            .arg(path)
-            .args(["compression", "zstd"])
-            .output()
-            .await
-            .context("Failed to execute btrfs property command")?;
+        let output = managed_process::output(
+            tokio::process::Command::new("btrfs")
+                .args(["property", "set"])
+                .arg(path)
+                .args(["compression", "zstd"]),
+            managed_process::COMMAND_TIMEOUT,
+        )
+        .await
+        .context("Failed to execute btrfs property command")?;
         if !output.status.success() {
             anyhow::bail!(
                 "failed to enable Btrfs zstd compression for {}: {}",
@@ -425,11 +518,11 @@ impl BtrfsCache {
         let index = CozoGraphShuttle::new_in_memory()
             .map_err(|e| anyhow::anyhow!("Failed to create CozoDB index: {e}"))?;
 
-        // Create the embedding_cache relation.
-        // :create errors if the relation already exists — safe to ignore
-        // since each BtrfsCache gets its own fresh in-memory store.
-        let _ = index.run_query(
-            r#":create embedding_cache {
+        // Each cache owns a fresh, bounded derived index. Full input texts and
+        // keys are never retained; schema positions stay compatible.
+        index
+            .run_query(
+                r#":create embedding_cache {
                 text_hash: String
                 =>
                 text: String default "",
@@ -439,12 +532,14 @@ impl BtrfsCache {
                 access_count: Int default 1,
                 vector_size: Int default 0
             }"#,
-            None,
-        );
+                None,
+            )
+            .map_err(|error| anyhow::anyhow!("Failed to create embedding cache index: {error}"))?;
 
         // Create the kv_cache relation for the generic key-value API.
-        let _ = index.run_query(
-            r#":create kv_cache {
+        index
+            .run_query(
+                r#":create kv_cache {
                 key_hash: String
                 =>
                 key: String default "",
@@ -454,36 +549,54 @@ impl BtrfsCache {
                 access_count: Int default 1,
                 data_size: Int default 0
             }"#,
-            None,
-        );
+                None,
+            )
+            .map_err(|error| anyhow::anyhow!("Failed to create KV cache index: {error}"))?;
 
         // Detect NUMA topology
         let numa_topology = NumaTopology::detect()?;
         let placement_strategy = Self::determine_placement_strategy(numa_topology.nodes());
         let memory_policy = Self::determine_memory_policy();
 
-        // Detect CPU affinity - bind cache operations to same CPUs as Btrfs operations
-        let cpu_affinity = if let Some(primary_node) = numa_topology.nodes().values().next() {
-            primary_node.cpu_list.clone()
-        } else {
-            // No NUMA, use first few CPUs
-            (0..(num_cpus::get().min(4) as u32)).collect()
-        };
+        // Record the initial permitted placement; execution applies it to
+        // transport children, never to this shared async worker.
+        let allowed_cpus = NumaOptimizer::current_cpu_affinity();
+        let cpu_affinity = Self::select_placement_node(
+            &numa_topology,
+            &placement_strategy,
+            0,
+            allowed_cpus.as_deref(),
+            numa_topology.current_node(),
+        )
+        .map(|node| node.cpu_list)
+        .unwrap_or_default();
 
         // Initialize the in-memory fast path with configurable limits.
-        let max_entries = std::env::var("OPDBUS_CACHE_MEMORY_MAX_ENTRIES")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(DEFAULT_MEMORY_MAX_ENTRIES);
-        let max_bytes = std::env::var("OPDBUS_CACHE_MEMORY_MAX_BYTES")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(DEFAULT_MEMORY_MAX_BYTES);
+        let max_entries = Self::configured_limit(
+            "OPDBUS_CACHE_MEMORY_MAX_ENTRIES",
+            DEFAULT_MEMORY_MAX_ENTRIES,
+        )?;
+        let max_bytes =
+            Self::configured_limit("OPDBUS_CACHE_MEMORY_MAX_BYTES", DEFAULT_MEMORY_MAX_BYTES)?;
+        let index_max_entries =
+            Self::configured_limit("OPDBUS_CACHE_INDEX_MAX_ENTRIES", DEFAULT_INDEX_MAX_ENTRIES)?;
+        let max_payload_bytes =
+            Self::configured_limit("OPDBUS_CACHE_MAX_PAYLOAD_BYTES", DEFAULT_MAX_PAYLOAD_BYTES)?;
+        let max_embedding_dimensions = Self::configured_limit(
+            "OPDBUS_CACHE_MAX_EMBEDDING_DIMENSIONS",
+            DEFAULT_MAX_EMBEDDING_DIMENSIONS,
+        )?;
         let memory_cache = MemoryCache::new(max_entries, max_bytes);
 
         Ok(Self {
             cache_dir,
             index,
+            index_max_entries,
+            index_lru: Mutex::new(std::collections::VecDeque::new()),
+            operation: Mutex::new(()),
+            total_accesses: std::sync::atomic::AtomicU64::new(0),
+            max_payload_bytes,
+            max_embedding_dimensions,
             snapshot_manager,
             numa_topology,
             placement_strategy,
@@ -607,31 +720,35 @@ impl BtrfsCache {
             .collect()
     }
 
-    fn select_numa_node(&self, operation: &str) -> Option<&NumaNode> {
-        if self.numa_topology.node_count() == 0 {
+    fn select_numa_node(&self, operation: &str) -> Option<NumaNode> {
+        if matches!(self.placement_strategy, CachePlacementStrategy::Disabled) {
             return None;
         }
-
-        let nodes: Vec<&NumaNode> = self.numa_topology.nodes().values().collect();
-        let selection = match self.placement_strategy {
-            CachePlacementStrategy::LocalNode => nodes.first().copied(),
-            CachePlacementStrategy::RoundRobin => {
-                let index = self.current_node_index.fetch_add(1, Ordering::Relaxed);
-                nodes.get(index % nodes.len()).copied()
-            }
-            CachePlacementStrategy::MostMemory => nodes
-                .iter()
-                .max_by_key(|node| node.memory_total_kb)
-                .copied(),
-            CachePlacementStrategy::Disabled => None,
+        let mut topology = self.numa_topology.clone();
+        if let Err(error) = topology.refresh() {
+            warn!(
+                "NUMA topology refresh failed for {operation}; retaining last snapshot: {error:#}"
+            );
+        }
+        let allowed_cpus = NumaOptimizer::current_cpu_affinity();
+        let index = if matches!(self.placement_strategy, CachePlacementStrategy::RoundRobin) {
+            self.current_node_index.fetch_add(1, Ordering::Relaxed)
+        } else {
+            0
         };
-
-        if let Some(node) = selection {
+        let selection = Self::select_placement_node(
+            &topology,
+            &self.placement_strategy,
+            index,
+            allowed_cpus.as_deref(),
+            topology.current_node(),
+        );
+        if let Some(node) = &selection {
             debug!(
                 "NUMA node {} selected for {} (memory={} MB, distances={:?})",
                 node.node_id,
                 operation,
-                node.memory_total_kb / 1024,
+                node.memory_free_kb / 1024,
                 node.distance_to_nodes
             );
         } else {
@@ -644,66 +761,86 @@ impl BtrfsCache {
         selection
     }
 
-    /// Get or compute embedding
-    pub fn get_or_embed<F>(&self, text: &str, compute_fn: F) -> Result<Vec<f32>>
-    where
-        F: FnOnce(&str) -> Result<Vec<f32>>,
-    {
-        let text_hash = self.hash_text(text);
-
-        // Check if cached
-        if let Some(vector) = self.load_embedding(&text_hash)? {
-            // Update access statistics
-            self.update_access(&text_hash)?;
-            return Ok(vector);
+    fn select_placement_node(
+        topology: &NumaTopology,
+        strategy: &CachePlacementStrategy,
+        index: usize,
+        allowed_cpus: Option<&[u32]>,
+        current_node: Option<u32>,
+    ) -> Option<NumaNode> {
+        if matches!(strategy, CachePlacementStrategy::Disabled) {
+            return None;
         }
-
-        // Compute embedding
-        let vector = compute_fn(text)?;
-
-        // Store in cache
-        self.save_embedding(text, &text_hash, &vector)?;
-
-        Ok(vector)
+        let nodes: Vec<_> = topology
+            .node_ids()
+            .into_iter()
+            .filter_map(|id| topology.get_node(id))
+            .filter(|node| {
+                allowed_cpus
+                    .is_none_or(|allowed| node.cpu_list.iter().any(|cpu| allowed.contains(cpu)))
+            })
+            .collect();
+        if nodes.is_empty() {
+            return None;
+        }
+        let selected = match strategy {
+            CachePlacementStrategy::LocalNode => nodes
+                .iter()
+                .copied()
+                .find(|node| Some(node.node_id) == current_node)
+                .unwrap_or(nodes[0]),
+            CachePlacementStrategy::RoundRobin => nodes[index % nodes.len()],
+            CachePlacementStrategy::MostMemory => nodes
+                .iter()
+                .copied()
+                .min_by_key(|node| (std::cmp::Reverse(node.memory_free_kb), node.node_id))?,
+            CachePlacementStrategy::Disabled => return None,
+        };
+        let mut selected = selected.clone();
+        if let Some(allowed) = allowed_cpus {
+            selected.cpu_list.retain(|cpu| allowed.contains(cpu));
+        }
+        Some(selected)
     }
 
-    /// Get embedding if cached (without computing)
-    pub fn get_embedding(&self, text: &str) -> Result<Option<Vec<f32>>> {
-        let text_hash = self.hash_text(text);
-        let mem_key = format!("emb:{}", text_hash);
-
-        // In-memory fast path
-        if let Some(bytes) = self.memory_cache.get(&mem_key) {
-            let vector: Vec<f32> = bincode::deserialize(&bytes)
-                .context("Failed to deserialize embedding from memory cache")?;
-            let _ = self.update_access(&text_hash);
-            return Ok(Some(vector));
+    fn configured_limit(name: &str, default: usize) -> Result<usize> {
+        match std::env::var(name) {
+            Ok(value) => value
+                .parse::<usize>()
+                .with_context(|| format!("{name} must be a nonnegative integer")),
+            Err(std::env::VarError::NotPresent) => Ok(default),
+            Err(error) => Err(error).with_context(|| format!("reading {name}")),
         }
+    }
 
-        // CozoDB + disk
-        if let Some(vector) = self.load_embedding(&text_hash)? {
-            // Populate the fast path with the serialized form
-            if let Ok(bytes) = bincode::serialize(&vector) {
-                self.memory_cache.put(mem_key, bytes);
+    fn lock_operation(&self) -> Result<(std::sync::MutexGuard<'_, ()>, CacheFileLock)> {
+        use std::os::unix::fs::OpenOptionsExt;
+        let guard = self
+            .operation
+            .lock()
+            .map_err(|_| anyhow::anyhow!("cache operation lock poisoned"))?;
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(self.cache_dir.join(".cache.lock"))?;
+        anyhow::ensure!(
+            file.metadata()?.is_file(),
+            "cache lock is not a regular file"
+        );
+        loop {
+            if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } == 0 {
+                break;
             }
-            self.update_access(&text_hash)?;
-            return Ok(Some(vector));
+            let error = std::io::Error::last_os_error();
+            if error.kind() != std::io::ErrorKind::Interrupted {
+                return Err(error).context("locking cache files");
+            }
         }
-        Ok(None)
-    }
-
-    /// Store embedding directly
-    pub fn put_embedding(&self, text: &str, vector: &[f32]) -> Result<()> {
-        let text_hash = self.hash_text(text);
-        self.save_embedding(text, &text_hash, vector)?;
-
-        // Populate the in-memory fast path
-        if let Ok(bytes) = bincode::serialize(&vector) {
-            let mem_key = format!("emb:{}", text_hash);
-            self.memory_cache.put(mem_key, bytes);
-        }
-
-        Ok(())
+        Ok((guard, CacheFileLock(file)))
     }
 
     fn hash_text(&self, text: &str) -> String {
@@ -712,288 +849,385 @@ impl BtrfsCache {
         format!("{:x}", hasher.finalize())
     }
 
-    fn load_embedding(&self, text_hash: &str) -> Result<Option<Vec<f32>>> {
-        // Look up the vector file path in the CozoDB index
-        let result = self
-            .index
-            .run_query(
-                "?[vector_file] := *embedding_cache[text_hash, _, vector_file, _, _, _, _], text_hash = $hash",
-                Some(serde_json::json!({"hash": text_hash})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB query failed: {e}"))?;
-
-        let vector_file = result
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("vector_file"))
-            .and_then(|v| v.as_str())
-            .map(String::from);
-
-        if let Some(file) = vector_file {
-            let path = self.cache_dir.join("embeddings/vectors").join(&file);
-
-            // Read from BTRFS (page cache will cache this!)
-            let data = std::fs::read(&path)
-                .context(format!("Failed to read cached embedding: {:?}", path))?;
-
-            let vector: Vec<f32> =
-                bincode::deserialize(&data).context("Failed to deserialize cached embedding")?;
-
-            return Ok(Some(vector));
-        }
-
-        Ok(None)
+    fn hash_key(&self, key: &str) -> String {
+        self.hash_text(key)
     }
 
-    fn save_embedding(&self, text: &str, text_hash: &str, vector: &[f32]) -> Result<()> {
-        let vectors_dir = self.cache_dir.join("embeddings/vectors");
-        std::fs::create_dir_all(&vectors_dir)?;
+    fn embedding_path(&self, hash: &str) -> PathBuf {
+        self.cache_dir
+            .join("embeddings/vectors")
+            .join(format!("{hash}.vec"))
+    }
 
-        let vector_file = format!("{}.vec", text_hash);
-        let path = vectors_dir.join(&vector_file);
+    fn kv_path(&self, hash: &str) -> PathBuf {
+        self.cache_dir.join("kv").join(format!("{hash}.dat"))
+    }
 
-        // Write to BTRFS (automatically compressed by kernel)
-        let data = bincode::serialize(vector)?;
-        std::fs::write(&path, data)?;
+    fn file_metadata(path: &Path) -> Result<Option<std::fs::Metadata>> {
+        match std::fs::symlink_metadata(path) {
+            Ok(metadata) => {
+                anyhow::ensure!(
+                    metadata.is_file() && !metadata.file_type().is_symlink(),
+                    "cache payload is not a regular file: {}",
+                    path.display()
+                );
+                Ok(Some(metadata))
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(error).with_context(|| format!("reading {}", path.display())),
+        }
+    }
 
-        // Upsert into CozoDB index: read existing access_count, then :put
-        // the row with the incremented count. CozoDB's :put overwrites the
-        // entire row, so we carry forward the old access_count + 1.
-        let existing = self
-            .index
-            .run_query(
-                "?[access_count] := *embedding_cache[text_hash, _, _, _, _, access_count, _], text_hash = $hash",
-                Some(serde_json::json!({"hash": text_hash})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB query failed: {e}"))?;
+    fn open_payload(path: &Path) -> Result<std::fs::File> {
+        use std::os::unix::fs::OpenOptionsExt;
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(path)?;
+        anyhow::ensure!(
+            file.metadata()?.is_file(),
+            "cache payload is not a regular file"
+        );
+        Ok(file)
+    }
 
-        let old_count = existing
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("access_count"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
-
-        let now = chrono::Utc::now().to_rfc3339();
-        self.index
-            .run_query(
-                r#"?[text_hash, text, vector_file, created_at, accessed_at, access_count, vector_size]
-                    <- [[$hash, $text, $vfile, $now, $now, $count, $vsize]]
-                :put embedding_cache {
-                    text_hash => text, vector_file, created_at, accessed_at, access_count, vector_size
-                }"#,
-                Some(serde_json::json!({
-                    "hash": text_hash,
-                    "text": text,
-                    "vfile": vector_file,
-                    "now": now,
-                    "count": old_count + 1,
-                    "vsize": vector.len() as i64,
-                })),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB put failed: {e}"))?;
-
+    fn validate_payload_size(&self, bytes: usize) -> Result<()> {
+        anyhow::ensure!(
+            bytes <= self.max_payload_bytes,
+            "cache payload exceeds OPDBUS_CACHE_MAX_PAYLOAD_BYTES ({})",
+            self.max_payload_bytes
+        );
         Ok(())
     }
 
-    /// Bump `accessed_at` and increment `access_count` for a cached entry.
-    ///
-    /// CozoDB does not have an atomic `increment` operation, so this reads
-    /// the current `access_count` and writes back `count + 1` via `:update`
-    /// (partial-column update that fails silently if the row does not exist).
-    fn update_access(&self, text_hash: &str) -> Result<()> {
-        let existing = self
-            .index
-            .run_query(
-                "?[access_count] := *embedding_cache[text_hash, _, _, _, _, access_count, _], text_hash = $hash",
-                Some(serde_json::json!({"hash": text_hash})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB query failed: {e}"))?;
+    fn read_payload(&self, path: &Path) -> Result<Vec<u8>> {
+        use std::io::Read;
+        let mut file = Self::open_payload(path)?;
+        let length =
+            usize::try_from(file.metadata()?.len()).context("cache payload size overflow")?;
+        self.validate_payload_size(length)?;
+        // Allocate from a checked file length, not an untrusted encoded length.
+        // Reject growth instead of allocating again if another writer ignores
+        // the cache's file lock.
+        let mut bytes = vec![0; length];
+        file.read_exact(&mut bytes)
+            .with_context(|| format!("reading cache payload {}", path.display()))?;
+        let mut extra = [0];
+        anyhow::ensure!(
+            file.read(&mut extra)? == 0,
+            "cache payload changed size while reading"
+        );
+        Ok(bytes)
+    }
 
-        let old_count = existing
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("access_count"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
+    fn touch_payload(path: &Path) -> Result<FileStamp> {
+        let file = Self::open_payload(path)?;
+        file.set_times(std::fs::FileTimes::new().set_modified(std::time::SystemTime::now()))?;
+        Ok(FileStamp::from_metadata(&file.metadata()?))
+    }
 
-        let now = chrono::Utc::now().to_rfc3339();
-        // :update is a partial-column write — only touches accessed_at and
-        // access_count. It is a no-op if the row does not exist.
+    fn write_payload(path: &Path, bytes: &[u8]) -> Result<FileStamp> {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let parent = path.parent().context("cache payload has no parent")?;
+        std::fs::create_dir_all(parent)?;
+        let temporary = parent.join(format!(".cache-{}.tmp", uuid::Uuid::new_v4()));
+        let result = (|| {
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                .open(&temporary)?;
+            file.write_all(bytes)?;
+            file.sync_all()?;
+            let stamp = FileStamp::from_metadata(&file.metadata()?);
+            std::fs::rename(&temporary, path)?;
+            std::fs::File::open(parent)?.sync_all()?;
+            Ok(stamp)
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&temporary);
+        }
+        result
+    }
+
+    fn decode_embedding(&self, bytes: &[u8]) -> Result<Vec<f32>> {
+        use bincode::Options;
+        let header: [u8; 8] = bytes
+            .get(..8)
+            .context("truncated embedding length")?
+            .try_into()
+            .expect("eight-byte slice");
+        let dimensions =
+            usize::try_from(u64::from_le_bytes(header)).context("embedding dimension overflow")?;
+        anyhow::ensure!(
+            dimensions <= self.max_embedding_dimensions,
+            "embedding exceeds OPDBUS_CACHE_MAX_EMBEDDING_DIMENSIONS ({})",
+            self.max_embedding_dimensions
+        );
+        let expected = dimensions
+            .checked_mul(std::mem::size_of::<f32>())
+            .and_then(|size| size.checked_add(8))
+            .context("embedding length overflow")?;
+        anyhow::ensure!(
+            bytes.len() == expected,
+            "embedding payload length does not match dimensions"
+        );
+        self.validate_payload_size(bytes.len())?;
+        bincode::DefaultOptions::new()
+            .with_fixint_encoding()
+            .reject_trailing_bytes()
+            .with_limit(self.max_payload_bytes as u64)
+            .deserialize(bytes)
+            .context("Failed to deserialize cached embedding")
+    }
+
+    fn validate_embedding(&self, vector: &[f32]) -> Result<usize> {
+        anyhow::ensure!(
+            vector.len() <= self.max_embedding_dimensions,
+            "embedding exceeds OPDBUS_CACHE_MAX_EMBEDDING_DIMENSIONS ({})",
+            self.max_embedding_dimensions
+        );
+        let bytes = vector
+            .len()
+            .checked_mul(std::mem::size_of::<f32>())
+            .and_then(|bytes| bytes.checked_add(8))
+            .context("embedding size overflow")?;
+        self.validate_payload_size(bytes)?;
+        Ok(bytes)
+    }
+
+    fn forget_index(&self, embedding: bool, hash: &str) -> Result<()> {
+        let query = if embedding {
+            "?[text_hash] <- [[$hash]] :rm embedding_cache { text_hash }"
+        } else {
+            "?[key_hash] <- [[$hash]] :rm kv_cache { key_hash }"
+        };
         self.index
-            .run_query(
-                "?[text_hash, accessed_at, access_count] <- [[$hash, $now, $count]]
-                 :update embedding_cache { text_hash => accessed_at, access_count }",
-                Some(serde_json::json!({
-                    "hash": text_hash,
-                    "now": now,
-                    "count": old_count + 1,
-                })),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB update failed: {e}"))?;
-
+            .run_query(query, Some(serde_json::json!({"hash": hash})))
+            .map_err(|error| anyhow::anyhow!("cache index removal failed: {error}"))?;
+        self.index_lru
+            .lock()
+            .map_err(|_| anyhow::anyhow!("cache index LRU poisoned"))?
+            .retain(|entry| entry.embedding != embedding || entry.hash != hash);
         Ok(())
     }
 
-    // ── Generic key-value cache API ─────────────────────────────────────
-
-    /// Generic key-value cache backed by CozoDB + filesystem.
-    ///
-    /// Lookup order: in-memory fast path → CozoDB index → disk file.
-    pub async fn get_raw(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        let key_hash = self.hash_key(key);
-        let mem_key = format!("kv:{}", key);
-
-        // 1. In-memory fast path
-        if let Some(data) = self.memory_cache.get(&mem_key) {
-            // Best-effort access-stat update (don't fail the read).
-            let _ = self.update_kv_access(&key_hash);
-            return Ok(Some(data));
+    fn record_index(&self, embedding: bool, hash: &str, size: usize) -> Result<()> {
+        if embedding {
+            self.total_accesses.fetch_add(1, Ordering::Relaxed);
         }
-
-        // 2. CozoDB index → disk file
-        let file_path = self
-            .index
-            .run_query(
-                "?[file_path] := *kv_cache[key_hash, _, file_path, _, _, _, _], key_hash = $hash",
-                Some(serde_json::json!({"hash": key_hash})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB kv_cache query failed: {e}"))?
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("file_path"))
-            .and_then(|v| v.as_str())
-            .map(String::from);
-
-        if let Some(file) = file_path {
-            let path = self.cache_dir.join(&file);
-            let data = tokio::fs::read(&path)
-                .await
-                .with_context(|| format!("Failed to read cached KV file: {:?}", path))?;
-
-            // Populate the fast path
-            self.memory_cache.put(mem_key, data.clone());
-            let _ = self.update_kv_access(&key_hash);
-
-            return Ok(Some(data));
+        if self.index_max_entries == 0 {
+            return Ok(());
         }
-
-        Ok(None)
-    }
-
-    /// Store arbitrary bytes under `key` (CozoDB index + disk file + memory).
-    pub async fn put_raw(&self, key: &str, data: &[u8]) -> Result<()> {
-        let key_hash = self.hash_key(key);
-        let kv_dir = self.cache_dir.join("kv");
-        tokio::fs::create_dir_all(&kv_dir)
-            .await
-            .context("Failed to create kv cache directory")?;
-
-        let file_name = format!("{}.dat", key_hash);
-        let file_rel = format!("kv/{}", file_name);
-        let path = self.cache_dir.join(&file_rel);
-
-        // Write to disk (Btrfs transparent compression handles the rest)
-        tokio::fs::write(&path, data)
-            .await
-            .with_context(|| format!("Failed to write KV cache file: {:?}", path))?;
-
-        // Upsert into CozoDB index
-        let existing = self
-            .index
-            .run_query(
-                "?[access_count] := *kv_cache[key_hash, _, _, _, _, access_count, _], key_hash = $hash",
-                Some(serde_json::json!({"hash": key_hash})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB kv_cache query failed: {e}"))?;
-
-        let old_count = existing
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("access_count"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
-
-        let now = chrono::Utc::now().to_rfc3339();
-        self.index
-            .run_query(
-                r#"?[key_hash, key, file_path, created_at, accessed_at, access_count, data_size]
-                    <- [[$hash, $key, $fpath, $now, $now, $count, $dsize]]
-                :put kv_cache {
-                    key_hash => key, file_path, created_at, accessed_at, access_count, data_size
-                }"#,
-                Some(serde_json::json!({
-                    "hash": key_hash,
-                    "key": key,
-                    "fpath": file_rel,
-                    "now": now,
-                    "count": old_count + 1,
-                    "dsize": data.len() as i64,
-                })),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB kv_cache put failed: {e}"))?;
-
-        // Populate the in-memory fast path
-        let mem_key = format!("kv:{}", key);
-        self.memory_cache.put(mem_key, data.to_vec());
-
-        debug!(key = %key, size = data.len(), "KV cache entry stored");
-        Ok(())
-    }
-
-    /// Delete a key from all cache layers. Returns `true` if the key existed.
-    pub async fn delete(&self, key: &str) -> Result<bool> {
-        let key_hash = self.hash_key(key);
-        let mem_key = format!("kv:{}", key);
-
-        // Evict from memory
-        self.memory_cache.remove(&mem_key);
-
-        // Look up the file path before removing the index row
-        let file_path = self
-            .index
-            .run_query(
-                "?[file_path] := *kv_cache[key_hash, _, file_path, _, _, _, _], key_hash = $hash",
-                Some(serde_json::json!({"hash": key_hash})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB kv_cache query failed: {e}"))?
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("file_path"))
-            .and_then(|v| v.as_str())
-            .map(String::from);
-
-        let existed = file_path.is_some();
-
-        // Remove the backing file
-        if let Some(ref file) = file_path {
-            let path = self.cache_dir.join(file);
-            match tokio::fs::remove_file(&path).await {
-                Ok(()) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => {
-                    return Err(error).with_context(|| {
-                        format!("Failed to delete cache file {}", path.display())
-                    });
-                }
+        let mut order = self
+            .index_lru
+            .lock()
+            .map_err(|_| anyhow::anyhow!("cache index LRU poisoned"))?;
+        let existing_position = order
+            .iter()
+            .position(|entry| entry.embedding == embedding && entry.hash == hash);
+        if existing_position.is_none() {
+            while order.len() >= self.index_max_entries {
+                let old = order.front().context("empty cache index eviction")?;
+                let query = if old.embedding {
+                    "?[text_hash] <- [[$hash]] :rm embedding_cache { text_hash }"
+                } else {
+                    "?[key_hash] <- [[$hash]] :rm kv_cache { key_hash }"
+                };
+                self.index
+                    .run_query(query, Some(serde_json::json!({"hash": old.hash})))
+                    .map_err(|error| anyhow::anyhow!("cache index eviction failed: {error}"))?;
+                order.pop_front();
             }
         }
 
-        // Remove from CozoDB index
-        self.index
-            .run_query(
-                "?[key_hash] <- [[$hash]] :rm kv_cache { key_hash }",
-                Some(serde_json::json!({"hash": key_hash})),
-            )
-            .map_err(|error| anyhow::anyhow!("Failed to delete cache index entry: {error}"))?;
-
-        if existed {
-            debug!(key = %key, "KV cache entry deleted");
+        let now = chrono::Utc::now().to_rfc3339();
+        // The bounded LRU already owns these fixed-size fields. Avoid parsing
+        // another Cozo query on every warm read just to increment a counter.
+        let existing = existing_position.and_then(|position| order.get(position));
+        let count = existing.map_or(1, |entry| entry.access_count.saturating_add(1));
+        let created = existing.map_or_else(|| now.clone(), |entry| entry.created_at.clone());
+        let file = if embedding {
+            format!("{hash}.vec")
+        } else {
+            format!("kv/{hash}.dat")
+        };
+        let query = if embedding {
+            r#"?[text_hash, text, vector_file, created_at, accessed_at, access_count, vector_size]
+                <- [[$hash, "", $file, $created, $now, $count, $size]]
+                :put embedding_cache { text_hash => text, vector_file, created_at, accessed_at, access_count, vector_size }"#
+        } else {
+            r#"?[key_hash, key, file_path, created_at, accessed_at, access_count, data_size]
+                <- [[$hash, "", $file, $created, $now, $count, $size]]
+                :put kv_cache { key_hash => key, file_path, created_at, accessed_at, access_count, data_size }"#
+        };
+        self.index.run_query(query, Some(serde_json::json!({
+            "hash": hash, "file": file, "created": created, "now": now, "count": count, "size": size,
+        }))).map_err(|error| anyhow::anyhow!("cache index write failed: {error}"))?;
+        if let Some(position) = existing_position {
+            order.remove(position);
         }
-        Ok(existed)
+        order.push_back(IndexEntry {
+            embedding,
+            hash: hash.to_owned(),
+            access_count: count,
+            created_at: created,
+        });
+        Ok(())
     }
 
-    /// Return the cached value for `key`, or compute, store, and return it.
+    fn get_embedding_locked(&self, hash: &str) -> Result<Option<Vec<f32>>> {
+        let path = self.embedding_path(hash);
+        let key = format!("emb:{hash}");
+        let Some(metadata) = Self::file_metadata(&path)? else {
+            self.memory_cache.remove(&key);
+            self.forget_index(true, hash)?;
+            return Ok(None);
+        };
+        self.validate_payload_size(
+            usize::try_from(metadata.len()).context("cache payload size overflow")?,
+        )?;
+        let stamp = FileStamp::from_metadata(&metadata);
+        let cached = self.memory_cache.get_with_stamp(&key, Some(stamp));
+        let warm = cached.is_some();
+        let bytes = match cached {
+            Some(bytes) => bytes,
+            None => self.read_payload(&path)?,
+        };
+        let vector = self.decode_embedding(&bytes)?;
+        let stamp = Self::touch_payload(&path)?;
+        self.record_index(true, hash, vector.len())?;
+        // Avoid a second copy on a warm hit.
+        if warm {
+            self.memory_cache.set_stamp(&key, stamp);
+        } else {
+            self.memory_cache.put_slice(&key, &bytes, stamp);
+        }
+        Ok(Some(vector))
+    }
+
+    fn save_embedding_locked(&self, hash: &str, vector: &[f32]) -> Result<()> {
+        self.validate_embedding(vector)?;
+        let bytes = bincode::serialize(vector)?;
+        let key = format!("emb:{hash}");
+        self.memory_cache.remove(&key);
+        let stamp = Self::write_payload(&self.embedding_path(hash), &bytes)?;
+        self.record_index(true, hash, vector.len())?;
+        if self.memory_cache.admits(key.len(), bytes.len()) {
+            self.memory_cache.put_with_stamp(key, bytes, Some(stamp));
+        }
+        Ok(())
+    }
+
+    /// Compute outside the storage lock, then recheck before committing so a
+    /// concurrent put/compute wins without being overwritten by stale work.
+    pub fn get_or_embed<F>(&self, text: &str, compute_fn: F) -> Result<Vec<f32>>
+    where
+        F: FnOnce(&str) -> Result<Vec<f32>>,
+    {
+        let hash = self.hash_text(text);
+        {
+            let _guard = self.lock_operation()?;
+            if let Some(vector) = self.get_embedding_locked(&hash)? {
+                return Ok(vector);
+            }
+        }
+        let vector = compute_fn(text)?;
+        self.validate_embedding(&vector)?;
+        let _guard = self.lock_operation()?;
+        if let Some(current) = self.get_embedding_locked(&hash)? {
+            return Ok(current);
+        }
+        self.save_embedding_locked(&hash, &vector)?;
+        Ok(vector)
+    }
+
+    pub fn get_embedding(&self, text: &str) -> Result<Option<Vec<f32>>> {
+        let _guard = self.lock_operation()?;
+        self.get_embedding_locked(&self.hash_text(text))
+    }
+
+    pub fn put_embedding(&self, text: &str, vector: &[f32]) -> Result<()> {
+        self.validate_embedding(vector)?;
+        let _guard = self.lock_operation()?;
+        self.save_embedding_locked(&self.hash_text(text), vector)
+    }
+
+    fn get_raw_locked(&self, hash: &str) -> Result<Option<Vec<u8>>> {
+        let path = self.kv_path(hash);
+        let key = format!("kv:{hash}");
+        let Some(metadata) = Self::file_metadata(&path)? else {
+            self.memory_cache.remove(&key);
+            self.forget_index(false, hash)?;
+            return Ok(None);
+        };
+        self.validate_payload_size(
+            usize::try_from(metadata.len()).context("cache payload size overflow")?,
+        )?;
+        let stamp = FileStamp::from_metadata(&metadata);
+        if let Some(data) = self.memory_cache.get_with_stamp(&key, Some(stamp)) {
+            let stamp = Self::touch_payload(&path)?;
+            self.record_index(false, hash, data.len())?;
+            self.memory_cache.set_stamp(&key, stamp);
+            return Ok(Some(data));
+        }
+        let data = self.read_payload(&path)?;
+        let stamp = Self::touch_payload(&path)?;
+        self.record_index(false, hash, data.len())?;
+        self.memory_cache.put_slice(&key, &data, stamp);
+        Ok(Some(data))
+    }
+
+    /// Async API compatibility with bounded synchronous file transactions:
+    /// no owned payload is queued in an unbounded blocking-task backlog.
+    pub async fn get_raw(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        let _guard = self.lock_operation()?;
+        self.get_raw_locked(&self.hash_key(key))
+    }
+
+    pub async fn put_raw(&self, key: &str, data: &[u8]) -> Result<()> {
+        self.validate_payload_size(data.len())?;
+        let hash = self.hash_key(key);
+        let _guard = self.lock_operation()?;
+        let memory_key = format!("kv:{hash}");
+        self.memory_cache.remove(&memory_key);
+        let stamp = Self::write_payload(&self.kv_path(&hash), data)?;
+        self.record_index(false, &hash, data.len())?;
+        self.memory_cache.put_slice(&memory_key, data, stamp);
+        Ok(())
+    }
+
+    pub async fn delete(&self, key: &str) -> Result<bool> {
+        let hash = self.hash_key(key);
+        let _guard = self.lock_operation()?;
+        let path = self.kv_path(&hash);
+        let indexed = self
+            .index_lru
+            .lock()
+            .map_err(|_| anyhow::anyhow!("cache index LRU poisoned"))?
+            .iter()
+            .any(|entry| !entry.embedding && entry.hash == hash);
+        let in_memory = self
+            .memory_cache
+            .entries
+            .lock()
+            .map_err(|_| anyhow::anyhow!("cache memory poisoned"))?
+            .contains_key(&format!("kv:{hash}"));
+        let existed = match std::fs::remove_file(&path) {
+            Ok(()) => true,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+            Err(error) => {
+                return Err(error)
+                    .with_context(|| format!("Failed to delete cache file {}", path.display()));
+            }
+        };
+        self.memory_cache.remove(&format!("kv:{hash}"));
+        self.forget_index(false, &hash)?;
+        Ok(existed || indexed || in_memory)
+    }
+
     pub async fn get_or_compute<F, Fut>(&self, key: &str, compute: F) -> Result<Vec<u8>>
     where
         F: FnOnce() -> Fut + Send,
@@ -1003,116 +1237,53 @@ impl BtrfsCache {
             return Ok(data);
         }
         let data = compute().await?;
-        self.put_raw(key, &data).await?;
+        self.validate_payload_size(data.len())?;
+        let hash = self.hash_key(key);
+        let _guard = self.lock_operation()?;
+        if let Some(current) = self.get_raw_locked(&hash)? {
+            return Ok(current);
+        }
+        let memory_key = format!("kv:{hash}");
+        let stamp = Self::write_payload(&self.kv_path(&hash), &data)?;
+        self.record_index(false, &hash, data.len())?;
+        self.memory_cache.put_slice(&memory_key, &data, stamp);
         Ok(data)
     }
 
-    /// SHA-256 hash of an arbitrary cache key (hex-encoded).
-    fn hash_key(&self, key: &str) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(key.as_bytes());
-        format!("{:x}", hasher.finalize())
-    }
-
-    /// Bump `accessed_at` and increment `access_count` for a KV cache entry.
-    fn update_kv_access(&self, key_hash: &str) -> Result<()> {
-        let existing = self
-            .index
-            .run_query(
-                "?[access_count] := *kv_cache[key_hash, _, _, _, _, access_count, _], key_hash = $hash",
-                Some(serde_json::json!({"hash": key_hash})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB kv_cache access query failed: {e}"))?;
-
-        let old_count = existing
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("access_count"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
-
-        let now = chrono::Utc::now().to_rfc3339();
-        self.index
-            .run_query(
-                "?[key_hash, accessed_at, access_count] <- [[$hash, $now, $count]]
-                 :update kv_cache { key_hash => accessed_at, access_count }",
-                Some(serde_json::json!({
-                    "hash": key_hash,
-                    "now": now,
-                    "count": old_count + 1,
-                })),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB kv_cache access update failed: {e}"))?;
-
-        Ok(())
-    }
-
-    // ── Statistics & maintenance ────────────────────────────────────────
-
-    /// Get cache statistics
+    /// Statistics scan files with bounded working memory, independent of
+    /// derived-index eviction. Access count covers this instance's embedding
+    /// operations; disk last-access timestamps survive reopen.
     pub fn stats(&self) -> Result<CacheStats> {
-        // Total entry count
-        let total_result = self
-            .index
-            .run_query(
-                "?[total] := total = count(*embedding_cache[text_hash, _, _, _, _, _, _])",
-                None,
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB stats query failed: {e}"))?;
-
-        let total = total_result
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("total"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
-
-        // Hot entries: accessed within the last hour.
-        // Timestamps are RFC3339 strings, so lexicographic comparison is valid.
-        let hot_threshold = (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
-        let hot_result = self
-            .index
-            .run_query(
-                "?[hot] := hot = count(*embedding_cache[text_hash, _, _, _, accessed_at, _, _]), accessed_at > $threshold",
-                Some(serde_json::json!({"threshold": hot_threshold})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB hot stats query failed: {e}"))?;
-
-        let hot = hot_result
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|row| row.get("hot"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
-
-        // Total accesses: sum of all access_count values.
-        // Fetched as individual rows to avoid CozoDB sum-over-null edge cases.
-        let accesses_result = self
-            .index
-            .run_query(
-                "?[access_count] := *embedding_cache[text_hash, _, _, _, _, access_count, _]",
-                None,
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB accesses query failed: {e}"))?;
-
-        let total_accesses: i64 = accesses_result
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|row| row.get("access_count").and_then(|v| v.as_i64()))
-                    .sum()
-            })
-            .unwrap_or(0);
-
-        // Calculate disk usage
-        let embeddings_size = self.dir_size(&self.cache_dir.join("embeddings/vectors"))?;
+        let _guard = self.lock_operation()?;
+        let threshold = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        let mut total_entries = 0;
+        let mut hot_entries = 0;
+        for entry in std::fs::read_dir(self.cache_dir.join("embeddings/vectors"))? {
+            let entry = entry?;
+            if Self::vector_hash(&entry.file_name()).is_none() {
+                continue;
+            }
+            let metadata = Self::file_metadata(&entry.path())?
+                .context("embedding disappeared during stats")?;
+            total_entries += 1;
+            if metadata.modified()? > threshold {
+                hot_entries += 1;
+            }
+        }
+        let embeddings_size = self.dir_size(&self.cache_dir.join("embeddings"))?;
         let blocks_size = self.dir_size(&self.cache_dir.join("blocks"))?;
-        let total_size = embeddings_size + blocks_size;
-
+        let mut total_size = embeddings_size
+            .checked_add(blocks_size)
+            .context("cache disk size overflow")?;
+        for category in ["queries", "diffs", "kv"] {
+            total_size = total_size
+                .checked_add(self.dir_size(&self.cache_dir.join(category))?)
+                .context("cache disk size overflow")?;
+        }
         Ok(CacheStats {
-            total_entries: total as usize,
-            hot_entries: hot as usize,
-            total_accesses: total_accesses as u64,
+            total_entries,
+            hot_entries,
+            total_accesses: self.total_accesses.load(Ordering::Relaxed),
             disk_usage_bytes: total_size,
             embeddings_size_bytes: embeddings_size,
             blocks_size_bytes: blocks_size,
@@ -1122,168 +1293,134 @@ impl BtrfsCache {
     #[allow(clippy::only_used_in_recursion)]
     fn dir_size(&self, path: &Path) -> Result<u64> {
         let mut size = 0u64;
-        if !path.exists() {
-            return Ok(0);
-        }
-
         for entry in std::fs::read_dir(path)? {
             let entry = entry?;
-            let metadata = entry.metadata()?;
-            if metadata.is_file() {
-                size += metadata.len();
+            let metadata = std::fs::symlink_metadata(entry.path())?;
+            let bytes = if metadata.is_file() {
+                metadata.len()
             } else if metadata.is_dir() {
-                size += self.dir_size(&entry.path())?;
-            }
+                self.dir_size(&entry.path())?
+            } else {
+                0
+            };
+            size = size
+                .checked_add(bytes)
+                .context("cache disk size overflow")?;
         }
         Ok(size)
     }
 
-    /// Clean old entries (accessed before cutoff).
-    ///
-    /// Queries the CozoDB index for stale rows, deletes their backing vector
-    /// files from disk, then removes the index rows.
+    fn vector_hash(name: &std::ffi::OsStr) -> Option<String> {
+        let hash = name.to_str()?.strip_suffix(".vec")?;
+        (hash.len() == 64
+            && hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
+        .then(|| hash.to_owned())
+    }
+
+    /// Expire actual vector files, including entries evicted from metadata or
+    /// left by a previous process. File mtime is durable last access. Only a
+    /// fixed batch is retained; each completed deletion invalidates all layers.
     pub fn cleanup_old(&self, days: i64) -> Result<usize> {
-        let cutoff = (chrono::Utc::now() - chrono::Duration::days(days)).to_rfc3339();
-
-        // Find old entries (need vector_file paths for disk cleanup)
-        let result = self
-            .index
-            .run_query(
-                "?[text_hash, vector_file] := *embedding_cache[text_hash, _, vector_file, _, accessed_at, _, _], accessed_at < $cutoff",
-                Some(serde_json::json!({"cutoff": cutoff})),
-            )
-            .map_err(|e| anyhow::anyhow!("CozoDB cleanup query failed: {e}"))?;
-
-        let old_entries: Vec<(String, String)> = result
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .map(|row| {
-                        let hash = row
-                            .get("text_hash")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string();
-                        let file = row
-                            .get("vector_file")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string();
-                        (hash, file)
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let count = old_entries.len();
-
-        // Delete vector files from disk
-        for (_hash, file) in &old_entries {
-            let path = self.cache_dir.join("embeddings/vectors").join(file);
-            let _ = std::fs::remove_file(path); // Ignore errors
+        let age = chrono::Duration::try_days(days).context("cache expiry age overflow")?;
+        let cutoff = chrono::Utc::now()
+            .checked_sub_signed(age)
+            .context("cache expiry cutoff overflow")?;
+        let _guard = self.lock_operation()?;
+        let mut removed = 0;
+        let mut batch = Vec::with_capacity(MAINTENANCE_BATCH);
+        for entry in std::fs::read_dir(self.cache_dir.join("embeddings/vectors"))? {
+            let entry = entry?;
+            let Some(hash) = Self::vector_hash(&entry.file_name()) else {
+                continue;
+            };
+            let metadata = Self::file_metadata(&entry.path())?
+                .context("embedding disappeared during expiry")?;
+            let accessed: chrono::DateTime<chrono::Utc> = metadata.modified()?.into();
+            if accessed < cutoff {
+                batch.push((hash, entry.path()));
+            }
+            if batch.len() == MAINTENANCE_BATCH {
+                removed += self.expire_batch(&mut batch)?;
+            }
         }
-
-        // Delete from CozoDB index
-        if count > 0 {
-            self.index
-                .run_query(
-                    "matched[text_hash] := *embedding_cache[text_hash, _, _, _, accessed_at, _, _], accessed_at < $cutoff
-                     ?[text_hash] := matched[text_hash]
-                     :rm embedding_cache { text_hash }",
-                    Some(serde_json::json!({"cutoff": cutoff})),
-                )
-                .map_err(|e| anyhow::anyhow!("CozoDB cleanup delete failed: {e}"))?;
-        }
-
-        info!(
-            "Cleaned up {} old cache entries (>{} days old)",
-            count, days
-        );
-
-        Ok(count)
+        removed += self.expire_batch(&mut batch)?;
+        Ok(removed)
     }
 
-    /// Clear all cache data
+    fn expire_batch(&self, batch: &mut Vec<(String, PathBuf)>) -> Result<usize> {
+        let mut removed = 0;
+        for (hash, path) in batch.drain(..) {
+            match std::fs::remove_file(&path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(error).with_context(|| {
+                        format!("Failed to expire cached embedding {}", path.display())
+                    });
+                }
+            }
+            self.memory_cache.remove(&format!("emb:{hash}"));
+            self.forget_index(true, &hash)?;
+            removed += 1;
+        }
+        Ok(removed)
+    }
+
+    fn clear_index(&self, embedding_only: bool) -> Result<()> {
+        self.index.run_query(
+            "?[text_hash] := *embedding_cache[text_hash, _, _, _, _, _, _] :rm embedding_cache { text_hash }",
+            None,
+        ).map_err(|error| anyhow::anyhow!("Failed to clear embedding index: {error}"))?;
+        if !embedding_only {
+            self.index.run_query(
+                "?[key_hash] := *kv_cache[key_hash, _, _, _, _, _, _] :rm kv_cache { key_hash }",
+                None,
+            ).map_err(|error| anyhow::anyhow!("Failed to clear KV index: {error}"))?;
+        }
+        let mut order = self
+            .index_lru
+            .lock()
+            .map_err(|_| anyhow::anyhow!("cache index LRU poisoned"))?;
+        if embedding_only {
+            order.retain(|entry| !entry.embedding);
+            if order.is_empty() {
+                *order = std::collections::VecDeque::new();
+            }
+        } else {
+            *order = std::collections::VecDeque::new();
+        }
+        self.total_accesses.store(0, Ordering::Relaxed);
+        Ok(())
+    }
+
+    /// Clear current payloads/derived metadata; preserve category subvolumes,
+    /// snapshots and the shared file lock. Errors are reported.
     pub fn clear(&self) -> Result<()> {
-        log::warn!("Clearing all cache data");
-
-        // Drop all in-memory fast-path entries
+        let _guard = self.lock_operation()?;
         self.memory_cache.clear();
-
-        // Clear embeddings
-        let vectors_dir = self.cache_dir.join("embeddings/vectors");
-        if vectors_dir.exists() {
-            clear_directory_contents(&vectors_dir)?;
+        self.clear_index(false)?;
+        for category in ["embeddings/vectors", "blocks", "queries", "diffs", "kv"] {
+            clear_directory_contents(&self.cache_dir.join(category))?;
         }
-
-        // Clear blocks
-        let blocks_dir = self.cache_dir.join("blocks");
-        if blocks_dir.exists() {
-            clear_directory_contents(&blocks_dir)?;
-            std::fs::create_dir_all(blocks_dir.join("by-number"))?;
-            std::fs::create_dir_all(blocks_dir.join("by-hash"))?;
-        }
-
-        // Clear KV store
-        let kv_dir = self.cache_dir.join("kv");
-        if kv_dir.exists() {
-            clear_directory_contents(&kv_dir)?;
-        }
-
-        // Clear CozoDB indices
-        let _ = self.index.run_query(
-            "?[text_hash] := *embedding_cache[text_hash, _, _, _, _, _, _] :rm embedding_cache { text_hash }",
-            None,
-        );
-        let _ = self.index.run_query(
-            "?[key_hash] := *kv_cache[key_hash, _, _, _, _, _, _] :rm kv_cache { key_hash }",
-            None,
-        );
-
-        log::info!("Cache cleared");
-
+        std::fs::create_dir_all(self.cache_dir.join("blocks/by-number"))?;
+        std::fs::create_dir_all(self.cache_dir.join("blocks/by-hash"))?;
         Ok(())
     }
 
-    /// Clear only embeddings cache
     pub fn clear_embeddings(&self) -> Result<()> {
-        log::warn!("Clearing embeddings cache");
-
-        // Drop in-memory fast-path entries (includes embeddings; KV entries
-        // will be re-populated from disk on next access).
+        let _guard = self.lock_operation()?;
         self.memory_cache.clear();
-
-        // Clear embeddings vectors
-        let vectors_dir = self.cache_dir.join("embeddings/vectors");
-        if vectors_dir.exists() {
-            clear_directory_contents(&vectors_dir)?;
-        }
-
-        // Clear CozoDB index
-        let _ = self.index.run_query(
-            "?[text_hash] := *embedding_cache[text_hash, _, _, _, _, _, _] :rm embedding_cache { text_hash }",
-            None,
-        );
-
-        log::info!("Embeddings cache cleared");
-
-        Ok(())
+        self.clear_index(true)?;
+        clear_directory_contents(&self.cache_dir.join("embeddings/vectors"))
     }
 
-    /// Clear only blocks cache
     pub fn clear_blocks(&self) -> Result<()> {
-        log::warn!("Clearing blocks cache");
-
-        // Clear blocks
-        let blocks_dir = self.cache_dir.join("blocks");
-        if blocks_dir.exists() {
-            clear_directory_contents(&blocks_dir)?;
-            std::fs::create_dir_all(blocks_dir.join("by-number"))?;
-            std::fs::create_dir_all(blocks_dir.join("by-hash"))?;
-        }
-
-        log::info!("Blocks cache cleared");
-
+        let _guard = self.lock_operation()?;
+        clear_directory_contents(&self.cache_dir.join("blocks"))?;
+        std::fs::create_dir_all(self.cache_dir.join("blocks/by-number"))?;
+        std::fs::create_dir_all(self.cache_dir.join("blocks/by-hash"))?;
         Ok(())
     }
 
@@ -1313,14 +1450,10 @@ impl BtrfsCache {
         validate_ssh_destination(remote_host)?;
         validate_remote_path(remote_path)?;
 
-        // Apply NUMA affinity for streaming operations
-        self.apply_numa_affinity("cache_streaming").await?;
-
-        let set_path = self
-            .create_snapshot()
-            .await
-            .map_err(|e| format!("Failed to create snapshot: {}", e))?;
-        let members = self.snapshot_manager.set_members(&set_path).await?;
+        let deadline = transfer_timeout()?;
+        let temporary = self.snapshot_manager.create_transport_snapshot().await?;
+        let set_path = temporary.path();
+        let members = self.snapshot_manager.set_members(set_path).await?;
         let set_name = set_path
             .file_name()
             .and_then(|name| name.to_str())
@@ -1335,21 +1468,12 @@ impl BtrfsCache {
                 .file_name()
                 .and_then(|name| name.to_str())
                 .context("invalid cache member name")?;
-            let sender = tokio::process::Command::new("btrfs")
-                .arg("send")
-                .arg(&member)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            let receiver = tokio::process::Command::new("ssh")
-                .arg("--")
-                .arg(remote_host)
-                .arg(format!("btrfs receive {remote_set}"))
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            pipe_btrfs_stream(sender, receiver).await?;
+            let mut sender = tokio::process::Command::new("btrfs");
+            sender.arg("send").arg(&member);
+            let mut receiver = ssh_command(remote_host, &format!("btrfs receive {remote_set}"));
+            self.configure_transport_command(&mut sender, "cache_streaming")?;
+            self.configure_transport_command(&mut receiver, "cache_streaming")?;
+            managed_process::pipeline(&mut sender, &mut receiver, deadline).await?;
             checked_ssh(
                 remote_host,
                 &format!(
@@ -1370,6 +1494,7 @@ impl BtrfsCache {
         if marker != COMPLETE_MARKER.as_bytes() {
             return Err("remote cache set marker mismatch".into());
         }
+        temporary.cleanup().await?;
         info!(
             "Successfully streamed complete cache set to {}:{}",
             remote_host, remote_set
@@ -1388,8 +1513,8 @@ impl BtrfsCache {
         validate_remote_path(remote_snapshot)?;
         validate_remote_path(local_path)?;
 
-        // Apply NUMA affinity for receiving operations
-        self.apply_numa_affinity("cache_receiving").await?;
+        let deadline = transfer_timeout()?;
+        let permit = transfer_permit().await?;
 
         let marker =
             checked_ssh(remote_host, &format!("cat -- {remote_snapshot}/.complete")).await?;
@@ -1406,7 +1531,7 @@ impl BtrfsCache {
             return Err("receive parent is not a directory".into());
         }
         let local_set = local_parent.join(set_name);
-        tokio::fs::create_dir(&local_set).await?;
+        let temporary = TemporarySet::create(local_set.clone(), permit)?;
 
         for member in CACHE_MEMBERS {
             let remote_member = format!("{remote_snapshot}/{member}");
@@ -1418,21 +1543,12 @@ impl BtrfsCache {
                 ),
             )
             .await?;
-            let sender = tokio::process::Command::new("ssh")
-                .arg("--")
-                .arg(remote_host)
-                .arg(format!("btrfs send {remote_member}"))
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            let receiver = tokio::process::Command::new("btrfs")
-                .arg("receive")
-                .arg(&local_set)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            pipe_btrfs_stream(sender, receiver).await?;
+            let mut sender = ssh_command(remote_host, &format!("btrfs send {remote_member}"));
+            let mut receiver = tokio::process::Command::new("btrfs");
+            receiver.arg("receive").arg(&local_set);
+            self.configure_transport_command(&mut sender, "cache_receiving")?;
+            self.configure_transport_command(&mut receiver, "cache_receiving")?;
+            managed_process::pipeline(&mut sender, &mut receiver, deadline).await?;
         }
         SnapshotManager::verify_members(&local_set).await?;
         let marker_path = local_set.join(".complete");
@@ -1445,6 +1561,7 @@ impl BtrfsCache {
         file.sync_all()?;
         std::fs::File::open(&local_set)?.sync_all()?;
         self.snapshot_manager.set_members(&local_set).await?;
+        temporary.preserve();
         info!(
             "Successfully received complete cache set at {}",
             local_set.display()
@@ -1467,54 +1584,30 @@ impl BtrfsCache {
         &self.cache_dir
     }
 
-    /// Helper method to apply NUMA affinity (CPU + memory)
-    async fn apply_numa_affinity(
+    /// Prepare child placement before spawn; never alter a shared async worker.
+    fn configure_transport_command(
         &self,
+        command: &mut tokio::process::Command,
         operation: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Apply CPU affinity first
-        self.apply_cpu_affinity(operation).await?;
-
-        // Convert our local MemoryPolicy to NumaMemoryPolicy and apply it
-        let numa_policy = match &self.memory_policy {
+    ) -> Result<()> {
+        if matches!(self.placement_strategy, CachePlacementStrategy::Disabled) {
+            return Ok(());
+        }
+        let selected = self.select_numa_node(operation);
+        let cpus = selected
+            .as_ref()
+            .map(|node| node.cpu_list.clone())
+            .unwrap_or_default();
+        let policy = match &self.memory_policy {
             MemoryPolicy::Bind(nodes) => NumaMemoryPolicy::Bind(nodes.clone()),
             MemoryPolicy::Preferred(Some(node)) => NumaMemoryPolicy::Preferred(*node),
-            MemoryPolicy::Preferred(None) => NumaMemoryPolicy::Default,
-            MemoryPolicy::Interleave(nodes) => NumaMemoryPolicy::Interleave(nodes.clone()),
+            MemoryPolicy::Preferred(None) => selected
+                .map(|node| NumaMemoryPolicy::Preferred(node.node_id))
+                .unwrap_or(NumaMemoryPolicy::Default),
             MemoryPolicy::Default => NumaMemoryPolicy::Default,
+            MemoryPolicy::Interleave(nodes) => NumaMemoryPolicy::Interleave(nodes.clone()),
         };
-
-        if let Err(e) = NumaOptimizer::apply_memory_policy(&numa_policy) {
-            warn!(
-                "Failed to apply memory policy {:?} for {}: {}",
-                numa_policy, operation, e
-            );
-        }
-
-        Ok(())
-    }
-
-    /// Apply CPU affinity by selecting the optimal NUMA node and binding
-    /// the current thread to its CPUs via `sched_setaffinity(2)`.
-    async fn apply_cpu_affinity(
-        &self,
-        operation: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let optimal_node = self
-            .select_numa_node(operation)
-            .map(|node| node.node_id)
-            .unwrap_or_else(|| self.numa_topology.optimal_node());
-
-        // Create a temporary NumaOptimizer to access the libc-based affinity call.
-        let optimizer = NumaOptimizer::from_env();
-        if let Err(e) = optimizer.apply_cpu_affinity(optimal_node) {
-            warn!(
-                "Failed to set CPU affinity for node {} ({}): {}",
-                optimal_node, operation, e
-            );
-        }
-
-        Ok(())
+        NumaOptimizer::configure_command(command, &cpus, &policy)
     }
 }
 
@@ -1557,6 +1650,64 @@ pub struct NumaInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn numa_placement_is_stable_allowed_and_uses_free_memory() {
+        let topology = NumaTopology::test_topology(
+            vec![
+                NumaNode {
+                    node_id: 8,
+                    cpu_list: vec![7, 9],
+                    memory_total_kb: 100,
+                    memory_free_kb: 90,
+                    distance_to_nodes: HashMap::new(),
+                },
+                NumaNode {
+                    node_id: 3,
+                    cpu_list: vec![1, 2],
+                    memory_total_kb: 1000,
+                    memory_free_kb: 10,
+                    distance_to_nodes: HashMap::new(),
+                },
+            ],
+            None,
+        );
+        let choose = |strategy: CachePlacementStrategy, index, current| {
+            BtrfsCache::select_placement_node(&topology, &strategy, index, Some(&[2, 7]), current)
+        };
+        let local = choose(CachePlacementStrategy::LocalNode, 0, Some(8)).unwrap();
+        assert_eq!((local.node_id, local.cpu_list), (8, vec![7]));
+        assert_eq!(
+            choose(CachePlacementStrategy::MostMemory, 0, None)
+                .unwrap()
+                .node_id,
+            8
+        );
+        assert_eq!(
+            choose(CachePlacementStrategy::RoundRobin, 0, None)
+                .unwrap()
+                .node_id,
+            3
+        );
+        assert_eq!(
+            choose(CachePlacementStrategy::RoundRobin, 1, None)
+                .unwrap()
+                .node_id,
+            8
+        );
+        assert!(choose(CachePlacementStrategy::Disabled, 0, None).is_none());
+        assert!(
+            BtrfsCache::select_placement_node(
+                &topology,
+                &CachePlacementStrategy::LocalNode,
+                0,
+                Some(&[0]),
+                None
+            )
+            .is_none()
+        );
+    }
+    use std::process::Stdio;
 
     /// TempDir cannot remove Btrfs subvolume roots. Clean all test-owned
     /// sources and snapshot members even when a test assertion unwinds.
@@ -1819,7 +1970,7 @@ mod tests {
 
     #[test]
     fn memory_cache_put_and_get() {
-        let mc = MemoryCache::new(10, 1024);
+        let mc = MemoryCache::new(10, 10 * MEMORY_ENTRY_OVERHEAD + 1024);
         mc.put("a".into(), vec![1, 2, 3]);
         assert_eq!(mc.get("a"), Some(vec![1, 2, 3]));
         assert_eq!(mc.get("b"), None);
@@ -1827,7 +1978,7 @@ mod tests {
 
     #[test]
     fn memory_cache_remove() {
-        let mc = MemoryCache::new(10, 1024);
+        let mc = MemoryCache::new(10, 10 * MEMORY_ENTRY_OVERHEAD + 1024);
         mc.put("x".into(), vec![9]);
         assert!(mc.remove("x"));
         assert!(!mc.remove("x"));
@@ -1850,8 +2001,8 @@ mod tests {
 
     #[test]
     fn memory_cache_evicts_on_memory_limit() {
-        // 10-byte memory cap forces eviction after a couple of entries
-        let mc = MemoryCache::new(1000, 10);
+        // A whole-entry budget forces eviction after a couple of entries.
+        let mc = MemoryCache::new(1000, MEMORY_ENTRY_OVERHEAD + 10);
         mc.put("a".into(), vec![0u8; 6]);
         mc.put("b".into(), vec![0u8; 6]);
         // "a" should have been evicted to stay under 10 bytes
@@ -1861,7 +2012,7 @@ mod tests {
 
     #[test]
     fn memory_cache_clear() {
-        let mc = MemoryCache::new(10, 1024);
+        let mc = MemoryCache::new(10, 10 * MEMORY_ENTRY_OVERHEAD + 1024);
         mc.put("a".into(), vec![1]);
         mc.put("b".into(), vec![2]);
         mc.clear();
@@ -1973,11 +2124,261 @@ mod tests {
         cache.put_raw("fast", b"data").await.unwrap();
 
         // The in-memory fast path should be populated
-        let mem_key = "kv:fast";
-        assert!(cache.memory_cache.get(mem_key).is_some());
+        let mem_key = format!("kv:{}", cache.hash_key("fast"));
+        assert!(
+            cache
+                .memory_cache
+                .entries
+                .lock()
+                .unwrap()
+                .contains_key(&mem_key)
+        );
 
         // get_raw should return from memory
         let val = cache.get_raw("fast").await.unwrap();
         assert_eq!(val, Some(b"data".to_vec()));
+    }
+
+    async fn tmpfs_cache() -> (tempfile::TempDir, BtrfsCache) {
+        let directory = tempfile::tempdir_in("/dev/shm").unwrap();
+        let cache = BtrfsCache::new(directory.path().join("cache"))
+            .await
+            .unwrap();
+        (directory, cache)
+    }
+
+    #[test]
+    fn memory_budget_counts_keys_capacity_and_container_nodes() {
+        let budget = MEMORY_ENTRY_OVERHEAD + 100;
+        let mc = MemoryCache::new(10, budget);
+        let mut oversized_capacity = Vec::with_capacity(101);
+        oversized_capacity.push(1);
+        mc.put("a".into(), oversized_capacity);
+        assert!(mc.get("a").is_none());
+        mc.put("k".repeat(101), Vec::new());
+        assert!(mc.entries.lock().unwrap().is_empty());
+        mc.put("a".into(), vec![1; 90]);
+        assert!(mc.get("a").is_some());
+        assert!(mc.current_memory.load(Ordering::Relaxed) <= budget);
+        mc.clear();
+        assert_eq!(mc.current_memory.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn concurrent_memory_inserts_never_publish_over_budget() {
+        let budget = 4 * (MEMORY_ENTRY_OVERHEAD + 100);
+        let mc = std::sync::Arc::new(MemoryCache::new(4, budget));
+        std::thread::scope(|scope| {
+            for writer in 0..8 {
+                let mc = &mc;
+                scope.spawn(move || {
+                    for iteration in 0..50 {
+                        mc.put(format!("{writer}:{iteration}"), vec![1; 90]);
+                        let entries = mc.entries.lock().unwrap();
+                        let retained: usize = entries
+                            .iter()
+                            .map(|(key, entry)| {
+                                MemoryCache::charge(key.capacity(), entry.data.capacity())
+                            })
+                            .sum();
+                        assert!(entries.len() <= 4);
+                        assert!(retained <= budget);
+                        assert_eq!(retained, mc.current_memory.load(Ordering::Relaxed));
+                    }
+                });
+            }
+        });
+    }
+
+    #[tokio::test]
+    async fn index_is_compact_bounded_and_disk_fallback_survives_reopen() {
+        let (directory, mut cache) = tmpfs_cache().await;
+        cache.index_max_entries = 3;
+        cache.memory_cache = MemoryCache::new(0, 0);
+        for id in 0..20 {
+            cache
+                .put_embedding(&format!("{id}:{}", "x".repeat(65536)), &[id as f32])
+                .unwrap();
+            cache
+                .put_raw(&format!("{id}:{}", "k".repeat(65536)), &[id])
+                .await
+                .unwrap();
+            assert!(cache.index_lru.lock().unwrap().len() <= 3);
+        }
+        let embedding_rows = cache
+            .index
+            .run_query("?[text] := *embedding_cache[_, text, _, _, _, _, _]", None)
+            .unwrap();
+        let kv_rows = cache
+            .index
+            .run_query("?[key] := *kv_cache[_, key, _, _, _, _, _]", None)
+            .unwrap();
+        assert!(embedding_rows.as_array().unwrap().len() + kv_rows.as_array().unwrap().len() <= 3);
+        assert!(
+            embedding_rows
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|row| row["text"] == "")
+        );
+        assert!(
+            kv_rows
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|row| row["key"] == "")
+        );
+        assert_eq!(cache.stats().unwrap().total_entries, 20);
+        let first_text = format!("0:{}", "x".repeat(65536));
+        let first_key = format!("0:{}", "k".repeat(65536));
+        assert_eq!(cache.get_embedding(&first_text).unwrap(), Some(vec![0.0]));
+        assert_eq!(cache.get_raw(&first_key).await.unwrap(), Some(vec![0]));
+        drop(cache);
+        let reopened = BtrfsCache::new(directory.path().join("cache"))
+            .await
+            .unwrap();
+        assert_eq!(
+            reopened.get_embedding(&first_text).unwrap(),
+            Some(vec![0.0])
+        );
+        assert_eq!(reopened.get_raw(&first_key).await.unwrap(), Some(vec![0]));
+        assert_eq!(reopened.stats().unwrap().total_entries, 20);
+    }
+
+    #[tokio::test]
+    async fn expiry_invalidates_memory_evicted_metadata_and_recomputed_values() {
+        let (_directory, mut cache) = tmpfs_cache().await;
+        cache.index_max_entries = 2;
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3 * 86400);
+        for id in 0..6 {
+            let text = format!("embedding-{id}");
+            cache.put_embedding(&text, &[id as f32]).unwrap();
+            BtrfsCache::open_payload(&cache.embedding_path(&cache.hash_text(&text)))
+                .unwrap()
+                .set_times(std::fs::FileTimes::new().set_modified(old))
+                .unwrap();
+        }
+        // A fresh hit must durably protect this entry even if its index row was evicted.
+        assert_eq!(cache.get_embedding("embedding-0").unwrap(), Some(vec![0.0]));
+        assert_eq!(cache.cleanup_old(1).unwrap(), 5);
+        assert!(cache.get_embedding("embedding-1").unwrap().is_none());
+        assert_eq!(
+            cache
+                .get_or_embed("embedding-1", |_| Ok(vec![99.0]))
+                .unwrap(),
+            vec![99.0]
+        );
+        assert_eq!(
+            cache.get_embedding("embedding-1").unwrap(),
+            Some(vec![99.0])
+        );
+        assert_eq!(cache.cleanup_old(-1).unwrap(), 2);
+        assert!(cache.get_embedding("embedding-0").unwrap().is_none());
+        assert!(cache.memory_cache.entries.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn expiry_reports_backing_failure_without_pretending_success() {
+        let (_directory, cache) = tmpfs_cache().await;
+        cache.put_embedding("key", &[1.0]).unwrap();
+        let path = cache.embedding_path(&cache.hash_text("key"));
+        std::fs::remove_file(&path).unwrap();
+        std::fs::create_dir(&path).unwrap();
+        assert!(cache.cleanup_old(-1).is_err());
+        assert_eq!(cache.index_lru.lock().unwrap().len(), 1);
+        assert!(cache.get_embedding("key").is_err());
+    }
+
+    #[tokio::test]
+    async fn malformed_embedding_and_oversized_payloads_are_rejected() {
+        let (_directory, mut cache) = tmpfs_cache().await;
+        cache.max_payload_bytes = 32;
+        cache.max_embedding_dimensions = 4;
+        assert!(cache.put_raw("too-big", &[0; 33]).await.is_err());
+        assert!(!cache.kv_path(&cache.hash_key("too-big")).exists());
+        assert!(cache.put_embedding("too-big", &[0.0; 5]).is_err());
+        let hash = cache.hash_text("invalid");
+        let path = cache.embedding_path(&hash);
+        for bytes in [
+            u64::MAX.to_le_bytes().to_vec(),
+            4u64.to_le_bytes().to_vec(),
+            [1u64.to_le_bytes().as_slice(), &[0; 5]].concat(),
+            vec![0; 33],
+        ] {
+            std::fs::write(&path, bytes).unwrap();
+            assert!(cache.get_embedding("invalid").is_err());
+            assert!(cache.memory_cache.entries.lock().unwrap().is_empty());
+        }
+        assert!(cache.cleanup_old(i64::MAX).is_err());
+    }
+
+    #[tokio::test]
+    async fn separate_handles_detect_replacement_and_deletion() {
+        let (directory, first) = tmpfs_cache().await;
+        let second = BtrfsCache::new(directory.path().join("cache"))
+            .await
+            .unwrap();
+        first.put_embedding("same", &[1.0]).unwrap();
+        first.put_raw("same", b"old").await.unwrap();
+        second.put_embedding("same", &[2.0]).unwrap();
+        second.put_raw("same", b"new").await.unwrap();
+        assert_eq!(first.get_embedding("same").unwrap(), Some(vec![2.0]));
+        assert_eq!(first.get_raw("same").await.unwrap(), Some(b"new".to_vec()));
+        second.delete("same").await.unwrap();
+        second.cleanup_old(-1).unwrap();
+        assert!(first.get_raw("same").await.unwrap().is_none());
+        assert!(first.get_embedding("same").unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn compute_does_not_hold_lock_or_overwrite_a_concurrent_put() {
+        let (_directory, cache) = tmpfs_cache().await;
+        let cache = std::sync::Arc::new(cache);
+        let entered = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let (release, resume) = std::sync::mpsc::channel();
+        let worker_cache = cache.clone();
+        let worker_entered = entered.clone();
+        let worker = std::thread::spawn(move || {
+            worker_cache
+                .get_or_embed("key", |_| {
+                    worker_entered.wait();
+                    resume.recv().unwrap();
+                    Ok(vec![1.0])
+                })
+                .unwrap()
+        });
+        entered.wait();
+        cache.put_embedding("key", &[2.0]).unwrap();
+        release.send(()).unwrap();
+        assert_eq!(worker.join().unwrap(), vec![2.0]);
+        assert_eq!(cache.get_embedding("key").unwrap(), Some(vec![2.0]));
+        let result = cache
+            .get_or_compute("raw", || async {
+                cache.put_raw("raw", b"newer").await.unwrap();
+                Ok(b"stale".to_vec())
+            })
+            .await
+            .unwrap();
+        assert_eq!(result, b"newer");
+    }
+
+    #[tokio::test]
+    async fn clear_preserves_category_roots_and_releases_all_derived_owners() {
+        let (_directory, cache) = tmpfs_cache().await;
+        cache.put_embedding("key", &[1.0]).unwrap();
+        cache.put_raw("key", b"value").await.unwrap();
+        for category in ["queries", "diffs"] {
+            std::fs::write(cache.cache_dir.join(category).join("payload"), b"data").unwrap();
+        }
+        assert_eq!(cache.stats().unwrap().disk_usage_bytes, 12 + 5 + 8);
+        cache.clear().unwrap();
+        assert!(cache.index_lru.lock().unwrap().is_empty());
+        assert_eq!(cache.index_lru.lock().unwrap().capacity(), 0);
+        assert!(cache.memory_cache.entries.lock().unwrap().is_empty());
+        assert_eq!(cache.stats().unwrap().disk_usage_bytes, 0);
+        assert!(cache.cache_dir.join(".cache.lock").is_file());
+        for category in ["embeddings", "blocks", "queries", "diffs", "kv"] {
+            assert!(cache.cache_dir.join(category).is_dir());
+        }
     }
 }
