@@ -1,0 +1,5 @@
+#!/bin/sh
+# Observe the endpoint on every runit readiness request; do not start anything.
+set -eu
+exec timeout 3 /bin/bash -c 'exec 3<>"/dev/tcp/$1/$2"' qdrant-probe \
+    "${QDRANT_GRPC_HOST:-127.0.0.1}" "${QDRANT_GRPC_PORT:-6334}"

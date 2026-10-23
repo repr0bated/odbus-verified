@@ -22,16 +22,18 @@
 //!
 //! # Deduplication
 //!
-//! Exact content-hash dedup in a sliding time window. Tool calls bypass
+//! Exact content-hash dedup within the same actor, conversation and operation
+//! context in a sliding arrival-time window. Tool calls bypass
 //! dedup (idempotent retries still matter). Window size is a single
 //! runtime tunable, not a per-plugin concern.
 
 use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use op_state_store::plugin_schema::PluginSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
 /// Significance tier. Ordered: Signal > Contextual > Routine > Noise.
@@ -221,7 +223,10 @@ pub fn is_pii(schema: &PluginSchema, field: Option<&str>) -> bool {
         return true;
     }
     if let Some(field_name) = field
-        && let Some(field_schema) = schema.fields.get(field_name)
+        && let Some(field_schema) = schema
+            .fields
+            .get(field_name.trim_start_matches('/'))
+            .or_else(|| schema.fields.get(field_name))
     {
         return field_schema.description.to_lowercase().contains("[pii]")
             || field_schema.constraints.iter().any(|c| {
@@ -233,8 +238,43 @@ pub fn is_pii(schema: &PluginSchema, field: Option<&str>) -> bool {
 }
 
 struct WindowEntry {
-    timestamp: DateTime<Utc>,
+    received_at: Instant,
+    key: DedupKey,
+}
+
+#[derive(PartialEq, Eq)]
+struct DedupKey {
+    user_id: Option<String>,
+    conversation_id: Option<String>,
+    actor_id: String,
+    plugin_id: Option<String>,
+    field: Option<String>,
+    op_kind: OpKind,
+    autonomous: bool,
+    is_write: bool,
+    constraint_failed: bool,
+    memory_ref: Option<String>,
+    tool_name: Option<String>,
     content_hash: String,
+}
+
+impl From<&ActivityEvent> for DedupKey {
+    fn from(event: &ActivityEvent) -> Self {
+        Self {
+            user_id: event.user_id.clone(),
+            conversation_id: event.conversation_id.clone(),
+            actor_id: event.actor_id.clone(),
+            plugin_id: event.plugin_id.clone(),
+            field: event.field.clone(),
+            op_kind: event.op_kind.clone(),
+            autonomous: event.autonomous,
+            is_write: event.is_write,
+            constraint_failed: event.constraint_failed,
+            memory_ref: event.memory_ref.clone(),
+            tool_name: event.tool_name.clone(),
+            content_hash: event.content_hash.clone(),
+        }
+    }
 }
 
 /// Runtime tunables — the only config outside the plugin schema.
@@ -295,13 +335,14 @@ impl ActivityFilter {
         }
 
         // Gate 2 — derive significance from plugin schema
+        let autonomous = event.autonomous || event.op_kind == OpKind::AutonomousDecision;
         let sig = if let Some(schema) = schema {
             let schema_sig = derive_significance(
                 schema,
                 event.field.as_deref(),
                 event.is_write,
                 event.constraint_failed,
-                event.autonomous,
+                autonomous,
             );
 
             // Schema said Noise — respect it
@@ -317,7 +358,7 @@ impl ActivityFilter {
             }
         } else {
             // No schema — use op kind alone
-            if event.autonomous {
+            if autonomous {
                 Significance::Signal
             } else if event.op_kind.is_always_contextual() {
                 Significance::Contextual
@@ -332,30 +373,33 @@ impl ActivityFilter {
             ));
         }
 
-        // Gate 3 — exact content-hash dedup
-        self.evict_expired(&tunables).await;
-
-        let is_dup = self
-            .window
-            .read()
-            .await
-            .iter()
-            .any(|e| e.content_hash == event.content_hash);
-
-        // Tool calls bypass dedup — retries are meaningful signal
-        if is_dup && event.op_kind != OpKind::ToolCall {
-            return Ok(FilterDecision::Suppress(SuppressReason::ExactDuplicate));
-        }
-
+        // Gate 3 — atomically expire, compare and remember scoped events.
+        // Arrival time is monotonic and independent of an event's supplied clock.
         {
             let mut w = self.window.write().await;
-            if w.len() >= tunables.dedup_window_max {
+            let now = Instant::now();
+            let duration = Duration::from_secs(tunables.dedup_window_secs.max(0) as u64);
+            w.retain(|entry| now.duration_since(entry.received_at) < duration);
+            while w.len() > tunables.dedup_window_max {
                 w.pop_front();
             }
-            w.push_back(WindowEntry {
-                timestamp: event.timestamp,
-                content_hash: event.content_hash.clone(),
-            });
+            // Tool calls bypass dedup — retries are meaningful signal.
+            if event.op_kind != OpKind::ToolCall
+                && tunables.dedup_window_max > 0
+                && !duration.is_zero()
+            {
+                let key = DedupKey::from(event);
+                if w.iter().any(|entry| entry.key == key) {
+                    return Ok(FilterDecision::Suppress(SuppressReason::ExactDuplicate));
+                }
+                while w.len() >= tunables.dedup_window_max {
+                    w.pop_front();
+                }
+                w.push_back(WindowEntry {
+                    received_at: now,
+                    key,
+                });
+            }
         }
 
         // PII gate — chain yes, Qdrant no
@@ -367,14 +411,6 @@ impl ActivityFilter {
         Ok(FilterDecision::Emit(sig))
     }
 
-    async fn evict_expired(&self, t: &FilterTunables) {
-        let cutoff = Utc::now() - Duration::seconds(t.dedup_window_secs);
-        let mut w = self.window.write().await;
-        while w.front().is_some_and(|e| e.timestamp < cutoff) {
-            w.pop_front();
-        }
-    }
-
     pub async fn window_len(&self) -> usize {
         self.window.read().await.len()
     }
@@ -383,7 +419,84 @@ impl ActivityFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use op_state_store::plugin_schema::PluginSchemaBuilder;
+    use op_state_store::plugin_schema::{FieldSchema, FieldType, PluginSchemaBuilder};
+
+    fn signal_event() -> ActivityEvent {
+        ActivityEvent {
+            id: "event".into(),
+            timestamp: Utc::now(),
+            user_id: Some("user".into()),
+            conversation_id: Some("conversation".into()),
+            actor_id: "actor".into(),
+            op_kind: OpKind::AutonomousDecision,
+            autonomous: false,
+            confidence: None,
+            plugin_id: Some("plugin".into()),
+            field: None,
+            is_write: false,
+            constraint_failed: false,
+            memory_ref: None,
+            tool_name: None,
+            content_hash: "same-payload".into(),
+            summary: "decision".into(),
+            payload: serde_json::json!({}),
+        }
+    }
+
+    #[tokio::test]
+    async fn concurrent_duplicates_emit_once() {
+        let filter = ActivityFilter::with_defaults();
+        let event = signal_event();
+        let (first, second) = tokio::join!(
+            filter.evaluate(&event, None),
+            filter.evaluate(&event, None),
+        );
+        let decisions = [first.unwrap(), second.unwrap()];
+        assert_eq!(decisions.iter().filter(|d| **d == FilterDecision::Emit(Significance::Signal)).count(), 1);
+        assert_eq!(decisions.iter().filter(|d| **d == FilterDecision::Suppress(SuppressReason::ExactDuplicate)).count(), 1);
+    }
+
+    #[tokio::test]
+    async fn duplicate_payload_keeps_distinct_conversations() {
+        let filter = ActivityFilter::with_defaults();
+        let mut event = signal_event();
+        assert_eq!(filter.evaluate(&event, None).await.unwrap(), FilterDecision::Emit(Significance::Signal));
+        event.conversation_id = Some("another-conversation".into());
+        assert_eq!(filter.evaluate(&event, None).await.unwrap(), FilterDecision::Emit(Significance::Signal));
+    }
+
+    #[tokio::test]
+    async fn supplied_timestamp_does_not_change_arrival_window() {
+        let filter = ActivityFilter::with_defaults();
+        let mut event = signal_event();
+        event.timestamp = DateTime::UNIX_EPOCH;
+        assert_eq!(filter.evaluate(&event, None).await.unwrap(), FilterDecision::Emit(Significance::Signal));
+        assert_eq!(filter.evaluate(&event, None).await.unwrap(), FilterDecision::Suppress(SuppressReason::ExactDuplicate));
+    }
+
+    #[tokio::test]
+    async fn autonomous_kind_overrides_noise_schema() {
+        let filter = ActivityFilter::with_defaults();
+        assert_eq!(filter.evaluate(&signal_event(), Some(&noise_schema())).await.unwrap(), FilterDecision::Emit(Significance::Signal));
+    }
+
+    #[test]
+    fn pii_lookup_accepts_top_level_pointer() {
+        let mut schema = PluginSchemaBuilder::new("profile").build();
+        let field = FieldSchema {
+            field_type: FieldType::String,
+            required: false,
+            description: "[PII] Contact address".into(),
+            default: None,
+            example: None,
+            constraints: Vec::new(),
+            read_only: false,
+            read_only_when: None,
+        };
+        schema.fields.insert("email".into(), field);
+        assert!(is_pii(&schema, Some("/email")));
+        assert!(!is_pii(&schema, Some("/unrelated/email")));
+    }
 
     fn noise_schema() -> PluginSchema {
         PluginSchemaBuilder::new("test")
