@@ -77,7 +77,7 @@ impl StatePlugin for RtnetlinkPlugin {
     }
 
     fn version(&self) -> &str {
-        "1.1.0"
+        "1.2.0"
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
@@ -113,7 +113,9 @@ impl StatePlugin for RtnetlinkPlugin {
                 let needs_update = desired_iface.state != current_iface.state
                     || desired_iface.mac_address != current_iface.mac_address
                     || desired_iface.addresses != current_iface.addresses
-                    || desired_iface.default_gateway.is_some();
+                    || desired_iface.default_gateway.as_ref().is_some_and(|gateway| {
+                        current_iface.default_gateway.as_ref() != Some(gateway)
+                    });
 
                 if needs_update {
                     actions.push(StateAction::Modify {
@@ -292,6 +294,29 @@ pub struct AddIpv4AddressInput {
     pub address: String,
 }
 
+/// Remove one exact local IPv4 CIDR from an existing interface.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DelIpv4AddressInput {
+    pub name: String,
+    pub address: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DelIpv4AddressDisposition {
+    Removed,
+    AlreadyAbsent,
+}
+
+/// Exact address selector and its observed deletion outcome.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DelIpv4AddressOutput {
+    pub interface: String,
+    pub address: String,
+    pub disposition: DelIpv4AddressDisposition,
+}
+
 /// set_mac_address method input
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SetMacAddressInput {
@@ -442,6 +467,22 @@ pub async fn dispatch_rtnetlink_method(
             Ok(serde_json::to_value(NetlinkAcceptedOutput {
                 interface: name.to_string(),
                 disposition: "accepted".into(),
+            })?)
+        }
+        "del_ipv4_address" => {
+            let input: DelIpv4AddressInput = serde_json::from_value(args.clone())
+                .context("invalid del_ipv4_address arguments")?;
+            let name = interface_name(&input.name)?;
+            let (ip, prefix) = ipv4_cidr(&input.address)?;
+            let removed = op_network::rtnetlink::del_ipv4_address(name, &ip, prefix).await?;
+            Ok(serde_json::to_value(DelIpv4AddressOutput {
+                interface: name.to_string(),
+                address: format!("{ip}/{prefix}"),
+                disposition: if removed {
+                    DelIpv4AddressDisposition::Removed
+                } else {
+                    DelIpv4AddressDisposition::AlreadyAbsent
+                },
             })?)
         }
         "set_mac_address" => {
@@ -636,7 +677,7 @@ pub(crate) fn rtnetlink_schema() -> PluginSchema {
 
     let mut schema = PluginSchema::builder("rtnetlink")
         .category("network")
-        .version("1.1.0")
+        .version("1.2.0")
         .description("Native kernel rtnetlink interface management")
         .array_field(
             "interfaces",
@@ -680,6 +721,19 @@ pub(crate) fn rtnetlink_schema() -> PluginSchema {
             false,
             "cap.network.rtnetlink.ipv4-address.add@v1",
             "mut.network.rtnetlink.ipv4-address.add@v1",
+        ),
+    );
+    schema.methods.insert(
+        "del_ipv4_address".to_string(),
+        super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
+            DelIpv4AddressInput,
+            DelIpv4AddressOutput,
+        >(
+            "del_ipv4_address",
+            op_state_store::SideEffect::Mutation,
+            true,
+            "cap.network.rtnetlink.ipv4-address.del@v1",
+            "mut.network.rtnetlink.ipv4-address.del@v1",
         ),
     );
     schema.methods.insert(
@@ -788,6 +842,13 @@ pub(crate) fn rtnetlink_schema() -> PluginSchema {
         },
     );
     schema.capabilities.insert(
+        "cap.network.rtnetlink.ipv4-address.del@v1".to_string(),
+        CapabilityDecl {
+            id: "cap.network.rtnetlink.ipv4-address.del@v1".to_string(),
+            description: "Grants: del_ipv4_address.".to_string(),
+        },
+    );
+    schema.capabilities.insert(
         "cap.network.rtnetlink.mac-address.set@v1".to_string(),
         CapabilityDecl {
             id: "cap.network.rtnetlink.mac-address.set@v1".to_string(),
@@ -850,6 +911,63 @@ inventory::submit! {
 mod tests {
     use super::*;
     use std::process::Command;
+
+    #[test]
+    fn ipv4_delete_contract_is_exact_typed_and_capability_bound() {
+        let schema = rtnetlink_schema();
+        let method = &schema.methods["del_ipv4_address"];
+        assert!(method.idempotent);
+        assert_eq!(
+            method.required_capability.as_deref(),
+            Some("cap.network.rtnetlink.ipv4-address.del@v1")
+        );
+        assert_eq!(method.subid, "mut.network.rtnetlink.ipv4-address.del@v1");
+        assert!(
+            schema
+                .capabilities
+                .contains_key("cap.network.rtnetlink.ipv4-address.del@v1")
+        );
+        assert!(method.returns.is_some());
+        assert!(
+            serde_json::from_value::<DelIpv4AddressInput>(serde_json::json!({
+                "name": "rt-a", "address": "192.0.2.1/24", "flush": true,
+            }))
+            .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn ipv4_delete_invalid_input_is_rejected_before_netlink() {
+        for address in [
+            "bad",
+            "192.0.2.1",
+            "192.0.2.1/33",
+            "192.0.2.1/256",
+            "::1/128",
+        ] {
+            let error = dispatch_rtnetlink_method(
+                "del_ipv4_address",
+                &serde_json::json!({
+                    "name": "absent-test", "address": address,
+                }),
+            )
+            .await
+            .unwrap_err();
+            assert!(
+                error.to_string().contains("IPv4"),
+                "unexpected error: {error}"
+            );
+        }
+        let error = dispatch_rtnetlink_method(
+            "del_ipv4_address",
+            &serde_json::json!({
+                "name": "../../unsafe", "address": "192.0.2.1/24",
+            }),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("unsafe"));
+    }
 
     #[test]
     fn validates_kernel_request_fields_without_touching_host() {
@@ -1027,6 +1145,45 @@ mod tests {
             assert!(!routes
                 .iter()
                 .any(|route| route["destination"] == "198.51.100.0/24"));
+
+            // Address removal is exact, idempotent, and cannot cascade to siblings.
+            for (name, address) in [("rt-a", "198.51.100.1/24"), ("rt-a", "192.0.2.2/24"), ("rt-b", "192.0.2.2/24")] {
+                call("add_ipv4_address", serde_json::json!({"name":name,"address":address})).await;
+            }
+            let error = dispatch_rtnetlink_method("del_ipv4_address", &serde_json::json!({
+                "name":"rt-a", "address":"192.0.2.1/24",
+            })).await.unwrap_err();
+            assert!(error.to_string().contains("secondary"));
+            let addresses_before = op_network::rtnetlink::list_interfaces().await.unwrap();
+            let output = dispatch_rtnetlink_method("del_ipv4_address", &serde_json::json!({
+                "name":"rt-a", "address":"192.0.2.2/32",
+            })).await.unwrap();
+            assert_eq!(output["disposition"], "already_absent");
+            let output = dispatch_rtnetlink_method("del_ipv4_address", &serde_json::json!({
+                "name":"rt-a", "address":"192.0.2.2/24",
+            })).await.unwrap();
+            assert_eq!(output["disposition"], "removed");
+            assert_eq!(output["interface"], "rt-a");
+            assert_eq!(output["address"], "192.0.2.2/24");
+            let addresses_after = op_network::rtnetlink::list_interfaces().await.unwrap();
+            for before in &addresses_before {
+                let after = addresses_after.iter().find(|interface| interface.name == before.name).unwrap();
+                let mut expected: Vec<_> = before.addresses.iter().map(|address| (address.address.clone(), address.prefix_len, address.family.clone())).collect();
+                if before.name == "rt-a" {
+                    expected.retain(|(address, prefix, _)| address != "192.0.2.2" || *prefix != 24);
+                }
+                let mut actual: Vec<_> = after.addresses.iter().map(|address| (address.address.clone(), address.prefix_len, address.family.clone())).collect();
+                expected.sort();
+                actual.sort();
+                assert_eq!(actual, expected);
+            }
+            let output = dispatch_rtnetlink_method("del_ipv4_address", &serde_json::json!({
+                "name":"rt-a", "address":"192.0.2.2/24",
+            })).await.unwrap();
+            assert_eq!(output["disposition"], "already_absent");
+            assert!(dispatch_rtnetlink_method("del_ipv4_address", &serde_json::json!({
+                "name":"rt-missing", "address":"192.0.2.2/24",
+            })).await.unwrap_err().to_string().contains("not found"));
 
             call("del_link", serde_json::json!({"name":"rt-a"})).await;
             let interfaces = op_network::rtnetlink::list_interfaces().await.unwrap();

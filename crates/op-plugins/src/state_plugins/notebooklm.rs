@@ -1,7 +1,7 @@
 //! NotebookLM plugin — projects NotebookLM (knowledge notebooks) state into the
 //! D-Bus tree at `/org/opdbus/v1/plugins/notebooklm`.
 //!
-//! Upstream binary is jacob-bd `nlm` at `/usr/local/bin/nlm`. The plugin id stays
+//! Upstream binary is jacob-bd `nlm` at `/usr/local/libexec/op-dbus/bin/nlm`. The plugin id stays
 //! `notebooklm`. Catalog and auth come from CLI JSON, not a local library.json.
 
 use anyhow::Result;
@@ -25,7 +25,7 @@ use provider_outputs::*;
 /// Manifest of the designated knowledge corpus.
 const MANIFEST_PATH: &str = "knowledge/notebooks.manifest.json";
 const PROFILE_ROOT: &str = "/home/jeremy/.notebooklm-mcp-cli";
-const DEFAULT_NLM_BIN: &str = "/usr/local/bin/nlm";
+const DEFAULT_NLM_BIN: &str = "/usr/local/libexec/op-dbus/bin/nlm";
 
 /// NotebookLM authentication/profile state.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
@@ -540,7 +540,7 @@ impl NotebookLmPlugin {
             corpus,
             config: NotebookLmConfig {
                 cli: "nlm (notebooklm-mcp-cli@0.11.2)".to_string(),
-                transport: "/usr/local/bin/nlm".to_string(),
+                transport: DEFAULT_NLM_BIN.to_string(),
                 ingest_pipeline: "OD-23 (embedding_model->Qdrant + Cozo graph)".to_string(),
             },
             selected_notebook_id: None,

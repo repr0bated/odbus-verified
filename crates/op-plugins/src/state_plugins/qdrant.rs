@@ -67,7 +67,10 @@ pub struct QdrantCollectionConfig {
 /// Mirrors `CollectionParams` + `VectorsConfig` from the OpenAPI spec.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct QdrantCollectionParams {
-    pub vectors: QdrantVectorParams,
+    // Retain the authored single-or-named union and map-record constraints;
+    // finite FieldType::Map cannot preserve unsigned formats/nullable fields.
+    #[schemars(extend("x-opdbus-exact-json-schema" = true))]
+    pub vectors: QdrantVectorsConfig,
     #[serde(default)]
     pub shard_number: Option<u32>,
     #[serde(default)]
@@ -80,6 +83,14 @@ pub struct QdrantCollectionParams {
     pub on_disk_payload: Option<bool>,
     #[serde(default)]
     pub sparse_vectors: Option<serde_json::Value>,
+}
+
+/// Qdrant accepts one unnamed vector or a map of named vector spaces.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum QdrantVectorsConfig {
+    Single(QdrantVectorParams),
+    Named(std::collections::BTreeMap<String, QdrantVectorParams>),
 }
 
 /// Mirrors `VectorParams` from the OpenAPI spec.
@@ -408,6 +419,67 @@ pub async fn dispatch_qdrant_method(
     dispatch_qdrant_method_with_client(&client, method, args).await
 }
 
+fn collection_info(name: &str, mut detail: serde_json::Value) -> Result<QdrantCollectionInfo> {
+    // The detail endpoint does not include the collection name. The list that
+    // selected this request owns it; bind it before decoding the state contract.
+    detail.as_object_mut().context("Qdrant collection detail is not an object")?
+        .insert("name".into(), serde_json::Value::String(name.to_owned()));
+    serde_json::from_value(detail)
+        .with_context(|| format!("decode collection info for '{name}'"))
+}
+
+/// Read the real, current Qdrant state (root info + every collection's full
+/// detail) for publication into the SHM projection. Used by the bridge's
+/// typed dispatch, which has no other way to observe this plugin's live
+/// state — the per-method responses above are each a narrow slice, not the
+/// plugin's full state.
+pub async fn current_state() -> Result<QdrantState> {
+    let client = QdrantHttpClient::new()?;
+    let root = client
+        .request(reqwest::Method::GET, "", None, false)
+        .await?;
+    let list = client
+        .request(reqwest::Method::GET, "/collections", None, false)
+        .await?;
+    let names = list["result"]["collections"]
+        .as_array()
+        .context("Qdrant collections result is not an array")?
+        .iter()
+        .map(|v| {
+            v["name"]
+                .as_str()
+                .map(str::to_string)
+                .context("Qdrant collection item omitted name")
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    let mut collections = Vec::with_capacity(names.len());
+    for name in &names {
+        let segment = QdrantHttpClient::collection_segment(name)?;
+        let detail = client
+            .request(
+                reqwest::Method::GET,
+                &format!("/collections/{segment}"),
+                None,
+                false,
+            )
+            .await?;
+        let info = collection_info(name, detail["result"].clone())?;
+        collections.push(info);
+    }
+
+    Ok(QdrantState {
+        version: root["version"].as_str().unwrap_or_default().to_string(),
+        title: root["title"].as_str().unwrap_or_default().to_string(),
+        commit: root["commit"].as_str().unwrap_or_default().to_string(),
+        http_endpoint: QdrantPlugin::http_endpoint(),
+        grpc_endpoint: QdrantPlugin::grpc_endpoint(),
+        collections,
+        cluster_status: None,
+        telemetry: None,
+    })
+}
+
 async fn dispatch_qdrant_method_with_client(
     client: &QdrantHttpClient,
     method: &str,
@@ -627,7 +699,7 @@ impl QdrantPlugin {
                 segments_count: 0,
                 config: QdrantCollectionConfig {
                     params: QdrantCollectionParams {
-                        vectors: QdrantVectorParams {
+                        vectors: QdrantVectorsConfig::Single(QdrantVectorParams {
                             size: 1024,
                             distance: "Cosine".to_string(),
                             hnsw_config: None,
@@ -635,7 +707,7 @@ impl QdrantPlugin {
                             on_disk: Some(false),
                             datatype: Some("float32".to_string()),
                             multivector_config: None,
-                        },
+                        }),
                         shard_number: Some(1),
                         replication_factor: Some(1),
                         write_consistency_factor: Some(1),
@@ -981,6 +1053,98 @@ mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
+
+    #[test]
+    fn vectors_keep_exact_authored_union_through_plugin_schema() {
+        use op_state_store::FieldType;
+
+        let source = serde_json::to_value(schemars::schema_for!(QdrantState)).unwrap();
+        let schema = qdrant_schema();
+        let producer = super::super::schemars_adapter::try_plugin_schema_from_json(
+            PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_DESCRIPTION, &source,
+        ).unwrap();
+        let mirror = op_blob::adapter::try_plugin_schema_from_json(
+            PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_DESCRIPTION, &source,
+        ).unwrap();
+        assert_eq!(producer.fields, mirror.fields);
+        let FieldType::Array(collection) = &schema.fields["collections"].field_type else {
+            panic!("collection array lost")
+        };
+        let FieldType::Object(collection) = collection.as_ref() else {
+            panic!("collection record lost")
+        };
+        let FieldType::Object(config) = &collection["config"].field_type else {
+            panic!("collection config lost")
+        };
+        let FieldType::Object(params) = &config["params"].field_type else {
+            panic!("collection params lost")
+        };
+        let FieldType::JsonSchema(document) = &params["vectors"].field_type else {
+            panic!("vector union was reduced")
+        };
+        let retained = serde_json::to_value(document.as_ref()).unwrap();
+        for name in ["QdrantVectorsConfig", "QdrantVectorParams"] {
+            assert_eq!(retained["$defs"][name], source["$defs"][name]);
+        }
+        assert!(retained["$defs"]["QdrantVectorsConfig"]["anyOf"].is_array());
+        assert_eq!(retained["$defs"]["QdrantVectorParams"]["properties"]["size"]["format"], "uint64");
+        // Exercise exported local-reference rebasing at the authored params
+        // boundary without changing unrelated optional collection fields.
+        let params_source = serde_json::to_value(schemars::schema_for!(QdrantCollectionParams)).unwrap();
+        let params_schema = super::super::schemars_adapter::try_plugin_schema_from_json(
+            "qdrant_params", PLUGIN_VERSION, "", &params_source,
+        ).unwrap();
+        let exported = serde_json::to_value(params_schema.to_json_schema()).unwrap();
+        let validator = jsonschema::validator_for(&exported).unwrap();
+        for (vectors, valid) in [
+            (serde_json::json!({"size": 4, "distance": "Cosine"}), true),
+            (serde_json::json!({"image": {"size": u64::MAX, "distance": "Dot", "on_disk": null}}), true),
+            (serde_json::json!({}), true),
+            (serde_json::json!({"image": {"size": -1, "distance": "Dot"}}), false),
+            (serde_json::json!({"image": {"size": 4}}), false),
+            (serde_json::json!({"image": null}), false),
+            (serde_json::json!({"size": "4", "distance": "Cosine"}), false),
+        ] {
+            assert_eq!(validator.is_valid(&serde_json::json!({"vectors": vectors.clone()})), valid);
+            let mut state = serde_json::to_value(QdrantPlugin::exemplar_state()).unwrap();
+            state["collections"][0]["config"]["params"]["vectors"] = vectors;
+            let state = simd_json::serde::to_owned_value(state).unwrap();
+            assert_eq!(schema.validate_exact_schema_fields(&state).is_ok(), valid);
+        }
+    }
+
+    #[test]
+    fn collection_details_accept_single_named_and_empty_vector_spaces() {
+        let schema = serde_json::to_value(schemars::schema_for!(QdrantCollectionInfo)).unwrap();
+        let validator = jsonschema::validator_for(&schema).unwrap();
+        let exemplar = QdrantPlugin::exemplar_state().collections.remove(0);
+        for vectors in [
+            serde_json::json!({"size": 4, "distance": "Cosine"}),
+            serde_json::json!({
+                "image": {"size": 4, "distance": "Dot"},
+                "text": {"size": 8, "distance": "Cosine"}
+            }),
+            serde_json::json!({}),
+        ] {
+            let mut detail = serde_json::to_value(&exemplar).unwrap();
+            detail.as_object_mut().unwrap().remove("name");
+            detail["config"]["params"]["vectors"] = vectors.clone();
+            let decoded = collection_info("from-list", detail).unwrap();
+            assert_eq!(decoded.name, "from-list");
+            match (&decoded.config.params.vectors, vectors.get("size")) {
+                (QdrantVectorsConfig::Single(params), Some(_)) => assert_eq!(params.size, 4),
+                (QdrantVectorsConfig::Named(params), None) => {
+                    assert_eq!(params.len(), vectors.as_object().unwrap().len());
+                }
+                _ => panic!("vector layout changed"),
+            }
+            assert!(validator.is_valid(&serde_json::to_value(decoded).unwrap()));
+        }
+        assert!(serde_json::from_value::<QdrantVectorsConfig>(
+            serde_json::json!({"image": {"distance": "Cosine"}})
+        ).is_err());
+        assert!(collection_info("from-list", serde_json::Value::Null).is_err());
+    }
 
     #[test]
     fn snapshot_creation_time_preserves_null_missing_and_strings() {

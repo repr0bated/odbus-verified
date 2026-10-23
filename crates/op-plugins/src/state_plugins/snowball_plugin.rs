@@ -191,6 +191,40 @@ pub struct QueryEventsOutput {
     pub total_in_chain: u64,
 }
 
+/// Semantic retrieval restricted to the authenticated caller's current session.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.search-own-events-input@v1"))]
+pub struct SearchOwnEventsInput {
+    /// Natural-language question, bounded to 4000 UTF-8 bytes.
+    pub query: String,
+    /// Maximum results, between 1 and 20; defaults to 10.
+    #[serde(default)]
+    #[schemars(range(min = 1, max = 20))]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.evidence-match@v1"))]
+pub struct EvidenceMatch {
+    /// Similarity is a retrieval ranking, not proof of an explanation.
+    pub score: f32,
+    /// Metadata resolved from the authoritative chain, never the vector payload.
+    pub event: AuditEventRecord,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.search-own-events-output@v1"))]
+pub struct SearchOwnEventsOutput {
+    /// Actual Voyage embedding model used for this query.
+    pub embedding_model: String,
+    pub matches: Vec<EvidenceMatch>,
+    /// Index hits rejected because canonical session/event provenance did not match.
+    pub rejected_hits: u32,
+}
+
+pub const SEARCH_OWN_EVENTS_CAPABILITY: &str = "cap.obs.snowball.events.self.search@v1";
+
 /// Input for `verify_chain` — hash-chain integrity check.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 #[schemars(extend("x-oscal-subid" = "sch.service.snowball.verify-chain-input@v1"))]
@@ -213,6 +247,28 @@ pub struct VerifyChainOutput {
     pub events_verified: u64,
     /// One entry per detected integrity violation. Empty when `valid` is true.
     pub errors: Vec<String>,
+}
+
+/// Input for `get_projector_stats` — no arguments.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.projector-stats-input@v1"))]
+pub struct GetProjectorStatsInput {}
+
+/// Output for `get_projector_stats` — status of the OD-64 chain-vectorization
+/// background loop (`ChainVectorProjector`), previously visible only as a
+/// private struct inside `op-grpc-bridge`'s tokio task.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.projector-stats-output@v1"))]
+pub struct ProjectorStatsOutput {
+    /// Completed projection passes since the bridge started.
+    pub passes: u64,
+    /// Chain blocks embedded and written to the vector subvolume so far.
+    pub embedded: u64,
+    /// Passes that errored (index open failure or a failed embed/write).
+    pub failures: u64,
+    /// The most recent pass failure, if any pass has failed since start.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
 }
 
 /// Snowball plugin state schema.
@@ -319,7 +375,16 @@ impl SnowballPlugin {
             current_state,
         })
     }
+}
 
+/// Read-live wrapper for callers outside this module (the bridge's typed
+/// dispatch, which has no other way to fetch this plugin's current state to
+/// publish into the SHM projection after a successful call).
+pub async fn current_state() -> Result<SnowballState> {
+    SnowballPlugin::new().read_live().await
+}
+
+impl SnowballPlugin {
     /// Synchronous shape exemplar used only to derive the [`PluginSchema`]. The
     /// schema describes the *shape* of the plugin's live state output (field
     /// names + types); the data path itself is always live.
@@ -351,7 +416,7 @@ impl StatePlugin for SnowballPlugin {
     }
 
     fn version(&self) -> &str {
-        "2.0.0"
+        "2.1.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -419,7 +484,7 @@ pub(crate) fn snowball_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "snowball",
-        "2.0.0",
+        "2.1.0",
         "Streaming snowball audit chain — snapshots, DR current-state, retention/interval",
         &root,
     );
@@ -521,12 +586,39 @@ pub(crate) fn snowball_schema() -> PluginSchema {
             "obs.service.snowball.chain.verify@v1",
         ),
     );
+    schema.methods.insert(
+        "get_projector_stats".to_string(),
+        method_decl_from_schemars_with_output::<GetProjectorStatsInput, ProjectorStatsOutput>(
+            "get_projector_stats",
+            SideEffect::Read,
+            true,
+            "snowball.read",
+            "obs.service.snowball.projector-stats@v1",
+        ),
+    );
 
+    schema.methods.insert(
+        "search_own_events".to_string(),
+        method_decl_from_schemars_with_output::<SearchOwnEventsInput, SearchOwnEventsOutput>(
+            "search_own_events",
+            SideEffect::Read,
+            true,
+            SEARCH_OWN_EVENTS_CAPABILITY,
+            "obs.service.snowball.events.self.search@v1",
+        ),
+    );
+    schema.capabilities.insert(
+        SEARCH_OWN_EVENTS_CAPABILITY.to_string(),
+        op_state_store::CapabilityDecl {
+            id: SEARCH_OWN_EVENTS_CAPABILITY.to_string(),
+            description: "Search canonical audit metadata for the caller's own current session in Accountability mode using Voyage. Does not grant access to other actors or sessions.".to_string(),
+        },
+    );
     schema.capabilities.insert(
         "snowball.read".to_string(),
         op_state_store::CapabilityDecl {
             id: "snowball.read".to_string(),
-            description: "Grants: list_snapshots, get_snapshot, get_current_state, get_stats, query_events, verify_chain.".to_string(),
+            description: "Grants: list_snapshots, get_snapshot, get_current_state, get_stats, query_events, verify_chain, get_projector_stats.".to_string(),
         },
     );
     schema.capabilities.insert(

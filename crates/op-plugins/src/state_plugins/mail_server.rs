@@ -144,35 +144,33 @@ impl MailServerPlugin {
             .contains("transfer-encoding: chunked")
         {
             let mut decoded = Vec::new();
-            let mut pos = 0;
-            while pos < body.len() {
-                let mut line_end = pos;
-                while line_end < body.len() && body[line_end] != b'\n' {
-                    line_end += 1;
-                }
-                if line_end >= body.len() {
-                    break;
-                }
+            let mut pos = 0usize;
+            loop {
+                let line_len = body[pos..]
+                    .windows(2)
+                    .position(|bytes| bytes == b"\r\n")
+                    .context("Truncated Incus chunk header")?;
+                let line_end = pos + line_len;
                 let line = std::str::from_utf8(&body[pos..line_end])
-                    .unwrap_or("")
-                    .trim();
-                let size = usize::from_str_radix(line.split(';').next().unwrap_or("0").trim(), 16)
-                    .unwrap_or(0);
+                    .context("Invalid Incus chunk header")?;
+                let size = usize::from_str_radix(
+                    line.split(';').next().unwrap_or("").trim(),
+                    16,
+                )
+                .context("Invalid Incus chunk size")?;
+                pos = line_end + 2;
                 if size == 0 {
                     break;
                 }
-                pos = line_end + 1;
-                if pos < body.len() && body[pos] == b'\r' {
-                    pos += 1;
-                }
-                decoded.extend_from_slice(&body[pos..pos + size]);
-                pos += size;
-                if pos < body.len() && body[pos] == b'\r' {
-                    pos += 1;
-                }
-                if pos < body.len() && body[pos] == b'\n' {
-                    pos += 1;
-                }
+                let end = pos.checked_add(size).context("Incus chunk size overflow")?;
+                let chunk = body.get(pos..end).context("Truncated Incus chunk body")?;
+                decoded.extend_from_slice(chunk);
+                let next = end.checked_add(2).context("Incus chunk terminator overflow")?;
+                anyhow::ensure!(
+                    body.get(end..next) == Some(b"\r\n".as_slice()),
+                    "Missing Incus chunk terminator"
+                );
+                pos = next;
             }
             body = decoded;
         }
@@ -551,7 +549,6 @@ pub(crate) fn mail_server_schema() -> PluginSchema {
                 "dovecot_lmtp": "/var/spool/postfix/private/dovecot-lmtp",
                 "postfix_pickup": "/var/spool/postfix/private/pickup"
             },
-            "container_ip": "10.200.0.2",
             "healthy": true,
             "last_error": null,
             "administration": {
