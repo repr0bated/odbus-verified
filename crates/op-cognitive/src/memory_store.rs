@@ -466,8 +466,8 @@ impl CognitiveMemoryStore {
         let entry_rows = self
             .run(
                 r#"
-                ?[namespace]
-                    := *memory_entries[namespace, _, _, _, _, _, _, _, _, _]
+                ?[namespace, key]
+                    := *memory_entries[namespace, key, _, _, _, _, _, _, _, _]
                 "#,
                 BTreeMap::new(),
             )

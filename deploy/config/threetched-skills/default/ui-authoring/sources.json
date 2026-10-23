@@ -1,0 +1,328 @@
+{
+  "format": "3tched-ui-authoring-sources/1",
+  "captured_at": "2026-10-11T21:30:08.678Z",
+  "files": [
+    {
+      "source": "json-render",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "v0.20.0",
+      "commit": "ea4b361b9ff23bcab20286c4f559a5316f0e892b",
+      "source_path": "packages/svelte/README.md",
+      "path": "references/upstream/json-render/svelte-guide.md",
+      "sha256": "ae48e27838283d777ac3cc96b14ad9e037a24fc600dae33388c2a58c30363de7"
+    },
+    {
+      "source": "json-render",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "v0.20.0",
+      "commit": "ea4b361b9ff23bcab20286c4f559a5316f0e892b",
+      "source_path": "packages/svelte/src/catalog-types.ts",
+      "path": "references/upstream/json-render/catalog-types.ts",
+      "sha256": "f0691f055cee3808ed12f512ed7811c5856b70f67cd3f8b3eaec8e8ca7803c2c"
+    },
+    {
+      "source": "json-render",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "v0.20.0",
+      "commit": "ea4b361b9ff23bcab20286c4f559a5316f0e892b",
+      "source_path": "packages/svelte/src/renderer.ts",
+      "path": "references/upstream/json-render/renderer.ts",
+      "sha256": "3bf1f29964a3306e584b0b08e5701353225d2efc7a9d40d99b33baf56482248b"
+    },
+    {
+      "source": "json-render",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "v0.20.0",
+      "commit": "ea4b361b9ff23bcab20286c4f559a5316f0e892b",
+      "source_path": "packages/svelte/src/schema.ts",
+      "path": "references/upstream/json-render/schema.ts",
+      "sha256": "67d99342f66c6f48b7ff63670d4bd6cef9e6fec763e1f1d3ce01bb325a847215"
+    },
+    {
+      "source": "json-render",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "v0.20.0",
+      "commit": "ea4b361b9ff23bcab20286c4f559a5316f0e892b",
+      "source_path": "LICENSE",
+      "path": "references/upstream/json-render/LICENSE",
+      "sha256": "014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff"
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/02-runes/01-what-are-runes.md",
+      "path": "references/upstream/svelte/runes.md",
+      "sha256": "95ab07efbf06047e019b367f4b37a2f060ebdefcee399961e965672125003012"
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/02-runes/02-$state.md",
+      "path": "references/upstream/svelte/state.md",
+      "sha256": "0e99638af4fa02c4e679e852885e693b97ebc87d9c60dbca4bdabe2fbb0f7568",
+      "upstream_sha256": "d65f2898c61bd257e9c76a0facb0c09e3d89cceb74282616e93986b9fb723d40",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/02-runes/03-$derived.md",
+      "path": "references/upstream/svelte/derived.md",
+      "sha256": "32275a78fbc7452243a30bb3001f1d0d79ac9835077b9837eb12bc211006a3ba",
+      "upstream_sha256": "885e5b5df42be4cc554efca5e7b6e15830feeb31464630ed3441d7eb130397ce",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/02-runes/05-$props.md",
+      "path": "references/upstream/svelte/props.md",
+      "sha256": "a344c37cec4d7b36cb0403b3a383a34bd703ab471948205af2590d2c1d858a42"
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/03-template-syntax/01-basic-markup.md",
+      "path": "references/upstream/svelte/markup.md",
+      "sha256": "503282facf19a5cd4c62dd6975f793aca06d83aa0bcf95abb52ce1ffc66fb632"
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/03-template-syntax/07-@render.md",
+      "path": "references/upstream/svelte/render.md",
+      "sha256": "59f1ccf349ab7253710a59470809dab8f15de45c8f2b2a0905b196fa44b72a01"
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/06-runtime/02-context.md",
+      "path": "references/upstream/svelte/context.md",
+      "sha256": "40f5e775d67a9bb925d8d0ed843d5b1f97d2e1052498a9c4e52615b9c4e7a8d3"
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/06-runtime/03-lifecycle-hooks.md",
+      "path": "references/upstream/svelte/lifecycle.md",
+      "sha256": "4d3641aef459feae194c47174de0c1b6de3e0629f5f14cf95273701bed40c7ca",
+      "upstream_sha256": "59613a7b83d1eb3d8a4e65284f8b076bd292d1471c30bb1095086da75173c617",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "svelte",
+      "repository": "https://github.com/sveltejs/svelte",
+      "ref": "svelte@5.57.1",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "LICENSE.md",
+      "path": "references/upstream/svelte/LICENSE.md",
+      "sha256": "06257f4847b13a49a039efb17b944c141e71b12fd8d231b362d86919067d77a3"
+    },
+    {
+      "source": "kit",
+      "repository": "https://github.com/sveltejs/kit",
+      "ref": "@sveltejs/kit@3.0.0",
+      "commit": "090496890cedbbff15d998695d48cd31e7d698b7",
+      "source_path": "documentation/docs/20-core-concepts/10-routing.md",
+      "path": "references/upstream/kit/routing.md",
+      "sha256": "fb4ea5917b54c956408fde4630e194610139cf3800f89ad360c540a89124f446",
+      "upstream_sha256": "771c563488d5aaad2e307d44d233bf61898e2397bc5bf1b164a9623690a543fa",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "kit",
+      "repository": "https://github.com/sveltejs/kit",
+      "ref": "@sveltejs/kit@3.0.0",
+      "commit": "090496890cedbbff15d998695d48cd31e7d698b7",
+      "source_path": "documentation/docs/25-build-and-deploy/50-adapter-static.md",
+      "path": "references/upstream/kit/adapter-static.md",
+      "sha256": "9c748af74cf79d1851a0fbddf9430d45d441bf652b935263a390bc04856b7e87",
+      "upstream_sha256": "302b622eb0b4a7655a8b646f324bc175e84d141aca0ab2b1e5f648e545a15750",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "kit",
+      "repository": "https://github.com/sveltejs/kit",
+      "ref": "@sveltejs/kit@3.0.0",
+      "commit": "090496890cedbbff15d998695d48cd31e7d698b7",
+      "source_path": "documentation/docs/25-build-and-deploy/55-single-page-apps.md",
+      "path": "references/upstream/kit/single-page-apps.md",
+      "sha256": "7397326482682f0323d25625a7cae6ae981a82225d355c5bf86d4843c74d374e"
+    },
+    {
+      "source": "kit",
+      "repository": "https://github.com/sveltejs/kit",
+      "ref": "@sveltejs/kit@3.0.0",
+      "commit": "090496890cedbbff15d998695d48cd31e7d698b7",
+      "source_path": "documentation/docs/30-advanced/67-shallow-routing.md",
+      "path": "references/upstream/kit/shallow-routing.md",
+      "sha256": "7a95a948dec8e15273afea3b82eaafb70db931a0c19523d0390136f2cf8f5d62"
+    },
+    {
+      "source": "kit",
+      "repository": "https://github.com/sveltejs/kit",
+      "ref": "@sveltejs/kit@3.0.0",
+      "commit": "090496890cedbbff15d998695d48cd31e7d698b7",
+      "source_path": "LICENSE",
+      "path": "references/upstream/kit/LICENSE",
+      "sha256": "ac6ecdc526c9e6aec1db76f0e8dfe344d792380e974686476e7c512152ae2636"
+    },
+    {
+      "source": "vite",
+      "repository": "https://github.com/vitejs/vite",
+      "ref": "v8.2.2",
+      "commit": "de1111ab0be00879b404e7ed3b2a80e264edddc1",
+      "source_path": "docs/guide/build.md",
+      "path": "references/upstream/vite/build.md",
+      "sha256": "db4288cdb9050630ecd1810bdf9836a4c4ff44f995e1de93694e2bdee7fa43f1",
+      "upstream_sha256": "4b0f5c4807d4b4f428536d765d878d6f690047bb928868546e8b282c217dd4cb",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "vite",
+      "repository": "https://github.com/vitejs/vite",
+      "ref": "v8.2.2",
+      "commit": "de1111ab0be00879b404e7ed3b2a80e264edddc1",
+      "source_path": "docs/guide/env-and-mode.md",
+      "path": "references/upstream/vite/env-and-mode.md",
+      "sha256": "488e76c70d2d4e68f7124cecb599fd169754366b75fbc7e8b67d97af0278489f",
+      "upstream_sha256": "945fa3bdeba86b0fff142fb462effeb4ff2f2cb3ecdbe8c08ab32e959a4b1f31",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "vite",
+      "repository": "https://github.com/vitejs/vite",
+      "ref": "v8.2.2",
+      "commit": "de1111ab0be00879b404e7ed3b2a80e264edddc1",
+      "source_path": "docs/guide/assets.md",
+      "path": "references/upstream/vite/assets.md",
+      "sha256": "5385dcc409339aef2562a1dad671bd8d962a83570ebb8ef178311c5fbc728f13",
+      "upstream_sha256": "ea9464ea42d19e99eb61dba2d3ee5f3a826c53fccb61cfcf308ee46aac87db8b",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging."
+    },
+    {
+      "source": "vite",
+      "repository": "https://github.com/vitejs/vite",
+      "ref": "v8.2.2",
+      "commit": "de1111ab0be00879b404e7ed3b2a80e264edddc1",
+      "source_path": "LICENSE",
+      "path": "references/upstream/vite/LICENSE",
+      "sha256": "692057af3d664cbb79ac38293eb50aa3c4987f8182e2a440136e59e08f1b4a54"
+    },
+    {
+      "source": "svelte-ai-tools",
+      "repository": "https://github.com/sveltejs/ai-tools",
+      "ref": "main",
+      "commit": "6b5d0dab3c9c083387247ab20dc684573481076b",
+      "source_path": "LICENSE",
+      "path": "references/upstream/svelte-ai-tools/LICENSE",
+      "sha256": "b94e2313723c4920d2919417a85261d02123a9ee3a0deb79a43c2cd960d5dd1d"
+    },
+    {
+      "source": "svelte-code-writer",
+      "repository": "https://github.com/sveltejs/ai-tools",
+      "ref": "6b5d0dab3c9c083387247ab20dc684573481076b",
+      "commit": "6b5d0dab3c9c083387247ab20dc684573481076b",
+      "source_path": "plugins/claude/svelte/skills/svelte-code-writer/SKILL.md",
+      "path": "skills/svelte-code-writer/SKILL.md",
+      "sha256": "ccd435bc524f1bdc38f7ca34a3ff279de1e855d3e5165151345d08b85706e95f"
+    },
+    {
+      "source": "vite",
+      "repository": "https://github.com/antfu/skills",
+      "ref": "feb0f3aba6566426f12230e7fc7a10d97c1293bb",
+      "commit": "feb0f3aba6566426f12230e7fc7a10d97c1293bb",
+      "source_path": "skills/vite/SKILL.md",
+      "path": "skills/vite/SKILL.md",
+      "sha256": "20bddfc0d23d4b759abb1603a65c6ee488be631fdc2a2e6144c7b31e82480669"
+    },
+    {
+      "source": "core",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+      "commit": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+      "source_path": "skills/core/SKILL.md",
+      "path": "skills/core/SKILL.md",
+      "sha256": "d0e8a8a3c419046952d4652240a9ec50bd0349ed673f1e44ad5fbb29d370a452"
+    },
+    {
+      "source": "remotion",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+      "commit": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+      "source_path": "skills/remotion/SKILL.md",
+      "path": "skills/remotion/SKILL.md",
+      "sha256": "e18ad0b3307fe1b125705f592e123aa02168bbc95e7a8ee579ccd04859a467f9"
+    },
+    {
+      "source": "remotion-best-practices",
+      "repository": "https://github.com/vercel-labs/json-render",
+      "ref": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+      "commit": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+      "source_path": "skills/remotion-best-practices/SKILL.md",
+      "path": "skills/remotion-best-practices/SKILL.md",
+      "sha256": "a76a94cc9ad73ace3811da97f91961ad1a08ba78f9ca1a45d83dc2b2dd764e2e"
+    },
+    {
+      "source": "web-design-guidelines",
+      "repository": "https://github.com/vercel-labs/agent-skills",
+      "ref": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "source_path": "skills/web-design-guidelines/SKILL.md",
+      "path": "skills/web-design-guidelines/SKILL.md",
+      "sha256": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f"
+    },
+    {
+      "source": "building-components",
+      "repository": "https://github.com/vercel/components.build",
+      "ref": "ba727450437385af662810329fa19896215f76d5",
+      "commit": "ba727450437385af662810329fa19896215f76d5",
+      "source_path": "skills/building-components/SKILL.md",
+      "path": "skills/building-components/SKILL.md",
+      "sha256": "c26a17c53e59d119df99eade77bd608f864f888ac877979bfc4ffbba25792eb8"
+    },
+    {
+      "source": "ai-sdk",
+      "repository": "https://github.com/vercel/ai",
+      "ref": "ba05943b69ad070558bb5bc912da99ec66d7d263",
+      "commit": "ba05943b69ad070558bb5bc912da99ec66d7d263",
+      "source_path": "skills/use-ai-sdk/SKILL.md",
+      "path": "skills/ai-sdk/SKILL.md",
+      "sha256": "6bc642319c4ecbf9fbd59cef783b02174d4bd663c010703a6a6b80bda855b32d"
+    },
+    {
+      "source": "ai-elements",
+      "repository": "https://github.com/vercel/ai-elements",
+      "ref": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/SKILL.md",
+      "path": "skills/ai-elements/SKILL.md",
+      "sha256": "6e1697f6728f131cfbbb6b53543438921ce11faafcc4d5e0cc361b1643324e71"
+    },
+    {
+      "source": "streamdown",
+      "repository": "https://github.com/vercel/streamdown",
+      "ref": "8edc64857a175720ad549e4d8c3cb1b9b4fca1ca",
+      "commit": "8edc64857a175720ad549e4d8c3cb1b9b4fca1ca",
+      "source_path": "skills/streamdown/SKILL.md",
+      "path": "skills/streamdown/SKILL.md",
+      "sha256": "1465e100885588a3c27bd63f7a43283ff14835b091d38a6fd3453f94a738c9d8"
+    }
+  ]
+}
