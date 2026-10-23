@@ -17,7 +17,7 @@ pub use methods::{
 };
 
 /// Default public Voyage AI endpoint. The only copy of this constant — consumers
-/// (e.g. `op-cognitive-mcp`) resolve their call-time endpoint through
+/// (e.g. `op-cognitive`) resolve their call-time endpoint through
 /// [`voyage_embed_params`] rather than hardcoding it themselves.
 const VOYAGE_PUBLIC_URL: &str = "https://api.voyageai.com/v1/embeddings";
 /// MongoDB-hosted Voyage AI endpoint (for keys prefixed with `al-`). The only
@@ -182,7 +182,7 @@ impl EmbeddingModelPlugin {
     }
     fn voyage_api_key() -> Option<String> {
         [
-            "COGNITIVE_MCP_VOYAGE_API_KEY",
+            "COGNITIVE_VOYAGE_API_KEY",
             "VOYAGE_API_KEY",
             "VOYAGE_API_KEY_RUST",
         ]

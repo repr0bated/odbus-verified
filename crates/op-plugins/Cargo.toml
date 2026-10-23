@@ -17,6 +17,8 @@ inventory = "0.3"
 op-core = { path = "../op-core" }
 # Sealed plugin-object blobs: the blob catalog IS the plugin surface.
 op-blob = { workspace = true }
+op-plugin-lint = { path = "../op-plugin-lint" }
+threetched-fs = { path = "../threetched-fs" }
 op-dbus-model = { workspace = true }
 op-state = { path = "../op-state" }
 op-state-store = { path = "../op-state-store" }
@@ -24,7 +26,7 @@ op-cozo-store = { workspace = true }
 op-snowball = { path = "../op-snowball" }
 op-network = { path = "../op-network" }
 op-agents = { path = "../op-agents" }
-# The 3tched Router config surface is generated from the OFFICIAL zeroclaw
+# The tched-router config surface is generated from the pinned threetched
 # binary's imported `config schema` contract in the plugin, and validated
 # against it at runtime. There is deliberately NO zeroclaw crate dependency:
 # a linked crate pins us to a version that need not match the deployed binary.
@@ -69,6 +71,8 @@ sha2 = { workspace = true }
 [dev-dependencies]
 # Isolated protocol fixtures use paired sockets, never the host's system bus.
 zbus = { workspace = true, features = ["p2p"] }
+prost = { workspace = true }
+prost-reflect = { workspace = true }
 
 [[bin]]
 name = "opblob"

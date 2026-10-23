@@ -347,7 +347,7 @@ mod tests {
             instructions: "Watch line telemetry and raise alerts.".into(),
             allowed_methods: vec![
                 "emqx.publish_wake".into(),
-                "cognitive_mcp.memory_store".into(),
+                "cognitive.memory_store".into(),
             ],
             max_payload_bytes: 4096,
             max_actions: 2,

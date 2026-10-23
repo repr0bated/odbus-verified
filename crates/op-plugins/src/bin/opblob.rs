@@ -12,6 +12,12 @@
 //! opblob btrfs-seal <image> <dir>     seal a catalog dir into a btrfs image
 //! opblob keygen <keyfile>             generate the account WG identity keypair
 //! ```
+//!
+//! `persist` and `stage-shm` accept `OPDBUS_RELEASE_CATALOG_STAGE` for a
+//! serialized release controller: an already journaled, empty, root-owned
+//! canonical sibling directory. This mode never removes directories or rolls
+//! back a rename, even on error. The controller must reconcile directory
+//! device/inode identities after the publisher exits, not trust its exit code.
 
 use op_blob::{
     BlobRef, blob, btrfs, try_blobify_plugin_schema,
@@ -27,7 +33,10 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs::{File, OpenOptions},
     io::Write,
-    os::unix::fs::{MetadataExt, PermissionsExt},
+    os::{
+        fd::AsRawFd,
+        unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
+    },
     path::{Path, PathBuf},
 };
 
@@ -333,10 +342,214 @@ fn sync_directory(path: &Path) -> Result<(), String> {
         .map_err(|error| format!("sync directory {}: {error}", path.display()))
 }
 
+fn directory_identity(metadata: &std::fs::Metadata) -> (u64, u64) {
+    (metadata.dev(), metadata.ino())
+}
+
+fn catalog_directory_identity(path: &Path) -> Result<Option<(u64, u64)>, String> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_dir() => Ok(Some(directory_identity(&metadata))),
+        Ok(_) => Err(format!("not a nonsymlink catalog directory: {}", path.display())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(format!("inspect directory {}: {error}", path.display())),
+    }
+}
+
+fn require_directory_identity(path: &Path, expected: Option<(u64, u64)>) -> Result<(), String> {
+    if catalog_directory_identity(path)? != expected {
+        return Err(format!("catalog directory identity changed: {}", path.display()));
+    }
+    Ok(())
+}
+
+fn open_release_directory(path: &Path) -> Result<File, String> {
+    let directory = OpenOptions::new()
+        .read(true)
+        .custom_flags(nix::libc::O_DIRECTORY | nix::libc::O_NOFOLLOW)
+        .open(path)
+        .map_err(|error| format!("open release directory {}: {error}", path.display()))?;
+    let metadata = directory
+        .metadata()
+        .map_err(|error| format!("inspect release directory {}: {error}", path.display()))?;
+    if metadata.uid() != 0 || metadata.mode() & 0o022 != 0 {
+        return Err(format!(
+            "release directory must be root-owned and not group/other writable: {}",
+            path.display()
+        ));
+    }
+    require_directory_identity(path, Some(directory_identity(&metadata)))?;
+    Ok(directory)
+}
+
+/// Named stage entries are always complete source bytes. A killed/failed write
+/// leaves only an anonymous inode, released when its last fd closes; recovery
+/// never needs to authorize deletion of a partially written named file.
+fn write_release_file(
+    directory: &File,
+    directory_path: &Path,
+    name: &str,
+    bytes: &[u8],
+    mode: u32,
+) -> Result<(), String> {
+    let name = std::ffi::CString::new(name)
+        .map_err(|_| "catalog filename contains NUL".to_string())?;
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .mode(0o600)
+        .custom_flags(nix::libc::O_TMPFILE)
+        .open(directory_path)
+        .map_err(|error| format!("create anonymous catalog file: {error}"))?;
+    if file.metadata().map_err(|error| error.to_string())?.uid() != 0 {
+        return Err("coordinated catalog files must be created as root".into());
+    }
+    file.write_all(bytes)
+        .map_err(|error| format!("write anonymous catalog file: {error}"))?;
+    file.set_permissions(std::fs::Permissions::from_mode(mode))
+        .map_err(|error| format!("chmod anonymous catalog file: {error}"))?;
+    file.sync_all()
+        .map_err(|error| format!("sync anonymous catalog file: {error}"))?;
+    // SAFETY: both descriptors remain live, the empty source and destination
+    // name are NUL-terminated, and linkat does not retain these pointers.
+    let result = unsafe {
+        nix::libc::linkat(
+            file.as_raw_fd(),
+            c"".as_ptr(),
+            directory.as_raw_fd(),
+            name.as_ptr(),
+            nix::libc::AT_EMPTY_PATH,
+        )
+    };
+    if result != 0 {
+        return Err(format!(
+            "link completed catalog file {:?}: {}",
+            name,
+            std::io::Error::last_os_error()
+        ));
+    }
+    file.sync_all()
+        .map_err(|error| format!("sync linked catalog file: {error}"))
+}
+
+/// Only the controller owns cleanup/recovery. No TempDir or pathname-based
+/// removal is allowed here. Directory fds pin writes and rename parents; the
+/// controller's transaction lock must exclude other privileged publishers.
+fn copy_coordinated_catalog(
+    catalog: &ValidatedCatalog,
+    source: &Path,
+    destination: &Path,
+    destination_parent: &Path,
+    stage: &Path,
+) -> Result<(), String> {
+    if !stage.is_absolute() {
+        return Err("release catalog stage must be absolute".into());
+    }
+    let canonical_stage = std::fs::canonicalize(stage)
+        .map_err(|error| format!("resolve release catalog stage {}: {error}", stage.display()))?;
+    if canonical_stage.as_os_str() != stage.as_os_str()
+        || stage.parent() != Some(destination_parent)
+    {
+        return Err("release catalog stage must be canonical and share the destination parent".into());
+    }
+    if stage == source
+        || stage == destination
+        || stage.starts_with(source)
+        || source.starts_with(stage)
+        || stage.starts_with(destination)
+        || destination.starts_with(stage)
+    {
+        return Err("release catalog stage is identical, aliased, or nested with a catalog".into());
+    }
+    if catalog.directory_mode & 0o022 != 0
+        || catalog.manifest_mode & 0o022 != 0
+        || catalog.blobs.iter().any(|blob| blob.mode & 0o022 != 0)
+    {
+        return Err("coordinated catalog source modes permit group/other writes".into());
+    }
+    let parent = open_release_directory(destination_parent)?;
+    let parent_identity = Some(directory_identity(
+        &parent.metadata().map_err(|error| error.to_string())?,
+    ));
+    let parent_view = PathBuf::from(format!("/proc/self/fd/{}", parent.as_raw_fd()));
+    let stage_name = stage.file_name().ok_or("release catalog stage has no filename")?;
+    let destination_name = destination
+        .file_name()
+        .ok_or("destination catalog has no filename")?;
+    let pinned_stage = parent_view.join(stage_name);
+    let pinned_destination = parent_view.join(destination_name);
+    let stage_directory = open_release_directory(&pinned_stage)?;
+    let stage_identity = Some(directory_identity(
+        &stage_directory.metadata().map_err(|error| error.to_string())?,
+    ));
+    let old_identity = catalog_directory_identity(&pinned_destination)?;
+    let source_identity = catalog_directory_identity(source)?;
+    if stage_identity == source_identity
+        || stage_identity == old_identity
+        || (old_identity.is_some() && old_identity == source_identity)
+    {
+        return Err("release catalog stage/source/destination alias the same directory".into());
+    }
+    require_directory_identity(stage, stage_identity)?;
+    let stage_view = PathBuf::from(format!("/proc/self/fd/{}", stage_directory.as_raw_fd()));
+    if std::fs::read_dir(&stage_view)
+        .map_err(|error| format!("read release catalog stage: {error}"))?
+        .next()
+        .transpose()
+        .map_err(|error| format!("read release catalog stage entry: {error}"))?
+        .is_some()
+    {
+        return Err("release catalog stage is not empty".into());
+    }
+
+    for blob in &catalog.blobs {
+        write_release_file(&stage_directory, &stage_view, &blob.name, &blob.bytes, blob.mode)?;
+    }
+    write_release_file(
+        &stage_directory,
+        &stage_view,
+        MANIFEST_NAME,
+        &catalog.manifest,
+        catalog.manifest_mode,
+    )?;
+    stage_directory
+        .set_permissions(std::fs::Permissions::from_mode(catalog.directory_mode))
+        .map_err(|error| format!("chmod release catalog stage: {error}"))?;
+    stage_directory
+        .sync_all()
+        .map_err(|error| format!("sync release catalog stage: {error}"))?;
+    require_directory_identity(destination_parent, parent_identity)?;
+    require_directory_identity(&pinned_stage, stage_identity)?;
+    require_directory_identity(&pinned_destination, old_identity)?;
+    nix::fcntl::renameat2(
+        Some(parent.as_raw_fd()),
+        Path::new(stage_name),
+        Some(parent.as_raw_fd()),
+        Path::new(destination_name),
+        if old_identity.is_some() {
+            nix::fcntl::RenameFlags::RENAME_EXCHANGE
+        } else {
+            nix::fcntl::RenameFlags::RENAME_NOREPLACE
+        },
+    )
+    .map_err(|error| format!("publish coordinated catalog: {error}; controller reconciliation required"))?;
+    parent.sync_all().map_err(|error| {
+        format!("sync published catalog parent: {error}; namespace changed, durability unknown; controller reconciliation required")
+    })?;
+    require_directory_identity(destination_parent, parent_identity)?;
+    require_directory_identity(&pinned_destination, stage_identity)?;
+    require_directory_identity(&pinned_stage, old_identity)?;
+    Ok(())
+}
+
 /// Copy a sealed catalog as one directory transaction. Existing readers see
 /// either the prior catalog or the fully validated replacement; an invalid
 /// source cannot remove or rewrite destination bytes.
 fn copy_catalog(src: &Path, dst: &Path) -> Result<(), String> {
+    let stage = std::env::var_os("OPDBUS_RELEASE_CATALOG_STAGE").map(PathBuf::from);
+    copy_catalog_with_stage(src, dst, stage.as_deref())
+}
+
+fn copy_catalog_with_stage(src: &Path, dst: &Path, stage: Option<&Path>) -> Result<(), String> {
     let catalog = validate_catalog(src)?;
     let source = std::fs::canonicalize(src)
         .map_err(|error| format!("resolve source catalog {}: {error}", src.display()))?;
@@ -382,6 +595,16 @@ fn copy_catalog(src: &Path, dst: &Path) -> Result<(), String> {
             ));
         }
     };
+
+    if let Some(stage) = stage {
+        copy_coordinated_catalog(&catalog, &source, &destination, &destination_parent, stage)
+            .map_err(|error| format!(
+                "{error}; coordinated paths preserved for controller reconciliation: stage={}, destination={}",
+                stage.display(), destination.display()
+            ))?;
+        eprintln!("opblob: {} blobs + manifest", catalog.blobs.len());
+        return Ok(());
+    }
 
     let stage = tempfile::Builder::new()
         .prefix(".opblob-catalog-stage.")
@@ -466,6 +689,8 @@ fn copy_catalog(src: &Path, dst: &Path) -> Result<(), String> {
 }
 
 fn seal_plugins(dir: &Path) -> Result<(), String> {
+    op_plugins::state_plugins::threetched::prepare_schema_capture()
+        .map_err(|error| format!("capture threetched schema before sealing: {error:#}"))?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -659,7 +884,7 @@ mod copy_catalog_tests {
         corrupt[0] ^= 0xff;
         std::fs::write(source_blob, corrupt).unwrap();
 
-        assert!(copy_catalog(&source, &destination).is_err());
+        assert!(copy_catalog_with_stage(&source, &destination, None).is_err());
         assert_eq!(committed_files(&destination), before);
     }
 
@@ -672,12 +897,12 @@ mod copy_catalog_tests {
         write_catalog(&source, vec![demo::unix_socket_schema()]);
         let before = committed_files(&source);
 
-        assert!(copy_catalog(&source, &source).is_err());
+        assert!(copy_catalog_with_stage(&source, &source, None).is_err());
         assert_eq!(committed_files(&source), before);
 
         let alias = root.path().join("alias");
         symlink(&source, &alias).unwrap();
-        assert!(copy_catalog(&source, &alias).is_err());
+        assert!(copy_catalog_with_stage(&source, &alias, None).is_err());
         assert_eq!(committed_files(&source), before);
     }
 
@@ -697,9 +922,113 @@ mod copy_catalog_tests {
             .unwrap();
         let expected = committed_files(&source);
 
-        copy_catalog(&source, &destination).unwrap();
+        copy_catalog_with_stage(&source, &destination, None).unwrap();
 
         assert_eq!(committed_files(&destination), expected);
         assert!(!destination.join(retired).exists());
+    }
+
+    #[test]
+    fn coordinated_invalid_paths_preserve_every_directory() {
+        let root = tempfile::tempdir().unwrap();
+        let root_path = std::fs::canonicalize(root.path()).unwrap();
+        let source = root_path.join("source");
+        let destination = root_path.join("destination");
+        let stage = root_path.join("stage");
+        let alias = root_path.join("stage-alias");
+        write_catalog(&source, vec![demo::unix_socket_schema()]);
+        write_catalog(&destination, vec![demo::wireguard_schema()]);
+        std::fs::create_dir(&stage).unwrap();
+        std::os::unix::fs::symlink(&stage, &alias).unwrap();
+        let before = committed_files(&destination);
+        for invalid in [
+            PathBuf::from("stage"),
+            alias,
+            root_path.join("./stage"),
+            source.clone(),
+            destination.clone(),
+        ] {
+            assert!(copy_catalog_with_stage(&source, &destination, Some(&invalid)).is_err());
+            assert_eq!(committed_files(&destination), before);
+            assert_eq!(std::fs::read_dir(&stage).unwrap().count(), 0);
+        }
+    }
+
+    #[test]
+    #[ignore = "requires root and a filesystem supporting O_TMPFILE/linkat(AT_EMPTY_PATH)"]
+    fn coordinated_publish_preserves_exact_directory_identities() {
+        for existing in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let root_path = std::fs::canonicalize(root.path()).unwrap();
+            let source = root_path.join("source");
+            let destination = root_path.join("destination");
+            let stage = root_path.join("stage");
+            write_catalog(&source, vec![demo::unix_socket_schema()]);
+            std::fs::create_dir(&stage).unwrap();
+            if existing {
+                write_catalog(&destination, vec![demo::wireguard_schema()]);
+            }
+            let old_identity = catalog_directory_identity(&destination).unwrap();
+            let stage_identity = catalog_directory_identity(&stage).unwrap();
+            let old_files = existing.then(|| committed_files(&destination));
+
+            copy_catalog_with_stage(&source, &destination, Some(&stage)).unwrap();
+
+            assert_eq!(catalog_directory_identity(&destination).unwrap(), stage_identity);
+            assert_eq!(catalog_directory_identity(&stage).unwrap(), old_identity);
+            assert_eq!(committed_files(&destination), committed_files(&source));
+            if let Some(old_files) = old_files {
+                assert_eq!(committed_files(&stage), old_files);
+            }
+            assert_eq!(std::fs::read_dir(&root_path).unwrap().count(), if existing { 3 } else { 2 });
+        }
+    }
+
+    #[test]
+    #[ignore = "requires root"]
+    fn coordinated_nonempty_stage_is_never_cleaned() {
+        let root = tempfile::tempdir().unwrap();
+        let root_path = std::fs::canonicalize(root.path()).unwrap();
+        let source = root_path.join("source");
+        let destination = root_path.join("destination");
+        let stage = root_path.join("stage");
+        write_catalog(&source, vec![demo::unix_socket_schema()]);
+        write_catalog(&destination, vec![demo::wireguard_schema()]);
+        std::fs::create_dir(&stage).unwrap();
+        std::fs::write(stage.join("foreign"), b"preserve me").unwrap();
+        let stage_identity = catalog_directory_identity(&stage).unwrap();
+        let before = committed_files(&destination);
+
+        assert!(copy_catalog_with_stage(&source, &destination, Some(&stage))
+            .unwrap_err().contains("not empty"));
+
+        assert_eq!(catalog_directory_identity(&stage).unwrap(), stage_identity);
+        assert_eq!(std::fs::read(stage.join("foreign")).unwrap(), b"preserve me");
+        assert_eq!(committed_files(&destination), before);
+    }
+
+    #[test]
+    #[ignore = "requires root and a filesystem supporting O_TMPFILE/linkat(AT_EMPTY_PATH)"]
+    fn coordinated_fd_writes_do_not_follow_replaced_stage_paths() {
+        let root = tempfile::tempdir().unwrap();
+        let stage = root.path().join("stage");
+        let retained = root.path().join("retained");
+        std::fs::create_dir(&stage).unwrap();
+        let directory = open_release_directory(&stage).unwrap();
+        let identity = catalog_directory_identity(&stage).unwrap();
+        let view = PathBuf::from(format!("/proc/self/fd/{}", directory.as_raw_fd()));
+        std::fs::rename(&stage, &retained).unwrap();
+        std::fs::create_dir(&stage).unwrap();
+        std::fs::write(stage.join("foreign"), b"preserve me").unwrap();
+
+        write_release_file(&directory, &view, "declared.blob", b"complete bytes", 0o644).unwrap();
+        assert!(write_release_file(&directory, &view, "declared.blob", b"replacement", 0o644).is_err());
+        assert!(require_directory_identity(&stage, identity).is_err());
+        drop(directory);
+
+        assert_eq!(std::fs::read(retained.join("declared.blob")).unwrap(), b"complete bytes");
+        assert_eq!(std::fs::read_dir(&retained).unwrap().count(), 1);
+        assert_eq!(std::fs::read(stage.join("foreign")).unwrap(), b"preserve me");
+        assert_eq!(std::fs::read_dir(&stage).unwrap().count(), 1);
     }
 }

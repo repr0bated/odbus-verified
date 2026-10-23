@@ -35,13 +35,12 @@ pub const EMQX_LOG_DIR: &str = "/var/log/emqx";
 pub const EMQX_DASHBOARD_URL: &str = "http://127.0.0.1:18083";
 pub const EMQX_API_BASE: &str = "http://127.0.0.1:18083/api/v5";
 pub const EMQX_MQTT_TCP_BIND: &str = "127.0.0.1:1883";
-/// Doorbell listener: MQTT over WSS on the svc0 fabric address (the same
-/// WARP-inner address the `:8090` door binds), TLS from the svc0 material.
+/// Doorbell listener: MQTT over WSS on the EMQX alias of ovsbr0.
 /// Browsers loaded over `https://10.0.0.3:8090` can only open `wss://`.
 pub const EMQX_MQTT_WSS_BIND: &str = "10.0.0.3:8084";
-/// The fabric address shared with the bridge door (`FABRIC_BIND` in the
-/// op-grpc-bridge run script). Listeners may bind loopback or this address.
-pub const FABRIC_SVC0_IP: &str = "10.0.0.3";
+/// EMQX alias on ovsbr0. Listeners may bind loopback or this address.
+/// Tonic `10.0.0.2` belongs on `rtly-lungs`, not on this alias.
+pub const EMQX_ALIAS_IP: &str = "10.0.0.3";
 /// Content-free wake topics. `<owner-key>` is the private-view owner key
 /// (`sha256(principal, session, genesis)`), so the broker never sees an
 /// identity. Payload is `{"seq": <scope revision>}` only.
@@ -58,6 +57,22 @@ pub fn wake_topic(owner_key: &str) -> Result<String> {
     Ok(format!("{WAKE_TOPIC_PREFIX}{owner_key}"))
 }
 
+/// Retained topic carrying the toolset manifest derived from the sealed
+/// catalog. It holds names only: which tools a connection may call is still
+/// decided per call by the identity's grants.
+pub const TOOLSETS_TOPIC: &str = "opdbus/toolsets";
+const MAX_TOOLSETS: usize = 512;
+const MAX_ANNOUNCED_TOOLS: usize = 16_384;
+const MAX_TOOLSETS_PAYLOAD: usize = 1024 * 1024;
+
+fn valid_toolset_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+}
+
 pub fn valid_owner_key(owner_key: &str) -> bool {
     owner_key.len() == 64
         && owner_key
@@ -71,9 +86,9 @@ pub const EXHOOK_TARGET: &str = "https://127.0.0.1:9000";
 
 const API_KEY_FILE: &str = "/etc/opdbus/secrets/emqx-api-key";
 const API_SECRET_FILE: &str = "/etc/opdbus/secrets/emqx-api-secret";
-const RUNIT_BUS_NAME: &str = "org.opdbus.v1.Runit.Systemctl";
-const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit/systemctl";
-const RUNIT_INTERFACE: &str = "org.opdbus.v1.Runit.Systemctl";
+const RUNIT_BUS_NAME: &str = "org.opdbus.v1.plugins.runit";
+const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit";
+const RUNIT_INTERFACE: &str = "org.opdbus.v1.plugins.runit";
 const API_RESPONSE_LIMIT: usize = 1024 * 1024;
 
 /// HookSpec names advertised by the bridge. Configuration accepts exactly this
@@ -414,6 +429,35 @@ pub struct PublishWakeOutput {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct AnnouncedToolset {
+    /// Set id: `[A-Za-z0-9_.-]`, at most 128 bytes.
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub description: String,
+    /// MCP tool names in this set.
+    pub tools: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PublishToolsetsInput {
+    /// Content hash of the captured view the sets were derived from.
+    pub view_id: String,
+    pub sets: Vec<AnnouncedToolset>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PublishToolsetsOutput {
+    pub topic: String,
+    pub published: bool,
+    pub message_id: Option<String>,
+    pub sets: usize,
+    pub tools: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct KickClientInput {
     /// MQTT client id to disconnect (a revoked sled's doorbell connection).
     pub client_id: String,
@@ -423,6 +467,42 @@ pub struct KickClientInput {
 pub struct KickClientOutput {
     pub kicked: bool,
     pub was_connected: bool,
+}
+
+/// MQTT topic prefix for responder wakes (chatbot/agent turn notifications).
+pub const RESPONDER_WAKE_TOPIC_PREFIX: &str = "opdbus/responder-wake/";
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PublishResponderWakeInput {
+    /// Responder principal ID (the topic is derived from sha256 of this).
+    pub responder_principal_id: String,
+    /// The request/turn ID the responder should claim.
+    pub request_id: String,
+    /// Owner key of the requester (sha256 of their principal).
+    pub owner_key: String,
+    /// Principal ID of the requester (for response routing).
+    pub owner_principal_id: String,
+    /// Conversation ID (for chat turns).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
+    /// Brief preview of the request content.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PublishResponderWakeOutput {
+    pub topic: String,
+    pub published: bool,
+    pub message_id: Option<String>,
+}
+
+/// `opdbus/responder-wake/<sha256(responder_principal_id)>` for a responder.
+pub fn responder_wake_topic(responder_principal_id: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let key = format!("{:x}", Sha256::digest(responder_principal_id.as_bytes()));
+    format!("{RESPONDER_WAKE_TOPIC_PREFIX}{key}")
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -595,7 +675,7 @@ fn local_endpoint(value: &str) -> bool {
         .unwrap_or(value);
     address
         .parse::<SocketAddr>()
-        .map(|address| address.ip().is_loopback() || address.ip().to_string() == FABRIC_SVC0_IP)
+        .map(|address| address.ip().is_loopback() || address.ip().to_string() == EMQX_ALIAS_IP)
         .unwrap_or(false)
 }
 
@@ -682,6 +762,123 @@ async fn publish_wake(
         topic,
         published: true,
         message_id: string_field(&response, &["id"]),
+    })
+}
+
+async fn publish_responder_wake(
+    transport: &EmqxNativeTransport,
+    input: PublishResponderWakeInput,
+) -> Result<PublishResponderWakeOutput> {
+    anyhow::ensure!(
+        !input.request_id.is_empty()
+            && input.request_id.len() <= 128
+            && !input.request_id.chars().any(char::is_control),
+        "invalid responder wake request id"
+    );
+    anyhow::ensure!(
+        !input.responder_principal_id.is_empty()
+            && input.responder_principal_id.len() <= 512
+            && !input.responder_principal_id.chars().any(char::is_control),
+        "invalid responder wake principal"
+    );
+    let topic = responder_wake_topic(&input.responder_principal_id);
+    // A wake carries an opaque reference only. Private requester identity,
+    // conversation content and scope are read through admitted state.
+    let payload = serde_json::json!({ "request_id": input.request_id });
+    let response = emqx_api(
+        transport,
+        Method::POST,
+        "/publish",
+        Some(serde_json::json!({
+            "topic": topic,
+            "payload": payload.to_string(),
+            "qos": 1,
+            "retain": false,
+        })),
+    )
+    .await
+    .context("EMQX responder wake publish failed")?;
+    Ok(PublishResponderWakeOutput {
+        topic,
+        published: true,
+        message_id: string_field(&response, &["id"]),
+    })
+}
+
+/// The toolset manifest, bounded and name-checked before it reaches the
+/// broker.
+fn toolsets_payload(input: &PublishToolsetsInput) -> Result<(String, usize)> {
+    anyhow::ensure!(
+        input.view_id.len() == 64
+            && input
+                .view_id
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
+        "view id must be 64 lowercase hex characters"
+    );
+    anyhow::ensure!(
+        input.sets.len() <= MAX_TOOLSETS,
+        "at most {MAX_TOOLSETS} toolsets"
+    );
+    let mut ids = std::collections::HashSet::new();
+    let mut tools = 0usize;
+    for set in &input.sets {
+        anyhow::ensure!(valid_toolset_id(&set.id), "invalid toolset id {:?}", set.id);
+        anyhow::ensure!(
+            ids.insert(set.id.as_str()),
+            "duplicate toolset id {}",
+            set.id
+        );
+        anyhow::ensure!(
+            set.title.len() <= 256 && set.description.len() <= 2048,
+            "toolset {} title or description too long",
+            set.id
+        );
+        for tool in &set.tools {
+            anyhow::ensure!(valid_toolset_id(tool), "invalid tool name {tool:?}");
+        }
+        tools += set.tools.len();
+    }
+    anyhow::ensure!(
+        tools <= MAX_ANNOUNCED_TOOLS,
+        "at most {MAX_ANNOUNCED_TOOLS} announced tools"
+    );
+    let payload = serde_json::json!({
+        "view_id": input.view_id,
+        "sets": input.sets,
+    })
+    .to_string();
+    anyhow::ensure!(
+        payload.len() <= MAX_TOOLSETS_PAYLOAD,
+        "toolset manifest exceeds {MAX_TOOLSETS_PAYLOAD} bytes"
+    );
+    Ok((payload, tools))
+}
+
+async fn publish_toolsets(
+    transport: &EmqxNativeTransport,
+    input: PublishToolsetsInput,
+) -> Result<PublishToolsetsOutput> {
+    let (payload, tools) = toolsets_payload(&input)?;
+    let response = emqx_api(
+        transport,
+        Method::POST,
+        "/publish",
+        Some(serde_json::json!({
+            "topic": TOOLSETS_TOPIC,
+            "payload": payload,
+            "qos": 1,
+            "retain": true,
+        })),
+    )
+    .await
+    .context("EMQX toolset publish failed")?;
+    Ok(PublishToolsetsOutput {
+        topic: TOOLSETS_TOPIC.to_string(),
+        published: true,
+        message_id: string_field(&response, &["id"]),
+        sets: input.sets.len(),
+        tools,
     })
 }
 
@@ -1063,9 +1260,17 @@ async fn dispatch_emqx_method_on(
             let input: PublishWakeInput = typed_input(args)?;
             serde_json::to_value(publish_wake(transport, input).await?)?
         }
+        "publish_responder_wake" => {
+            let input: PublishResponderWakeInput = typed_input(args)?;
+            serde_json::to_value(publish_responder_wake(transport, input).await?)?
+        }
         "kick_client" => {
             let input: KickClientInput = typed_input(args)?;
             serde_json::to_value(kick_client(transport, input).await?)?
+        }
+        "publish_toolsets" => {
+            let input: PublishToolsetsInput = typed_input(args)?;
+            serde_json::to_value(publish_toolsets(transport, input).await?)?
         }
         other => anyhow::bail!("unknown emqx method: {other}"),
     };
@@ -1279,6 +1484,14 @@ pub(crate) fn emqx_schema() -> PluginSchema {
         "cap.network.emqx.clients.kick@v1",
         "mut.network.emqx.clients.kick@v1",
     );
+    add_method::<PublishToolsetsInput, PublishToolsetsOutput>(
+        &mut schema,
+        "publish_toolsets",
+        SideEffect::Mutation,
+        true,
+        "cap.network.emqx.toolsets.publish@v1",
+        "mut.network.emqx.toolsets.publish@v1",
+    );
 
     schema
 }
@@ -1312,6 +1525,7 @@ mod tests {
             "restart",
             "publish_wake",
             "kick_client",
+            "publish_toolsets",
         ];
         assert_eq!(first.methods.len(), expected.len());
         for method in expected {
@@ -1327,12 +1541,10 @@ mod tests {
     #[test]
     fn declared_endpoints_are_local_or_fabric_and_mcp_gateway_is_absent() {
         let state = EmqxState::declared();
-        assert!(
-            state
-                .listeners
-                .iter()
-                .all(|listener| local_endpoint(&listener.bind))
-        );
+        assert!(state
+            .listeners
+            .iter()
+            .all(|listener| local_endpoint(&listener.bind)));
         assert!(local_endpoint(&state.exhook.target));
         assert!(
             !local_endpoint("0.0.0.0:8083"),
@@ -1352,6 +1564,34 @@ mod tests {
             ("wss", EMQX_MQTT_WSS_BIND)
         );
         assert!(!state.mcp_gateway_installed);
+    }
+
+    #[test]
+    fn toolset_manifests_are_bounded_and_name_checked() {
+        let set = |id: &str, tools: &[&str]| AnnouncedToolset {
+            id: id.into(),
+            title: id.into(),
+            description: String::new(),
+            tools: tools.iter().map(|tool| tool.to_string()).collect(),
+        };
+        let input = |sets| PublishToolsetsInput {
+            view_id: "ab".repeat(32),
+            sets,
+        };
+        let (payload, tools) =
+            toolsets_payload(&input(vec![set("net", &["net__get_status", "net__set"])])).unwrap();
+        assert_eq!(tools, 2);
+        assert!(payload.contains("net__get_status"));
+        for bad in [
+            vec![set("net/#", &[])],
+            vec![set("net", &["a b"])],
+            vec![set("net", &[]), set("net", &[])],
+        ] {
+            assert!(toolsets_payload(&input(bad)).is_err());
+        }
+        let mut short = input(vec![]);
+        short.view_id = "abc".into();
+        assert!(toolsets_payload(&short).is_err());
     }
 
     #[test]
@@ -1432,11 +1672,9 @@ mod tests {
             assert!(properties.get(field).is_some(), "missing {field}");
         }
         assert!(payload_json.get("required").is_some());
-        assert!(
-            !serde_json::to_string(&payload_json)
-                .unwrap()
-                .contains("payload")
-        );
+        assert!(!serde_json::to_string(&payload_json)
+            .unwrap()
+            .contains("payload"));
     }
 
     #[test]
@@ -1508,6 +1746,12 @@ mod tests {
                 SideEffect::Mutation,
                 true,
                 "mut.network.emqx.clients.kick@v1",
+            ),
+            (
+                "publish_toolsets",
+                SideEffect::Mutation,
+                true,
+                "mut.network.emqx.toolsets.publish@v1",
             ),
         ];
         for (name, effect, idempotent, subid) in expected {

@@ -297,6 +297,7 @@ pub struct ReasoningEpisode {
         description = "High-level goal or prompt active at episode start [PII]",
         example = &"Configure VLAN isolation for tenant-3",
         extend("readOnly" = true),
+        extend("x-opdbus-private" = true),
         extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.goal-text@v1")
     )]
     pub goal_text: Option<String>,
@@ -304,6 +305,7 @@ pub struct ReasoningEpisode {
         description = "Compact natural-language summary of reasoning — primary embedding input [PII]",
         example = &"Evaluated 3 bridge configs, chose br-tenant3 for isolation",
         extend("readOnly" = true),
+        extend("x-opdbus-private" = true),
         extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.reasoning-summary@v1")
     )]
     pub reasoning_summary: Option<String>,
@@ -319,6 +321,7 @@ pub struct ReasoningEpisode {
         description = "The decision, plan, or action the episode produced [PII]",
         example = &"Create br-tenant3 with VLAN 103 tagged ports",
         extend("readOnly" = true),
+        extend("x-opdbus-private" = true),
         extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.decision-output@v1")
     )]
     pub decision_output: Option<String>,
