@@ -49,6 +49,7 @@ struct FixtureState {
 }
 
 async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
+    op_plugins::state_plugins::threetched::prepare_schema_capture().expect("explicit schema capture");
     let fixture = Fixture {
         requests: Arc::new(AtomicUsize::new(0)),
         inner: Arc::new(AsyncMutex::new(FixtureState {
@@ -143,7 +144,7 @@ async fn full_config(State(f): State<Fixture>) -> Json<Value> {
     Json(config)
 }
 
-// Fixture data comes from the one imported native contract. It is served by
+// Fixture data comes from the one explicitly captured native contract. It is served by
 // the private HTTP owner; no schema or runtime catalog is materialized here.
 fn native_config_defaults() -> Value {
     use op_plugins::state_plugins::tched_router_contract::document;
@@ -167,7 +168,7 @@ fn native_config_defaults() -> Value {
                     .collect(),
             );
             jsonschema::validate(document(), &config)
-                .expect("native default fixture satisfies the import");
+                .expect("native default fixture satisfies the captured schema");
             config
         })
         .clone()
@@ -1495,9 +1496,9 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         reconciled_shm["model_assignments"]
     );
 
-    // Exercise EVERY generated native getter through authenticated canonical
-    // dispatch, native HTTP observation, MutationEngine commit and SHM readback.
-    // Declaring/mapping a method is not counted as execution.
+    // Exercise the authored typed config methods through authenticated
+    // canonical dispatch, native HTTP observation, MutationEngine commit and
+    // SHM readback. Declaring/mapping a method is not counted as execution.
     fixture.inner.lock().await.complete_native_config = true;
     let complete = dispatch(&engine, &caller, "GetConfig", json!({}))
         .await
@@ -1508,17 +1509,12 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         "***MASKED***"
     );
     assert!(!native.to_string().contains("fixture-private-mcp-token"));
-    use op_plugins::state_plugins::tched_router_config_surface::{
-        ConfigMethodBacking, config_method_backing,
-    };
+    use op_grpc_bridge::tched_config_dispatch::{ConfigMethodBacking, config_method_backing};
+
     let mut tested = std::collections::BTreeSet::new();
     for method in schema.methods.keys() {
         let expected = match config_method_backing(method) {
             Some(ConfigMethodBacking::WholeNativeConfig) => native.clone(),
-            Some(ConfigMethodBacking::NativeSection(section)) => native
-                .get(section)
-                .unwrap_or_else(|| panic!("native fixture lacks {section} for {method}"))
-                .clone(),
             _ => continue,
         };
         let requests = fixture.requests.load(Ordering::SeqCst);
@@ -1546,16 +1542,12 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     }
     assert_eq!(
         tested.len(),
-        82,
-        "the native getter inventory changed; review coverage"
+        1,
+        "the authored config-method inventory changed; review coverage"
     );
-    let contract = dispatch(&engine, &caller, "GetConfigSchema", json!({}))
-        .await
-        .unwrap();
-    assert_eq!(
-        contract["result"]["config_schema"],
-        *op_plugins::state_plugins::tched_router_contract::document()
-    );
+    // `GetConfigSchema` retired with the generated layer; the config schema
+    // authority is the sealed `native_config` field itself, served by the
+    // 3tchedFS mirror.
 
     // Local descriptors have a distinct committed-state backing. Seed a
     // typed fixture observation through MutationEngine, then require each
@@ -1595,27 +1587,24 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     .unwrap();
     let requests = fixture.requests.load(Ordering::SeqCst);
     let mut local_count = 0;
-    for method in schema.methods.keys() {
-        if let Some(ConfigMethodBacking::CommittedPluginStateSection(field)) =
-            config_method_backing(method)
-        {
-            let output = dispatch(&engine, &caller, method, json!({})).await.unwrap();
-            assert_eq!(
-                output["result"],
-                json!({"config":committed[field]}),
-                "{method}"
-            );
-            local_count += 1;
-        }
-    }
-    assert_eq!(local_count, 6);
+    let mut tested_local: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for (method, field) in [
         ("GetRouter", "router"),
         ("ListUiSurfaces", "ui_surfaces"),
         ("GetStructuredOutput", "structured_output"),
     ] {
-        let output = dispatch(&engine, &caller, method, json!({})).await.unwrap();
+        let output = dispatch(&engine, &caller, method, json!({}))
+            .await
+            .unwrap_or_else(|error| panic!("{method} failed canonical execution: {error:#}"));
         assert_eq!(output["result"][field], committed[field], "{method}");
+        assert!(tested_local.insert(method.to_string()));
+        local_count += 1;
     }
+    assert_eq!(local_count, 3);
+    assert_eq!(
+        tested_local.len(),
+        3,
+        "local-descriptor readers changed; review coverage"
+    );
     assert_eq!(fixture.requests.load(Ordering::SeqCst), requests);
 }

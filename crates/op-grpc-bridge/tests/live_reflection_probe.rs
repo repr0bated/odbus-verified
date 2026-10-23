@@ -8,7 +8,7 @@
 //! Regression this guards: `run_tched_router_server` (the path the `op-grpc-bridge`
 //! binary actually takes) called `hydrate_reflection_from_shm()` but not
 //! `freeze_plugin_method_reflection()`, so the bridge advertised every sealed
-//! plugin while serving none of their per-method services. `cognitive_mcp` is
+//! plugin while serving none of their per-method services. `cognitive` is
 //! bridge-owned and compiled in, so activation must remain independent of the
 //! deliberately absent standalone service definition.
 //!
@@ -44,7 +44,7 @@ fn door_domain() -> String {
 
 #[tokio::test]
 #[ignore = "requires a running bridge on 127.0.0.1:8090"]
-async fn cognitive_mcp_per_method_services_are_advertised() {
+async fn cognitive_per_method_services_are_advertised() {
     use tonic_reflection::pb::v1::{
         ServerReflectionRequest, server_reflection_client::ServerReflectionClient,
         server_reflection_request::MessageRequest, server_reflection_response::MessageResponse,
@@ -90,21 +90,21 @@ async fn cognitive_mcp_per_method_services_are_advertised() {
     let cognitive: Vec<&String> = names
         .iter()
         // Reflection lists the generated per-plugin service
-        // (`operation.plugin.v1.CognitiveMcpPluginMethods`); the descriptor-only
-        // `operation.method.cognitive_mcp.*` names are deliberately not
+        // (`operation.plugin.v1.CognitivePluginMethods`); the descriptor-only
+        // `operation.method.cognitive.*` names are deliberately not
         // advertised (OD-49).
-        .filter(|n| n.to_ascii_lowercase().contains("cognitivemcp"))
+        .filter(|n| n.to_ascii_lowercase().contains("cognitive"))
         .collect();
 
     println!("total services: {}", names.len());
-    println!("cognitive_mcp services: {}", cognitive.len());
+    println!("cognitive services: {}", cognitive.len());
     for n in &cognitive {
         println!("  {n}");
     }
 
     assert!(
         !cognitive.is_empty(),
-        "no cognitive_mcp per-method services mounted — descriptors were sealed but \
+        "no cognitive per-method services mounted — descriptors were sealed but \
          never activated (is freeze_plugin_method_reflection running before routes \
          are built, and is the plugin reported available?)"
     );
@@ -116,8 +116,8 @@ async fn cognitive_mcp_per_method_services_are_advertised() {
     assert!(
         names
             .iter()
-            .any(|n| n == "operation.plugin.v1.CognitiveMcpPluginMethods"),
-        "cognitive_mcp's generated plugin service is not advertised; found: {cognitive:?}"
+            .any(|n| n == "operation.plugin.v1.CognitivePluginMethods"),
+        "cognitive's generated plugin service is not advertised; found: {cognitive:?}"
     );
     assert!(
         !names.iter().any(|n| n.starts_with("operation.method.")),
@@ -148,8 +148,8 @@ async fn cognitive_mcp_per_method_services_are_advertised() {
 /// work. Status 12 would mean the service is not mounted at all.
 #[tokio::test]
 #[ignore = "requires a running bridge on 127.0.0.1:8090"]
-async fn cognitive_mcp_plugin_service_is_served_over_tonic_web() {
-    // CognitiveMcpInvokeToolRequest { string tool_name = 322087922; }
+async fn cognitive_plugin_service_is_served_over_tonic_web() {
+    // CognitiveInvokeToolRequest { string tool_name = 322087922; }
     // varint tag for field 322087922, wire type 2 -> 92 BF D5 CC 09
     let mut msg: Vec<u8> = vec![0x92, 0xBF, 0xD5, 0xCC, 0x09];
     let tool = b"get_health";
@@ -168,7 +168,7 @@ async fn cognitive_mcp_plugin_service_is_served_over_tonic_web() {
         .resolve("localhost", "127.0.0.1:8090".parse().unwrap())
         .build()
         .expect("tls client")
-        .post("https://localhost:8090/operation.plugin.v1.CognitiveMcpPluginMethods/InvokeTool")
+        .post("https://localhost:8090/operation.plugin.v1.CognitivePluginMethods/InvokeTool")
         .header("Content-Type", "application/grpc-web+proto")
         .body(body)
         .send()
@@ -190,7 +190,7 @@ async fn cognitive_mcp_plugin_service_is_served_over_tonic_web() {
 
     assert_ne!(
         status, "12",
-        "CognitiveMcpPluginMethods/InvokeTool returned UNIMPLEMENTED — the generated \
+        "CognitivePluginMethods/InvokeTool returned UNIMPLEMENTED — the generated \
          plugin service is not mounted (grpc-message: {message})"
     );
 
