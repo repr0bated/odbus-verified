@@ -7,4 +7,5 @@ rm -f /run/ghostbridge/fwd-web.sock
 if [ -S /run/opdbus/session-bus.sock ]; then
   zcall shared_unix_socket create_unix_socket -a '{"name":"xsock-web","ports":[8080]}' >/dev/null 2>&1 || true
 fi
-exec /usr/local/libexec/3tched/socket-relay unix-listen /run/ghostbridge/fwd-web.sock tcp-connect 127.0.0.1 8080
+# op-web binds the door segment address (10.0.0.2), not loopback.
+exec /usr/local/libexec/3tched/socket-relay unix-listen /run/ghostbridge/fwd-web.sock tcp-connect 10.0.0.2 8080
