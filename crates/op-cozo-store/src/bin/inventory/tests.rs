@@ -496,6 +496,49 @@ fn staged_secret_helper_resolves_function_paths_without_executing_it() {
 }
 
 #[test]
+fn helper_bindings_converge_before_completeness_diagnostics() {
+    let dir = fixture();
+    fs::create_dir_all(dir.path().join("libexec/3tched")).unwrap();
+    fs::write(dir.path().join("sv/bridge/run"),
+        "#!/bin/sh\n# op-dbus-release: application\nexec /usr/local/libexec/op-dbus/helpers/z-helper\n").unwrap();
+    fs::write(dir.path().join("libexec/3tched/z-helper"),
+        "#!/bin/sh\nexec /usr/local/libexec/op-dbus/helpers/a-helper /usr/share/op-dbus/etc/op-dbus/main.conf /var/lib/late\n").unwrap();
+    fs::write(dir.path().join("libexec/3tched/a-helper"),
+        "#!/bin/sh\ninstall -m 0644 /usr/share/op-dbus/etc/op-dbus/bootstrap.toml \"$2/config.toml\"\nexec /usr/local/libexec/op-dbus/bin/bridge --config \"$1\"\n").unwrap();
+    let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
+    let graph = prepared(dir.path(), "release:test", "2026-10-23T00:00:00Z", &output).unwrap();
+    let config = graph.nodes.iter().find(|node|
+        node.id == "file:usr/share/op-dbus/etc/op-dbus/main.conf").unwrap();
+    assert_eq!(config.attributes["consumers"], json!(["bridge"]));
+    assert!(graph.edges.iter().any(|edge| edge.src == "file:libexec/3tched/a-helper"
+        && edge.dst == config.id));
+    assert!(graph.nodes.iter().any(|node| node.id == "reference:/var/lib/late/shared/data"));
+    assert!(!graph.nodes.iter().any(|node|
+        node.id == "reference:/usr/share/op-dbus/etc/op-dbus/shared/data"));
+    // A stable graph still rejects an argument that no captured caller binds.
+    fs::write(dir.path().join("libexec/3tched/z-helper"),
+        "#!/bin/sh\nexec /usr/local/libexec/op-dbus/helpers/a-helper\n").unwrap();
+    let error = prepared(dir.path(), "release:test", "2026-10-23T00:00:00Z", &output).unwrap_err();
+    assert!(error.to_string().contains("unresolved dynamic executable/config path"));
+}
+
+#[test]
+fn expanding_helper_bindings_fail_closed_at_pass_bound() {
+    let dir = fixture();
+    fs::write(dir.path().join("bin/helper"), b"captured below").unwrap();
+    let mut base = Builder::new();
+    base.walk(dir.path(), Path::new(""), 0).unwrap();
+    base.release_targets().unwrap();
+    let mut inputs = ScanInputs::default();
+    inputs.push("sv/bridge/run",
+        "exec /usr/local/libexec/op-dbus/bin/helper /var/lib/root".into(), true).unwrap();
+    inputs.push("bin/helper",
+        "exec /usr/local/libexec/op-dbus/bin/helper \"$1/nested\"".into(), true).unwrap();
+    let error = scan_to_fixed_point(base, &inputs, 3).err().expect("must not publish a partial graph");
+    assert!(error.to_string().contains("did not converge within 3 passes"));
+}
+
+#[test]
 fn function_paths_are_scoped_and_unknown_calls_still_block() {
     let dir = fixture();
     let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));

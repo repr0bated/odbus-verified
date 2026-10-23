@@ -30,12 +30,12 @@ pub(crate) struct PreparedIncusObservation {
 fn attach_mount_identities(state: &mut op_plugins::state_plugins::incus::IncusState) -> Result<()> {
     use op_plugins::state_plugins::incus_device::{Device, NamedDevice};
     for instance in &mut state.instances {
-        for field in [&mut instance.devices, &mut instance.expanded_devices] {
-            for NamedDevice { device, .. } in field.iter_mut() {
-                let Device::Disk(disk) = device else { continue };
-                let Some(source) = disk.source.as_deref() else { continue };
-                disk.source_identity = Some(mount_identity_token(source));
-            }
+        for NamedDevice { device, .. } in instance.devices.iter_mut()
+            .chain(instance.expanded_devices.iter_mut().flatten())
+        {
+            let Device::Disk(disk) = device else { continue };
+            let Some(source) = disk.source.as_deref() else { continue };
+            disk.source_identity = Some(mount_identity_token(source));
         }
     }
     Ok(())
