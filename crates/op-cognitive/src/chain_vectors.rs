@@ -38,8 +38,9 @@ use qdrant_client::qdrant::{
 use qdrant_client::{Payload, Qdrant, QdrantError};
 use serde::Serialize;
 use std::collections::HashSet;
+use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use tokio::io::AsyncWriteExt;
 
 use crate::voyage::VoyageClient;
 
@@ -63,6 +64,40 @@ struct ReceivedCheckpoint {
     root: PathBuf,
     stream_uuid: String,
     indexed_block: u64,
+}
+
+/// Publish a complete checkpoint without exposing a truncated destination.
+/// Blocking I/O stays in one task so cancellation cannot interrupt the
+/// write/sync/publication sequence. An interrupted process may leave an unused
+/// temporary file, but readers only open the final checkpoint path.
+async fn publish_checkpoint(path: PathBuf, content: Vec<u8>, replace: bool) -> Result<()> {
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let parent = path.parent().filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        let temporary = parent.join(format!(".vector-checkpoint-{}.tmp", uuid::Uuid::new_v4()));
+        let mut file = std::fs::OpenOptions::new()
+            .write(true).create_new(true).mode(0o600).open(&temporary)
+            .context("create checkpoint temporary file in its writable directory")?;
+        let result = (|| -> Result<()> {
+            file.write_all(&content).context("write complete checkpoint")?;
+            file.sync_all().context("sync checkpoint contents")?;
+            drop(file);
+            if replace {
+                std::fs::rename(&temporary, &path).context("atomically replace checkpoint")?;
+            } else {
+                // First publication must not overwrite a checkpoint another
+                // received snapshot created after our existence check.
+                std::fs::hard_link(&temporary, &path).context("publish new checkpoint without replacement")?;
+                std::fs::remove_file(&temporary).context("remove published checkpoint temporary link")?;
+            }
+            std::fs::File::open(parent)?.sync_all().context("sync checkpoint directory")?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&temporary);
+        }
+        result
+    }).await.context("checkpoint publication task failed")?
 }
 
 /// Decides what of a block is signal. The bridge supplies the sealed plugin
@@ -264,15 +299,14 @@ impl ChainVectorIndex {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
             Err(error) => return Err(error.into()),
         };
-        let mut checkpoint_file = tokio::fs::OpenOptions::new().write(true)
-            .create_new(!checkpoint_exists).open(&checkpoint_path).await
-            .context("received checkpoint must be writable before indexing")?;
-        if !checkpoint_exists {
-            checkpoint_file.write_all(&serde_json::to_vec(&ReceivedCheckpoint {
+        if checkpoint_exists {
+            tokio::fs::OpenOptions::new().write(true).open(&checkpoint_path).await
+                .context("received checkpoint must be writable before indexing")?;
+        } else {
+            publish_checkpoint(checkpoint_path.clone(), serde_json::to_vec(&ReceivedCheckpoint {
                 root: root.clone(), stream_uuid: stream_uuid.clone(), indexed_block: 0,
-            })?).await.context("initialize received checkpoint")?;
+            })?, false).await.context("initialize received checkpoint")?;
         }
-        drop(checkpoint_file);
         let chain = StreamingSnowball::open_received(&root)
             .await
             .with_context(|| format!("failed to open received chain at {}", root.display()))?;
@@ -874,8 +908,7 @@ impl ChainVectorIndex {
         } else {
             format!("{block_num}\n")
         };
-        tokio::fs::write(self.indexed_block_path(), content)
-            .await
+        publish_checkpoint(self.indexed_block_path(), content.into_bytes(), true).await
             .context("failed to persist index watermark")
     }
 }
