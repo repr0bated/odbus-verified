@@ -243,17 +243,23 @@ pub(crate) async fn context_for_actor(
 ) -> Option<SessionContext> {
     let mut matched = Vec::new();
     for session in engine.connected_session_ids().await {
-        let cached = engine.session_context(&session).await?;
+        let Some(cached) = engine.session_context(&session).await else {
+            continue;
+        };
         if cached.sealed_id_digest.is_none()
             && op_identity::session::derive_principal_id(&cached.wireguard_pubkey) == actor
             && let Ok(Some(row)) = lookup(&session).await
             && row.principal_id == actor
             && row.genesis == cached.genesis_hex
         {
-            let principal =
-                crate::human_principal_dispatch::resolve_key_for_assertion(&row.peer_key)
-                    .await
-                    .ok()??;
+            let principal = match
+                crate::human_principal_dispatch::resolve_key_for_assertion(&row.peer_key).await
+            {
+                Ok(Some(principal)) => principal,
+                Ok(None) => continue,
+                // An unavailable authority cannot establish a unique valid scope.
+                Err(_) => return None,
+            };
             if principal.revoked_at == 0 && principal.principal_id == actor {
                 matched.push(cached);
             }
