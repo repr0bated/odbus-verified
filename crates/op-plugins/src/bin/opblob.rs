@@ -689,6 +689,8 @@ fn copy_catalog_with_stage(src: &Path, dst: &Path, stage: Option<&Path>) -> Resu
 }
 
 fn seal_plugins(dir: &Path) -> Result<(), String> {
+    op_plugins::state_plugins::threetched::prepare_schema_capture()
+        .map_err(|error| format!("capture threetched schema before sealing: {error:#}"))?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

@@ -600,6 +600,11 @@ impl Device {
         let mut map = BTreeMap::new();
         if let Some(obj) = value.as_object() {
             for (k, v) in obj.iter() {
+                // Observer provenance belongs to canonical state, not Incus's
+                // native device configuration namespace.
+                if k == "source_identity" {
+                    continue;
+                }
                 let s = match v {
                     simd_json::OwnedValue::String(s) => s.to_string(),
                     other => other.to_string(),
@@ -622,6 +627,20 @@ impl Device {
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
+
+    #[test]
+    fn observed_disk_identity_stays_in_state_but_not_provider_configuration() {
+        let device = Device::Disk(DiskDevice {
+            source: Some("/storage/retained".into()),
+            source_identity: Some("0123456789abcdef".into()),
+            ..Default::default()
+        });
+        let state = serde_json::to_value(&device).unwrap();
+        assert_eq!(state["source_identity"], "0123456789abcdef");
+        let native = device.to_incus_map();
+        assert!(!native.contains_key("source_identity"));
+        assert_eq!(native.get("source").map(String::as_str), Some("/storage/retained"));
+    }
 
     #[test]
     fn proxy_round_trips_through_string_map() {

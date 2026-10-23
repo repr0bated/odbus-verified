@@ -1,6 +1,7 @@
 pub(crate) mod additional_items;
 pub(crate) mod additional_properties;
 pub(crate) mod all_of;
+mod annotation_cycles;
 pub(crate) mod any_of;
 pub(crate) mod boolean;
 pub(crate) mod const_;
@@ -181,7 +182,8 @@ pub(crate) fn get_for_draft<'a>(
     match (ctx.draft(), keyword) {
         // Keywords common to all drafts
         (_, "$ref") => Some((BuiltinKeyword::Ref.into(), ref_::compile_ref)),
-        (_, "additionalItems") if ctx.has_vocabulary(&Vocabulary::Applicator) => Some((
+        (Draft::Draft4 | Draft::Draft6 | Draft::Draft7 | Draft::Draft201909, "additionalItems")
+            if ctx.has_vocabulary(&Vocabulary::Applicator) => Some((
             BuiltinKeyword::AdditionalItems.into(),
             additional_items::compile,
         )),
@@ -195,6 +197,8 @@ pub(crate) fn get_for_draft<'a>(
         (_, "anyOf") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
             Some((BuiltinKeyword::AnyOf.into(), any_of::compile))
         }
+        // Deliberate legacy compatibility: the pinned official 2019-09 and
+        // 2020-12 optional/dependencies-compatibility cases require this behavior.
         (_, "dependencies") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
             Some((BuiltinKeyword::Dependencies.into(), dependencies::compile))
         }
@@ -436,6 +440,30 @@ mod tests {
             .expect("Invalid schema");
         let errors: Vec<_> = validator.iter_errors(instance).collect();
         assert_eq!(errors[0].to_string(), expected);
+    }
+
+    #[test]
+    fn modern_additional_items_is_unknown_but_dependencies_remain_compatible() {
+        for additional in [json!(false), json!({"type": "string"}), json!(42)] {
+            let schema = json!({"prefixItems": [true], "items": false, "additionalItems": additional});
+            let validator = crate::options().with_draft(crate::Draft::Draft202012)
+                .build(&schema).unwrap();
+            let instance = json!([1]);
+            assert!(validator.is_valid(&instance));
+            assert!(validator.validate(&instance).is_ok());
+            assert!(validator.iter_errors(&instance).next().is_none());
+            assert!(validator.apply(&instance).basic().is_valid());
+        }
+        let schema = json!({"items": [true], "additionalItems": false});
+        let validator = crate::options().with_draft(crate::Draft::Draft201909)
+            .build(&schema).unwrap();
+        assert!(!validator.is_valid(&json!([1, 2])));
+        for draft in [crate::Draft::Draft201909, crate::Draft::Draft202012] {
+            let schema = json!({"dependencies": {"a": ["b"]}});
+            let validator = crate::options().with_draft(draft).build(&schema).unwrap();
+            assert!(!validator.is_valid(&json!({"a": 1})));
+            assert!(validator.is_valid(&json!({"a": 1, "b": 2})));
+        }
     }
 
     // Extra cases not covered by JSON test suite

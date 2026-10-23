@@ -95,6 +95,7 @@ techops/
 *.bak
 *.patch
 !vendor/tched-router/patches/*.patch
+!/deploy/release/lifetime/0001-btrfs-quiescent-destroy.patch
 *.backup
 *.copied
 *.stub

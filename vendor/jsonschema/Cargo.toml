@@ -162,6 +162,10 @@ default-features = false
 [dev-dependencies.test-case]
 version = "3"
 
+[dev-dependencies.testsuite]
+package = "jsonschema-testsuite"
+path = "test-support/jsonschema-testsuite"
+
 [dev-dependencies.tokio]
 version = "1"
 features = [

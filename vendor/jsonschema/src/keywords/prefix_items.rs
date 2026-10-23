@@ -74,7 +74,7 @@ impl Validate for PrefixItemsValidator {
 
     fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
-            if !items.is_empty() {
+            if !items.is_empty() && !self.schemas.is_empty() {
                 let validate_total = self.schemas.len();
                 let mut results = Vec::with_capacity(validate_total);
                 let mut max_index_applied = 0;
@@ -125,6 +125,20 @@ mod tests {
     use crate::tests_util;
     use serde_json::{json, Value};
     use test_case::test_case;
+
+    #[test]
+    fn empty_prefix_has_no_evaluated_index_annotation() {
+        let schema = json!({"prefixItems": []});
+        let validator = crate::options()
+            .with_draft(crate::Draft::Draft202012)
+            .without_schema_validation()
+            .build(&schema)
+            .expect("Internal compiler accepts empty prefix");
+        let instance = json!([1]);
+        let output = serde_json::to_value(validator.apply(&instance).basic())
+            .expect("Serializable output");
+        assert_eq!(output, json!({"valid": true, "annotations": []}));
+    }
 
     #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}]}), &json!(["string"]), "/prefixItems/0/type")]
     #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}]}), &json!([42, 42]), "/prefixItems/1/maximum")]

@@ -31,6 +31,8 @@ const MAX_ENTRIES: usize = 45_000;
 const MAX_BYTES: u64 = 64 * 1024 * 1024 * 1024;
 const MAX_TEXT: u64 = 1024 * 1024;
 const MAX_JSON: usize = 64 * 1024 * 1024;
+const MAX_SCAN_TEXT: usize = 64 * 1024 * 1024;
+const MAX_SCAN_PASSES: usize = 256;
 const GRAPH_DIR: &str = "usr/share/op-dbus/graphs";
 const SERVICE_MANIFEST_DIR: &str = "usr/share/op-dbus/etc/opdbus";
 const CATALOG_DIR: &str = "usr/share/op-dbus/plugin-blobs";
@@ -204,6 +206,7 @@ fn category(path: &str) -> &'static str {
     }
 }
 
+#[derive(Clone)]
 struct Builder {
     nodes: BTreeMap<String, GraphNode>,
     edges: Vec<GraphEdge>,
@@ -1433,6 +1436,48 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
     Ok(())
 }
 
+#[derive(Default)]
+struct ScanInputs {
+    texts: Vec<(String, String, bool)>,
+    bytes: usize,
+}
+
+impl ScanInputs {
+    fn push(&mut self, source: &str, text: String, shell: bool) -> Result<()> {
+        self.bytes = self.bytes.checked_add(text.len()).context("scan text byte overflow")?;
+        ensure!(self.bytes <= MAX_SCAN_TEXT, "prepared scan text byte bound exceeded");
+        self.texts.push((source.into(), text, shell));
+        Ok(())
+    }
+}
+
+fn scan_to_fixed_point(base: Builder, inputs: &ScanInputs, max_passes: usize) -> Result<Builder> {
+    let mut arguments = base.argument_paths.clone();
+    let mut roots = base.template_roots.clone();
+    for _ in 0..max_passes {
+        // Only bindings survive an incomplete pass. Rebuild edges, derived
+        // nodes and diagnostics so unresolved early helper arguments cannot
+        // remain blockers after a later helper supplies their declarations.
+        let mut pass = base.clone();
+        pass.argument_paths = arguments.clone();
+        pass.template_roots = roots.clone();
+        for (source, text, shell) in &inputs.texts {
+            scan_text(&mut pass, source, text, *shell)?;
+            let bindings: usize = pass.argument_paths.values()
+                .flat_map(|positions| positions.values()).map(BTreeSet::len).sum();
+            let destinations: usize = pass.template_roots.values().map(BTreeSet::len).sum();
+            ensure!(bindings <= MAX_ENTRIES && destinations <= MAX_ENTRIES,
+                "prepared scan binding bound exceeded");
+        }
+        if pass.argument_paths == arguments && pass.template_roots == roots {
+            return Ok(pass);
+        }
+        arguments = pass.argument_paths;
+        roots = pass.template_roots;
+    }
+    bail!("prepared scan bindings did not converge within {max_passes} passes")
+}
+
 fn collect_consumers(b: &mut Builder) -> Result<()> {
     let mut adjacency: BTreeMap<&str, Vec<&GraphEdge>> = BTreeMap::new();
     for edge in &b.edges {
@@ -1445,11 +1490,13 @@ fn collect_consumers(b: &mut Builder) -> Result<()> {
         node.kind == "runit_service" && node.attributes.get("release_owned") == Some(&json!(true))
     }) {
         let mut seen = BTreeSet::new();
-        let mut pending = vec![service.id.as_str()];
+        // A dependency's files affect this service, but its lifecycle commands
+        // must not become direct start intent for this service.
+        let mut pending = vec![(service.id.as_str(), true)];
         let mut deps = BTreeSet::new();
         let mut starts = BTreeSet::new();
-        while let Some(id) = pending.pop() {
-            if !seen.insert(id) {
+        while let Some((id, own_lifecycle)) = pending.pop() {
+            if !seen.insert((id, own_lifecycle)) {
                 continue;
             }
             if let Some(errors) = b.blockers.get(id) {
@@ -1471,15 +1518,21 @@ fn collect_consumers(b: &mut Builder) -> Result<()> {
                 match edge.relation.as_str() {
                     "depends_on" | "starts" => {
                         let name = edge.dst.strip_prefix("service:").context("invalid service reference")?;
-                        if name != service.label {
+                        if own_lifecycle && name != service.label {
                             deps.insert(name.to_owned());
                             if edge.relation == "starts" {
                                 starts.insert(name.to_owned());
                             }
                         }
+                        if b.nodes.get(&edge.dst).is_some_and(|node| {
+                            node.kind == "runit_service"
+                                && node.attributes.get("release_owned") == Some(&json!(true))
+                        }) {
+                            pending.push((&edge.dst, false));
+                        }
                     }
                     "configured_by" | "contains" | "runs" | "references_path" | "provenance_document" => {
-                        pending.push(&edge.dst);
+                        pending.push((&edge.dst, own_lifecycle));
                     }
                     _ => {}
                 }
@@ -1564,6 +1617,7 @@ fn prepared(
         "Shell analysis unions literal paths, simple path assignments and supported wait_dep/sv declarations across branches; it never executes shell or reads host environment overrides.".into(),
         "Quoted words and backslash continuations are preserved; nested substitution operands are dependencies, not executed values. Path-producing substitutions are limited to lexical readlink -f/dirname/CDPATH+pwd and mktemp templates; other dynamic executable/config/include paths block completeness.".into(),
         "Standalone function path arguments must be bounded at every call; non-path arguments do not become dependencies. unix:path= defaults and exact prefix removal declare external socket paths, not runtime address validation.".into(),
+        "Helper arguments and copied-template roots are resolved to a fixed point before completeness diagnostics; analysis fails closed above 256 passes, 45000 bindings or 64 MiB of captured text.".into(),
         "Captured-source JSON with repository/commit/source_path/files provenance structure is hashed metadata, not runtime configuration; unrecognized or mixed JSON retains configuration parsing.".into(),
         "Secrets and credential/environment files are never read; source line content is never retained.".into(),
         "Archives are inventoried as artifacts; their internal container filesystem is not unpacked.".into(),
@@ -1611,6 +1665,7 @@ fn prepared(
         .filter(|p| p.starts_with("sv/") && p.ends_with("/run") && p.split('/').count() == 3)
         .cloned()
         .collect();
+    let mut scan_inputs = ScanInputs::default();
     for path in &runs {
         let name = path.split('/').nth(1).expect("service path");
         ensure!(valid_service(name), "invalid staged service name");
@@ -1627,7 +1682,7 @@ fn prepared(
         node.attributes.insert("definition_staged".into(), json!(true));
         b.edges.push(edge(&service, "configured_by", format!("file:sv/{name}"),
             path, "service_directory", json!({})));
-        scan_text(&mut b, path, &text, true)?;
+        scan_inputs.push(path, text, true)?;
     }
     let paths: Vec<_> = b.paths.iter().cloned().collect();
     for path in paths {
@@ -1685,10 +1740,11 @@ fn prepared(
                 b.nodes.get_mut(&format!("file:{path}")).expect("prepared file")
                     .attributes.insert("category".into(), json!("provenance"));
             }
-            Ok(text) => scan_text(&mut b, &path, &text, shell)?,
+            Ok(text) => scan_inputs.push(&path, text, shell)?,
             Err(_) => b.blocker(&path, 0, "referenced configuration is not readable bounded UTF-8"),
         }
     }
+    b = scan_to_fixed_point(b, &scan_inputs, MAX_SCAN_PASSES)?;
     // Provenance documents are linked by category rather than copying arbitrary
     // JSON contents (which could contain future private fields).
     for (document, prefix) in [
