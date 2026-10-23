@@ -345,7 +345,10 @@ mod tests {
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
     fn validate_ref() {
-        let schema = load("tests/suite/tests/draft7/ref.json", 1);
+        let schema = load(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/suite/tests/draft7/ref.json"),
+            1,
+        );
         let value = json!({"bar": 3});
         let validator = crate::validator_for(&schema).unwrap();
         assert!(validator.validate(&value).is_ok());

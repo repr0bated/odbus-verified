@@ -229,6 +229,13 @@ impl<'a> Context<'a> {
         &self.location
     }
 
+    pub(crate) fn with_location(&self, location: Location) -> Self {
+        Self {
+            location,
+            ..self.clone()
+        }
+    }
+
     pub(crate) fn vocabularies(&self) -> &VocabularySet {
         &self.vocabularies
     }

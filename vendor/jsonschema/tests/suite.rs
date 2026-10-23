@@ -5,7 +5,7 @@ mod tests {
     use testsuite::{suite, Test};
 
     #[suite(
-    path = "crates/jsonschema/tests/suite",
+    path = "tests/suite",
     drafts = [
         "draft4",
         "draft6",
@@ -148,8 +148,12 @@ mod tests {
         let expectations: serde_json::Value =
             serde_json::from_str(include_str!("draft7_instance_paths.json")).expect("Valid JSON");
         for (filename, expected) in expectations.as_object().expect("Is object") {
-            let test_file = fs::read_to_string(format!("tests/suite/tests/draft7/{}", filename))
-                .unwrap_or_else(|_| panic!("Valid file: {}", filename));
+            let test_file = fs::read_to_string(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("tests/suite/tests/draft7")
+                    .join(filename),
+            )
+            .unwrap_or_else(|_| panic!("Valid file: {}", filename));
             let data: serde_json::Value = serde_json::from_str(&test_file).expect("Valid JSON");
             for item in expected.as_array().expect("Is array") {
                 let suite_id = item["suite_id"].as_u64().expect("Is integer") as usize;

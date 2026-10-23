@@ -38,7 +38,24 @@ esac
 python_version=$("$PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')
 case "$python_version" in 3.14) ;; *) echo "execution environment requires native Python 3.14, found $python_version" >&2; exit 78;; esac
 lock_sha=$(sha256sum "$LOCK" | awk '{print $1}')
-runtime_sha=$(sha256sum "$PYTHON" | cut -d' ' -f1)
+runtime_bundle_sha() {
+    # Include paths, kinds, modes, symlink targets and all file contents. Ignore
+    # timestamps and ownership, which do not identify this copied runtime.
+    # pipefail is explicit: an unreadable/changing bundle must not hash as a
+    # successful partial tar stream under the surrounding POSIX shell.
+    bundle_digest=$(bash -o pipefail -c '
+        unset TAR_OPTIONS
+        export LC_ALL=C
+        tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
+            --format=gnu -cf - -C "$1" . | sha256sum
+    ' sh "$1") || return
+    printf '%s\n' "${bundle_digest%% *}"
+}
+if [ "$runtime_mode" = bundled ]; then
+    runtime_sha=$(runtime_bundle_sha "$BUNDLE")
+else
+    runtime_sha=$(sha256sum "$PYTHON" | cut -d' ' -f1)
+fi
 preparer_sha=$(sha256sum "$0" | cut -d' ' -f1)
 if [ -d "$ROOT" ] && [ ! -L "$ROOT" ] &&
    [ -f "$ROOT/.opdbus-execution-python" ] &&
@@ -59,6 +76,8 @@ tmp=$(mktemp -d "$ROOT.tmp.XXXXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 if [ "$runtime_mode" = bundled ]; then
     cp -a --reflink=auto --no-preserve=ownership "$BUNDLE/." "$tmp/"
+    [ "$(runtime_bundle_sha "$tmp")" = "$runtime_sha" ] ||
+        { echo "standalone Python bundle changed during preparation" >&2; exit 78; }
     [ "$("$tmp/bin/python" -c 'import sys; print(sys.base_prefix)')" = "$tmp" ] ||
         { echo "copied standalone Python runtime is not relocatable" >&2; exit 78; }
     "$UV" pip sync --python "$tmp/bin/python" --prefix "$tmp" --require-hashes "$LOCK"

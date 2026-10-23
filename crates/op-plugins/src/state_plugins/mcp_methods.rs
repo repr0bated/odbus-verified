@@ -15,7 +15,7 @@ pub struct McpMethodPlan {
 }
 
 fn target_capability(method: &str) -> Result<String> {
-    let schema = crate::state_plugins::tched_router::tched_router_schema();
+    let schema = crate::state_plugins::threetched::sealed_schema("tched_router")?;
     let declaration = schema
         .methods
         .get(method)
