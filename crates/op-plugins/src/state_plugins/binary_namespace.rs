@@ -23,28 +23,20 @@ struct CapturedNamespace {
     commands: Vec<String>,
 }
 
-fn captured() -> Option<&'static CapturedNamespace> {
-    static CAPTURED: OnceLock<Option<CapturedNamespace>> = OnceLock::new();
+fn captured() -> Result<&'static CapturedNamespace> {
+    static CAPTURED: OnceLock<std::result::Result<CapturedNamespace, String>> = OnceLock::new();
     CAPTURED
-        .get_or_init(|| match capture() {
-            Ok(captured) => Some(captured),
-            Err(error) => {
-                tracing::warn!(%error, "model_routes namespace was not captured from the binary");
-                None
-            }
-        })
+        .get_or_init(|| capture().map_err(|error| error.to_string()))
         .as_ref()
+        .map_err(|error| anyhow::anyhow!("{error}"))
 }
 
 fn capture() -> Result<CapturedNamespace> {
-    let (binary, _) = super::tched_router_paths::capture_paths()?;
-    let binary = binary.to_str().context("non-UTF8 tched-router binary path")?;
-    let schema_text = run(&[binary, "config", "schema"])?;
-    let document: Value = serde_json::from_str(&schema_text)
-        .context("threetched config schema is not JSON")?;
-    let section = filter_namespace(&document, NAMESPACE)?;
-    let help = run(&[binary, "config", "--help"])?;
-    let commands = filter_command_words(&help, PATH_COMMANDS);
+    let section = filter_namespace(super::threetched::config_schema()?, NAMESPACE)?;
+    let surface = super::threetched::surface()?;
+    let commands: Vec<_> = PATH_COMMANDS.iter()
+        .filter(|command| surface.commands().any(|method| method == format!("config.{command}")))
+        .map(|command| (*command).to_owned()).collect();
     if commands.is_empty() {
         bail!("threetched config --help listed no path commands");
     }
@@ -130,12 +122,10 @@ pub fn filter_command_words(help: &str, allowed: &[&str]) -> Vec<String> {
     words
 }
 
-/// Declare the filtered namespace on a plugin schema. Missing binary capture
-/// leaves the plugin schema unchanged so a host without the binary still loads.
+/// Declare the namespace from explicit shared capture. Missing capture must not
+/// silently remove methods from a newly sealed plugin.
 pub fn attach_model_routes(schema: &mut PluginSchema) {
-    let Some(captured) = captured() else {
-        return;
-    };
+    let captured = captured().expect("model_routes requires the shared verified threetched capture");
     let read = "cap.software.3tched-router.routes.read@v1";
     let write = "cap.software.3tched-router.config.write@v1";
     ensure_capability(
@@ -257,6 +247,8 @@ pub fn dispatch(
 }
 
 fn call_namespace(method: &str, json_args: &str) -> Result<serde_json::Value> {
+    const MAX_REQUEST_BYTES: usize = 1024 * 1024;
+    anyhow::ensure!(json_args.len() <= MAX_REQUEST_BYTES, "namespace request exceeds 1 MiB");
     let args: BTreeMap<String, Value> = if json_args.trim().is_empty() {
         BTreeMap::new()
     } else {
@@ -308,45 +300,27 @@ fn call_namespace(method: &str, json_args: &str) -> Result<serde_json::Value> {
     }
     let mut command = Command::new(super::tched_router_paths::binary()?);
     command.args(&argv);
-    if method == "patch" && !help {
+    let input = if method == "patch" && !help {
         let operations = args
             .get("operations")
             .context("patch requires operations")?;
-        command.stdin(std::process::Stdio::piped());
-        let mut child = command.spawn().context("failed to start threetched")?;
-        if let Some(stdin) = child.stdin.as_mut() {
-            use std::io::Write;
-            stdin.write_all(serde_json::to_string(operations)?.as_bytes())?;
-        }
-        let output = child.wait_with_output().context("threetched patch failed")?;
-        return Ok(envelope(&output));
-    }
-    let output = command.output().context("failed to run threetched")?;
-    Ok(envelope(&output))
-}
-
-fn envelope(output: &std::process::Output) -> serde_json::Value {
-    serde_json::json!({
-        "stdout": String::from_utf8_lossy(&output.stdout),
-        "stderr": String::from_utf8_lossy(&output.stderr),
-        "exit": output.status.code().unwrap_or(1),
-    })
-}
-
-fn run(argv: &[&str]) -> Result<String> {
-    let output = Command::new(argv[0])
-        .args(&argv[1..])
-        .output()
-        .with_context(|| format!("failed to run {}", argv[0]))?;
-    if !output.status.success() {
-        bail!(
-            "{} exited with {}: {}",
-            argv.join(" "),
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+        // The standard fixed-slice writer refuses growth before allocating an
+        // oversized normalized JSON body; the runner enforces the same bound.
+        let mut input = vec![0; MAX_REQUEST_BYTES];
+        let mut remaining = input.as_mut_slice();
+        serde_json::to_writer(&mut remaining, operations)
+            .context("namespace patch exceeds 1 MiB")?;
+        let written = MAX_REQUEST_BYTES - remaining.len();
+        input.truncate(written);
+        Some(input)
+    } else {
+        None
+    };
+    let cancelled = std::sync::atomic::AtomicBool::new(false);
+    let output = threetched_fs::fuse_process::run_command_with_input(
+        &mut command, &cancelled, input.as_deref(),
+    )?;
+    Ok(serde_json::to_value(output)?)
 }
 
 #[cfg(test)]

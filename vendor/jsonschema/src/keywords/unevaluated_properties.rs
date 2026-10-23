@@ -48,6 +48,7 @@ impl<F: PropertiesFilter> UnevaluatedPropertiesValidator<F> {
         ctx: &'a compiler::Context,
         parent: &'a Map<String, Value>,
     ) -> CompilationResult<'a> {
+        super::annotation_cycles::check(ctx, parent, true)?;
         Ok(Box::new(UnevaluatedPropertiesValidator {
             location: ctx.location().join("unevaluatedProperties"),
             filter: F::new(ctx, parent)?,
@@ -362,7 +363,8 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
                     }
                 }
                 for (pattern, _) in &self.pattern_properties {
-                    if pattern.is_match(property).unwrap() {
+                    // The compiled patternProperties validator reports matching errors.
+                    if pattern.is_match(property).unwrap_or(false) {
                         properties.insert(property);
                     }
                 }
@@ -634,7 +636,8 @@ impl PropertiesFilter for DefaultPropertiesFilter {
                     }
                 }
                 for (pattern, _) in &self.pattern_properties {
-                    if pattern.is_match(property).unwrap() {
+                    // The compiled patternProperties validator reports matching errors.
+                    if pattern.is_match(property).unwrap_or(false) {
                         properties.insert(property);
                     }
                 }

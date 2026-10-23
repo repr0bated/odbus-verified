@@ -117,8 +117,8 @@ impl PluginTreeAdapter {
         Self
     }
 
-    /// Connect to the opdbus session bus (hardcoded socket path, no env dependency)
-    async fn connect() -> Result<zbus::Connection> {
+    /// Connect to the configured opdbus bus, defaulting to its dedicated socket.
+    pub(crate) async fn connect() -> Result<zbus::Connection> {
         let addr = std::env::var("DBUS_SESSION_BUS_ADDRESS")
             .unwrap_or_else(|_| SESSION_BUS_SOCK.to_string());
         zbus::connection::Builder::address(addr.as_str())
@@ -131,9 +131,14 @@ impl PluginTreeAdapter {
     /// Discover and introspect all plugins on the tree.
     pub async fn introspect_tree(&self) -> Result<PluginTree> {
         let conn = Self::connect().await?;
+        self.introspect_tree_on(&conn).await
+    }
+
+    /// Keep discovery and the resulting call on the same D-Bus sender.
+    pub(crate) async fn introspect_tree_on(&self, conn: &zbus::Connection) -> Result<PluginTree> {
 
         // Introspect the base path to find all child plugin nodes
-        let proxy = zbus::fdo::IntrospectableProxy::builder(&conn)
+        let proxy = zbus::fdo::IntrospectableProxy::builder(conn)
             .destination(SERVICE_NAME)?
             .path(BASE_PATH)?
             .build()
@@ -160,7 +165,7 @@ impl PluginTreeAdapter {
 
         for plugin_name in &children {
             let object_path = format!("{}/{}", BASE_PATH, plugin_name);
-            match self.introspect_one(&conn, &object_path).await {
+            match self.introspect_one(conn, &object_path).await {
                 Ok(plugin) => {
                     for iface in &plugin.interfaces {
                         stats.total_methods += iface.methods.len();
