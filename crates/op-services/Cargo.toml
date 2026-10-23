@@ -14,6 +14,7 @@ path = "src/bin/op-svctl.rs"
 
 [dependencies]
 # Schema source of truth
+op-core = { workspace = true }
 op-plugins = { path = "../op-plugins" }
 op-identity = { path = "../op-identity" }
 

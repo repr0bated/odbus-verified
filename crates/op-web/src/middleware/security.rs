@@ -106,13 +106,6 @@ fn is_trusted_proxy(addr: &SocketAddr) -> bool {
     if ip.is_loopback() {
         return true;
     }
-    // Trust WireGuard mesh subnet (10.200.0.0/16) as a forwarding proxy.
-    if let IpAddr::V4(v4) = ip {
-        let octets = v4.octets();
-        if octets[0] == 10 && octets[1] == 200 {
-            return true;
-        }
-    }
     false
 }
 
@@ -418,14 +411,14 @@ mod tests {
         "8.8.8.8:1234".parse().unwrap()
     }
 
-    fn mesh_peer() -> SocketAddr {
-        "10.200.0.5:1234".parse().unwrap()
+    fn decoy_peer() -> SocketAddr {
+        "10.0.0.1:1234".parse().unwrap()
     }
 
     #[test]
-    fn is_trusted_proxy_accepts_loopback_and_mesh_only() {
+    fn is_trusted_proxy_accepts_loopback_only() {
         assert!(is_trusted_proxy(&loopback()));
-        assert!(is_trusted_proxy(&mesh_peer()));
+        assert!(!is_trusted_proxy(&decoy_peer()));
         assert!(!is_trusted_proxy(&public_peer()));
         let lan: SocketAddr = "192.168.1.10:1234".parse().unwrap();
         assert!(!is_trusted_proxy(&lan));

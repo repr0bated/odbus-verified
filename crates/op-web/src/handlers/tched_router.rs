@@ -21,7 +21,10 @@ use tracing::{error, info, warn};
 use crate::state::AppState;
 
 #[allow(clippy::result_large_err)]
-fn ghostbridge_metadata(headers: &HeaderMap) -> Result<GhostbridgeCallMetadata, Response> {
+#[allow(clippy::result_large_err)]
+pub(crate) fn ghostbridge_metadata(
+    headers: &HeaderMap,
+) -> Result<GhostbridgeCallMetadata, Response> {
     let decode = |name| {
         decode_identity_header(headers, name)
             .map_err(|message| json_error_response(StatusCode::BAD_REQUEST, message))
@@ -697,6 +700,54 @@ mod tests {
             HeaderValue::from_static("T0lBMXg="),
         );
         assert!(ghostbridge_metadata(&headers).is_err());
+    }
+
+    #[test]
+    fn identity_header_decode_rejections_have_http_statuses() {
+        assert_eq!(
+            ghostbridge_metadata(&HeaderMap::new())
+                .err()
+                .expect("missing identity must fail")
+                .status(),
+            StatusCode::UNAUTHORIZED
+        );
+        let name = op_identity::sealed_id::HTTP_HEADER_NAME;
+        for encoded in ["", "U0lEMXg=", "@@", "AB"] {
+            let mut headers = HeaderMap::new();
+            headers.insert(name, HeaderValue::from_str(encoded).unwrap());
+            assert_eq!(
+                ghostbridge_metadata(&headers)
+                    .err()
+                    .expect("malformed identity must fail")
+                    .status(),
+                StatusCode::BAD_REQUEST
+            );
+        }
+        let mut headers = HeaderMap::new();
+        headers.append(name, HeaderValue::from_static("U0lEMXg"));
+        headers.append(name, HeaderValue::from_static("U0lEMXg"));
+        assert_eq!(
+            decode_identity_header(&headers, name),
+            Err("identity header must occur once")
+        );
+        assert_eq!(
+            ghostbridge_metadata(&headers)
+                .err()
+                .expect("duplicate identity must fail")
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        headers.clear();
+        let oversized =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(vec![0; 16 * 1024 + 1]);
+        headers.insert(name, HeaderValue::from_str(&oversized).unwrap());
+        assert_eq!(
+            ghostbridge_metadata(&headers)
+                .err()
+                .expect("oversized identity must fail")
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
     }
 
     #[test]

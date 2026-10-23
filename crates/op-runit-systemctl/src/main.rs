@@ -4,8 +4,8 @@
 //! operations for Artix Linux. This host boots runit as PID 1 and is controlled
 //! with `sv`; s6 is not installed.
 //!
-//! D-Bus object path: /org/opdbus/v1/plugins/runit/systemctl
-//! Interface: org.opdbus.v1.Runit.Systemctl
+//! D-Bus object path: /org/opdbus/v1/plugins/runit
+//! Interface: org.opdbus.v1.plugins.runit
 //!
 //! ## Mapping Reference
 //!
@@ -35,8 +35,8 @@ use zbus::connection::Connection;
 mod dbus;
 use dbus::RunitSystemctlService;
 
-const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit/systemctl";
-const RUNIT_BUS_NAME: &str = "org.opdbus.v1.Runit.Systemctl";
+const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit";
+const RUNIT_BUS_NAME: &str = "org.opdbus.v1.plugins.runit";
 
 #[tokio::main]
 async fn main() -> Result<()> {

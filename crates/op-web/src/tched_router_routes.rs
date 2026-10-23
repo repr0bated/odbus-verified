@@ -164,6 +164,18 @@ pub async fn selected_provider_model() -> Result<Option<(String, String)>> {
     Ok(Some((provider, model)))
 }
 
+/// Committed `workflows` plugin summaries for the /api/agents listing.
+pub async fn read_workflows_summaries() -> Result<Vec<Value>> {
+    let Some(state) = state_tree::read_plugin("workflows").await? else {
+        return Ok(Vec::new());
+    };
+    Ok(state
+        .get("workflows")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
