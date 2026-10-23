@@ -67,6 +67,9 @@ pub struct QdrantCollectionConfig {
 /// Mirrors `CollectionParams` + `VectorsConfig` from the OpenAPI spec.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct QdrantCollectionParams {
+    // Retain the authored single-or-named union and map-record constraints;
+    // finite FieldType::Map cannot preserve unsigned formats/nullable fields.
+    #[schemars(extend("x-opdbus-exact-json-schema" = true))]
     pub vectors: QdrantVectorsConfig,
     #[serde(default)]
     pub shard_number: Option<u32>,
@@ -1050,6 +1053,65 @@ mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
+
+    #[test]
+    fn vectors_keep_exact_authored_union_through_plugin_schema() {
+        use op_state_store::FieldType;
+
+        let source = serde_json::to_value(schemars::schema_for!(QdrantState)).unwrap();
+        let schema = qdrant_schema();
+        let producer = super::super::schemars_adapter::try_plugin_schema_from_json(
+            PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_DESCRIPTION, &source,
+        ).unwrap();
+        let mirror = op_blob::adapter::try_plugin_schema_from_json(
+            PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_DESCRIPTION, &source,
+        ).unwrap();
+        assert_eq!(producer.fields, mirror.fields);
+        let FieldType::Array(collection) = &schema.fields["collections"].field_type else {
+            panic!("collection array lost")
+        };
+        let FieldType::Object(collection) = collection.as_ref() else {
+            panic!("collection record lost")
+        };
+        let FieldType::Object(config) = &collection["config"].field_type else {
+            panic!("collection config lost")
+        };
+        let FieldType::Object(params) = &config["params"].field_type else {
+            panic!("collection params lost")
+        };
+        let FieldType::JsonSchema(document) = &params["vectors"].field_type else {
+            panic!("vector union was reduced")
+        };
+        let retained = serde_json::to_value(document.as_ref()).unwrap();
+        for name in ["QdrantVectorsConfig", "QdrantVectorParams"] {
+            assert_eq!(retained["$defs"][name], source["$defs"][name]);
+        }
+        assert!(retained["$defs"]["QdrantVectorsConfig"]["anyOf"].is_array());
+        assert_eq!(retained["$defs"]["QdrantVectorParams"]["properties"]["size"]["format"], "uint64");
+        // Exercise exported local-reference rebasing at the authored params
+        // boundary without changing unrelated optional collection fields.
+        let params_source = serde_json::to_value(schemars::schema_for!(QdrantCollectionParams)).unwrap();
+        let params_schema = super::super::schemars_adapter::try_plugin_schema_from_json(
+            "qdrant_params", PLUGIN_VERSION, "", &params_source,
+        ).unwrap();
+        let exported = serde_json::to_value(params_schema.to_json_schema()).unwrap();
+        let validator = jsonschema::validator_for(&exported).unwrap();
+        for (vectors, valid) in [
+            (serde_json::json!({"size": 4, "distance": "Cosine"}), true),
+            (serde_json::json!({"image": {"size": u64::MAX, "distance": "Dot", "on_disk": null}}), true),
+            (serde_json::json!({}), true),
+            (serde_json::json!({"image": {"size": -1, "distance": "Dot"}}), false),
+            (serde_json::json!({"image": {"size": 4}}), false),
+            (serde_json::json!({"image": null}), false),
+            (serde_json::json!({"size": "4", "distance": "Cosine"}), false),
+        ] {
+            assert_eq!(validator.is_valid(&serde_json::json!({"vectors": vectors.clone()})), valid);
+            let mut state = serde_json::to_value(QdrantPlugin::exemplar_state()).unwrap();
+            state["collections"][0]["config"]["params"]["vectors"] = vectors;
+            let state = simd_json::serde::to_owned_value(state).unwrap();
+            assert_eq!(schema.validate_exact_schema_fields(&state).is_ok(), valid);
+        }
+    }
 
     #[test]
     fn collection_details_accept_single_named_and_empty_vector_spaces() {
