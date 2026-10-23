@@ -336,11 +336,12 @@ lungs_call() (
     [[ $method =~ ^[a-z_]+$ ]] || exit 1
     operation=$LUNGS_MOUNT/plugins/identity_sled/operations/$method
     [[ -f $operation/input.schema.json && -f $operation/call ]] || exit 1
-    # FUSE validates the sealed method and dispatches synchronously on close.
-    # Never clear read-only receipts or treat a successful write as completion.
-    printf '%s' "$args" > "$operation/call"
-    [[ ! -s $operation/error ]] || { printf 'Lungs operation %s failed; inspect its protected error receipt.\n' "$method" >&2; exit 1; }
-    line=$(jq -ce --arg method "$method" 'select(.plugin_id=="identity_sled" and .method==$method) | {result:{structuredContent:.result}}' "$operation/result")
+    # The supported client validates the schema and reads the receipt from the
+    # same open call handle. Never retry an uncertain mutation or read invented
+    # result/error siblings shared with another caller.
+    line=$("$FS_BINARY" invoke --mount "$LUNGS_MOUNT" --expected-session "$OPERATOR_SESSION" \
+        --confirm-side-effects --args "$args" "plugins/identity_sled/operations/$method/call" |
+        jq -ce --arg method "$method" 'select(.plugin_id=="identity_sled" and .method==$method) | {result:{structuredContent:.result}}')
     jq -ce --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg key "$PUBKEY" --arg kind "$kind" '
         select(.error==null and .result.isError!=true) |
         (.result.structuredContent // ([.result.content[]? | select(.type=="text") | .text | fromjson?] | select(length==1) | .[0])) as $body |
