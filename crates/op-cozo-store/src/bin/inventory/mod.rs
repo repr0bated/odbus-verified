@@ -1490,11 +1490,13 @@ fn collect_consumers(b: &mut Builder) -> Result<()> {
         node.kind == "runit_service" && node.attributes.get("release_owned") == Some(&json!(true))
     }) {
         let mut seen = BTreeSet::new();
-        let mut pending = vec![service.id.as_str()];
+        // A dependency's files affect this service, but its lifecycle commands
+        // must not become direct start intent for this service.
+        let mut pending = vec![(service.id.as_str(), true)];
         let mut deps = BTreeSet::new();
         let mut starts = BTreeSet::new();
-        while let Some(id) = pending.pop() {
-            if !seen.insert(id) {
+        while let Some((id, own_lifecycle)) = pending.pop() {
+            if !seen.insert((id, own_lifecycle)) {
                 continue;
             }
             if let Some(errors) = b.blockers.get(id) {
@@ -1516,15 +1518,21 @@ fn collect_consumers(b: &mut Builder) -> Result<()> {
                 match edge.relation.as_str() {
                     "depends_on" | "starts" => {
                         let name = edge.dst.strip_prefix("service:").context("invalid service reference")?;
-                        if name != service.label {
+                        if own_lifecycle && name != service.label {
                             deps.insert(name.to_owned());
                             if edge.relation == "starts" {
                                 starts.insert(name.to_owned());
                             }
                         }
+                        if b.nodes.get(&edge.dst).is_some_and(|node| {
+                            node.kind == "runit_service"
+                                && node.attributes.get("release_owned") == Some(&json!(true))
+                        }) {
+                            pending.push((&edge.dst, false));
+                        }
                     }
                     "configured_by" | "contains" | "runs" | "references_path" | "provenance_document" => {
-                        pending.push(&edge.dst);
+                        pending.push((&edge.dst, own_lifecycle));
                     }
                     _ => {}
                 }
