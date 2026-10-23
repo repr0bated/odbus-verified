@@ -1,0 +1,75 @@
+[package]
+name = "op-cognitive"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+op-identity = { path = "../op-identity" }
+op-blob = { workspace = true }
+op-mcp = { path = "../op-mcp" }
+op-agents = { path = "../op-agents" }
+op-state-store = { path = "../op-state-store" }
+op-plugins = { path = "../op-plugins" }
+op-snowball = { path = "../op-snowball" }
+op-cozo-store = { workspace = true }
+hex = { workspace = true }
+memmap2 = { workspace = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { workspace = true }
+simd-json = { workspace = true }
+tokio = { version = "1.0", features = ["full"] }
+anyhow = { workspace = true }
+qdrant-client = "1.17"
+reqwest = { workspace = true }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = { version = "1.0", features = ["v4", "v5"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+clap = { workspace = true, features = ["env"] }
+cozo = { workspace = true }
+
+# Generated CognitiveToolService compatibility types (no listener ownership)
+tonic = { workspace = true }
+prost = { workspace = true }
+tonic-reflection = { workspace = true }
+tonic-health = { workspace = true }
+tonic-web = { workspace = true }
+
+# RAG pipeline
+sha2 = { workspace = true }
+regex = { workspace = true }
+
+# Concurrency
+dashmap = { workspace = true }
+parking_lot = { workspace = true }
+
+# Random for jitter
+rand = "0.8"
+
+tokio-stream = "0.1"
+
+# Examples
+futures = "0.3"
+
+# D-Bus
+zbus = { workspace = true }
+
+
+[[bin]]
+name = "op-cog-admin"
+path = "src/bin/op-cog-admin.rs"
+
+[[bin]]
+name = "op-chain-vectors"
+path = "src/bin/op-chain-vectors.rs"
+
+[[bin]]
+name = "op-chain-vector-ingest"
+path = "src/bin/op-chain-vector-ingest.rs"
+
+[build-dependencies]
+tonic-build = { version = "0.12" }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,380 @@
+syntax = "proto3";
+
+package operation.cognitive.v1;
+
+// CognitiveToolService — NotebookLM MCP gRPC Ingress
+//
+// Implements all service methods from the Technical Specification v0.2.
+// Traceability:
+//   R1-R3,R9-R11 → AskQuestion, QueryNotebook, ListNotebooks, GetHealth, SetupAuth
+//   R4-R6        → CreateNotebook, BatchCreateNotebooks, AddFolder, AddSource, ListSources, RemoveSource
+//   R7,R12-R15   → GenerateDataTable, GeminiQuery, GetToolProfile, Doctor, GetQueryHistory
+service CognitiveToolService {
+  // Core querying (R1)
+  rpc AskQuestion(AskQuestionRequest) returns (AskQuestionResponse);
+  rpc QueryNotebook(QueryNotebookRequest) returns (QueryNotebookResponse);
+
+  // Library management (R3)
+  rpc ListNotebooks(ListNotebooksRequest) returns (ListNotebooksResponse);
+  rpc GetNotebook(GetNotebookRequest) returns (GetNotebookResponse);
+
+  // Notebook lifecycle (R4-R5)
+  rpc CreateNotebook(CreateNotebookRequest) returns (CreateNotebookResponse);
+  rpc BatchCreateNotebooks(BatchCreateNotebooksRequest) returns (BatchCreateNotebooksResponse);
+
+  // Source ops (R5-R6)
+  rpc AddSource(AddSourceRequest) returns (AddSourceResponse);
+  rpc AddFolder(AddFolderRequest) returns (AddFolderResponse);
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+  rpc GetSourceContent(GetSourceContentRequest) returns (GetSourceContentResponse);
+  rpc RemoveSource(RemoveSourceRequest) returns (RemoveSourceResponse);
+
+  // Advanced outputs (R7)
+  rpc GenerateDataTable(GenerateDataTableRequest) returns (GenerateDataTableResponse);
+
+  // Gemini fallback (R12)
+  rpc GeminiQuery(GeminiQueryRequest) returns (GeminiQueryResponse);
+
+  // Tool profiles (R14)
+  rpc GetToolProfile(GetToolProfileRequest) returns (GetToolProfileResponse);
+
+  // Diagnostics (R15)
+  rpc Doctor(DoctorRequest) returns (DoctorResponse);
+  rpc GetQueryHistory(GetQueryHistoryRequest) returns (GetQueryHistoryResponse);
+
+  // Resilience & auth (R9-R11)
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+  rpc SetupAuth(SetupAuthRequest) returns (SetupAuthResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Citation — returned by grounded queries
+// ---------------------------------------------------------------------------
+
+message Citation {
+  string text = 1;
+  string source = 2;
+  string page = 3;
+}
+
+// ---------------------------------------------------------------------------
+// AskQuestion (R1 — grounded query)
+// ---------------------------------------------------------------------------
+
+message AskQuestionRequest {
+  string notebook_id = 1;
+  string query = 2;
+  // R2 — conversation_id for follow-ups
+  string conversation_id = 3;
+}
+
+message AskQuestionResponse {
+  string answer = 1;
+  repeated Citation citations = 2;
+  string conversation_id = 3;
+  bool grounded = 4;
+}
+
+// ---------------------------------------------------------------------------
+// QueryNotebook
+// ---------------------------------------------------------------------------
+
+message QueryNotebookRequest {
+  string notebook_id = 1;
+  string query = 2;
+  string conversation_id = 3;
+  int32 max_results = 4;
+}
+
+message QueryNotebookResponse {
+  string answer = 1;
+  repeated Citation citations = 2;
+  string conversation_id = 3;
+}
+
+// ---------------------------------------------------------------------------
+// ListNotebooks (R3)
+// ---------------------------------------------------------------------------
+
+message ListNotebooksRequest {
+  // Optional kind filter: "project", "session", "agent", etc.
+  string kind_filter = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message NotebookInfo {
+  string id = 1;
+  string name = 2;
+  string kind = 3;
+  string description = 4;
+  int32 source_count = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message ListNotebooksResponse {
+  repeated NotebookInfo notebooks = 1;
+  int32 total = 2;
+}
+
+// ---------------------------------------------------------------------------
+// GetNotebook (R3)
+// ---------------------------------------------------------------------------
+
+message GetNotebookRequest {
+  string notebook_id = 1;
+}
+
+message GetNotebookResponse {
+  NotebookInfo notebook = 1;
+  // Arbitrary metadata as JSON string.
+  string metadata_json = 2;
+}
+
+// ---------------------------------------------------------------------------
+// CreateNotebook (R4)
+// ---------------------------------------------------------------------------
+
+message CreateNotebookRequest {
+  string title = 1;
+  string description = 2;
+  string kind = 3;
+}
+
+message CreateNotebookResponse {
+  NotebookInfo notebook = 1;
+}
+
+// ---------------------------------------------------------------------------
+// BatchCreateNotebooks (R4)
+// ---------------------------------------------------------------------------
+
+message BatchCreateNotebooksRequest {
+  repeated CreateNotebookRequest notebooks = 1;
+}
+
+message BatchCreateNotebooksResponse {
+  repeated NotebookInfo notebooks = 1;
+  int32 created = 2;
+  int32 failed = 3;
+}
+
+// ---------------------------------------------------------------------------
+// AddSource (R5)
+// ---------------------------------------------------------------------------
+
+message AddSourceRequest {
+  string notebook_id = 1;
+  // "url", "text", "file"
+  string source_type = 2;
+  string content = 3;
+  string title = 4;
+  repeated string tags = 5;
+}
+
+message AddSourceResponse {
+  string source_id = 1;
+  bool success = 2;
+}
+
+// ---------------------------------------------------------------------------
+// AddFolder (R5 — bulk ingest)
+// ---------------------------------------------------------------------------
+
+message AddFolderRequest {
+  string notebook_id = 1;
+  string folder_path = 2;
+  // Glob patterns for filtering, e.g. "*.rs", "*.md"
+  repeated string patterns = 3;
+  bool recursive = 4;
+}
+
+message AddFolderResponse {
+  int32 sources_added = 1;
+  int32 sources_skipped = 2;
+  repeated string errors = 3;
+}
+
+// ---------------------------------------------------------------------------
+// ListSources (R6)
+// ---------------------------------------------------------------------------
+
+message ListSourcesRequest {
+  string notebook_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message SourceInfo {
+  string id = 1;
+  string title = 2;
+  string source_type = 3;
+  repeated string tags = 4;
+  string created_at = 5;
+}
+
+message ListSourcesResponse {
+  repeated SourceInfo sources = 1;
+  int32 total = 2;
+}
+
+// ---------------------------------------------------------------------------
+// GetSourceContent (R6)
+// ---------------------------------------------------------------------------
+
+message GetSourceContentRequest {
+  string notebook_id = 1;
+  string source_id = 2;
+}
+
+message GetSourceContentResponse {
+  string content = 1;
+  string source_type = 2;
+  string title = 3;
+}
+
+// ---------------------------------------------------------------------------
+// GenerateDataTable (R7 — structured extraction)
+// ---------------------------------------------------------------------------
+
+message GenerateDataTableRequest {
+  string notebook_id = 1;
+  string prompt = 2;
+  // Expected column names
+  repeated string columns = 3;
+}
+
+message GenerateDataTableResponse {
+  // JSON string of [{column: value, ...}, ...]
+  string data_json = 1;
+  int32 row_count = 2;
+}
+
+// ---------------------------------------------------------------------------
+// GetHealth (R10)
+// ---------------------------------------------------------------------------
+
+message GetHealthRequest {
+  bool deep_check = 1;
+}
+
+message GetHealthResponse {
+  bool healthy = 1;
+  string status = 2;
+  // Component-level status as JSON
+  string components_json = 3;
+  // Quota info (R11)
+  int32 queries_remaining = 4;
+  int32 queries_limit = 5;
+  string auth_status = 6;
+}
+
+// ---------------------------------------------------------------------------
+// SetupAuth (R9)
+// ---------------------------------------------------------------------------
+
+message SetupAuthRequest {
+  // "chrome_profile" or "cookie"
+  string auth_method = 1;
+  // Path to Chrome profile or cookie value
+  string credential = 2;
+}
+
+message SetupAuthResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ---------------------------------------------------------------------------
+// RemoveSource (R6)
+// ---------------------------------------------------------------------------
+
+message RemoveSourceRequest {
+  string notebook_id = 1;
+  string source_id = 2;
+}
+
+message RemoveSourceResponse {
+  bool success = 1;
+}
+
+// ---------------------------------------------------------------------------
+// GeminiQuery (R12 — fallback when browser breaks)
+// ---------------------------------------------------------------------------
+
+message GeminiQueryRequest {
+  string query = 1;
+  // Optional context to ground the query
+  string context = 2;
+  // "query" or "deep_research"
+  string mode = 3;
+  // Depth for deep_research (1-5, default 3)
+  int32 depth = 4;
+}
+
+message GeminiQueryResponse {
+  string answer = 1;
+  repeated Citation citations = 2;
+  string model = 3;
+  bool is_fallback = 4;
+  // For deep_research: JSON of sections
+  string sections_json = 5;
+}
+
+// ---------------------------------------------------------------------------
+// GetToolProfile (R14)
+// ---------------------------------------------------------------------------
+
+message GetToolProfileRequest {
+  // Optional: if empty returns current profile
+  string profile_name = 1;
+}
+
+message GetToolProfileResponse {
+  string current_profile = 1;
+  int32 tool_count = 2;
+  int32 schema_tokens = 3;
+  int32 savings_percent = 4;
+  repeated string tools = 5;
+}
+
+// ---------------------------------------------------------------------------
+// Doctor (R15 — diagnostics)
+// ---------------------------------------------------------------------------
+
+message DoctorRequest {
+  bool verbose = 1;
+}
+
+message DoctorResponse {
+  string overall_status = 1;
+  string timestamp = 2;
+  // JSON array of component statuses
+  string components_json = 3;
+  repeated string recommendations = 4;
+}
+
+// ---------------------------------------------------------------------------
+// GetQueryHistory (R15)
+// ---------------------------------------------------------------------------
+
+message GetQueryHistoryRequest {
+  int32 limit = 1;
+  string conversation_id = 2;
+}
+
+message QueryHistoryEntry {
+  string conversation_id = 1;
+  string notebook_id = 2;
+  string query = 3;
+  string answer_preview = 4;
+  string timestamp = 5;
+  int32 citations_count = 6;
+  bool grounded = 7;
+}
+
+message GetQueryHistoryResponse {
+  repeated QueryHistoryEntry entries = 1;
+  int32 total = 2;
+}
