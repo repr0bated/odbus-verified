@@ -1,2 +1,9 @@
 #!/bin/sh
-exec chpst -u s6log svlogd -tt /var/log/op-dbus/notebook-sources-sync
+set -eu
+logdir=/var/log/op-dbus/notebook-sources-sync
+if getent passwd svlog >/dev/null; then
+  install -d -m 0755 -o svlog -g svlog "$logdir"
+  exec chpst -u svlog svlogd -tt "$logdir"
+fi
+install -d -m 0755 -o root -g root "$logdir"
+exec svlogd -tt "$logdir"

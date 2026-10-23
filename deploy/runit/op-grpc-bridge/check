@@ -1,8 +1,13 @@
 #!/bin/sh
 # Readiness is observational: never widen a service-owned socket's mode.
 set -eu
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+set +a
+# The native bridge publishes this only after replay and listener binding.
+[ -f "${OPDBUS_READY_PATH:-/run/opdbus/runit-ready/op-grpc-bridge}" ] || exit 1
 [ -S "${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}" ] || exit 1
-status=$(curl --silent --show-error --connect-timeout 1 --max-time 3 \
+status=$(curl --noproxy '*' --silent --show-error --connect-timeout 1 --max-time 3 \
     --cacert "${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
     --output /dev/null --write-out '%{http_code}' \
     https://10.0.0.2:8090/mcp) || exit 1
