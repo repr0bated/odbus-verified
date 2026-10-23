@@ -765,7 +765,7 @@ impl CozoGraphShuttle {
                 }
             }
             Err(error) => PolicyVerdict {
-                allow: true,
+                allow: false,
                 reason: format!("compliance query failed: {error}"),
             },
         }
@@ -896,38 +896,41 @@ impl CozoGraphShuttle {
         point_id: &str,
         links: &[(&str, &str)],
     ) -> std::result::Result<(), CozoError> {
+        let _guard = self
+            .episode_transaction
+            .lock()
+            .map_err(|_| CozoError::Other("chain-vector owner is poisoned".into()))?;
+        let tx = self.db.multi_transaction(true);
         let mut p: Params = BTreeMap::new();
         p.insert("pid".into(), DataValue::Str(point_id.into()));
-        cozo_run(
-            &self.db,
+        if let Err(error) = tx.run_script(
             "?[point_id, kind] := *chain_vector_link{point_id, kind, value}, point_id = $pid \
              :rm chain_vector_link {point_id, kind}",
-            p.clone(),
-        )
-        .map_err(|e| CozoError::Other(format!("replace chain_vector_link rm: {e}")))?;
-
-        if links.is_empty() {
-            return Ok(());
-        }
-
-        let rows: Vec<DataValue> = links
-            .iter()
-            .map(|&(kind, value)| {
-                DataValue::List(vec![
-                    DataValue::Str(point_id.into()),
-                    DataValue::Str(kind.into()),
-                    DataValue::Str(value.into()),
-                ])
-            })
-            .collect();
-        p.insert("rows".into(), DataValue::List(rows));
-        cozo_run(
-            &self.db,
-            "?[point_id, kind, value] <- $rows :put chain_vector_link { point_id, kind => value }",
             p,
-        )
-        .map_err(|e| CozoError::Other(format!("replace chain_vector_link put: {e}")))?;
-        Ok(())
+        ) {
+            let _ = tx.abort();
+            return Err(CozoError::Other(format!("replace chain_vector_link rm: {error}")));
+        }
+        if !links.is_empty() {
+            let rows: Vec<DataValue> = links
+                .iter()
+                .map(|&(kind, value)| {
+                    DataValue::List(vec![
+                        DataValue::Str(point_id.into()),
+                        DataValue::Str(kind.into()),
+                        DataValue::Str(value.into()),
+                    ])
+                })
+                .collect();
+            if let Err(error) = tx.run_script(
+                "?[point_id, kind, value] <- $rows :put chain_vector_link { point_id, kind => value }",
+                BTreeMap::from([("rows".into(), DataValue::List(rows))]),
+            ) {
+                let _ = tx.abort();
+                return Err(CozoError::Other(format!("replace chain_vector_link put: {error}")));
+            }
+        }
+        identity_transactions::commit_checked(&tx)
     }
 
     pub fn query_edges_from(&self, src: &str) -> std::result::Result<Value, CozoError> {
@@ -2694,6 +2697,15 @@ mod compliance_mutation_tests {
         let store = CozoGraphShuttle::new_in_memory().unwrap();
         let verdict = store.evaluate_mutation("openflow", "add_flow");
         assert!(verdict.allow);
+    }
+
+    #[test]
+    fn evaluate_mutation_denies_when_the_policy_relation_is_unavailable() {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        cozo_run(&store.db, "::remove compliance_rule", BTreeMap::new()).unwrap();
+        let verdict = store.evaluate_mutation("openflow", "add_flow");
+        assert!(!verdict.allow);
+        assert!(verdict.reason.contains("compliance query failed"));
     }
 
     #[test]
