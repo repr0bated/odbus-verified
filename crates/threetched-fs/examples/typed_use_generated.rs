@@ -1,28 +1,28 @@
 //! Generated typed read example; uses only the identity's existing mounted filesystem.
 #![allow(dead_code)]
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/dispatch.rs"]
+#[path = "../src/dispatch.rs"]
 mod dispatch;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/fuse_buffers.rs"]
+#[path = "../src/fuse_buffers.rs"]
 mod fuse_buffers;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/fuse_process.rs"]
+#[path = "../src/fuse_process.rs"]
 mod fuse_process;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/model.rs"]
+#[path = "../src/model.rs"]
 mod model;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/mounted.rs"]
+#[path = "../src/mounted.rs"]
 mod mounted;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/namespace.rs"]
+#[path = "../src/namespace.rs"]
 mod namespace;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/generated/plugin_types.rs"]
+#[path = "../generated/plugin_types.rs"]
 mod plugins;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/source.rs"]
+#[path = "../src/source.rs"]
 mod source;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/store.rs"]
+#[path = "../src/store.rs"]
 mod store;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/threetched-surface.rs"]
+#[path = "../src/threetched-surface.rs"]
 mod threetched_surface;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/typed_bindings.rs"]
+#[path = "../src/typed_bindings.rs"]
 mod typed_bindings;
-#[path = "/srv/git/odbus-verified/crates/threetched-fs/src/typed_runtime.rs"]
+#[path = "../src/typed_runtime.rs"]
 mod typed_runtime;
 
 use anyhow::{Context, Result};
