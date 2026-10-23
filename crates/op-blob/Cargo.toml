@@ -9,8 +9,7 @@ description = "Schema-driven plugin object blobs: schemars struct -> PluginSchem
 [dependencies]
 op-state-store = { workspace = true }
 serde = { workspace = true }
-# NOTE: serde_json without `preserve_order` backs Map with BTreeMap — key-sorted
-# serialization is what makes PluginSchema::canonical_json deterministic.
+# Canonical serialization sorts keys explicitly, independent of map features.
 serde_json = { workspace = true }
 simd-json = { workspace = true }
 prost-reflect = { workspace = true }
@@ -23,6 +22,8 @@ x25519-dalek = { version = "2", features = ["static_secrets"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 
 [dev-dependencies]
+# Exercise input insertion order even when no other workspace crate enables it.
+serde_json = { workspace = true, features = ["preserve_order"] }
 prost = { workspace = true }
 prost-types = { workspace = true }
 jsonschema = { workspace = true }
