@@ -95,7 +95,17 @@ dbus_call() {
     if ! busctl --system list 2>/dev/null | grep -q "$DBUS_NAME"; then
         dest=$DBUS_LEGACY_NAME
     fi
-    busctl --system call "$dest" "$DBUS_PATH" "$DBUS_IFACE" "$method" s "$unit" >/dev/null 2>&1
+    if ! reply=$(busctl --system call "$dest" "$DBUS_PATH" "$DBUS_IFACE" "$method" s "$unit"); then
+        log "D-Bus $method failed for $unit"
+        return 1
+    fi
+    # Start/Stop/Restart return (bool, String); successful transport is not a
+    # successful lifecycle operation. Keep the daemon's diagnostic on failure.
+    case "$reply" in
+        'bs true '*) return 0 ;;
+        'bs false '*) log "D-Bus $method rejected $unit: $reply"; return 1 ;;
+        *) log "unexpected D-Bus $method receipt for $unit: $reply"; return 1 ;;
+    esac
 }
 
 # Generate a runit service from a systemd unit if we have one but not the other.
@@ -118,11 +128,10 @@ sv_do() {
     svc=$2
     if dbus_available; then
         case "$action" in
-            start)   dbus_call Start "$svc" && return 0 ;;
-            stop)    dbus_call Stop "$svc" && return 0 ;;
-            restart) dbus_call Restart "$svc" && return 0 ;;
+            start)   dbus_call Start "$svc"; return $? ;;
+            stop)    dbus_call Stop "$svc"; return $? ;;
+            restart) dbus_call Restart "$svc"; return $? ;;
         esac
-        log "D-Bus call failed for $action $svc; falling back to sv"
     fi
     sv "$action" "$svc"
 }
@@ -160,7 +169,9 @@ h_enable() {
     ln -sfn "$SV_DIR/$svc" "$RUNSVDIR_DEFAULT/$svc"
     rm -f "$SV_DIR/$svc/down"
     log "enabled $svc (runsvdir picks it up automatically)"
-    [ "$NOW" = 1 ] && sv_do start "$svc"
+    if [ "$NOW" = 1 ]; then
+        sv_do start "$svc" || return $?
+    fi
     return 0
 }
 

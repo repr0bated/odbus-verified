@@ -286,6 +286,18 @@ mod tests {
             apply_policy_update(&mut records, "owner-b", update.clone(), vec![mapping(true)])
                 .is_err()
         );
+        let before = records.clone();
+        let mut mixed_generation = update.clone();
+        let mut second_request = mapping_request();
+        second_request.mapping_id = "mapping-2".into();
+        mixed_generation.canonical_mappings.push(second_request);
+        let mut second_mapping = mapping(true);
+        second_mapping.mapping_id = "mapping-2".into();
+        second_mapping.generation = "gen-b".into();
+        assert!(apply_policy_update(
+            &mut records, "owner-a", mixed_generation, vec![mapping(true), second_mapping],
+        ).is_err());
+        assert_eq!(records, before, "rejected update must leave the record unchanged");
         let updated =
             apply_policy_update(&mut records, "owner-a", update, vec![mapping(true)]).unwrap();
         assert_eq!(updated.revision, 2);
@@ -321,6 +333,18 @@ mod tests {
         let created = apply_tag_registration(&mut tags, proposed.clone(), vec![], None).unwrap();
         assert_eq!(created.revision, 1);
         assert!(apply_tag_registration(&mut tags, proposed.clone(), vec![], None).is_err());
+        let before = tags.clone();
+        let mut duplicate = proposed.clone();
+        duplicate.tag_id = 8;
+        assert!(apply_tag_registration(&mut tags, duplicate.clone(), vec![], None).is_err());
+        assert_eq!(tags, before);
+        duplicate.name = "another-name".into();
+        apply_tag_registration(&mut tags, duplicate.clone(), vec![], None).unwrap();
+        let before_rename = tags.clone();
+        duplicate.name = proposed.name.clone();
+        duplicate.expected_revision = 1;
+        assert!(apply_tag_registration(&mut tags, duplicate, vec![], None).is_err());
+        assert_eq!(tags, before_rename);
         let updated = apply_tag_registration(
             &mut tags,
             RegisterTagInput {

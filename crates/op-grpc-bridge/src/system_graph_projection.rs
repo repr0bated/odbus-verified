@@ -344,7 +344,7 @@ impl Projection {
             let (devices, field) = if instance
                 .get("expanded_devices")
                 .and_then(Value::as_array)
-                .is_some_and(|items| !items.is_empty())
+                .is_some()
             {
                 (&instance["expanded_devices"], "expanded_devices")
             } else {

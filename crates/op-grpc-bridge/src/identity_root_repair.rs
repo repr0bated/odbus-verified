@@ -830,9 +830,10 @@ pub(super) fn projected_devices(
     expanded: bool,
 ) -> Result<BTreeMap<String, JsonValue>> {
     let devices = if expanded {
-        &instance.expanded_devices
+        instance.expanded_devices.as_deref()
+            .ok_or_else(|| anyhow::anyhow!("native expanded device inventory is unavailable"))?
     } else {
-        &instance.devices
+        instance.devices.as_slice()
     };
     let mut mapped = BTreeMap::new();
     for named in devices {
