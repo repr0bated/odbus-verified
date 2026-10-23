@@ -108,7 +108,7 @@ fn config_area(path: &str, pointer: bool) -> Option<&'static str> {
     match segments.as_slice() {
         [] => Some(CONTROL_PLANE_CONFIGURE),
         ["agents"] | ["agents", "control_plane", ..] => Some(CONTROL_PLANE_CONFIGURE),
-        ["providers"] | ["providers", "models", ..] => Some(ROUTER_PROVIDERS_CONFIGURE),
+        ["providers", ..] => Some(ROUTER_PROVIDERS_CONFIGURE),
         _ => None,
     }
 }
