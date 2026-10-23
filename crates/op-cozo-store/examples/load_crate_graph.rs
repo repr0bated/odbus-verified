@@ -1,86 +1,40 @@
-//! Load the generated crate graph (`docs/crate-graph/crate-graph.cozo`) into a
-//! `CozoGraphShuttle` and print a few structural queries as proof it landed.
+//! Offline verification/import of a typed, namespace-owned system graph.
+//! Never point this example at a live service's database. Live imports use
+//! cozo.replace_system_graph through authenticated D-Bus/3tchedFS.
 //!
-//! ```sh
-//! scripts/crate-graph.sh
-//! cargo run -p op-cozo-store --example load_crate_graph -- docs/crate-graph/crate-graph.cozo
-//! cargo run -p op-cozo-store --example load_crate_graph -- docs/crate-graph/crate-graph.cozo /path/to/rocksdb-dir
-//! ```
-//!
-//! With a second argument the graph is written to a persistent RocksDB store
-//! (`CozoGraphShuttle::new_persistent`); otherwise it lives in memory for the
-//! duration of the run. The script targets the seed relations `graph_node` and
-//! `graph_edge`, so it also loads into any store the shuttle already manages.
+//! Convert the source export with system_graph_inventory --source-graph first.
+//! Usage: load_crate_graph SNAPSHOT.json [OFFLINE_ROCKSDB_DIR EXPECTED_REVISION]
+//! Persistent replacement requires an explicit revision and cannot silently
+//! retain stale edges or clear another graph owner's rows.
 
-use std::path::PathBuf;
+use std::{io::Read, path::PathBuf};
 
-use op_cozo_store::CozoGraphShuttle;
+use op_cozo_store::{CozoGraphShuttle, GraphSnapshot, MAX_SYSTEM_GRAPH_BYTES};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = std::env::args().skip(1);
-    let script_path = PathBuf::from(
-        args.next()
-            .ok_or("usage: load_crate_graph SCRIPT.cozo [ROCKSDB_DIR]")?,
-    );
-    let store = match args.next() {
-        Some(dir) => CozoGraphShuttle::new_persistent(PathBuf::from(dir))?,
-        None => CozoGraphShuttle::new_in_memory()?,
-    };
-
-    let script = std::fs::read_to_string(&script_path)?;
-    store.run_query(&script, None)?;
-
-    let queries: &[(&str, &str)] = &[
-        (
-            "nodes by label",
-            "?[label, count(label)] := *graph_node[_, label, _] :order -count(label)",
-        ),
-        (
-            "edges by rel",
-            "?[rel, count(rel)] := *graph_edge[_, rel, _, _] :order -count(rel)",
-        ),
-        (
-            "crate fan-in (depends_on)",
-            r#"?[dst, count(dst)] := *graph_edge[_, "depends_on", dst, _] :order -count(dst) :limit 12"#,
-        ),
-        (
-            "crate fan-out (depends_on)",
-            r#"?[src, count(src)] := *graph_edge[src, "depends_on", _, _] :order -count(src) :limit 12"#,
-        ),
-        (
-            "module-level imports not backed by a Cargo dependency",
-            r#"
-            dep[a, b] := *graph_edge[a, "depends_on", b, _]
-            dep[a, b] := *graph_edge[a, "dev_depends_on", b, _]
-            dep[a, b] := *graph_edge[a, "build_depends_on", b, _]
-            ?[module, target] := *graph_edge[module, "imports", target, _],
-                                 *graph_edge[owner, "contains", module, _],
-                                 not dep[owner, target]
-            :limit 20
-            "#,
-        ),
-        (
-            "plugin registrations whose module is never declared (phantoms)",
-            r#"?[id, file] := *graph_node[id, "plugin", p], j = parse_json(p), get(j, "declared") == false, file = get(j, "file")"#,
-        ),
-        (
-            "runit service -> binary -> crate",
-            r#"?[svc, bin, crate] := *graph_edge[svc, "runs_bin", bin, _], *graph_edge[crate, "provides_bin", bin, _]"#,
-        ),
-        (
-            "transitive closure size of op-core (reverse depends_on)",
-            r#"
-            up[c] := c = "crate:op-core"
-            up[c] := up[d], *graph_edge[c, "depends_on", d, _]
-            ?[count(c)] := up[c]
-            "#,
-        ),
-    ];
-
-    for (title, q) in queries {
-        let rows = store.run_query(q, None)?;
-        println!("== {title}");
-        println!("{}", serde_json::to_string_pretty(&rows)?);
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    if !matches!(args.len(), 1 | 3) {
+        return Err(
+            "usage: load_crate_graph SNAPSHOT.json [OFFLINE_ROCKSDB_DIR EXPECTED_REVISION]".into(),
+        );
     }
+    let mut bytes = Vec::new();
+    std::fs::File::open(&args[0])?
+        .take(MAX_SYSTEM_GRAPH_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > MAX_SYSTEM_GRAPH_BYTES {
+        return Err("system graph snapshot exceeds byte limit".into());
+    }
+    let snapshot: GraphSnapshot = serde_json::from_slice(&bytes)?;
+    let (store, expected) = if args.len() == 3 {
+        (
+            CozoGraphShuttle::new_persistent(PathBuf::from(&args[1]))?,
+            args[2].parse()?,
+        )
+    } else {
+        (CozoGraphShuttle::new_in_memory()?, 0)
+    };
+    let receipt = store.replace_system_graph(&snapshot, expected)?;
+    println!("{}", serde_json::to_string_pretty(&receipt)?);
     Ok(())
 }

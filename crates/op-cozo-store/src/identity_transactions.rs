@@ -2,8 +2,15 @@
 //! This is private persistence metadata, not plugin discovery/schema authority.
 //! Legacy writes are rejected after a session acquires a revision/tombstone.
 use super::*;
+mod physical_root;
+mod clean_provision;
+pub use clean_provision::{CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches};
 use cozo::{MultiTransaction, TransactionPayload};
 use nix::{fcntl::OFlag, sys::stat::Mode};
+pub use physical_root::{
+    IdentityPhysicalRootMigration, PhysicalRootMigrationReceipt,
+    physical_root_instance_binding_matches,
+};
 use std::{
     fs::File,
     os::{
@@ -13,7 +20,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IdentityRevision {
     pub session_id: String,
     pub revision: u64,
@@ -29,7 +36,9 @@ pub struct IdentityCompareExchange {
 }
 
 pub enum IdentityIntent {
+    CleanProvision(Box<IdentityCleanProvision>),
     CompareExchange(Box<IdentityCompareExchange>),
+    MigratePhysicalRoot(Box<IdentityPhysicalRootMigration>),
     /// A narrowly bounded credential refresh authored by the identity owner.
     /// The journal kind remains `transport-refresh` for compatibility; it now
     /// also permits an anchored NextDNS profile/device assignment to change.
@@ -57,7 +66,8 @@ pub struct IdentityRecoverySnapshot {
 
 /// Private, durable repair fence in the existing Cozo identity database.
 /// This relation is separate from caller-authored session events.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RootRepairJournal {
     pub version: u8,
     pub plan_sha256: String,
@@ -83,7 +93,8 @@ struct RootRepairPhaseRequest<'a> {
 /// One immutable owner operation per derived session while an absent-record
 /// seeded provision is in flight. This is private Cozo authority, not a
 /// caller-authored session event or a boot configuration file.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SeedProvisionJournal {
     pub version: u8,
     pub plan_sha256: String,
@@ -1145,6 +1156,27 @@ impl CozoGraphShuttle {
         }
         let tx = self.db.multi_transaction(true);
         let (previous, metadata) = read_one(&tx, session_id)?;
+        if let IdentityIntent::CompareExchange(exchange) = &intent {
+            clean_provision::validate_cas(&tx, &previous, exchange.record.as_ref())?;
+        }
+        let physical = physical_root::read_in_tx(&tx, session_id)?;
+        // A completed migration pins storage and instance identity. An
+        // unchanged instance string is not an edit: the power-observation
+        // matcher rejects empty or non-object JSON, and treating that as a
+        // mutation blocks every later CAS, including a schema-hash refresh.
+        if matches!(&intent, IdentityIntent::CompareExchange(exchange)
+        if physical.is_some() && exchange.record.as_ref().is_some_and(|new|
+            previous.record.as_ref().is_some_and(|old| {
+                new.btrfs_device_json != old.btrfs_device_json
+                    || (new.instance_json != old.instance_json
+                        && !physical_root_instance_binding_matches(
+                            &old.instance_json,
+                            &new.instance_json,
+                        ))
+            })))
+        {
+            return Err(err("completed physical migration binding is immutable"));
+        }
         if let Some(provision) = read_seed_provision_journal_in_tx(&tx, session_id)? {
             if provision.phase != "identity-committed" {
                 let is_final = provision.phase == "verified"
@@ -1195,6 +1227,39 @@ impl CozoGraphShuttle {
             }
         }
         let (record, genesis, kind, value, replayed) = match intent {
+            IdentityIntent::CleanProvision(provision) => {
+                clean_provision::validate(&tx, session_id, operation_id, &previous, &metadata, &provision)?;
+                let replayed = previous.operation_id == operation_id;
+                if !replayed {
+                    clean_provision::append(&tx, session_id, operation_id, &provision)?;
+                }
+                (Some(provision.record), Some(provision.genesis), "clean-provision",
+                    i64::try_from(provision.expected.revision).map_err(native)?, replayed)
+            }
+            IdentityIntent::MigratePhysicalRoot(migration) => {
+                physical_root::validate_intent(
+                    &tx,
+                    session_id,
+                    operation_id,
+                    &previous,
+                    &metadata,
+                    &migration,
+                    physical.as_ref(),
+                )?;
+                let replayed = previous.operation_id == operation_id;
+                let value = i64::try_from(migration.expected.revision)
+                    .map_err(|_| err("identity revision exceeds Cozo Int"))?;
+                if !replayed {
+                    physical_root::append_in_tx(&tx, session_id, operation_id, &migration)?;
+                }
+                (
+                    Some(migration.record),
+                    migration.expected.genesis,
+                    "physical-migrate",
+                    value,
+                    replayed,
+                )
+            }
             IdentityIntent::CompareExchange(exchange) => {
                 let IdentityCompareExchange {
                     expected,
@@ -1468,7 +1533,10 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
         || !op
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
-        || !matches!(kind.as_str(), "cas" | "advance" | "transport-refresh")
+        || !matches!(
+            kind.as_str(),
+            "cas" | "advance" | "transport-refresh" | "physical-migrate" | "clean-provision"
+        )
         || value < 0
         || !matches!(principal_kind.as_str(), "" | "human" | "service")
     {
@@ -1625,12 +1693,32 @@ fn validate_binding(
                 || old.trace_id != new.trace_id
                 || old.schema_version != new.schema_version
                 || old.expires_at != new.expires_at
-                || previous.genesis.as_ref() != genesis)
+                || !anchored_genesis_compatible(previous.genesis.as_ref(), genesis))
         {
             return Err(err("anchored SID1/genesis fields are immutable"));
         }
     }
     Ok(())
+}
+
+/// Anchored genesis may refresh `schema_content_hash` to the compiled
+/// `SCHEMA_CONTENT_HASH` after an identity_sled schema bump. Every other
+/// genesis field stays immutable.
+fn anchored_genesis_compatible(
+    previous: Option<&GenesisInputsRecord>,
+    next: Option<&GenesisInputsRecord>,
+) -> bool {
+    match (previous, next) {
+        (None, None) => true,
+        (Some(old), Some(new)) => {
+            old.session_id == new.session_id
+                && old.arrival_timestamp == new.arrival_timestamp
+                && old.chain_head_at_arrival == new.chain_head_at_arrival
+                && old.catalog_hash_at_arrival == new.catalog_hash_at_arrival
+                && old.head_timestamp_at_arrival == new.head_timestamp_at_arrival
+        }
+        _ => false,
+    }
 }
 fn put_pair(
     tx: &MultiTransaction,

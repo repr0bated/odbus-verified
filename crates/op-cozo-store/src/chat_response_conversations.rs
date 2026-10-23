@@ -10,7 +10,7 @@
 
 use super::identity_transactions::commit_checked;
 use super::*;
-use cozo::MultiTransaction;
+use cozo::{MultiTransaction, Num};
 
 const MAX_LIST_LIMIT: usize = 200;
 const MAX_PRINCIPAL_BYTES: usize = 512;
@@ -561,6 +561,23 @@ impl CozoGraphShuttle {
         conversation_limit: usize,
         turn_limit: usize,
     ) -> std::result::Result<(ChatConversationRecord, ChatResponseSnapshot), CozoError> {
+        self.insert_chat_conversation_and_snapshot_bounded(
+            conversation,
+            conversation_limit,
+            turn_limit,
+            usize::MAX,
+        )
+    }
+
+    /// Atomically enforce the principal's total conversation quota with insertion.
+    /// Snapshot window limits do not limit durable history.
+    pub fn insert_chat_conversation_and_snapshot_bounded(
+        &self,
+        conversation: &ChatConversationRecord,
+        conversation_limit: usize,
+        turn_limit: usize,
+        maximum_conversations: usize,
+    ) -> std::result::Result<(ChatConversationRecord, ChatResponseSnapshot), CozoError> {
         validate_conversation(conversation)?;
         if conversation.turn_count != 0 {
             return Err(error("a new chat_response conversation has no turns"));
@@ -581,6 +598,9 @@ impl CozoGraphShuttle {
             return Err(error("chat_response conversation already exists"));
         }
         let (revision, conversations, turns) = read_scope(&tx, &conversation.principal_id)?;
+        if u64::try_from(maximum_conversations).is_ok_and(|maximum| conversations >= maximum) {
+            return Err(error("chat_response conversation quota exceeded"));
+        }
         let revision = revision
             .checked_add(1)
             .ok_or_else(|| error("chat_response revision exhausted"))?;
@@ -789,6 +809,23 @@ impl CozoGraphShuttle {
         })
     }
 
+    pub fn count_principal_conversations(
+        &self,
+        principal_id: &str,
+    ) -> std::result::Result<usize, CozoError> {
+        validate_principal(principal_id)?;
+        let _guard = self
+            .episode_transaction
+            .lock()
+            .map_err(|_| error("chat_response owner is poisoned"))?;
+        let tx = self.db.multi_transaction(false);
+        let count = read_scope(&tx, principal_id).and_then(|(_, conversations, _)| {
+            usize::try_from(conversations).map_err(|_| error("conversation count exceeds usize"))
+        });
+        let _ = tx.abort();
+        count
+    }
+
     /// The newest `limit` turns of one conversation, ascending, byte bounded.
     pub fn list_chat_turns(
         &self,
@@ -896,6 +933,29 @@ mod tests {
                 }),
             })
         }
+    }
+
+    #[test]
+    fn concurrent_conversation_creators_share_the_durable_quota() {
+        let store = Arc::new(CozoGraphShuttle::new_in_memory().unwrap());
+        store.initialize_chat_response_store().unwrap();
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let workers: Vec<_> = ["first", "second"].into_iter().map(|id| {
+            let store = store.clone();
+            let barrier = barrier.clone();
+            std::thread::spawn(move || {
+                barrier.wait();
+                store.insert_chat_conversation_and_snapshot_bounded(
+                    &conversation("alice", id), 8, 8, 1,
+                ).is_ok()
+            })
+        }).collect();
+        let admitted = workers.into_iter().map(|worker| usize::from(worker.join().unwrap()))
+            .sum::<usize>();
+        assert_eq!(admitted, 1);
+        assert_eq!(store.count_principal_conversations("alice").unwrap(), 1);
+        assert_eq!(store.count_principal_conversations("bob").unwrap(), 0);
+        assert_eq!(store.snapshot_chat_responses("alice", 8, 8).unwrap().conversation_count, 1);
     }
 
     #[test]
