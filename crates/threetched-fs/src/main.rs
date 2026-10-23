@@ -17,7 +17,7 @@ use threetched_fs::threetched_surface;
 
 use std::fs;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use clap::{Args, Parser, Subcommand};
@@ -27,9 +27,18 @@ use serde_json::Value;
 
 use crate::dispatch::DEFAULT_BUS_ADDRESS;
 use crate::fuse_fs::{Lungs, TypedFuse};
-use crate::namespace::{Namespace, NodeKind, ProjectionTarget};
+use crate::namespace::{MountIdentity, Namespace, NodeKind, ProjectionTarget};
 use crate::source::{DEFAULT_CATALOG_DIR, DEFAULT_STATE_DIR, SourceCatalog};
 use crate::store::{DEFAULT_STORE_DIR, ObjectStore};
+
+/// The expected identity binding is checked against the mounted declaration.
+/// Selecting a mode never supplies a credential or chooses a backend identity.
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum ExpectedMountMode {
+    HostSession,
+    GuestKernel,
+    Credential,
+}
 
 #[derive(Debug, Parser)]
 #[command(
@@ -102,6 +111,9 @@ enum Command {
         mount: Option<PathBuf>,
         #[arg(long, requires = "mount")]
         expected_session: Option<String>,
+        /// Explicitly require this mounted identity mode; host-session also needs --expected-session.
+        #[arg(long, value_enum, requires = "mount")]
+        expected_mode: Option<ExpectedMountMode>,
         /// JSON argument object, or '-' to read stdin.
         #[arg(long, conflicts_with = "args_file", default_value = "{}")]
         args: String,
@@ -122,6 +134,9 @@ enum Command {
         mount: PathBuf,
         #[arg(long)]
         expected_session: Option<String>,
+        /// Explicitly require this mounted identity mode; host-session also needs --expected-session.
+        #[arg(long, value_enum)]
+        expected_mode: Option<ExpectedMountMode>,
         #[arg(long, conflicts_with = "args_file", default_value = "{}")]
         args: String,
         #[arg(long)]
@@ -133,8 +148,10 @@ enum Command {
     Describe {
         #[arg(long, conflicts_with = "store")]
         mount: PathBuf,
-        #[arg(long)]
-        expected_session: String,
+        #[arg(long, required_unless_present = "expected_mode")]
+        expected_session: Option<String>,
+        #[arg(long, value_enum)]
+        expected_mode: Option<ExpectedMountMode>,
         #[arg(long)]
         plugin: Option<String>,
     },
@@ -199,6 +216,9 @@ enum Command {
         mount: Option<PathBuf>,
         #[arg(long, requires = "mount")]
         expected_session: Option<String>,
+        /// Explicitly require this mounted identity mode; host-session also needs --expected-session.
+        #[arg(long, value_enum, requires = "mount")]
+        expected_mode: Option<ExpectedMountMode>,
         #[arg(long, default_value = DEFAULT_STATE_DIR)]
         state: PathBuf,
         #[arg(long, default_value = DEFAULT_CATALOG_DIR)]
@@ -325,15 +345,17 @@ async fn main() -> Result<()> {
     if let Command::Describe {
         mount,
         expected_session,
+        expected_mode,
         plugin,
     } = &cli.command
     {
-        let namespace = mounted::MountedNamespace::open(mount, Some(expected_session))?;
+        let namespace = open_mounted_namespace(mount, expected_session.as_deref(), *expected_mode)?;
         return print_json(&namespace.describe(plugin.as_deref())?);
     }
     if let Command::Call {
         mount: Some(path),
         expected_session,
+        expected_mode,
         plugin,
         method,
         args,
@@ -342,7 +364,7 @@ async fn main() -> Result<()> {
         ..
     } = &cli.command
     {
-        let namespace = mounted::MountedNamespace::open(path, expected_session.as_deref())?;
+        let namespace = open_mounted_namespace(path, expected_session.as_deref(), *expected_mode)?;
         let decl = namespace.method_decl(plugin, method)?;
         if decl.side_effect != model::SideEffect::Read && !confirm_side_effects {
             bail!("operation requires --confirm-side-effects");
@@ -354,18 +376,20 @@ async fn main() -> Result<()> {
         path,
         mount,
         expected_session,
+        expected_mode,
         args,
         args_file,
         confirm_side_effects,
     } = &cli.command
     {
-        let namespace = mounted::MountedNamespace::open(mount, expected_session.as_deref())?;
+        let namespace = open_mounted_namespace(mount, expected_session.as_deref(), *expected_mode)?;
         let arguments = input_json(Some(args), args_file.as_ref())?;
         return print_json(&namespace.invoke(path, arguments, *confirm_side_effects)?);
     }
     if let Command::Mcp {
         mount: Some(mount),
         expected_session,
+        expected_mode,
         all,
         compact,
         load,
@@ -373,7 +397,7 @@ async fn main() -> Result<()> {
         ..
     } = &cli.command
     {
-        let namespace = mounted::MountedNamespace::open(mount, expected_session.as_deref())?;
+        let namespace = open_mounted_namespace(mount, expected_session.as_deref(), *expected_mode)?;
         let surface = match (*all, *compact) {
             (true, _) => mcp::Surface::Full,
             (_, true) => mcp::Surface::Compact,
@@ -516,6 +540,7 @@ async fn main() -> Result<()> {
             confirm_side_effects,
             mount: _,
             expected_session: _,
+            expected_mode: _,
         } => {
             let target = resolve_target(&store, &target)?;
             let arguments = input_json(Some(&args), args_file.as_ref())?;
@@ -682,6 +707,46 @@ fn resolve_target(store: &ObjectStore, args: &TargetArgs) -> Result<ProjectionTa
     }
 }
 
+fn expected_mount_identity(
+    mode: Option<ExpectedMountMode>,
+    session: Option<&str>,
+) -> Result<Option<MountIdentity>> {
+    let Some(mode) = mode else {
+        return Ok(None);
+    };
+    let identity = match mode {
+        ExpectedMountMode::HostSession => MountIdentity::HostSession {
+            session: session
+                .filter(|session| !session.is_empty())
+                .context("--expected-mode host-session requires --expected-session")?
+                .to_string(),
+        },
+        ExpectedMountMode::GuestKernel | ExpectedMountMode::Credential => {
+            anyhow::ensure!(
+                session.is_none(),
+                "--expected-session applies only to host-session mounts"
+            );
+            match mode {
+                ExpectedMountMode::GuestKernel => MountIdentity::GuestKernel,
+                ExpectedMountMode::Credential => MountIdentity::Credential,
+                ExpectedMountMode::HostSession => unreachable!(),
+            }
+        }
+    };
+    Ok(Some(identity))
+}
+
+fn open_mounted_namespace(
+    mount: &Path,
+    session: Option<&str>,
+    mode: Option<ExpectedMountMode>,
+) -> Result<mounted::MountedNamespace> {
+    match expected_mount_identity(mode, session)? {
+        Some(identity) => mounted::MountedNamespace::open_for_mode(mount, &identity),
+        None => mounted::MountedNamespace::open(mount, session),
+    }
+}
+
 fn input_json(inline: Option<&str>, file: Option<&PathBuf>) -> Result<Value> {
     const MAX_INPUT: usize = 1024 * 1024;
     fn bounded_text(reader: impl std::io::Read) -> Result<String> {
@@ -801,6 +866,48 @@ mod cli_tests {
             conflict.extend([alternate, "alternate"]);
             assert!(Cli::try_parse_from(conflict).is_err());
         }
+    }
+
+    #[test]
+    fn mounted_identity_mode_is_explicit_on_every_mounted_surface() {
+        for command in [
+            vec!["call", "demo", "get_status"],
+            vec!["invoke", "plugins/demo/operations/get_status/call"],
+            vec!["describe"],
+            vec!["mcp"],
+        ] {
+            let mut args = vec!["threetched-fs"];
+            args.extend(command);
+            args.extend(["--mount", "/run/mount/3tchedfs", "--expected-mode", "guest-kernel"]);
+            assert!(Cli::try_parse_from(args).is_ok());
+        }
+        assert!(Cli::try_parse_from([
+            "threetched-fs", "mcp", "--expected-mode", "guest-kernel",
+        ]).is_err());
+        assert!(Cli::try_parse_from([
+            "threetched-fs", "describe", "--mount", "/run/mount/3tchedfs",
+        ]).is_err());
+    }
+
+    #[test]
+    fn explicit_modes_never_infer_or_override_a_session_binding() {
+        assert_eq!(
+            expected_mount_identity(Some(ExpectedMountMode::GuestKernel), None).unwrap(),
+            Some(MountIdentity::GuestKernel),
+        );
+        assert_eq!(
+            expected_mount_identity(Some(ExpectedMountMode::Credential), None).unwrap(),
+            Some(MountIdentity::Credential),
+        );
+        for mode in [ExpectedMountMode::GuestKernel, ExpectedMountMode::Credential] {
+            assert!(expected_mount_identity(Some(mode), Some("host")).is_err());
+        }
+        assert!(expected_mount_identity(Some(ExpectedMountMode::HostSession), None).is_err());
+        assert_eq!(
+            expected_mount_identity(Some(ExpectedMountMode::HostSession), Some("host")).unwrap(),
+            Some(MountIdentity::HostSession { session: "host".to_string() }),
+        );
+        assert_eq!(expected_mount_identity(None, Some("host")).unwrap(), None);
     }
 
     #[test]

@@ -161,7 +161,7 @@ pub fn get_query_history(session_manager: &SessionManager, limit: usize) -> Vec<
                 "notebook_id": session.notebook_id,
                 "query": turn.query,
                 "answer_preview": if turn.answer.len() > 200 {
-                    format!("{}...", &turn.answer[..200])
+                    format!("{}...", &turn.answer[..turn.answer.floor_char_boundary(200)])
                 } else {
                     turn.answer.clone()
                 },

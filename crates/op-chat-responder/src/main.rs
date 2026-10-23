@@ -17,7 +17,7 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 /// Out-of-band chat responder wake relay for OP-DBUS chatbot.
 #[derive(Parser, Debug)]
@@ -61,10 +61,6 @@ struct Args {
 #[derive(Debug, Clone, Deserialize)]
 struct ResponderWake {
     request_id: String,
-    owner_key: String,
-    owner_principal_id: String,
-    conversation_id: Option<String>,
-    preview: Option<String>,
 }
 
 fn responder_owner_key(principal_id: &str) -> String {
@@ -86,7 +82,7 @@ impl WakeRelay {
     }
 
     /// Notify the control-plane chatbot of a pending turn via D-Bus.
-    async fn notify_chatbot(&self, turn_id: &str, conversation_id: Option<&str>) -> Result<()> {
+    async fn notify_chatbot(&self, turn_id: &str) -> Result<()> {
         use zbus::Connection;
 
         let connection = Connection::session()
@@ -100,25 +96,14 @@ impl WakeRelay {
                 self.args.dbus_path.as_str(),
                 Some("org.opdbus.v1.ChatResponder"),
                 "ProcessPendingTurn",
-                &(turn_id, conversation_id.unwrap_or("")),
+                &(turn_id, ""),
             )
             .await
             .map(|_| ());
 
         match reply {
             Ok(()) => {
-                info!(turn_id, conversation_id, "notified chatbot of pending turn");
-                Ok(())
-            }
-            Err(zbus::Error::MethodError(name, detail, _)) => {
-                // Method errors are expected if the chatbot is busy or the turn
-                // was already claimed. Log and continue.
-                debug!(
-                    turn_id,
-                    error_name = %name,
-                    ?detail,
-                    "chatbot notification returned error (may be expected)"
-                );
+                info!(turn_id, "notified chatbot of pending turn");
                 Ok(())
             }
             Err(error) => {
@@ -129,26 +114,23 @@ impl WakeRelay {
     }
 
     /// Process a wake notification by forwarding to the chatbot.
-    async fn handle_wake(&self, wake: ResponderWake) {
+    async fn handle_wake(&self, wake: ResponderWake) -> Result<()> {
+        anyhow::ensure!(
+            !wake.request_id.is_empty()
+                && wake.request_id.len() <= 128
+                && !wake.request_id.chars().any(char::is_control),
+            "invalid responder wake request id"
+        );
         info!(
             request_id = %wake.request_id,
-            owner_key = %wake.owner_key,
-            owner_principal_id = %wake.owner_principal_id,
-            conversation_id = ?wake.conversation_id,
-            preview = ?wake.preview,
             "received responder wake"
         );
 
-        if let Err(error) = self
-            .notify_chatbot(&wake.request_id, wake.conversation_id.as_deref())
+        // Requester identity and content belong to admitted state, never the
+        // broker wake. Do not acknowledge a missing or rejecting D-Bus receiver.
+        self.notify_chatbot(&wake.request_id)
             .await
-        {
-            error!(
-                request_id = %wake.request_id,
-                %error,
-                "failed to forward wake to chatbot"
-            );
-        }
+            .context("failed to forward required wake to chatbot")
     }
 
     /// Run the relay loop with MQTT subscription.
@@ -177,7 +159,7 @@ impl WakeRelay {
                 Ok(Event::Incoming(Packet::Publish(publish))) => {
                     if publish.topic == topic {
                         match serde_json::from_slice::<ResponderWake>(&publish.payload) {
-                            Ok(wake) => self.handle_wake(wake).await,
+                            Ok(wake) => self.handle_wake(wake).await?,
                             Err(error) => {
                                 warn!(%error, "failed to parse responder wake payload");
                             }
