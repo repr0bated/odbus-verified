@@ -556,11 +556,10 @@ impl MutationEngine {
         let Ok(gallery) = self.ui_gallery_cozo().await else {
             return state;
         };
-        match gallery.list_ui_catalog(None, 64, false) {
-            Ok(page) => {
-                state.catalog_revision = page.revision;
-                state.active_catalog_entry_names =
-                    page.entries.into_iter().map(|entry| entry.name).collect();
+        match gallery.active_ui_catalog_names() {
+            Ok((revision, names)) => {
+                state.catalog_revision = revision;
+                state.active_catalog_entry_names = names;
             }
             Err(error) => {
                 tracing::debug!(
@@ -1630,16 +1629,6 @@ impl MutationEngine {
             responder_principal_id,
         )?;
 
-        // Notify the responder that a turn awaits their response (best-effort,
-        // off the commit path). The responder can also poll list_pending_for_responder.
-        {
-            let wake = crate::responder_wake::chat_turn_wake(&pending, Some(&message));
-            let responder = responder_principal_id.to_string();
-            tokio::spawn(async move {
-                crate::responder_wake::publish_responder_wake(wake, &responder).await;
-            });
-        }
-
         let human = match crate::chat_response_dispatch::commit_human_turn(
             self,
             &owner,
@@ -1663,6 +1652,13 @@ impl MutationEngine {
                 return Err(error);
             }
         };
+        // Wake only after the human turn is durable and its reserved index matches.
+        // The responder reads the committed request through its admitted scope.
+        let wake = crate::responder_wake::chat_turn_wake(&pending, None);
+        let responder = responder_principal_id.to_string();
+        tokio::spawn(async move {
+            crate::responder_wake::publish_responder_wake(wake, &responder).await;
+        });
         Ok((human, pending))
     }
 

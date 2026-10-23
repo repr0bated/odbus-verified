@@ -473,7 +473,7 @@ impl RagPipeline {
             .map(String::from)
             .collect();
 
-        let mut best: HashMap<String, RagResult> = HashMap::new();
+        let mut best: HashMap<(String, String), RagResult> = HashMap::new();
         for pt in response.result {
             let mut r = point_to_result(pt);
             r.retrieval_collection = collection.to_string();
@@ -495,7 +495,7 @@ impl RagPipeline {
             }
             r.score += boost.min(0.25);
 
-            best.entry(r.file_path.clone())
+            best.entry((r.repo.clone(), r.file_path.clone()))
                 .and_modify(|e| {
                     if r.score > e.score {
                         *e = r.clone();
@@ -857,7 +857,7 @@ fn detect_language(path: &str) -> &'static str {
     }
 }
 
-fn classify_file(path: &str, lines: &[String]) -> FileType {
+fn classify_file(path: &str, _lines: &[String]) -> FileType {
     let lower = path.to_lowercase();
     if lower.contains("test") || lower.contains("spec") || lower.ends_with("_test.rs") {
         return FileType::Test;
@@ -881,12 +881,6 @@ fn classify_file(path: &str, lines: &[String]) -> FileType {
         || lower.ends_with(".env")
     {
         return FileType::Config;
-    }
-    if lines
-        .iter()
-        .any(|l| l.contains("#[cfg(test)]") || l.contains("#[test]"))
-    {
-        return FileType::Test;
     }
     FileType::Source
 }
