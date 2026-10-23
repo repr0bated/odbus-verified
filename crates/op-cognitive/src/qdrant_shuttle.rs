@@ -310,11 +310,9 @@ impl QdrantSemanticShuttle {
 
     // ── Blob Vectors ──────────────────────────────────────────────────────
 
-    /// Rebuilds the `blob_vectors` collection wholesale: embeds every active
-    /// plugin's current schema text via Voyage and upserts all points. No
-    /// staleness check — the corpus is small enough (<2MB total) that a
-    /// wholesale replace-on-refresh is simpler and cheaper than tracking
-    /// per-plugin schema hashes.
+    /// Embeds every active plugin's current schema text and upserts its stable
+    /// point. Retired points may remain in the disposable index, but searches
+    /// admit only plugins present in the authoritative sealed catalog.
     pub async fn refresh_blob_vectors(&self) -> Result<RefreshBlobVectorsSummary> {
         let texts = all_blob_embedding_texts()?;
         let mut points = Vec::with_capacity(texts.len());
@@ -365,19 +363,25 @@ impl QdrantSemanticShuttle {
         })
     }
 
-    /// Semantic search over the `blob_vectors` collection. No scoping filter —
-    /// unlike user_memory, this is public catalog data, not per-container.
+    /// Semantic search over active public catalog entries. The index does not
+    /// establish plugin existence; retired index points are never returned.
     pub async fn search_blob_vectors(&self, query: &str, limit: u64) -> Result<Vec<ScoredPoint>> {
+        let active = op_blob::catalog::read_manifest_plugin_ids_shm()
+            .context("SHM blob manifest is unavailable")?;
+        if active.is_empty() {
+            return Ok(Vec::new());
+        }
         let embedding = self
             .embed_query_text(query)
             .await
             .context("failed to embed query for blob_vectors search")?;
 
-        let response = self
+        let mut response = self
             .client
             .query(
                 QueryPointsBuilder::new(self.blob_vectors_collection.clone())
                     .query(embedding)
+                    .filter(Filter::must([Condition::matches("plugin_id", active)]))
                     .limit(limit)
                     .with_payload(true),
             )
@@ -388,6 +392,19 @@ impl QdrantSemanticShuttle {
                     self.blob_vectors_collection
                 )
             })?;
+
+        // Refresh membership after the remote query so a concurrent catalog
+        // removal cannot be returned from an older candidate selection.
+        let active = op_blob::catalog::read_manifest_plugin_ids_shm()
+            .context("SHM blob manifest became unavailable during search")?;
+        response.result.retain(|point| {
+            let Some(qdrant_client::qdrant::value::Kind::StringValue(plugin)) =
+                point.payload.get("plugin_id").and_then(|value| value.kind.as_ref())
+            else {
+                return false;
+            };
+            active.contains(plugin)
+        });
 
         tracing::info!(
             collection = %self.blob_vectors_collection,
@@ -423,13 +440,14 @@ fn read_plugin_schema() -> Result<PluginSchema> {
 fn all_blob_embedding_texts() -> Result<Vec<(String, String)>> {
     let ids = op_blob::catalog::read_manifest_plugin_ids_shm()
         .context("SHM blob manifest is unavailable")?;
-    Ok(ids
+    ids
         .into_iter()
-        .filter_map(|id| {
+        .map(|id| {
             op_blob::catalog::read_plugin_schema_shm(&id)
                 .map(|schema| (id, render_schema_embedding_text(&schema)))
+                .context("an active plugin schema became unavailable during refresh")
         })
-        .collect())
+        .collect()
 }
 
 /// Deterministic UUID v5 from a plugin id, so `refresh_blob_vectors` upserts

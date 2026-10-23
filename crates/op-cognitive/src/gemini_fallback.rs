@@ -337,8 +337,8 @@ impl GeminiFallback {
         request: &GeminiRequest,
     ) -> Result<GeminiResponse> {
         let url = format!(
-            "{}/models/{}:generateContent?key={}",
-            config.api_url, config.model, config.api_key
+            "{}/models/{}:generateContent",
+            config.api_url, config.model
         );
 
         let mut last_error = None;
@@ -353,7 +353,10 @@ impl GeminiFallback {
                 tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
             }
 
-            match self.client.post(&url).json(request).send().await {
+            let mut api_key = reqwest::header::HeaderValue::from_str(&config.api_key)
+                .context("invalid Gemini API key header")?;
+            api_key.set_sensitive(true);
+            match self.client.post(&url).header("x-goog-api-key", api_key).json(request).send().await {
                 Ok(resp) => {
                     if resp.status().is_success() {
                         return resp
@@ -363,17 +366,15 @@ impl GeminiFallback {
                     }
 
                     let status = resp.status();
-                    let body = resp.text().await.unwrap_or_default();
-
                     // Don't retry client errors (4xx) except 429 (rate limit)
                     if status.as_u16() != 429 && status.is_client_error() {
-                        anyhow::bail!("Gemini API error {}: {}", status, body);
+                        anyhow::bail!("Gemini API returned status {}", status);
                     }
 
-                    last_error = Some(anyhow::anyhow!("Gemini API error {}: {}", status, body));
+                    last_error = Some(anyhow::anyhow!("Gemini API returned status {}", status));
                 }
                 Err(e) => {
-                    last_error = Some(e.into());
+                    last_error = Some(e.without_url().into());
                 }
             }
         }
