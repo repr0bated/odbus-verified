@@ -130,8 +130,13 @@ impl CozoGraphShuttle {
         let mut p = params(scope);
         p["workflow"] = serde_json::json!(workflow);
         p["execution"] = serde_json::json!(execution);
-        let result = self.run_query(&format!("?[execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at] := *workflow_executions{{principal_id, session_id, session_genesis, execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at}}, principal_id = $principal, session_id = $session, session_genesis = $genesis{filter} :order -accepted_at, -execution_id :limit {limit}"), Some(p))?;
-        result
+        let selected = self.newest_workflow_execution_ids(&mut p, &filter, limit)?;
+        if selected.is_empty() {
+            return Ok(Vec::new());
+        }
+        p["ids"] = serde_json::json!(selected);
+        let result = self.run_query(&format!("?[execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at] := *workflow_executions{{principal_id, session_id, session_genesis, execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at}}, principal_id = $principal, session_id = $session, session_genesis = $genesis{filter}, execution_id in $ids"), Some(p))?;
+        let records: Vec<WorkflowExecutionRecord> = result
             .as_array()
             .ok_or_else(|| CozoError::Other("invalid workflow rows".into()))?
             .iter()
@@ -156,7 +161,53 @@ impl CozoGraphShuttle {
                 validate(&record)?;
                 Ok(record)
             })
+            .collect::<Result<_, CozoError>>()?;
+        let mut records: BTreeMap<_, _> = records.into_iter()
+            .map(|record| (record.execution_id.clone(), record)).collect();
+        selected.iter().map(|id| records.remove(id)
+            .ok_or_else(|| CozoError::Other("selected workflow execution disappeared".into())))
             .collect()
+    }
+
+    /// Called only while holding episode_transaction, also held by every write
+    /// to this relation. Visit O(history) metadata in bounded pages plus the
+    /// requested newest IDs; only the final selected documents are fetched.
+    /// Parse instants in Rust to preserve offsets, pre-epoch dates and nanos;
+    /// Cozo's parse_timestamp uses f64 and cannot preserve that full contract.
+    fn newest_workflow_execution_ids(
+        &self,
+        p: &mut Value,
+        filter: &str,
+        limit: usize,
+    ) -> Result<Vec<String>, CozoError> {
+        const PAGE: usize = 200;
+        let mut after = String::new();
+        let mut newest = Vec::new();
+        loop {
+            p["after"] = serde_json::json!(after);
+            let result = self.run_query(&format!("?[execution_id, accepted_at] := *workflow_executions{{principal_id, session_id, session_genesis, execution_id, workflow_id, accepted_at}}, principal_id = $principal, session_id = $session, session_genesis = $genesis{filter}, execution_id > $after :order execution_id :limit {PAGE}"), Some(p.clone()))?;
+            let page = result.as_array()
+                .ok_or_else(|| CozoError::Other("invalid workflow metadata rows".into()))?;
+            for row in page {
+                let id = row["execution_id"].as_str()
+                    .filter(|id| *id > after.as_str())
+                    .ok_or_else(|| CozoError::Other("workflow metadata cursor did not advance".into()))?;
+                let accepted = row["accepted_at"].as_str()
+                    .ok_or_else(|| CozoError::Other("invalid workflow accepted timestamp".into()))?;
+                let instant = chrono::DateTime::parse_from_rfc3339(accepted)
+                    .map_err(|_| CozoError::Other("invalid workflow accepted timestamp".into()))?;
+                newest.push((instant, id.to_owned()));
+                after = id.to_owned();
+            }
+            // The execution ID is the deterministic descending tie-breaker for
+            // equal instants, regardless of their original offset spelling.
+            newest.sort_unstable_by(|left, right| right.cmp(left));
+            newest.truncate(limit);
+            if page.len() < PAGE {
+                break;
+            }
+        }
+        Ok(newest.into_iter().map(|(_, id)| id).collect())
     }
 
     /// Compare-and-set under the domain owner's shared transaction lock.
@@ -174,7 +225,7 @@ impl CozoGraphShuttle {
         self.runtime_document_preflight()?;
         let mut p = params(&row.scope);
         p["execution"] = serde_json::json!(row.execution_id);
-        let old = self.run_query("?[revision, owner_epoch] := *workflow_executions{principal_id, session_id, session_genesis, execution_id, revision, owner_epoch}, principal_id = $principal, session_id = $session, session_genesis = $genesis, execution_id = $execution", Some(p.clone()))?;
+        let old = self.run_query("?[revision, owner_epoch, workflow_id, accepted_at] := *workflow_executions{principal_id, session_id, session_genesis, execution_id, revision, owner_epoch, workflow_id, accepted_at}, principal_id = $principal, session_id = $session, session_genesis = $genesis, execution_id = $execution", Some(p.clone()))?;
         let rows = old
             .as_array()
             .ok_or_else(|| CozoError::Other("invalid workflow rows".into()))?;
@@ -183,13 +234,15 @@ impl CozoGraphShuttle {
             (Some(revision), [old]) => {
                 old["revision"].as_u64() == Some(revision)
                     && old["owner_epoch"].as_str() == Some(row.owner_epoch.as_str())
+                    && old["workflow_id"].as_str() == Some(row.workflow_id.as_str())
+                    && old["accepted_at"].as_str() == row.document["accepted_at"].as_str()
                     && row.revision == revision.saturating_add(1)
             }
             _ => false,
         };
         if !matches {
             return Err(CozoError::Other(
-                "workflow execution revision/owner conflict".into(),
+                "workflow execution revision/owner/attribution conflict".into(),
             ));
         }
         p["workflow"] = serde_json::json!(row.workflow_id);
@@ -249,6 +302,14 @@ mod tests {
         wrong_owner.revision = 2;
         wrong_owner.owner_epoch = "other-owner".into();
         assert!(store.put_workflow_execution(&wrong_owner, Some(1)).is_err());
+        let mut wrong_workflow = record.clone();
+        wrong_workflow.revision = 2;
+        wrong_workflow.workflow_id = "other-workflow".into();
+        assert!(store.put_workflow_execution(&wrong_workflow, Some(1)).is_err());
+        let mut wrong_acceptance = record.clone();
+        wrong_acceptance.revision = 2;
+        wrong_acceptance.document["accepted_at"] = serde_json::json!("2026-10-05T00:01:00Z");
+        assert!(store.put_workflow_execution(&wrong_acceptance, Some(1)).is_err());
         assert_eq!(
             store
                 .get_workflow_execution(&record.scope, "id")
@@ -302,6 +363,47 @@ mod tests {
                 .execution_id,
             "zzzz"
         );
+    }
+
+    #[test]
+    fn workflow_history_compares_instants_and_preserves_timestamp_spelling() {
+        let store = store();
+        let inputs = [
+            ("local-new-year", "2026-01-01T00:00:00+10:00"),
+            ("utc-later", "2025-12-31T15:00:00Z"),
+            ("equal-z", "2025-12-31T14:00:00Z"),
+            ("epoch-before", "1969-12-31T23:59:59.999999999Z"),
+            ("nano-a", "2026-01-01T00:00:00.000000001Z"),
+            ("nano-b", "2026-01-01T00:00:00.000000002Z"),
+        ];
+        for (id, timestamp) in inputs {
+            store.put_workflow_execution(&row(id, timestamp), None).unwrap();
+        }
+        let history = store.list_workflow_executions(&row("id", inputs[0].1).scope, None, 20).unwrap();
+        assert_eq!(history.iter().map(|record| record.execution_id.as_str()).collect::<Vec<_>>(),
+            ["nano-b", "nano-a", "utc-later", "local-new-year", "equal-z", "epoch-before"]);
+        for record in history {
+            let original = inputs.iter().find(|(id, _)| *id == record.execution_id).unwrap().1;
+            assert_eq!(record.document["accepted_at"].as_str(), Some(original));
+        }
+        let mut rewritten = row("local-new-year", "2025-12-31T14:00:00Z");
+        rewritten.revision = 1;
+        assert!(store.put_workflow_execution(&rewritten, Some(0)).is_err(),
+            "equal instants must not rewrite immutable acceptance attribution");
+    }
+
+    #[test]
+    fn workflow_history_keeps_newest_ids_across_metadata_pages() {
+        let store = store();
+        let accepted = "2026-01-01T00:00:00Z";
+        for index in 0..205 {
+            store.put_workflow_execution(&row(&format!("id-{index:03}"), accepted), None).unwrap();
+        }
+        let scope = row("id", accepted).scope;
+        let history = store.list_workflow_executions(&scope, None, 3).unwrap();
+        assert_eq!(history.iter().map(|record| record.execution_id.as_str()).collect::<Vec<_>>(),
+            ["id-204", "id-203", "id-202"]);
+        assert_eq!(store.get_workflow_execution(&scope, "id-000").unwrap().unwrap().execution_id, "id-000");
     }
 
     #[test]

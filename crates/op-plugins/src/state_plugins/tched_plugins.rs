@@ -2,10 +2,9 @@
 //! Configuration remains authored by threetched: selection uses its `plugins`
 //! namespace through the existing tched_router config surface.
 
-use std::{collections::BTreeSet, fs::File, path::Path, sync::OnceLock};
-use anyhow::{Context, Result, bail, ensure};
+use std::{path::Path, sync::OnceLock};
+use anyhow::{Result, bail, ensure};
 use async_trait::async_trait;
-use op_plugin_lint::{BinaryIntrospectOpts, BinarySurface, introspect_binary_subtree};
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
 use schemars::JsonSchema;
@@ -20,13 +19,13 @@ const WRITE: &str = "cap.software.tched-plugins.write@v1";
 const INSTALL: &str = "cap.software.tched-plugins.install@v1";
 // Search writes the threetched registry cache, so it is a mutation, not a read.
 const SEARCH: &str = "cap.software.tched-plugins.search@v1";
-const COMMANDS: &[(&str, &str, &[&str])] = &[
-    ("list_plugins", "list", &[]),
-    ("search_plugins", "search", &["--registry"]),
-    ("install_plugin", "install", &["--registry"]),
-    ("remove_plugin", "remove", &[]),
-    ("plugin_info", "info", &[]),
-    ("migrate_plugins", "migrate", &[]),
+const COMMANDS: &[(&[&str], &[&str])] = &[
+    (&["plugin", "list"], &[]),
+    (&["plugin", "search"], &["--registry"]),
+    (&["plugin", "install"], &["--registry"]),
+    (&["plugin", "remove"], &[]),
+    (&["plugin", "info"], &[]),
+    (&["plugin", "migrate"], &[]),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -42,38 +41,15 @@ pub struct PluginsState {
 }
 
 fn capture() -> Result<PluginsState> {
-    let runtime_binary = super::tched_router_paths::binary()?;
-    let config_dir = super::tched_router_paths::config_dir()?;
-    let (capture_binary, capture_manifest) = super::tched_router_paths::capture_paths()?;
-    let manifest: Value = serde_json::from_reader(File::open(capture_manifest)?)?;
-    let binary_hash = super::tched_skills::sha256_file(&capture_binary)?;
-    ensure!(manifest.pointer("/artifact/sha256").and_then(Value::as_str) == Some(binary_hash.as_str()), "threetched plugin binary/provenance mismatch");
-    let mut surface = introspect_binary_subtree(&capture_binary, &["plugin".into()], &BinaryIntrospectOpts { max_depth: 1, ssh: None })?;
-    verify_surface(&surface)?;
-    let output = std::process::Command::new(&capture_binary).args(["config", "schema"]).output()?;
-    ensure!(output.status.success(), "threetched config schema capture failed");
-    let schema: Value = serde_json::from_slice(&output.stdout)?;
-    // Keep build-time candidate paths out of the sealed runtime descriptor.
-    surface.binary = runtime_binary.to_str().context("non-UTF8 binary path")?.into();
+    let shared = super::threetched::capture_state()?;
     Ok(PluginsState {
-        binary: runtime_binary.to_str().context("non-UTF8 binary path")?.into(),
-        config_dir: config_dir.to_str().context("non-UTF8 config path")?.into(),
-        binary_sha256: binary_hash,
+        binary: shared.binary.clone(),
+        config_dir: shared.config_dir.clone(),
+        binary_sha256: shared.binary_sha256.clone(),
         command_group: "plugin".into(),
-        cli_surface: serde_json::to_value(surface)?,
-        config_schema: super::binary_namespace::filter_namespace(&schema, "plugins")?,
+        cli_surface: super::threetched::captured_cli_group("plugin", COMMANDS)?,
+        config_schema: super::binary_namespace::filter_namespace(super::threetched::config_schema()?, "plugins")?,
     })
-}
-
-fn verify_surface(surface: &BinarySurface) -> Result<()> {
-    let root = surface.nodes.iter().find(|node| node.path == ["plugin"]).context("threetched has no plugin CLI; build with plugins-wasm backend")?;
-    ensure!(root.commands.iter().map(String::as_str).collect::<BTreeSet<_>>() == COMMANDS.iter().map(|(_, command, _)| *command).collect(), "threetched plugin command set changed; update adapter before sealing");
-    for (_, command, flags) in COMMANDS {
-        let node = surface.nodes.iter().find(|node| node.path == ["plugin", *command]).context("threetched plugin subcommand missing")?;
-        let observed: BTreeSet<_> = node.flags.iter().map(|flag| flag.name.as_str()).filter(|flag| !["--config-dir", "--log-level", "--verbose", "--help"].contains(flag)).collect();
-        ensure!(observed == flags.iter().copied().collect(), "threetched plugin flags changed for {command}");
-    }
-    Ok(())
 }
 
 fn captured() -> Result<&'static PluginsState> {
@@ -102,9 +78,18 @@ macro_rules! output {
 }
 output!(ListPluginsOutput, SearchPluginsOutput, InstallPluginOutput, RemovePluginOutput, PluginInfoOutput, MigratePluginsOutput);
 
-pub fn state_value() -> Result<OwnedValue> { Ok(simd_json::serde::to_owned_value(captured()?)?) }
+pub fn state_value() -> Result<OwnedValue> {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_state(PLUGIN_NAME);
+    }
+    Ok(simd_json::serde::to_owned_value(captured()?)?)
+}
 
 pub fn tched_plugins_schema() -> PluginSchema {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_schema(PLUGIN_NAME)
+            .expect("tched_plugins runtime requires its sealed schema");
+    }
     let state = captured().expect("threetched plugin contract must be captured before sealing");
     let root = serde_json::to_value(schemars::schema_for!(PluginsState)).expect("plugin state schema");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(PLUGIN_NAME, "1.0.0", "Typed threetched plugin commands and passthrough configuration schema", &root);

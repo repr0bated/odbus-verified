@@ -1196,6 +1196,10 @@ pub fn protection_losses(
         before.traversal_complete && after.traversal_complete,
         "protection comparison requires complete traversal"
     );
+    ensure!(
+        before.boundary_coverage_complete && after.boundary_coverage_complete,
+        "protection comparison requires complete reviewed boundary coverage"
+    );
     let mut required = BTreeMap::<(FieldRoot, Option<Vec<PayloadStep>>), ProtectionFloor>::new();
     let mut retained = BTreeMap::<(FieldRoot, Option<Vec<PayloadStep>>), ProtectionFloor>::new();
     for finding in &before.findings {
