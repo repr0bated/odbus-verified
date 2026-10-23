@@ -71,6 +71,10 @@ async fn main() -> anyhow::Result<()> {
         info!("API available at http://{}/api", addr);
         listeners.push(tokio::net::TcpListener::bind(addr).await?);
     }
+    anyhow::ensure!(
+        !listeners.is_empty(),
+        "OP_WEB_BIND_ADDR must contain at least one HTTP bind address"
+    );
     let http_servers = async {
         let mut set = tokio::task::JoinSet::new();
         for listener in listeners {

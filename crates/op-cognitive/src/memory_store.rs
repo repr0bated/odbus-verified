@@ -11,7 +11,7 @@
 use crate::cozo_shuttle::CozoGraphShuttle;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use cozo::{DataValue, NamedRows, ScriptMutability};
+use cozo::{DataValue, NamedRows, ScriptMutability, TransactionPayload};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -215,27 +215,46 @@ impl CognitiveMemoryStore {
     }
 
     pub async fn delete_namespace(&self, name: &str) -> Result<bool> {
-        // Pre-check whether it exists; cozo :rm is silent.
-        if self.get_namespace_by_name(name).await?.is_none() {
-            return Ok(false);
-        }
-        // Cascade: remove all entries in this namespace atomically in a single query.
+        // Keep the namespace and its entries in one transaction. A failed
+        // namespace removal must not commit a partially completed cascade.
+        let tx = self.shuttle.db().multi_transaction(true);
         let mut p: Params = BTreeMap::new();
         p.insert("ns".into(), DataValue::Str(name.into()));
-        let cascade_q = r#"
-            ?[namespace, key]
-                := *memory_entries[namespace, key, _, _, _, _, _, _, _, _],
-                   namespace = $ns
-            :rm memory_entries { namespace, key }
-        "#;
-        self.run(cascade_q, p).context("cascade delete entries")?;
-
-        // Remove namespace row.
-        let mut pn: Params = BTreeMap::new();
-        pn.insert("name".into(), DataValue::Str(name.into()));
-        self.run("?[name] <- [[$name]] :rm memory_namespaces { name }", pn)
-            .context("delete namespace")?;
-        Ok(true)
+        let result = (|| -> Result<bool> {
+            let rows = tx.run_script(
+                "?[name] := *memory_namespaces{name}, name = $ns",
+                p.clone(),
+            ).map_err(|error| anyhow::anyhow!("read namespace for deletion: {error}"))?;
+            if rows.rows.is_empty() {
+                let _ = tx.abort();
+                return Ok(false);
+            }
+            tx.run_script(
+                r#"
+                ?[namespace, key]
+                    := *memory_entries[namespace, key, _, _, _, _, _, _, _, _],
+                       namespace = $ns
+                :rm memory_entries { namespace, key }
+                "#,
+                p.clone(),
+            ).map_err(|error| anyhow::anyhow!("cascade delete entries: {error}"))?;
+            tx.run_script(
+                "?[name] <- [[$ns]] :rm memory_namespaces { name }",
+                p,
+            ).map_err(|error| anyhow::anyhow!("delete namespace: {error}"))?;
+            // Cozo 0.7's convenience commit omits the native result. Check both
+            // transport and storage outcomes, as the shared store does.
+            tx.sender.send(TransactionPayload::Commit)
+                .map_err(|error| anyhow::anyhow!("send namespace commit: {error}"))?;
+            tx.receiver.recv()
+                .map_err(|error| anyhow::anyhow!("receive namespace commit: {error}"))?
+                .map_err(|error| anyhow::anyhow!("commit namespace deletion: {error}"))?;
+            Ok(true)
+        })();
+        if result.is_err() {
+            let _ = tx.abort();
+        }
+        result
     }
 
     pub async fn store_entry(
