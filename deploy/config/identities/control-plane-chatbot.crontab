@@ -2,9 +2,8 @@
 # hourly model_registry refresh, run as the chatbot through its own lungs.
 #
 # Install inside the chatbot's container (it needs a cron daemon there). The
-# identity sees its lungs at /opt/run-mounts/3tched; writing the arguments to
-# a method's `call` file dispatches that method as the chatbot through the
-# bridge's lungs socket and MutationEngine, under the chatbot's own
-# model_registry.refresh grant. The receipt lands in `result`, a failure in
-# `error`. Minute 17 keeps it off the top of the hour.
-17 * * * * printf '{}' > /opt/run-mounts/3tched/plugins/model_registry/operations/refresh/call
+# identity sees its lungs at /run/mount/3tchedfs. The supported client invokes
+# refresh under the chatbot's existing grant and validates the receipt on the
+# same call handle. A failed or uncertain invocation is never retried here.
+# Minute 17 keeps it off the top of the hour.
+17 * * * * /usr/local/bin/threetched-fs invoke --expected-mode guest-kernel --mount /run/mount/3tchedfs --confirm-side-effects --args '{}' plugins/model_registry/operations/refresh/call

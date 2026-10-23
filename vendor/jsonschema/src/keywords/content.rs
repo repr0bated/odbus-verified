@@ -184,7 +184,12 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
                         ))
                     }
                 }
-                Err(e) => Err(e),
+                Err(error) => Err(ValidationError {
+                    instance: std::borrow::Cow::Borrowed(instance),
+                    instance_path: location.into(),
+                    schema_path: self.location.join("contentEncoding"),
+                    kind: error.kind,
+                }),
             }
         } else {
             Ok(())
@@ -243,9 +248,12 @@ pub(crate) fn compile_content_encoding<'a>(
     schema: &'a Map<String, Value>,
     subschema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
-    // Performed during media type validation
-    if schema.get("contentMediaType").is_some() {
-        // TODO. what if media type is not supported?
+    // Skip only when the supported combined validator performs this check.
+    if schema.get("contentMediaType").and_then(Value::as_str)
+        .and_then(|media_type| ctx.get_content_media_type_check(media_type)).is_some()
+        && subschema.as_str()
+            .and_then(|encoding| ctx.get_content_encoding_convert(encoding)).is_some()
+    {
         return None;
     }
     match subschema {
