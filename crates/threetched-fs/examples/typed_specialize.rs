@@ -118,9 +118,8 @@ impl<'a> Types<'a> {
         Ok(format!("{}Part{}", self.prefix, self.counter))
     }
     fn ty(&mut self, schema: &Value, depth: usize) -> Result<String> {
-        let scoped = schema.get("$defs").is_some()
-            || schema.get("definitions").is_some()
-            || schema.get("$id").is_some();
+        // Definitions do not establish a new JSON Schema resource/base URI.
+        let scoped = schema.get("$id").is_some();
         if scoped {
             self.scopes.push(schema.clone());
         }
@@ -520,7 +519,8 @@ fn field_type(ty: &FieldType, public: bool) -> Value {
             json!({"type":"unsupported_context_dependent_state_one_of"})
         }
         FieldType::OneOf(branches) => {
-            json!({"oneOf":branches.iter().map(|branch|field_type(branch,public)).collect::<Vec<_>>()})
+            // Reduction merges anyOf and oneOf; do not manufacture exclusivity.
+            json!({"anyOf":branches.iter().map(|branch|field_type(branch,public)).collect::<Vec<_>>()})
         }
         FieldType::Any => Value::Bool(true),
         FieldType::Object(fields) => json!({
@@ -1143,6 +1143,24 @@ mod tests {
         assert!(types.definitions.contains("Choice"));
         assert!(types.definitions.contains("nested"));
         assert!(types.scopes.is_empty());
+    }
+
+    #[test]
+    fn nested_definitions_without_id_keep_document_reference_scope() {
+        let schema = json!({"$defs":{"Value":{"type":"string"}},
+            "type":"array", "items":{
+                "$defs":{"Value":{"type":"integer"}},
+                "$ref":"#/$defs/Value"
+            }});
+        assert_eq!(
+            Types::new(&schema, "Nested").ty(&schema, 0).unwrap(),
+            "Vec<String>"
+        );
+        let reduced = field_type(
+            &FieldType::OneOf(vec![FieldType::Integer, FieldType::Float]),
+            false,
+        );
+        assert!(jsonschema::Validator::new(&reduced).unwrap().is_valid(&json!(1)));
     }
     #[test]
     fn generation_is_deterministic_and_never_emits_missing_contract_methods() {

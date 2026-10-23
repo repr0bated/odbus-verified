@@ -719,11 +719,14 @@ impl ChainVectorIndex {
                 payload_map.insert(key.into(), value.into());
             }
         }
-        payload_map.insert(
-            "text".into(),
-            embedding_text_under(self.policy.as_ref(), block).into(),
-        );
         payload_map.extend(self.policy.payload_fields(block));
+        // Replicas have vectors but may lack the origin's sealed policy.
+        // Never reconstruct searchable raw payload text using FlattenAll.
+        // Only an explicitly supplied filter may publish retrieval text.
+        payload_map.remove("text");
+        if let Some(lines) = self.policy.embedding_lines(block) {
+            payload_map.insert("text".into(), block.embedding_text_from(&lines).into());
+        }
         if let Ok(Some(meta)) = self.chain.read_vector_meta(block.block_num).await {
             let meta: serde_json::Value =
                 simd_json::serde::from_owned_value(meta).unwrap_or(serde_json::Value::Null);
