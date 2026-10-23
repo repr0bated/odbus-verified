@@ -1,6 +1,6 @@
 //! jacob-bd `nlm` CLI mapping for the `notebooklm` plugin.
 //!
-//! The executable lives at `/usr/local/bin/nlm` (override with `OP_NLM_BIN`).
+//! The release executable lives at `/usr/local/libexec/op-dbus/bin/nlm` (override with `OP_NLM_BIN`).
 //! `/usr/bin/nlm` is a different Node package and must never be invoked.
 
 use anyhow::{Context, anyhow, bail};
@@ -11,7 +11,7 @@ use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::Command;
 
-pub const DEFAULT_NLM_BIN: &str = "/usr/local/bin/nlm";
+pub const DEFAULT_NLM_BIN: &str = "/usr/local/libexec/op-dbus/bin/nlm";
 pub const NOTEBOOKLM_BIN_READY: &str = "/run/opdbus/runit-ready/notebooklm-mcp";
 pub const NOTEBOOKLM_AUTH_READY: &str = "/run/opdbus/runit-ready/notebooklm-mcp-authenticated";
 pub const DEFAULT_HOME: &str = "/home/jeremy";
@@ -1362,10 +1362,10 @@ mod tests {
     }
 
     #[test]
-    fn default_bin_is_usr_local_not_usr_bin() {
+    fn default_bin_is_release_owned_not_usr_bin() {
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::remove_var("OP_NLM_BIN") };
-        assert_eq!(nlm_bin().as_os_str(), "/usr/local/bin/nlm");
+        assert_eq!(nlm_bin().as_os_str(), "/usr/local/libexec/op-dbus/bin/nlm");
     }
 
     #[test]

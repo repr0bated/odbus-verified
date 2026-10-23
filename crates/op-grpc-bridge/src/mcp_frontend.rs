@@ -24,7 +24,7 @@ use axum::routing::post;
 use base64::Engine as _;
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tokio::sync::{RwLock, broadcast};
+use tokio::sync::{RwLock, broadcast, mpsc};
 use tonic::transport::server::{TcpConnectInfo, TlsConnectInfo};
 
 use crate::grpc_server::DECLARED_CAPABILITY_HEADER;
@@ -37,8 +37,8 @@ use crate::mcp_policy::{
 use crate::mutation_engine::MutationEngine;
 use crate::oracle_assertion::AssertionValidator;
 use crate::sealed_schema_reader::{
-    blob_catalog_dir_from_env, manifest_plugins, read_manifest_pinned_plugin_schema,
-    valid_plugin_id,
+    blob_catalog_dir_from_env, manifest_plugins, read_manifest_pinned_catalog,
+    read_manifest_pinned_plugin_schema, valid_plugin_id,
 };
 #[cfg(test)]
 use crate::sealed_schema_reader::{read_oscal_subids_result, read_sealed_schema_result};
@@ -59,6 +59,11 @@ const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[
 const LATEST_OFFICIAL_PROTOCOL_VERSION: &str = "2025-06-18";
 pub const MCP_VERSION_HEADER: &str = "mcp-protocol-version";
 pub const MCP_SESSION_HEADER: &str = "mcp-session-id";
+// Receiver-authored, nonsecret claims for the existing opaque SID1 verifier.
+// These are response metadata, never client authority or MCP conversation IDs.
+pub const VERIFIED_PRINCIPAL_HEADER: &str = "x-opdbus-verified-principal";
+pub const VERIFIED_SESSION_HEADER: &str = "x-opdbus-verified-session";
+pub const VERIFIED_GENESIS_HEADER: &str = "x-opdbus-verified-genesis";
 pub const MCP_METHOD_HEADER: &str = "mcp-method";
 pub const MCP_NAME_HEADER: &str = "mcp-name";
 const COMPACT_MODE_QUERY: &str = "opdbus_mode=compact";
@@ -69,12 +74,34 @@ enum McpView {
     Compact,
 }
 
-fn requested_view(query: Option<&str>) -> Result<Option<McpView>, &'static str> {
-    match query {
-        None | Some("") => Ok(None),
-        Some(COMPACT_MODE_QUERY) => Ok(Some(McpView::Compact)),
-        Some(_) => Err("unsupported MCP view query"),
+/// The `/mcp` query: the compact view flag and, for HTTP+SSE (2024-11-05)
+/// clients, the `sessionId` of the endpoint their event stream announced.
+#[derive(Debug, Default)]
+struct McpQuery {
+    view: Option<McpView>,
+    sse_session: Option<String>,
+}
+
+fn parse_query(query: Option<&str>) -> Result<McpQuery, &'static str> {
+    let mut parsed = McpQuery::default();
+    for pair in query
+        .unwrap_or_default()
+        .split('&')
+        .filter(|pair| !pair.is_empty())
+    {
+        match pair.split_once('=') {
+            _ if pair == COMPACT_MODE_QUERY && parsed.view.is_none() => {
+                parsed.view = Some(McpView::Compact);
+            }
+            Some(("sessionId", id))
+                if parsed.sse_session.is_none() && uuid::Uuid::parse_str(id).is_ok() =>
+            {
+                parsed.sse_session = Some(id.to_string());
+            }
+            _ => return Err("unsupported MCP query"),
+        }
     }
+    Ok(parsed)
 }
 
 /// Raw HTTP uses the same canonical header name as gRPC metadata. Its value is
@@ -102,10 +129,35 @@ const RUST_PRO_CODEBASE_ENV: &str = "OP_MCP_RUST_PRO_CODEBASE";
 const DEFAULT_RUST_PRO_CODEBASE: &str = "/srv/git/odbus";
 
 #[derive(Clone, Debug)]
-struct AuthenticatedCaller {
+pub(crate) struct AuthenticatedCaller {
     principal_id: String,
     session_id: String,
     session_genesis: String,
+    /// Receiver-derived scope of an external WireGuard caller, never HTTP Origin.
+    wireguard_origin: Option<String>,
+}
+
+impl AuthenticatedCaller {
+    pub(crate) fn identity_claims(&self) -> (&str, &str, &str, Option<&str>) {
+        (
+            &self.principal_id,
+            &self.session_id,
+            &self.session_genesis,
+            self.wireguard_origin.as_deref(),
+        )
+    }
+}
+
+#[cfg(test)]
+pub(crate) async fn authenticate_dbus_fixture(
+    engine: Arc<MutationEngine>,
+    validator: Arc<AssertionValidator>,
+    headers: &HeaderMap,
+) -> Result<AuthenticatedCaller, String> {
+    OracleHttpAuthenticator { engine, validator }
+        .authenticate(headers, None)
+        .await
+        .map_err(|e| e.0)
 }
 
 #[derive(Debug)]
@@ -123,10 +175,13 @@ struct McpSession {
     principal_id: String,
     identity_session_id: String,
     session_genesis: String,
+    wireguard_origin: Option<String>,
     view: McpView,
     selection: RwLock<Option<ToolsetSelection>>,
     events: broadcast::Sender<String>,
     event_stream_active: Arc<AtomicBool>,
+    /// HTTP+SSE sessions answer on their event stream, not the POST body.
+    sse_replies: Option<mpsc::Sender<String>>,
     created_at: Instant,
 }
 
@@ -137,11 +192,25 @@ impl McpSession {
             principal_id: caller.principal_id.clone(),
             identity_session_id: caller.session_id.clone(),
             session_genesis: caller.session_genesis.clone(),
+            wireguard_origin: caller.wireguard_origin.clone(),
             view,
             selection: RwLock::new(None),
             events,
             event_stream_active: Arc::new(AtomicBool::new(false)),
+            sse_replies: None,
             created_at: Instant::now(),
+        }
+    }
+
+    fn with_sse_replies(
+        caller: &AuthenticatedCaller,
+        view: McpView,
+        replies: mpsc::Sender<String>,
+    ) -> Self {
+        Self {
+            sse_replies: Some(replies),
+            event_stream_active: Arc::new(AtomicBool::new(true)),
+            ..Self::new(caller, view)
         }
     }
 
@@ -149,6 +218,7 @@ impl McpSession {
         self.principal_id == caller.principal_id
             && self.identity_session_id == caller.session_id
             && self.session_genesis == caller.session_genesis
+            && self.wireguard_origin == caller.wireguard_origin
     }
 
     fn caller(&self) -> AuthenticatedCaller {
@@ -156,6 +226,7 @@ impl McpSession {
             principal_id: self.principal_id.clone(),
             session_id: self.identity_session_id.clone(),
             session_genesis: self.session_genesis.clone(),
+            wireguard_origin: self.wireguard_origin.clone(),
         }
     }
 }
@@ -222,27 +293,28 @@ impl OracleHttpAuthenticator {
 
         let mut pending = self
             .validator
-            .validate_pending_with_bootstrap(&wire, peer, chrono::Utc::now().timestamp(), false)
+            .validate_pending_for_mcp(&wire, peer, chrono::Utc::now().timestamp())
             .map_err(|error| McpAuthError(error.to_string()))?;
-        // Match native gRPC ordering: validate signature/binding and resolve the
-        // principal, anchor the durable human session, then atomically consume
-        // the nonce. A missing session must not burn an otherwise valid nonce.
-        let session = crate::interceptor::anchor_verified_human_session(
-            self.engine.as_ref(),
-            &pending.identity().human_pubkey,
-        )
-        .await
-        .ok_or_else(|| McpAuthError("Assertion identity has no anchored session genesis".into()))?;
-        pending.identity_mut().session_id = session.session_id;
-        pending.identity_mut().session_genesis = session.genesis_hex;
+        // External humans have a durable, origin-scoped audit session, without
+        // a container, SID1, or browser-to-chatbot identity assignment. Preserve
+        // nonce consumption after successful durable admission.
+        let wireguard_origin = pending.verified_origin().origin();
+        let session =
+            crate::external_mcp_session::anchor(self.engine.as_ref(), pending.verified_origin())
+                .await
+                .map_err(|error| McpAuthError(error.to_string()))?;
+        pending.identity_mut().session_id = session.session_id.clone();
+        pending.identity_mut().session_genesis = session.genesis_hex.clone();
         let identity = self
             .validator
             .consume_pending(pending)
             .map_err(|error| McpAuthError(error.to_string()))?;
+        self.engine.register_external_mcp_context(session).await;
         Ok(AuthenticatedCaller {
             principal_id: identity.principal_id,
             session_id: identity.session_id,
             session_genesis: identity.session_genesis,
+            wireguard_origin: Some(wireguard_origin),
         })
     }
 
@@ -298,6 +370,7 @@ impl OracleHttpAuthenticator {
             principal_id: claims.principal_id,
             session_id: claims.session_id,
             session_genesis: claims.session_genesis,
+            wireguard_origin: None,
         })
     }
 }
@@ -356,6 +429,23 @@ struct MutationEngineMcpBackend {
     blob_catalog_dir: PathBuf,
     policy: Arc<McpPolicyOwner>,
     close_check_active: Arc<AtomicBool>,
+    #[cfg(test)]
+    #[allow(clippy::type_complexity)]
+    test_grants: Option<Arc<std::sync::RwLock<HashMap<String, HashSet<String>>>>>,
+}
+
+/// Common canonical result for every transport, including identity-bound FUSE.
+/// The installed policy owner and freshly loaded principal grants remain the
+/// authority; selection returns a stateless selector, never a persistent grant.
+pub(crate) async fn canonical_toolsets_result(
+    engine: &MutationEngine,
+    principal_id: &str,
+    arguments: &Value,
+) -> anyhow::Result<Value> {
+    let backend =
+        MutationEngineMcpBackend::new(Arc::new(engine.clone()), engine.mcp_policy_owner()?);
+    let grants = backend.current_grants(principal_id);
+    backend.toolsets_result(&grants, arguments).await
 }
 
 impl MutationEngineMcpBackend {
@@ -366,11 +456,30 @@ impl MutationEngineMcpBackend {
             blob_catalog_dir,
             policy,
             close_check_active: Arc::new(AtomicBool::new(false)),
+            #[cfg(test)]
+            test_grants: None,
         }
     }
 
-    fn authorize(caller: &AuthenticatedCaller, required_capability: &str) -> anyhow::Result<()> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+    fn current_grants(&self, principal_id: &str) -> HashSet<String> {
+        #[cfg(test)]
+        if let Some(grants) = &self.test_grants {
+            return grants
+                .read()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .get(principal_id)
+                .cloned()
+                .unwrap_or_default();
+        }
+        load_exact_capability_grants(principal_id)
+    }
+
+    fn authorize(
+        &self,
+        caller: &AuthenticatedCaller,
+        required_capability: &str,
+    ) -> anyhow::Result<()> {
+        let grants = self.current_grants(&caller.principal_id);
         authorize_with_grants(&grants, required_capability)
     }
 
@@ -382,22 +491,17 @@ impl MutationEngineMcpBackend {
         arguments: Value,
         required_capability: &str,
     ) -> anyhow::Result<Value> {
-        Self::authorize(caller, required_capability)?;
+        self.authorize(caller, required_capability)?;
         // Stable principal identity is the audit actor. Session identity stays
         // in the authenticated request context and never becomes authority.
-        let actor = caller.principal_id.clone();
-        let result = self
-            .engine
-            .dispatch_method_call_with_identity(
-                plugin_id,
-                method,
-                &serde_json::to_string(&arguments)?,
-                Some(required_capability),
-                &actor,
-                Some(&caller.session_id),
-                Some(&caller.session_genesis),
-            )
-            .await?;
+        let result = crate::mcp_dbus_dispatch::dispatch(
+            self.engine.clone(),
+            caller.clone(),
+            plugin_id,
+            method,
+            arguments,
+        )
+        .await?;
         Ok(result.get("result").cloned().unwrap_or(result))
     }
 
@@ -410,7 +514,7 @@ impl MutationEngineMcpBackend {
     ) -> anyhow::Result<Value> {
         self.dispatch_plugin(
             caller,
-            "cognitive_mcp",
+            "cognitive",
             method,
             arguments,
             required_capability,
@@ -460,7 +564,7 @@ impl MutationEngineMcpBackend {
     }
 
     fn hot_tool_descriptor(public_name: &str) -> anyhow::Result<Value> {
-        let schema = op_plugins::cognitive_mcp_plugin_schema();
+        let schema = op_plugins::cognitive_plugin_schema();
         method_descriptor(&schema, public_name, public_name)
     }
 
@@ -475,6 +579,72 @@ impl MutationEngineMcpBackend {
             }
         }
         Ok(tools)
+    }
+
+    /// The singleton Control Plane uses the exact manifest-pinned typed
+    /// surface admitted by its current principal grants. Broker toolsets and
+    /// provider health remain projection policy for other identities only.
+    async fn authorized_singleton_tools(
+        &self,
+        caller: &AuthenticatedCaller,
+    ) -> anyhow::Result<Vec<Value>> {
+        let grants = self.current_grants(&caller.principal_id);
+        let policy = self.policy.snapshot();
+        let dir = self.blob_catalog_dir.clone();
+        let catalog = tokio::task::spawn_blocking(move || read_manifest_pinned_catalog(&dir))
+            .await
+            .map_err(|error| anyhow::anyhow!("sealed schema task failed: {error}"))??;
+        let mut by_name = BTreeMap::new();
+        for (plugin_id, document) in catalog.plugins {
+            for method_name in document.schema.methods.keys() {
+                let name = format!("plugin.{plugin_id}.{method_name}");
+                if policy.denies_singleton_chatbot_direct_tool(&caller.principal_id, &name) {
+                    continue;
+                }
+                let Ok(descriptor) = method_descriptor(&document.schema, method_name, &name) else {
+                    // A missing capability or schema-closure gap is not an
+                    // executable operation, even if a grant document names it.
+                    continue;
+                };
+                let Ok((capability, _)) = descriptor_authority(&descriptor, Some(&name)) else {
+                    continue;
+                };
+                if capability != "cognitive.invoke" && grants.contains(capability) {
+                    by_name.insert(name, descriptor);
+                }
+            }
+        }
+        Ok(by_name.into_values().collect())
+    }
+
+    async fn authorized_singleton_tool(
+        &self,
+        caller: &AuthenticatedCaller,
+        name: &str,
+    ) -> anyhow::Result<Value> {
+        let policy = self.policy.snapshot();
+        if policy.denies_singleton_chatbot_direct_tool(&caller.principal_id, name) {
+            anyhow::bail!(
+                "AccessDenied: singleton chatbot cannot call direct-execution tool '{name}'"
+            );
+        }
+        let denied = || {
+            anyhow::anyhow!(
+                "AccessDenied: tool '{name}' is not in the singleton principal's granted sealed projection"
+            )
+        };
+        let descriptor = self
+            .typed_tool_descriptor(name)
+            .await
+            .map_err(|_| denied())?;
+        let (capability, _) =
+            descriptor_authority(&descriptor, Some(name)).map_err(|_| denied())?;
+        if capability == "cognitive.invoke" {
+            return Err(denied());
+        }
+        authorize_with_grants(&self.current_grants(&caller.principal_id), capability)
+            .map_err(|_| denied())?;
+        Ok(descriptor)
     }
 
     async fn authorized_toolset_tools(
@@ -519,7 +689,7 @@ impl MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         selection: Option<&ToolsetSelection>,
     ) -> anyhow::Result<Vec<Value>> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+        let grants = self.current_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut by_name = BTreeMap::new();
         let mut schemas = HashMap::new();
@@ -561,7 +731,7 @@ impl MutationEngineMcpBackend {
         &self,
         caller: &AuthenticatedCaller,
     ) -> anyhow::Result<Vec<Value>> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+        let grants = self.current_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut by_name = BTreeMap::new();
         let mut schemas = HashMap::new();
@@ -584,10 +754,9 @@ impl MutationEngineMcpBackend {
 
     async fn toolsets_result(
         &self,
-        caller: &AuthenticatedCaller,
+        grants: &HashSet<String>,
         arguments: &Value,
     ) -> anyhow::Result<Value> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut schemas = HashMap::new();
         let operation = arguments
@@ -597,7 +766,7 @@ impl MutationEngineMcpBackend {
         let mut projected = Vec::new();
         for set in &policy.toolsets.sets {
             let authorized_count = self
-                .authorized_toolset_tools_without_health(set, &grants, &mut schemas)
+                .authorized_toolset_tools_without_health(set, grants, &mut schemas)
                 .await?
                 .len();
             if authorized_count == 0 {
@@ -631,7 +800,7 @@ impl MutationEngineMcpBackend {
                     anyhow::bail!("provider_unavailable: {}", set.provider);
                 }
                 let tools = self
-                    .authorized_toolset_tools(set, &grants, &mut schemas)
+                    .authorized_toolset_tools(set, grants, &mut schemas)
                     .await?;
                 if tools.is_empty() {
                     anyhow::bail!("AccessDenied: no authorized tools in toolset '{id}'");
@@ -679,11 +848,11 @@ impl MutationEngineMcpBackend {
         name: &str,
         arguments: Value,
     ) -> anyhow::Result<Value> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+        let grants = self.current_grants(&caller.principal_id);
         authorize_and_validate_tool_call(descriptor, name, &arguments, &grants)?;
         let required_capability = descriptor_authority(descriptor, Some(name))?.0;
         let (plugin_id, method_name) = if HOT_TOOL_NAMES.contains(&name) {
-            ("cognitive_mcp", name)
+            ("cognitive", name)
         } else {
             parse_typed_tool_name(name)?
         };
@@ -696,11 +865,7 @@ impl MutationEngineMcpBackend {
                 required_capability,
             )
             .await?;
-        if name == "toolsets" {
-            self.toolsets_result(caller, &arguments).await
-        } else {
-            Ok(admitted)
-        }
+        Ok(admitted)
     }
 }
 
@@ -711,8 +876,20 @@ impl McpBackend for MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         _selection: Option<&ToolsetSelection>,
     ) -> anyhow::Result<Vec<Value>> {
-        self.cognitive_admission(caller, "list_tools", json!({}), "cognitive_mcp.read")
+        let singleton = self
+            .policy
+            .snapshot()
+            .is_singleton_chatbot(&caller.principal_id);
+        self.cognitive_admission(caller, "list_tools", json!({}), "cognitive.read")
             .await?;
+        if singleton {
+            return Ok(self
+                .authorized_singleton_tools(caller)
+                .await?
+                .into_iter()
+                .map(normalize_tool_definition)
+                .collect());
+        }
         Ok(self
             .discoverable_toolset_tools(caller)
             .await?
@@ -733,6 +910,13 @@ impl McpBackend for MutationEngineMcpBackend {
             anyhow::bail!(
                 "AccessDenied: singleton chatbot cannot call direct-execution tool '{name}'"
             );
+        }
+        if policy.is_singleton_chatbot(&caller.principal_id) {
+            let descriptor = self.authorized_singleton_tool(caller, name).await?;
+            return self
+                .dispatch_projected_tool(caller, &descriptor, name, arguments)
+                .await
+                .map(normalize_tool_result);
         }
         // Reject calls outside the selected projection before resolving any
         // catalog entries or provider readiness. The later projection still
@@ -762,7 +946,7 @@ impl McpBackend for MutationEngineMcpBackend {
             }
             let descriptor = self.typed_tool_descriptor(name).await?;
             let (capability, _) = descriptor_authority(&descriptor, Some(name))?;
-            Self::authorize(caller, capability)?;
+            self.authorize(caller, capability)?;
             let available: Vec<_> = sets
                 .iter()
                 .filter(|set| Self::provider_ready(set))
@@ -792,7 +976,7 @@ impl McpBackend for MutationEngineMcpBackend {
     }
 
     async fn list_resources(&self, caller: &AuthenticatedCaller) -> anyhow::Result<Vec<Value>> {
-        Self::authorize(caller, "cognitive_mcp.read")?;
+        self.authorize(caller, "cognitive.read")?;
         let dir = self.blob_catalog_dir.clone();
         tokio::task::spawn_blocking(move || list_blob_resources(&dir))
             .await
@@ -804,7 +988,7 @@ impl McpBackend for MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         uri: &str,
     ) -> anyhow::Result<Value> {
-        Self::authorize(caller, "cognitive_mcp.read")?;
+        self.authorize(caller, "cognitive.read")?;
         let dir = self.blob_catalog_dir.clone();
         let uri = uri.to_string();
         tokio::task::spawn_blocking(move || read_blob_resource(&dir, &uri))
@@ -924,11 +1108,31 @@ struct JsonRpcRequest {
     params: Value,
 }
 
+/// One endpoint for every MCP client, as the reference SDK servers behave:
+/// Streamable HTTP (any revision, with or without `MCP-Protocol-Version`),
+/// JSON-RPC batches, and HTTP+SSE clients posting to the `?sessionId=`
+/// endpoint their GET stream announced. Authentication and admission are the
+/// same for all of them.
 async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body>) -> Response {
     let peer = peer_addr(request.extensions());
     let headers = request.headers().clone();
-    let requested_view = match requested_view(request.uri().query()) {
-        Ok(view) => view,
+    if [
+        VERIFIED_PRINCIPAL_HEADER,
+        VERIFIED_SESSION_HEADER,
+        VERIFIED_GENESIS_HEADER,
+    ]
+    .iter()
+    .any(|name| headers.contains_key(*name))
+    {
+        return jsonrpc_error(
+            StatusCode::BAD_REQUEST,
+            None,
+            -32600,
+            "verified identity metadata is receiver-authored and not accepted in requests",
+        );
+    }
+    let query = match parse_query(request.uri().query()) {
+        Ok(query) => query,
         Err(message) => return jsonrpc_error(StatusCode::BAD_REQUEST, None, -32600, message),
     };
     if let Err(error) = validate_origin(&headers, &state.allowed_origins) {
@@ -960,8 +1164,8 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
             );
         }
     };
-    let rpc: JsonRpcRequest = match serde_json::from_slice(&bytes) {
-        Ok(request) => request,
+    let message: Value = match serde_json::from_slice(&bytes) {
+        Ok(message) => message,
         Err(error) => {
             return jsonrpc_error(
                 StatusCode::BAD_REQUEST,
@@ -971,7 +1175,164 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
             );
         }
     };
+    let response = match message {
+        Value::Array(batch) => handle_batch(&state, &headers, &caller, &query, batch).await,
+        message => handle_message(&state, &headers, &caller, &query, message).await,
+    };
+    match query.sse_session.as_deref() {
+        Some(session_id) => reply_on_sse_stream(&state, &caller, session_id, response).await,
+        None => response,
+    }
+}
 
+const MAX_BATCH_MESSAGES: usize = 64;
+const SSE_REPLY_QUEUE: usize = 64;
+const SSE_REPLY_SEND_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// JSON-RPC batch (2025-03-26 clients). Each member is admitted exactly as a
+/// single request; notifications and client replies produce no member.
+async fn handle_batch(
+    state: &McpFrontendState,
+    headers: &HeaderMap,
+    caller: &AuthenticatedCaller,
+    query: &McpQuery,
+    batch: Vec<Value>,
+) -> Response {
+    if batch.is_empty() || batch.len() > MAX_BATCH_MESSAGES {
+        return jsonrpc_error(
+            StatusCode::BAD_REQUEST,
+            None,
+            -32600,
+            "a JSON-RPC batch must hold 1 to 64 messages",
+        );
+    }
+    if batch
+        .iter()
+        .any(|message| message.get("method").and_then(Value::as_str) == Some("initialize"))
+    {
+        return jsonrpc_error(
+            StatusCode::BAD_REQUEST,
+            None,
+            -32600,
+            "initialize must not be part of a JSON-RPC batch",
+        );
+    }
+    let mut replies = Vec::new();
+    for message in batch {
+        let response = handle_message(state, headers, caller, query, message).await;
+        if let Some(reply) = jsonrpc_body(response).await {
+            replies.push(reply);
+        }
+    }
+    if replies.is_empty() {
+        StatusCode::ACCEPTED.into_response()
+    } else {
+        (StatusCode::OK, axum::Json(Value::Array(replies))).into_response()
+    }
+}
+
+/// The JSON-RPC message a response carries, if any.
+async fn jsonrpc_body(response: Response) -> Option<Value> {
+    if response.status() == StatusCode::ACCEPTED {
+        return None;
+    }
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.ok()?;
+    serde_json::from_slice::<Value>(&bytes)
+        .ok()
+        .filter(|message| message.get("jsonrpc").is_some() || message.is_array())
+}
+
+async fn handle_message(
+    state: &McpFrontendState,
+    headers: &HeaderMap,
+    caller: &AuthenticatedCaller,
+    query: &McpQuery,
+    message: Value,
+) -> Response {
+    if message.get("method").is_none()
+        && (message.get("result").is_some() || message.get("error").is_some())
+    {
+        // A client's reply to a server request. This server sends none, so
+        // there is nothing to route; acknowledge it as the SDK servers do.
+        return StatusCode::ACCEPTED.into_response();
+    }
+    let rpc: JsonRpcRequest = match serde_json::from_value(message) {
+        Ok(rpc) => rpc,
+        Err(error) => {
+            return jsonrpc_error(
+                StatusCode::BAD_REQUEST,
+                None,
+                -32600,
+                &format!("invalid request: {error}"),
+            );
+        }
+    };
+    process_rpc(state, headers, caller, query, rpc).await
+}
+
+/// HTTP+SSE clients get their reply as a `message` event on the stream that
+/// announced this session; the POST itself is acknowledged with 202. A reply
+/// is only ever delivered to the stream of the caller that owns the session.
+async fn reply_on_sse_stream(
+    state: &McpFrontendState,
+    caller: &AuthenticatedCaller,
+    session_id: &str,
+    response: Response,
+) -> Response {
+    let replies = match state.sessions.read().await.get(session_id) {
+        Some(session) if session.belongs_to(caller) => session.sse_replies.clone(),
+        _ => None,
+    };
+    let Some(replies) = replies else {
+        return response;
+    };
+    let status = response.status();
+    if status == StatusCode::ACCEPTED {
+        return response;
+    }
+    let Some(reply) = jsonrpc_body(response).await else {
+        return status.into_response();
+    };
+    match tokio::time::timeout(SSE_REPLY_SEND_TIMEOUT, replies.send(reply.to_string())).await {
+        Ok(Ok(())) => StatusCode::ACCEPTED.into_response(),
+        Ok(Err(_)) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
+}
+
+/// Insert a new MCP session, sweeping expired ones. Returns false at
+/// capacity.
+async fn insert_session(
+    state: &McpFrontendState,
+    session_id: String,
+    session: Arc<McpSession>,
+) -> bool {
+    let mut sessions = state.sessions.write().await;
+    let expired_callers = sessions
+        .values()
+        .filter(|session| session.created_at.elapsed() >= MCP_SESSION_MAX_AGE)
+        .map(|session| session.caller())
+        .collect::<Vec<_>>();
+    sessions.retain(|_, session| session.created_at.elapsed() < MCP_SESSION_MAX_AGE);
+    let inserted = sessions.len() < MAX_ACTIVE_MCP_SESSIONS;
+    if inserted {
+        sessions.insert(session_id, session);
+    }
+    drop(sessions);
+    for expired_caller in expired_callers {
+        schedule_session_close(state.backend.clone(), expired_caller);
+    }
+    inserted
+}
+
+async fn process_rpc(
+    state: &McpFrontendState,
+    headers: &HeaderMap,
+    caller: &AuthenticatedCaller,
+    query: &McpQuery,
+    rpc: JsonRpcRequest,
+) -> Response {
+    let requested_view = query.view;
     if rpc.jsonrpc != "2.0" {
         return jsonrpc_error(
             StatusCode::BAD_REQUEST,
@@ -980,10 +1341,10 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
             "jsonrpc must be 2.0",
         );
     }
-    if let Err(error) = validate_protocol_headers(&headers, &rpc) {
+    if let Err(error) = validate_protocol_headers(headers, &rpc) {
         return jsonrpc_error(StatusCode::BAD_REQUEST, rpc.id, -32600, &error);
     }
-    match one_optional_header(&headers, DECLARED_CAPABILITY_HEADER) {
+    match one_optional_header(headers, DECLARED_CAPABILITY_HEADER) {
         Ok(None) => {}
         Ok(Some(_)) => {
             return jsonrpc_error(
@@ -996,11 +1357,24 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
         Err(error) => return jsonrpc_error(StatusCode::BAD_REQUEST, rpc.id, -32600, &error),
     }
 
-    let supplied_session_id = match one_optional_header(&headers, MCP_SESSION_HEADER) {
+    let header_session_id = match one_optional_header(headers, MCP_SESSION_HEADER) {
         Ok(value) => value.map(str::to_string),
         Err(error) => return jsonrpc_error(StatusCode::BAD_REQUEST, rpc.id, -32600, &error),
     };
-    if rpc.method == "initialize" && supplied_session_id.is_some() {
+    let supplied_session_id = match (header_session_id, query.sse_session.as_deref()) {
+        (Some(header), Some(sse)) if header != sse => {
+            return jsonrpc_error(
+                StatusCode::BAD_REQUEST,
+                rpc.id,
+                -32600,
+                "Mcp-Session-Id differs from the sessionId query",
+            );
+        }
+        (header, sse) => header.or_else(|| sse.map(str::to_string)),
+    };
+    // An HTTP+SSE session exists from its GET stream; the client still sends
+    // initialize on it. Streamable HTTP sessions are created by initialize.
+    if rpc.method == "initialize" && supplied_session_id.is_some() && query.sse_session.is_none() {
         return jsonrpc_error(
             StatusCode::BAD_REQUEST,
             rpc.id,
@@ -1012,7 +1386,7 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
         Some(session_id) => {
             let session = state.sessions.read().await.get(session_id).cloned();
             match session {
-                Some(session) if session.belongs_to(&caller) => Some(session),
+                Some(session) if session.belongs_to(caller) => Some(session),
                 _ => {
                     return jsonrpc_error(
                         StatusCode::NOT_FOUND,
@@ -1058,7 +1432,7 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
         request_timeout,
         dispatch_rpc(
             state.backend.as_ref(),
-            &caller,
+            caller,
             &rpc.method,
             rpc.params,
             session_selection.as_ref(),
@@ -1068,7 +1442,12 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
     .await;
 
     match outcome {
-        Ok(Ok(result)) => {
+        Ok(Ok(mut result)) => {
+            if rpc.method == "initialize" {
+                if let Some(origin) = &caller.wireguard_origin {
+                    result["_meta"]["opdbus/wireguardOrigin"] = json!(origin);
+                }
+            }
             if let (Some(session), Some(selection)) =
                 (session.as_ref(), selected_toolset_from_result(&result))
             {
@@ -1082,34 +1461,41 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
                         axum::Json(json!({"jsonrpc": "2.0", "id": id.clone(), "result": result})),
                     )
                         .into_response();
-                    if rpc.method == "initialize" {
+                    // Native verification uses an ordinary authenticated SID1 ping.
+                    // Never echo headers, emit claims for notifications/errors, or
+                    // confuse the separate MCP conversation session with identity.
+                    if rpc.method == "ping"
+                        && matches!(
+                            one_optional_header(headers, HTTP_SEALED_ID_HEADER),
+                            Ok(Some(_))
+                        )
+                    {
+                        for (name, value) in [
+                            (VERIFIED_PRINCIPAL_HEADER, &caller.principal_id),
+                            (VERIFIED_SESSION_HEADER, &caller.session_id),
+                            (VERIFIED_GENESIS_HEADER, &caller.session_genesis),
+                        ] {
+                            let Ok(value) = value.parse() else {
+                                return jsonrpc_error(
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    Some(id),
+                                    -32603,
+                                    "verified identity metadata unavailable",
+                                );
+                            };
+                            response.headers_mut().insert(name, value);
+                        }
+                    }
+                    if rpc.method == "initialize" && session.is_none() {
                         let session_id = uuid::Uuid::new_v4().to_string();
-                        let mut sessions = state.sessions.write().await;
-                        let expired_callers = sessions
-                            .values()
-                            .filter(|session| session.created_at.elapsed() >= MCP_SESSION_MAX_AGE)
-                            .map(|session| session.caller())
-                            .collect::<Vec<_>>();
-                        sessions.retain(|_, session| {
-                            session.created_at.elapsed() < MCP_SESSION_MAX_AGE
-                        });
-                        if sessions.len() >= MAX_ACTIVE_MCP_SESSIONS {
-                            drop(sessions);
-                            for expired_caller in expired_callers {
-                                schedule_session_close(state.backend.clone(), expired_caller);
-                            }
+                        let created = Arc::new(McpSession::new(caller, view));
+                        if !insert_session(state, session_id.clone(), created).await {
                             return jsonrpc_error(
                                 StatusCode::SERVICE_UNAVAILABLE,
                                 Some(id),
                                 -32000,
                                 "MCP session capacity reached",
                             );
-                        }
-                        sessions
-                            .insert(session_id.clone(), Arc::new(McpSession::new(&caller, view)));
-                        drop(sessions);
-                        for expired_caller in expired_callers {
-                            schedule_session_close(state.backend.clone(), expired_caller);
                         }
                         response.headers_mut().insert(
                             MCP_SESSION_HEADER,
@@ -1156,7 +1542,7 @@ fn request_timeout_for(method: &str, params: &Value) -> Duration {
                 | "context_manager"
                 | "code_review_orchestrator"
         ) || name
-            .strip_prefix("plugin.cognitive_mcp.")
+            .strip_prefix("plugin.cognitive.")
             .is_some_and(|method| {
                 op_plugins::state_plugins::cognitive_agents::method_by_name(method).is_some()
             })
@@ -1173,6 +1559,16 @@ async fn handle_mcp_events(
 ) -> Response {
     let peer = peer_addr(request.extensions());
     let headers = request.headers().clone();
+    let query = match parse_query(request.uri().query()) {
+        Ok(query) if query.sse_session.is_none() => query,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                axum::Json(json!({"error": "invalid_request", "message": "unsupported MCP query"})),
+            )
+                .into_response();
+        }
+    };
     if let Err(error) = validate_origin(&headers, &state.allowed_origins) {
         return (
             StatusCode::FORBIDDEN,
@@ -1197,8 +1593,10 @@ async fn handle_mcp_events(
         )
             .into_response();
     }
-    let session_id = match one_required_header(&headers, MCP_SESSION_HEADER) {
-        Ok(value) => value,
+    let session_id = match one_optional_header(&headers, MCP_SESSION_HEADER) {
+        Ok(Some(value)) => value,
+        // No session: an HTTP+SSE client opening its transport stream.
+        Ok(None) => return open_sse_transport(&state, caller, query.view).await,
         Err(error) => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -1250,6 +1648,93 @@ async fn handle_mcp_events(
         .into_response()
 }
 
+/// HTTP+SSE transport (MCP 2024-11-05) on the same path: the stream first
+/// announces the endpoint to POST to, then carries every reply and
+/// notification for the session. Closing the stream ends the session.
+async fn open_sse_transport(
+    state: &McpFrontendState,
+    caller: AuthenticatedCaller,
+    view: Option<McpView>,
+) -> Response {
+    let view = view.unwrap_or(McpView::Typed);
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let (replies, mut reply_rx) = mpsc::channel::<String>(SSE_REPLY_QUEUE);
+    let session = Arc::new(McpSession::with_sse_replies(&caller, view, replies));
+    let mut events = session.events.subscribe();
+    if !insert_session(state, session_id.clone(), session).await {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(json!({"error": "capacity", "message": "MCP session capacity reached"})),
+        )
+            .into_response();
+    }
+    let endpoint = match view {
+        McpView::Compact => format!("{MCP_PATH}?{COMPACT_MODE_QUERY}&sessionId={session_id}"),
+        McpView::Typed => format!("{MCP_PATH}?sessionId={session_id}"),
+    };
+    let lease = SseSessionLease {
+        sessions: state.sessions.clone(),
+        backend: state.backend.clone(),
+        session_id,
+        caller,
+    };
+    let stream = async_stream::stream! {
+        let _lease = lease;
+        yield Ok::<Event, Infallible>(Event::default().event("endpoint").data(endpoint));
+        loop {
+            let message = tokio::select! {
+                reply = reply_rx.recv() => reply,
+                notification = next_notification(&mut events) => notification,
+            };
+            match message {
+                Some(message) => yield Ok(Event::default().event("message").data(message)),
+                None => break,
+            }
+        }
+    };
+    Sse::new(stream)
+        .keep_alive(
+            KeepAlive::new()
+                .interval(Duration::from_secs(15))
+                .text("keepalive"),
+        )
+        .into_response()
+}
+
+async fn next_notification(events: &mut broadcast::Receiver<String>) -> Option<String> {
+    loop {
+        match events.recv().await {
+            Ok(message) => return Some(message),
+            Err(broadcast::error::RecvError::Lagged(_)) => continue,
+            Err(broadcast::error::RecvError::Closed) => return None,
+        }
+    }
+}
+
+/// Ends an HTTP+SSE session when its stream is dropped.
+struct SseSessionLease {
+    sessions: Arc<RwLock<HashMap<String, Arc<McpSession>>>>,
+    backend: Arc<dyn McpBackend>,
+    session_id: String,
+    caller: AuthenticatedCaller,
+}
+
+impl Drop for SseSessionLease {
+    fn drop(&mut self) {
+        let sessions = self.sessions.clone();
+        let backend = self.backend.clone();
+        let session_id = std::mem::take(&mut self.session_id);
+        let caller = self.caller.clone();
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            runtime.spawn(async move {
+                if sessions.write().await.remove(&session_id).is_some() {
+                    let _ = backend.session_closed(&caller).await;
+                }
+            });
+        }
+    }
+}
+
 async fn handle_mcp_delete(
     State(state): State<McpFrontendState>,
     request: Request<Body>,
@@ -1263,25 +1748,12 @@ async fn handle_mcp_delete(
         )
             .into_response();
     }
-    match one_required_header(&headers, MCP_VERSION_HEADER) {
-        Ok(version) if protocol_version_supported(version) => {}
-        Ok(version) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                axum::Json(json!({
-                    "error": "invalid_request",
-                    "message": format!("unsupported MCP protocol version: {version}")
-                })),
-            )
-                .into_response();
-        }
-        Err(error) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                axum::Json(json!({"error": "invalid_request", "message": error})),
-            )
-                .into_response();
-        }
+    if let Err(error) = validate_protocol_version_header(&headers, false) {
+        return (
+            StatusCode::BAD_REQUEST,
+            axum::Json(json!({"error": "invalid_request", "message": error})),
+        )
+            .into_response();
     }
     let caller = match state.authenticator.authenticate(&headers, peer).await {
         Ok(caller) => caller,
@@ -1599,8 +2071,11 @@ fn discovery_result() -> Value {
         "protocolVersions": SUPPORTED_PROTOCOL_VERSIONS,
         "endpoint": MCP_PATH,
         "transport": "streamable-http",
+        "transports": ["streamable-http", "http+sse"],
+        "batching": true,
         "sessionMode": "stateful-toolset-admission",
-        "requiredHeaders": ["MCP-Protocol-Version"],
+        "requiredHeaders": [],
+        "defaultProtocolVersion": "2025-03-26",
         "identityHeaderAlternatives": [HTTP_ASSERTION_HEADER, HTTP_SEALED_ID_HEADER],
         "optionalIntegrityHeaders": ["Mcp-Method", "Mcp-Name"],
         "capabilities": initialize_result(MCP_PROTOCOL_VERSION, McpView::Typed)["capabilities"].clone()
@@ -1608,20 +2083,12 @@ fn discovery_result() -> Value {
 }
 
 fn validate_protocol_headers(headers: &HeaderMap, rpc: &JsonRpcRequest) -> Result<(), String> {
-    // Per Streamable HTTP, the initialize request negotiates the protocol and
-    // therefore need not carry MCP-Protocol-Version yet. All later requests
-    // must carry a negotiated value this frontend can speak.
-    match one_optional_header(headers, MCP_VERSION_HEADER)? {
-        Some(version) if !protocol_version_supported(version) => {
-            if rpc.method != "initialize" {
-                return Err(format!("unsupported MCP protocol version: {version}"));
-            }
-        }
-        None if rpc.method != "initialize" => {
-            return Err(format!("missing {MCP_VERSION_HEADER} header"));
-        }
-        _ => {}
-    }
+    // The initialize request negotiates the protocol, so it may name any
+    // revision. A later request that names one must name a revision this
+    // frontend speaks. Without the header the spec has the server assume
+    // 2025-03-26 (clients of that revision and HTTP+SSE clients never send
+    // it), which this frontend speaks.
+    validate_protocol_version_header(headers, rpc.method == "initialize")?;
     if one_optional_header(headers, MCP_METHOD_HEADER)?.is_some_and(|method| method != rpc.method) {
         return Err("Mcp-Method header does not match JSON-RPC method".into());
     }
@@ -1652,11 +2119,17 @@ fn validate_protocol_headers(headers: &HeaderMap, rpc: &JsonRpcRequest) -> Resul
     Ok(())
 }
 
-fn validate_event_stream_headers(headers: &HeaderMap) -> Result<(), String> {
-    let version = one_required_header(headers, MCP_VERSION_HEADER)?;
-    if !protocol_version_supported(version) {
-        return Err(format!("unsupported MCP protocol version: {version}"));
+fn validate_protocol_version_header(headers: &HeaderMap, negotiating: bool) -> Result<(), String> {
+    match one_optional_header(headers, MCP_VERSION_HEADER)? {
+        Some(version) if !negotiating && !protocol_version_supported(version) => {
+            Err(format!("unsupported MCP protocol version: {version}"))
+        }
+        _ => Ok(()),
     }
+}
+
+fn validate_event_stream_headers(headers: &HeaderMap) -> Result<(), String> {
+    validate_protocol_version_header(headers, false)?;
     let accept = one_required_header(headers, axum::http::header::ACCEPT.as_str())?;
     if !accept
         .split(',')
@@ -1861,7 +2334,11 @@ fn parse_typed_tool_name(name: &str) -> anyhow::Result<(&str, &str)> {
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
         || !method_name
             .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+            .next()
+            .is_some_and(|byte| byte.is_ascii_alphabetic())
+        || !method_name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
     {
         anyhow::bail!("AccessDenied: '{name}' is not canonical");
     }
@@ -2014,7 +2491,7 @@ fn filter_authorized_tools(tools: Vec<Value>, grants: &HashSet<String>) -> Vec<V
         .into_iter()
         .filter(|tool| {
             descriptor_authority(tool, None).is_ok_and(|(capability, _)| {
-                capability != "cognitive_mcp.invoke" && grants.contains(capability)
+                capability != "cognitive.invoke" && grants.contains(capability)
             })
         })
         .collect()
@@ -2043,7 +2520,7 @@ fn authorize_and_validate_tool_call(
     grants: &HashSet<String>,
 ) -> anyhow::Result<()> {
     let (required_capability, _) = descriptor_authority(descriptor, Some(expected_name))?;
-    if required_capability == "cognitive_mcp.invoke" {
+    if required_capability == "cognitive.invoke" {
         anyhow::bail!(
             "AccessDenied: target tool '{expected_name}' has no independent sealed capability"
         );
@@ -2214,7 +2691,7 @@ mod tests {
         assert_eq!(
             request_timeout_for(
                 "tools/call",
-                &json!({"name": "plugin.cognitive_mcp.agent_python_executor_run", "arguments": {}})
+                &json!({"name": "plugin.cognitive.agent_python_executor_run", "arguments": {}})
             ),
             AGENT_REQUEST_TIMEOUT
         );
@@ -2232,7 +2709,7 @@ mod tests {
         assert_eq!(
             request_timeout_for(
                 "tools/call",
-                &json!({"name": "plugin.cognitive_mcp.agent_invented_run", "arguments": {}})
+                &json!({"name": "plugin.cognitive.agent_invented_run", "arguments": {}})
             ),
             REQUEST_TIMEOUT
         );
@@ -2246,7 +2723,7 @@ mod tests {
                 &json!({
                     "name": "execute_tool",
                     "arguments": {
-                        "tool_name": "plugin.cognitive_mcp.agent_python_executor_run",
+                        "tool_name": "plugin.cognitive.agent_python_executor_run",
                         "arguments": {}
                     }
                 })
@@ -2283,8 +2760,142 @@ mod tests {
                 principal_id: format!("test-principal-{identity}"),
                 session_id: format!("test-session-{identity}"),
                 session_genesis: "test-genesis".into(),
+                wireguard_origin: None,
             })
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn external_mcp_http_accepts_one_wireguard_identity_and_preserves_admission() {
+        use crate::human_principal_dispatch::tests::{pk, temp_shm, test_engine};
+        use crate::oracle_assertion::AssertionSourceBinding;
+        use crate::oracle_assertion::tests::{
+            signed_with_fields, test_issuer, validator_with_registered,
+        };
+
+        struct RestoreGrants(Option<std::ffi::OsString>);
+        impl Drop for RestoreGrants {
+            fn drop(&mut self) {
+                match self.0.take() {
+                    Some(value) => unsafe { std::env::set_var("OP_GRANTS_PATH", value) },
+                    None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
+                }
+            }
+        }
+        let issuer = test_issuer();
+        let key = pk(208);
+        let (_registry, validator) = validator_with_registered(&issuer, &key).await;
+        let _shm = temp_shm();
+        let engine = test_engine();
+        let grants = tempfile::tempdir().unwrap();
+        let grants_path = grants.path().join("grants.json");
+        let _restore = RestoreGrants(std::env::var_os("OP_GRANTS_PATH"));
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
+        std::fs::write(&grants_path, "{}").unwrap();
+        let principal = op_identity::session::derive_principal_id(&key);
+        let router = router_with_state(McpFrontendState {
+            authenticator: Arc::new(OracleHttpAuthenticator {
+                validator: Arc::new(
+                    validator.with_source_binding(AssertionSourceBinding::TrustedDecoySignature),
+                ),
+                engine: engine.clone(),
+            }),
+            backend: Arc::new(TestBackend::default()),
+            allowed_origins: Arc::new(HashSet::new()),
+            sessions: Arc::new(RwLock::new(HashMap::new())),
+        });
+        let now = chrono::Utc::now().timestamp();
+        let request = |nonce: u8, ip: &str, session: Option<&str>| {
+            let proof = signed_with_fields(
+                &issuer,
+                &key,
+                ip.parse().unwrap(),
+                now - 1,
+                now + 300,
+                [nonce; 16],
+                None,
+            );
+            let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(proof.to_wire());
+            let mut builder = Request::builder()
+                .method("POST")
+                .uri(MCP_PATH)
+                .header(CONTENT_TYPE, "application/json")
+                .header("accept", "application/json, text/event-stream")
+                .header(HTTP_ASSERTION_HEADER, encoded);
+            let body = if let Some(session) = session {
+                builder = builder
+                    .header(MCP_SESSION_HEADER, session)
+                    .header("mcp-protocol-version", MCP_PROTOCOL_VERSION);
+                json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+            } else {
+                json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": MCP_PROTOCOL_VERSION}})
+            };
+            builder.body(Body::from(body.to_string())).unwrap()
+        };
+        let denied = router
+            .clone()
+            .oneshot(request(81, "10.0.0.5", None))
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+        assert!(engine.connected_session_ids().await.is_empty());
+        std::fs::write(
+            &grants_path,
+            serde_json::to_vec(&json!({
+                principal: {"capabilities": ["cognitive.read"]}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        // A failed admission did not consume the nonce. There is no SID1, no
+        // browser Origin, and no identity container in this request or fixture.
+        let initialized = router
+            .clone()
+            .oneshot(request(81, "10.0.0.5", None))
+            .await
+            .unwrap();
+        assert_eq!(initialized.status(), StatusCode::OK);
+        let session = initialized.headers()[MCP_SESSION_HEADER]
+            .to_str()
+            .unwrap()
+            .to_string();
+        let body: Value = serde_json::from_slice(
+            &to_bytes(initialized.into_body(), MAX_BODY_BYTES)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            body["result"]["_meta"]["opdbus/wireguardOrigin"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://wg-")
+        );
+        let replay = router
+            .clone()
+            .oneshot(request(81, "10.0.0.5", None))
+            .await
+            .unwrap();
+        assert_eq!(replay.status(), StatusCode::UNAUTHORIZED);
+        let renewed = router
+            .clone()
+            .oneshot(request(82, "10.0.0.5", Some(&session)))
+            .await
+            .unwrap();
+        assert_eq!(renewed.status(), StatusCode::OK);
+        let moved = router
+            .clone()
+            .oneshot(request(83, "10.0.0.6", Some(&session)))
+            .await
+            .unwrap();
+        assert_eq!(moved.status(), StatusCode::NOT_FOUND);
+        std::fs::write(&grants_path, "{}").unwrap();
+        let revoked = router
+            .oneshot(request(84, "10.0.0.5", Some(&session)))
+            .await
+            .unwrap();
+        assert_eq!(revoked.status(), StatusCode::UNAUTHORIZED);
+        assert!(engine.logged_in_principal_sessions(300).await.is_empty());
     }
 
     #[derive(Clone, Default)]
@@ -2306,7 +2917,7 @@ mod tests {
                     "inputSchema": {"type": "object"}
                 }),
                 json!({
-                    "name": "plugin.cognitive_mcp.code_search",
+                    "name": "plugin.cognitive.code_search",
                     "description": "Search code",
                     "inputSchema": {
                         "type": "object",
@@ -2367,8 +2978,8 @@ mod tests {
             _caller: &AuthenticatedCaller,
         ) -> anyhow::Result<Vec<Value>> {
             Ok(vec![json!({
-                "uri": "blob://cognitive_mcp",
-                "name": "cognitive_mcp schema",
+                "uri": "blob://cognitive",
+                "name": "cognitive schema",
                 "mimeType": "application/json"
             })])
         }
@@ -2393,6 +3004,91 @@ mod tests {
 
     fn test_router() -> Router {
         test_router_with_backend(TestBackend::default())
+    }
+
+    fn verified_ping_request(auth: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder()
+            .method("POST")
+            .uri(MCP_PATH)
+            .header(CONTENT_TYPE, "application/json")
+            .header("accept", "application/json")
+            .header(HTTP_SEALED_ID_HEADER, "opaque-test-credential");
+        if let Some(auth) = auth {
+            builder = builder.header("x-test-auth", auth);
+        }
+        builder
+            .body(Body::from(
+                r#"{"jsonrpc":"2.0","id":"sled-auth","method":"ping","params":{}}"#,
+            ))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn verified_ping_metadata_is_receiver_authored_and_request_scoped() {
+        let router = test_router();
+        let (own, other) = tokio::join!(
+            router.clone().oneshot(verified_ping_request(Some("ok"))),
+            router.clone().oneshot(verified_ping_request(Some("other"))),
+        );
+        for (response, auth) in [(own.unwrap(), "ok"), (other.unwrap(), "other")] {
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()[VERIFIED_PRINCIPAL_HEADER],
+                format!("test-principal-{auth}")
+            );
+            assert_eq!(
+                response.headers()[VERIFIED_SESSION_HEADER],
+                format!("test-session-{auth}")
+            );
+            assert_eq!(response.headers()[VERIFIED_GENESIS_HEADER], "test-genesis");
+            assert!(!response.headers().contains_key(MCP_SESSION_HEADER));
+        }
+    }
+
+    #[tokio::test]
+    async fn verified_ping_metadata_rejects_spoofed_requests_and_is_absent_on_errors() {
+        let router = test_router();
+        for name in [
+            VERIFIED_PRINCIPAL_HEADER,
+            VERIFIED_SESSION_HEADER,
+            VERIFIED_GENESIS_HEADER,
+        ] {
+            let mut request = verified_ping_request(Some("ok"));
+            request
+                .headers_mut()
+                .append(name, "foreign".parse().unwrap());
+            request
+                .headers_mut()
+                .append(name, "ambiguous".parse().unwrap());
+            let response = router.clone().oneshot(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+            for reserved in [
+                VERIFIED_PRINCIPAL_HEADER,
+                VERIFIED_SESSION_HEADER,
+                VERIFIED_GENESIS_HEADER,
+            ] {
+                assert!(!response.headers().contains_key(reserved));
+            }
+        }
+        let response = router
+            .clone()
+            .oneshot(verified_ping_request(None))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert!(!response.headers().contains_key(VERIFIED_SESSION_HEADER));
+        let mut request = verified_ping_request(Some("ok"));
+        request
+            .headers_mut()
+            .insert(MCP_SESSION_HEADER, "nonexistent".parse().unwrap());
+        let response = router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert!(!response.headers().contains_key(VERIFIED_SESSION_HEADER));
+        let mut request = verified_ping_request(Some("ok"));
+        request.headers_mut().remove(HTTP_SEALED_ID_HEADER);
+        let response = router.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(!response.headers().contains_key(VERIFIED_SESSION_HEADER));
     }
 
     fn test_router_with_backend(backend: TestBackend) -> Router {
@@ -2516,6 +3212,23 @@ mod tests {
         serde_json::from_slice(&bytes).unwrap()
     }
 
+    #[test]
+    fn external_mcp_conversation_cannot_move_to_a_different_wireguard_origin() {
+        let mut caller = AuthenticatedCaller {
+            principal_id: "same-principal".into(),
+            session_id: "same-session".into(),
+            session_genesis: "same-genesis".into(),
+            wireguard_origin: Some("https://wg-first.opdbus.invalid".into()),
+        };
+        let session = McpSession::new(&caller, McpView::Typed);
+        assert!(session.belongs_to(&caller));
+        assert_eq!(session.caller().wireguard_origin, caller.wireguard_origin);
+        caller.wireguard_origin = Some("https://wg-other.opdbus.invalid".into());
+        assert!(!session.belongs_to(&caller));
+        caller.wireguard_origin = None;
+        assert!(!session.belongs_to(&caller));
+    }
+
     #[tokio::test]
     async fn native_initialize_succeeds_without_a_shim() {
         let response = call(
@@ -2585,7 +3298,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             initial_names,
-            vec!["echo", "plugin.cognitive_mcp.code_search"]
+            vec!["echo", "plugin.cognitive.code_search"]
         );
 
         let selected = response_json(
@@ -2634,7 +3347,7 @@ mod tests {
             .iter()
             .filter_map(|tool| tool.get("name").and_then(Value::as_str))
             .collect::<Vec<_>>();
-        assert_eq!(names, vec!["echo", "plugin.cognitive_mcp.code_search"]);
+        assert_eq!(names, vec!["echo", "plugin.cognitive.code_search"]);
 
         let called = response_json(
             session_call(
@@ -2642,10 +3355,10 @@ mod tests {
                 &session_id,
                 "tools/call",
                 json!({
-                    "name": "plugin.cognitive_mcp.code_search",
+                    "name": "plugin.cognitive.code_search",
                     "arguments": {"query": "sealed schema"}
                 }),
-                Some("plugin.cognitive_mcp.code_search"),
+                Some("plugin.cognitive.code_search"),
             )
             .await,
         )
@@ -2710,7 +3423,7 @@ mod tests {
         .await;
         assert_eq!(
             discovered["result"]["structuredContent"]["tools"][0]["name"],
-            "plugin.cognitive_mcp.code_search"
+            "plugin.cognitive.code_search"
         );
         let schema = response_json(
             session_call_at(
@@ -2719,7 +3432,7 @@ mod tests {
                 uri,
                 "ok",
                 "tools/call",
-                json!({"name": "get_tool_schema", "arguments": {"tool_name": "plugin.cognitive_mcp.code_search"}}),
+                json!({"name": "get_tool_schema", "arguments": {"tool_name": "plugin.cognitive.code_search"}}),
                 Some("get_tool_schema"),
             )
             .await,
@@ -2754,7 +3467,7 @@ mod tests {
                 uri,
                 "ok",
                 "tools/call",
-                json!({"name": "execute_tool", "arguments": {"tool_name": "plugin.cognitive_mcp.code_search", "arguments": {"query": "sealed schema"}}}),
+                json!({"name": "execute_tool", "arguments": {"tool_name": "plugin.cognitive.code_search", "arguments": {"query": "sealed schema"}}}),
                 Some("execute_tool"),
             )
             .await,
@@ -3024,13 +3737,13 @@ mod tests {
         let body = response_json(call("resources/list", json!({}), None).await).await;
         assert_eq!(
             body["result"]["resources"][0]["uri"],
-            "blob://cognitive_mcp"
+            "blob://cognitive"
         );
     }
 
     #[tokio::test]
     async fn resources_read_returns_content() {
-        let uri = "blob://cognitive_mcp";
+        let uri = "blob://cognitive";
         let body =
             response_json(call("resources/read", json!({"uri": uri}), Some(uri)).await).await;
         assert_eq!(body["result"]["contents"][0]["uri"], uri);
@@ -3134,7 +3847,7 @@ mod tests {
                     .header("x-test-auth", "ok")
                     .header(MCP_VERSION_HEADER, MCP_PROTOCOL_VERSION)
                     .header(MCP_METHOD_HEADER, "tools/list")
-                    .header(DECLARED_CAPABILITY_HEADER, "cognitive_mcp.invoke")
+                    .header(DECLARED_CAPABILITY_HEADER, "cognitive.invoke")
                     .body(Body::from(
                         json!({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).to_string(),
                     ))
@@ -3148,12 +3861,12 @@ mod tests {
     #[test]
     fn target_tool_without_authority_metadata_is_fail_closed() {
         let grants = HashSet::from([
-            "cognitive_mcp.invoke".to_string(),
-            "cognitive_mcp.read".to_string(),
+            "cognitive.invoke".to_string(),
+            "cognitive.read".to_string(),
         ]);
         let missing_capability = json!({
             "name": "safe_read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {"type": "object"}
         });
         assert!(
@@ -3163,7 +3876,7 @@ mod tests {
 
         let missing_subid = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
+            "required_capability": "cognitive.read",
             "input_schema": {"type": "object"}
         });
         assert!(
@@ -3176,8 +3889,8 @@ mod tests {
     fn nested_tool_arguments_are_validated_before_dispatch() {
         let descriptor = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "required_capability": "cognitive.read",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {
                 "type": "object",
                 "required": ["filter"],
@@ -3191,8 +3904,8 @@ mod tests {
             }
         });
         let grants = HashSet::from([
-            "cognitive_mcp.invoke".to_string(),
-            "cognitive_mcp.read".to_string(),
+            "cognitive.invoke".to_string(),
+            "cognitive.read".to_string(),
         ]);
         assert!(
             authorize_and_validate_tool_call(
@@ -3227,15 +3940,15 @@ mod tests {
     fn target_capability_is_required_in_addition_to_outer_invoke() {
         let descriptor = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "required_capability": "cognitive.read",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {"type": "object"}
         });
-        let outer_only = HashSet::from(["cognitive_mcp.invoke".to_string()]);
+        let outer_only = HashSet::from(["cognitive.invoke".to_string()]);
         let error =
             authorize_and_validate_tool_call(&descriptor, "safe_read", &json!({}), &outer_only)
                 .unwrap_err();
-        assert!(error.to_string().contains("cognitive_mcp.read"));
+        assert!(error.to_string().contains("cognitive.read"));
     }
 
     #[test]
@@ -3243,17 +3956,17 @@ mod tests {
         let tools = vec![
             json!({
                 "name": "safe_read",
-                "required_capability": "cognitive_mcp.read",
-                "subid": "obs.service.cognitive-mcp.test.read@v1"
+                "required_capability": "cognitive.read",
+                "subid": "obs.service.cognitive.test.read@v1"
             }),
             json!({
                 "name": "mutate",
-                "required_capability": "cognitive_mcp.invoke",
-                "subid": "mut.service.cognitive-mcp.test.write@v1"
+                "required_capability": "cognitive.invoke",
+                "subid": "mut.service.cognitive.test.write@v1"
             }),
             json!({"name": "missing_descriptor"}),
         ];
-        let grants = HashSet::from(["cognitive_mcp.read".to_string()]);
+        let grants = HashSet::from(["cognitive.read".to_string()]);
         let filtered = filter_authorized_tools(tools, &grants);
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0]["name"], "safe_read");
@@ -3263,11 +3976,11 @@ mod tests {
     fn broad_outer_invoke_is_not_accepted_as_target_authority() {
         let descriptor = json!({
             "name": "code_index",
-            "required_capability": "cognitive_mcp.invoke",
+            "required_capability": "cognitive.invoke",
             "subid": "mut.service.code-rag.index@v1",
             "input_schema": {"type": "object"}
         });
-        let grants = HashSet::from(["cognitive_mcp.invoke".to_string()]);
+        let grants = HashSet::from(["cognitive.invoke".to_string()]);
         let error =
             authorize_and_validate_tool_call(&descriptor, "code_index", &json!({}), &grants)
                 .unwrap_err();
@@ -3281,28 +3994,28 @@ mod tests {
     #[test]
     fn hot_agent_targets_require_their_exact_sealed_capability() {
         let targets = [
-            ("rust_pro", "cognitive_mcp.rust_pro"),
-            ("python_pro", "cognitive_mcp.python_pro"),
-            ("typescript_pro", "cognitive_mcp.typescript_pro"),
-            ("sequential_thinking", "cognitive_mcp.sequential_thinking"),
-            ("context_manager", "cognitive_mcp.context_manager"),
+            ("rust_pro", "cognitive.rust_pro"),
+            ("python_pro", "cognitive.python_pro"),
+            ("typescript_pro", "cognitive.typescript_pro"),
+            ("sequential_thinking", "cognitive.sequential_thinking"),
+            ("context_manager", "cognitive.context_manager"),
             (
                 "code_review_orchestrator",
-                "cognitive_mcp.code_review_orchestrator",
+                "cognitive.code_review_orchestrator",
             ),
         ];
         for (name, capability) in targets {
             let descriptor = json!({
                 "name": name,
                 "required_capability": capability,
-                "subid": format!("mut.service.cognitive-mcp.{name}.execute@v1"),
+                "subid": format!("mut.service.cognitive.{name}.execute@v1"),
                 "input_schema": {"type": "object"}
             });
             let exact = HashSet::from([capability.to_string()]);
             assert!(
                 authorize_and_validate_tool_call(&descriptor, name, &json!({}), &exact).is_ok()
             );
-            let generic = HashSet::from(["cognitive_mcp.invoke".to_string()]);
+            let generic = HashSet::from(["cognitive.invoke".to_string()]);
             let error = authorize_and_validate_tool_call(&descriptor, name, &json!({}), &generic)
                 .unwrap_err();
             assert!(error.to_string().contains(capability));
@@ -3315,7 +4028,7 @@ mod tests {
             "name": "code_search",
             "description": "search",
             "input_schema": {"type": "object"},
-            "required_capability": "cognitive_mcp.read",
+            "required_capability": "cognitive.read",
             "subid": "obs.service.code-rag.search@v1",
             "authority_method": "code_search"
         }));
@@ -3329,8 +4042,8 @@ mod tests {
     fn safe_read_tool_with_both_grants_passes_policy_and_schema() {
         let descriptor = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "required_capability": "cognitive.read",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {
                 "type": "object",
                 "required": ["key"],
@@ -3339,10 +4052,10 @@ mod tests {
             }
         });
         let grants = HashSet::from([
-            "cognitive_mcp.invoke".to_string(),
-            "cognitive_mcp.read".to_string(),
+            "cognitive.invoke".to_string(),
+            "cognitive.read".to_string(),
         ]);
-        authorize_with_grants(&grants, "cognitive_mcp.invoke").unwrap();
+        authorize_with_grants(&grants, "cognitive.invoke").unwrap();
         authorize_and_validate_tool_call(
             &descriptor,
             "safe_read",
@@ -3367,21 +4080,73 @@ mod tests {
     #[test]
     fn wildcard_grant_never_authorizes_mcp() {
         let document = json!({
-            "*": {"capabilities": ["cognitive_mcp.read", "cognitive_mcp.invoke"]},
-            "known": {"capabilities": ["cognitive_mcp.read"]}
+            "*": {"capabilities": ["cognitive.read", "cognitive.invoke"]},
+            "known": {"capabilities": ["cognitive.read"]}
         });
         assert!(capabilities_for_principal(&document, "unknown").is_empty());
         assert!(capabilities_for_principal(&document, "known").is_empty());
     }
 
     #[test]
+    fn group_membership_adds_capabilities_and_a_group_name_is_not_a_caller() {
+        let document = json!({
+            "$GUEST": {"capabilities": ["cap.data.cozo.system-graph.read@v1"]},
+            "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
+                "groups": ["$GUEST"],
+                "capabilities": ["cognitive.read"]
+            }
+        });
+        let granted = capabilities_for_principal(
+            &document,
+            "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff",
+        );
+        assert!(granted.contains("cognitive.read"));
+        assert!(granted.contains("cap.data.cozo.system-graph.read@v1"));
+        assert!(capabilities_for_principal(&document, "$GUEST").is_empty());
+    }
+
+    #[test]
+    fn unknown_group_key_invalidates_entire_grant_document() {
+        let document = json!({
+            "$NOPE": {"capabilities": ["cognitive.read"]},
+            "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
+                "capabilities": ["cognitive.read"]
+            }
+        });
+        assert!(
+            capabilities_for_principal(&document, "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn group_membership_adds_the_group_capabilities() {
+        let document = json!({
+            "$ROOT": {"capabilities": ["cap.data.cozo.system-graph.read@v1"]},
+            "$SUPERADMIN": {"capabilities": ["human_principal.write"]},
+            "1262e982-14c1-44d4-0771-7ce74213211b": {
+                "groups": ["$ROOT"],
+                "capabilities": ["chat_response.respond"]
+            }
+        });
+        let chatbot = capabilities_for_principal(
+            &document,
+            "1262e982-14c1-44d4-0771-7ce74213211b",
+        );
+        assert!(chatbot.contains("cap.data.cozo.system-graph.read@v1"));
+        assert!(chatbot.contains("chat_response.respond"));
+        assert!(!chatbot.contains("human_principal.write"));
+        assert!(capabilities_for_principal(&document, "$ROOT").is_empty());
+    }
+
+    #[test]
     fn legacy_footprint_key_invalidates_entire_grant_document() {
         let document = json!({
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {
-                "capabilities": ["cognitive_mcp.invoke"]
+                "capabilities": ["cognitive.invoke"]
             },
             "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
-                "capabilities": ["cognitive_mcp.read"]
+                "capabilities": ["cognitive.read"]
             }
         });
         assert!(
@@ -3423,13 +4188,13 @@ mod tests {
     #[test]
     fn typed_methods_are_loaded_from_manifest_pinned_sealed_blob() {
         let dir = tempfile::tempdir().unwrap();
-        let expected = op_plugins::cognitive_mcp_plugin_schema();
-        let blob = op_blob::blobify_plugin_schema("cognitive_mcp", expected.clone());
+        let expected = op_plugins::cognitive_plugin_schema();
+        let blob = op_blob::blobify_plugin_schema("cognitive", expected.clone());
         let mut store = op_blob::BlobStore::open(dir.path()).unwrap();
         store.write(&blob).unwrap();
 
-        let restored = read_manifest_pinned_plugin_schema(dir.path(), "cognitive_mcp").unwrap();
-        assert_eq!(restored.name, "cognitive_mcp");
+        let restored = read_manifest_pinned_plugin_schema(dir.path(), "cognitive").unwrap();
+        assert_eq!(restored.name, "cognitive");
         assert_eq!(
             restored.methods["toolsets"].subid,
             expected.methods["toolsets"].subid
@@ -3437,7 +4202,7 @@ mod tests {
         let zero_arg = method_descriptor(
             &restored,
             "memory_list_namespaces",
-            "plugin.cognitive_mcp.memory_list_namespaces",
+            "plugin.cognitive.memory_list_namespaces",
         )
         .unwrap();
         assert_eq!(zero_arg["inputSchema"]["type"], "object");
@@ -3450,7 +4215,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut store = op_blob::BlobStore::open(dir.path()).unwrap();
 
-        let mut snowball = op_plugins::cognitive_mcp_plugin_schema();
+        let mut snowball = op_plugins::cognitive_plugin_schema();
         snowball.name = "snowball".to_string();
         snowball.description = "test snowball schema".to_string();
         snowball.subids.clear();
@@ -3463,7 +4228,7 @@ mod tests {
             .write(&op_blob::blobify_plugin_schema("snowball", snowball))
             .unwrap();
 
-        let mut registry = op_plugins::cognitive_mcp_plugin_schema();
+        let mut registry = op_plugins::cognitive_plugin_schema();
         registry.name = "oscal_subid_registry".to_string();
         registry.description = "test OSCAL registry schema".to_string();
         registry.subids.clear();
@@ -3526,7 +4291,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn singleton_chatbot_cannot_call_outside_hot_or_selected_toolset() {
+    async fn non_singleton_identity_still_requires_hot_or_selected_toolset() {
         let mut backend = MutationEngineMcpBackend::new(
             crate::human_principal_dispatch::tests::test_engine(),
             McpPolicyOwner::for_fixture(deployed_mcp_policy()),
@@ -3535,9 +4300,10 @@ mod tests {
         backend.blob_catalog_dir = catalog_root.path().join("catalog-does-not-exist");
         let policy = backend.policy.snapshot();
         let caller = AuthenticatedCaller {
-            principal_id: policy.audience.singleton_chatbot_principal_id.clone(),
-            session_id: "chatbot-session".into(),
-            session_genesis: "chatbot-genesis".into(),
+            principal_id: "ordinary-principal".into(),
+            session_id: "ordinary-session".into(),
+            session_genesis: "ordinary-genesis".into(),
+            wireguard_origin: None,
         };
         let unknown = "plugin.unlisted.operation";
         let error = backend
@@ -3580,6 +4346,228 @@ mod tests {
         }
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    async fn singleton_projection_uses_exact_grants_and_sealed_typed_dispatch() {
+        // A projection-only invented session cannot pass the real D-Bus owner.
+        // Use a genuine verified receiver term while preserving singleton-role
+        // projection assertions through an isolated fixture audience policy.
+        let _registry = crate::human_principal_dispatch::tests::temp_cozo();
+        let peer = crate::human_principal_dispatch::tests::pk(213);
+        crate::human_principal_dispatch::tests::register(&peer, "singleton-read-fixture")
+            .await
+            .unwrap();
+        let principal = op_identity::session::derive_principal_id(&peer);
+        let mut policy = deployed_mcp_policy();
+        policy.audience.singleton_chatbot_principal_id = principal.clone();
+        let snowball_schema = op_state::StatePlugin::schema(
+            &op_plugins::state_plugins::snowball_plugin::SnowballPlugin::default(),
+        )
+        .expect("Snowball schema");
+        let mut gap_schema = snowball_schema.clone();
+        gap_schema.name = "snowball_gap".into();
+        gap_schema
+            .methods
+            .get_mut("query_events")
+            .unwrap()
+            .required_capability = Some("snowball_gap.unsealed".into());
+        let router_schema = op_plugins::state_plugins::tched_router::tched_router_plugin_schema();
+        let router_selection_capability = router_schema.methods["SetSelection"]
+            .required_capability
+            .clone()
+            .unwrap();
+        // This shared fixture redirects both the MCP frontend and MutationEngine
+        // away from live SHM. Keep it for the entire test lifetime.
+        let _shm = crate::human_principal_dispatch::tests::temp_shm_with_schemas(&[
+            op_plugins::cognitive_plugin_schema(),
+            snowball_schema,
+            router_schema.clone(),
+            gap_schema,
+        ]);
+        let engine = crate::human_principal_dispatch::tests::test_engine();
+        let fixture = tempfile::tempdir().unwrap();
+        let documents = Arc::new(
+            op_plugins::state_plugins::runtime_documents::RuntimeDocuments::new(
+                op_cozo_store::CozoGraphShuttle::new_persistent_private(
+                    fixture.path().join("journal"),
+                )
+                .unwrap(),
+            ),
+        );
+        engine
+            .configure_method_journal_documents(documents)
+            .unwrap();
+        engine
+            .configure_cognitive_runtime_fixture(Arc::new(
+                op_cognitive::CognitiveServer::new_in_memory()
+                    .await
+                    .unwrap(),
+            ))
+            .unwrap();
+        engine
+            .init_audit_durability_at(fixture.path().join("audit").to_str().unwrap())
+            .await;
+        let mut backend =
+            MutationEngineMcpBackend::new(engine.clone(), McpPolicyOwner::for_fixture(policy));
+
+        let grants = Arc::new(std::sync::RwLock::new(HashMap::from([(
+            principal.clone(),
+            HashSet::from([
+                "cognitive.read".to_string(),
+                "snowball.read".to_string(),
+                "snowball_gap.unsealed".to_string(),
+                router_selection_capability,
+            ]),
+        )])));
+        backend.test_grants = Some(Arc::clone(&grants));
+
+        struct GrantPath(Option<std::ffi::OsString>);
+        impl Drop for GrantPath {
+            fn drop(&mut self) {
+                match self.0.take() {
+                    Some(path) => unsafe { std::env::set_var("OP_GRANTS_PATH", path) },
+                    None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
+                }
+            }
+        }
+        let _grant_path = GrantPath(std::env::var_os("OP_GRANTS_PATH"));
+        let real_grants = fixture.path().join("grants.json");
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &real_grants) };
+        let capability_list = grants.read().unwrap()[&principal]
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        std::fs::write(
+            &real_grants,
+            serde_json::to_vec(&json!({
+                principal.clone(): {"capabilities": capability_list}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let issuer = crate::oracle_assertion::tests::test_issuer();
+        let validator = Arc::new(
+            AssertionValidator::new(crate::oracle_assertion::tests::trust_store_for_issuer(
+                &issuer,
+            ))
+            .with_source_binding(
+                crate::oracle_assertion::AssertionSourceBinding::TrustedDecoySignature,
+            ),
+        );
+        let now = chrono::Utc::now().timestamp();
+        let proof = crate::oracle_assertion::tests::signed_with_fields(
+            &issuer,
+            &peer,
+            "10.0.0.5".parse().unwrap(),
+            now - 1,
+            now + 300,
+            [82; 16],
+            None,
+        );
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            HTTP_ASSERTION_HEADER,
+            base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(proof.to_wire())
+                .parse()
+                .unwrap(),
+        );
+        let caller = authenticate_dbus_fixture(engine, validator, &headers)
+            .await
+            .unwrap();
+
+        let tools = backend.list_tools(&caller, None).await.unwrap();
+        let call_name = "plugin.snowball.verify_chain";
+        assert!(
+            !backend
+                .policy
+                .snapshot()
+                .toolsets
+                .sets
+                .iter()
+                .any(|set| set.tools.iter().any(|name| name == call_name)),
+            "fixture operation must be outside every broker toolset"
+        );
+        assert!(tools.iter().any(|tool| tool_name(tool) == call_name));
+        let selection_name = "plugin.tched_router.SetSelection";
+        assert!(tools.iter().any(|tool| tool_name(tool) == selection_name));
+        assert_eq!(
+            parse_typed_tool_name(selection_name).unwrap(),
+            ("tched_router", "SetSelection")
+        );
+        assert_eq!(
+            backend.typed_tool_descriptor(selection_name).await.unwrap()["authority_method"],
+            "SetSelection",
+            "case-preserving schema resolution must reach dispatch metadata"
+        );
+        assert!(
+            !tools
+                .iter()
+                .any(|tool| tool_name(tool) == "plugin.snowball_gap.query_events"),
+            "schema-closure gap is not discoverable"
+        );
+        assert!(
+            !tools.iter().any(|tool| descriptor_authority(tool, None)
+                .is_ok_and(|(capability, _)| capability == "cognitive.invoke")),
+            "generic invocation is never projected"
+        );
+        let called = backend
+            .call_tool(&caller, call_name, json!({}), None)
+            .await
+            .unwrap();
+        assert_ne!(called.get("isError"), Some(&Value::Bool(true)));
+
+        // Revoking after discovery is effective both at projection lookup and
+        // at the dispatch boundary, which reloads grants before admission.
+        let descriptors = backend.authorized_singleton_tools(&caller).await.unwrap();
+        let descriptor = descriptors
+            .iter()
+            .find(|tool| tool_name(tool) == call_name)
+            .unwrap();
+        grants.write().unwrap().clear();
+        std::fs::write(&real_grants, "{}").unwrap();
+        let error = backend
+            .dispatch_projected_tool(&caller, descriptor, call_name, json!({}))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("lacks required capability"));
+        let error = backend
+            .call_tool(&caller, call_name, json!({}), None)
+            .await
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("not in the singleton principal's granted sealed projection")
+        );
+
+        // A wildcard is never an identity grant; only the caller's exact key
+        // produces a projection.
+        grants.write().unwrap().insert(
+            caller.principal_id.clone(),
+            HashSet::from(["cognitive.read".to_string()]),
+        );
+        grants
+            .write()
+            .unwrap()
+            .insert("*".into(), HashSet::from(["snowball.read".to_string()]));
+        let wildcard = backend.authorized_singleton_tools(&caller).await.unwrap();
+        assert!(!wildcard.iter().any(|tool| tool_name(tool) == call_name));
+        // The public path also rechecks the real owner, whose revoked grants
+        // remain empty. Projection-only fixture entries cannot restore admission.
+        let error = backend.list_tools(&caller, None).await.unwrap_err();
+        assert!(error.to_string().contains("no capabilities"));
+        let error = backend
+            .call_tool(&caller, "plugin.snowball_gap.query_events", json!({}), None)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("granted sealed projection"));
+        let error = backend
+            .call_tool(&caller, "plugin.unsealed.nope", json!({}), None)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("granted sealed projection"));
+    }
+
     #[tokio::test]
     async fn singleton_chatbot_direct_tools_are_denied_before_catalog_or_provider_work() {
         let mut backend = MutationEngineMcpBackend::new(
@@ -3593,6 +4581,7 @@ mod tests {
             principal_id: policy.audience.singleton_chatbot_principal_id.clone(),
             session_id: "chatbot-session".into(),
             session_genesis: "chatbot-genesis".into(),
+            wireguard_origin: None,
         };
         let names = [
             "shell_execute",
@@ -3632,5 +4621,183 @@ mod tests {
                 assert_eq!(error.to_string(), expected, "selection {}", selection.id);
             }
         }
+    }
+
+    fn plain_post(uri: &str, session_id: Option<&str>, auth: &str, body: Value) -> Request<Body> {
+        let mut builder = Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header(CONTENT_TYPE, "application/json")
+            .header("x-test-auth", auth);
+        if let Some(session_id) = session_id {
+            builder = builder.header(MCP_SESSION_HEADER, session_id);
+        }
+        builder.body(Body::from(body.to_string())).unwrap()
+    }
+
+    /// Read SSE text until it contains `needle` (bounded wait).
+    async fn read_sse_until(
+        stream: &mut (impl futures::Stream<Item = Result<axum::body::Bytes, axum::Error>> + Unpin),
+        seen: &mut String,
+        needle: &str,
+    ) {
+        use futures::StreamExt;
+        while !seen.contains(needle) {
+            let chunk = tokio::time::timeout(Duration::from_secs(5), stream.next())
+                .await
+                .expect("SSE event within 5s")
+                .expect("SSE stream open")
+                .unwrap();
+            seen.push_str(std::str::from_utf8(&chunk).unwrap());
+        }
+    }
+
+    #[tokio::test]
+    async fn requests_without_protocol_header_assume_the_default_revision() {
+        let router = test_router();
+        let session_id = initialize_session(&router).await;
+        let response = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                Some(&session_id),
+                "ok",
+                json!({"jsonrpc": "2.0", "id": 7, "method": "ping"}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response_json(response).await["id"], 7);
+    }
+
+    #[tokio::test]
+    async fn batches_answer_each_request_and_skip_notifications() {
+        let router = test_router();
+        let session_id = initialize_session(&router).await;
+        let response = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                Some(&session_id),
+                "ok",
+                json!([
+                    {"jsonrpc": "2.0", "id": 1, "method": "ping"},
+                    {"jsonrpc": "2.0", "method": "notifications/initialized"},
+                    {"jsonrpc": "2.0", "id": 2, "method": "ping"}
+                ]),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response_json(response).await;
+        let ids = body
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|reply| reply["id"].clone())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, vec![json!(1), json!(2)]);
+
+        let batched_initialize = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                None,
+                "ok",
+                json!([{"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                        "params": {"protocolVersion": "2025-03-26"}}]),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(batched_initialize.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn client_replies_are_acknowledged() {
+        let router = test_router();
+        let session_id = initialize_session(&router).await;
+        let response = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                Some(&session_id),
+                "ok",
+                json!({"jsonrpc": "2.0", "id": "s-1", "result": {}}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+    }
+
+    #[tokio::test]
+    async fn http_sse_clients_use_the_same_endpoint() {
+        let router = test_router();
+        let stream = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(MCP_PATH)
+                    .header("accept", "text/event-stream")
+                    .header("x-test-auth", "ok")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(stream.status(), StatusCode::OK);
+        let mut events = stream.into_body().into_data_stream();
+        let mut seen = String::new();
+        read_sse_until(&mut events, &mut seen, "\n\n").await;
+        assert!(seen.contains("event: endpoint"), "{seen}");
+        let endpoint = seen
+            .lines()
+            .find_map(|line| line.strip_prefix("data: "))
+            .expect("endpoint data")
+            .trim()
+            .to_string();
+        assert!(endpoint.starts_with("/mcp?sessionId="), "{endpoint}");
+
+        let initialize = router
+            .clone()
+            .oneshot(plain_post(
+                &endpoint,
+                None,
+                "ok",
+                json!({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                       "params": {"protocolVersion": "2024-11-05"}}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(initialize.status(), StatusCode::ACCEPTED);
+        read_sse_until(&mut events, &mut seen, "\"protocolVersion\"").await;
+        assert!(seen.contains("event: message"), "{seen}");
+        assert!(seen.contains("2024-11-05"), "{seen}");
+
+        let ping = router
+            .clone()
+            .oneshot(plain_post(
+                &endpoint,
+                None,
+                "ok",
+                json!({"jsonrpc": "2.0", "id": 42, "method": "ping"}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(ping.status(), StatusCode::ACCEPTED);
+        read_sse_until(&mut events, &mut seen, "\"id\":42").await;
+
+        // Another identity cannot post into, or read from, this session.
+        let foreign = router
+            .clone()
+            .oneshot(plain_post(
+                &endpoint,
+                None,
+                "other",
+                json!({"jsonrpc": "2.0", "id": 9, "method": "ping"}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(foreign.status(), StatusCode::NOT_FOUND);
     }
 }

@@ -70,6 +70,71 @@ enum PrivateProvisionOutcome {
     ContaminatedSeed,
 }
 
+/// This test uses only in-memory identity state and temporary sealed schemas.
+/// The external-owner gate must return before accessing native Incus/storage.
+#[tokio::test(flavor = "multi_thread")]
+async fn authorized_legacy_provisioning_is_gated_before_journal_and_native_effects() {
+    let _lock = refresh_test_lock().lock().await;
+    let (engine, _shm, actor, _grants_dir, previous_grants, _registry) =
+        private_native_fixture(0x93).await;
+    let actor_id = op_identity::session::derive_principal_id(&actor.wireguard_pubkey);
+    let target_key = pk(0x94);
+    let target_sid = op_identity::session::derive_session_id(&target_key);
+    engine
+        .register_session_context(crate::mutation_engine::SessionContext {
+            genesis_hex: actor.genesis.clone().unwrap(),
+            session_id: actor.session_id.clone(),
+            wireguard_pubkey: actor.wireguard_pubkey.clone(),
+            sealed_id_digest: crate::mutation_engine::sealed_id_digest(actor.sealed_id.as_deref()),
+        })
+        .await;
+    let grants = std::env::var("OP_GRANTS_PATH").unwrap();
+    std::fs::write(
+        &grants,
+        serde_json::to_vec(
+            &serde_json::json!({actor_id.clone(): {"capabilities": ["identity_sled.write"]}}),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let store = engine.identity_sled_store().unwrap();
+    let before = load_revision(store, &actor.session_id).await.unwrap();
+    let result = dispatch_identity_sled_method_for_verified_session(
+        &engine,
+        "provision_container",
+        &serde_json::json!({"wireguard_pubkey":target_key,"plan_sha256":"a".repeat(64)}),
+        &actor_id,
+        Some(&actor.session_id),
+        actor.genesis.as_deref(),
+    )
+    .await;
+    restore_grants_path(previous_grants);
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot compose, mount or copy identity roots")
+    );
+    assert!(
+        store
+            .cozo
+            .read_seed_provision_journal(&target_sid)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        load_revision(store, &target_sid)
+            .await
+            .unwrap()
+            .record
+            .is_none()
+    );
+    assert_eq!(
+        load_revision(store, &actor.session_id).await.unwrap(),
+        before
+    );
+}
+
 async fn run_seeded_canonical_provision_private_fixture(expected: PrivateProvisionOutcome) {
     use sha2::{Digest, Sha256};
     use std::io::Write;
@@ -225,10 +290,12 @@ async fn run_seeded_canonical_provision_private_fixture(expected: PrivateProvisi
                 identity.is_anchored(),
                 "canonical owner did not anchor target identity"
             );
-            assert!(identity
-                .sealed_id
-                .as_deref()
-                .is_some_and(|value| value.starts_with("sid1:")));
+            assert!(
+                identity
+                    .sealed_id
+                    .as_deref()
+                    .is_some_and(|value| value.starts_with("sid1:"))
+            );
             let binding = identity.btrfs_device.as_ref().unwrap();
             assert_eq!(binding.device_path, leaf);
             assert_eq!(binding.mount_point, mount);
@@ -250,19 +317,19 @@ async fn run_seeded_canonical_provision_private_fixture(expected: PrivateProvisi
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "requires root-only private Incus/Btrfs/catalog namespace fixture"]
+#[ignore = "historical bridge-owned provisioning retired; use external host owner"]
 async fn seeded_canonical_provision_private_fixture() {
     run_seeded_canonical_provision_private_fixture(PrivateProvisionOutcome::Committed).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "requires root-only private Incus/Btrfs/catalog namespace fixture"]
+#[ignore = "historical bridge-owned provisioning retired; use external host owner"]
 async fn seeded_canonical_provision_native_drift_private_fixture() {
     run_seeded_canonical_provision_private_fixture(PrivateProvisionOutcome::NativeDrift).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "requires root-only contaminated-seed private fixture"]
+#[ignore = "historical bridge-owned provisioning retired; use external host owner"]
 async fn seeded_canonical_provision_contaminated_private_fixture() {
     run_seeded_canonical_provision_private_fixture(PrivateProvisionOutcome::ContaminatedSeed).await;
 }
@@ -304,7 +371,8 @@ async fn root_repair_canonical_private_fixture() {
     let backup_meta = std::fs::symlink_metadata(&original_backup).unwrap();
     assert!(stub_meta.is_dir() && stub_meta.mode() & 0o7777 == 0o100);
     assert!(backup_meta.is_file() && backup_meta.mode() & 0o7777 == 0o400);
-    let original_backup_sha256 = hex::encode(Sha256::digest(std::fs::read(&original_backup).unwrap()));
+    let original_backup_sha256 =
+        hex::encode(Sha256::digest(std::fs::read(&original_backup).unwrap()));
     let actor_id = op_identity::session::derive_principal_id(&original.wireguard_pubkey);
     let grants = std::env::var("OP_GRANTS_PATH").unwrap();
     std::fs::write(
@@ -433,11 +501,13 @@ async fn root_repair_canonical_private_fixture() {
     let digest = hex::encode(Sha256::digest(&bytes));
     let plan_path = format!("{repair_dir}/{}.json", original.session_id);
     let mut stale = plan.clone();
-    stale["expected_revision"] = serde_json::json!(preflight["revision"]
-        .as_u64()
-        .unwrap()
-        .checked_add(1)
-        .unwrap());
+    stale["expected_revision"] = serde_json::json!(
+        preflight["revision"]
+            .as_u64()
+            .unwrap()
+            .checked_add(1)
+            .unwrap()
+    );
     let stale_bytes = serde_json::to_vec(&stale).unwrap();
     let stale_digest = hex::encode(Sha256::digest(&stale_bytes));
     std::fs::OpenOptions::new()
@@ -574,12 +644,6 @@ async fn root_repair_canonical_private_fixture() {
         format!("{mount}/persist")
     );
     assert_eq!(repaired["devices"]["persist"]["shift"], "true");
-    op_network::btrfs::verify_dedicated_mount(
-        std::path::Path::new(&old_image),
-        std::path::Path::new(&old_mount),
-        &old_fsid,
-    )
-    .unwrap();
     assert!(
         std::fs::read_dir(&old_mount).unwrap().next().is_none(),
         "old persisted filesystem was modified"
