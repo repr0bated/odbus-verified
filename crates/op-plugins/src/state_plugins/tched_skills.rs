@@ -5,14 +5,13 @@ use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::process::{Command as StdCommand, Stdio};
+use std::process::Stdio;
 use std::sync::OnceLock;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
-use op_plugin_lint::{BinaryIntrospectOpts, BinarySurface, CliNode, introspect_binary_subtree};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -88,68 +87,20 @@ const CLI_METHODS: &[(&str, &[&str], &[&str])] = &[
     ("show_bundle", &["skills", "bundle", "show"], &[]),
 ];
 
-fn node<'a>(surface: &'a BinarySurface, path: &[&str]) -> Result<&'a CliNode> {
-    surface.nodes.iter()
-        .find(|node| node.path.iter().map(String::as_str).eq(path.iter().copied()))
-        .with_context(|| format!("threetched binary has no command {}", path.join(" ")))
-}
-
-fn observed_commands(node: &CliNode) -> BTreeSet<&str> {
-    node.commands.iter().map(String::as_str).collect()
-}
-
 fn capture() -> Result<CapturedSkills> {
-    let runtime_binary = super::tched_router_paths::binary()?;
-    let config_dir = super::tched_router_paths::config_dir()?;
-    let (capture_binary, capture_manifest) = super::tched_router_paths::capture_paths()?;
-    let manifest: Value = serde_json::from_reader(File::open(capture_manifest)?)?;
-    let manifest_hash = manifest.pointer("/artifact/sha256").and_then(Value::as_str)
-        .context("tched-router manifest has no artifact sha256")?;
-    let binary_hash = sha256_file(&capture_binary)?;
-    ensure!(binary_hash == manifest_hash, "threetched binary does not match the tched-router manifest");
-    let surface = introspect_binary_subtree(
-        &capture_binary,
-        &["skills".into()],
-        &BinaryIntrospectOpts { max_depth: 2, ssh: None },
-    )?;
-    ensure!(
-        observed_commands(node(&surface, &["skills"])?)
-            == BTreeSet::from(["list", "add", "edit", "bundle", "audit", "install", "remove", "test"]),
-        "threetched skills command set changed; update the typed adapter before sealing"
-    );
-    ensure!(
-        observed_commands(node(&surface, &["skills", "bundle"])?)
-            == BTreeSet::from(["list", "add", "remove", "rename", "show"]),
-        "threetched skills bundle command set changed; update the typed adapter before sealing"
-    );
-    for (method, path, specific_flags) in CLI_METHODS {
-        let command = node(&surface, path)?;
-        let observed: BTreeSet<&str> = command.flags.iter()
-            .map(|flag| flag.name.as_str())
-            .filter(|flag| !["--config-dir", "--log-level", "--verbose", "--help"].contains(flag))
-            .collect();
-        let expected: BTreeSet<&str> = specific_flags.iter().copied().collect();
-        ensure!(observed == expected, "threetched CLI flags changed for {method}: observed {observed:?}, expected {expected:?}");
-    }
-    let config_schema_output = StdCommand::new(&capture_binary).args(["config", "schema"])
-        .output().context("capture threetched config schema")?;
-    ensure!(config_schema_output.status.success(), "threetched config schema failed");
-    let config_schema: Value = serde_json::from_slice(&config_schema_output.stdout)
-        .context("threetched config schema was not JSON")?;
+    let shared = super::threetched::capture_state()?;
+    let expected: Vec<_> = CLI_METHODS.iter().map(|(_, path, flags)| (*path, *flags)).collect();
+    let cli_surface = super::threetched::captured_cli_group("skills", &expected)?;
     let bundle_config_schema =
-        super::binary_namespace::filter_namespace(&config_schema, "skill_bundles")?;
+        super::binary_namespace::filter_namespace(super::threetched::config_schema()?, "skill_bundles")?;
     // The candidate path is a build-time selector only. Seal the runtime path
     // so this descriptor remains valid after the binary is staged in a release.
     let state = SkillsState {
-        binary: runtime_binary.to_str().context("non-UTF8 tched-router binary path")?.into(),
-        config_dir: config_dir.to_str().context("non-UTF8 tched-router config path")?.into(),
-        binary_sha256: binary_hash,
+        binary: shared.binary.clone(),
+        config_dir: shared.config_dir.clone(),
+        binary_sha256: shared.binary_sha256.clone(),
         command_group: "skills".into(),
-        cli_surface: {
-            let mut surface = surface;
-            surface.binary = runtime_binary.to_str().context("non-UTF8 tched-router binary path")?.into();
-            serde_json::to_value(surface)?
-        },
+        cli_surface,
         bundle_config_schema,
     };
     Ok(CapturedSkills { state })
@@ -314,10 +265,17 @@ impl StatePlugin for TchedSkillsPlugin {
 }
 
 pub fn state_value() -> Result<OwnedValue> {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_state(PLUGIN_NAME);
+    }
     Ok(simd_json::serde::to_owned_value(&captured()?.state)?)
 }
 
 pub fn tched_skills_schema() -> PluginSchema {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_schema(PLUGIN_NAME)
+            .expect("tched_skills runtime requires its sealed schema");
+    }
     let captured = captured().expect("installed threetched skills contract must be captured before sealing");
     let root =
         serde_json::to_value(schemars::schema_for!(SkillsState)).expect("skills state schema");
@@ -659,6 +617,12 @@ pub(crate) async fn run(
         command.args(["-u", "jeremy:jeremy"]).arg(binary);
         command
     } else {
+        if drop_privileges {
+            let owner = nix::unistd::User::from_name("jeremy")?
+                .context("threetched service owner is absent")?;
+            ensure!(nix::unistd::geteuid() == owner.uid && nix::unistd::getegid() == owner.gid,
+                "threetched skills dispatch must run as its configured service owner");
+        }
         Command::new(binary)
     };
     command.args(argv).args([
@@ -739,6 +703,7 @@ mod tests {
 
     #[test]
     fn schema_is_sealable_and_every_method_has_a_capability() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let schema = tched_skills_schema();
         assert!(schema.validate_capability_closure().missing.is_empty());
         schema.validate_public_state_policy().unwrap();

@@ -594,7 +594,7 @@ seed_image_metadata() {
     image_result=$("$image_helper" "${1:-verify-metadata}" "$seed_dir/volume") || seed_fail "shared image verifier rejected the image"
     printf '%s\n' "$image_result" | jq -ce '
         select(.layout == "shared-partition-siblings-v2" and
-            (.release_id | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")) and
+            (.release_id | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")) and
             (.manifest_sha256 | type == "string" and test("^[0-9a-f]{64}$"))) |
         {release_id,layout,manifest_sha256}' || seed_fail "shared image metadata verification failed"
 }

@@ -122,8 +122,8 @@ impl SeedProvisionPlan {
                 && self
                     .instance
                     .expanded_devices
-                    .iter()
-                    .all(|named| matches!(named.device, Device::Disk(_)))
+                    .as_ref()
+                    .is_some_and(|devices| devices.iter().all(|named| matches!(named.device, Device::Disk(_))))
                 && self.instance.expanded_config.is_some(),
             "seeded instance includes untrusted local devices"
         );
@@ -1161,7 +1161,7 @@ mod tests {
             .insert("security.privileged".into(), "true".into());
         assert!(privileged.validate(&input, &revision).is_err());
         let mut nic = plan.clone();
-        nic.instance.expanded_devices.push(
+        nic.instance.expanded_devices.as_mut().unwrap().push(
             serde_json::from_value(serde_json::json!({
                 "name":"eth0","device":{"type":"nic","network":"default"}
             }))
@@ -1228,7 +1228,7 @@ mod tests {
             .insert("security.nesting".into(), "true".into());
         assert!(native_instance_matches(&plan, &drift).is_err());
         let mut nic = observed.clone();
-        nic.expanded_devices.push(
+        nic.expanded_devices.as_mut().unwrap().push(
             serde_json::from_value(serde_json::json!({
                 "name":"eth0","device":{"type":"nic","network":"default"}
             }))
@@ -1236,7 +1236,7 @@ mod tests {
         );
         assert!(native_instance_matches(&plan, &nic).is_err());
         let mut root = observed;
-        root.expanded_devices[0] = serde_json::from_value(serde_json::json!({
+        root.expanded_devices.as_mut().unwrap()[0] = serde_json::from_value(serde_json::json!({
             "name":"root","device":{"type":"disk","path":"/","pool":"shared"}
         }))
         .unwrap();

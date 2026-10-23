@@ -39,6 +39,7 @@ use qdrant_client::{Payload, Qdrant, QdrantError};
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use tokio::io::AsyncWriteExt;
 
 use crate::voyage::VoyageClient;
 
@@ -54,6 +55,15 @@ const BLOCK_POINT_NAMESPACE: uuid::Uuid =
 
 /// File holding the highest block number whose vector has been indexed.
 const INDEXED_BLOCK_FILE: &str = ".vector-index-block";
+
+const RECEIVED_CHECKPOINT_ENV: &str = "OPDBUS_CHAIN_VECTOR_CHECKPOINT";
+
+#[derive(Serialize, serde::Deserialize)]
+struct ReceivedCheckpoint {
+    root: PathBuf,
+    stream_uuid: String,
+    indexed_block: u64,
+}
 
 /// Decides what of a block is signal. The bridge supplies the sealed plugin
 /// schema of the mutation (OD-64: "filter out noise with the original
@@ -100,34 +110,6 @@ pub struct HostLoad {
     pub psi_io_some_avg10: Option<f64>,
 }
 
-impl HostLoad {
-    /// Read `/proc/loadavg` and `/proc/pressure/*` (absent PSI → `None`).
-    pub fn sample() -> Self {
-        let mut load = Self::default();
-        if let Ok(text) = std::fs::read_to_string("/proc/loadavg") {
-            let mut parts = text.split_whitespace();
-            load.load1 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
-            load.load5 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
-            load.load15 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
-            if let Some((running, total)) = parts.next().and_then(|v| v.split_once('/')) {
-                load.running = running.parse().unwrap_or(0);
-                load.total = total.parse().unwrap_or(0);
-            }
-        }
-        let psi = |resource: &str| -> Option<f64> {
-            let text = std::fs::read_to_string(format!("/proc/pressure/{resource}")).ok()?;
-            let some = text.lines().find(|l| l.starts_with("some "))?;
-            some.split_whitespace()
-                .find_map(|kv| kv.strip_prefix("avg10="))
-                .and_then(|v| v.parse().ok())
-        };
-        load.psi_cpu_some_avg10 = psi("cpu");
-        load.psi_memory_some_avg10 = psi("memory");
-        load.psi_io_some_avg10 = psi("io");
-        load
-    }
-}
-
 /// What the projector records beside a vector (the sidecar).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, PartialEq)]
 pub struct VectorMeta {
@@ -137,7 +119,10 @@ pub struct VectorMeta {
     pub queued_ms: u64,
     /// Embedder round trip.
     pub embed_ms: u64,
-    pub host_load: HostLoad,
+    /// Optional declared diagnostic observation. Legacy sidecars with a load
+    /// object remain readable; unavailable observations are omitted, never zeroed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_load: Option<HostLoad>,
     /// Which policy rendered the text (`schema` or `flatten`).
     pub policy: String,
 }
@@ -151,6 +136,8 @@ pub struct ChainVectorIndex {
     /// `None` on a replica: ingesting received vectors needs no embedder.
     voyage: Option<VoyageClient>,
     policy: std::sync::Arc<dyn ProjectionPolicy>,
+    checkpoint_path: PathBuf,
+    received_identity: Option<(PathBuf, String)>,
 }
 
 /// Query-only access to the existing index. Unlike opening a projector, this
@@ -245,13 +232,56 @@ impl ChainVectorIndex {
         Self::build_with_chain(chain_path, chain, voyage).await
     }
 
-    /// Received dump root: read-only `timing/` and `vectors/` children, watermark on `dest`.
+    /// Received dump root, with an explicitly configured writable checkpoint
+    /// outside the read-only snapshot. No state is created inside `dest`.
     pub async fn open_received_root(dest: &Path) -> Result<Self> {
-        let chain_path = dest.to_path_buf();
-        let chain = StreamingSnowball::open_received(dest)
+        let checkpoint = std::env::var(RECEIVED_CHECKPOINT_ENV)
+            .with_context(|| format!("{RECEIVED_CHECKPOINT_ENV} must name a writable checkpoint outside the received snapshot"))?;
+        let stream_uuid = btrfs_delta::received_uuid(dest).await?
+            .context("chain root is not a received Btrfs snapshot")?;
+        Self::open_received_root_with_checkpoint(dest, Path::new(&checkpoint), &stream_uuid).await
+    }
+
+    pub async fn open_received_root_with_checkpoint(
+        dest: &Path,
+        checkpoint: &Path,
+        expected_stream_uuid: &str,
+    ) -> Result<Self> {
+        let root = tokio::fs::canonicalize(dest).await.context("resolve received chain root")?;
+        let stream_uuid = btrfs_delta::received_uuid(&root).await?
+            .context("chain root is not a received Btrfs snapshot")?;
+        anyhow::ensure!(stream_uuid == expected_stream_uuid, "received snapshot UUID does not match arrival hook");
+        anyhow::ensure!(checkpoint.is_absolute(), "received checkpoint path must be absolute");
+        let checkpoint_parent = tokio::fs::canonicalize(checkpoint.parent().context("checkpoint has no parent")?)
+            .await.context("checkpoint parent must already exist and be writable by the operator")?;
+        let checkpoint_path = checkpoint_parent.join(checkpoint.file_name().context("checkpoint has no file name")?);
+        anyhow::ensure!(!checkpoint_path.starts_with(&root), "checkpoint must be outside the read-only received snapshot");
+        let checkpoint_exists = match tokio::fs::symlink_metadata(&checkpoint_path).await {
+            Ok(metadata) => {
+                anyhow::ensure!(metadata.is_file() && !metadata.file_type().is_symlink(), "checkpoint must be a regular file, not a symlink");
+                true
+            },
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+            Err(error) => return Err(error.into()),
+        };
+        let mut checkpoint_file = tokio::fs::OpenOptions::new().write(true)
+            .create_new(!checkpoint_exists).open(&checkpoint_path).await
+            .context("received checkpoint must be writable before indexing")?;
+        if !checkpoint_exists {
+            checkpoint_file.write_all(&serde_json::to_vec(&ReceivedCheckpoint {
+                root: root.clone(), stream_uuid: stream_uuid.clone(), indexed_block: 0,
+            })?).await.context("initialize received checkpoint")?;
+        }
+        drop(checkpoint_file);
+        let chain = StreamingSnowball::open_received(&root)
             .await
-            .with_context(|| format!("failed to open received chain at {}", dest.display()))?;
-        Self::build_with_chain(chain_path, chain, None).await
+            .with_context(|| format!("failed to open received chain at {}", root.display()))?;
+        let mut index = Self::build_with_chain(root.clone(), chain, None).await?;
+        index.checkpoint_path = checkpoint_path;
+        index.received_identity = Some((root, stream_uuid));
+        // Reject a reused checkpoint before any point or Cozo-link mutation.
+        index.read_indexed_block().await?;
+        Ok(index)
     }
 
     async fn build_with_chain(
@@ -267,16 +297,17 @@ impl ChainVectorIndex {
             .and_then(|value| value.parse().ok())
             .unwrap_or(DEFAULT_DIMS);
 
-        let qdrant = Qdrant::from_url(&url)
-            .build()
+        let replica = voyage.is_none();
+        let client = Qdrant::from_url(&url);
+        // Qdrant's builder otherwise starts a synchronous compatibility health
+        // probe. Even that connection is unnecessary on the automatic origin.
+        let client = if replica { client } else { client.skip_compatibility_check() };
+        let qdrant = client.build()
             .with_context(|| format!("failed to build Qdrant client for {url}"))?;
-        qdrant
-            .health_check()
-            .await
-            .with_context(|| format!("Qdrant unreachable at {url}"))?;
-
         let index = Self {
             chain,
+            checkpoint_path: chain_path.join(INDEXED_BLOCK_FILE),
+            received_identity: None,
             chain_path,
             qdrant,
             collection,
@@ -284,7 +315,11 @@ impl ChainVectorIndex {
             voyage,
             policy: std::sync::Arc::new(FlattenAll),
         };
-        index.ensure_collection().await?;
+        // Origin projection only embeds into the chain. The replica and
+        // explicit manual index writes own Qdrant initialization.
+        if replica {
+            index.ensure_collection().await?;
+        }
         Ok(index)
     }
 
@@ -356,14 +391,34 @@ impl ChainVectorIndex {
             .as_ref()
             .context("project_pending requires an embedder; this index was opened as a replica")?;
         let write_qdrant = project_writes_qdrant(upsert_qdrant);
+        let mut upserted_to_qdrant = 0usize;
+        let mut indexed_through: Option<u64> = None;
+        if write_qdrant {
+            self.ensure_collection().await?;
+            // A previous manual pass may have attached a durable vector before
+            // its Qdrant write failed. Reuse that vector instead of embedding
+            // again or treating its presence as index completion.
+            let blocks = self.chain.blocks().await?;
+            let with_vectors: Vec<&ChainBlockRef> =
+                blocks.iter().filter(|block| block.has_vector).collect();
+            let missing = self.missing_from_index(&with_vectors).await?;
+            for block_num in missing.into_iter().take(limit.unwrap_or(usize::MAX)) {
+                let block = blocks.iter().find(|block| block.block_num == block_num)
+                    .context("missing-index block disappeared from chain view")?;
+                let vector = self.chain.read_vector(block_num).await?
+                    .context("missing-index block has no durable vector")?;
+                self.upsert_block(block, self.fit_dims(vector, block_num)?).await?;
+                upserted_to_qdrant += 1;
+                indexed_through = Some(indexed_through.unwrap_or(0).max(block_num));
+            }
+        }
 
         let (pending, already_present) = self
             .chain
-            .pending_blocks(limit.unwrap_or(usize::MAX))
+            .pending_blocks(limit.unwrap_or(usize::MAX).saturating_sub(upserted_to_qdrant))
             .await?;
 
         let mut embedded = 0usize;
-        let mut upserted_to_qdrant = 0usize;
         for block in &pending {
             let lines = self.policy.embedding_lines(block);
             let text = match &lines {
@@ -389,7 +444,9 @@ impl ChainVectorIndex {
                 embedded_at_ms: now_ms,
                 queued_ms: now_ms.saturating_sub(block.timestamp),
                 embed_ms,
-                host_load: HostLoad::sample(),
+                // The projector has no admitted metrics source. Do not read
+                // live /proc or invent zero-valued health as a fallback.
+                host_load: None,
                 policy: if lines.is_some() { "schema" } else { "flatten" }.into(),
             };
             if let Ok(meta_value) = simd_json::serde::to_owned_value(&meta)
@@ -403,13 +460,14 @@ impl ChainVectorIndex {
             if write_qdrant {
                 self.upsert_block(block, vector).await?;
                 upserted_to_qdrant += 1;
+                indexed_through = Some(indexed_through.unwrap_or(0).max(block.block_num));
             }
             embedded += 1;
         }
 
         // Watermark tracks Qdrant coverage, not chain vector coverage. Bump it
         // only when this pass actually wrote the index (manual exception).
-        if write_qdrant && let Some(highest) = pending.iter().map(|block| block.block_num).max() {
+        if let Some(highest) = indexed_through {
             let watermark = self.read_indexed_block().await?.max(highest);
             self.write_indexed_block(watermark).await?;
         }
@@ -544,7 +602,6 @@ impl ChainVectorIndex {
 
             match blocks.iter().find(|block| block.block_num == *block_num) {
                 Some(block) => {
-                    self.upsert_block(block, vector).await?;
                     let links = chain_links(block);
                     let link_refs: Vec<(&str, &str)> = links
                         .iter()
@@ -559,6 +616,9 @@ impl ChainVectorIndex {
                                 block.block_num
                             )
                         })?;
+                    // An indexed point suppresses future gap retries. Commit
+                    // its idempotent Cozo links before making that point visible.
+                    self.upsert_block(block, vector).await?;
                 }
                 // Vector present without its timing record (partial or
                 // out-of-order receive). Index it by block number so a later
@@ -738,7 +798,7 @@ impl ChainVectorIndex {
 
         let point = PointStruct::new(point_id(block.block_num).to_string(), vector, payload);
         self.qdrant
-            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]))
+            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
             .await
             .with_context(|| {
                 format!(
@@ -759,7 +819,7 @@ impl ChainVectorIndex {
 
         let point = PointStruct::new(point_id(block_num).to_string(), vector, payload);
         self.qdrant
-            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]))
+            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
             .await
             .with_context(|| format!("failed to upsert orphan vector for block {block_num}"))?;
         Ok(())
@@ -784,20 +844,37 @@ impl ChainVectorIndex {
     }
 
     fn indexed_block_path(&self) -> PathBuf {
-        self.chain_path.join(INDEXED_BLOCK_FILE)
+        self.checkpoint_path.clone()
     }
 
     /// Highest block number whose vector is in the index.
     pub async fn read_indexed_block(&self) -> Result<u64> {
         match tokio::fs::read_to_string(self.indexed_block_path()).await {
-            Ok(text) => Ok(text.trim().parse().unwrap_or(0)),
+            Ok(text) => {
+                if let Some((root, stream_uuid)) = &self.received_identity {
+                    let checkpoint: ReceivedCheckpoint = serde_json::from_str(&text)
+                        .context("invalid received index checkpoint; use a fresh checkpoint to rebuild")?;
+                    anyhow::ensure!(&checkpoint.root == root && &checkpoint.stream_uuid == stream_uuid,
+                        "checkpoint belongs to a different received snapshot; configure a fresh checkpoint");
+                    Ok(checkpoint.indexed_block)
+                } else {
+                    Ok(text.trim().parse().unwrap_or(0))
+                }
+            },
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(0),
             Err(err) => Err(anyhow::Error::from(err).context("failed to read index watermark")),
         }
     }
 
     async fn write_indexed_block(&self, block_num: u64) -> Result<()> {
-        tokio::fs::write(self.indexed_block_path(), format!("{block_num}\n"))
+        let content = if let Some((root, stream_uuid)) = &self.received_identity {
+            serde_json::to_string(&ReceivedCheckpoint {
+                root: root.clone(), stream_uuid: stream_uuid.clone(), indexed_block: block_num,
+            })?
+        } else {
+            format!("{block_num}\n")
+        };
+        tokio::fs::write(self.indexed_block_path(), content)
             .await
             .context("failed to persist index watermark")
     }
@@ -874,6 +951,20 @@ fn is_already_exists(err: &QdrantError) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vector_metadata_reads_legacy_load_and_omits_unavailable_load() {
+        let mut legacy = serde_json::json!({
+            "embedded_at_ms": 1, "queued_ms": 2, "embed_ms": 3, "policy": "schema",
+            "host_load": {"load1": 1.0, "load5": 2.0, "load15": 3.0, "running": 4, "total": 5}
+        });
+        let old: VectorMeta = serde_json::from_value(legacy.clone()).unwrap();
+        assert_eq!(old.host_load.unwrap().load1, 1.0);
+        legacy.as_object_mut().unwrap().remove("host_load");
+        let current: VectorMeta = serde_json::from_value(legacy).unwrap();
+        assert!(current.host_load.is_none());
+        assert!(serde_json::to_value(current).unwrap().get("host_load").is_none());
+    }
 
     #[test]
     fn point_namespace_is_stable_and_distinct() {
@@ -961,8 +1052,8 @@ mod tests {
     fn timing_u64(value: &simd_json::OwnedValue, key: &str) -> Option<u64> {
         match value {
             simd_json::OwnedValue::Object(map) => map.get(key).and_then(|v| match v {
-                simd_json::OwnedValue::I64(n) => Some(*n as u64),
-                simd_json::OwnedValue::U64(n) => Some(*n),
+                simd_json::OwnedValue::Static(simd_json::StaticNode::I64(n)) => u64::try_from(*n).ok(),
+                simd_json::OwnedValue::Static(simd_json::StaticNode::U64(n)) => Some(*n),
                 _ => None,
             }),
             _ => None,
@@ -986,10 +1077,9 @@ mod tests {
                 }
             }
             simd_json::OwnedValue::String(s) => out.push((prefix.to_string(), s.to_string())),
-            simd_json::OwnedValue::I64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::U64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::F64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::Bool(b) => out.push((prefix.to_string(), b.to_string())),
+            simd_json::OwnedValue::Static(simd_json::StaticNode::I64(n)) => out.push((prefix.to_string(), n.to_string())),
+            simd_json::OwnedValue::Static(simd_json::StaticNode::U64(n)) => out.push((prefix.to_string(), n.to_string())),
+            simd_json::OwnedValue::Static(simd_json::StaticNode::F64(n)) => out.push((prefix.to_string(), n.to_string())),
             simd_json::OwnedValue::Static(simd_json::StaticNode::Null) => {}
             simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(b)) => {
                 out.push((prefix.to_string(), b.to_string()));
