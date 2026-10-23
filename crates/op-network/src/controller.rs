@@ -54,6 +54,12 @@ mod native_tests;
 trait OfIo: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> OfIo for T {}
 
+/// Only errors crossing an OpenFlow wire boundary invalidate this stream.
+/// Admission callbacks can also return I/O/timeouts without touching the wire.
+#[derive(Debug, thiserror::Error)]
+#[error("OpenFlow transport failed; reconnect required; outcome may be uncertain")]
+struct TransportFailure;
+
 const TLS_CA_ENV: &str = "OF_CONTROLLER_TLS_CA";
 const TLS_CERT_ENV: &str = "OF_CONTROLLER_TLS_CERT";
 const TLS_KEY_ENV: &str = "OF_CONTROLLER_TLS_KEY";
@@ -441,8 +447,8 @@ async fn send_msg_with_timeout(stream: &mut impl OfIo, bytes: &[u8], timeout: Du
     // error to the connection owner: reconnect, never retry the FlowMod or
     // continue using this stream. The peer may already have observed an effect.
     tokio::time::timeout(timeout, stream.write_all(bytes)).await
-        .context("OpenFlow write timed out; reconnect required; outcome may be uncertain")?
-        .context("sending OF message")
+        .context(TransportFailure)?
+        .context(TransportFailure)
 }
 
 // ── Port discovery ─────────────────────────────────────────────────────────────
@@ -656,6 +662,9 @@ async fn handle_connection(
         match push_flow_add(&mut stream, flow_json, &port_map, &port_macs, &mut xid).await {
             Ok(_) => static_installed += 1,
             Err(e) => {
+                if e.downcast_ref::<TransportFailure>().is_some() {
+                    return Err(e);
+                }
                 static_skipped += 1;
                 log::warn!("OF controller: skipping static flow ({e:#}): {flow_json}");
             }
@@ -787,8 +796,7 @@ async fn handle_connection(
                     push_flow_add(&mut stream, &req.flow_json, &port_map, &port_macs, &mut xid).await
                 };
                 let disconnected = outcome.as_ref().err().is_some_and(|error| {
-                    error.downcast_ref::<std::io::Error>().is_some()
-                        || error.downcast_ref::<tokio::time::error::Elapsed>().is_some()
+                    error.downcast_ref::<TransportFailure>().is_some()
                 });
                 let _ = req.reply.send(outcome);
                 // A timed-out partial frame cannot be reused safely.
