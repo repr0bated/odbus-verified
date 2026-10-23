@@ -5,6 +5,14 @@ edition.workspace = true
 description = "Schema-driven FUSE projection over authoritative typed OP-DBUS blobs"
 license = "MIT"
 
+[features]
+# Requires plugin_types.rs generated from the selected sealed catalog.
+generated-example = []
+
+[[example]]
+name = "typed_use_generated"
+required-features = ["generated-example"]
+
 [dependencies]
 anyhow = "1"
 blake3 = "1"
@@ -20,10 +28,13 @@ serde_json = "1"
 sha2 = "0.10"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "time"] }
+rmcp = { version = "3.5", features = ["server", "transport-io"] }
 uuid = { version = "1", features = ["v4"] }
 zbus = { version = "5", features = ["p2p", "tokio"] }
 # The sealed schema's authority: it decodes every blob this crate projects.
 op-state-store = { workspace = true }
+op-core = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+rmcp = { version = "3.5", features = ["client", "server", "transport-io"] }

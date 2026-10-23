@@ -7,6 +7,24 @@ use serde_json::Value;
 
 pub const FORMAT_VERSION: &str = "3tchedfs/1";
 
+/// Explicitly distinguish a complete state from its least-privilege projection.
+/// Legacy objects decode as Full and must be sanitized before public rendering.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StateValueScope {
+    #[default]
+    Full,
+    PublicProjection,
+    /// Boot-time catalog/schema capture, with no claimed state value.
+    SchemaOnly,
+}
+
+impl StateValueScope {
+    fn is_full(&self) -> bool {
+        *self == Self::Full
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TypedObjectBlob {
     pub format: String,
@@ -14,6 +32,8 @@ pub struct TypedObjectBlob {
     pub source_schema_hash: String,
     pub schema: PluginSchema,
     pub value: Value,
+    #[serde(default, skip_serializing_if = "StateValueScope::is_full")]
+    pub value_scope: StateValueScope,
 }
 
 impl TypedObjectBlob {
@@ -29,9 +49,65 @@ impl TypedObjectBlob {
             source_schema_hash,
             schema,
             value,
+            value_scope: StateValueScope::Full,
         };
         blob.validate(None)?;
         Ok(blob)
+    }
+
+    pub fn new_public(
+        plugin_id: String,
+        source_schema_hash: String,
+        schema: PluginSchema,
+        value: Value,
+    ) -> Result<Self> {
+        let blob = Self {
+            format: FORMAT_VERSION.to_owned(),
+            plugin_id,
+            source_schema_hash,
+            schema,
+            value,
+            value_scope: StateValueScope::PublicProjection,
+        };
+        blob.validate(None)?;
+        Ok(blob)
+    }
+
+    pub fn schema_only(
+        plugin_id: String,
+        source_schema_hash: String,
+        schema: PluginSchema,
+    ) -> Result<Self> {
+        let blob = Self {
+            format: FORMAT_VERSION.to_owned(),
+            plugin_id,
+            source_schema_hash,
+            schema,
+            value: Value::Null,
+            value_scope: StateValueScope::SchemaOnly,
+        };
+        blob.validate(None)?;
+        Ok(blob)
+    }
+
+    /// Freshly sanitize legacy complete snapshots before any public rendering.
+    /// Schema and operation declarations remain intact; only state is filtered.
+    pub fn public_projection(&self) -> Result<Self> {
+        self.validate(None)?;
+        if self.value_scope == StateValueScope::SchemaOnly {
+            return Ok(self.clone());
+        }
+        let value = match self.value_scope {
+            StateValueScope::Full => self.schema.project_public_value(&self.value)?,
+            StateValueScope::PublicProjection => self.value.clone(),
+            StateValueScope::SchemaOnly => unreachable!("handled above"),
+        };
+        Self::new_public(
+            self.plugin_id.clone(),
+            self.source_schema_hash.clone(),
+            self.schema.clone(),
+            value,
+        )
     }
 
     pub fn validate(&self, base: Option<&Value>) -> Result<()> {
@@ -45,7 +121,29 @@ impl TypedObjectBlob {
                 self.plugin_id
             );
         }
-        self.schema.validate_value(&self.value, base)
+        match self.value_scope {
+            StateValueScope::Full => self.schema.validate_value(&self.value, base),
+            StateValueScope::SchemaOnly => {
+                if !self.value.is_null() || base.is_some() {
+                    bail!("schema-only object has no readable or writable state value");
+                }
+                self.schema.sealed()?.validate_public_state_policy()?;
+                Ok(())
+            }
+            StateValueScope::PublicProjection => {
+                self.schema.validate_public_value(&self.value)?;
+                if let Some(base) = base {
+                    validate_projected_constraints(
+                        &self.schema.fields,
+                        &self.value,
+                        &self.value,
+                        Some(base),
+                    )?;
+                    self.schema.validate_immutability(&self.value, base)?;
+                }
+                Ok(())
+            }
+        }
     }
 }
 
@@ -103,6 +201,62 @@ pub struct PluginSchema {
 }
 
 impl PluginSchema {
+    fn sealed(&self) -> Result<op_state_store::PluginSchema> {
+        let mut value = serde_json::to_value(self)?;
+        if value["public_state"].is_null() {
+            value["public_state"] = serde_json::json!({"paths": []});
+        }
+        serde_json::from_value(value)
+            .context("restore canonical sealed schema for public projection")
+    }
+
+    /// Validate complete committed state before deriving its public view.
+    pub fn project_public_value(&self, root: &Value) -> Result<Value> {
+        self.validate_value(root, None).map_err(|_| anyhow::anyhow!("committed state does not satisfy the complete sealed schema; public projection unavailable"))?;
+        let sealed = self.sealed()?;
+        sealed.validate_public_state_policy()?;
+        let raw = serde_json::from_value(root.clone())?;
+        let projected = sealed.project_public_state(&raw)?;
+        Ok(projected
+            .as_ref()
+            .map(serde_json::to_value)
+            .transpose()
+            .map(|value| value.unwrap_or_else(|| serde_json::json!({})))?)
+    }
+
+    /// Validate the public shape against the sealed allowlist, not against the
+    /// complete state's required private fields. Re-projection checks canonical
+    /// selected types and rejects all extra or private members. Complete-state
+    /// constraints are checked before filtering; a partial value is not evidence
+    /// that a private peer-field condition still holds in current raw state.
+    pub fn validate_public_value(&self, root: &Value) -> Result<()> {
+        let sealed = self.sealed()?;
+        sealed.validate_public_state_policy()?;
+        let raw = serde_json::from_value(root.clone())?;
+        let projected = sealed.project_public_state(&raw)?;
+        let expected = projected
+            .as_ref()
+            .map(serde_json::to_value)
+            .transpose()?
+            .unwrap_or_else(|| serde_json::json!({}));
+        if expected != *root {
+            bail!("value contains state outside the sealed public projection");
+        }
+        for pointer in &sealed.public_state.paths {
+            let components = pointer[1..]
+                .split('/')
+                .map(|part| part.replace("~1", "/").replace("~0", "~"))
+                .collect::<Vec<_>>();
+            validate_required_public_path(
+                &FieldType::Object(self.fields.clone()),
+                &components,
+                root,
+            )?;
+        }
+        validate_projected_constraints(&self.fields, root, root, None)?;
+        Ok(())
+    }
+
     pub fn validate_value(&self, root: &Value, base: Option<&Value>) -> Result<()> {
         let object = root
             .as_object()
@@ -119,32 +273,25 @@ impl PluginSchema {
         }
 
         if let Some(base) = base {
-            let base_object = base
-                .as_object()
-                .with_context(|| format!("base {} state must be an object", self.name))?;
-            validate_object_immutability(&self.fields, object, base_object, "")?;
-
-            for pointer in &self.immutable_paths {
-                if root.pointer(pointer) != base.pointer(pointer) {
-                    bail!("immutable path {pointer} changed");
-                }
-            }
-
-            if self.tags.iter().any(|tag| tag == "immutable") && root != base {
-                bail!("plugin {} is immutable", self.name);
-            }
+            self.validate_immutability(root, base)?;
         }
 
         Ok(())
     }
 
-    pub fn template(&self) -> Value {
-        let values = self
-            .fields
-            .iter()
-            .map(|(name, schema)| (name.clone(), schema.template()))
-            .collect();
-        Value::Object(values)
+    fn validate_immutability(&self, root: &Value, base: &Value) -> Result<()> {
+        let object = root.as_object().context("state must be an object")?;
+        let base_object = base.as_object().context("base state must be an object")?;
+        validate_object_immutability(&self.fields, object, base_object, "")?;
+        for pointer in &self.immutable_paths {
+            if root.pointer(pointer) != base.pointer(pointer) {
+                bail!("immutable path {pointer} changed");
+            }
+        }
+        if self.tags.iter().any(|tag| tag == "immutable") && root != base {
+            bail!("plugin {} is immutable", self.name);
+        }
+        Ok(())
     }
 
     /// The capabilities that at least one method requires.
@@ -189,6 +336,7 @@ impl FieldSchema {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn template(&self) -> Value {
         self.default
             .clone()
@@ -213,6 +361,8 @@ pub enum FieldType {
     /// Wire form matches op-state-store: `{"json_schema": <document>}`.
     JsonSchema(Box<Value>),
     Enum(Vec<String>),
+    /// Reduced union: source anyOf and oneOf lose exclusivity/discriminators here.
+    /// Exact JSON Schema constraints remain in JsonSchema and sealed admission.
     OneOf(Vec<FieldType>),
     Any,
 }
@@ -266,16 +416,11 @@ impl FieldType {
                 }
             }
             Self::OneOf(branches) => {
-                let matches = branches
+                if !branches
                     .iter()
-                    .filter(|branch| branch.validate(value, root).is_ok())
-                    .count();
-                // The current schemars adapter reduces some discriminated
-                // variants to the same FieldType shape. Require at least one
-                // matching branch; the sealed JSON Schema remains available
-                // in the object for stricter discriminator-aware consumers.
-                if matches == 0 {
-                    bail!("value does not match any union branch");
+                    .any(|branch| branch.validate(value, root).is_ok())
+                {
+                    bail!("value must match at least one reduced union branch");
                 }
             }
             Self::Any | Self::String | Self::Integer | Self::Float | Self::Boolean => {}
@@ -283,6 +428,7 @@ impl FieldType {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn template(&self) -> Value {
         match self {
             Self::String => Value::String(String::new()),
@@ -358,10 +504,12 @@ impl Constraint {
             Self::RequiresField { field } if root.get(field).is_none() => {
                 bail!("required peer field '{field}' is missing");
             }
-            // A custom validator names plugin code that this standalone
-            // projection cannot execute. The plugin dispatch path remains the
-            // final authority when a staged value is applied.
-            Self::Custom { .. } | Self::OneOf { .. } | Self::RequiresField { .. } => {}
+            Self::Custom { validator } => {
+                bail!(
+                    "custom validator '{validator}' cannot be executed by this filesystem; validation is unavailable"
+                );
+            }
+            Self::OneOf { .. } | Self::RequiresField { .. } => {}
         }
         Ok(())
     }
@@ -621,6 +769,149 @@ fn json_scalar_text(value: &Value) -> String {
     }
 }
 
+// Policy syntax and path admissibility have already been checked by the
+// canonical authority. This additional walk enforces only required members
+// along selected paths, without imposing required private siblings.
+fn validate_required_public_path(
+    field_type: &FieldType,
+    components: &[String],
+    value: &Value,
+) -> Result<()> {
+    let Some((head, tail)) = components.split_first() else {
+        return Ok(());
+    };
+    match field_type {
+        FieldType::Object(fields) => {
+            let field = fields
+                .get(head)
+                .context("public path field is undeclared")?;
+            let Some(child) = value.get(head) else {
+                if field.required {
+                    bail!("required public field '{head}' is missing");
+                }
+                return Ok(());
+            };
+            if child.is_null() && !field.required {
+                return Ok(());
+            }
+            validate_required_public_path(&field.field_type, tail, child)?;
+        }
+        FieldType::Array(item) => {
+            for child in value
+                .as_array()
+                .context("public path array has incorrect type")?
+            {
+                validate_required_public_path(item, tail, child)?;
+            }
+        }
+        FieldType::Map(item) => {
+            if let Some(child) = value.get(head) {
+                validate_required_public_path(item, tail, child)?;
+            }
+        }
+        _ => bail!("public path traverses a non-container"),
+    }
+    Ok(())
+}
+
+// Public shape validation must not demand omitted private required members.
+// Value-local constraints still apply. A private cross-field precondition is
+// validated on the full raw state before capture, but cannot be re-proven from
+// a projected snapshot: changing its dependent field fails closed.
+fn validate_projected_constraints(
+    fields: &BTreeMap<String, FieldSchema>,
+    value: &Value,
+    root: &Value,
+    base: Option<&Value>,
+) -> Result<()> {
+    let object = value
+        .as_object()
+        .context("public state must be an object")?;
+    for (name, field) in fields {
+        let Some(value) = object.get(name) else {
+            continue;
+        };
+        if value.is_null() && !field.required {
+            continue;
+        }
+        let previous = base.and_then(|base| base.get(name));
+        let changed = base.is_some() && previous != Some(value);
+        if changed
+            && let Some(condition) = &field.read_only_when
+            && base
+                .and_then(|base| base.get(&condition.property))
+                .is_none()
+        {
+            bail!("cannot determine private read-only condition for public field '{name}'");
+        }
+        for constraint in &field.constraints {
+            if let Constraint::RequiresField { field: peer } = constraint
+                && root.get(peer).is_none()
+            {
+                if changed {
+                    bail!(
+                        "cannot verify private peer-field condition '{peer}' for changed public field '{name}'"
+                    );
+                }
+                continue;
+            }
+            constraint.validate(value, root)?;
+        }
+        let absent = Value::Null;
+        let next_base = base.map(|_| previous.unwrap_or(&absent));
+        validate_projected_type_constraints(&field.field_type, value, root, next_base)?;
+    }
+    Ok(())
+}
+
+fn validate_projected_type_constraints(
+    field_type: &FieldType,
+    value: &Value,
+    root: &Value,
+    base: Option<&Value>,
+) -> Result<()> {
+    match field_type {
+        FieldType::Object(fields) => validate_projected_constraints(fields, value, root, base)?,
+        FieldType::Array(item) => {
+            for (index, value) in value
+                .as_array()
+                .context("public array has incorrect type")?
+                .iter()
+                .enumerate()
+            {
+                let absent = Value::Null;
+                validate_projected_type_constraints(
+                    item,
+                    value,
+                    root,
+                    base.map(|base| base.get(index).unwrap_or(&absent)),
+                )?;
+            }
+        }
+        FieldType::Map(item) => {
+            for (key, value) in value.as_object().context("public map has incorrect type")? {
+                let absent = Value::Null;
+                validate_projected_type_constraints(
+                    item,
+                    value,
+                    root,
+                    base.map(|base| base.get(key).unwrap_or(&absent)),
+                )?;
+            }
+        }
+        FieldType::OneOf(branches) => {
+            field_type.validate(value, root)?;
+            let branch = branches
+                .iter()
+                .find(|branch| branch.validate(value, root).is_ok())
+                .context("public union has no branch")?;
+            validate_projected_type_constraints(branch, value, root, base)?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 fn validate_object_immutability(
     fields: &BTreeMap<String, FieldSchema>,
     current: &serde_json::Map<String, Value>,
@@ -713,8 +1004,8 @@ fn push_pointer(parent: &str, segment: &str) -> String {
     format!("{parent}/{escaped}")
 }
 
-/// A value that satisfies `schema` when no live state file exists.
-/// Missing plugin state is filled from this template and then validated.
+/// A schema-template utility. This is never a committed-state fallback.
+#[cfg(test)]
 fn json_schema_template(schema: &Value) -> Value {
     if let Some(const_value) = schema.get("const") {
         return const_value.clone();
@@ -760,6 +1051,7 @@ fn json_schema_template(schema: &Value) -> Value {
     }
 }
 
+#[cfg(test)]
 fn json_schema_type_name(schema: &Value) -> Option<&str> {
     match schema.get("type") {
         Some(Value::String(name)) => Some(name.as_str()),
@@ -822,6 +1114,121 @@ mod tests {
             guarantees: PluginGuarantees::default(),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn reduced_unions_accept_overlapping_branches() {
+        let overlapping = FieldType::OneOf(vec![FieldType::Integer, FieldType::Float]);
+        assert!(overlapping.validate(&Value::from(1), &Value::Null).is_ok());
+        assert!(
+            overlapping
+                .validate(&Value::from(1.5), &Value::Null)
+                .is_ok()
+        );
+        assert!(
+            overlapping
+                .validate(&Value::from("other"), &Value::Null)
+                .is_err()
+        );
+        let exact = FieldType::JsonSchema(Box::new(serde_json::json!({
+            "oneOf": [{"type": "integer"}, {"type": "number"}]
+        })));
+        assert!(exact.validate(&Value::from(1), &Value::Null).is_err());
+    }
+
+    #[test]
+    fn named_custom_validation_is_unavailable_instead_of_success() {
+        let mut schema = schema();
+        schema
+            .fields
+            .get_mut("name")
+            .unwrap()
+            .constraints
+            .push(Constraint::Custom {
+                validator: "plugin_specific".to_owned(),
+            });
+        let error = schema
+            .validate_value(&serde_json::json!({"name":"valid","id":1}), None)
+            .unwrap_err();
+        assert!(format!("{error:#}").contains("validation is unavailable"));
+    }
+
+    #[test]
+    fn public_objects_omit_required_private_fields_without_becoming_full_state() {
+        let mut schema = schema();
+        schema.public_state = serde_json::json!({"paths":["/name"]});
+        let full = TypedObjectBlob::new(
+            "demo".to_owned(),
+            "a".repeat(64),
+            schema.clone(),
+            serde_json::json!({"name":"before","id":1}),
+        )
+        .unwrap();
+        let public = full.public_projection().unwrap();
+        assert_eq!(public.value, serde_json::json!({"name":"before"}));
+        assert_eq!(public.value_scope, StateValueScope::PublicProjection);
+        assert!(schema.validate_value(&public.value, None).is_err());
+        public.validate(None).unwrap();
+        assert!(
+            schema
+                .validate_public_value(&serde_json::json!({"name":"before","id":1}))
+                .is_err()
+        );
+        assert!(
+            schema
+                .validate_public_value(&serde_json::json!({}))
+                .is_err()
+        );
+        assert!(
+            schema
+                .validate_public_value(&serde_json::json!({"name":""}))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn public_edits_cannot_assume_a_private_precondition() {
+        let mut schema = schema();
+        schema.public_state = serde_json::json!({"paths":["/name"]});
+        schema
+            .fields
+            .get_mut("name")
+            .unwrap()
+            .constraints
+            .push(Constraint::RequiresField {
+                field: "id".to_owned(),
+            });
+        let public = schema
+            .project_public_value(&serde_json::json!({"name":"before","id":1}))
+            .unwrap();
+        let unchanged = TypedObjectBlob::new_public(
+            "demo".to_owned(),
+            "a".repeat(64),
+            schema.clone(),
+            public.clone(),
+        )
+        .unwrap();
+        unchanged.validate(Some(&public)).unwrap();
+        let changed = TypedObjectBlob::new_public(
+            "demo".to_owned(),
+            "a".repeat(64),
+            schema,
+            serde_json::json!({"name":"after"}),
+        )
+        .unwrap();
+        assert!(changed.validate(Some(&public)).is_err());
+    }
+
+    #[test]
+    fn schema_only_captures_carry_no_claimed_state() {
+        let mut schema = schema();
+        schema.public_state = serde_json::json!({"paths":["/name"]});
+        let object =
+            TypedObjectBlob::schema_only("demo".to_owned(), "a".repeat(64), schema).unwrap();
+        assert_eq!(object.value_scope, StateValueScope::SchemaOnly);
+        assert!(object.value.is_null());
+        assert_eq!(object.public_projection().unwrap(), object);
+        assert!(object.validate(Some(&Value::Null)).is_err());
     }
 
     #[test]

@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -13,6 +14,15 @@ use crate::model::{FORMAT_VERSION, TypedObjectBlob};
 use crate::source::{SourceCatalog, SourceSnapshot};
 
 pub const DEFAULT_STORE_DIR: &str = "/dev/shm/3tchedfs";
+pub const MAX_DOCUMENT_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
+
+#[derive(Debug, thiserror::Error)]
+#[error("workspace object conflict: expected {expected_object_hash}, found {actual_object_hash}")]
+pub struct StageConflict {
+    pub expected_object_hash: String,
+    pub actual_object_hash: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ViewManifest {
@@ -153,10 +163,14 @@ impl ObjectStore {
                 workspace.workspace_id
             );
         }
-        let current_object = self.workspace_object(&workspace, plugin_id)?;
+        let current_object = self
+            .workspace_object(&workspace, plugin_id)?
+            .public_projection()?;
         let base_view = self.read_view(&workspace.base_view)?;
-        let immutable_base = self.object_for_view(&base_view, plugin_id)?;
-        let object = TypedObjectBlob::new(
+        let immutable_base = self
+            .object_for_view(&base_view, plugin_id)?
+            .public_projection()?;
+        let object = TypedObjectBlob::new_public(
             plugin_id.to_string(),
             current_object.source_schema_hash.clone(),
             current_object.schema.clone(),
@@ -178,9 +192,58 @@ impl ObjectStore {
         pointer: &str,
         value: Value,
     ) -> Result<String> {
+        self.stage_pointer_with_expected(workspace_id, plugin_id, pointer, None, value)
+    }
+
+    pub fn stage_pointer_checked(
+        &self,
+        workspace_id: &str,
+        plugin_id: &str,
+        pointer: &str,
+        expected_object_hash: &str,
+        value: Value,
+    ) -> Result<String> {
+        validate_hash(expected_object_hash, "expected object")?;
+        self.stage_pointer_with_expected(
+            workspace_id,
+            plugin_id,
+            pointer,
+            Some(expected_object_hash),
+            value,
+        )
+    }
+
+    fn stage_pointer_with_expected(
+        &self,
+        workspace_id: &str,
+        plugin_id: &str,
+        pointer: &str,
+        expected: Option<&str>,
+        value: Value,
+    ) -> Result<String> {
         let _lock = self.lock_exclusive()?;
         let workspace = self.read_workspace(workspace_id)?;
-        let object = self.workspace_object(&workspace, plugin_id)?;
+        if let Some(expected) = expected {
+            let base = self.read_view(&workspace.base_view)?;
+            let actual = workspace
+                .staged_objects
+                .get(plugin_id)
+                .or_else(|| base.objects.get(plugin_id))
+                .context("workspace plugin is absent")?;
+            if actual != expected {
+                return Err(StageConflict {
+                    expected_object_hash: expected.to_owned(),
+                    actual_object_hash: actual.clone(),
+                }
+                .into());
+            }
+        }
+        let object = self
+            .workspace_object(&workspace, plugin_id)?
+            .public_projection()?;
+        if object.value_scope == crate::model::StateValueScope::SchemaOnly {
+            bail!("schema-only state is unavailable for staging");
+        }
         let mut state = object.value;
         set_json_pointer(&mut state, pointer, value)?;
         self.stage_state_locked(workspace, plugin_id, state)
@@ -247,16 +310,22 @@ impl ObjectStore {
 
     pub fn read_snapshot(&self, name: &str) -> Result<ViewManifest> {
         validate_name(name, "snapshot")?;
-        let id = fs::read_to_string(self.snapshot_path(name))
+        let id = String::from_utf8(read_bounded(&self.snapshot_path(name), 256)?)
             .with_context(|| format!("read snapshot '{name}'"))?;
         self.read_view(id.trim())
     }
 
     pub fn current_view_id(&self) -> Result<Option<String>> {
         let path = self.root.join("current");
-        match fs::read_to_string(&path) {
-            Ok(value) => Ok(Some(value.trim().to_string())),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        match read_bounded(&path, 256) {
+            Ok(value) => Ok(Some(String::from_utf8(value)?.trim().to_string())),
+            Err(error)
+                if error
+                    .downcast_ref::<std::io::Error>()
+                    .is_some_and(|error| error.kind() == std::io::ErrorKind::NotFound) =>
+            {
+                Ok(None)
+            }
             Err(error) => Err(error).with_context(|| format!("read {}", path.display())),
         }
     }
@@ -294,7 +363,7 @@ impl ObjectStore {
     pub fn read_object(&self, hash: &str) -> Result<TypedObjectBlob> {
         validate_hash(hash, "object")?;
         let path = self.object_path(hash);
-        let bytes = fs::read(&path).with_context(|| format!("read {}", path.display()))?;
+        let bytes = read_bounded(&path, MAX_DOCUMENT_BYTES)?;
         if hash_bytes(&bytes) != hash {
             bail!("object {hash} failed content-hash verification");
         }
@@ -337,7 +406,12 @@ impl ObjectStore {
     }
 
     fn write_object(&self, object: &TypedObjectBlob) -> Result<String> {
+        object.validate(None)?;
         let bytes = canonical_json(object)?;
+        ensure!(
+            bytes.len() as u64 <= MAX_DOCUMENT_BYTES,
+            "typed object exceeds document byte limit"
+        );
         let hash = hash_bytes(&bytes);
         let path = self.object_path(&hash);
         if !path.exists() {
@@ -372,10 +446,15 @@ impl ObjectStore {
     }
 
     fn atomic_json(&self, path: &Path, value: &impl Serialize) -> Result<()> {
-        self.atomic_write(path, &canonical_json(value)?)
+        let bytes = bounded_json(value, MAX_MANIFEST_BYTES, false)?;
+        self.atomic_write(path, &bytes)
     }
 
     fn atomic_write(&self, path: &Path, bytes: &[u8]) -> Result<()> {
+        ensure!(
+            bytes.len() as u64 <= MAX_DOCUMENT_BYTES,
+            "store write exceeds document byte limit"
+        );
         let parent = path.parent().context("atomic write path has no parent")?;
         fs::create_dir_all(parent)?;
         let temp = parent.join(format!(
@@ -398,7 +477,7 @@ impl ObjectStore {
     }
 
     fn read_json<T: serde::de::DeserializeOwned>(&self, path: PathBuf) -> Result<T> {
-        let bytes = fs::read(&path).with_context(|| format!("read {}", path.display()))?;
+        let bytes = read_bounded(&path, MAX_MANIFEST_BYTES)?;
         serde_json::from_slice(&bytes).with_context(|| format!("decode {}", path.display()))
     }
 
@@ -449,6 +528,44 @@ impl ObjectStore {
     }
 }
 
+fn read_bounded(path: &Path, maximum_bytes: u64) -> Result<Vec<u8>> {
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(path)
+        .with_context(|| format!("open bounded store file {}", path.display()))?;
+    let metadata = file.metadata()?;
+    ensure!(
+        metadata.is_file() && metadata.len() <= maximum_bytes,
+        "store file {} is not a bounded regular file",
+        path.display()
+    );
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(
+            usize::try_from(metadata.len()).context("store allocation size overflow")?,
+        )
+        .context("reserve bounded store buffer")?;
+    let mut reader = file;
+    let mut chunk = [0_u8; 8192];
+    loop {
+        let count = reader.read(&mut chunk)?;
+        if count == 0 {
+            break;
+        }
+        ensure!(
+            (bytes.len() as u64) + count as u64 <= metadata.len(),
+            "store file grew during bounded read"
+        );
+        bytes.extend_from_slice(&chunk[..count]);
+    }
+    ensure!(
+        bytes.len() as u64 == metadata.len(),
+        "store file changed during bounded read"
+    );
+    Ok(bytes)
+}
+
 struct StoreLock(File);
 
 impl Drop for StoreLock {
@@ -458,11 +575,58 @@ impl Drop for StoreLock {
 }
 
 fn canonical_json(value: &impl Serialize) -> Result<Vec<u8>> {
-    serde_json::to_vec(value).context("serialize canonical JSON")
+    bounded_json(value, MAX_DOCUMENT_BYTES, false)
+}
+
+struct BoundedBuffer {
+    bytes: Vec<u8>,
+    maximum: u64,
+}
+impl Write for BoundedBuffer {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        let total = (self.bytes.len() as u64)
+            .checked_add(bytes.len() as u64)
+            .ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "JSON byte budget overflow")
+            })?;
+        if total > self.maximum {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "JSON document exceeds byte budget",
+            ));
+        }
+        self.bytes
+            .try_reserve_exact(bytes.len())
+            .map_err(std::io::Error::other)?;
+        self.bytes.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+fn bounded_json(value: &impl Serialize, maximum: u64, pretty: bool) -> Result<Vec<u8>> {
+    let mut writer = BoundedBuffer {
+        bytes: Vec::new(),
+        maximum,
+    };
+    if pretty {
+        serde_json::to_writer_pretty(&mut writer, value)?;
+        writer.write_all(b"\n")?;
+    } else {
+        serde_json::to_writer(&mut writer, value)?;
+    }
+    Ok(writer.bytes)
+}
+pub fn render_document(value: &impl Serialize) -> Result<Vec<u8>> {
+    bounded_json(value, MAX_DOCUMENT_BYTES, true)
+}
+pub fn render_arguments(value: &impl Serialize) -> Result<Vec<u8>> {
+    bounded_json(value, 1024 * 1024, false)
 }
 
 fn hash_json(value: &impl Serialize) -> Result<String> {
-    Ok(hash_bytes(&canonical_json(value)?))
+    Ok(hash_bytes(&bounded_json(value, MAX_MANIFEST_BYTES, false)?))
 }
 
 fn hash_bytes(bytes: &[u8]) -> String {
@@ -561,6 +725,27 @@ mod tests {
     use crate::model::{FieldSchema, FieldType, PluginGuarantees, PluginSchema};
 
     fn object(value: Value) -> TypedObjectBlob {
+        let fields = value
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(|name| {
+                (
+                    name.clone(),
+                    FieldSchema {
+                        field_type: FieldType::Integer,
+                        required: true,
+                        description: String::new(),
+                        default: None,
+                        example: None,
+                        constraints: Vec::new(),
+                        read_only: false,
+                        read_only_when: None,
+                    },
+                )
+            })
+            .collect();
+        let public_state = serde_json::json!({"paths":value.as_object().unwrap().keys().map(|name| format!("/{}",name.replace('~',"~0").replace('/',"~1"))).collect::<Vec<_>>()});
         TypedObjectBlob::new(
             "demo".into(),
             "a".repeat(64),
@@ -570,7 +755,8 @@ mod tests {
                 version: "1".into(),
                 description: String::new(),
                 display_name: None,
-                fields: BTreeMap::new(),
+                fields,
+                public_state,
                 dependencies: Vec::new(),
                 immutable_paths: Vec::new(),
                 tags: Vec::new(),
@@ -684,5 +870,53 @@ mod tests {
         let value = store.workspace_object(&workspace, "demo").unwrap().value;
         assert_eq!(value.pointer("/mutable"), Some(&Value::from(3)));
         assert_eq!(value.pointer("/fixed"), Some(&Value::from(1)));
+    }
+
+    #[test]
+    fn stale_opened_object_version_rejects_before_staging() {
+        let directory = tempdir().unwrap();
+        let store = ObjectStore::open(directory.path()).unwrap();
+        let view = store
+            .capture_snapshot(
+                SourceSnapshot {
+                    catalog_hash: "fixture".into(),
+                    catalog_generation: 1,
+                    objects: BTreeMap::from([("demo".into(), object(serde_json::json!({"x":1})))]),
+                },
+                true,
+            )
+            .unwrap();
+        store.create_workspace(Some("edit"), None).unwrap();
+        let expected = &view.objects["demo"];
+        let winner = store
+            .stage_pointer_checked("edit", "demo", "/x", expected, Value::from(2))
+            .unwrap();
+        let error = store
+            .stage_pointer_checked("edit", "demo", "/x", expected, Value::from(3))
+            .unwrap_err();
+        assert!(error.downcast_ref::<StageConflict>().is_some());
+        let workspace = store.read_workspace("edit").unwrap();
+        assert_eq!(workspace.staged_objects["demo"], winner);
+        assert_eq!(
+            store.workspace_object(&workspace, "demo").unwrap().value["x"],
+            Value::from(2)
+        );
+    }
+
+    #[test]
+    fn oversized_store_documents_and_manifests_fail_before_decode() {
+        let directory = tempdir().unwrap();
+        let store = ObjectStore::open(directory.path()).unwrap();
+        let hash = "a".repeat(64);
+        File::create(store.object_path(&hash))
+            .unwrap()
+            .set_len(MAX_DOCUMENT_BYTES + 1)
+            .unwrap();
+        assert!(store.read_object(&hash).is_err());
+        File::create(store.workspace_path("fixture"))
+            .unwrap()
+            .set_len(MAX_MANIFEST_BYTES + 1)
+            .unwrap();
+        assert!(store.read_workspace("fixture").is_err());
     }
 }
