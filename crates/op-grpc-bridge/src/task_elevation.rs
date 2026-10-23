@@ -66,6 +66,7 @@ struct Ticket {
 struct Failures {
     count: u32,
     locked_until: Option<DateTime<Utc>>,
+    in_flight: bool,
 }
 
 #[derive(Default)]
@@ -73,6 +74,24 @@ pub(crate) struct TaskElevation {
     tickets: Mutex<HashMap<String, Ticket>>,
     failures: Mutex<HashMap<String, Failures>>,
     authority: OnceLock<Arc<dyn SudoAuthority>>,
+}
+
+/// The worker owns this reservation, including when its awaiting request is canceled.
+struct ElevationAttempt {
+    elevation: Arc<TaskElevation>,
+    principal_id: String,
+}
+
+impl Drop for ElevationAttempt {
+    fn drop(&mut self) {
+        let mut failures = lock(&self.elevation.failures);
+        if let Some(entry) = failures.get_mut(&self.principal_id) {
+            entry.in_flight = false;
+            if entry.count == 0 {
+                failures.remove(&self.principal_id);
+            }
+        }
+    }
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -127,9 +146,14 @@ impl TaskElevation {
         }
     }
 
-    fn check_lockout(&self, principal_id: &str, now: DateTime<Utc>) -> Result<()> {
+    fn begin_attempt(
+        self: &Arc<Self>,
+        principal_id: &str,
+        now: DateTime<Utc>,
+    ) -> Result<ElevationAttempt> {
         let mut failures = lock(&self.failures);
         let entry = failures.entry(principal_id.to_string()).or_default();
+        ensure!(!entry.in_flight, "sudo elevation check is already in progress");
         if let Some(until) = entry.locked_until {
             if until > now {
                 bail!(
@@ -139,7 +163,11 @@ impl TaskElevation {
             }
             *entry = Failures::default();
         }
-        Ok(())
+        entry.in_flight = true;
+        Ok(ElevationAttempt {
+            elevation: self.clone(),
+            principal_id: principal_id.to_string(),
+        })
     }
 
     fn record_failure(&self, principal_id: &str, now: DateTime<Utc>) {
@@ -221,19 +249,35 @@ async fn authorize(
         serde_json::from_value(args.clone()).context("invalid authorize_task arguments")?;
     let action = validate_authorize_input(&input)?;
     let elevation = engine.task_elevation();
-    let now = Utc::now();
-    elevation.check_lockout(actor, now)?;
+    let attempt = elevation.begin_attempt(actor, Utc::now())?;
     let password = zeroize::Zeroizing::new(std::mem::take(&mut input.password));
     let authority = elevation.authority();
-    let accepted = tokio::task::spawn_blocking(move || authority.verify("root", &password))
-        .await
-        .context("root password check worker failed")??;
+    let accepted = tokio::task::spawn_blocking(move || {
+        let result = authority.verify("root", &password);
+        if result.as_ref().is_ok_and(|accepted| *accepted) {
+            if let Some(entry) = lock(&attempt.elevation.failures).get_mut(&attempt.principal_id) {
+                entry.count = 0;
+                entry.locked_until = None;
+            }
+        } else {
+            attempt.elevation.record_failure(&attempt.principal_id, Utc::now());
+        }
+        // Dropping the reservation here prevents canceled requests from allowing
+        // another password attempt while this blocking PAM call is still active.
+        drop(attempt);
+        result
+    })
+    .await
+    .context("root password check worker failed")??;
     if !accepted {
-        elevation.record_failure(actor, now);
         bail!("root password was not accepted");
     }
-    lock(&elevation.failures).remove(actor);
-    let expires_at = elevation.issue(actor, &session, &input, now)?;
+    project_dispatch::verified_session(engine, actor, Some(&session), genesis).await?;
+    ensure!(
+        load_capability_grants(actor).contains(AUTHORIZE_CAPABILITY),
+        "current exact {AUTHORIZE_CAPABILITY} grant is required"
+    );
+    let expires_at = elevation.issue(actor, &session, &input, Utc::now())?;
     Ok(serde_json::to_value(AuthorizeTaskOutput {
         action_id: action.to_string(),
         expires_at: expires_at.to_rfc3339(),
