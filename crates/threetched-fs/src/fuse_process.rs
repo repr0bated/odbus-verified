@@ -4,8 +4,8 @@
 //! cleanup is complete, so a group signal cannot race reuse of the leader PID.
 //! Both pipes are drained on this thread; no reader can outlive the mount job.
 
-use crate::fuse_buffers::{Budget, Buffer, DOCUMENT_LIMIT};
-use std::io::{self, Read};
+use crate::fuse_buffers::{Budget, Buffer, DOCUMENT_LIMIT, INPUT_LIMIT};
+use std::io::{self, Read, Write};
 use std::os::fd::{AsRawFd, RawFd};
 use std::os::unix::process::CommandExt;
 use std::path::Path;
@@ -142,8 +142,18 @@ pub struct CommandOutput {
 /// Execute an admitted, caller-configured command using the one bounded runner.
 /// The caller owns identity, grants, environment, configuration and OS privileges.
 pub fn run_command(command: &mut Command, cancelled: &AtomicBool) -> Result<CommandOutput, Error> {
+    run_command_with_input(command, cancelled, None)
+}
+
+/// Use the same process-group lifetime and output/deadline bounds while feeding
+/// a bounded optional request body. Input is written without blocking pipe reads.
+pub fn run_command_with_input(
+    command: &mut Command,
+    cancelled: &AtomicBool,
+    input: Option<&[u8]>,
+) -> Result<CommandOutput, Error> {
     let budget = Arc::new(Budget::default());
-    let output = run(command, &budget, cancelled, Limits::default())?;
+    let output = run_with_input(command, &budget, cancelled, Limits::default(), input)?;
     let exit = output.status.code().unwrap_or(-1);
     let (stdout, stdout_charge) = output.stdout.into_parts();
     let (stderr, stderr_charge) = output.stderr.into_parts();
@@ -297,8 +307,21 @@ pub(super) fn run(
     cancellation: &AtomicBool,
     limits: Limits,
 ) -> Result<Output, Error> {
+    run_with_input(command, budget, cancellation, limits, None)
+}
+
+fn run_with_input(
+    command: &mut Command,
+    budget: &Arc<Budget>,
+    cancellation: &AtomicBool,
+    limits: Limits,
+    input: Option<&[u8]>,
+) -> Result<Output, Error> {
     if cancellation.load(Ordering::Acquire) {
         return Err(Error::NotStarted(libc::ECANCELED));
+    }
+    if input.is_some_and(|bytes| bytes.len() > INPUT_LIMIT) {
+        return Err(Error::NotStarted(libc::EFBIG));
     }
     let deadline = Instant::now()
         .checked_add(limits.timeout)
@@ -308,11 +331,17 @@ pub(super) fn run(
     }
     let ceiling = limits.output.min(DOCUMENT_LIMIT);
     command
-        .stdin(Stdio::null())
+        .stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);
     let mut child = OwnedChild::new(command.spawn().map_err(Error::Spawn)?);
+    let mut stdin_pipe = child.child.stdin.take();
+    if let Some(pipe) = &stdin_pipe {
+        nonblocking(pipe.as_raw_fd())?;
+    }
+    let input = input.unwrap_or_default();
+    let mut written = 0;
     let mut stdout_pipe = child
         .child
         .stdout
@@ -338,6 +367,21 @@ pub(super) fn run(
         if Instant::now() >= deadline {
             return Err(Error::Timeout);
         }
+        if let Some(pipe) = &mut stdin_pipe {
+            if written < input.len() {
+                let end = written.saturating_add(READ_CHUNK).min(input.len());
+                match pipe.write(&input[written..end]) {
+                    Ok(0) => return Err(Error::Io(io::Error::from(io::ErrorKind::WriteZero))),
+                    Ok(count) => written += count,
+                    Err(error) if matches!(error.kind(), io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted) => {}
+                    Err(error) => return Err(Error::Io(error)),
+                }
+            }
+            if written == input.len() {
+                // Deliver EOF; the child may wait for it before producing output.
+                stdin_pipe = None;
+            }
+        }
         if !stdout_eof {
             stdout_eof = drain(&mut stdout_pipe, &mut stdout, stderr.bytes.len(), ceiling)?;
         }
@@ -352,6 +396,10 @@ pub(super) fn run(
         }
         if exited && stdout_eof && stderr_eof {
             let status = child.reap()?;
+            if written < input.len() {
+                return Err(Error::Io(io::Error::new(io::ErrorKind::UnexpectedEof,
+                    "upstream exited before the complete request was written")));
+            }
             return Ok(Output {
                 stdout,
                 stderr,
@@ -378,12 +426,17 @@ pub(super) fn run(
                 events: libc::POLLIN,
                 revents: 0,
             },
+            libc::pollfd {
+                fd: stdin_pipe.as_ref().map_or(-1, AsRawFd::as_raw_fd),
+                events: libc::POLLOUT,
+                revents: 0,
+            },
         ];
         let remaining = deadline.saturating_duration_since(Instant::now());
         let timeout = remaining.min(POLL_INTERVAL).as_millis() as i32;
-        // SAFETY: the fixed array and both owned descriptors remain live during
+        // SAFETY: the fixed array and owned descriptors remain live during
         // poll. EOF streams use -1, which poll explicitly ignores.
-        if unsafe { libc::poll(descriptors.as_mut_ptr(), 2, timeout) } == -1 {
+        if unsafe { libc::poll(descriptors.as_mut_ptr(), descriptors.len() as libc::nfds_t, timeout) } == -1 {
             let error = io::Error::last_os_error();
             if error.kind() != io::ErrorKind::Interrupted {
                 return Err(Error::Io(error));
@@ -437,6 +490,41 @@ mod tests {
             serde_json::json!({"stdout":"hello","stderr":"error","exit":7}));
         let cancelled = AtomicBool::new(true);
         assert!(matches!(run_command(&mut fixture("exit 91"), &cancelled), Err(Error::NotStarted(_))));
+    }
+
+    #[test]
+    fn request_input_delivers_eof_and_drains_output_beyond_pipe_capacity() {
+        let cancelled = AtomicBool::new(false);
+        let input = vec![b'x'; 256 * 1024];
+        let output = run_command_with_input(
+            &mut fixture("printf prefix; printf diagnostic >&2; cat"),
+            &cancelled,
+            Some(&input),
+        ).unwrap();
+        let expected = [b"prefix".as_slice(), input.as_slice()].concat();
+        assert_eq!(output.stdout.as_bytes(), expected.as_slice());
+        assert_eq!(output.stderr, "diagnostic");
+        assert_eq!(output.exit, 0);
+        let empty = run_command_with_input(&mut fixture("cat"), &cancelled, Some(b"")).unwrap();
+        assert_eq!(empty.stdout, "");
+        assert_eq!(empty.exit, 0);
+        assert!(matches!(run_command_with_input(
+            &mut fixture("exit 91"), &cancelled, Some(&vec![0; INPUT_LIMIT + 1]),
+        ), Err(Error::NotStarted(libc::EFBIG))));
+        assert!(run_command_with_input(
+            &mut fixture("exit 0"), &cancelled, Some(&input),
+        ).is_err(), "early child exit must not report an unwritten request as complete");
+    }
+
+    #[test]
+    fn blocked_request_input_obeys_the_same_deadline() {
+        let budget = Arc::new(Budget::default());
+        let cancelled = AtomicBool::new(false);
+        let input = vec![b'x'; INPUT_LIMIT];
+        assert!(matches!(run_with_input(
+            &mut fixture("sleep 5"), &budget, &cancelled,
+            Limits { timeout: Duration::from_millis(50), output: 1024 }, Some(&input),
+        ), Err(Error::Timeout)));
     }
     use super::*;
 

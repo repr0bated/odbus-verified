@@ -209,6 +209,10 @@ pub struct McpState {
 }
 
 pub(crate) fn mcp_schema() -> PluginSchema {
+    if !super::threetched::is_schema_capture() {
+        return super::threetched::sealed_schema("mcp")
+            .expect("MCP runtime requires its sealed schema");
+    }
     let root = serde_json::to_value(schemars::schema_for!(McpState))
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
@@ -358,6 +362,7 @@ mod tests {
 
     #[test]
     fn should_publish_plugin_owned_mcp_schema() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let store = Arc::new(MemoryStore::new());
         let plugin = McpStatePlugin::new(store, "/tmp/test-mcp-schema.json");
         let schema = plugin.schema().expect("mcp schema");
@@ -370,6 +375,7 @@ mod tests {
 
     #[test]
     fn native_method_contracts_are_cloned_before_facade_renames() {
+        super::super::threetched::prepare_schema_capture().expect("explicit schema capture");
         let native = crate::state_plugins::tched_router::tched_router_schema();
         let facade = mcp_schema();
         for (facade_name, native_name) in [
