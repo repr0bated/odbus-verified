@@ -499,9 +499,7 @@ impl MemoryTool {
                 "semantic memory unavailable: Qdrant Semantic Shuttle is not configured"
             )
         })?;
-        let container_id = field(input, "container_id")
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("missing container_id"))?;
+        let namespace = memory_namespace(input)?;
         let query = field(input, "query")
             .as_str()
             .or_else(|| field(input, "key_pattern").as_str())
@@ -510,7 +508,7 @@ impl MemoryTool {
 
         let embedding = qdrant.embed_query_text(query).await?;
         let results = qdrant
-            .search_user_memory(embedding, container_id, limit)
+            .search_user_memory(embedding, &namespace, limit)
             .await?;
         let mut items = Vec::new();
         let mut seen_keys = std::collections::HashSet::new();
@@ -519,10 +517,10 @@ impl MemoryTool {
             let Some(key) = payload.get("entry_key").and_then(|v| v.as_str()) else {
                 continue;
             };
-            if payload.get("container_id").and_then(|v| v.as_str()) != Some(container_id) {
+            if payload.get("container_id").and_then(|v| v.as_str()) != Some(namespace.as_str()) {
                 continue;
             }
-            let Some(entry) = self.store.retrieve_entry(container_id, key).await? else {
+            let Some(entry) = self.store.retrieve_entry(&namespace, key).await? else {
                 continue;
             };
             let point_uuid = point.id.as_ref().and_then(|id| match &id.point_id_options {
@@ -533,7 +531,7 @@ impl MemoryTool {
             });
             // Cozo is authoritative. Current legacy random-ID mirrors remain
             // readable; collapse duplicates within this bounded result batch.
-            if !semantic_matches_entry(point_uuid, &payload, container_id, &entry) {
+            if !semantic_matches_entry(point_uuid, &payload, &namespace, &entry) {
                 continue;
             }
             if !seen_keys.insert(key.to_string()) {
@@ -549,7 +547,7 @@ impl MemoryTool {
 
         Ok(json!({
             "count": count,
-            "container_id": container_id,
+            "container_id": namespace,
             "results": items
         }))
     }
@@ -633,15 +631,6 @@ impl MemoryTool {
             return Ok(false);
         };
 
-        let Some(container_id) = field(input, "container_id").as_str() else {
-            tracing::warn!(
-                namespace = namespace,
-                key = key,
-                "semantic memory requested without container_id"
-            );
-            return Ok(false);
-        };
-
         let content = memory_content(value);
         if content.trim().is_empty() {
             return Ok(false);
@@ -649,7 +638,7 @@ impl MemoryTool {
 
         let vector = qdrant.embed_document(&content).await?;
         qdrant
-            .upsert_user_memory(entry_id.to_string(), vector, container_id, key, &content)
+            .upsert_user_memory(entry_id.to_string(), vector, namespace, key, &content)
             .await?;
         Ok(true)
     }

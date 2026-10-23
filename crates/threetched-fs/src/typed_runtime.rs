@@ -878,15 +878,22 @@ impl NodeHandle {
         let (view, catalog) = match &self.context.backend {
             Backend::Direct { .. } => return Ok(()),
             Backend::DirectShm { view, catalog, .. } => (view, catalog.as_path()),
-            Backend::Fuse(mount) if !mount.workspace => (
-                &mount.view,
-                Path::new(
-                    mount.metadata["declared_catalog_dir"]
-                        .as_str()
-                        .unwrap_or(crate::source::DEFAULT_CATALOG_DIR),
-                ),
-            ),
-            Backend::Fuse(_) => return Ok(()),
+            Backend::Fuse(mount) => {
+                mount.verify()?;
+                if !mount.workspace {
+                    let calls = mount.calls.as_ref().ok_or_else(|| {
+                        NodeError::Contract("live mount has no pinned call context".into())
+                    })?;
+                    if let Some(plugin) = &self.desc.plugin {
+                        // The daemon owns active catalog access and admission. A guest
+                        // receives only its mount, not the daemon's backing host paths.
+                        calls.schema(plugin).map_err(|e| {
+                            NodeError::backing("verify mounted sealed declaration", e)
+                        })?;
+                    }
+                }
+                return Ok(());
+            }
         };
         let Some(plugin) = &self.desc.plugin else {
             return Ok(());
