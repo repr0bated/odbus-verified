@@ -1,0 +1,11 @@
+{
+  "log": {"loglevel": "warning"},
+  "inbounds": [{
+    "tag": "workspace-carrier", "listen": "/run/opdbus-workspace-egress/vless.sock",
+    "protocol": "vless",
+    "settings": {"clients": [{"id": "REPLACE_TRANSPORT_UUID"}], "decryption": "none"},
+    "streamSettings": {"network": "tcp", "security": "none"}
+  }],
+  "outbounds": [{"tag": "approved-upstream", "protocol": "blackhole", "settings": {}}],
+  "routing": {"rules": [{"type": "field", "inboundTag": ["workspace-carrier"], "outboundTag": "approved-upstream"}]}
+}

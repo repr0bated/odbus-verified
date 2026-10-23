@@ -1,0 +1,20 @@
+#!/bin/sh
+# Prepared operator input, not enabled by preparation.
+# The existing NIC-less Xray container owns the HTTP proxy and REALITY keys.
+# This relay carries opaque bytes to exactly one decoy endpoint.
+set -eu
+exec 2>&1
+umask 007
+
+shared=/run/ghostbridge/xray-egress
+ct_group=$(stat -c %g /run/ghostbridge/xray)
+case "$ct_group" in ''|*[!0-9]*) exit 1 ;; esac
+if [ -L "$shared" ]; then
+    echo 'refusing symlinked Xray relay directory' >&2
+    exit 1
+fi
+install -d -m 2770 -o root -g "$ct_group" "$shared"
+
+exec /usr/local/libexec/3tched/op-uds-relay \
+    --unix-to-tcp "$shared/carrier.sock=129.80.64.127:9443" \
+    --tcp-to-unix "127.0.0.1:13128=$shared/http.sock"

@@ -1,0 +1,19 @@
+[Unit]
+Description=Decoy-originated restricted SSH TUN inside MASQUE
+Requires=warp-svc.service op-warp-prepare.service
+PartOf=warp-svc.service
+After=warp-svc.service op-warp-prepare.service
+RequiresMountsFor=/opt/op-dbus/releases
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+UMask=0077
+ExecStartPre=/usr/local/libexec/op-warp-ssh/remainder.sh enable
+ExecStartPre=/usr/local/libexec/op-warp-ssh/decoy-egress.sh enable
+ExecStart=/usr/local/libexec/op-warp-ssh/connect.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
