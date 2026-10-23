@@ -288,16 +288,17 @@ def ingest(title: str | None = None, notebook_id: str | None = None,
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             remote_path = state_dir / "remote-state.json"
             remote = json.loads(remote_path.read_text()) if remote_path.exists() else {"groups": {}}
-            # Drain the exact frozen snapshot before capturing later appends.
+            # Keep incomplete groups frozen while independent groups capture
+            # later appends. Pending writes retain their exact source artifacts.
             recover_repair(state_dir)
             remote = json.loads(remote_path.read_text()) if remote_path.exists() else {"groups": {}}
             if remote.get("session_id", session) != session:
                 raise NotebookSyncError("saved remote state belongs to another session")
-            if remote.get("quarantine_only"):
-                prepare_groups(state_dir, preserve_unresolved=True)
-            elif not remote.get("cycle_incomplete") and not any(
+            if remote.get("cycle_incomplete") or any(
                 unresolved_group(group) for group in remote["groups"].values()
             ):
+                prepare_groups(state_dir, preserve_unresolved=True)
+            else:
                 prepare_groups(state_dir)
             counts = sync_groups(state_dir, session, defer_processing=True)
             print(json.dumps(counts))
@@ -649,16 +650,27 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
         remote = json.loads(state_path.read_text())
         unresolved = {key for key, group in remote["groups"].items() if unresolved_group(group)}
         if remote.get("cycle_incomplete") or unresolved:
-            if not preserve_unresolved or not remote.get("quarantine_only") or not all(
-                quarantined_group(remote["groups"][key]) for key in unresolved
-            ):
+            if not preserve_unresolved:
                 raise NotebookSyncError("drain the frozen plan before preparing later appends")
             previous = json.loads((state_dir / "plan.json").read_text())
-            for key in unresolved:
+            frozen = set(unresolved)
+            # A budget may stop before a group has any pending mutation at all.
+            # Retain every unverified planned chunk, not only pending uploads.
+            if remote.get("cycle_incomplete"):
+                for key, group in previous["groups"].items():
+                    saved = remote["groups"].get(key, {})
+                    if not saved.get("notebook_id") or any(
+                        not (saved.get("sources", {}).get(chunk["slot"], {}).get("verified")
+                             and saved["sources"][chunk["slot"]].get("source_id")
+                             and saved["sources"][chunk["slot"]].get("sha256") == chunk["sha256"])
+                        for chunk in group["chunks"]
+                    ):
+                        frozen.add(key)
+            for key in frozen:
                 frozen_groups[key] = previous["groups"][key]
                 for chunk in frozen_groups[key]["chunks"]:
                     if hashlib.sha256(Path(chunk["path"]).read_bytes()).hexdigest() != chunk["sha256"]:
-                        raise NotebookSyncError("quarantined frozen source changed; reconciliation required")
+                        raise NotebookSyncError("unresolved frozen source changed; reconciliation required")
     repo = repo or Path(os.environ.get("OPDBUS_NOTEBOOK_PROJECT_ROOT", str(Path(__file__).resolve().parents[2])))
     if not repo.is_absolute() or not (repo / "AGENTS.md").is_file():
         raise NotebookSyncError("project capture root must be an absolute repository with AGENTS.md")
@@ -887,9 +899,13 @@ def _sync_groups(state_dir: Path, session: str, only: str | None,
     atomic_json(state_path, state)
     calls = 0
     deadline = time.monotonic() + 900
+    budget_next_group: str | None = None
 
     def check_budget() -> None:
         if calls >= MAX_CALLS_PER_CYCLE or time.monotonic() >= deadline:
+            if budget_next_group is not None:
+                state["next_group"] = budget_next_group
+                publish()
             raise CycleLimit
 
     def call(method: str, args: dict, intent: dict | None = None) -> Any:
@@ -928,6 +944,8 @@ def _sync_groups(state_dir: Path, session: str, only: str | None,
         group = plan["groups"][key]
         if only and only not in (key, group["title"]):
             continue
+        check_budget()
+        budget_next_group = keys[(index + 1) % len(keys)]
         state["next_group"] = key
         publish()
         saved = state["groups"].setdefault(key, {"sources": {}, "title": group["title"]})
@@ -992,8 +1010,18 @@ def _sync_groups(state_dir: Path, session: str, only: str | None,
             intent["status"] = "confirmed_absent"
             publish()
 
-        for chunk in group["chunks"]:
+        chunks = group["chunks"]
+        slots = [chunk["slot"] for chunk in chunks]
+        if saved.get("next_slot") in slots:
+            start = slots.index(saved["next_slot"])
+            chunks = chunks[start:] + chunks[:start]
+        for chunk_index, chunk in enumerate(chunks):
             check_budget()
+            # Persist progress before any read or mutation for this slot. A
+            # bounded cycle may stop midway through its reconciliation, but its
+            # intent/receipt stays intact and the remaining slots get a turn.
+            saved["next_slot"] = chunks[(chunk_index + 1) % len(chunks)]["slot"]
+            publish()
             slot, digest = chunk["slot"], chunk["sha256"]
             old = saved["sources"].get(slot)
             if old and old.get("sha256") == digest and old.get("source_id") in existing and old.get("verified"):

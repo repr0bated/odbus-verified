@@ -311,6 +311,53 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
             self.assertEqual(group["sources"]["model-a__0001"]["source_id"], "old-src")
             self.assertEqual(group["pending"]["model-a__0001"]["source_id"], "new-src")
 
+    def test_call_budget_rotates_groups_and_pending_slots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            plan = {"groups": {}}
+            state = {"groups": {}, "session_id": SESSION}
+            all_ids = set()
+            for key in ["model-a", "model-b"]:
+                chunks = []
+                pending = {}
+                for index in range(3):
+                    slot = f"{key}__{index}"
+                    path = root / f"{slot}.txt"
+                    path.write_text(slot)
+                    digest = notebook_sync.hashlib.sha256(path.read_bytes()).hexdigest()
+                    chunks.append({"slot": slot, "path": str(path), "sha256": digest})
+                    pending[slot] = {"source_id": slot, "path": str(path), "sha256": digest}
+                    all_ids.add(slot)
+                plan["groups"][key] = {"title": key, "chunks": chunks}
+                state["groups"][key] = {
+                    "notebook_id": key, "title": key, "sources": {}, "pending": pending,
+                }
+            notebook_sync.atomic_json(root / "plan.json", plan)
+            notebook_sync.atomic_json(root / "remote-state.json", state)
+            observed = []
+
+            def fake(method, args, session):
+                if method == "notebook_list":
+                    return [{"id": key} for key in plan["groups"]]
+                if method == "notebook_get":
+                    return {"sources": [{"id": slot} for slot in all_ids
+                                        if slot.startswith(args["notebook_id"])]}
+                if method == "source_get_content":
+                    observed.append(args["source_id"])
+                    return {"content": ""}
+                raise AssertionError(f"Unexpected mutation: {method}")
+
+            with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake), \
+                    mock.patch.object(notebook_sync, "MAX_CALLS_PER_CYCLE", 3):
+                for _ in range(6):
+                    notebook_sync.sync_groups(root, SESSION, defer_processing=True)
+            self.assertEqual(set(observed), all_ids)
+            self.assertEqual(len(observed), 6)
+            self.assertEqual(observed[:2], ["model-a__0", "model-b__0"])
+            after = json.loads((root / "remote-state.json").read_text())
+            for key in plan["groups"]:
+                self.assertEqual(after["groups"][key]["pending"], state["groups"][key]["pending"])
+
     def test_repartition_is_lossless_and_retires_original_receipt(self) -> None:
         root, slot, digest = self._repartition_fixture()
         result = notebook_sync.repartition_pending(root, slot)
@@ -534,6 +581,31 @@ class NotebookSyncRecoveryTest(unittest.TestCase):
             plan = notebook_sync.prepare_groups(root, home=home, repo=repo, preserve_unresolved=True)
         self.assertEqual(plan["groups"]["model-a"], frozen)
         self.assertGreater(len(plan["groups"]), 1)
+        self.assertEqual((root / "remote-state.json").read_bytes(), before_state)
+        self.assertEqual(source.read_bytes(), b"complete frozen raw source\r\n")
+
+    def test_refresh_preserves_pending_and_unvisited_groups_independently(self):
+        root, source, digest = self.fixture()
+        previous = json.loads((root / "plan.json").read_text())
+        frozen = previous["groups"]["model-a"]
+        previous["groups"]["unvisited"] = {**frozen, "title": "Unvisited"}
+        notebook_sync.atomic_json(root / "plan.json", previous)
+        state = json.loads((root / "remote-state.json").read_text())
+        state.update(cycle_incomplete=True, quarantine_only=False)
+        state["groups"]["model-a"]["pending"] = {"model-a__0001": {
+            "source_id": "processing-src", "sha256": digest, "path": str(source),
+        }}
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        before_state = (root / "remote-state.json").read_bytes()
+        home, repo = root / "empty-home", root / "repo"
+        home.mkdir()
+        repo.mkdir()
+        (repo / "AGENTS.md").write_text("independent new capture")
+        with mock.patch.object(notebook_sync, "SOURCES", root / "empty-sources"):
+            plan = notebook_sync.prepare_groups(root, home=home, repo=repo, preserve_unresolved=True)
+        for key in previous["groups"]:
+            self.assertEqual(plan["groups"][key], previous["groups"][key])
+        self.assertGreater(len(plan["groups"]), len(previous["groups"]))
         self.assertEqual((root / "remote-state.json").read_bytes(), before_state)
         self.assertEqual(source.read_bytes(), b"complete frozen raw source\r\n")
 
