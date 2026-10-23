@@ -250,6 +250,7 @@ mod tests {
 
     #[test]
     fn resolves_secrets_in_the_pinned_v084_contract() {
+        op_plugins::state_plugins::threetched::prepare_schema_capture().expect("explicit schema capture");
         let document = op_plugins::state_plugins::tched_router_contract::document().clone();
         let policy = PinnedConfigSecretPolicy::new(Arc::new(document)).unwrap();
         assert!(
@@ -430,6 +431,7 @@ mod tests {
 
     #[test]
     fn opaque_provider_options_do_not_block_catalog_reads_or_expose_values() {
+        op_plugins::state_plugins::threetched::prepare_schema_capture().expect("explicit schema capture");
         let document = op_plugins::state_plugins::tched_router_contract::document().clone();
         let policy = PinnedConfigSecretPolicy::new(Arc::new(document)).unwrap();
         for enabled in [false, true] {

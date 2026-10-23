@@ -67,7 +67,7 @@ pub struct QdrantCollectionConfig {
 /// Mirrors `CollectionParams` + `VectorsConfig` from the OpenAPI spec.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct QdrantCollectionParams {
-    pub vectors: QdrantVectorParams,
+    pub vectors: QdrantVectorsConfig,
     #[serde(default)]
     pub shard_number: Option<u32>,
     #[serde(default)]
@@ -80,6 +80,14 @@ pub struct QdrantCollectionParams {
     pub on_disk_payload: Option<bool>,
     #[serde(default)]
     pub sparse_vectors: Option<serde_json::Value>,
+}
+
+/// Qdrant accepts one unnamed vector or a map of named vector spaces.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum QdrantVectorsConfig {
+    Single(QdrantVectorParams),
+    Named(std::collections::BTreeMap<String, QdrantVectorParams>),
 }
 
 /// Mirrors `VectorParams` from the OpenAPI spec.
@@ -408,6 +416,15 @@ pub async fn dispatch_qdrant_method(
     dispatch_qdrant_method_with_client(&client, method, args).await
 }
 
+fn collection_info(name: &str, mut detail: serde_json::Value) -> Result<QdrantCollectionInfo> {
+    // The detail endpoint does not include the collection name. The list that
+    // selected this request owns it; bind it before decoding the state contract.
+    detail.as_object_mut().context("Qdrant collection detail is not an object")?
+        .insert("name".into(), serde_json::Value::String(name.to_owned()));
+    serde_json::from_value(detail)
+        .with_context(|| format!("decode collection info for '{name}'"))
+}
+
 /// Read the real, current Qdrant state (root info + every collection's full
 /// detail) for publication into the SHM projection. Used by the bridge's
 /// typed dispatch, which has no other way to observe this plugin's live
@@ -444,9 +461,7 @@ pub async fn current_state() -> Result<QdrantState> {
                 false,
             )
             .await?;
-        let mut info: QdrantCollectionInfo = serde_json::from_value(detail["result"].clone())
-            .with_context(|| format!("decode collection info for '{name}'"))?;
-        info.name = name.clone();
+        let info = collection_info(name, detail["result"].clone())?;
         collections.push(info);
     }
 
@@ -681,7 +696,7 @@ impl QdrantPlugin {
                 segments_count: 0,
                 config: QdrantCollectionConfig {
                     params: QdrantCollectionParams {
-                        vectors: QdrantVectorParams {
+                        vectors: QdrantVectorsConfig::Single(QdrantVectorParams {
                             size: 1024,
                             distance: "Cosine".to_string(),
                             hnsw_config: None,
@@ -689,7 +704,7 @@ impl QdrantPlugin {
                             on_disk: Some(false),
                             datatype: Some("float32".to_string()),
                             multivector_config: None,
-                        },
+                        }),
                         shard_number: Some(1),
                         replication_factor: Some(1),
                         write_consistency_factor: Some(1),
@@ -1035,6 +1050,39 @@ mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
+
+    #[test]
+    fn collection_details_accept_single_named_and_empty_vector_spaces() {
+        let schema = serde_json::to_value(schemars::schema_for!(QdrantCollectionInfo)).unwrap();
+        let validator = jsonschema::validator_for(&schema).unwrap();
+        let exemplar = QdrantPlugin::exemplar_state().collections.remove(0);
+        for vectors in [
+            serde_json::json!({"size": 4, "distance": "Cosine"}),
+            serde_json::json!({
+                "image": {"size": 4, "distance": "Dot"},
+                "text": {"size": 8, "distance": "Cosine"}
+            }),
+            serde_json::json!({}),
+        ] {
+            let mut detail = serde_json::to_value(&exemplar).unwrap();
+            detail.as_object_mut().unwrap().remove("name");
+            detail["config"]["params"]["vectors"] = vectors.clone();
+            let decoded = collection_info("from-list", detail).unwrap();
+            assert_eq!(decoded.name, "from-list");
+            match (&decoded.config.params.vectors, vectors.get("size")) {
+                (QdrantVectorsConfig::Single(params), Some(_)) => assert_eq!(params.size, 4),
+                (QdrantVectorsConfig::Named(params), None) => {
+                    assert_eq!(params.len(), vectors.as_object().unwrap().len());
+                }
+                _ => panic!("vector layout changed"),
+            }
+            assert!(validator.is_valid(&serde_json::to_value(decoded).unwrap()));
+        }
+        assert!(serde_json::from_value::<QdrantVectorsConfig>(
+            serde_json::json!({"image": {"distance": "Cosine"}})
+        ).is_err());
+        assert!(collection_info("from-list", serde_json::Value::Null).is_err());
+    }
 
     #[test]
     fn snapshot_creation_time_preserves_null_missing_and_strings() {

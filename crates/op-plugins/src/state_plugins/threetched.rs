@@ -42,14 +42,95 @@ pub struct ThreetchedState {
 struct Captured {
     state: ThreetchedState,
     surface: ThreetchedSurface,
+    version: String,
+}
+
+static CAPTURED: OnceLock<std::result::Result<Captured, String>> = OnceLock::new();
+
+/// Explicit build/seal entry point. Every process captures once; runtime
+/// consumers read the persisted seal and never initialize discovery lazily.
+pub fn prepare_schema_capture() -> Result<()> {
+    CAPTURED.get_or_init(|| capture().map_err(|error| format!("{error:#}")))
+        .as_ref().map(|_| ()).map_err(|error| anyhow::anyhow!("{error}"))
+}
+
+pub(crate) fn is_schema_capture() -> bool {
+    CAPTURED.get().is_some()
 }
 
 fn captured() -> Result<&'static Captured> {
-    static CAPTURED: OnceLock<std::result::Result<Captured, String>> = OnceLock::new();
     CAPTURED
-        .get_or_init(|| capture().map_err(|error| format!("{error:#}")))
+        .get().context("threetched capture requires explicit schema preparation; runtime uses sealed blobs")?
         .as_ref()
         .map_err(|error| anyhow::anyhow!("{error}"))
+}
+
+pub(crate) fn sealed_schema(plugin_id: &str) -> Result<PluginSchema> {
+    let directory = std::env::var_os("OP_BLOB_CATALOG_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| op_blob::catalog::DEFAULT_SHM_DIR.into());
+    op_blob::catalog::read_plugin_state_store_schema(&directory, plugin_id)
+        .with_context(|| format!("missing or invalid sealed {plugin_id} schema in {}", directory.display()))
+}
+
+pub(crate) fn sealed_state(plugin_id: &str) -> Result<OwnedValue> {
+    sealed_schema(plugin_id)?.example
+        .with_context(|| format!("sealed {plugin_id} schema has no discovery descriptor"))
+}
+
+pub(crate) fn capture_state() -> Result<&'static ThreetchedState> {
+    Ok(&captured()?.state)
+}
+
+pub(crate) fn surface() -> Result<&'static ThreetchedSurface> {
+    Ok(&captured()?.surface)
+}
+
+pub(crate) fn config_schema() -> Result<&'static Value> {
+    Ok(captured()?.surface.schema_json())
+}
+
+pub(crate) fn binary_version() -> Result<&'static str> {
+    Ok(captured()?.version.as_str())
+}
+
+/// Validate retained typed adapters against the same bounded discovery used by
+/// the full threetched surface, then retain only their command-group evidence.
+pub(crate) fn captured_cli_group(
+    group: &str,
+    expected: &[(&[&str], &[&str])],
+) -> Result<Value> {
+    use std::collections::BTreeSet;
+    let surface = surface()?;
+    let prefix = format!("{group}.");
+    let observed: BTreeSet<_> = surface.commands()
+        .filter(|method| method.starts_with(&prefix)).map(str::to_owned).collect();
+    let required: BTreeSet<_> = expected.iter().map(|(path, _)| path.join(".")).collect();
+    ensure!(observed == required, "threetched {group} command set changed; update the typed adapter before sealing");
+    for (path, flags) in expected {
+        let method = path.join(".");
+        let input = surface.input_schema(&method)?;
+        let properties = input["properties"].as_object().context("captured input has no properties")?;
+        let observed: BTreeSet<_> = properties.keys().filter(|name| name.starts_with('-'))
+            .map(String::as_str).collect();
+        let mut allowed = BTreeSet::new();
+        for flag in ["--config-dir", "--log-level", "--verbose", "--help"].iter().chain(flags.iter()) {
+            let aliases = surface.option_spellings(&method, flag)?;
+            if flags.contains(flag) {
+                ensure!(!aliases.is_empty(), "threetched {method} is missing {flag}");
+            }
+            allowed.extend(aliases);
+        }
+        ensure!(observed == allowed, "threetched {method} flags changed; update the typed adapter before sealing");
+    }
+    let mut snapshot = surface.snapshot();
+    snapshot.commands.retain(|method, _| method.starts_with(&prefix));
+    let state = capture_state()?;
+    Ok(serde_json::json!({
+        "format":"threetched-cli-subtree/1", "binary":state.binary,
+        "binary_sha256":state.binary_sha256, "version":snapshot.version,
+        "commands":snapshot.commands,
+    }))
 }
 
 fn path_text(path: &Path) -> Result<String> {
@@ -76,6 +157,8 @@ fn capture() -> Result<Captured> {
     let descriptor: Value = serde_json::from_reader(File::open(&capture_manifest)?)?;
     let binary_sha256 = super::tched_skills::sha256_file(&capture_binary)?;
     let version = manifest_version(&descriptor, &binary_sha256)?;
+    let bare_version = version.strip_prefix("threetched ")
+        .expect("manifest_version prefixes the bare version").to_owned();
     let surface = ThreetchedSurface::capture_with_config(&capture_binary, &config_dir)?;
     ensure!(surface.binary_sha256() == binary_sha256, "threetched executable changed during capture");
     ensure!(surface.version() == Some(version.as_str()), "threetched version differs from its manifest");
@@ -88,7 +171,7 @@ fn capture() -> Result<Captured> {
         manifest_sha256,
         surface: serde_json::to_value(surface.snapshot())?,
     };
-    Ok(Captured { state, surface })
+    Ok(Captured { state, surface, version: bare_version })
 }
 
 fn command_policy(method: &str) -> (String, String) {
@@ -145,11 +228,17 @@ fn schema_from_capture(captured: &Captured) -> Result<PluginSchema> {
 }
 
 pub fn threetched_schema() -> PluginSchema {
+    if !is_schema_capture() {
+        return sealed_schema(PLUGIN_NAME).expect("threetched runtime requires its sealed schema");
+    }
     schema_from_capture(captured().expect("threetched discovery must succeed before sealing"))
         .expect("threetched discovered contract must be representable")
 }
 
 pub fn state_value() -> Result<OwnedValue> {
+    if !is_schema_capture() {
+        return sealed_state(PLUGIN_NAME);
+    }
     Ok(simd_json::serde::to_owned_value(&captured()?.state)?)
 }
 
@@ -328,6 +417,7 @@ esac
                 surface: serde_json::to_value(surface.snapshot()).unwrap(),
             },
             surface,
+            version: "fixture".into(),
         };
         let schema = schema_from_capture(&captured).unwrap();
         let method_name = "widgets.publish";
