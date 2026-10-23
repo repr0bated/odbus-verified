@@ -40,7 +40,7 @@
 //! connected, and must override controller flows — a controller "last resort
 //! send-to-controller" otherwise isolates itself. Our priority=0 NORMAL is the
 //! same principle for host/management traffic when the OF channel is local to
-//! the bridge (out-of-band TCP to `10.200.0.1:6653`, but host L3 still traverses
+//! the bridge (the controller address is unset; host L3 still traverses
 //! the bridge pipeline).
 //!
 //! ## Echo for liveness
@@ -68,7 +68,7 @@
 //!
 //! ## Connection mode
 //!
-//! OF endpoint `ssl:10.200.0.1:6653` is on the bridge IP → keep
+//! When the OpenFlow endpoint is an address on the bridge, keep
 //! `connection_mode=in-band` (default). Do **not** set
 //! `other_config:disable-in-band=true`. Host SSH still needs NORMAL; in-band
 //! hidden flows only cover controller/manager remotes.

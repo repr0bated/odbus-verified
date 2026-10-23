@@ -32,7 +32,7 @@ pub struct SecurityConfig {
     /// Profile category
     pub category: ProfileCategory,
 
-    /// Commands allowed for execution
+    /// Commands allowed for execution by the owning admission configuration.
     #[serde(default)]
     pub allowed_commands: HashSet<String>,
 

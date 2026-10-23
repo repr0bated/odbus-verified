@@ -21,6 +21,9 @@ log = { workspace = true }
 uuid = { workspace = true }
 tar = { workspace = true }
 flate2 = { workspace = true }
+libc = { workspace = true }
+btrfs-uapi = "0.13"
+op-cozo-store = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

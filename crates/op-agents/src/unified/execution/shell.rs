@@ -1,6 +1,6 @@
 //! Shell Executor Agent
 //!
-//! Executes whitelisted shell commands.
+//! Legacy adapter. Construction alone does not establish command authority.
 
 use async_trait::async_trait;
 use simd_json::json;
@@ -21,19 +21,11 @@ impl ShellExecutor {
         let base = ExecutionAgent::new(
             "shell-executor",
             "Shell Executor",
-            "Executes whitelisted shell commands for system operations.",
+            "Shell execution requires an admitted command policy.",
             "shell",
-            vec![
-                // File operations (read-only)
-                "ls", "cat", "head", "tail", "find", "grep", "wc", "file", "stat",
-                // System info
-                "uname", "hostname", "uptime", "df", "free", "ps", "top",
-                // Network info (read-only)
-                "ip", "ss", "netstat", "ping", "dig", "nslookup",
-                // Git (read operations)
-                "git", // Text processing
-                "sort", "uniq", "cut", "awk", "sed", "jq",
-            ],
+            // This adapter has no verified caller context or admitted policy.
+            // Do not infer unrestricted host authority from its registration.
+            vec![],
         );
         Self { base }
     }
@@ -60,7 +52,7 @@ impl UnifiedAgent for ShellExecutor {
         AgentCategory::Execution
     }
     fn capabilities(&self) -> Vec<AgentCapability> {
-        self.base.capabilities()
+        vec![]
     }
     fn system_prompt(&self) -> &str {
         self.base.system_prompt()
