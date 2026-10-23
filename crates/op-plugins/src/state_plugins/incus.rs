@@ -95,8 +95,9 @@ pub struct IncusInstance {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expanded_config: Option<HashMap<String, String>>,
     /// Expanded (profile-merged) devices, read-only (`Instance.expanded_devices`).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub expanded_devices: Vec<NamedDevice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "Vec<NamedDevice>")]
+    pub expanded_devices: Option<Vec<NamedDevice>>,
 }
 
 /// Intermediate struct for deserializing raw `incus list --format=json` output.
@@ -113,7 +114,7 @@ struct RawIncusInstance {
     #[serde(default)]
     expanded_config: HashMap<String, String>,
     #[serde(default)]
-    expanded_devices: BTreeMap<String, BTreeMap<String, String>>,
+    expanded_devices: Option<BTreeMap<String, BTreeMap<String, String>>>,
     description: String,
     architecture: String,
     ephemeral: bool,
@@ -698,7 +699,8 @@ impl IncusPlugin {
                 let expanded_config = Some(raw.expanded_config);
 
                 let devices = named_devices_from_map(&raw.devices)?;
-                let expanded_devices = named_devices_from_map(&raw.expanded_devices)?;
+                let expanded_devices = raw.expanded_devices
+                    .as_ref().map(named_devices_from_map).transpose()?;
 
                 Ok(IncusInstance {
                     name: raw.name,
@@ -1298,7 +1300,7 @@ mod tests {
                 status: "Stopped".into(),
                 instance_type: "container".into(),
                 devices: devices.clone(),
-                expanded_devices: devices,
+                expanded_devices: Some(devices),
                 ..Default::default()
             }],
         };
@@ -3726,6 +3728,30 @@ mod transport_tests {
             serde_json::to_vec(&vec![wrong_project]).unwrap()
         )
         .is_err());
+    }
+
+    #[test]
+    fn snapshot_preserves_absent_and_explicitly_empty_expanded_devices() {
+        let mut raw = observed_instance("demo", "Running", 103);
+        raw["expanded_devices"] = serde_json::json!({});
+        let empty = IncusPlugin::parse_instance_list(
+            serde_json::to_vec(&vec![raw.clone()]).unwrap(),
+        ).unwrap().remove(0);
+        assert!(empty.expanded_devices.as_ref().unwrap().is_empty());
+        let serialized = serde_json::to_value(&empty).unwrap();
+        assert_eq!(serialized["expanded_devices"], serde_json::json!([]));
+
+        raw.as_object_mut().unwrap().remove("expanded_devices");
+        let missing = IncusPlugin::parse_instance_list(
+            serde_json::to_vec(&vec![raw]).unwrap(),
+        ).unwrap().remove(0);
+        assert!(missing.expanded_devices.is_none());
+        assert!(serde_json::to_value(&missing).unwrap().get("expanded_devices").is_none());
+
+        let schema = serde_json::to_value(schemars::schema_for!(IncusInstance)).unwrap();
+        assert_eq!(schema["properties"]["expanded_devices"]["type"], "array");
+        assert!(!schema["required"].as_array().unwrap().iter()
+            .any(|field| field.as_str() == Some("expanded_devices")));
     }
 
     #[test]
