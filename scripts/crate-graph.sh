@@ -15,7 +15,10 @@
 # scripts/hooks/pre-commit runs this when a commit stages crates, manifests,
 # or deploy/runit. Install it with:
 #   ln -sfn ../../scripts/hooks/pre-commit .git/hooks/pre-commit
-# Load:  cargo run -p op-cozo-store --example load_crate_graph -- docs/crate-graph/crate-graph.cozo
+# The legacy .cozo export is additive; do not use it to refresh a live graph.
+# Convert the JSON to a typed snapshot with system_graph_inventory --source-graph,
+# then use cozo.replace_system_graph with the current namespace revision.
+# Offline verification: cargo run -p op-cozo-store --example load_crate_graph -- SNAPSHOT.json
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 OUT="${1:-docs/crate-graph}"
@@ -70,7 +73,7 @@ jq -r '.packages[] as $p | $p.dependencies[] | [$p.name, (.kind // "normal"), .n
       edge "crate:$from" "$rel" "crate:$to" "$(jq -cn --argjson o "$optional" '{optional:$o}')"
     else
       node "ext:$to" ext_crate "$(jq -cn --arg r "$req" '{req:$r}')"
-      edge "crate:$from" uses_ext "ext:$to" "$(jq -cn --arg k "$kind" --argjson o "$optional" '{kind:$k, optional:$o}')"
+      edge "crate:$from" uses_ext "ext:$to" "$(jq -cn --arg k "$kind" --arg r "$req" --argjson o "$optional" '{kind:$k, req:$r, optional:$o}')"
     fi
   done
 
@@ -145,8 +148,11 @@ for run in deploy/runit/*/run; do
 done
 
 # provenance node (CozoScript multi-block scripts cannot start with a comment) --
+worktree_dirty=false
+[ -z "$(git status --porcelain --untracked-files=normal)" ] || worktree_dirty=true
 node "meta:crate-graph" meta "$(jq -cn --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg c "$(git rev-parse HEAD)" \
-  '{generated_at:$t, commit:$c, generator:"scripts/crate-graph.sh", relations:["graph_node","graph_edge"]}')"
+  --argjson dirty "$worktree_dirty" \
+  '{generated_at:$t, commit:$c, worktree_dirty:$dirty, generator:"scripts/crate-graph.sh", relations:["graph_node","graph_edge"]}')"
 
 # ---------- emit -------------------------------------------------------------
 sort -u "$NODES" > "$TMP/nodes.u"; sort -u "$EDGES" > "$TMP/edges.u"

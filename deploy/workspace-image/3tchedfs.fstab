@@ -1,0 +1,2 @@
+# 3tchedfs.service owns startup; noauto prevents a competing early-boot mount.
+3tchedFS /run/mount/3tchedfs fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0

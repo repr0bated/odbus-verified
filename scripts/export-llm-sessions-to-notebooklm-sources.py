@@ -15,12 +15,12 @@ Sources (DB-backed called out explicitly):
 Output per session:
   /home/jeremy/.notebooklm-sources/<model-slug>/{cli}_{session_id}.md
   /home/jeremy/.notebooklm-sources/<model-slug>/{cli}_{session_id}.json
-  /home/jeremy/.notebooklm-sources/MANIFEST.json   (for NotebookLM sync_sources / add_source_file)
+  /home/jeremy/.notebooklm-sources/MANIFEST.json   (local export inventory)
 
 Usage:
   python3 scripts/export-llm-sessions-to-notebooklm-sources.py -v
   python3 scripts/export-llm-sessions-to-notebooklm-sources.py --only opencode,codex,agy,cursor
-  python3 scripts/export-llm-sessions-to-notebooklm-sources.py --sync   # best-effort MCP/CLI sync
+  python3 scripts/export-llm-sessions-to-notebooklm-sources.py --sync   # configured mounted per-model sync
 """
 
 from __future__ import annotations
@@ -856,8 +856,8 @@ def write_manifest(counts: Dict[str, int]) -> Path:
         "file_count": len(files),
         "files": sorted(files, key=lambda x: x["mtime"], reverse=True),
         "notebooklm": {
-            "methods": ["add_source_file", "list_sources", "sync_drive_sources"],
-            "note": "Point NotebookLM MCP sync_sources / add_source_file at export_root or individual .md files.",
+            "entrypoint": "notebook-sources-sync-up",
+            "note": "Explicit per-model sync captures raw records through the configured identity-bound 3tchedFS mount; formatted exports are local artifacts.",
         },
     }
     path = EXPORT_ROOT / "MANIFEST.json"
@@ -866,34 +866,16 @@ def write_manifest(counts: Dict[str, int]) -> Path:
 
 
 def try_sync() -> int:
-    """Best-effort: nlm CLI or zcall notebooklm.add_source_file for each new md."""
-    notebook_id = os.environ.get("OP_NOTEBOOK_ID") or os.environ.get("NOTEBOOKLM_NOTEBOOK_ID")
-    if not notebook_id:
-        sys.stderr.write("[sync] set OP_NOTEBOOK_ID to push sources; wrote MANIFEST only\n")
-        return 0
-    synced = 0
-    nlm = shutil_which("nlm")
-    for md in getattr(Cfg, "export_root", EXPORT_ROOT).rglob("*.md"):
-        if md.name == "README.md":
-            continue
-        if nlm:
-            # jacob-bd notebooklm-mcp-cli style
-            cmd = [nlm, "source", "add", str(md), "--notebook", notebook_id]
-            try:
-                r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-                if r.returncode == 0:
-                    synced += 1
-                else:
-                    sys.stderr.write(f"[sync] nlm failed {md.name}: {r.stderr[:200]}\n")
-            except Exception as e:
-                sys.stderr.write(f"[sync] nlm error: {e}\n")
-        # zcall / grpcurl path is environment-specific; skip if no nlm
-    return synced
-
-
-def shutil_which(cmd: str) -> Optional[str]:
-    from shutil import which
-    return which(cmd)
+    """Run the received mounted per-model sync; return its actual exit status."""
+    wrapper = Path(__file__).resolve().parent / "notebook-sources-sync-up"
+    env = dict(os.environ)
+    env["NOTEBOOKLM_SOURCES_DIR"] = str(getattr(Cfg, "export_root", EXPORT_ROOT).resolve())
+    try:
+        status = subprocess.run([str(wrapper)], env=env, check=False).returncode
+    except OSError:
+        sys.stderr.write("[sync] received mounted sync wrapper is unavailable\n")
+        return 1
+    return status if status >= 0 else 128 - status
 
 
 # ---------------------------------------------------------------------------
@@ -917,7 +899,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Export LLM CLI sessions → /home/jeremy/.notebooklm-sources")
     ap.add_argument("-v", "--verbose", action="store_true")
     ap.add_argument("--only", help="comma list: opencode,kilo,codex,agy,cursor,factory,grok,claude")
-    ap.add_argument("--sync", action="store_true", help="best-effort NotebookLM source upload (needs OP_NOTEBOOK_ID + nlm)")
+    ap.add_argument("--sync", action="store_true", help="run explicit mounted per-model raw sync after local export (requires configured mount and session)")
     ap.add_argument("--root", default=str(EXPORT_ROOT), help="override export root")
     ap.add_argument(
         "--backfill",
@@ -975,8 +957,7 @@ def main() -> int:
         print(f"  models: {sorted(p.name for p in Cfg.export_root.iterdir() if p.is_dir())}")
 
     if args.sync:
-        n = try_sync()
-        print(f"[sync] uploaded {n} sources (best-effort)")
+        return try_sync()
 
     return 0
 
