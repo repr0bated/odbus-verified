@@ -6,17 +6,39 @@ use crate::provider::ChatMessage;
 pub const SYSTEM_GRAPH_TURN_REMINDER: &str = "System graph: discover cozo.list_system_graphs through identity-bound 3tchedFS; check provenance and coverage; grants apply.";
 
 /// Work on a request copy, preserving caller messages, tool results and order.
-/// A leading reminder inserted by another repository-owned boundary is reused
-/// so manager-backed tool loops do not duplicate it.
+/// Leading reminders inserted by repository-owned boundaries are consolidated
+/// into the first system message. Other content, roles and message order remain.
 pub fn with_system_graph_reminder(mut messages: Vec<ChatMessage>) -> Vec<ChatMessage> {
-    if let Some(system) = messages.iter_mut().find(|message| message.role == "system") {
-        if system.content != SYSTEM_GRAPH_TURN_REMINDER
-            && !system
-                .content
-                .starts_with(&format!("{SYSTEM_GRAPH_TURN_REMINDER}\n"))
-        {
-            system.content = format!("{SYSTEM_GRAPH_TURN_REMINDER}\n{}", system.content);
+    let prefix = format!("{SYSTEM_GRAPH_TURN_REMINDER}\n");
+    let mut first_system = None;
+    for (index, message) in messages.iter_mut().enumerate() {
+        if message.role != "system" {
+            continue;
         }
+        first_system.get_or_insert(index);
+        let mut content = message.content.as_str();
+        loop {
+            if content == SYSTEM_GRAPH_TURN_REMINDER {
+                content = "";
+                break;
+            }
+            if let Some(rest) = content.strip_prefix(&prefix) {
+                content = rest;
+            } else {
+                break;
+            }
+        }
+        if content.len() != message.content.len() {
+            message.content = content.to_owned();
+        }
+    }
+    if let Some(index) = first_system {
+        let system = &mut messages[index];
+        system.content = if system.content.is_empty() {
+            SYSTEM_GRAPH_TURN_REMINDER.to_owned()
+        } else {
+            format!("{SYSTEM_GRAPH_TURN_REMINDER}\n{}", system.content)
+        };
     } else {
         messages.insert(
             0,
@@ -24,6 +46,18 @@ pub fn with_system_graph_reminder(mut messages: Vec<ChatMessage>) -> Vec<ChatMes
         );
     }
     messages
+}
+
+/// Providers with a separate system field must retain every trusted system
+/// message in order. User and tool content never enters that field.
+pub(crate) fn ordered_system_content(messages: &[ChatMessage]) -> Option<String> {
+    let mut systems = messages.iter().filter(|message| message.role == "system");
+    let mut content = systems.next()?.content.clone();
+    for message in systems {
+        content.push_str("\n\n");
+        content.push_str(&message.content);
+    }
+    Some(content)
 }
 
 #[cfg(test)]
@@ -70,5 +104,34 @@ mod tests {
         assert_eq!(request[0].role, "system");
         assert_eq!(request[0].content.lines().count(), 1);
         assert_eq!(request[1].content, SYSTEM_GRAPH_TURN_REMINDER);
+    }
+
+    #[test]
+    fn multiple_system_messages_preserve_order_and_one_owned_reminder() {
+        let original = vec![
+            ChatMessage::system("First instructions"),
+            ChatMessage::user("Question"),
+            ChatMessage::system(format!("{SYSTEM_GRAPH_TURN_REMINDER}\nSecond instructions")),
+            ChatMessage::tool_result("call-id", "Result"),
+            ChatMessage::system(format!("{SYSTEM_GRAPH_TURN_REMINDER}\nThird instructions")),
+        ];
+        let request = with_system_graph_reminder(original.clone());
+        assert_eq!(request.len(), original.len());
+        for (before, after) in original.iter().zip(&request) {
+            assert_eq!(before.role, after.role);
+            assert_eq!(before.tool_call_id, after.tool_call_id);
+        }
+        assert_eq!(request[1].content, "Question");
+        assert_eq!(request[3].content, "Result");
+        let system = ordered_system_content(&request).unwrap();
+        assert_eq!(system, format!(
+            "{SYSTEM_GRAPH_TURN_REMINDER}\nFirst instructions\n\nSecond instructions\n\nThird instructions"
+        ));
+        assert_eq!(system.matches(SYSTEM_GRAPH_TURN_REMINDER).count(), 1);
+        assert_eq!(
+            ordered_system_content(&with_system_graph_reminder(request)),
+            Some(system)
+        );
+        assert!(ordered_system_content(&[ChatMessage::user("untrusted")]).is_none());
     }
 }

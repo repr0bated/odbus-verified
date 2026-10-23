@@ -721,11 +721,12 @@ impl AntigravityProvider {
     }
 
     fn convert_messages(messages: &[ChatMessage]) -> (Vec<Value>, Option<Value>) {
-        let mut system_instruction = None;
+        let system_instruction = crate::graph_turn_reminder::ordered_system_content(messages)
+            .map(|content| json!({"parts": [{"text": content}]}));
         let mut contents = Vec::new();
         for message in messages {
             if message.role == "system" {
-                system_instruction = Some(json!({"parts": [{"text": message.content}]}));
+                continue;
             } else {
                 let role = if message.role == "assistant" {
                     "model"
@@ -1068,6 +1069,26 @@ mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
+
+    #[test]
+    fn conversion_keeps_all_system_instructions_and_one_graph_reminder() {
+        use crate::graph_turn_reminder::{SYSTEM_GRAPH_TURN_REMINDER, with_system_graph_reminder};
+
+        let messages = with_system_graph_reminder(vec![
+            ChatMessage::system("First instructions"),
+            ChatMessage::user("Question"),
+            ChatMessage::system("Later instructions"),
+            ChatMessage::assistant("Answer"),
+        ]);
+        let (contents, system) = AntigravityProvider::convert_messages(&messages);
+        assert_eq!(system.unwrap()["parts"][0]["text"], format!(
+            "{SYSTEM_GRAPH_TURN_REMINDER}\nFirst instructions\n\nLater instructions"
+        ));
+        assert_eq!(contents, vec![
+            json!({"role":"user", "parts":[{"text":"Question"}]}),
+            json!({"role":"model", "parts":[{"text":"Answer"}]}),
+        ]);
+    }
 
     async fn one_request_server(response: String) -> (String, tokio::task::JoinHandle<Vec<u8>>) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

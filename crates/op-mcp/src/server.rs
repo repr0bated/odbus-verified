@@ -36,6 +36,8 @@ impl Default for McpServerConfig {
             compact_mode: false,
             allowed_categories: None,
             blocked_patterns: vec![
+                "shell_execute".into(),
+                "shell_command".into(),
                 "write_file".into(),
                 "systemd_start".into(),
                 "systemd_stop".into(),
