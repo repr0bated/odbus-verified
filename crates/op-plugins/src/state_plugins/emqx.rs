@@ -769,14 +769,22 @@ async fn publish_responder_wake(
     transport: &EmqxNativeTransport,
     input: PublishResponderWakeInput,
 ) -> Result<PublishResponderWakeOutput> {
+    anyhow::ensure!(
+        !input.request_id.is_empty()
+            && input.request_id.len() <= 128
+            && !input.request_id.chars().any(char::is_control),
+        "invalid responder wake request id"
+    );
+    anyhow::ensure!(
+        !input.responder_principal_id.is_empty()
+            && input.responder_principal_id.len() <= 512
+            && !input.responder_principal_id.chars().any(char::is_control),
+        "invalid responder wake principal"
+    );
     let topic = responder_wake_topic(&input.responder_principal_id);
-    let payload = serde_json::json!({
-        "request_id": input.request_id,
-        "owner_key": input.owner_key,
-        "owner_principal_id": input.owner_principal_id,
-        "conversation_id": input.conversation_id,
-        "preview": input.preview,
-    });
+    // A wake carries an opaque reference only. Private requester identity,
+    // conversation content and scope are read through admitted state.
+    let payload = serde_json::json!({ "request_id": input.request_id });
     let response = emqx_api(
         transport,
         Method::POST,
