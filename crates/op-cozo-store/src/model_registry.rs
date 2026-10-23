@@ -415,9 +415,7 @@ impl CozoGraphShuttle {
         let tx = self.db.multi_transaction(true);
         let value = body(&tx)?;
         commit_checked(&tx)?;
-        if let Err(e) = self.sync_runtime_document_store() {
-            tracing::warn!("model registry sync after commit failed: {}", e);
-        }
+        self.sync_runtime_document_store()?;
         Ok(value)
     }
 
@@ -450,11 +448,6 @@ impl CozoGraphShuttle {
                 .find(|row| row.provider_id == provider_id);
             let counts = match listed {
                 Ok(models) => {
-                    if models.is_empty() && !existing.is_empty() {
-                        return Err(error(
-                            "provider returned empty model list but previously had models",
-                        ));
-                    }
                     let known: BTreeMap<&str, &RegistryModelRecord> = existing
                         .iter()
                         .map(|row| (row.model.model_id.as_str(), row))
@@ -791,6 +784,18 @@ mod tests {
         assert_eq!(providers[0].available_count, 2);
         assert_eq!(providers[0].known_count, 3);
         assert_eq!(providers[0].status, "ok");
+    }
+
+    #[test]
+    fn successful_empty_refresh_retires_previously_available_models() {
+        let store = store();
+        store.record_model_registry_refresh("provider", "t1", Ok(&[model("old")])).unwrap();
+        let (counts, revision) = store.record_model_registry_refresh("provider", "t2", Ok(&[])).unwrap();
+        assert_eq!((counts.available, counts.dropped, revision), (0, 1, 2));
+        assert!(available(&store, "provider").is_empty());
+        let (rows, _) = store.list_model_registry_models(Some("provider")).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert!(!rows[0].available);
     }
 
     #[test]

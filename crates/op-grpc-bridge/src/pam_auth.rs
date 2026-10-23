@@ -62,7 +62,13 @@ unsafe extern "C" fn converse(
     resp: *mut *mut PamResponse,
     appdata: *mut c_void,
 ) -> c_int {
-    if num_msg <= 0 || num_msg > 32 || msg.is_null() || resp.is_null() || appdata.is_null() {
+    if resp.is_null() {
+        return PAM_CONV_ERR;
+    }
+    // SAFETY: a non-null output pointer belongs to PAM for this callback.
+    // Transfer ownership only on success; every failure leaves no response.
+    unsafe { *resp = std::ptr::null_mut() };
+    if num_msg <= 0 || num_msg > 32 || msg.is_null() || appdata.is_null() {
         return PAM_CONV_ERR;
     }
     let count = num_msg as usize;
