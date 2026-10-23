@@ -2646,6 +2646,9 @@ fn set_role_model_handler(
 ) -> std::result::Result<DispatchOutcome, TchedRouterError> {
     let args = parse_args("SetRoleModel", json_args)?;
     let model_id = require_str(&args, "model_id", "SetRoleModel")?;
+    if !state.catalog.model_routes.iter().any(|route| route.model == model_id) {
+        return Err(TchedRouterError::ModelNotDeclared { model: model_id });
+    }
     let result = match role {
         "ovs_routing" => serde_json::json!({ "ovs_routing": model_id }),
         "obfuscation" => serde_json::json!({ "obfuscation": model_id }),
@@ -3135,6 +3138,6 @@ mod config_v3_contract_tests {
 
     #[test]
     fn config_contract_break_bumps_plugin_version() {
-        assert_eq!(tched_router_plugin_schema().version, "4.3.0");
+        assert_eq!(tched_router_plugin_schema().version, "4.4.1");
     }
 }
