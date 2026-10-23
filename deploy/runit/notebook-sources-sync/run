@@ -56,7 +56,11 @@ while true; do
     sync_pid=$!
     wait "$sync_pid" || capture_result=$?
     sync_pid=
-    mv -f "$status_dir/capture-summary.json.new" "$status_dir/capture-summary.json"
+    if [ "$capture_result" = 0 ]; then
+        mv -f "$status_dir/capture-summary.json.new" "$status_dir/capture-summary.json"
+    else
+        rm -f "$status_dir/capture-summary.json.new"
+    fi
     # Local capture is independently useful and must become ready before an
     # optional remote operation can block, fail admission, or await its mount.
     jq -n --argjson code "$capture_result" \
