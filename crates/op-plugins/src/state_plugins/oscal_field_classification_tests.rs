@@ -262,7 +262,7 @@ fn broad_schema_hits_a_bounded_limit_without_complete_coverage() {
 }
 
 #[test]
-fn protection_loss_between_exact_and_finite_representations_is_detected() {
+fn unreviewed_protection_comparison_is_rejected_even_with_complete_traversal() {
     let mut before = schema(json!({"type":"integer"}));
     before["fields"] =
         json!({"credential":{"field_type":{"json_schema":{"type":"string","x-secret":true}}}});
@@ -270,13 +270,9 @@ fn protection_loss_between_exact_and_finite_representations_is_detected() {
     after["fields"]["credential"]["field_type"] = json!("string");
     let before = run(before, None);
     let after = run(after, None);
-    let losses = protection_losses(&before, &after).unwrap();
-    assert!(losses.iter().any(|loss| loss.root == FieldRoot::State
-        && loss.selector
-            == Some(vec![PayloadStep::Property {
-                name: "credential".into()
-            }])
-        && loss.required_floor == ProtectionFloor::Secret));
+    assert!(before.traversal_complete && after.traversal_complete);
+    assert!(!before.boundary_coverage_complete && !after.boundary_coverage_complete);
+    assert!(protection_losses(&before, &after).is_err());
 }
 
 #[test]
