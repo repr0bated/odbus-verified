@@ -39,6 +39,7 @@ impl<F: ItemsFilter> UnevaluatedItemsValidator<F> {
         ctx: &'a compiler::Context,
         parent: &'a Map<String, Value>,
     ) -> CompilationResult<'a> {
+        super::annotation_cycles::check(ctx, parent, false)?;
         Ok(Box::new(UnevaluatedItemsValidator {
             location: ctx.location().join("unevaluatedItems"),
             filter: F::new(ctx, parent)?,
