@@ -407,12 +407,12 @@ fn remove_root(state: &mut State, top: &File, removal: RootRemoval) -> Result<()
     drop(parent);
     state.journal.as_mut().unwrap().removals[index].rejected = false;
     state.intent(format!("quiescent-delete:{}", removal.id))?;
+    // The exact checked ioctl normalizes its proven-absent generation to
+    // success. Ordinary pathname absence cannot authorize this step.
+    // Both outcomes still require cleaner and recorded-name reconciliation.
     match lifetime::destroy(top.as_fd(), FSID.parse()?, removal.id,
         removal.native_uuid.parse()?, removal.received_uuid.parse()?) {
         Ok(()) => {},
-        // ENOENT from a linked-root lookup is not lifetime-zero evidence:
-        // orphaned roots can still retain detached aliases. Only a successful
-        // checked operation authorizes cleaner/rename progression.
         Err(error) => {
             if matches!(error.raw_os_error(), Some(libc::EBUSY | libc::ESTALE | libc::EINVAL | libc::EROFS | libc::ENOTTY)) {
                 state.journal.as_mut().unwrap().removals[index].rejected = true;
