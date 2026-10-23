@@ -30,10 +30,12 @@ const ALLOW_HEADERS: [HeaderName; 6] = [
     HeaderName::from_static(crate::grpc_server::DECLARED_CAPABILITY_HEADER),
 ];
 
-const EXPOSE_HEADERS: [HeaderName; 3] = [
+const EXPOSE_HEADERS: [HeaderName; 5] = [
     HeaderName::from_static("grpc-status"),
     HeaderName::from_static("grpc-message"),
     HeaderName::from_static("grpc-status-details-bin"),
+    HeaderName::from_static(crate::interceptor::IDENTITY_MODE_HEADER),
+    HeaderName::from_static(crate::interceptor::IDENTITY_SESSION_HEADER),
 ];
 
 /// Drop-in replacement for `tonic_web::enable` with exact-origin OIA1 CORS.
@@ -74,7 +76,9 @@ where
         self.0.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<BoxBody>) -> Self::Future {
+    fn call(&mut self, mut req: Request<BoxBody>) -> Self::Future {
+        let path = crate::interceptor::ReceiverRpcPath::from_http_path(req.uri().path());
+        req.extensions_mut().insert(path);
         self.0.call(req)
     }
 }
@@ -84,4 +88,35 @@ where
     S: NamedService,
 {
     const NAME: &'static str = S::NAME;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn browser_binding_rpc_path_is_captured_before_interception_from_actual_uri() {
+        let inner = tower::service_fn(|request: Request<BoxBody>| async move {
+            let path = request
+                .extensions()
+                .get::<crate::interceptor::ReceiverRpcPath>()
+                .expect("receiver path");
+            assert!(path.is_canonical_method());
+            Ok::<_, std::convert::Infallible>(Response::new(tonic::body::empty_body()))
+        });
+        let mut request = Request::builder()
+            .method("POST")
+            .uri("/operation.v1.PluginService/CallMethod")
+            .version(http::Version::HTTP_2)
+            .header("content-type", "application/grpc")
+            .body(tonic::body::empty_body())
+            .unwrap();
+        request
+            .extensions_mut()
+            .insert(crate::interceptor::ReceiverRpcPath::from_http_path(
+                "/operation.v1.StateSync/Mutate",
+            ));
+        enable(inner).oneshot(request).await.unwrap();
+    }
 }

@@ -8,9 +8,9 @@ use std::sync::OnceLock;
 
 use async_stream::stream;
 use chrono::{DateTime, Utc};
-use op_cognitive_mcp::QdrantSemanticShuttle;
+use op_cognitive::QdrantSemanticShuttle;
 use prost::Message;
-use prost_reflect::{DescriptorPool, DynamicMessage, SerializeOptions};
+use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, SerializeOptions};
 use prost_types::{Struct as ProstStruct, Timestamp as ProstTimestamp, Value as ProstValue};
 use serde::de::DeserializeSeed;
 use serde_json::Value as JsonValue;
@@ -179,6 +179,111 @@ pub(crate) fn enforce_bridge_capability_with_schema(
 }
 
 #[allow(clippy::result_large_err)] // Preserve tonic status at the RPC boundary.
+fn normalize_generated_arguments(
+    schema: &JsonValue,
+    method_name: &str,
+    descriptor: &prost_reflect::MessageDescriptor,
+    args: &mut JsonValue,
+) -> Result<(), Status> {
+    let contract = schema
+        .get("methods")
+        .and_then(|methods| methods.get(method_name))
+        .and_then(|method| method.get("args"))
+        .ok_or_else(|| Status::failed_precondition("sealed method input schema is unavailable"))?;
+    op_blob::descriptor::validate_json_schema_field_aliases(contract)
+        .map_err(Status::failed_precondition)?;
+    normalize_message_keys(contract, contract, descriptor, args, 0)
+}
+
+#[allow(clippy::result_large_err)] // Preserve tonic status at the RPC boundary.
+fn normalize_message_keys<'a>(
+    root: &'a JsonValue,
+    contract: &'a JsonValue,
+    descriptor: &prost_reflect::MessageDescriptor,
+    args: &mut JsonValue,
+    depth: usize,
+) -> Result<(), Status> {
+    if depth > 128 {
+        return Err(Status::invalid_argument("request nesting exceeds alias mapping limit"));
+    }
+    // Resolve only the local pointers and single alternatives represented by
+    // the sealed descriptor builder. Structured Value/Struct payloads retain
+    // their authored JSON keys and need no protobuf field-name translation.
+    let Some(contract) = descriptor_schema_node(root, contract) else {
+        return Ok(());
+    };
+    let Some(properties) = contract.get("properties").and_then(JsonValue::as_object) else {
+        return Ok(());
+    };
+    let Some(object) = args.as_object_mut() else {
+        return Ok(());
+    };
+    for field in descriptor.fields() {
+        let Some((original, property)) = properties
+            .iter()
+            .find(|(name, _)| op_blob::descriptor::proto_field_name(name) == field.name())
+        else {
+            continue;
+        };
+        if original != field.name() && field.json_name() != original {
+            return Err(Status::failed_precondition(
+                "request descriptor lost an authored JSON property name",
+            ));
+        }
+        let Some(mut value) = object.remove(field.name()) else {
+            continue;
+        };
+        if let prost_reflect::Kind::Message(message) = field.kind()
+            && !message.full_name().starts_with("google.protobuf.")
+        {
+            let property = descriptor_schema_node(root, property).unwrap_or(property);
+            if field.is_map() {
+                if let Some(values) = value.as_object_mut()
+                    && let Some(value_schema) = property.get("additionalProperties")
+                    && let prost_reflect::Kind::Message(value_message) = message.map_entry_value_field().kind()
+                {
+                    for value in values.values_mut() {
+                        normalize_message_keys(root, value_schema, &value_message, value, depth + 1)?;
+                    }
+                }
+            } else if field.is_list() {
+                if let Some(values) = value.as_array_mut()
+                    && let Some(item_schema) = property.get("items")
+                {
+                    for value in values {
+                        normalize_message_keys(root, item_schema, &message, value, depth + 1)?;
+                    }
+                }
+            } else {
+                normalize_message_keys(root, property, &message, &mut value, depth + 1)?;
+            }
+        }
+        if object.insert(original.clone(), value).is_some() {
+            return Err(Status::invalid_argument("request contains duplicate property aliases"));
+        }
+    }
+    Ok(())
+}
+
+fn descriptor_schema_node<'a>(root: &'a JsonValue, mut node: &'a JsonValue) -> Option<&'a JsonValue> {
+    for _ in 0..64 {
+        if let Some(reference) = node.get("$ref").and_then(JsonValue::as_str) {
+            node = root.pointer(reference.strip_prefix('#')?)?;
+        } else if let Some(alternatives) = node
+            .get("anyOf")
+            .or_else(|| node.get("oneOf"))
+            .and_then(JsonValue::as_array)
+            .filter(|values| values.len() == 1)
+        {
+            node = &alternatives[0];
+        } else {
+            return Some(node);
+        }
+    }
+    None
+}
+
+#[allow(clippy::result_large_err)] // Preserve tonic status at the RPC boundary.
 fn validate_generated_arguments(
     schema: &JsonValue,
     method_name: &str,
@@ -210,6 +315,56 @@ fn validate_generated_arguments(
 #[cfg(test)]
 mod generated_argument_tests {
     use super::*;
+
+    #[test]
+    fn cli_flag_aliases_return_to_sealed_keys_before_validation() {
+        let contract = serde_json::json!({"type":"object","additionalProperties":false,
+            "required":["--config-dir","-f","listen_port"],"properties":{
+                "--config-dir":{"type":"string"},
+                "-f":{"type":"boolean"},
+                "listen_port":{"type":"integer"}
+            }});
+        let mut plugin = op_blob::schema::PluginSchema::builder("threetched").build();
+        plugin.methods.insert("configure".into(), op_blob::schema::MethodDecl {
+            name: "configure".into(),
+            args: contract,
+            returns: Some(serde_json::json!({"type":"object"})),
+            side_effect: op_blob::schema::SideEffect::Read,
+            idempotent: true,
+            required_capability: None,
+            subid: "obs.threetched.configure@v1".into(),
+        });
+        let sealed = serde_json::to_value(&plugin).unwrap();
+        let (bytes, methods) = op_blob::descriptor::descriptor_set_for_plugin("threetched", &plugin);
+        let pool = DescriptorPool::decode(bytes.as_slice()).unwrap();
+        let input = pool.get_message_by_name(&methods[0].input_full).unwrap();
+        let mut deserializer = serde_json::Deserializer::from_str(
+            r#"{"--config-dir":"/isolated/config","-f":true,"listenPort":443}"#,
+        );
+        let message = input.clone().deserialize(&mut deserializer).unwrap();
+        let mut encoded = Vec::new();
+        message.serialize_with_options(
+            &mut serde_json::Serializer::new(&mut encoded),
+            &SerializeOptions::new().use_proto_field_name(true).stringify_64_bit_integers(false),
+        ).unwrap();
+        let mut args: JsonValue = serde_json::from_slice(&encoded).unwrap();
+        assert!(args.get("__config_dir").is_some());
+        normalize_generated_arguments(&sealed, "configure", &input, &mut args).unwrap();
+        validate_generated_arguments(&sealed, "configure", &mut args).unwrap();
+        assert_eq!(args, serde_json::json!({
+            "--config-dir":"/isolated/config","-f":true,"listen_port":443
+        }));
+
+        let mut duplicate = serde_json::json!({"__config_dir":"a","--config-dir":"b"});
+        assert_eq!(normalize_generated_arguments(&sealed, "configure", &input, &mut duplicate)
+            .unwrap_err().code(), tonic::Code::InvalidArgument);
+        let ambiguous = serde_json::json!({"methods":{"configure":{"args":{
+            "type":"object","properties":{"--flag":{"type":"boolean"},"__flag":{"type":"boolean"}}
+        }}}});
+        let mut args = serde_json::json!({"__flag":true});
+        assert_eq!(normalize_generated_arguments(&ambiguous, "configure", &input, &mut args)
+            .unwrap_err().code(), tonic::Code::FailedPrecondition);
+    }
 
     #[test]
     fn typed_requests_obey_sealed_constraints_and_unit_contracts() {
@@ -832,6 +987,144 @@ impl OperationGrpcServer {
         self.active_reflection.clone()
     }
 
+    #[allow(clippy::too_many_arguments)]
+    async fn call_plugin_method_dynamic(
+        &self,
+        plugin_id: &str,
+        method_name: &str,
+        request_dynamic: DynamicMessage,
+        response_descriptor: &prost_reflect::MessageDescriptor,
+        sealed_schema: &JsonValue,
+        identity: Option<&GhostbridgeIdentity>,
+        human_identity: Option<&crate::oracle_assertion::HumanPrincipalIdentity>,
+        declared_capability: Option<&str>,
+        bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
+    ) -> Result<DynamicMessage, Status> {
+        if let Err(error) = enforce_bridge_capability_with_schema(
+            Some(sealed_schema),
+            plugin_id,
+            method_name,
+            declared_capability,
+            identity,
+        ) {
+            return Err(Status::permission_denied(error.message));
+        }
+
+        let mut json_args = Vec::new();
+        request_dynamic
+            .serialize_with_options(
+                &mut serde_json::Serializer::new(&mut json_args),
+                &SerializeOptions::new()
+                    .use_proto_field_name(true)
+                    .stringify_64_bit_integers(false)
+                    .skip_default_fields(false),
+            )
+            .map_err(|error| {
+                Status::internal(format!(
+                    "failed to serialize request for {plugin_id}.{method_name}: {error}"
+                ))
+            })?;
+        let mut json_args = String::from_utf8(json_args).map_err(|error| {
+            Status::internal(format!(
+                "request JSON was not UTF-8 for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+        let mut args_value: JsonValue = serde_json::from_str(&json_args).map_err(|error| {
+            Status::internal(format!(
+                "failed to inspect request for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+
+        normalize_generated_arguments(
+            sealed_schema,
+            method_name,
+            &request_dynamic.descriptor(),
+            &mut args_value,
+        )?;
+        validate_generated_arguments(sealed_schema, method_name, &mut args_value)?;
+        json_args = serde_json::to_string(&args_value)
+            .map_err(|error| Status::internal(error.to_string()))?;
+        enforce_human_principal_self_service(plugin_id, method_name, &args_value, human_identity)
+            .map_err(|error| Status::permission_denied(error.message))?;
+
+        let authenticated_actor_id = identity
+            .as_ref()
+            .map(|identity| identity.principal_id.as_str())
+            .ok_or_else(|| Status::unauthenticated("authenticated principal is required"))?;
+        let result = self
+            .mutation_engine
+            .dispatch_method_call_with_bound_oracle(
+                plugin_id,
+                method_name,
+                &json_args,
+                declared_capability,
+                authenticated_actor_id,
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_id.as_str()),
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_genesis.as_str()),
+                bound_oracle.clone(),
+            )
+            .await
+            .map_err(|error| {
+                Status::internal(format!(
+                    "plugin method {}.{} failed: {}",
+                    plugin_id, method_name, error
+                ))
+            })?;
+
+        let method_result = result.get("result").unwrap_or(&result);
+        let result_json = serde_json::to_string(method_result).map_err(|error| {
+            Status::internal(format!(
+                "failed to serialize method result for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+
+        let mut deserializer = serde_json::de::Deserializer::from_str(&result_json);
+        let response_dynamic = response_descriptor
+            .clone()
+            .deserialize(&mut deserializer)
+            .map_err(|error| {
+                Status::internal(format!(
+                    "failed to deserialize response for {plugin_id}.{method_name}: {error}"
+                ))
+            })?;
+        deserializer.end().map_err(|error| {
+            Status::internal(format!(
+                "failed to finish response decode for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+
+        if let Some(proof) = &bound_oracle {
+            interceptor::revalidate_bound_oracle(
+                &self.mutation_engine,
+                proof,
+                authenticated_actor_id,
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_id.as_str()),
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_genesis.as_str()),
+                false,
+            )
+            .await
+            .map_err(|_| Status::unauthenticated("Assigned browser identity changed"))?;
+            enforce_bridge_capability_with_schema(
+                Some(sealed_schema),
+                plugin_id,
+                method_name,
+                declared_capability,
+                identity,
+            )
+            .map_err(|error| Status::permission_denied(error.message))?;
+        }
+
+        Ok(response_dynamic)
+    }
+
     pub(crate) async fn call_generated_plugin_method_typed<Req, Res>(
         &self,
         plugin_id: &'static str,
@@ -850,20 +1143,10 @@ impl OperationGrpcServer {
             .cloned();
         let identity = interceptor::bridge_capability_identity(request.extensions());
 
-        // The caller declares which capability it is exercising, and the bridge
-        // verifies that declaration against the method's `required_capability`.
-        //
-        // Passing `None` here (as this previously did) made `capability_matches` in
-        // `enforce_bridge_capability` compare `None == Some(required)`, which is
-        // always false — and since the decision is `capability_matches &&
-        // principal_grants`, every capability-gated method was permanently denied
-        // over gRPC/gRPC-Web. Every cognitive_mcp method is gated, so none were
-        // reachable despite the services being mounted.
-        //
-        // Declaration is deliberate rather than derived from the schema: it keeps the
-        // check two-factor (the caller must state its intent AND hold an identity)
-        // and makes the exercised capability visible in traces. An absent or
-        // malformed header still denies.
+        let bound_oracle = request
+            .extensions()
+            .get::<crate::oracle_assertion::BoundOracleProof>()
+            .cloned();
         let declared_capability = request
             .metadata()
             .get(DECLARED_CAPABILITY_HEADER)
@@ -873,15 +1156,9 @@ impl OperationGrpcServer {
             .map(str::to_string);
 
         let sealed_schema = read_plugin_schema_json(plugin_id);
-        if let Err(error) = enforce_bridge_capability_with_schema(
-            sealed_schema.as_ref(),
-            plugin_id,
-            method_name,
-            declared_capability.as_deref(),
-            identity.as_ref(),
-        ) {
-            return Err(Status::permission_denied(error.message));
-        }
+        let sealed_schema = sealed_schema
+            .as_ref()
+            .ok_or_else(|| Status::failed_precondition("sealed method schema is unavailable"))?;
 
         let request_bytes = request.into_inner().encode_to_vec();
         let request_desc = plugin_descriptor_pool()
@@ -897,77 +1174,7 @@ impl OperationGrpcServer {
                     "failed to decode typed request for {plugin_id}.{method_name}: {error}"
                 ))
             })?;
-        let mut json_args = Vec::new();
-        request_dynamic
-            .serialize_with_options(
-                &mut serde_json::Serializer::new(&mut json_args),
-                &SerializeOptions::new()
-                    .use_proto_field_name(true)
-                    .stringify_64_bit_integers(false)
-                    .skip_default_fields(false),
-            )
-            .map_err(|error| {
-                Status::internal(format!(
-                    "failed to serialize typed request for {plugin_id}.{method_name}: {error}"
-                ))
-            })?;
-        let mut json_args = String::from_utf8(json_args).map_err(|error| {
-            Status::internal(format!(
-                "typed request JSON was not UTF-8 for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
-        let mut args_value: JsonValue = serde_json::from_str(&json_args).map_err(|error| {
-            Status::internal(format!(
-                "failed to inspect typed request for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
-        let sealed_schema = sealed_schema
-            .as_ref()
-            .ok_or_else(|| Status::failed_precondition("sealed method schema is unavailable"))?;
-        validate_generated_arguments(sealed_schema, method_name, &mut args_value)?;
-        json_args = serde_json::to_string(&args_value)
-            .map_err(|error| Status::internal(error.to_string()))?;
-        enforce_human_principal_self_service(
-            plugin_id,
-            method_name,
-            &args_value,
-            human_identity.as_ref(),
-        )
-        .map_err(|error| Status::permission_denied(error.message))?;
 
-        let authenticated_actor_id = identity
-            .as_ref()
-            .map(|identity| identity.principal_id.as_str())
-            .ok_or_else(|| Status::unauthenticated("authenticated principal is required"))?;
-        let result = self
-            .mutation_engine
-            .dispatch_method_call_with_identity(
-                plugin_id,
-                method_name,
-                &json_args,
-                declared_capability.as_deref(),
-                authenticated_actor_id,
-                identity
-                    .as_ref()
-                    .map(|identity| identity.session_id.as_str()),
-                identity
-                    .as_ref()
-                    .map(|identity| identity.session_genesis.as_str()),
-            )
-            .await
-            .map_err(|error| {
-                Status::internal(format!(
-                    "plugin method {}.{} failed: {}",
-                    plugin_id, method_name, error
-                ))
-            })?;
-
-        let method_result = result.get("result").unwrap_or(&result);
-        let result_json = serde_json::to_string(method_result).map_err(|error| {
-            Status::internal(format!(
-                "failed to serialize method result for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
         let response_desc = plugin_descriptor_pool()
             .get_message_by_name(response_message_name)
             .ok_or_else(|| {
@@ -975,19 +1182,20 @@ impl OperationGrpcServer {
                     "missing response descriptor for {plugin_id}.{method_name}"
                 ))
             })?;
-        let mut deserializer = serde_json::de::Deserializer::from_str(&result_json);
-        let response_dynamic = response_desc
-            .deserialize(&mut deserializer)
-            .map_err(|error| {
-                Status::internal(format!(
-                    "failed to deserialize typed response for {plugin_id}.{method_name}: {error}"
-                ))
-            })?;
-        deserializer.end().map_err(|error| {
-            Status::internal(format!(
-                "failed to finish typed response decode for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
+
+        let response_dynamic = self
+            .call_plugin_method_dynamic(
+                plugin_id,
+                method_name,
+                request_dynamic,
+                &response_desc,
+                sealed_schema,
+                identity.as_ref(),
+                human_identity.as_ref(),
+                declared_capability.as_deref(),
+                bound_oracle.clone(),
+            )
+            .await?;
 
         let mut bytes = Vec::new();
         response_dynamic.encode(&mut bytes).map_err(|error| {
@@ -1000,7 +1208,10 @@ impl OperationGrpcServer {
                 "failed to decode typed response for {plugin_id}.{method_name}: {error}"
             ))
         })?;
-        Ok(Response::new(response))
+
+        let mut response = Response::new(response);
+        interceptor::mark_bound_oracle_response(&mut response, bound_oracle.as_ref())?;
+        Ok(response)
     }
 }
 
@@ -1013,6 +1224,55 @@ fn plugin_descriptor_pool() -> &'static DescriptorPool {
 }
 
 include!(concat!(env!("OUT_DIR"), "/plugin_method_routes.rs"));
+
+pub(crate) fn is_canonical_method_path(path: &str) -> bool {
+    if path == "/operation.v1.PluginService/CallMethod" {
+        return true;
+    }
+    let Some((service, method)) = path.strip_prefix('/').and_then(|path| path.split_once('/'))
+    else {
+        return false;
+    };
+    !method.is_empty()
+        && !method.contains('/')
+        && generated_plugin_method_routes::LEGACY_PLUGIN_METHOD_SERVICES
+            .iter()
+            .any(|(_, declared)| *declared == service)
+        && plugin_descriptor_pool()
+            .get_service_by_name(service)
+            .is_some_and(|descriptor| {
+                descriptor
+                    .methods()
+                    .any(|declared| declared.name() == method)
+            })
+}
+
+#[cfg(test)]
+mod browser_method_paths {
+    #[test]
+    fn browser_binding_only_accepts_registered_method_paths() {
+        assert!(super::is_canonical_method_path(
+            "/operation.v1.PluginService/CallMethod"
+        ));
+        assert!(!super::is_canonical_method_path(
+            "/operation.v1.StateSync/Mutate"
+        ));
+        let (_, service) = super::generated_plugin_method_routes::LEGACY_PLUGIN_METHOD_SERVICES
+            .first()
+            .expect("generated plugin services");
+        let descriptor = super::plugin_descriptor_pool()
+            .get_service_by_name(service)
+            .expect("registered service descriptor");
+        let method = descriptor.methods().next().expect("declared method");
+        assert!(super::is_canonical_method_path(&format!(
+            "/{service}/{}",
+            method.name()
+        )));
+        assert!(!super::is_canonical_method_path(&format!(
+            "/{service}/UndeclaredMethod"
+        )));
+    }
+}
 
 /// Mount the COMPLETE Operation gRPC service surface onto a `tonic::service::Routes`.
 ///
@@ -1065,6 +1325,14 @@ pub fn build_operation_routes_with_validator(
     interceptor::set_engine(server.mutation_engine.clone());
 
     let reflection_v1 = DynamicReflectionService::new(server.active_reflection()).into_v1_server();
+    // The existing v1 endpoint remains blob-backed. The already pinned op-chat
+    // descriptor exposes this mounted facade on v1alpha without advertising
+    // the unmounted agent services contained in that descriptor.
+    let workstack_reflection = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(op_chat::orchestration::proto::FILE_DESCRIPTOR_SET)
+        .with_service_name("op_chat.orchestration.WorkstackService")
+        .build_v1alpha()
+        .expect("pinned op-chat reflection descriptor");
 
     // Only PluginService and its canonical forwarding adapters remain live.
     // Domain implementations without a sealed PluginSchema method cannot
@@ -1111,6 +1379,14 @@ pub fn build_operation_routes_with_validator(
         ),
     ));
 
+    let routes = routes
+        .add_service(crate::grpc_web::enable(
+            op_chat::orchestration::proto::op_chat_orchestration::workstack_service_server::WorkstackServiceServer::with_interceptor(
+                crate::workstack_service::WorkstackServiceImpl,
+                assertion_intercept,
+            ),
+        ))
+        .add_service(crate::grpc_web::enable(workstack_reflection));
     let routes = add_routes(routes, server.clone(), validator);
     routes.add_service(crate::grpc_web::enable(reflection_v1))
 }
@@ -1209,6 +1485,12 @@ pub async fn run_grpc_server(
         >>()
         .await;
 
+    health_reporter
+        .set_serving::<op_chat::orchestration::proto::op_chat_orchestration::workstack_service_server::WorkstackServiceServer<
+            crate::workstack_service::WorkstackServiceImpl,
+        >>()
+        .await;
+
     info!(addr = %addr, "gRPC bridge listening");
 
     // Wrap services with gRPC-Web support and allow JSON encoding.
@@ -1222,6 +1504,8 @@ pub async fn run_grpc_server(
             "grpc-status".parse().unwrap(),
             "grpc-message".parse().unwrap(),
             "grpc-status-details-bin".parse().unwrap(),
+            interceptor::IDENTITY_MODE_HEADER.parse().unwrap(),
+            interceptor::IDENTITY_SESSION_HEADER.parse().unwrap(),
         ]);
 
     let mut builder = tonic::transport::Server::builder()
@@ -1257,20 +1541,25 @@ impl StateSync for OperationGrpcServer {
     ) -> Result<Response<Self::SubscribeStream>, Status> {
         let verified_identity =
             crate::event_chain_access::verified_identity(&self.mutation_engine, &request).await?;
+        let binding = interceptor::state_subscription::StateSubscriptionBinding::new(
+            self.mutation_engine.clone(),
+            &request,
+            verified_identity.clone(),
+        );
         if let Some(selection) = crate::chatbot_episode_stream::EpisodeSelection::from_subscription(
             &request.get_ref().plugin_ids,
             &request.get_ref().path_patterns,
         )
         .map_err(|_| Status::invalid_argument("invalid private chatbot episode selection"))?
         {
-            return crate::chatbot_episode_stream::subscribe(
+            let stream = crate::chatbot_episode_stream::subscribe(
                 self.mutation_engine.clone(),
                 request,
                 verified_identity,
                 selection,
             )
-            .await
-            .map(Response::new);
+            .await?;
+            return binding.response(stream).await;
         }
         if let Some(selection) =
             crate::generation_jobs_selection::GenerationSelection::from_subscription(
@@ -1279,14 +1568,14 @@ impl StateSync for OperationGrpcServer {
             )
             .map_err(|_| Status::invalid_argument("invalid private generation selection"))?
         {
-            return crate::generation_jobs_stream::subscribe(
+            let stream = crate::generation_jobs_stream::subscribe(
                 self.mutation_engine.clone(),
                 request,
                 verified_identity,
                 selection,
             )
-            .await
-            .map(Response::new);
+            .await?;
+            return binding.response(stream).await;
         }
         let private_selection =
             crate::ui_workspace_stream_selection::WorkspaceSelection::from_subscription(
@@ -1295,14 +1584,14 @@ impl StateSync for OperationGrpcServer {
             )
             .map_err(|_| Status::invalid_argument("invalid private workspace selection"))?;
         if let Some(selection) = private_selection {
-            return crate::ui_workspace_stream::subscribe(
+            let stream = crate::ui_workspace_stream::subscribe(
                 self.mutation_engine.clone(),
                 request,
                 verified_identity,
                 selection,
             )
-            .await
-            .map(Response::new);
+            .await?;
+            return binding.response(stream).await;
         }
         let req = request.into_inner();
         info!("gRPC Subscribe: plugins={:?}", req.plugin_ids);
@@ -1413,7 +1702,7 @@ impl StateSync for OperationGrpcServer {
             }
         };
 
-        Ok(Response::new(Box::pin(stream)))
+        binding.response(Box::pin(stream)).await
     }
 
     async fn mutate(
@@ -1641,6 +1930,10 @@ impl PluginService for OperationGrpcServer {
         &self,
         request: Request<CallMethodRequest>,
     ) -> Result<Response<CallMethodResponse>, Status> {
+        let bound_oracle = request
+            .extensions()
+            .get::<crate::oracle_assertion::BoundOracleProof>()
+            .cloned();
         let human_identity = request
             .extensions()
             .get::<crate::oracle_assertion::HumanPrincipalIdentity>()
@@ -1705,7 +1998,7 @@ impl PluginService for OperationGrpcServer {
         // envelope; gRPC is a transport adapter, not a second implementation.
         let result = self
             .mutation_engine
-            .dispatch_method_call_with_identity(
+            .dispatch_method_call_with_bound_oracle(
                 &req.plugin_id,
                 &req.method_name,
                 &json_args,
@@ -1717,27 +2010,55 @@ impl PluginService for OperationGrpcServer {
                 identity
                     .as_ref()
                     .map(|identity| identity.session_genesis.as_str()),
+                bound_oracle.clone(),
             )
             .await;
 
         match result {
-            Ok(envelope) => Ok(Response::new(CallMethodResponse {
-                success: true,
-                result: Some(simd_to_prost_value(
-                    &simd_json::serde::to_owned_value(&envelope)
-                        .map_err(|error| Status::internal(error.to_string()))?,
-                )),
-                event_id: envelope
-                    .get("event_id")
-                    .and_then(serde_json::Value::as_u64)
-                    .unwrap_or_default(),
-                event_hash: envelope
-                    .get("event_hash")
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-                error: None,
-            })),
+            Ok(envelope) => {
+                if let Some(proof) = &bound_oracle {
+                    interceptor::revalidate_bound_oracle(
+                        &self.mutation_engine,
+                        proof,
+                        &authenticated_actor_id,
+                        identity
+                            .as_ref()
+                            .map(|identity| identity.session_id.as_str()),
+                        identity
+                            .as_ref()
+                            .map(|identity| identity.session_genesis.as_str()),
+                        false,
+                    )
+                    .await
+                    .map_err(|_| Status::unauthenticated("Assigned browser identity changed"))?;
+                    enforce_bridge_capability(
+                        &req.plugin_id,
+                        &req.method_name,
+                        capability_id.as_deref(),
+                        identity.as_ref(),
+                    )
+                    .map_err(|error| Status::permission_denied(error.message))?;
+                }
+                let mut response = Response::new(CallMethodResponse {
+                    success: true,
+                    result: Some(simd_to_prost_value(
+                        &simd_json::serde::to_owned_value(&envelope)
+                            .map_err(|error| Status::internal(error.to_string()))?,
+                    )),
+                    event_id: envelope
+                        .get("event_id")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or_default(),
+                    event_hash: envelope
+                        .get("event_hash")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or_default()
+                        .to_string(),
+                    error: None,
+                });
+                interceptor::mark_bound_oracle_response(&mut response, bound_oracle.as_ref())?;
+                Ok(response)
+            }
             Err(e) => Ok(Response::new(CallMethodResponse {
                 success: false,
                 result: None,
@@ -2778,11 +3099,14 @@ impl OvsdbMirror for OperationGrpcServer {
         } else {
             req.bridge_name
         };
-        let endpoint = if req.endpoint.is_empty() {
-            "tcp:10.200.0.1:6653".to_string()
-        } else {
-            req.endpoint
-        };
+        let endpoint = req.endpoint.trim().to_string();
+        if endpoint.is_empty() {
+            return Ok(Response::new(OvsdbAttachControllerSafeResponse {
+                ok: false,
+                message: "OpenFlow controller address is unset".into(),
+                health: None,
+            }));
+        }
         match op_network::attach_controller_safe(&bridge, &endpoint).await {
             Ok(h) => {
                 let detail_json = serde_json::to_string(&h).unwrap_or_default();
@@ -4884,7 +5208,7 @@ impl PrivacyNetworkService for OperationGrpcServer {
                     management_ip: parsed
                         .get("management_ip")
                         .and_then(|v| v.as_str())
-                        .unwrap_or("10.200.0.1")
+                        .unwrap_or("")
                         .to_string(),
                     xray_config: parsed
                         .get("xray_config")
@@ -5242,42 +5566,9 @@ impl RegistrationService for OperationGrpcServer {
                     }),
                 }))
             }
-            Err(_) => {
-                // Generate a token and record in state store for later verification
-                let token = Uuid::new_v4().to_string();
-                let mutation_value = simd_json::json!({
-                    "email": req.email,
-                    "domain": req.domain,
-                    "is_admin": req.is_admin,
-                    "token": token,
-                    "status": "pending_no_backend",
-                    "created_at": chrono::Utc::now().to_rfc3339()
-                });
-                let _ = self
-                    .mutation_engine
-                    .process_grpc_mutation(
-                        "registration".to_string(),
-                        format!("/org/opdbus/v1/registration/magic_links/{}", token),
-                        ChangeType::ObjectAdded,
-                        Some("send_magic_link".to_string()),
-                        mutation_value,
-                        req.email.clone(),
-                        None,
-                    )
-                    .await;
-
-                Ok(Response::new(SendMagicLinkResponse {
-                    success: false,
-                    message:
-                        "Registration D-Bus service unavailable; magic link recorded in state store"
-                            .to_string(),
-                    token: Some(token),
-                    expires_at: Some(ProstTimestamp {
-                        seconds: chrono::Utc::now().timestamp() + 3600,
-                        nanos: 0,
-                    }),
-                }))
-            }
+            Err(_) => Err(Status::unavailable(
+                "Registration D-Bus service is unavailable; authoritative verification is required",
+            )),
         }
     }
 
@@ -5339,45 +5630,9 @@ impl RegistrationService for OperationGrpcServer {
                     verified_at: Some(OperationGrpcServer::now_ts()),
                 }))
             }
-            Err(_) => {
-                // Check state store for magic link token
-                let state = self.mutation_engine.get_state("registration").await;
-                if let Some(ref st) = state
-                    && let Some(link_data) = st
-                        .as_object()
-                        .and_then(|o| o.get("magic_links"))
-                        .and_then(|o| o.as_object())
-                        .and_then(|o| o.get(&req.token))
-                {
-                    let email = link_data
-                        .as_object()
-                        .and_then(|o| o.get("email"))
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string();
-                    let is_admin = link_data
-                        .as_object()
-                        .and_then(|o| o.get("is_admin"))
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
-
-                    return Ok(Response::new(VerifyMagicLinkResponse {
-                        success: true,
-                        user_id: Uuid::new_v4().to_string(),
-                        email,
-                        wireguard_public_key: String::new(),
-                        assigned_ip: String::new(),
-                        wireguard_config: String::new(),
-                        message: "Verified from state store (D-Bus unavailable)".to_string(),
-                        is_admin,
-                        verified_at: Some(OperationGrpcServer::now_ts()),
-                    }));
-                }
-
-                Err(Status::unavailable(
-                    "Registration D-Bus service is not available; token not found in state store",
-                ))
-            }
+            Err(_) => Err(Status::unavailable(
+                "Registration D-Bus service is unavailable; authoritative verification is required",
+            )),
         }
     }
 
