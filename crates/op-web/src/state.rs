@@ -333,7 +333,28 @@ impl AppState {
         tokio::spawn(async move {
             info!("Starting gRPC -> SSE state updates bridge...");
             loop {
-                let plugins = crate::sse::sse_plugin_allowlist();
+                let Some(active_plugins) = op_blob::catalog::read_manifest_plugin_ids_shm() else {
+                    warn!("Sealed catalog unavailable; SSE subscription remains closed");
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    continue;
+                };
+                let plugins: Vec<String> = crate::sse::sse_plugin_allowlist()
+                    .into_iter()
+                    .filter(|plugin| {
+                        let active = active_plugins.contains(plugin);
+                        if !active {
+                            warn!(%plugin, "Configured SSE plugin is absent from sealed catalog");
+                        }
+                        active
+                    })
+                    .collect();
+                // An empty upstream selector means all plugins. Never widen
+                // the configured allowlist when none of its members exist.
+                if plugins.is_empty() {
+                    warn!("No configured SSE plugins are active; subscription remains closed");
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    continue;
+                }
                 match state_clone
                     .grpc_client
                     .subscribe(plugins, vec![], vec![])

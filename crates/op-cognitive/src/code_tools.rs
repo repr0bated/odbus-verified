@@ -102,7 +102,7 @@ impl Tool for CodeSearchTool {
             .unwrap_or(profile.limit)
             .clamp(1, 50);
         let filter = filter_from(&input, false);
-        let collections = collections_from(&input, &self.collection, &profile);
+        let collections = collections_from(&input, &self.collection, &profile)?;
 
         let results = with_retrieval_deadline(profile.deadline, async {
             if collections.len() > 1 {
@@ -198,6 +198,7 @@ impl Tool for CodeContextTool {
             .and_then(Value::as_u64)
             .unwrap_or(profile.limit)
             .clamp(1, 50);
+        let collections = collections_from(&input, &self.collection, &profile)?;
 
         // Record the activity so stuck/error/topic detection stays current.
         self.engine
@@ -213,7 +214,6 @@ impl Tool for CodeContextTool {
             .await;
 
         let filter = filter_from(&input, false);
-        let collections = collections_from(&input, &self.collection, &profile);
         let (results, retrieval_error) = match with_retrieval_deadline(
             profile.deadline,
             self.rag.query_fused_collections_unbounded(
@@ -299,6 +299,10 @@ impl Tool for CodeIndexTool {
             .get("collection")
             .and_then(Value::as_str)
             .unwrap_or(&self.collection);
+        anyhow::ensure!(
+            !collection.is_empty() && collection == self.collection,
+            "code indexing collection is not authorized by the server configuration"
+        );
         let mode = input
             .get("mode")
             .and_then(Value::as_str)
@@ -385,27 +389,38 @@ fn retrieval_profile_from(input: &Value, default_mode: RetrievalMode) -> Retriev
     RetrievalProfile::from_env(mode)
 }
 
-fn collections_from(input: &Value, fallback: &str, profile: &RetrievalProfile) -> Vec<String> {
-    if let Some(collection) = input.get("collection").and_then(Value::as_str) {
-        return vec![collection.to_string()];
-    }
-
-    if let Some(collections) = input.get("collections").and_then(Value::as_array) {
-        let parsed: Vec<String> = collections
+fn collections_from(input: &Value, fallback: &str, profile: &RetrievalProfile) -> Result<Vec<String>> {
+    // Only operator-selected code collections can be addressed by these tools.
+    // A request can narrow that set, never select an arbitrary Qdrant namespace.
+    anyhow::ensure!(
+        input.get("collection").is_none() || input.get("collections").is_none(),
+        "select collection or collections, not both"
+    );
+    let selected = if let Some(value) = input.get("collection") {
+        vec![value.as_str().ok_or_else(|| anyhow::anyhow!("collection must be a string"))?.to_owned()]
+    } else if let Some(value) = input.get("collections") {
+        value.as_array().ok_or_else(|| anyhow::anyhow!("collections must be an array"))?
             .iter()
-            .filter_map(Value::as_str)
-            .map(String::from)
-            .collect();
-        if !parsed.is_empty() {
-            return parsed;
+            .map(|value| value.as_str().map(str::to_owned)
+                .ok_or_else(|| anyhow::anyhow!("collection names must be strings")))
+            .collect::<Result<Vec<_>>>()?
+    } else if !profile.collections.is_empty() {
+        profile.collections.clone()
+    } else {
+        vec![fallback.to_owned()]
+    };
+    anyhow::ensure!(!selected.is_empty(), "at least one code collection is required");
+    let mut allowed_selection = Vec::new();
+    for name in selected {
+        anyhow::ensure!(
+            !name.is_empty() && (name == fallback || profile.collections.contains(&name)),
+            "code collection is not authorized by the server configuration"
+        );
+        if !allowed_selection.contains(&name) {
+            allowed_selection.push(name);
         }
     }
-
-    if !profile.collections.is_empty() {
-        return profile.collections.clone();
-    }
-
-    vec![fallback.to_string()]
+    Ok(allowed_selection)
 }
 
 fn results_to_simd(results: &[RagResult]) -> Value {
@@ -428,6 +443,26 @@ mod tests {
     use crate::voyage::VoyageClient;
     use op_plugins::state_plugins::cognitive::CodeContextOutput;
     use qdrant_client::Qdrant;
+
+    #[test]
+    fn code_collection_selection_cannot_escape_server_configuration() {
+        let profile = RetrievalProfile {
+            mode: RetrievalMode::Search,
+            collections: vec!["configured-code".into()],
+            limit: 10,
+            fetch_limit: 10,
+            rerank_enabled: false,
+            kiro_lsp_state_dir: String::new(),
+            deadline: std::time::Duration::from_secs(1),
+        };
+        assert!(collections_from(&json!({"collection":"private-memory"}), "fallback-code", &profile).is_err());
+        assert!(collections_from(&json!({"collections":["configured-code","private-memory"]}), "fallback-code", &profile).is_err());
+        assert!(collections_from(&json!({"collections":[]}), "fallback-code", &profile).is_err());
+        assert_eq!(
+            collections_from(&json!({"collections":["configured-code","fallback-code","configured-code"]}), "fallback-code", &profile).unwrap(),
+            vec!["configured-code", "fallback-code"],
+        );
+    }
     struct RestoreEnvironment(Vec<(&'static str, Option<std::ffi::OsString>)>);
 
     impl Drop for RestoreEnvironment {
