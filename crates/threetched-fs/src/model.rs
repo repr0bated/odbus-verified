@@ -361,6 +361,8 @@ pub enum FieldType {
     /// Wire form matches op-state-store: `{"json_schema": <document>}`.
     JsonSchema(Box<Value>),
     Enum(Vec<String>),
+    /// Reduced union: source anyOf and oneOf lose exclusivity/discriminators here.
+    /// Exact JSON Schema constraints remain in JsonSchema and sealed admission.
     OneOf(Vec<FieldType>),
     Any,
 }
@@ -414,12 +416,11 @@ impl FieldType {
                 }
             }
             Self::OneOf(branches) => {
-                let matches = branches
+                if !branches
                     .iter()
-                    .filter(|branch| branch.validate(value, root).is_ok())
-                    .count();
-                if matches != 1 {
-                    bail!("value must match exactly one union branch; matched {matches}");
+                    .any(|branch| branch.validate(value, root).is_ok())
+                {
+                    bail!("value must match at least one reduced union branch");
                 }
             }
             Self::Any | Self::String | Self::Integer | Self::Float | Self::Boolean => {}
@@ -1116,9 +1117,9 @@ mod tests {
     }
 
     #[test]
-    fn unions_require_exactly_one_matching_branch() {
+    fn reduced_unions_accept_overlapping_branches() {
         let overlapping = FieldType::OneOf(vec![FieldType::Integer, FieldType::Float]);
-        assert!(overlapping.validate(&Value::from(1), &Value::Null).is_err());
+        assert!(overlapping.validate(&Value::from(1), &Value::Null).is_ok());
         assert!(
             overlapping
                 .validate(&Value::from(1.5), &Value::Null)
@@ -1129,6 +1130,10 @@ mod tests {
                 .validate(&Value::from("other"), &Value::Null)
                 .is_err()
         );
+        let exact = FieldType::JsonSchema(Box::new(serde_json::json!({
+            "oneOf": [{"type": "integer"}, {"type": "number"}]
+        })));
+        assert!(exact.validate(&Value::from(1), &Value::Null).is_err());
     }
 
     #[test]

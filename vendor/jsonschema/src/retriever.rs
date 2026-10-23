@@ -4,6 +4,51 @@ use serde_json::Value;
 
 pub(crate) struct DefaultRetriever;
 
+#[cfg(all(not(target_arch = "wasm32"), any(feature = "resolve-file", test)))]
+fn file_uri_path(
+    uri: &Uri<String>,
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+    // A remote file authority must not silently address this machine's files.
+    if let Some(authority) = uri.authority() {
+        let authority = authority.as_str();
+        if !authority.is_empty() && !authority.eq_ignore_ascii_case("localhost") {
+            return Err("Only local file URI authorities are supported".into());
+        }
+    }
+    let path = uri.path().as_str();
+    if !path.starts_with('/') {
+        return Err("A file URI requires an absolute path".into());
+    }
+    let decoded = percent_encoding::percent_decode_str(path);
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt;
+        Ok(std::ffi::OsString::from_vec(decoded.collect()).into())
+    }
+    #[cfg(not(unix))]
+    {
+        let path = decoded.decode_utf8()?;
+        #[cfg(windows)]
+        {
+            // Standard local Windows file URIs contain an absolute drive path.
+            let drive_path = path.strip_prefix('/').unwrap_or(&path);
+            let bytes = drive_path.as_bytes();
+            if bytes.len() < 3
+                || !bytes[0].is_ascii_alphabetic()
+                || bytes[1] != b':'
+                || bytes[2] != b'/'
+            {
+                return Err("A local Windows file URI requires an absolute drive path".into());
+            }
+            Ok(std::path::PathBuf::from(drive_path.replace('/', "\\")))
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(std::path::PathBuf::from(path.as_ref()))
+        }
+    }
+}
+
 impl Retrieve for DefaultRetriever {
     #[allow(unused)]
     fn retrieve(
@@ -27,19 +72,7 @@ impl Retrieve for DefaultRetriever {
             "file" => {
                 #[cfg(any(feature = "resolve-file", test))]
                 {
-                    let path = uri.path().as_str();
-                    let path = {
-                        #[cfg(windows)]
-                        {
-                            // Remove the leading slash and replace forward slashes with backslashes
-                            let path = path.trim_start_matches('/').replace('/', "\\");
-                            std::path::PathBuf::from(path)
-                        }
-                        #[cfg(not(windows))]
-                        {
-                            std::path::PathBuf::from(path)
-                        }
-                    };
+                    let path = file_uri_path(uri)?;
                     let file = std::fs::File::open(path)?;
                     Ok(serde_json::from_reader(file)?)
                 }
@@ -78,20 +111,9 @@ impl referencing::AsyncRetrieve for DefaultRetriever {
                 #[cfg(any(feature = "resolve-file", test))]
                 {
                     // File operations are blocking, so we use tokio's spawn_blocking
-                    let path = uri.path().as_str().to_string();
+                    let path = file_uri_path(uri)?;
                     let contents = tokio::task::spawn_blocking(
                         move || -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-                            let path = {
-                                #[cfg(windows)]
-                                {
-                                    let path = path.trim_start_matches('/').replace('/', "\\");
-                                    std::path::PathBuf::from(path)
-                                }
-                                #[cfg(not(windows))]
-                                {
-                                    std::path::PathBuf::from(path)
-                                }
-                            };
                             let file = std::fs::File::open(path)?;
                             Ok(serde_json::from_reader(file)?)
                         },
@@ -178,6 +200,35 @@ mod tests {
     use serde_json::json;
     #[cfg(not(target_arch = "wasm32"))]
     use std::io::Write;
+
+    #[test]
+    #[cfg(unix)]
+    fn file_uri_decodes_path_bytes_once() {
+        use std::os::unix::ffi::OsStrExt;
+        let uri = referencing::Uri::parse(
+            "file://localhost/tmp/my%20schema%2520%23%FF.json".to_owned(),
+        )
+        .expect("Valid URI");
+        let path = super::file_uri_path(&uri).expect("Valid local path");
+        assert_eq!(path.as_os_str().as_bytes(), b"/tmp/my schema%20#\xFF.json");
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn file_uri_rejects_remote_authority() {
+        let uri = referencing::Uri::parse("file://remote.example/tmp/schema.json".to_owned())
+            .expect("Valid URI");
+        assert!(super::file_uri_path(&uri).is_err());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn file_uri_decodes_drive_path() {
+        let uri = referencing::Uri::parse("file:///C:/my%20schema.json".to_owned())
+            .expect("Valid URI");
+        let path = super::file_uri_path(&uri).expect("Valid local path");
+        assert_eq!(path, std::path::PathBuf::from(r"C:\my schema.json"));
+    }
 
     #[test]
     #[cfg(not(target_arch = "wasm32"))]

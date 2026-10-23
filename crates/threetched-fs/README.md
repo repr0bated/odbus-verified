@@ -61,6 +61,24 @@ cargo build --release
 
 The executable is `target/release/threetched-fs`.
 
+### Generated typed consumer
+
+The `typed_use_generated` example is opt-in because it imports
+`generated/plugin_types.rs`, a local artifact derived from a selected sealed
+catalog. Ordinary example builds do not require that artifact. From the
+workspace root, prepare it with the existing generator before enabling
+`generated-example`:
+
+```sh
+cargo run --target x86_64-unknown-linux-gnu -p threetched-fs --example typed_specialize -- --catalog /path/to/sealed/catalog --use-example crates/threetched-fs/examples/typed_use_generated.rs
+cargo build --target x86_64-unknown-linux-gnu -p threetched-fs --features generated-example --example typed_use_generated
+```
+
+The generator selects the example's methods and types from that catalog; it
+does not seal a new schema. Enabling this feature (including through
+`--all-features`) requires generation first. Keep generated output local to
+its checkout; regeneration binds it to the selected catalog and source tree.
+
 ## Quick start
 
 Capture and activate a coherent view:
