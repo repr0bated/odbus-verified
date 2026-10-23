@@ -34,6 +34,8 @@ const _: () = assert!(std::mem::size_of::<QuiescentDestroy>() == 96);
 // orphan root objects through final free and proves the exact generation has
 // no live inode aliases. Pathname absence or native cleaner completion alone
 // never substitutes for that proof. A busy orphan remains admission-closed.
+// Normalize that checked ENOENT to success so crash recovery can finish the
+// caller's cleaner synchronization and recorded-name reconciliation.
 // ENOTTY means the required kernel is absent and must remain a hard failure.
 pub fn destroy(
     top: BorrowedFd<'_>,
@@ -53,9 +55,36 @@ pub fn destroy(
     // SAFETY: the fixed-layout, fully initialized 96-byte input and borrowed
     // ioctl-capable directory descriptor remain valid throughout the syscall.
     let result = unsafe { libc::ioctl(top.as_raw_fd(), SNAP_DESTROY_QUIESCENT, &args) };
+    checked_ioctl_result(result, io::Error::last_os_error())
+}
+
+// This decoder is private to the exact ioctl above; an ordinary path lookup
+// or delete must never use its ENOENT completion contract.
+fn checked_ioctl_result(result: libc::c_int, error: io::Error) -> io::Result<()> {
     match result {
         0 => Ok(()),
-        -1 => Err(io::Error::last_os_error()),
+        -1 if error.raw_os_error() == Some(libc::ENOENT) => Ok(()),
+        -1 => Err(error),
         _ => Err(io::Error::from_raw_os_error(libc::EPROTO)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_checked_absence_completes_replayed_deletion() {
+        assert!(checked_ioctl_result(0, io::Error::from_raw_os_error(libc::EIO)).is_ok());
+        assert!(checked_ioctl_result(-1, io::Error::from_raw_os_error(libc::ENOENT)).is_ok());
+        for code in [libc::EBUSY, libc::ESTALE, libc::EROFS, libc::EINVAL,
+            libc::ENOTTY, libc::EIO, libc::EPERM, libc::ENOMEM] {
+            assert_eq!(checked_ioctl_result(-1, io::Error::from_raw_os_error(code))
+                .unwrap_err().raw_os_error(), Some(code));
+        }
+        for result in [1, -2] {
+            assert_eq!(checked_ioctl_result(result, io::Error::from_raw_os_error(libc::ENOENT))
+                .unwrap_err().raw_os_error(), Some(libc::EPROTO));
+        }
     }
 }

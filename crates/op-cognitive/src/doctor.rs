@@ -122,6 +122,8 @@ pub async fn run_diagnostics(
         status: "ok".into(),
         details: serde_json::json!({
             "profile": profile.to_string(),
+            "enforced": false,
+            "scope": "legacy NotebookLM tool estimates; not the current runtime registry",
             "tool_count": estimate.tool_count,
             "schema_tokens": estimate.schema_tokens,
             "savings_percent": estimate.savings_percent,

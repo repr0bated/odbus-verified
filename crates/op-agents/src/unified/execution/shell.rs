@@ -1,11 +1,10 @@
 //! Shell Executor Agent
 //!
-//! Compact MCP exposes every shell command through this agent.
+//! Legacy adapter. Construction alone does not establish command authority.
 
 use async_trait::async_trait;
 use simd_json::json;
 use simd_json::prelude::*;
-use std::path::PathBuf;
 
 use super::super::agent_trait::{
     AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent,
@@ -19,18 +18,15 @@ pub struct ShellExecutor {
 
 impl ShellExecutor {
     pub fn new() -> Self {
-        let mut base = ExecutionAgent::new(
+        let base = ExecutionAgent::new(
             "shell-executor",
             "Shell Executor",
-            "Executes any shell command for system operations.",
+            "Shell execution requires an admitted command policy.",
             "shell",
-            vec!["any shell command"],
+            // This adapter has no verified caller context or admitted policy.
+            // Do not infer unrestricted host authority from its registration.
+            vec![],
         );
-        base.security_profile.config.allow_all_commands = true;
-        base.security_profile.config.allowed_commands.clear();
-        base.security_profile.config.forbidden_paths.clear();
-        base.security_profile.config.allowed_read_paths = vec![PathBuf::from("/")];
-        base.security_profile.config.allowed_write_paths = vec![PathBuf::from("/")];
         Self { base }
     }
 }
@@ -56,15 +52,7 @@ impl UnifiedAgent for ShellExecutor {
         AgentCategory::Execution
     }
     fn capabilities(&self) -> Vec<AgentCapability> {
-        vec![
-            AgentCapability::RunCode {
-                language: "shell".to_string(),
-            },
-            AgentCapability::RunCommand {
-                commands: vec!["*".to_string()],
-            },
-            AgentCapability::ReadFiles,
-        ]
+        vec![]
     }
     fn system_prompt(&self) -> &str {
         self.base.system_prompt()
