@@ -66,6 +66,29 @@ struct ReceivedCheckpoint {
     indexed_block: u64,
 }
 
+/// Atomic checkpoint publication needs the parent directory, even when an
+/// existing destination can be opened for writing. Exercise creation/removal
+/// without replacing or rewriting that destination (which may be invalid).
+/// Keep the probe and cleanup in one task so cancellation cannot split them.
+/// This observes current directory access; the operator can change it later.
+async fn preflight_checkpoint_parent(parent: PathBuf) -> Result<()> {
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let directory = std::fs::File::open(&parent)
+            .context("open checkpoint parent for publication synchronization")?;
+        let temporary = parent.join(format!(".vector-checkpoint-preflight-{}.tmp", uuid::Uuid::new_v4()));
+        let file = std::fs::OpenOptions::new()
+            .write(true).create_new(true).mode(0o600).open(&temporary)
+            .context("checkpoint parent must permit temporary-file creation before indexing")?;
+        drop(file);
+        std::fs::remove_file(&temporary).with_context(|| format!(
+            "checkpoint parent preflight could not remove its temporary file {}; indexing has not started",
+            temporary.display(),
+        ))?;
+        directory.sync_all().context("sync checkpoint parent after preflight cleanup")?;
+        Ok(())
+    }).await.context("checkpoint parent preflight task failed")?
+}
+
 /// Publish a complete checkpoint without exposing a truncated destination.
 /// Blocking I/O stays in one task so cancellation cannot interrupt the
 /// write/sync/publication sequence. An interrupted process may leave an unused
@@ -302,6 +325,7 @@ impl ChainVectorIndex {
         if checkpoint_exists {
             tokio::fs::OpenOptions::new().write(true).open(&checkpoint_path).await
                 .context("received checkpoint must be writable before indexing")?;
+            preflight_checkpoint_parent(checkpoint_parent).await?;
         } else {
             publish_checkpoint(checkpoint_path.clone(), serde_json::to_vec(&ReceivedCheckpoint {
                 root: root.clone(), stream_uuid: stream_uuid.clone(), indexed_block: 0,
@@ -984,6 +1008,33 @@ fn is_already_exists(err: &QdrantError) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn checkpoint_parent_preflight_preserves_existing_invalid_and_foreign_bytes() {
+        let directory = tempfile::tempdir().unwrap();
+        let checkpoint = directory.path().join("checkpoint.json");
+        for bytes in [
+            b"incomplete checkpoint {".as_slice(),
+            br#"{"root":"/different/root","stream_uuid":"foreign","indexed_block":9}"#.as_slice(),
+        ] {
+            std::fs::write(&checkpoint, bytes).unwrap();
+            preflight_checkpoint_parent(directory.path().to_path_buf()).await.unwrap();
+            assert_eq!(std::fs::read(&checkpoint).unwrap(), bytes);
+            let entries: Vec<_> = std::fs::read_dir(directory.path()).unwrap()
+                .map(|entry| entry.unwrap().file_name()).collect();
+            assert_eq!(entries, vec![checkpoint.file_name().unwrap().to_owned()]);
+        }
+    }
+
+    #[tokio::test]
+    async fn checkpoint_parent_preflight_rejects_unusable_parent_without_modifying_it() {
+        let directory = tempfile::tempdir().unwrap();
+        let parent_file = directory.path().join("not-a-directory");
+        std::fs::write(&parent_file, b"retained").unwrap();
+        assert!(preflight_checkpoint_parent(parent_file.clone()).await.is_err());
+        assert_eq!(std::fs::read(parent_file).unwrap(), b"retained");
+        assert!(preflight_checkpoint_parent(directory.path().join("missing")).await.is_err());
+    }
 
     #[test]
     fn vector_metadata_reads_legacy_load_and_omits_unavailable_load() {
