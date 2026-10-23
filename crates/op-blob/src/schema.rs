@@ -113,11 +113,12 @@ impl PluginSchema {
         }
     }
 
-    /// Deterministic canonical JSON of the whole contract. serde_json's Map is
-    /// BTreeMap-backed (no `preserve_order` feature), so object keys serialize
-    /// sorted; HashMaps pass through `to_value` into sorted maps.
+    /// Deterministic canonical JSON of the whole contract, including embedded
+    /// schemas and defaults, regardless of serde_json's `preserve_order` feature.
     pub fn canonical_json(&self) -> String {
-        let v = serde_json::to_value(self).expect("PluginSchema serializes cleanly");
+        let v = crate::blob::canonicalize_json_object_keys(
+            serde_json::to_value(self).expect("PluginSchema serializes cleanly"),
+        );
         serde_json::to_string(&v).expect("canonical value serializes")
     }
 
