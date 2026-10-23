@@ -21,13 +21,15 @@ schema store. Generated transport views are derivatives of the plugin contract,
 not independent authorities.
 
 The historical baseline records the former schema capture files and includes.
-The repaired source keeps one
-`tched_router_contract.rs` plugin-owned import, derives 81 section schemas and
-89 configuration methods from it, and removes the `schemas/` directory. The
-recorded 1,132-test formatting/Clippy/workspace gate predates the current
-repairs. The root final gate, a clean repository, and a prepared snapshot remain
-separate validation steps; this map does not certify installed binaries or a
-live catalog.
+The repaired source explicitly captures the verified threetched binary's full
+configuration schema during build/seal preparation. Native configuration, MCP,
+model routes, plugins and skill bundles derive from that shared capture.
+`tched_router_contract.rs` contains access and section helpers; the embedded
+import and per-section generator are retired. Runtime consumers require the
+sealed catalog and never start capture as a fallback. The historical 1,132-test
+gate predates these repairs. Tests, Clippy and formatting checks require an
+explicit owner request; a source build or prepared snapshot does not certify
+installed binaries or a live catalog.
 
 The canonical Rust contract type is `PluginSchema`, defined in
 [`plugin_schema.rs`](../../../crates/op-state-store/src/plugin_schema.rs)
@@ -64,9 +66,9 @@ the single-contract path below:
 | Step | Source evidence |
 |---|---|
 | Historical capture: pre-repair evidence | The `schemas/` tree and file includes were removed; Git history and the explicitly historical baseline retain the prior evidence. |
-| Current contract import | [`tched_router_contract.rs`](../../../crates/op-plugins/src/state_plugins/tched_router_contract.rs) imports the upstream contract once; 81 derived section schemas and 89 configuration methods are generated from that plugin-owned value. |
-| Explicit generator boundary | [`gen_tched_router_config_surface.rs`](../../../crates/op-plugins/src/bin/gen_tched_router_config_surface.rs) regenerates derived Rust and accepts an explicit upstream import; it does not perform a runtime schema lookup. |
-| Native release input | [`vendor/tched-router/source.pin`](../../../vendor/tched-router/source.pin) and [`build-native.sh`](../../../vendor/tched-router/build-native.sh) bind the upstream archive/commit and patches to a candidate binary plus provenance manifest without installing it. Golden preparation validates and stages both. |
+| Shared verified capture | [`threetched.rs`](../../../crates/op-plugins/src/state_plugins/threetched.rs) prepares one binary/manifest-verified capture with an explicit configuration directory. [`tched_router_contract.rs`](../../../crates/op-plugins/src/state_plugins/tched_router_contract.rs) derives sections from that document. |
+| Explicit preparation boundary | Bridge build-time contract generation and `opblob` sealing call `prepare_schema_capture` before collecting plugin declarations. Runtime schema/state access reads sealed blobs; the embedded import and per-section generator are retired. |
+| Native release input | [`vendor/tched-router/source.pin`](../../../vendor/tched-router/source.pin) and [`build-threetched.sh`](../../../vendor/tched-router/build-threetched.sh) bind the upstream archive/commit and patches to a candidate binary plus provenance manifest without installing it. Golden preparation validates and stages both. |
 | Assemble the plugin | [`tched_router.rs`](../../../crates/op-plugins/src/state_plugins/tched_router.rs), `tched_router_schema_from_state` (line 1597), config method registration (line 1839), and `dispatch_tched_router_method`. |
 | Execute through backing runtime | [`mutation_engine.rs`](../../../crates/op-grpc-bridge/src/mutation_engine.rs) sends router operations through [`TchedRouterRuntimeClient`](../../../crates/op-grpc-bridge/src/tched_router_runtime.rs). Selection writes and verifies upstream configuration before publishing projection changes. The runit owner verifies the staged native manifest, commit, binary digest and version before executing `/usr/bin/zeroclaw`. |
 

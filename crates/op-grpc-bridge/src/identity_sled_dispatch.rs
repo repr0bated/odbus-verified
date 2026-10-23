@@ -1083,7 +1083,7 @@ fn prepare_parked_instance(
         !instance
             .devices
             .iter()
-            .chain(instance.expanded_devices.iter())
+            .chain(instance.expanded_devices.iter().flatten())
             .any(|device| matches!(device.device, Device::Nic(_))),
         "identity containers cannot have NIC devices; identity is transported by WARP"
     );

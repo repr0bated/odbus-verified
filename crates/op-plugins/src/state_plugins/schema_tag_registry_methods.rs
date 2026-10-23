@@ -736,6 +736,10 @@ pub fn apply_tag_registration(
             "resolved association does not match sealed schema request"
         );
     }
+    ensure!(
+        !tags.iter().any(|tag| tag.tag_id != input.tag_id && tag.name == input.name),
+        "duplicate tag name"
+    );
     let existing_revision = tags
         .iter()
         .find(|tag| tag.tag_id == input.tag_id)
@@ -810,13 +814,16 @@ pub fn apply_policy_update(
         "stale expected_revision"
     );
     input.rule.validate()?;
-    current.revision = current
+    let mut proposed = current.clone();
+    proposed.revision = current
         .revision
         .checked_add(1)
         .ok_or_else(|| anyhow::anyhow!("policy revision exhausted"))?;
-    current.rule = input.rule;
-    current.canonical_mappings = resolved_mappings;
-    Ok(current.clone())
+    proposed.rule = input.rule;
+    proposed.canonical_mappings = resolved_mappings;
+    proposed.validate()?;
+    *current = proposed.clone();
+    Ok(proposed)
 }
 
 pub fn author_policy(
