@@ -6,7 +6,7 @@
 //! ```
 //!
 //! - Authentication verifies session genesis against the identity projection
-//!   (same gate as op-cognitive-mcp).
+//!   (same gate as op-cognitive).
 //! - Primary transport is D-Bus; falls back to JSON-RPC over HTTP when D-Bus is unavailable.
 //! - Each Assistant API surface (agents, sessions, tasks, models, cron, soul, namespace,
 //!   memory) is exposed as its own gRPC service.

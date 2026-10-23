@@ -76,6 +76,7 @@ use tracing::{info, trace, warn};
 const ACTIVITY_WINDOW_SIZE: usize = 50;
 /// Minimum time between proactive pushes to same session
 const MIN_PUSH_INTERVAL_SECS: u64 = 30;
+const DEFAULT_MAX_PUSHES_PER_HOUR: u32 = 20;
 /// Idle threshold for context refresh (seconds)
 const IDLE_REFRESH_THRESHOLD_SECS: u64 = 300; // 5 minutes
 /// Minimum relevance score to push knowledge
@@ -253,6 +254,11 @@ struct SessionContextState {
     last_push: Option<Instant>,
     /// Last activity timestamp (for idle detection)
     last_activity: Instant,
+    idle_return: Option<Instant>,
+    idle_threshold_secs: u64,
+    push_rate_limit_secs: u64,
+    max_pushes_per_hour: u32,
+    push_history: VecDeque<Instant>,
     /// Current topic/domain being worked on
     current_topics: Vec<String>,
     /// Error count in recent window
@@ -270,6 +276,11 @@ impl SessionContextState {
             activity_window: VecDeque::with_capacity(ACTIVITY_WINDOW_SIZE),
             last_push: None,
             last_activity: Instant::now(),
+            idle_return: None,
+            idle_threshold_secs: IDLE_REFRESH_THRESHOLD_SECS,
+            push_rate_limit_secs: MIN_PUSH_INTERVAL_SECS,
+            max_pushes_per_hour: DEFAULT_MAX_PUSHES_PER_HOUR,
+            push_history: VecDeque::new(),
             current_topics: Vec::new(),
             recent_error_count: 0,
             query_hashes: VecDeque::with_capacity(10),
@@ -283,14 +294,20 @@ impl SessionContextState {
         content: String,
         metadata: serde_json::Value,
     ) {
-        self.last_activity = Instant::now();
+        let now = Instant::now();
+        if activity_type == ActivityType::ReturnFromIdle && self.is_idle() {
+            self.idle_return = Some(now);
+        }
+        if activity_type != ActivityType::Idle {
+            self.last_activity = now;
+        }
 
         if activity_type.is_error_signal() {
             self.recent_error_count += 1;
         }
 
         let activity = SessionActivity {
-            timestamp: Instant::now(),
+            timestamp: now,
             activity_type,
             content: content.clone(),
             metadata,
@@ -326,19 +343,27 @@ impl SessionContextState {
     }
 
     fn is_idle(&self) -> bool {
-        self.last_activity.elapsed().as_secs() > IDLE_REFRESH_THRESHOLD_SECS
+        self.last_activity.elapsed().as_secs() >= self.idle_threshold_secs
     }
 
     fn can_push(&self) -> bool {
+        if self.push_history.iter().filter(|at| at.elapsed().as_secs() < 3600).count()
+            >= self.max_pushes_per_hour as usize
+        {
+            return false;
+        }
         if let Some(last) = self.last_push {
-            last.elapsed().as_secs() >= MIN_PUSH_INTERVAL_SECS
+            last.elapsed().as_secs() >= self.push_rate_limit_secs
         } else {
             true
         }
     }
 
     fn record_push(&mut self) {
-        self.last_push = Some(Instant::now());
+        let now = Instant::now();
+        self.push_history.retain(|at| now.duration_since(*at).as_secs() < 3600);
+        self.push_history.push_back(now);
+        self.last_push = Some(now);
     }
 
     /// Detect if session appears stuck (similar repeated queries)
@@ -390,7 +415,7 @@ impl Default for ContextAwarenessConfig {
             min_relevance_score: MIN_RELEVANCE_SCORE,
             push_rate_limit_secs: MIN_PUSH_INTERVAL_SECS,
             idle_threshold_secs: IDLE_REFRESH_THRESHOLD_SECS,
-            max_pushes_per_hour: 20,
+            max_pushes_per_hour: DEFAULT_MAX_PUSHES_PER_HOUR,
             rag_collection: default_collection_from_env(),
         }
     }
@@ -400,7 +425,7 @@ impl Default for ContextAwarenessConfig {
 pub struct ContextAwarenessEngine {
     config: ContextAwarenessConfig,
     /// Session context states
-    session_states: Arc<DashMap<String, RwLock<SessionContextState>>>,
+    session_states: Arc<DashMap<String, Arc<RwLock<SessionContextState>>>>,
     /// Memory store for context retrieval
     memory_store: Arc<CognitiveMemoryStore>,
     /// RAG pipeline for semantic search
@@ -472,10 +497,16 @@ impl ContextAwarenessEngine {
         metadata: serde_json::Value,
     ) {
         // Get or create session state
-        let state = self
-            .session_states
-            .entry(session_id.to_string())
-            .or_insert_with(|| RwLock::new(SessionContextState::new(session_id.to_string())));
+        let state = {
+            let entry = self.session_states.entry(session_id.to_string()).or_insert_with(|| {
+                let mut state = SessionContextState::new(session_id.to_string());
+                state.idle_threshold_secs = self.config.idle_threshold_secs;
+                state.push_rate_limit_secs = self.config.push_rate_limit_secs;
+                state.max_pushes_per_hour = self.config.max_pushes_per_hour;
+                Arc::new(RwLock::new(state))
+            });
+            Arc::clone(entry.value())
+        };
 
         // Record in session state
         state
@@ -499,7 +530,7 @@ impl ContextAwarenessEngine {
     /// Returns `None` if the session has no recorded activity. Used by the
     /// `code_context` tool to report stuck/error/topic state alongside results.
     pub async fn get_session_signals(&self, session_id: &str) -> Option<serde_json::Value> {
-        let entry = self.session_states.get(session_id)?;
+        let entry = self.session_state(session_id)?;
         let state = entry.read().await;
         Some(serde_json::json!({
             "session_id": state.session_id,
@@ -512,7 +543,7 @@ impl ContextAwarenessEngine {
     }
 
     /// Process context only when activity arrives; idle sessions cause no work.
-    pub fn start_monitoring(self: Arc<Self>) {
+    pub fn start_monitoring(self: Arc<Self>) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             info!("Context awareness monitoring started");
             loop {
@@ -520,7 +551,7 @@ impl ContextAwarenessEngine {
                 let Some(event) = event else { break };
                 self.process_activity_event(event).await;
             }
-        });
+        })
     }
 
     async fn process_activity_event(&self, event: ActivityEvent) {
@@ -531,7 +562,7 @@ impl ContextAwarenessEngine {
         );
 
         if event.activity_type == ActivityType::Error {
-            let should_assist = match self.session_states.get(&event.session_id) {
+            let should_assist = match self.session_state(&event.session_id) {
                 Some(entry) => {
                     let state = entry.read().await;
                     state.can_push() && !state.is_suppressed(PushTrigger::ErrorAssistance)
@@ -549,7 +580,7 @@ impl ContextAwarenessEngine {
     }
 
     async fn evaluate_session_by_id(&self, session_id: &str) {
-        let evaluation = match self.session_states.get(session_id) {
+        let evaluation = match self.session_state(session_id) {
             Some(entry) => {
                 let state = entry.read().await;
                 if !state.can_push() {
@@ -606,23 +637,16 @@ impl ContextAwarenessEngine {
         }
 
         // Check for idle recovery
-        if state.is_idle() && !state.is_suppressed(PushTrigger::IdleRecovery) {
-            // Check if there's a return from idle activity
-            let has_return = state.activity_window.iter().any(|a| {
-                a.activity_type == ActivityType::ReturnFromIdle
-                    && a.timestamp.elapsed().as_secs() < 60
-            });
-
-            if has_return {
-                return TriggerEvaluation {
-                    should_push: true,
-                    trigger: Some(PushTrigger::IdleRecovery),
-                    trigger_reason: "User returned after idle period, refreshing context"
-                        .to_string(),
-                    relevance_score: 0.85,
-                    context_query: self.build_context_query(state),
-                };
-            }
+        if state.idle_return.is_some_and(|at| at.elapsed().as_secs() < 60)
+            && !state.is_suppressed(PushTrigger::IdleRecovery)
+        {
+            return TriggerEvaluation {
+                should_push: true,
+                trigger: Some(PushTrigger::IdleRecovery),
+                trigger_reason: "User returned after idle period, refreshing context".to_string(),
+                relevance_score: 0.85,
+                context_query: self.build_context_query(state),
+            };
         }
 
         // Check for new topic (simple heuristic: sudden change in keywords)
@@ -689,8 +713,7 @@ impl ContextAwarenessEngine {
 
     async fn evaluate_error_assistance(&self, session_id: &str) -> Result<()> {
         let state = self
-            .session_states
-            .get(session_id)
+            .session_state(session_id)
             .context("Session not found")?;
 
         let state = state.read().await;
@@ -754,8 +777,13 @@ impl ContextAwarenessEngine {
         };
 
         // Update session state
-        if let Some(state) = self.session_states.get(session_id) {
+        if let Some(state) = self.session_state(session_id) {
             let mut state = state.write().await;
+            // Retrieval awaited above; another push may have consumed the
+            // configured budget meanwhile. Reserve publication under this lock.
+            if !state.can_push() || state.is_suppressed(trigger) {
+                return Ok(());
+            }
             state.record_push();
             state.suppress_trigger(trigger); // Don't push same trigger repeatedly
         }
@@ -775,8 +803,8 @@ impl ContextAwarenessEngine {
     }
 
     fn memory_namespace_for_session(&self, session_id: &str) -> Option<String> {
-        let entry = self.session_states.get(session_id)?;
-        let state = entry.value().try_read().ok()?;
+        let entry = self.session_state(session_id)?;
+        let state = entry.try_read().ok()?;
         let namespace = state
             .activity_window
             .back()
@@ -963,9 +991,9 @@ impl ContextAwarenessEngine {
 
     /// Get session context statistics
     pub async fn get_session_stats(&self, session_id: &str) -> Option<serde_json::Value> {
-        self.session_states.get(session_id).map(|state| {
-            let state = state.blocking_read();
-            serde_json::json!({
+        let entry = self.session_state(session_id)?;
+        let state = entry.read().await;
+        Some(serde_json::json!({
                 "session_id": state.session_id,
                 "activity_count": state.activity_window.len(),
                 "recent_error_count": state.recent_error_count,
@@ -973,13 +1001,12 @@ impl ContextAwarenessEngine {
                 "can_push": state.can_push(),
                 "current_topics": state.current_topics,
                 "suppressed_triggers": state.suppressed_triggers.iter().map(|t| t.to_string()).collect::<Vec<_>>(),
-            })
-        })
+        }))
     }
 
     /// Clear suppressed triggers for a session (e.g., after explicit user action)
     pub async fn reset_suppressions(&self, session_id: &str) {
-        if let Some(state) = self.session_states.get(session_id) {
+        if let Some(state) = self.session_state(session_id) {
             let mut state = state.write().await;
             state.suppressed_triggers.clear();
         }
@@ -989,6 +1016,10 @@ impl ContextAwarenessEngine {
     pub fn get_active_session_count(&self) -> usize {
         self.session_states.len()
     }
+
+    fn session_state(&self, session_id: &str) -> Option<Arc<RwLock<SessionContextState>>> {
+        self.session_states.get(session_id).map(|entry| Arc::clone(entry.value()))
+    }
 }
 
 #[cfg(test)]
@@ -996,6 +1027,30 @@ mod tests {
     use super::*;
     use crate::cozo_shuttle::CozoGraphShuttle;
     use crate::memory_store::NamespaceKind;
+
+    #[test]
+    fn idle_return_survives_the_activity_timestamp_update() {
+        let mut state = SessionContextState::new("session".into());
+        state.idle_threshold_secs = 60;
+        state.last_activity = Instant::now() - Duration::from_secs(61);
+        state.record_activity(ActivityType::ReturnFromIdle, String::new(), serde_json::json!({}));
+        assert!(!state.is_idle());
+        assert!(state.idle_return.is_some());
+    }
+
+    #[test]
+    fn configured_hourly_cap_applies_with_zero_minimum_interval() {
+        let mut state = SessionContextState::new("session".into());
+        state.push_rate_limit_secs = 0;
+        state.max_pushes_per_hour = 2;
+        state.record_push();
+        assert!(state.can_push());
+        state.record_push();
+        assert!(!state.can_push());
+        state.push_history.clear();
+        state.push_history.push_back(Instant::now() - Duration::from_secs(3601));
+        assert!(state.can_push());
+    }
 
     #[test]
     fn should_detect_stuck_session() {

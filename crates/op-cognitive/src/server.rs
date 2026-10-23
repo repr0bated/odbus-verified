@@ -19,7 +19,7 @@ use op_mcp::tool_registry::ToolRegistry;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub struct CognitiveMcpServer {
+pub struct CognitiveServer {
     memory_store: Arc<CognitiveMemoryStore>,
     cozo_shuttle: Arc<CozoGraphShuttle>,
     qdrant_shuttle: Option<Arc<QdrantSemanticShuttle>>,
@@ -30,10 +30,17 @@ pub struct CognitiveMcpServer {
     rag_pipeline: Option<Arc<RagPipeline>>,
     /// Proactive coding-context awareness engine.
     context_engine: Arc<ContextAwarenessEngine>,
+    monitor_task: tokio::task::JoinHandle<()>,
 }
 
-impl CognitiveMcpServer {
-    /// Create a new in-memory Cognitive MCP server.
+impl Drop for CognitiveServer {
+    fn drop(&mut self) {
+        self.monitor_task.abort();
+    }
+}
+
+impl CognitiveServer {
+    /// Create a new in-memory Cognitive server.
     pub async fn new_in_memory() -> Result<Self, Box<dyn std::error::Error>> {
         Self::new(":memory:").await
     }
@@ -68,38 +75,33 @@ impl CognitiveMcpServer {
     /// non-cognitive plugins because initialization is lazy at the call site.
     pub async fn new_durable(db_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         if db_path.is_empty() || db_path == ":memory:" || db_path == "memory" {
-            return Err("a durable CognitiveMcpServer requires a persistent Cozo path".into());
+            return Err("a durable CognitiveServer requires a persistent Cozo path".into());
         }
         let cozo_shuttle = Arc::new(CozoGraphShuttle::new_persistent(PathBuf::from(db_path))?);
-        let server = Self::new_with_shuttle(cozo_shuttle).await?;
-        // Owner decision 2026-09-19: the semantic shuttle is not optional on
-        // the durable path. Every Cozo write is vectorized; a runtime that
-        // could write memory it cannot embed would silently split the truth.
-        // Fail closed here — the bridge reports Unavailable for cognitive
-        // methods until Qdrant and the embedder are reachable.
-        if server.qdrant_shuttle.is_none() {
-            return Err(
-                "durable CognitiveMcpServer requires the Qdrant semantic shuttle (COGNITIVE_MCP_QDRANT_URL reachable and a Voyage key); refusing to serve memory without vectors"
-                    .into(),
-            );
-        }
-        Ok(server)
+        Self::build_with_shuttle(cozo_shuttle, true).await
     }
 
-    /// Create a Cognitive MCP server with a pre-configured CozoGraphShuttle.
+    /// Create a Cognitive server with a pre-configured CozoGraphShuttle.
     pub async fn new_with_shuttle(
         cozo_shuttle: Arc<CozoGraphShuttle>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::build_with_shuttle(cozo_shuttle, false).await
+    }
+
+    async fn build_with_shuttle(
+        cozo_shuttle: Arc<CozoGraphShuttle>,
+        require_semantic_shuttle: bool,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let memory_store = Arc::new(CognitiveMemoryStore::new(cozo_shuttle.clone()).await?);
-
         let tool_registry = Arc::new(ToolRegistry::new());
-
+        // Durable callers require vectors before any background task starts.
         let qdrant_shuttle = match QdrantSemanticShuttle::new().await {
             Ok(shuttle) => Some(Arc::new(shuttle)),
+            Err(e) if require_semantic_shuttle => return Err(e.into()),
             Err(e) => {
                 tracing::warn!(
                     error = %e,
-                    "Qdrant Semantic Shuttle unavailable; cognitive MCP will continue without vector retrieval"
+                    "Qdrant Semantic Shuttle unavailable; cognitive will continue without vector retrieval"
                 );
                 None
             }
@@ -124,7 +126,7 @@ impl CognitiveMcpServer {
         .await?;
 
         // Code-RAG pipeline: optional, like qdrant_shuttle. Without a Voyage key
-        // (env or ~/.ssh/mongo-voyage) the cognitive MCP still serves memory tools.
+        // (env or ~/.ssh/mongo-voyage) the cognitive runtime still serves memory tools.
         let rag_pipeline = match RagPipeline::from_env() {
             Ok(p) => Some(Arc::new(p)),
             Err(e) => {
@@ -146,7 +148,6 @@ impl CognitiveMcpServer {
             memory_store.clone(),
             rag_pipeline.clone(),
         ));
-        context_engine.clone().start_monitoring();
 
         if let Some(rag) = &rag_pipeline {
             let n = register_code_tools(
@@ -159,6 +160,8 @@ impl CognitiveMcpServer {
             tracing::info!(registered = n, "Registered code-context tools");
         }
 
+        // No task may retain the store until every fallible setup step succeeds.
+        let monitor_task = context_engine.clone().start_monitoring();
         Ok(Self {
             memory_store,
             cozo_shuttle,
@@ -168,6 +171,7 @@ impl CognitiveMcpServer {
             quota_manager,
             rag_pipeline,
             context_engine,
+            monitor_task,
         })
     }
 

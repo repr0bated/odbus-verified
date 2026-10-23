@@ -9,15 +9,15 @@
 //!
 //! Run explicitly:
 //! ```sh
-//! OP_E2E_QDRANT_URL=http://10.200.0.2:6334 \
-//!   cargo test -p op-cognitive-mcp --test e2e_voyage_qdrant -- --nocapture
+//! OP_E2E_QDRANT_URL=http://127.0.0.1:6334 \
+//!   cargo test -p op-cognitive --test e2e_voyage_qdrant -- --nocapture
 //! ```
 //!
 //! All writes land in per-run `e2e_voyage_*` collections that are deleted on
 //! the way out; live collections are never touched.
 
 use anyhow::{Context, Result};
-use op_cognitive_mcp::QdrantSemanticShuttle;
+use op_cognitive::QdrantSemanticShuttle;
 use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 
@@ -25,7 +25,7 @@ use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuild
 const PROBE_DIMS: u64 = 1024;
 
 const KEY_VARS: [&str; 3] = [
-    "COGNITIVE_MCP_VOYAGE_API_KEY",
+    "COGNITIVE_VOYAGE_API_KEY",
     "VOYAGE_API_KEY",
     "VOYAGE_API_KEY_RUST",
 ];
@@ -38,7 +38,7 @@ fn voyage_key_present() -> bool {
 
 fn qdrant_url() -> String {
     std::env::var("OP_E2E_QDRANT_URL")
-        .or_else(|_| std::env::var("COGNITIVE_MCP_QDRANT_URL"))
+        .or_else(|_| std::env::var("COGNITIVE_QDRANT_URL"))
         .unwrap_or_else(|_| "http://127.0.0.1:6334".to_string())
 }
 
@@ -97,13 +97,13 @@ async fn run_probe(
     episodes_collection: &str,
 ) -> Result<()> {
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("COGNITIVE_MCP_QDRANT_URL", url) };
+    unsafe { std::env::set_var("COGNITIVE_QDRANT_URL", url) };
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("COGNITIVE_MCP_USER_MEMORY_COLLECTION", memory_collection) };
+    unsafe { std::env::set_var("COGNITIVE_USER_MEMORY_COLLECTION", memory_collection) };
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("COGNITIVE_MCP_BLOB_VECTORS_COLLECTION", blob_collection) };
+    unsafe { std::env::set_var("COGNITIVE_BLOB_VECTORS_COLLECTION", blob_collection) };
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("COGNITIVE_MCP_QDRANT_COLLECTION", episodes_collection) };
+    unsafe { std::env::set_var("COGNITIVE_QDRANT_COLLECTION", episodes_collection) };
 
     let shuttle = QdrantSemanticShuttle::new()
         .await

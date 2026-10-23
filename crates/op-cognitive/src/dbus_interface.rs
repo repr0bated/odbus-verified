@@ -1,8 +1,8 @@
-//! D-Bus interface for the Cognitive MCP tool registry.
+//! D-Bus interface for the Cognitive tool registry.
 //!
 //! service:   org.opdbus.v1.plugins
-//! object:    /org/opdbus/v1/plugins/cognitive_mcp
-//! interface: org.opdbus.v1.plugins.CognitiveMcp
+//! object:    /org/opdbus/v1/plugins/cognitive
+//! interface: org.opdbus.v1.plugins.Cognitive
 //!
 //! Methods:
 //!   ListTools() -> s                  JSON array [{name, description, category}]
@@ -14,18 +14,18 @@ use simd_json::prelude::*;
 use std::sync::Arc;
 use zbus::interface;
 
-pub struct CognitiveMcpInterface {
+pub struct CognitiveInterface {
     registry: Arc<ToolRegistry>,
 }
 
-impl CognitiveMcpInterface {
+impl CognitiveInterface {
     pub fn new(registry: Arc<ToolRegistry>) -> Self {
         Self { registry }
     }
 }
 
-#[interface(name = "org.opdbus.v1.plugins.CognitiveMcp")]
-impl CognitiveMcpInterface {
+#[interface(name = "org.opdbus.v1.plugins.Cognitive")]
+impl CognitiveInterface {
     async fn list_tools(&self) -> zbus::fdo::Result<String> {
         let defs = self.registry.list(0, usize::MAX, None).await;
         let arr: Vec<serde_json::Value> = defs

@@ -122,6 +122,8 @@ pub async fn run_diagnostics(
         status: "ok".into(),
         details: serde_json::json!({
             "profile": profile.to_string(),
+            "enforced": false,
+            "scope": "legacy NotebookLM tool estimates; not the current runtime registry",
             "tool_count": estimate.tool_count,
             "schema_tokens": estimate.schema_tokens,
             "savings_percent": estimate.savings_percent,
@@ -130,7 +132,7 @@ pub async fn run_diagnostics(
 
     // 6. Auth Status
     let auth_method =
-        std::env::var("COGNITIVE_MCP_AUTH_METHOD").unwrap_or_else(|_| "chrome_profile".into());
+        std::env::var("COGNITIVE_AUTH_METHOD").unwrap_or_else(|_| "chrome_profile".into());
     components.push(ComponentStatus {
         name: "auth".into(),
         status: "configured".into(),
@@ -161,7 +163,7 @@ pub fn get_query_history(session_manager: &SessionManager, limit: usize) -> Vec<
                 "notebook_id": session.notebook_id,
                 "query": turn.query,
                 "answer_preview": if turn.answer.len() > 200 {
-                    format!("{}...", &turn.answer[..200])
+                    format!("{}...", &turn.answer[..turn.answer.floor_char_boundary(200)])
                 } else {
                     turn.answer.clone()
                 },

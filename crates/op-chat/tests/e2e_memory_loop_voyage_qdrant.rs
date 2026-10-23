@@ -6,8 +6,8 @@
 
 use anyhow::{Context, Result, ensure};
 use op_chat::memory_loop::MemoryLoop;
-use op_cognitive_mcp::memory_store::{CognitiveMemoryStore, NamespaceKind};
-use op_cognitive_mcp::{CozoGraphShuttle, QdrantSemanticShuttle};
+use op_cognitive::memory_store::{CognitiveMemoryStore, NamespaceKind};
+use op_cognitive::{CozoGraphShuttle, QdrantSemanticShuttle};
 use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 use serde_json::json;
@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 const VOYAGE_DIMS: u64 = 1024;
 const KEY_VARS: [&str; 3] = [
-    "COGNITIVE_MCP_VOYAGE_API_KEY",
+    "COGNITIVE_VOYAGE_API_KEY",
     "VOYAGE_API_KEY",
     "VOYAGE_API_KEY_RUST",
 ];
@@ -28,7 +28,7 @@ fn voyage_key_present() -> bool {
 
 fn qdrant_url() -> String {
     std::env::var("OP_E2E_QDRANT_URL")
-        .or_else(|_| std::env::var("COGNITIVE_MCP_QDRANT_URL"))
+        .or_else(|_| std::env::var("COGNITIVE_QDRANT_URL"))
         .unwrap_or_else(|_| "http://127.0.0.1:6334".to_string())
 }
 
@@ -67,9 +67,9 @@ async fn post_turn_memory_is_vectorized_and_semantically_reinjected() -> Result<
 
 async fn run_probe(url: &str, collection: &str) -> Result<()> {
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("COGNITIVE_MCP_QDRANT_URL", url) };
+    unsafe { std::env::set_var("COGNITIVE_QDRANT_URL", url) };
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::set_var("COGNITIVE_MCP_USER_MEMORY_COLLECTION", collection) };
+    unsafe { std::env::set_var("COGNITIVE_USER_MEMORY_COLLECTION", collection) };
 
     let cozo =
         Arc::new(CozoGraphShuttle::new_in_memory().context("creating in-memory CozoDB for probe")?);

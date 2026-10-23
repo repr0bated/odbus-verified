@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 use qdrant_client::{
     Payload, Qdrant, QdrantError,
     qdrant::{
-        Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, ScoredPoint,
+        Condition, CreateCollectionBuilder, DeletePointsBuilder, Distance, Filter, PointStruct, ScoredPoint,
         SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder, VectorsConfig,
         vectors_config::Config as VectorsConfigEnum,
     },
@@ -27,7 +27,6 @@ use tracing::{info, warn};
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
-pub const DEFAULT_COLLECTION: &str = "repomix_rag";
 /// The fused voyage-4 retrieval set — one shared embedding space, so `_large`
 /// and `_lite` collections compare directly. Best available tier per language:
 /// go/python/rust were re-vectorized to voyage-4-large (see ../logs
@@ -190,20 +189,20 @@ pub struct RetrievalProfile {
 impl RetrievalProfile {
     pub fn from_env(mode: RetrievalMode) -> Self {
         let limit = match mode {
-            RetrievalMode::Completion => env_u64("COGNITIVE_MCP_COMPLETION_TOP_K", 12),
-            RetrievalMode::Search => env_u64("COGNITIVE_MCP_SEARCH_TOP_K", 12),
-            RetrievalMode::Deep => env_u64("COGNITIVE_MCP_DEEP_TOP_K", 50),
+            RetrievalMode::Completion => env_u64("COGNITIVE_COMPLETION_TOP_K", 12),
+            RetrievalMode::Search => env_u64("COGNITIVE_SEARCH_TOP_K", 12),
+            RetrievalMode::Deep => env_u64("COGNITIVE_DEEP_TOP_K", 50),
         }
         .clamp(1, 100);
 
         let fetch_limit = match mode {
             RetrievalMode::Completion => limit,
             RetrievalMode::Search => limit.saturating_mul(3).clamp(limit, 64),
-            RetrievalMode::Deep => env_u64("COGNITIVE_MCP_DEEP_FETCH_K", 50).clamp(limit, 100),
+            RetrievalMode::Deep => env_u64("COGNITIVE_DEEP_FETCH_K", 50).clamp(limit, 100),
         };
 
         let rerank_mode =
-            std::env::var("COGNITIVE_MCP_RERANK_MODE").unwrap_or_else(|_| "auto".into());
+            std::env::var("COGNITIVE_RERANK_MODE").unwrap_or_else(|_| "auto".into());
         let rerank_enabled = match mode {
             RetrievalMode::Completion => rerank_mode == "always",
             RetrievalMode::Search => rerank_mode == "always",
@@ -217,7 +216,7 @@ impl RetrievalProfile {
             limit,
             fetch_limit,
             rerank_enabled,
-            kiro_lsp_state_dir: std::env::var("COGNITIVE_MCP_KIRO_LSP_STATE_DIR")
+            kiro_lsp_state_dir: std::env::var("COGNITIVE_KIRO_LSP_STATE_DIR")
                 .unwrap_or_else(|_| "/home/jeremy/git/logs/kiro-lsp-state".into()),
             deadline,
         }
@@ -270,12 +269,15 @@ impl CodeFilter {
 pub struct RagPipeline {
     qdrant: Qdrant,
     voyage: VoyageClient,
+    // The canonical server owns this pipeline. Serialize replacements so an
+    // older in-flight write cannot remove a newer file generation's points.
+    source_ingest: tokio::sync::Mutex<()>,
 }
 
 impl RagPipeline {
     #[cfg(test)]
     pub(crate) fn for_test(qdrant: Qdrant, voyage: VoyageClient) -> Self {
-        Self { qdrant, voyage }
+        Self { qdrant, voyage, source_ingest: tokio::sync::Mutex::new(()) }
     }
 
     pub fn from_env() -> Result<Self> {
@@ -285,7 +287,7 @@ impl RagPipeline {
         let voyage = VoyageClient::new()?;
         let qdrant = qdrant_client_from_env()?;
 
-        Ok(Self { qdrant, voyage })
+        Ok(Self { qdrant, voyage, source_ingest: tokio::sync::Mutex::new(()) })
     }
 
     /// Semantic search over a Qdrant collection.
@@ -474,7 +476,7 @@ impl RagPipeline {
             .map(String::from)
             .collect();
 
-        let mut best: HashMap<String, RagResult> = HashMap::new();
+        let mut best: HashMap<(String, String), RagResult> = HashMap::new();
         for pt in response.result {
             let mut r = point_to_result(pt);
             r.retrieval_collection = collection.to_string();
@@ -496,7 +498,7 @@ impl RagPipeline {
             }
             r.score += boost.min(0.25);
 
-            best.entry(r.file_path.clone())
+            best.entry((r.repo.clone(), r.file_path.clone()))
                 .and_modify(|e| {
                     if r.score > e.score {
                         *e = r.clone();
@@ -529,6 +531,7 @@ impl RagPipeline {
         content: &str,
         collection: &str,
     ) -> Result<IngestStats> {
+        let _replacement = self.source_ingest.lock().await;
         self.ensure_collection(collection).await?;
 
         let lines: Vec<String> = content.lines().map(str::to_string).collect();
@@ -539,19 +542,18 @@ impl RagPipeline {
             files_parsed: 1,
             ..Default::default()
         };
-        let mut batch: Vec<PointStruct> = Vec::new();
+        let generation = hex_hash(content.as_bytes());
+        let mut points = Vec::with_capacity(chunks.len());
+        let mut point_ids = Vec::with_capacity(chunks.len());
 
         for chunk in chunks {
             stats.chunks_created += 1;
 
-            let vector = match self.embed_document(&chunk.embed_text).await {
-                Ok(v) => v,
-                Err(e) => {
-                    warn!(file = %chunk.file_path, error = %e, "Embed failed, skipping chunk");
-                    stats.errors += 1;
-                    continue;
-                }
-            };
+            // Prepare every embedding before publishing any replacement point.
+            // An embedder failure leaves the previous file generation intact.
+            let vector = self.embed_document(&chunk.embed_text).await
+                .with_context(|| format!("failed to embed source chunk {}", chunk.chunk_index))?;
+            let point_id = source_point_id(repo, file_path, &generation, chunk.chunk_index)?;
 
             let payload: Payload = serde_json::json!({
                 "repo":          chunk.repo,
@@ -573,21 +575,33 @@ impl RagPipeline {
             .try_into()
             .context("Failed to build payload")?;
 
-            batch.push(PointStruct::new(
-                stable_uuid(&chunk.content_hash),
-                vector,
-                payload,
-            ));
+            point_ids.push(point_id.clone());
+            points.push(PointStruct::new(point_id, vector, payload));
+            tokio::time::sleep(Duration::from_millis(VOYAGE_RATE_DELAY_MS)).await;
+        }
 
-            if batch.len() >= VOYAGE_BATCH {
-                self.flush_batch(collection, &mut batch, &mut stats).await;
-                tokio::time::sleep(Duration::from_millis(VOYAGE_RATE_DELAY_MS)).await;
+        let mut batch = Vec::with_capacity(VOYAGE_BATCH);
+        for point in points {
+            batch.push(point);
+            if batch.len() == VOYAGE_BATCH {
+                self.flush_batch(collection, &mut batch, &mut stats).await?;
             }
         }
+        self.flush_batch(collection, &mut batch, &mut stats).await?;
 
-        if !batch.is_empty() {
-            self.flush_batch(collection, &mut batch, &mut stats).await;
+        // Only acknowledged replacement points may displace old ones. Empty
+        // content deliberately removes the old file's points. A partial upsert
+        // failure returns above, retaining every previous-generation point.
+        let mut stale = Filter::must([
+            Condition::matches("repo", repo.to_owned()),
+            Condition::matches("file_path", file_path.to_owned()),
+        ]);
+        if !point_ids.is_empty() {
+            stale.must_not.push(Condition::has_id(point_ids));
         }
+        self.qdrant.delete_points(
+            DeletePointsBuilder::new(collection).points(stale).wait(true),
+        ).await.context("failed to remove previous source generation; replacement points retained")?;
 
         info!(
             repo = %repo,
@@ -633,9 +647,9 @@ impl RagPipeline {
         collection: &str,
         batch: &mut Vec<PointStruct>,
         stats: &mut IngestStats,
-    ) {
+    ) -> Result<()> {
         if batch.is_empty() {
-            return;
+            return Ok(());
         }
         let count = batch.len();
         let points = std::mem::take(batch);
@@ -648,12 +662,12 @@ impl RagPipeline {
             }
             match self
                 .qdrant
-                .upsert_points(UpsertPointsBuilder::new(collection, points.clone()))
+                .upsert_points(UpsertPointsBuilder::new(collection, points.clone()).wait(true))
                 .await
             {
                 Ok(_) => {
                     stats.chunks_upserted += count;
-                    return;
+                    return Ok(());
                 }
                 Err(e) => {
                     last_err = Some(e);
@@ -662,9 +676,9 @@ impl RagPipeline {
         }
 
         if let Some(e) = last_err {
-            warn!(error = %e, count, "Qdrant upsert failed after retry");
-            stats.errors += 1;
+            return Err(e.into());
         }
+        anyhow::bail!("Qdrant upsert did not complete")
     }
 
     async fn embed_document(&self, text: &str) -> Result<Vec<f32>> {
@@ -677,19 +691,19 @@ impl RagPipeline {
 }
 
 pub fn default_collection_from_env() -> String {
-    // `COGNITIVE_MCP_REPOMIX_COLLECTION` is honoured only so an existing
+    // `COGNITIVE_REPOMIX_COLLECTION` is honoured only so an existing
     // deployment keeps pointing at the collection it already filled.
-    std::env::var("COGNITIVE_MCP_RAG_COLLECTION")
-        .or_else(|_| std::env::var("COGNITIVE_MCP_CODE_COLLECTION"))
-        .or_else(|_| std::env::var("COGNITIVE_MCP_REPOMIX_COLLECTION"))
-        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string())
+    std::env::var("COGNITIVE_RAG_COLLECTION")
+        .or_else(|_| std::env::var("COGNITIVE_CODE_COLLECTION"))
+        .or_else(|_| std::env::var("COGNITIVE_REPOMIX_COLLECTION"))
+        .unwrap_or_else(|_| DEFAULT_VOYAGE4_COLLECTIONS[0].to_string())
 }
 
 pub fn default_collections_for_mode(mode: RetrievalMode) -> Vec<String> {
     let env_key = match mode {
-        RetrievalMode::Completion => "COGNITIVE_MCP_COMPLETION_COLLECTIONS",
-        RetrievalMode::Search => "COGNITIVE_MCP_SEARCH_COLLECTIONS",
-        RetrievalMode::Deep => "COGNITIVE_MCP_DEEP_COLLECTIONS",
+        RetrievalMode::Completion => "COGNITIVE_COMPLETION_COLLECTIONS",
+        RetrievalMode::Search => "COGNITIVE_SEARCH_COLLECTIONS",
+        RetrievalMode::Deep => "COGNITIVE_DEEP_COLLECTIONS",
     };
 
     if let Ok(value) = std::env::var(env_key) {
@@ -699,7 +713,7 @@ pub fn default_collections_for_mode(mode: RetrievalMode) -> Vec<String> {
         }
     }
 
-    if let Ok(value) = std::env::var("COGNITIVE_MCP_RAG_COLLECTIONS") {
+    if let Ok(value) = std::env::var("COGNITIVE_RAG_COLLECTIONS") {
         let collections = split_collection_list(&value);
         if !collections.is_empty() {
             return collections;
@@ -736,14 +750,14 @@ const MAX_RETRIEVAL_DEADLINE_MS: u64 = 120_000;
 
 fn retrieval_deadline(mode: RetrievalMode) -> Duration {
     let key = match mode {
-        RetrievalMode::Completion => "COGNITIVE_MCP_COMPLETION_DEADLINE_MS",
-        RetrievalMode::Search => "COGNITIVE_MCP_SEARCH_DEADLINE_MS",
-        RetrievalMode::Deep => "COGNITIVE_MCP_DEEP_DEADLINE_MS",
+        RetrievalMode::Completion => "COGNITIVE_COMPLETION_DEADLINE_MS",
+        RetrievalMode::Search => "COGNITIVE_SEARCH_DEADLINE_MS",
+        RetrievalMode::Deep => "COGNITIVE_DEEP_DEADLINE_MS",
     };
     retrieval_deadline_from_values(
         mode,
         std::env::var(key).ok().as_deref(),
-        std::env::var("COGNITIVE_MCP_RETRIEVAL_DEADLINE_MS")
+        std::env::var("COGNITIVE_RETRIEVAL_DEADLINE_MS")
             .ok()
             .as_deref(),
     )
@@ -858,7 +872,7 @@ fn detect_language(path: &str) -> &'static str {
     }
 }
 
-fn classify_file(path: &str, lines: &[String]) -> FileType {
+fn classify_file(path: &str, _lines: &[String]) -> FileType {
     let lower = path.to_lowercase();
     if lower.contains("test") || lower.contains("spec") || lower.ends_with("_test.rs") {
         return FileType::Test;
@@ -882,12 +896,6 @@ fn classify_file(path: &str, lines: &[String]) -> FileType {
         || lower.ends_with(".env")
     {
         return FileType::Config;
-    }
-    if lines
-        .iter()
-        .any(|l| l.contains("#[cfg(test)]") || l.contains("#[test]"))
-    {
-        return FileType::Test;
     }
     FileType::Source
 }
@@ -1219,6 +1227,13 @@ fn stable_uuid(hash: &str) -> String {
     }
 }
 
+fn source_point_id(repo: &str, path: &str, generation: &str, chunk_index: usize) -> Result<String> {
+    // Tuple encoding keeps path/namespace boundaries unambiguous; the complete
+    // file generation prevents partial replacement from overwriting old chunks.
+    let key = serde_json::to_vec(&(repo, path, generation, chunk_index))?;
+    Ok(stable_uuid(&hex_hash(&key)))
+}
+
 // ─── Qdrant connection ────────────────────────────────────────────────────────
 
 /// Build a Qdrant client from environment.
@@ -1229,9 +1244,9 @@ fn stable_uuid(hash: &str) -> String {
 /// its native domain-socket (`"network": "ds"`) outbound — no custom tonic
 /// connector needed here.
 ///
-/// Override the URL with `COGNITIVE_MCP_QDRANT_URL`.
+/// Override the URL with `COGNITIVE_QDRANT_URL`.
 pub fn qdrant_client_from_env() -> Result<Qdrant> {
-    let url = std::env::var("COGNITIVE_MCP_QDRANT_URL")
+    let url = std::env::var("COGNITIVE_QDRANT_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:6334".into());
     Qdrant::from_url(&url)
         .build()
@@ -1279,6 +1294,19 @@ fn str_arr(v: &serde_json::Value, key: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn source_point_ids_preserve_scope_and_file_generation() {
+        let id = source_point_id("repo", "src/lib.rs", "generation-one", 0).unwrap();
+        assert_eq!(id, source_point_id("repo", "src/lib.rs", "generation-one", 0).unwrap());
+        assert_ne!(id, source_point_id("repo", "src/lib.rs", "generation-two", 0).unwrap());
+        assert_ne!(id, source_point_id("repo", "src/other.rs", "generation-one", 0).unwrap());
+        assert_ne!(id, source_point_id("repo", "src/lib.rs", "generation-one", 1).unwrap());
+        assert_ne!(
+            source_point_id("repo:part", "file", "generation-one", 0).unwrap(),
+            source_point_id("repo", "part:file", "generation-one", 0).unwrap(),
+        );
+    }
 
     #[test]
     fn retrieval_deadline_has_mode_default_override_and_bounds() {

@@ -1,6 +1,6 @@
 //! Cognitive Tools for MCP
 //!
-//! MCP tools backed by the SQLite namespace/entry memory store.
+//! MCP tools backed by the Cozo namespace/entry memory store.
 //! Operations: store, retrieve, query, delete, list_namespaces, stats.
 
 use crate::agent_tools::register_agent_tools;
@@ -8,12 +8,16 @@ use crate::blob_catalog_tool::register_blob_catalog_tool;
 use crate::blob_vectors_tool::register_blob_vectors_tools;
 use crate::memory_store::{CognitiveMemoryStore, EntryQuery, NamespaceKind};
 use crate::qdrant_shuttle::QdrantSemanticShuttle;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
 use simd_json::prelude::*;
-use simd_json::{OwnedValue as Value, json};
+use simd_json::{json, OwnedValue as Value};
 use std::sync::Arc;
+
+// One bounded process-wide owner, including separately constructed MemoryTools.
+// This serializes memory operations without retaining payloads or keyed locks.
+static MEMORY_OPERATIONS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 /// Safe field access for simd_json values.
 ///
@@ -43,7 +47,9 @@ impl CognitiveToolRegistry {
             .register(Arc::new(MemoryTool::new(store.clone(), qdrant.clone())) as BoxedTool)
             .await?;
         registry
-            .register(Arc::new(RegisterToolTool) as BoxedTool)
+            .register(Arc::new(GeminiQueryTool {
+                fallback: crate::gemini_fallback::GeminiFallback::new(),
+            }) as BoxedTool)
             .await?;
         register_agent_tools(registry).await?;
         // Provider-backed MCP tools are projected by the bridge from their
@@ -52,6 +58,95 @@ impl CognitiveToolRegistry {
         register_blob_catalog_tool(registry).await?;
         register_blob_vectors_tools(registry, qdrant).await?;
         Ok(())
+    }
+}
+
+/// Explicit provider operation; never selects the chatbot's default route.
+pub struct GeminiQueryTool {
+    fallback: crate::gemini_fallback::GeminiFallback,
+}
+
+#[async_trait]
+impl Tool for GeminiQueryTool {
+    fn name(&self) -> &str {
+        "gemini_query"
+    }
+    fn description(&self) -> &str {
+        "Explicit Gemini query or bounded deep research using configured provider credentials."
+    }
+    fn category(&self) -> &str {
+        "cognitive"
+    }
+    fn tags(&self) -> Vec<String> {
+        vec!["query".into(), "research".into()]
+    }
+    fn input_schema(&self) -> Value {
+        simd_json::serde::to_owned_value(
+            &op_plugins::cognitive_plugin_schema().methods["gemini_query"].args,
+        )
+        .expect("plugin-owned Gemini input schema serializes")
+    }
+    fn required_capability(&self) -> Option<&str> {
+        Some("cognitive.invoke")
+    }
+    fn subid(&self) -> Option<&str> {
+        Some("mut.service.gemini.query@v1")
+    }
+
+    async fn execute(&self, input: Value) -> Result<Value> {
+        use op_plugins::state_plugins::cognitive::{
+            GeminiMode, GeminiQueryOutput, GeminiQueryRequest,
+        };
+        let request: GeminiQueryRequest = serde_json::from_value(simd_json_to_serde(&input))
+            .context("invalid Gemini query request")?;
+        anyhow::ensure!(
+            !request.query.trim().is_empty(),
+            "Gemini query must not be empty"
+        );
+        anyhow::ensure!(
+            (1..=5).contains(&request.depth),
+            "research depth must be 1-5"
+        );
+        let output = tokio::time::timeout(std::time::Duration::from_secs(25), async {
+            let context = request.context.as_deref().filter(|s| !s.is_empty());
+            match request.mode {
+                GeminiMode::Query => {
+                    let result = self.fallback.gemini_query(&request.query, context).await?;
+                    Ok::<_, anyhow::Error>(GeminiQueryOutput {
+                        response: result.answer,
+                        citations: result.citations.into_iter().map(|c| c.source).collect(),
+                    })
+                }
+                GeminiMode::DeepResearch => {
+                    let result = self
+                        .fallback
+                        .deep_research(&request.query, context, request.depth.into())
+                        .await?;
+                    anyhow::ensure!(
+                        result.sections.len() == usize::from(request.depth),
+                        "deep research incomplete"
+                    );
+                    let response = result
+                        .sections
+                        .iter()
+                        .map(|s| format!("{}\n{}", s.title, s.content))
+                        .collect::<Vec<_>>()
+                        .join("\n\n");
+                    Ok(GeminiQueryOutput {
+                        response,
+                        citations: result
+                            .sections
+                            .into_iter()
+                            .flat_map(|s| s.citations)
+                            .map(|c| c.source)
+                            .collect(),
+                    })
+                }
+            }
+        })
+        .await
+        .context("Gemini operation exceeded its 25-second deadline; no complete result")??;
+        Ok(serde_to_simd_json(serde_json::to_value(output)?))
     }
 }
 
@@ -160,6 +255,7 @@ impl Tool for MemoryTool {
     }
 
     async fn execute(&self, input: Value) -> Result<Value> {
+        let _guard = MEMORY_OPERATIONS.lock().await;
         let op = field(&input, "operation")
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("missing operation"))?;
@@ -175,50 +271,6 @@ impl Tool for MemoryTool {
             "stats" => self.op_stats().await,
             other => Err(anyhow::anyhow!("unknown operation: {}", other)),
         }
-    }
-}
-
-/// Stub for the `register_tool` schema method (cognitive_mcp_schema, subid
-/// mut.service.cognitive-mcp.tool.register@v1). No dynamic tool-registration
-/// mechanism exists yet — this establishes the contract as a real, reachable
-/// tool that returns a clear "not implemented" rather than a missing route.
-/// The schema is the authority; this implementation must catch up.
-pub struct RegisterToolTool;
-
-#[async_trait]
-impl Tool for RegisterToolTool {
-    fn name(&self) -> &str {
-        "register_tool"
-    }
-
-    fn description(&self) -> &str {
-        "Register a new MCP tool at runtime. Not yet implemented."
-    }
-
-    fn category(&self) -> &str {
-        "cognitive"
-    }
-
-    fn tags(&self) -> Vec<String> {
-        vec!["tool".to_string(), "registry".to_string()]
-    }
-
-    fn input_schema(&self) -> Value {
-        json!({"type": "object", "additionalProperties": true})
-    }
-
-    fn required_capability(&self) -> Option<&str> {
-        Some("cognitive_mcp.invoke")
-    }
-
-    fn subid(&self) -> Option<&str> {
-        Some("mut.service.cognitive-mcp.tool.register@v1")
-    }
-
-    async fn execute(&self, _input: Value) -> Result<Value> {
-        Err(anyhow::anyhow!(
-            "register_tool is not yet implemented — no dynamic tool-registration mechanism exists"
-        ))
     }
 }
 
@@ -361,13 +413,20 @@ impl MemoryTool {
                 .await?;
         }
 
+        // Clear every prior mirror, including legacy random UUIDs, before
+        // replacing authoritative content, even for nonsemantic/empty writes.
+        // Failure leaves the old Cozo row available for a retry.
+        if let Some(qdrant) = &self.qdrant {
+            qdrant.delete_user_memory(&namespace, key).await?;
+        }
         let entry = self
             .store
             .store_entry(&namespace, key, value.clone(), tags, None)
             .await?;
         let semantic_mirrored = self
-            .mirror_semantic_memory(input, &namespace, key, &value)
-            .await?;
+            .mirror_semantic_memory(input, &namespace, key, &entry.id, &value)
+            .await
+            .context("Cozo memory committed but semantic mirror failed; retry store")?;
 
         Ok(json!({
             "ok": true,
@@ -440,9 +499,7 @@ impl MemoryTool {
                 "semantic memory unavailable: Qdrant Semantic Shuttle is not configured"
             )
         })?;
-        let container_id = field(input, "container_id")
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("missing container_id"))?;
+        let namespace = memory_namespace(input)?;
         let query = field(input, "query")
             .as_str()
             .or_else(|| field(input, "key_pattern").as_str())
@@ -451,23 +508,46 @@ impl MemoryTool {
 
         let embedding = qdrant.embed_query_text(query).await?;
         let results = qdrant
-            .search_user_memory(embedding, container_id, limit)
+            .search_user_memory(embedding, &namespace, limit)
             .await?;
-        let count = results.len();
-        let items: Vec<Value> = results
-            .into_iter()
-            .map(|point| {
-                Ok(json!({
-                    "id": format!("{:?}", point.id),
-                    "score": point.score,
-                    "payload": serde_to_simd_json(serde_json::to_value(&point.payload)?)
-                }))
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let mut items = Vec::new();
+        let mut seen_keys = std::collections::HashSet::new();
+        for point in results {
+            let payload = serde_json::to_value(&point.payload)?;
+            let Some(key) = payload.get("entry_key").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            if payload.get("container_id").and_then(|v| v.as_str()) != Some(namespace.as_str()) {
+                continue;
+            }
+            let Some(entry) = self.store.retrieve_entry(&namespace, key).await? else {
+                continue;
+            };
+            let point_uuid = point.id.as_ref().and_then(|id| match &id.point_id_options {
+                Some(qdrant_client::qdrant::point_id::PointIdOptions::Uuid(id)) => {
+                    Some(id.as_str())
+                }
+                _ => None,
+            });
+            // Cozo is authoritative. Current legacy random-ID mirrors remain
+            // readable; collapse duplicates within this bounded result batch.
+            if !semantic_matches_entry(point_uuid, &payload, &namespace, &entry) {
+                continue;
+            }
+            if !seen_keys.insert(key.to_string()) {
+                continue;
+            }
+            items.push(json!({
+                "id": format!("{:?}", point.id),
+                "score": point.score,
+                "payload": serde_to_simd_json(serde_json::to_value(&point.payload)?)
+            }));
+        }
+        let count = items.len();
 
         Ok(json!({
             "count": count,
-            "container_id": container_id,
+            "container_id": namespace,
             "results": items
         }))
     }
@@ -478,7 +558,17 @@ impl MemoryTool {
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("missing key"))?;
 
-        let deleted = self.store.delete_entry(&namespace, key).await?;
+        if let Some(qdrant) = &self.qdrant {
+            // Also clean orphaned mirrors when Cozo has no matching row.
+            qdrant.delete_user_memory(&namespace, key).await?;
+        } else {
+            tracing::warn!(
+                "Qdrant unconfigured: deleting Cozo memory only; remote cleanup unverified"
+            );
+        }
+        let deleted = self.store.delete_entry(&namespace, key).await.context(
+            "semantic cleanup completed or unavailable but Cozo deletion failed; retry delete",
+        )?;
         Ok(json!({ "ok": deleted, "namespace": namespace, "key": key }))
     }
 
@@ -525,6 +615,7 @@ impl MemoryTool {
         input: &Value,
         namespace: &str,
         key: &str,
+        entry_id: &str,
         value: &serde_json::Value,
     ) -> Result<bool> {
         if !field(input, "semantic").as_bool().unwrap_or(false) {
@@ -540,15 +631,6 @@ impl MemoryTool {
             return Ok(false);
         };
 
-        let Some(container_id) = field(input, "container_id").as_str() else {
-            tracing::warn!(
-                namespace = namespace,
-                key = key,
-                "semantic memory requested without container_id"
-            );
-            return Ok(false);
-        };
-
         let content = memory_content(value);
         if content.trim().is_empty() {
             return Ok(false);
@@ -556,13 +638,7 @@ impl MemoryTool {
 
         let vector = qdrant.embed_document(&content).await?;
         qdrant
-            .upsert_user_memory(
-                uuid::Uuid::new_v4().to_string(),
-                vector,
-                container_id,
-                key,
-                &content,
-            )
+            .upsert_user_memory(entry_id.to_string(), vector, namespace, key, &content)
             .await?;
         Ok(true)
     }
@@ -654,6 +730,133 @@ fn memory_content(value: &serde_json::Value) -> String {
         .as_str()
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| serde_json::to_string(value).unwrap_or_default())
+}
+
+fn semantic_matches_entry(
+    _point_id: Option<&str>,
+    payload: &serde_json::Value,
+    namespace: &str,
+    entry: &crate::memory_store::MemoryEntry,
+) -> bool {
+    entry.namespace_id == namespace
+        && payload.get("container_id").and_then(|v| v.as_str()) == Some(namespace)
+        && payload.get("entry_key").and_then(|v| v.as_str()) == Some(entry.key.as_str())
+        && payload.get("content").and_then(|v| v.as_str())
+            == Some(memory_content(&entry.value).as_str())
+}
+
+#[cfg(test)]
+mod semantic_lifecycle_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn gemini_rejects_empty_query_and_unbounded_depth_before_provider_access() {
+        let tool = GeminiQueryTool {
+            fallback: crate::gemini_fallback::GeminiFallback::new(),
+        };
+        for input in [
+            json!({"query":" ","depth":3}),
+            json!({"query":"valid","depth":6}),
+        ] {
+            assert!(tool.execute(input).await.is_err());
+        }
+        let schema = tool.input_schema();
+        assert!(field(&schema, "properties").get("query").is_some());
+        assert_eq!(tool.required_capability(), Some("cognitive.invoke"));
+    }
+
+    #[test]
+    fn qdrant_payload_serializes_as_native_values() {
+        let payload: qdrant_client::Payload = serde_json::json!({
+            "container_id":"session/a/personal", "entry_key":"k", "content":"current"
+        })
+        .try_into()
+        .unwrap();
+        let point = qdrant_client::qdrant::PointStruct::new(
+            uuid::Uuid::new_v4().to_string(),
+            vec![1.0],
+            payload,
+        );
+        assert_eq!(
+            serde_json::to_value(&point.payload).unwrap(),
+            serde_json::json!({
+                "container_id":"session/a/personal", "entry_key":"k", "content":"current"
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn semantic_results_require_current_authoritative_identity_and_content() {
+        let store = CognitiveMemoryStore::new(Arc::new(
+            op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap(),
+        ))
+        .await
+        .unwrap();
+        store
+            .upsert_namespace(
+                "session/a/personal",
+                NamespaceKind::Custom,
+                None,
+                None,
+                None,
+                serde_json::json!({}),
+            )
+            .await
+            .unwrap();
+        let old = store
+            .store_entry(
+                "session/a/personal",
+                "k",
+                serde_json::json!("old"),
+                vec![],
+                None,
+            )
+            .await
+            .unwrap();
+        let payload =
+            serde_json::json!({"container_id":old.namespace_id,"entry_key":"k","content":"old"});
+        assert!(semantic_matches_entry(
+            Some(&old.id),
+            &payload,
+            "session/a/personal",
+            &old
+        ));
+        assert!(semantic_matches_entry(
+            Some("legacy-random-id"),
+            &payload,
+            "session/a/personal",
+            &old
+        ));
+        assert!(!semantic_matches_entry(
+            Some(&old.id),
+            &payload,
+            "session/b/personal",
+            &old
+        ));
+        let current = store
+            .store_entry(
+                "session/a/personal",
+                "k",
+                serde_json::json!("new"),
+                vec![],
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(old.id, current.id);
+        assert!(!semantic_matches_entry(
+            Some(&old.id),
+            &payload,
+            "session/a/personal",
+            &current
+        ));
+        store.delete_entry("session/a/personal", "k").await.unwrap();
+        assert!(store
+            .retrieve_entry("session/a/personal", "k")
+            .await
+            .unwrap()
+            .is_none());
+    }
 }
 
 fn soul_identity(owner: &str, input: &Value) -> Result<Option<String>> {

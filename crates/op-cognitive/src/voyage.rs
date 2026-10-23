@@ -1,7 +1,7 @@
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use futures::StreamExt;
 use op_plugins::state_plugins::embedding_model::methods::validate_voyage_credential_endpoint;
-use op_plugins::state_plugins::embedding_model::{VoyageModel, voyage_embed_params};
+use op_plugins::state_plugins::embedding_model::{voyage_embed_params, VoyageModel};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,13 @@ pub struct VoyageClient {
     api_key: String,
     model: String,
     base_url: String,
+}
+
+impl VoyageClient {
+    /// The active model id, for logging/tracing only.
+    pub fn model(&self) -> &str {
+        &self.model
+    }
 }
 
 #[derive(Serialize)]

@@ -1,8 +1,8 @@
-//! Minimal admin CLI for the op-cognitive-mcp cozo store.
+//! Minimal admin CLI for the op-cognitive cozo store.
 //!
 //! Examples:
-//!   op-cog-admin --db /var/lib/op-dbus/cognitive.db user-add <wg_pubkey>
 //!   op-cog-admin --db /var/lib/op-dbus/cognitive.db user-list
+//! Identity mutations use the identity-bound mounted operation surface.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -10,11 +10,11 @@ use op_cozo_store::CozoGraphShuttle;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "op-cog-admin", about = "Cozo store admin for op-cognitive-mcp")]
+#[command(name = "op-cog-admin", about = "Cozo store admin for op-cognitive")]
 struct Cli {
     #[arg(
         long,
-        env = "COGNITIVE_MCP_DB_PATH",
+        env = "COGNITIVE_DB_PATH",
         default_value = "/var/lib/op-dbus/cognitive.db"
     )]
     db: String,
@@ -24,7 +24,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Insert or refresh a user keyed by wg_pubkey
+    /// Unsupported: use the canonical identity-bound operation surface.
     UserAdd { wg_pubkey: String },
     /// List all users
     UserList,
@@ -32,15 +32,13 @@ enum Cmd {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let shuttle = CozoGraphShuttle::new_persistent(PathBuf::from(&cli.db))
-        .with_context(|| format!("opening cozo at {}", cli.db))?;
-
     match cli.cmd {
-        Cmd::UserAdd { wg_pubkey } => {
-            shuttle.upsert_user(&wg_pubkey)?;
-            println!("ok: user {} upserted", wg_pubkey);
+        Cmd::UserAdd { wg_pubkey: _ } => {
+            anyhow::bail!("direct user-add is unsupported; discover and invoke the authorized identity operation through the identity-bound mounted namespace");
         }
         Cmd::UserList => {
+            let shuttle = CozoGraphShuttle::new_persistent(PathBuf::from(&cli.db))
+                .with_context(|| format!("opening cozo at {}", cli.db))?;
             let json = shuttle.run_query(
                 "?[wg_pubkey, created_at] := *users[wg_pubkey, created_at]",
                 None,

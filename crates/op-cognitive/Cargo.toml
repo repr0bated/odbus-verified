@@ -1,5 +1,5 @@
 [package]
-name = "op-cognitive-mcp"
+name = "op-cognitive"
 version = "0.1.0"
 edition.workspace = true
 
@@ -63,6 +63,10 @@ path = "src/bin/op-cog-admin.rs"
 [[bin]]
 name = "op-chain-vectors"
 path = "src/bin/op-chain-vectors.rs"
+
+[[bin]]
+name = "op-chain-vector-ingest"
+path = "src/bin/op-chain-vector-ingest.rs"
 
 [build-dependencies]
 tonic-build = { version = "0.12" }

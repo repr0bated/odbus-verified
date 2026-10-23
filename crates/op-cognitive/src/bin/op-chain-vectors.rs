@@ -17,12 +17,12 @@
 //! ```
 //!
 //! Configuration is env-driven and shared with the rest of the workspace:
-//! `OPDBUS_SNOWBALL_PATH`, `OPDBUS_QDRANT_URL` (or `COGNITIVE_MCP_QDRANT_URL`),
+//! `OPDBUS_SNOWBALL_PATH`, `OPDBUS_QDRANT_URL` (or `COGNITIVE_QDRANT_URL`),
 //! `OPDBUS_QDRANT_SNOWBALL_COLLECTION`, `OPDBUS_QDRANT_SNOWBALL_DIM`.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use op_cognitive_mcp::ChainVectorIndex;
+use op_cognitive::ChainVectorIndex;
 use op_snowball::replication::{PreparedSnapshotTransfer, transfer_prepared_snapshot};
 use op_snowball::{StreamingSnowball, btrfs_delta};
 use std::{path::PathBuf, time::Duration};

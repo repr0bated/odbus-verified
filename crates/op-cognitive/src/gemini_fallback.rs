@@ -34,19 +34,19 @@ pub struct GeminiConfig {
 
 impl GeminiConfig {
     pub fn from_env() -> Option<Self> {
-        let api_key = std::env::var("COGNITIVE_MCP_GEMINI_API_KEY")
+        let api_key = std::env::var("COGNITIVE_GEMINI_API_KEY")
             .or_else(|_| std::env::var("GEMINI_API_KEY"))
             .ok()?;
 
-        let enabled = std::env::var("COGNITIVE_MCP_GEMINI_ENABLED")
+        let enabled = std::env::var("COGNITIVE_GEMINI_ENABLED")
             .map(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes" | "on"))
             .unwrap_or(true);
 
         Some(Self {
-            api_url: std::env::var("COGNITIVE_MCP_GEMINI_API_URL")
+            api_url: std::env::var("COGNITIVE_GEMINI_API_URL")
                 .unwrap_or_else(|_| DEFAULT_GEMINI_API_URL.to_string()),
             api_key,
-            model: std::env::var("COGNITIVE_MCP_GEMINI_MODEL")
+            model: std::env::var("COGNITIVE_GEMINI_MODEL")
                 .unwrap_or_else(|_| DEFAULT_GEMINI_MODEL.to_string()),
             enabled,
         })
@@ -161,7 +161,7 @@ impl GeminiFallback {
             info!("Gemini fallback client initialized");
         } else {
             info!(
-                "Gemini fallback unavailable (set GEMINI_API_KEY or COGNITIVE_MCP_GEMINI_API_KEY)"
+                "Gemini fallback unavailable (set GEMINI_API_KEY or COGNITIVE_GEMINI_API_KEY)"
             );
         }
         Self {
@@ -304,8 +304,13 @@ impl GeminiFallback {
                     });
                 }
                 Err(e) => {
-                    warn!(step, error = %e, "Deep research step failed, continuing");
-                    break;
+                    return Err(e).with_context(|| {
+                        format!(
+                            "deep research incomplete: {} of {} requested sections completed",
+                            sections.len(),
+                            depth
+                        )
+                    });
                 }
             }
         }
@@ -332,8 +337,8 @@ impl GeminiFallback {
         request: &GeminiRequest,
     ) -> Result<GeminiResponse> {
         let url = format!(
-            "{}/models/{}:generateContent?key={}",
-            config.api_url, config.model, config.api_key
+            "{}/models/{}:generateContent",
+            config.api_url, config.model
         );
 
         let mut last_error = None;
@@ -348,7 +353,10 @@ impl GeminiFallback {
                 tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
             }
 
-            match self.client.post(&url).json(request).send().await {
+            let mut api_key = reqwest::header::HeaderValue::from_str(&config.api_key)
+                .context("invalid Gemini API key header")?;
+            api_key.set_sensitive(true);
+            match self.client.post(&url).header("x-goog-api-key", api_key).json(request).send().await {
                 Ok(resp) => {
                     if resp.status().is_success() {
                         return resp
@@ -358,17 +366,15 @@ impl GeminiFallback {
                     }
 
                     let status = resp.status();
-                    let body = resp.text().await.unwrap_or_default();
-
                     // Don't retry client errors (4xx) except 429 (rate limit)
                     if status.as_u16() != 429 && status.is_client_error() {
-                        anyhow::bail!("Gemini API error {}: {}", status, body);
+                        anyhow::bail!("Gemini API returned status {}", status);
                     }
 
-                    last_error = Some(anyhow::anyhow!("Gemini API error {}: {}", status, body));
+                    last_error = Some(anyhow::anyhow!("Gemini API returned status {}", status));
                 }
                 Err(e) => {
-                    last_error = Some(e.into());
+                    last_error = Some(e.without_url().into());
                 }
             }
         }

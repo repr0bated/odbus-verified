@@ -32,8 +32,8 @@ const FIXED_BASE_PROMPT: &str = r#"3tched AI infrastructure platform — Artix L
 
 Capabilities:
 - **OVS management** via rovs suite (rovs-ovsdb, rovs-openflow) — bridges, ports, flows
-- **Container orchestration** via Incus (`assistant`, `mail-3tched`)
-- **Xray + gRPC-bridge on the HOST** — xray via the `gbr-xray` runit service; the operation.v1 gRPC server (StateSync), MCP and chat are served on the host by `op-grpc-bridge` at `:8090` (TLS). The deprecated `wg-xray` Incus container is stopped.
+- **Container orchestration** via Incus — discover current containers through the identity-bound mounted namespace. Assistant is the control-plane chatbot, not a container.
+- **Authenticated service ingress** — gRPC and MCP use the `:8090` TLS door. Consult `docs/src/operations/network.md` and operation receipts for current transport and listener state.
 - **Service management** via runit/`sv` — NOT systemd, NOT systemctl, NOT s6
 - **Network configuration** via rtnetlink and Generic Netlink
 - **D-Bus** system bus for inter-process communication
@@ -103,10 +103,10 @@ nothing to recompile: edit the `run` script, then restart the service.
 
 | Path | Meaning |
 |---|---|
-| `/etc/runit/sv/<name>/run` | The service definition |
+| `/etc/sv/<name>/run` | The fixed host service entrypoint |
 | `/etc/runit/runsvdir/default/<name>` | Symlink that enables it at boot |
 | `/run/runit/service` | The tree `runsvdir -P` supervises |
-| `/etc/runit/sv/<name>/down` | Marker: do not auto-start |
+| `/etc/sv/<name>/down` | Marker: do not auto-start |
 
 ### Adding a new service (exact pattern)
 
@@ -134,7 +134,7 @@ set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 set +a
 
-exec chpst -u jeremy /usr/local/bin/<binary>
+exec chpst -u jeremy /usr/local/libexec/op-dbus/bin/<binary>
 ```
 
 `log/run` is `#!/bin/sh` + `exec svlogd -tt /var/log/sv/<name>`.
@@ -147,14 +147,18 @@ no-fork flag when it has one.
 already built artifacts and a persisted sealed catalog. It does not deploy,
 activate, install into the running host, or restart services:
 ```bash
-sudo deploy/runit/build-golden.sh
+sudo deploy/lib/golden/build-golden.sh
 ```
-Create a read-only release snapshot from the prepared golden filesystem,
-transfer it with **btrfs send/receive**, then activate the received release
-through the atomic `/opt/op-dbus/current` selection. Follow
-`docs/src/getting-started/local-release-activation.md` for the activation and
-rollback contract. Any target service action is a separate, deliberate
-operator step using `sudo sv <command> <service>`.
+`./deploy.sh` transfers the prepared read-only snapshot with
+**btrfs send/receive** and rotates read-only overlays directly at the
+release-owned target directories. There is no `/opt/op-dbus/current` shim.
+Deployment preserves wanted service state. Ordinary deployment does not apply
+system files or reboot; ordinary rollback restores overlays. Only an explicitly
+authorized `./deploy.sh --system` applies declared non-overlay system files and
+requests a graceful runit reboot after successful activation. Credentials,
+identities and mutable runtime state are never release payloads. Read
+`deploy/README.md` for the manifest and controller boundary, then require a
+durable deployment receipt and, when applicable, postboot evidence.
 
 **DO NOT:**
 - edit `/run/runit/service/` directly — that is the supervisor's runtime view
@@ -163,7 +167,7 @@ operator step using `sudo sv <command> <service>`.
 
 **Third-party installers that require systemd**: a `systemctl` shim exists at
 `/usr/local/bin/systemctl` for installers only. It maps systemd verbs onto `sv`
-and converts `.service` units into `/etc/runit/sv/<name>/run` via
+and converts `.service` units into `/etc/sv/<name>/run` via
 `/usr/local/sbin/systemd-unit-to-runit`. Never call it yourself — using the shim
 masks the deprecation; use `sv`.
 
@@ -209,99 +213,34 @@ masks the deprecation; use `sv`.
 7. Report actual tool results, not imagined outcomes
 "#;
 
-/// Network topology specification (FIXED - NOT EDITABLE)
+/// Declared network policy; live state must come from admitted operations.
 const FIXED_TOPOLOGY_SPEC: &str = r#"
-## CURRENT NETWORK TOPOLOGY
+## NETWORK POLICY
 
-### Host
-```
-OS:       Artix Linux (xanmod kernel), runit service supervision (`sv`)
-eth0      148.113.204.83/32   Physical NIC, enslaved into ovsbr0
-          Gateway: 148.113.204.1
-```
+Read `docs/src/operations/network.md` before network work. It is the
+authoritative operational record; source declarations do not establish live
+interface, container, listener or service state.
 
-### Interfaces
-```
-INTERFACE      ADDRESS              TYPE              PURPOSE
-────────────────────────────────────────────────────────────────────────────
-eth0           148.113.204.83/32   Physical          WAN uplink, enslaved into ovsbr0
-ovsbr0         (DOWN)              OVS bridge        Switching fabric (system datapath)
-```
-
-### OVS Bridge — ovsbr0
-```
-BRIDGE     DATAPATH   FAIL_MODE    DESCRIPTION
-────────────────────────────────────────────────────────────
-ovsbr0     system     standalone   Switching fabric
-```
-- Uplink: `eth0` enslaved via `op-ovsbr0-setup` (migrates management IP to/from bridge)
-- Managed via rovs suite — no ovs-vsctl
-
-### Port Naming Convention
-```
-PREFIX   VLAN   SUBNET            PURPOSE
-──────────────────────────────────────────────────────────────
-gb-      100    10.100.0.128/25   GhostBridge — privacy/encrypted traffic
-ai-      200    10.200.0.128/25   AI/ML workloads
-web-     200    10.200.1.128/25   Web service containers
-db-      200    10.200.2.128/25   Database containers
-mgr-     300    10.30.0.128/25    Management plane
-ctl-     300    10.30.1.128/25    Control plane
-mon-     300    10.30.2.128/25    Monitoring/observability
-```
-
-### Incus Containers
-```
-NAME           STATE     IP                    PURPOSE
-──────────────────────────────────────────────────────────────────────
-assistant      RUNNING   (mesh only)           AI workspace / chatbot
-mail-3tched    ERROR     —                     Mail server (needs repair)
-```
-Note: the `wg-xray` container is DEPRECATED and stopped. Xray + the gRPC-bridge
-now run on the host (xray via the `gbr-xray` runit service; operation.v1 gRPC at
-`:8090` served by `op-grpc-bridge`).
-
-### Traffic Flow
-```
-GhostBridge (gb-*) → ovsbr0 → WARP identity transport → decoy (WireGuard terminates there)
-gRPC/MCP traffic   → op-grpc-bridge door :8090 (TLS) on the host
-Xray/privacy egress→ host gbr-xray service → internet
-```
-
-### Socket Paths
-```
-SERVICE          SOCKET PATH                                        PROTOCOL
-────────────────────────────────────────────────────────────────────────────
-OVSDB            /usr/local/var/run/openvswitch/db.sock (primary)  JSON-RPC (rovs)
-                 /var/run/openvswitch/db.sock (fallback)
-D-Bus System     /var/run/dbus/system_bus_socket                   D-Bus
-gRPC + MCP       0.0.0.0:8090 (op-grpc-bridge, TLS)                gRPC/HTTP2
-OpenFlow         tcp:10.88.88.1:6653                               OpenFlow 1.3
-```
-
-### runit Services
-```
-SERVICE              PURPOSE
-────────────────────────────────────────────────────────────
-incus                Container runtime
-op-dbus              Core D-Bus daemon
-op-dbus-mirror       OVSDB/D-Bus state mirror
-op-grpc-bridge       Authenticated gRPC, MCP, chat, and cognitive ingress
-op-web-srv           Unified HTTP API + embedded UI (port 8080)
-ovs-vswitchd         OVS virtual switch daemon
-nextdns              DNS-over-HTTPS (NextDNS)
-dbus-srv             D-Bus system bus
-fail2ban             Intrusion prevention
-```
-
-### Expected State
-When properly configured:
-- ovsbr0 UP with datapath=system, eth0 enslaved as a port
-- management IP on ovsbr0 internal port when bridge is up
-- Xray + gRPC-bridge running on the HOST (gbr-xray runit service; operation.v1
-  gRPC at :8090 served by op-grpc-bridge); the wg-xray container is stopped
-- All OVS operations via rovs suite — never ovs-vsctl or ovsdb-client
-- All service management via runit/`sv` — never systemctl, never s6
+- WireGuard terminates on the Decoy. One two-way WARP transport carries the
+  Decoy-to-host path; do not create an inner GRE, SSH TUN, MASQUE or Xray tunnel.
+- `pub0` owns public host addressing. `ovsbr0` retains the OpenFlow
+  `10.200.0.1` fabric.
+- The service ingress is `10.0.0.2:8090`, the authenticated TLS gRPC/MCP door.
+  Preserve the authored identity metadata and existing admission checks.
+- EMQX backends are private loopback services: MQTT `127.0.0.1:1883`,
+  management `127.0.0.1:18083`, and wake WSS `127.0.0.1:8085`.
+  Remote MQTT uses the door's existing `/mqtt` relay with authenticated CONNECT
+  and owner-topic authorization. There is no EMQX alias at `10.0.0.3`.
+- Qdrant's private gRPC endpoint is `127.0.0.1:6334`; external access uses
+  the existing service ingress. Port8084 belongs to threetched.
+- Host services use runit/`sv`. Resolve declared service names and verify
+  readiness through supported operations; never infer enabled services from
+  source directory names.
+- Assistant is the control-plane chatbot, not an `assistant` container.
+  Query the identity-bound mounted namespace for current containers and state.
+- Discover operation contracts in the mounted namespace, preserve caller
+  identity, and verify operation receipts. Do not use historical topology as
+  authority to change routing, grants, identity bindings or release state.
 "#;
 
 // =============================================================================
@@ -469,7 +408,7 @@ async fn generate_tool_summary() -> String {
 
     summary.push_str("### Core Categories:\n");
     summary.push_str("- **OVS**: ovs_list_bridges, ovs_create_bridge, ovs_delete_bridge, ovs_add_port, ovs_del_port\n");
-    summary.push_str("- **Systemd**: dbus_systemd_list_units, dbus_systemd_get_unit, dbus_systemd_start, dbus_systemd_stop\n");
+    summary.push_str("- **Services**: discover the identity-authorized runit operations and their arguments in the mounted namespace\n");
     summary.push_str(
         "- **Network**: list_network_interfaces, get_interface_details, add_ip_address\n",
     );
@@ -544,10 +483,11 @@ mod tests {
     fn test_fixed_prompt() {
         let fixed = get_fixed_prompt();
         assert!(fixed.contains("CRITICAL:"));
-        assert!(fixed.contains("TOPOLOGY"));
+        assert!(fixed.contains("NETWORK POLICY"));
         assert!(fixed.contains("build-golden.sh` prepares"));
         assert!(fixed.contains("btrfs send/receive"));
-        assert!(fixed.contains("local-release-activation.md"));
+        assert!(fixed.contains("./deploy.sh"));
+        assert!(fixed.contains("deploy/README.md"));
         assert!(!fixed.contains("Publish a build"));
     }
 
