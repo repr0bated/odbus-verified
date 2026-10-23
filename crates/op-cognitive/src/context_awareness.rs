@@ -400,7 +400,7 @@ impl Default for ContextAwarenessConfig {
 pub struct ContextAwarenessEngine {
     config: ContextAwarenessConfig,
     /// Session context states
-    session_states: Arc<DashMap<String, RwLock<SessionContextState>>>,
+    session_states: Arc<DashMap<String, Arc<RwLock<SessionContextState>>>>,
     /// Memory store for context retrieval
     memory_store: Arc<CognitiveMemoryStore>,
     /// RAG pipeline for semantic search
@@ -472,10 +472,12 @@ impl ContextAwarenessEngine {
         metadata: serde_json::Value,
     ) {
         // Get or create session state
-        let state = self
-            .session_states
-            .entry(session_id.to_string())
-            .or_insert_with(|| RwLock::new(SessionContextState::new(session_id.to_string())));
+        let state = {
+            let entry = self.session_states.entry(session_id.to_string()).or_insert_with(|| {
+                Arc::new(RwLock::new(SessionContextState::new(session_id.to_string())))
+            });
+            Arc::clone(entry.value())
+        };
 
         // Record in session state
         state
@@ -499,7 +501,7 @@ impl ContextAwarenessEngine {
     /// Returns `None` if the session has no recorded activity. Used by the
     /// `code_context` tool to report stuck/error/topic state alongside results.
     pub async fn get_session_signals(&self, session_id: &str) -> Option<serde_json::Value> {
-        let entry = self.session_states.get(session_id)?;
+        let entry = self.session_state(session_id)?;
         let state = entry.read().await;
         Some(serde_json::json!({
             "session_id": state.session_id,
@@ -512,7 +514,7 @@ impl ContextAwarenessEngine {
     }
 
     /// Process context only when activity arrives; idle sessions cause no work.
-    pub fn start_monitoring(self: Arc<Self>) {
+    pub fn start_monitoring(self: Arc<Self>) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             info!("Context awareness monitoring started");
             loop {
@@ -520,7 +522,7 @@ impl ContextAwarenessEngine {
                 let Some(event) = event else { break };
                 self.process_activity_event(event).await;
             }
-        });
+        })
     }
 
     async fn process_activity_event(&self, event: ActivityEvent) {
@@ -531,7 +533,7 @@ impl ContextAwarenessEngine {
         );
 
         if event.activity_type == ActivityType::Error {
-            let should_assist = match self.session_states.get(&event.session_id) {
+            let should_assist = match self.session_state(&event.session_id) {
                 Some(entry) => {
                     let state = entry.read().await;
                     state.can_push() && !state.is_suppressed(PushTrigger::ErrorAssistance)
@@ -549,7 +551,7 @@ impl ContextAwarenessEngine {
     }
 
     async fn evaluate_session_by_id(&self, session_id: &str) {
-        let evaluation = match self.session_states.get(session_id) {
+        let evaluation = match self.session_state(session_id) {
             Some(entry) => {
                 let state = entry.read().await;
                 if !state.can_push() {
@@ -689,8 +691,7 @@ impl ContextAwarenessEngine {
 
     async fn evaluate_error_assistance(&self, session_id: &str) -> Result<()> {
         let state = self
-            .session_states
-            .get(session_id)
+            .session_state(session_id)
             .context("Session not found")?;
 
         let state = state.read().await;
@@ -754,7 +755,7 @@ impl ContextAwarenessEngine {
         };
 
         // Update session state
-        if let Some(state) = self.session_states.get(session_id) {
+        if let Some(state) = self.session_state(session_id) {
             let mut state = state.write().await;
             state.record_push();
             state.suppress_trigger(trigger); // Don't push same trigger repeatedly
@@ -775,8 +776,8 @@ impl ContextAwarenessEngine {
     }
 
     fn memory_namespace_for_session(&self, session_id: &str) -> Option<String> {
-        let entry = self.session_states.get(session_id)?;
-        let state = entry.value().try_read().ok()?;
+        let entry = self.session_state(session_id)?;
+        let state = entry.try_read().ok()?;
         let namespace = state
             .activity_window
             .back()
@@ -963,9 +964,9 @@ impl ContextAwarenessEngine {
 
     /// Get session context statistics
     pub async fn get_session_stats(&self, session_id: &str) -> Option<serde_json::Value> {
-        self.session_states.get(session_id).map(|state| {
-            let state = state.blocking_read();
-            serde_json::json!({
+        let entry = self.session_state(session_id)?;
+        let state = entry.read().await;
+        Some(serde_json::json!({
                 "session_id": state.session_id,
                 "activity_count": state.activity_window.len(),
                 "recent_error_count": state.recent_error_count,
@@ -973,13 +974,12 @@ impl ContextAwarenessEngine {
                 "can_push": state.can_push(),
                 "current_topics": state.current_topics,
                 "suppressed_triggers": state.suppressed_triggers.iter().map(|t| t.to_string()).collect::<Vec<_>>(),
-            })
-        })
+        }))
     }
 
     /// Clear suppressed triggers for a session (e.g., after explicit user action)
     pub async fn reset_suppressions(&self, session_id: &str) {
-        if let Some(state) = self.session_states.get(session_id) {
+        if let Some(state) = self.session_state(session_id) {
             let mut state = state.write().await;
             state.suppressed_triggers.clear();
         }
@@ -988,6 +988,10 @@ impl ContextAwarenessEngine {
     /// Get count of active tracked sessions
     pub fn get_active_session_count(&self) -> usize {
         self.session_states.len()
+    }
+
+    fn session_state(&self, session_id: &str) -> Option<Arc<RwLock<SessionContextState>>> {
+        self.session_states.get(session_id).map(|entry| Arc::clone(entry.value()))
     }
 }
 
