@@ -284,14 +284,11 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
     let service_name = SERVICE_PREFIX.to_string();
     let object_path = format!("{}/{}", BASE_PATH, normalized);
 
-    // Connect to system bus
-    let connection = zbus::Connection::session()
-        .await
-        .context("Failed to connect to session bus")?;
+    let connection = PluginTreeAdapter::connect().await?;
 
     // First introspect to find the correct interface for this method
     let adapter = PluginTreeAdapter::new();
-    let tree = adapter.introspect_tree().await?;
+    let tree = adapter.introspect_tree_on(&connection).await?;
     let plugin = tree
         .plugins
         .get(&normalized)
@@ -345,9 +342,9 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
 
     // Validate argument count
     let required_args = method.in_args.len();
-    if args.len() < required_args {
+    if args.len() != required_args {
         eprintln!(
-            "Error: Missing required argument(s) for '{}'.\n",
+            "Error: Incorrect argument count for '{}'.\n",
             method.name
         );
         eprintln!(
@@ -374,7 +371,16 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
             let label = if a.name.is_empty() { "arg" } else { &a.name };
             eprintln!("  {:<16} {} (type: {})", label, a.type_display, a.signature);
         }
-        bail!("Missing required arguments");
+        bail!("Expected {required_args} arguments, received {}", args.len());
+    }
+
+    // This CLI currently accepts textual arguments only. Do not transmit a
+    // string body under a different introspected signature.
+    if let Some(argument) = method.in_args.iter().find(|arg| arg.signature != "s") {
+        bail!(
+            "Unsupported input signature '{}' for argument '{}'; use the typed mounted operation",
+            argument.signature, argument.name
+        );
     }
 
     // Build the D-Bus method call
@@ -424,15 +430,20 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
             )
             .await
     } else {
-        // Multiple args — pass as tuple of strings
-        let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+        // Dynamic structures preserve the introspected tuple signature. A
+        // Vec<&str> would encode one array (`as`), not several `s` arguments.
+        let mut body = zbus::zvariant::StructureBuilder::new();
+        for argument in args {
+            body = body.add_field(argument.as_str());
+        }
+        let body = body.build().context("building D-Bus string argument tuple")?;
         connection
             .call_method(
                 Some(service_name.as_str()),
                 object_path.as_str(),
                 Some(iface_name.as_str()),
                 method.name.as_str(),
-                &arg_refs,
+                &body,
             )
             .await
     };
@@ -482,8 +493,9 @@ async fn cmd_get_property(plugin_name: &str, args: &[String]) -> Result<()> {
     let object_path = format!("{}/{}", BASE_PATH, normalized);
 
     // Introspect to find the correct interface
+    let connection = PluginTreeAdapter::connect().await?;
     let adapter = PluginTreeAdapter::new();
-    let tree = adapter.introspect_tree().await?;
+    let tree = adapter.introspect_tree_on(&connection).await?;
     let plugin = tree
         .plugins
         .get(&normalized)
@@ -523,10 +535,6 @@ async fn cmd_get_property(plugin_name: &str, args: &[String]) -> Result<()> {
     };
 
     // Read the property via org.freedesktop.DBus.Properties.Get
-    let connection = zbus::Connection::session()
-        .await
-        .context("Failed to connect to session bus")?;
-
     let reply = connection
         .call_method(
             Some(service_name.as_str()),
