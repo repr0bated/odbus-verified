@@ -56,16 +56,28 @@ pub struct MethodDescriptor {
 
 /// Synthesize the full `FileDescriptorSet` for one plugin, one file per
 /// method, sorted by method name for byte determinism (NFR-2).
+///
+/// Convenience API for trusted schemas. Panics on ambiguous field aliases;
+/// producers accepting unvalidated schemas must use `try_descriptor_set_for_plugin`.
 pub fn descriptor_set_for_plugin(
     plugin_id: &str,
     schema: &PluginSchema,
 ) -> (Vec<u8>, Vec<MethodDescriptor>) {
+    try_descriptor_set_for_plugin(plugin_id, schema)
+        .expect("trusted PluginSchema has unambiguous protobuf field aliases")
+}
+
+/// Synthesize descriptors, returning schema errors before publishing anything.
+pub fn try_descriptor_set_for_plugin(
+    plugin_id: &str,
+    schema: &PluginSchema,
+) -> Result<(Vec<u8>, Vec<MethodDescriptor>), String> {
     let mut names: Vec<&String> = schema.methods.keys().collect();
     names.sort();
     let mut infos = Vec::new();
     let mut set = Vec::new();
     for name in names {
-        let info = method_file_descriptor_for_schema_key(plugin_id, name, &schema.methods[name]);
+        let info = method_file_descriptor_for_schema_key(plugin_id, name, &schema.methods[name])?;
         // FileDescriptorSet.file = 1 (repeated message)
         put_bytes(&mut set, 1, &info.file_descriptor_proto);
         infos.push(info);
@@ -78,11 +90,24 @@ pub fn descriptor_set_for_plugin(
             .expect("prost-reflect includes protobuf well-known descriptors");
         put_bytes(&mut set, 1, &standard.encode_to_vec());
     }
-    (set, infos)
+    Ok((set, infos))
 }
 
 /// Build one per-method `FileDescriptorProto` with typed Input/Output messages.
+///
+/// Convenience API for trusted schemas. Panics on ambiguous field aliases;
+/// producers accepting unvalidated schemas must use `try_method_file_descriptor`.
 pub fn method_file_descriptor(plugin_id: &str, method: &MethodDecl) -> MethodDescriptor {
+    try_method_file_descriptor(plugin_id, method)
+        .expect("trusted method schema has unambiguous protobuf field aliases")
+}
+
+/// Build one method descriptor, reporting the plugin, method and schema side
+/// when an authored field alias is ambiguous.
+pub fn try_method_file_descriptor(
+    plugin_id: &str,
+    method: &MethodDecl,
+) -> Result<MethodDescriptor, String> {
     method_file_descriptor_for_schema_key(plugin_id, &method.name, method)
 }
 
@@ -90,16 +115,18 @@ fn method_file_descriptor_for_schema_key(
     plugin_id: &str,
     schema_name: &str,
     method: &MethodDecl,
-) -> MethodDescriptor {
+) -> Result<MethodDescriptor, String> {
     let snake = snake_case(&method.name);
     let pascal = pascal_case(&method.name);
     let package = format!("operation.method.{plugin_id}.{snake}");
     let file_name = format!("operation/method/{plugin_id}/{snake}.proto");
 
-    let input_msg = message_from_json_schema(&format!("{pascal}Input"), &method.args);
+    let input_msg = message_from_json_schema(&format!("{pascal}Input"), &method.args)
+        .map_err(|error| format!("plugin {plugin_id:?} method {schema_name:?} args: {error}"))?;
     let empty = serde_json::json!({"type": "object"});
     let output_schema = method.returns.as_ref().unwrap_or(&empty);
-    let output_msg = message_from_json_schema(&format!("{pascal}Output"), output_schema);
+    let output_msg = message_from_json_schema(&format!("{pascal}Output"), output_schema)
+        .map_err(|error| format!("plugin {plugin_id:?} method {schema_name:?} returns: {error}"))?;
     let dependencies = if uses_well_known_types(&input_msg) || uses_well_known_types(&output_msg) {
         vec!["google/protobuf/struct.proto".to_string()]
     } else {
@@ -150,7 +177,7 @@ fn method_file_descriptor_for_schema_key(
         &mut symbols,
     );
 
-    MethodDescriptor {
+    Ok(MethodDescriptor {
         schema_name: schema_name.to_owned(),
         method_name: method.name.clone(),
         grpc_path: format!("/{service_full}/{pascal}"),
@@ -162,7 +189,7 @@ fn method_file_descriptor_for_schema_key(
         symbols,
         file_descriptor_proto: file,
         dependencies,
-    }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +218,7 @@ struct FieldDef {
 /// Walk a schemars JSON Schema document into a proto message definition.
 /// Keep the established sorted sequential field numbers. Recursive or overly
 /// expansive references fall back to structured Value, not JSON text.
-fn message_from_json_schema(msg_name: &str, schema: &JVal) -> MessageDef {
+fn message_from_json_schema(msg_name: &str, schema: &JVal) -> Result<MessageDef, String> {
     let mut context = MappingContext {
         root: schema,
         remaining_nodes: 4096,
@@ -237,25 +264,25 @@ fn build_message<'a>(
     node: &'a JVal,
     context: &mut MappingContext<'a>,
     ancestors: &[&'a JVal],
-) -> MessageDef {
+) -> Result<MessageDef, String> {
     let mut fields = Vec::new();
     let mut nested = Vec::new();
     let mut oneofs = Vec::new();
     let mut ancestors = ancestors.to_vec();
     ancestors.push(node);
     if let Some(props) = node.get("properties").and_then(JVal::as_object) {
-        // serde_json Map is BTreeMap-backed: iteration (and thus field
-        // numbering) is name-sorted and deterministic.
+        // Sort explicitly: serde_json's preserve_order feature must not alter
+        // field numbering or which alias collision is reported first.
         let mut properties = props.iter().collect::<Vec<_>>();
         properties.sort_by(|left, right| left.0.cmp(right.0));
         validate_proto_field_aliases(properties.iter().map(|(name, _)| name.as_str()))
-            .expect("JSON Schema properties have ambiguous protobuf field aliases");
+            .map_err(|error| format!("message {name:?}: {error}"))?;
         let proto_names: std::collections::BTreeSet<_> =
             props.keys().map(|name| proto_field_name(name)).collect();
         for (i, (fname, fnode)) in properties.into_iter().enumerate() {
             let number = (i + 1) as u64;
             let proto_name = proto_field_name(fname);
-            let kind = field_kind(fnode, &proto_name, &mut nested, context, &ancestors);
+            let kind = field_kind(fnode, &proto_name, &mut nested, context, &ancestors)?;
             let oneof_index = if !kind.repeated && kind.proto_type != T_MESSAGE {
                 let mut name = format!("_{proto_name}");
                 while proto_names.contains(&name) || oneofs.contains(&name) {
@@ -278,13 +305,13 @@ fn build_message<'a>(
             });
         }
     }
-    MessageDef {
+    Ok(MessageDef {
         name: name.to_string(),
         fields,
         nested,
         oneofs,
         map_entry: false,
-    }
+    })
 }
 
 struct FieldKind {
@@ -311,19 +338,19 @@ fn field_kind<'a>(
     nested: &mut Vec<MessageDef>,
     context: &mut MappingContext<'a>,
     ancestors: &[&'a JVal],
-) -> FieldKind {
+) -> Result<FieldKind, String> {
     if context.remaining_nodes == 0 || ancestors.len() >= 24 {
-        return FieldKind::well_known("Value");
+        return Ok(FieldKind::well_known("Value"));
     }
     context.remaining_nodes -= 1;
     let Some(node) = context.resolve(node) else {
-        return FieldKind::well_known("Value");
+        return Ok(FieldKind::well_known("Value"));
     };
     if ancestors
         .iter()
         .any(|ancestor| std::ptr::eq(*ancestor, node))
     {
-        return FieldKind::well_known("Value");
+        return Ok(FieldKind::well_known("Value"));
     }
     let (classification, repeated) = crate::json_schema_proto::json_schema_type_to_proto(node);
     if repeated {
@@ -332,15 +359,16 @@ fn field_kind<'a>(
         let mut item = node
             .get("items")
             .map(|item| field_kind(item, field_name, nested, context, &descendants))
+            .transpose()?
             .unwrap_or_else(|| FieldKind::well_known("Value"));
         if item.repeated {
             item = FieldKind::well_known(if item.is_map { "Struct" } else { "ListValue" });
         }
         item.repeated = true;
         item.is_map = false;
-        return item;
+        return Ok(item);
     }
-    match classification.as_str() {
+    Ok(match classification.as_str() {
         "google.protobuf.Struct" => {
             let additional = node.get("additionalProperties");
             if node.get("properties").is_none() {
@@ -349,13 +377,13 @@ fn field_kind<'a>(
                     descendants.push(node);
                     return map_kind(value, field_name, nested, context, &descendants);
                 }
-                return FieldKind::well_known("Struct");
+                return Ok(FieldKind::well_known("Struct"));
             }
             if additional.is_some_and(|additional| additional != &JVal::Bool(false)) {
-                return FieldKind::well_known("Struct");
+                return Ok(FieldKind::well_known("Struct"));
             }
             let msg_name = unique_nested_name(&format!("{}Msg", pascal_case(field_name)), nested);
-            let def = build_message(&msg_name, node, context, ancestors);
+            let def = build_message(&msg_name, node, context, ancestors)?;
             nested.push(def);
             FieldKind {
                 proto_type: T_MESSAGE,
@@ -378,7 +406,7 @@ fn field_kind<'a>(
             is_map: false,
         },
         _ => FieldKind::well_known("Value"),
-    }
+    })
 }
 
 fn map_kind<'a>(
@@ -387,7 +415,7 @@ fn map_kind<'a>(
     nested: &mut Vec<MessageDef>,
     context: &mut MappingContext<'a>,
     ancestors: &[&'a JVal],
-) -> FieldKind {
+) -> Result<FieldKind, String> {
     let entry_name = unique_nested_name(&format!("{}Entry", pascal_case(field_name)), nested);
     // A protobuf map entry has only key/value fields. Definitions for a typed
     // object value belong to the enclosing record and resolve lexically from
@@ -398,7 +426,7 @@ fn map_kind<'a>(
         nested,
         context,
         ancestors,
-    );
+    )?;
     if value_kind.repeated {
         value_kind = FieldKind::well_known(if value_kind.is_map {
             "Struct"
@@ -432,12 +460,12 @@ fn map_kind<'a>(
         oneofs: Vec::new(),
         map_entry: true,
     });
-    FieldKind {
+    Ok(FieldKind {
         proto_type: T_MESSAGE,
         type_name: Some(entry_name),
         repeated: true,
         is_map: true,
-    }
+    })
 }
 
 fn unique_nested_name(candidate: &str, nested: &[MessageDef]) -> String {

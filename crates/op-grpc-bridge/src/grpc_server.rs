@@ -5566,42 +5566,9 @@ impl RegistrationService for OperationGrpcServer {
                     }),
                 }))
             }
-            Err(_) => {
-                // Generate a token and record in state store for later verification
-                let token = Uuid::new_v4().to_string();
-                let mutation_value = simd_json::json!({
-                    "email": req.email,
-                    "domain": req.domain,
-                    "is_admin": req.is_admin,
-                    "token": token,
-                    "status": "pending_no_backend",
-                    "created_at": chrono::Utc::now().to_rfc3339()
-                });
-                let _ = self
-                    .mutation_engine
-                    .process_grpc_mutation(
-                        "registration".to_string(),
-                        format!("/org/opdbus/v1/registration/magic_links/{}", token),
-                        ChangeType::ObjectAdded,
-                        Some("send_magic_link".to_string()),
-                        mutation_value,
-                        req.email.clone(),
-                        None,
-                    )
-                    .await;
-
-                Ok(Response::new(SendMagicLinkResponse {
-                    success: false,
-                    message:
-                        "Registration D-Bus service unavailable; magic link recorded in state store"
-                            .to_string(),
-                    token: Some(token),
-                    expires_at: Some(ProstTimestamp {
-                        seconds: chrono::Utc::now().timestamp() + 3600,
-                        nanos: 0,
-                    }),
-                }))
-            }
+            Err(_) => Err(Status::unavailable(
+                "Registration D-Bus service is unavailable; authoritative verification is required",
+            )),
         }
     }
 
@@ -5663,45 +5630,9 @@ impl RegistrationService for OperationGrpcServer {
                     verified_at: Some(OperationGrpcServer::now_ts()),
                 }))
             }
-            Err(_) => {
-                // Check state store for magic link token
-                let state = self.mutation_engine.get_state("registration").await;
-                if let Some(ref st) = state
-                    && let Some(link_data) = st
-                        .as_object()
-                        .and_then(|o| o.get("magic_links"))
-                        .and_then(|o| o.as_object())
-                        .and_then(|o| o.get(&req.token))
-                {
-                    let email = link_data
-                        .as_object()
-                        .and_then(|o| o.get("email"))
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string();
-                    let is_admin = link_data
-                        .as_object()
-                        .and_then(|o| o.get("is_admin"))
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
-
-                    return Ok(Response::new(VerifyMagicLinkResponse {
-                        success: true,
-                        user_id: Uuid::new_v4().to_string(),
-                        email,
-                        wireguard_public_key: String::new(),
-                        assigned_ip: String::new(),
-                        wireguard_config: String::new(),
-                        message: "Verified from state store (D-Bus unavailable)".to_string(),
-                        is_admin,
-                        verified_at: Some(OperationGrpcServer::now_ts()),
-                    }));
-                }
-
-                Err(Status::unavailable(
-                    "Registration D-Bus service is not available; token not found in state store",
-                ))
-            }
+            Err(_) => Err(Status::unavailable(
+                "Registration D-Bus service is unavailable; authoritative verification is required",
+            )),
         }
     }
 
