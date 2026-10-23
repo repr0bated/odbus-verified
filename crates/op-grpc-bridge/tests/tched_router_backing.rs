@@ -49,6 +49,7 @@ struct FixtureState {
 }
 
 async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
+    op_plugins::state_plugins::threetched::prepare_schema_capture().expect("explicit schema capture");
     let fixture = Fixture {
         requests: Arc::new(AtomicUsize::new(0)),
         inner: Arc::new(AsyncMutex::new(FixtureState {
@@ -143,7 +144,7 @@ async fn full_config(State(f): State<Fixture>) -> Json<Value> {
     Json(config)
 }
 
-// Fixture data comes from the one imported native contract. It is served by
+// Fixture data comes from the one explicitly captured native contract. It is served by
 // the private HTTP owner; no schema or runtime catalog is materialized here.
 fn native_config_defaults() -> Value {
     use op_plugins::state_plugins::tched_router_contract::document;
@@ -167,7 +168,7 @@ fn native_config_defaults() -> Value {
                     .collect(),
             );
             jsonschema::validate(document(), &config)
-                .expect("native default fixture satisfies the import");
+                .expect("native default fixture satisfies the captured schema");
             config
         })
         .clone()

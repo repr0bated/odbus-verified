@@ -285,11 +285,14 @@ fn revocation_preserves_only_intentional_direct_exceptions(path: &Path) {
     replace_fixture(path, &document, &[], true);
 }
 
-/// Never selected by the normal test suite. The parent above supplies the exact
-/// private directory, ownership checks, marker and OP_GRANTS_PATH in a fresh process.
+/// The parent supplies the private directory, ownership checks, marker and
+/// OP_GRANTS_PATH in a fresh process. A direct --ignored invocation does no work.
 #[test]
-#[ignore = "helper for the explicitly isolated parent test; refuses absent private fixture marker"]
+#[ignore = "helper for the explicitly isolated parent test; skips without private fixture marker"]
 fn principal_group_lifecycle_child() {
+    if std::env::var_os(CHILD_MARKER).is_none() {
+        return;
+    }
     let path = checked_fixture_path();
     let baseline = open_descriptor_count();
     for cycle in 0..512 {
