@@ -123,7 +123,7 @@ impl Catalog {
                 )
             })
             .collect();
-        Ok(Self::from_declared(objects))
+        Self::from_declared(objects)
     }
 
     fn load_mount(mount: &MountedNamespace) -> Result<Self> {
@@ -139,15 +139,19 @@ impl Catalog {
             );
         }
         mount.verify()?;
-        Ok(Self::from_declared(objects))
+        Self::from_declared(objects)
     }
 
-    fn from_declared(objects: BTreeMap<String, CatalogDeclaration>) -> Self {
+    fn from_declared(objects: BTreeMap<String, CatalogDeclaration>) -> Result<Self> {
         let mut tools = Vec::new();
         let mut by_name = HashMap::new();
         for (plugin, object) in &objects {
             for (method, decl) in &object.schema.methods {
                 let name = tool_name(plugin, method);
+                anyhow::ensure!(
+                    !by_name.contains_key(&name),
+                    "sealed methods collide on MCP tool name {name}"
+                );
                 let description = format!(
                     "{plugin}.{method} ({}{}). {}",
                     match decl.side_effect {
@@ -197,12 +201,12 @@ impl Catalog {
                     .collect(),
             })
             .collect();
-        Self {
+        Ok(Self {
             objects,
             tools,
             by_name,
             sets,
-        }
+        })
     }
 }
 
@@ -1221,6 +1225,17 @@ mod tests {
         );
         assert_eq!(long, tool_name(&"p".repeat(50), &"m".repeat(50)));
         assert_eq!(tool_name("a.b", "c d"), "a_b__c_d");
+    }
+
+    #[test]
+    fn catalog_rejects_colliding_normalized_tool_names() {
+        let (_directory, server) = fixture();
+        let declaration = server.catalog().objects["demo"].clone();
+        let objects = BTreeMap::from([
+            ("a.b".to_string(), declaration.clone()),
+            ("a_b".to_string(), declaration),
+        ]);
+        assert!(Catalog::from_declared(objects).is_err());
     }
 
     #[test]
