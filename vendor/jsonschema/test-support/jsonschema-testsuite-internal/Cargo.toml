@@ -1,0 +1,13 @@
+[package]
+name = "jsonschema-testsuite-internal"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
