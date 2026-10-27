@@ -15,7 +15,7 @@ apt-get update
 apt-get install -y --no-install-recommends \
     build-essential ca-certificates git curl pkg-config cmake clang llvm \
     libclang-dev protobuf-compiler libprotobuf-dev libssl-dev libdbus-1-dev libudev-dev \
-    jq gzip tar patch binutils sudo
+    btrfs-progs jq gzip tar patch binutils sudo
 
 # rustc's bundled lld searches the multiarch lib directory. The unversioned
 # libstdc++.so from libstdc++-13-dev lives only in the GCC private directory,
