@@ -4,7 +4,7 @@
 //! service. It exposes the complete Operation route set plus the 3tched Router
 //! schema API on TCP port 8090 and the plugin Unix socket.
 
-use op_grpc_bridge::server::{ServerConfig, run_tched_router_server};
+use op_grpc_bridge::server::{ServerConfig, run_chat_router_server};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -27,5 +27,5 @@ async fn main() -> anyhow::Result<()> {
         tls = config.tls_identity.is_some(),
         "Consolidated Operation gRPC bridge starting (tonic TLS MQTT/gRPC demux)"
     );
-    run_tched_router_server(config).await
+    run_chat_router_server(config).await
 }

@@ -1,0 +1,2 @@
+path	line/position	exact token/context	intended meaning	judgment reference	JEV outcome/confidence	decision	change/status
+# Zero occurrences: no case-insensitive `native` token or compound use encountered in the 12 fully sequentially read inventory files; see `coverage.tsv` for complete file/line coverage. No occurrences are represented as source rows.

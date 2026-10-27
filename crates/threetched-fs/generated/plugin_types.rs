@@ -113064,7 +113064,7 @@ impl<'a> Plugin<'a> {
 
 pub mod plugin_f_tched_5frouter {
 use super::*;
-pub const PLUGIN_ID:&str="tched_router";
+pub const PLUGIN_ID:&str="chat_router";
 pub const SCHEMA_HASH:&str="60345942852e5b8fa0ee3d87d5ca578b5edd2d4e113964008cffab682a5d533e";
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PublicStateValuePart2 {

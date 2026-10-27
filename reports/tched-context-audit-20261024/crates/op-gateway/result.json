@@ -1,0 +1,21 @@
+{
+  "task": "tched-context-audit-20261024/op-gateway",
+  "crate": "op-gateway",
+  "status": "complete",
+  "files_reviewed": 9,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-gateway/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-gateway/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-gateway/occurrences.tsv",
+  "jev_receipts": [
+    "reports/tched-context-audit-20261024/crates/op-gateway/judgments.md"
+  ],
+  "limitations": [
+    "Initial inventory hashes were not recomputed.",
+    "Static source audit does not establish runtime or deployment behavior.",
+    "coordinator-followup.md was absent."
+  ],
+  "next_action": "Coordinator aggregates the completed op-gateway audit; no crate-specific fix or verification command remains."
+}

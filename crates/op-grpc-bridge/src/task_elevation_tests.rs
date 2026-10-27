@@ -168,7 +168,7 @@ async fn root_password_needs_no_user_map_but_still_requires_grants_and_a_protect
     let control_plane = authorize(
         &fixture,
         &fixture.alice,
-        "tched_router",
+        "chat_router",
         "config_set",
         &json!({"path": "agents.control_plane.model_provider", "value": "opencode.go_cp_route_grok_47"}),
         SUDO_PASSWORD,

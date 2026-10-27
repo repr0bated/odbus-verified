@@ -4,7 +4,7 @@
 use crate::{
     generation_admission::{GenerationCaller, GenerationOrigin, GenerationPins, PLUGIN},
     mutation_engine::MutationEngine,
-    tched_router_generation_native::{
+    chat_router_generation::{
         NativeErrorCode, NativeGenerationAdmission, NativeGenerationError, NativeGenerationEvent,
         NativeGenerationTask, NativeGenerationTerminal,
     },
@@ -14,7 +14,7 @@ use futures::future::BoxFuture;
 use op_core::projection_shm::{
     PrivateDocumentCommit, PrivateDocumentPublication, PrivateProjectionDirectory,
 };
-use op_plugins::state_plugins::{runtime_documents::RuntimeDocuments, tched_router::generation::*};
+use op_plugins::state_plugins::{runtime_documents::RuntimeDocuments, chat_router::generation::*};
 use op_state_store::PluginSchema;
 use serde_json::Value;
 use std::{
@@ -33,7 +33,7 @@ const MAX_OWNER_CALLS: usize = 32;
 #[path = "generation_jobs_tests.rs"]
 mod tests;
 pub(crate) fn is_generation_method(method: &str) -> bool {
-    op_plugins::state_plugins::tched_router::generation::is_method(method)
+    op_plugins::state_plugins::chat_router::generation::is_method(method)
 }
 
 /// Production implements this over the existing configured native router

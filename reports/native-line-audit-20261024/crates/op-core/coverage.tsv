@@ -1,0 +1,23 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-core/Cargo.toml	1-24 EOF	99a2520a8abb2a475152b5de52659ba4272e20e9eee043b17d222356b48b17c5	Dependencies; no native routing	complete
+crates/op-core/SPEC.md	1-87 EOF	85dbb9f83655e95ab910354d43112667e120e64e7431e49931046d752f4dc25e	Historical inventory stale; outside native scope	complete
+crates/op-core/compare-op-core.md	1-82 EOF	450146fb9c26853c13b41f185b4df532483a5fbc8bf38a5d1e1ab772ba70f988	Historical inventory stale; outside native scope	complete
+crates/op-core/src/config.rs	1-223 EOF; reconciliation reread 1-223 EOF	1772d247eff907d8918daa73f73de420d71efa80477da3491575a9098b381102	Alternative contains embedded native; OC1 preserves accurate ordered fallback comment	complete
+crates/op-core/src/error.rs	1-95 EOF	255e01dbb05e5e4fb8b817dfb5b3ba8d42ab28cf69884f70c62b387598385a1e	Error types; no native routing	complete
+crates/op-core/src/execution.rs	1-200;201-372 EOF	475c2da9a636d222d7d92f5613b04318eb04ce017fd13fc5f87ab1009166cd5e	Tracking only; generic UTF-8 truncation panic noted outside native scope	complete
+crates/op-core/src/identity_projection_transaction.rs	1-293 EOF	52042299ff89361f744c423e2215c1eca026c647e58c6b3cfcca094e5f373515	Exact-operation durable recovery; no native model routing	complete
+crates/op-core/src/identity_projection_transaction_tests.rs	1-180;181-310 EOF; reconciliation reread same sequential ranges	c38290db872a1f151e4824ddbf5e41bebb5decab52468f5b470b03b804727c87	Native storage commit uncertainty fixture; OC2 preserves accurate simulated durable-error intent	complete
+crates/op-core/src/lib.rs	1-31 EOF	567c0e03cb0419082ca25ad37589b165734cfd8d340c1374ebcf13ad2142b024	Exports only	complete
+crates/op-core/src/private_document_publication.rs	1-180;181-321 EOF; reconciliation reread same sequential ranges	d62806e89a501998f50ece8c0c5ccdacb16c44ecfcfc7e96833ec91451cad1bd	Alternative contains embedded native; OC3 verifies exact-operation recovery documentation; unrelated current comment drift preserved	complete
+crates/op-core/src/private_document_publication_tests.rs	1-282 EOF	211c92c459b816cd0a2be1a72a3a99eb5b774f24a9c935dfdbddd70c55ab58f2	Publication fixtures including retained model-agnostic gemma_brain ID	complete
+crates/op-core/src/private_projection_directory.rs	1-161 EOF	4d4edab5ec58bcfe02e5aefba78f1ae19f1281bbe54f0da223946d3002dc9c55	Filesystem confinement not authorization; no routing override	complete
+crates/op-core/src/private_projection_directory_tests.rs	1-247 EOF	ec0c1d42b8015d72cc2220ee6ae2082c2283cabe0f5ceb39e790cf7e6bae40ec	Owner isolation and revocation fixtures; tched_router fixture untouched	complete
+crates/op-core/src/projection_shm.rs	1-180;181-340 EOF	057c88ac5f728626825e2493a7d3968cae0b28cebeb47504901d14cf787692a5	Canonical state storage and environment-configurable root; no native model path	complete
+crates/op-core/src/projection_transactions.rs	1-200;201-400;401-600;601-766 EOF	928240ff74fd8486354491cc8b31b18c19321b8b0bb25b8d802f0aded64a76d5	Locked raw publication; strict credential separation; no native model selection	complete
+crates/op-core/src/projection_transactions_tests.rs	1-230;231-459 EOF; reconciliation reread same sequential ranges	a25b193cf6c971767cb38c4b02994e3e3703f8bf5d5549af17d00b3dfd4acd99	Native-write simulation comment; OC4 preserves accurate single-shot file fault injection intent	complete
+crates/op-core/src/runit.rs	1-62 EOF	f07ac6b36a63e70feede24265c92a4788af7d555f632729db6a34a34e06a8669	Service path constants; /etc/sv vs AGENTS /etc/runit/sv drift outside native scope	complete
+crates/op-core/src/security.rs	1-180;181-344 EOF	21e643751649e1203356be0466fa3d52c0c87cfe0d2dc7a62e74039d1d74cd5a	Explicit network trust configuration; no provider/model selector	complete
+crates/op-core/src/self_identity.rs	1-158 EOF	7f5524db11994c6f3e0e1a58ddec19baad3f062edbb1885793702024c3720033	Repository metadata and generated prompt; no native routing	complete
+crates/op-core/src/state_publisher.rs	1-27 EOF	273657fffea14f469afa6d61c5c1d7bd46072ecaae11bdbcb32761f90c0c2813	Publisher trait only; no routing	complete
+crates/op-core/src/types.rs	1-180;181-340 EOF	f5d0df4184c2a441f7065de0dade18ac7b4de01b298306eddfea0b9b404670ef	Optional model field is data not selection implementation	complete
+crates/op-core/tests/no_s6_regression.rs	1-163 EOF	256b3e3bffa60c2e909f873fab94700bb1da8b6ca94b34b48180fefaa218f099	Source-string regression guard read only; not executed; no native routing	complete

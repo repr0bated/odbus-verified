@@ -30,7 +30,7 @@ fn before_effect_refusal(error: &anyhow::Error) -> Option<UnsupportedBeforeEffec
 /// material; only matched source conditions leave this boundary, never text.
 fn safe_backend_failure_kind(error: &anyhow::Error) -> &'static str {
     for cause in error.chain() {
-        if let Some(http) = cause.downcast_ref::<crate::tched_router_runtime::NativeHttpFailure>() {
+        if let Some(http) = cause.downcast_ref::<crate::chat_router_runtime::NativeHttpFailure>() {
             let catalog =
                 http.operation.starts_with("list ") && http.operation.ends_with(" models");
             return match (catalog, http.operation.as_str(), http.status) {
@@ -137,16 +137,16 @@ fn safe_backend_failure_kind(error: &anyhow::Error) -> &'static str {
             ("chat episode", "chat_episode_failed"),
             ("requires verified", "verified_context_missing"),
             ("compiled/sealed", "compiled_sealed_contract_mismatch"),
-            ("tched_router list ", "native_model_catalog_failed"),
+            ("chat_router list ", "native_model_catalog_failed"),
             (
-                "tched_router read masked config",
+                "chat_router read masked config",
                 "native_config_read_failed",
             ),
             (
-                "tched_router read config property",
+                "chat_router read config property",
                 "native_property_read_failed",
             ),
-            ("tched_router health", "native_health_failed"),
+            ("chat_router health", "native_health_failed"),
             (
                 "ordinary native profile is owned",
                 "ordinary_profile_agent_owned",
@@ -159,14 +159,14 @@ fn safe_backend_failure_kind(error: &anyhow::Error) -> &'static str {
                 "episode publication requires recovery",
                 "chat_episode_recovery_required",
             ),
-            ("tched_router chat failed", "native_agent_rpc_failed"),
+            ("chat_router chat failed", "native_agent_rpc_failed"),
             (
-                "tched_router chat returned invalid JSON",
+                "chat_router chat returned invalid JSON",
                 "native_agent_response_invalid",
             ),
-            ("tched_router chat returned", "native_agent_http_failed"),
+            ("chat_router chat returned", "native_agent_http_failed"),
             (
-                "tched_router chat request failed",
+                "chat_router chat request failed",
                 "native_agent_transport_failed",
             ),
             ("requested provider", "native_selection_provider_mismatch"),

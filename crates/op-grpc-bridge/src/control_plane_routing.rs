@@ -6,12 +6,12 @@
 use std::sync::Arc;
 
 use anyhow::{Context, ensure};
-use op_plugins::state_plugins::tched_router::{ChatInput, ChatOutput};
+use op_plugins::state_plugins::chat_router::{ChatInput, ChatOutput};
 use serde::Serialize;
 
 use crate::chat_mode_routing::CONTROL_PLANE_AGENT;
-use crate::tched_router_generation_native::NativeGenerationAdmission;
-use crate::tched_router_runtime::{RuntimeSelection, TchedRouterRuntimeClient};
+use crate::chat_router_generation::NativeGenerationAdmission;
+use crate::chat_router_runtime::{RuntimeSelection, ChatRouterRuntimeClient};
 
 #[derive(Debug, Serialize)]
 struct RouteDecision<'a> {
@@ -43,7 +43,7 @@ pub(crate) async fn complete(
     before_prompt: Arc<dyn NativeGenerationAdmission>,
     provider_only: bool,
 ) -> anyhow::Result<ChatOutput> {
-    let client = TchedRouterRuntimeClient::for_agent_alias(CONTROL_PLANE_AGENT)
+    let client = ChatRouterRuntimeClient::for_agent_alias(CONTROL_PLANE_AGENT)
         .with_sealed_identity(before_prompt.sealed_identity());
     complete_with_client(input, before_prompt, provider_only, client).await
 }
@@ -52,7 +52,7 @@ async fn complete_with_client(
     mut input: ChatInput,
     before_prompt: Arc<dyn NativeGenerationAdmission>,
     provider_only: bool,
-    client: TchedRouterRuntimeClient,
+    client: ChatRouterRuntimeClient,
 ) -> anyhow::Result<ChatOutput> {
     before_prompt
         .check()
@@ -118,7 +118,7 @@ mod tests {
                 dyn std::future::Future<
                         Output = Result<
                             (),
-                            crate::tched_router_generation_native::NativeGenerationError,
+                            crate::chat_router_generation::NativeGenerationError,
                         >,
                     > + Send
                     + '_,
@@ -223,7 +223,7 @@ mod tests {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
         let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-        let client = TchedRouterRuntimeClient::new(endpoint, CONTROL_PLANE_AGENT.into(), None)
+        let client = ChatRouterRuntimeClient::new(endpoint, CONTROL_PLANE_AGENT.into(), None)
             .with_sealed_identity(Some("canonical-fixture-sid1"));
         let admission = Arc::new(Admission(AtomicUsize::new(0)));
         let result = complete_with_client(

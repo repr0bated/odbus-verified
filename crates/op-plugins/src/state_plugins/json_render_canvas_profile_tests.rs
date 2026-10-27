@@ -49,7 +49,7 @@ fn rejects_reference_catalog_and_hidden_shell_recursion_and_runtime_features() {
         "Card",
         "Text",
         "antigravityChatContainer",
-        "tchedRouterPicker",
+        "chatRouterPicker",
         "pageHeader",
         "chatMessage",
     ] {

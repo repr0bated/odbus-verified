@@ -1,0 +1,1273 @@
+{
+  "format": "3tched.application-profile.v1",
+  "limits": {
+    "max_bytes": 200000,
+    "max_elements": 256,
+    "max_depth": 20
+  },
+  "components": [
+    {
+      "name": "dashboardPanel",
+      "description": "Reusable titled dashboard panel for spec-composed content.",
+      "slots": [
+        "default"
+      ],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "subtitle": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "success",
+              "warning",
+              "danger"
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardDisclosure",
+      "description": "Expandable details region for static reference content.",
+      "slots": [
+        "default"
+      ],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "initiallyOpen": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardMetric",
+      "description": "Metric value and explanatory detail.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "success",
+              "warning",
+              "danger"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardKeyValues",
+      "description": "Labeled configuration and identity facts.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "rows": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 20000
+                }
+              },
+              "required": [
+                "label",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardTable",
+      "description": "Read-only data table with caption and column headers.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "caption": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "columns": {
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ]
+            }
+          },
+          "rows": {
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "cells": {
+                  "maxItems": 16,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 400
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "cells"
+              ]
+            }
+          },
+          "emptyLabel": {
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "caption",
+          "columns",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardTabs",
+      "description": "Keyboard-accessible static reference tabs with text panels.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "initialTab": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "tabs": {
+            "minItems": 1,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "content": {
+                  "type": "string",
+                  "maxLength": 20000
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "content"
+              ]
+            }
+          }
+        },
+        "required": [
+          "label",
+          "tabs"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardFormPreview",
+      "description": "Disabled illustrative controls; no submit or backend action.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "fields": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "email",
+                    "number",
+                    "textarea",
+                    "select",
+                    "toggle"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "options": {
+                  "maxItems": 30,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 400
+                  }
+                },
+                "checked": {
+                  "type": "boolean"
+                },
+                "help": {
+                  "type": "string",
+                  "maxLength": 400
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "title",
+          "fields"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardProgress",
+      "description": "Labeled completion or utilization meter.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardBarChart",
+      "description": "Accessible static percentage bars without a chart dependency.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "bars": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "label",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "title",
+          "bars"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardEventLog",
+      "description": "Chronological reference events.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "entries": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "time": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "detail": {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                "tone": {
+                  "type": "string",
+                  "enum": [
+                    "neutral",
+                    "info",
+                    "success",
+                    "warning",
+                    "danger"
+                  ]
+                }
+              },
+              "required": [
+                "time",
+                "title"
+              ]
+            }
+          }
+        },
+        "required": [
+          "title",
+          "entries"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardStatus",
+      "description": "Explicit static health or state label.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "success",
+              "warning",
+              "danger"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "tone"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardCode",
+      "description": "Escaped code or structured-text sample.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 20000
+          }
+        },
+        "required": [
+          "title",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardTree",
+      "description": "Nested read-only resource hierarchy.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "nodes": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "detail": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "children": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "maxLength": 400
+                      },
+                      "detail": {
+                        "type": "string",
+                        "maxLength": 400
+                      },
+                      "children": {
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "type": "string",
+                              "maxLength": 400
+                            },
+                            "detail": {
+                              "type": "string",
+                              "maxLength": 400
+                            },
+                            "children": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "maxLength": 400
+                                  },
+                                  "detail": {
+                                    "type": "string",
+                                    "maxLength": 400
+                                  },
+                                  "children": {
+                                    "maxItems": 100,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "label": {
+                                          "type": "string",
+                                          "maxLength": 400
+                                        },
+                                        "detail": {
+                                          "type": "string",
+                                          "maxLength": 400
+                                        },
+                                        "children": {
+                                          "maxItems": 100,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "label": {
+                                                "type": "string",
+                                                "maxLength": 400
+                                              },
+                                              "detail": {
+                                                "type": "string",
+                                                "maxLength": 400
+                                              },
+                                              "children": {
+                                                "maxItems": 100,
+                                                "type": "array",
+                                                "items": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "label": {
+                                                      "type": "string",
+                                                      "maxLength": 400
+                                                    },
+                                                    "detail": {
+                                                      "type": "string",
+                                                      "maxLength": 400
+                                                    },
+                                                    "children": {
+                                                      "maxItems": 100,
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "label": {
+                                                            "type": "string",
+                                                            "maxLength": 400
+                                                          },
+                                                          "detail": {
+                                                            "type": "string",
+                                                            "maxLength": 400
+                                                          },
+                                                          "children": {
+                                                            "maxItems": 0,
+                                                            "type": "array",
+                                                            "items": {
+                                                              "not": {}
+                                                            }
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "label"
+                                                        ]
+                                                      }
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "label"
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            "required": [
+                                              "label"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "label"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "label"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "label"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "label"
+              ]
+            }
+          }
+        },
+        "required": [
+          "title",
+          "nodes"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "dashboardTopology",
+      "description": "Static topology with an accessible node and edge list.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "nodes": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "detail": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "x": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "x",
+                "y"
+              ]
+            }
+          },
+          "edges": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "to": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 400
+                }
+              },
+              "required": [
+                "from",
+                "to"
+              ]
+            }
+          }
+        },
+        "required": [
+          "title",
+          "nodes",
+          "edges"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "notebookHeader",
+      "description": "Selected notebook title, source count, and URL. Static props only.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "sourceCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "emoji": {
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "title",
+          "sourceCount"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "notebookSourceList",
+      "description": "Read-only list of a notebook's sources. Static props only.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "sources": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 400
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 400
+                }
+              },
+              "required": [
+                "id",
+                "title"
+              ]
+            }
+          }
+        },
+        "required": [
+          "sources"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "container",
+      "description": "Vertical stack of children.",
+      "slots": [
+        "default"
+      ],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "className": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "className"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "pageHeader",
+      "description": "Compact page title and runtime subtitle.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "subtitle"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "heading",
+      "description": "Canvas heading.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "const": 1
+                  },
+                  {
+                    "type": "number",
+                    "const": 2
+                  },
+                  {
+                    "type": "number",
+                    "const": 3
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "level"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "text",
+      "description": "Canvas body text.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "className": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "className"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "badge",
+      "description": "Compact status marker.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "ok",
+                  "warn",
+                  "danger",
+                  "info"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "label",
+          "tone"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "row",
+      "description": "Horizontal wrapping group.",
+      "slots": [
+        "default"
+      ],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "className": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "className"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "stat",
+      "description": "Compact Canvas metric.",
+      "slots": [],
+      "props_schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trend": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down",
+                  "flat"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "unit",
+          "trend"
+        ],
+        "additionalProperties": false
+      },
+      "events": []
+    },
+    {
+      "name": "applicationOverlay",
+      "description": "Collapsible chat or model-selection overlay whose generated children declare every input and action. No hidden imperative controls.",
+      "slots": ["default"],
+      "events": [
+        "open",
+        "close"
+      ],
+      "props_schema": {
+        "type": "object",
+        "properties": {
+          "panel": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "models"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "collapsed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "panel",
+          "title",
+          "collapsed"
+        ],
+        "additionalProperties": false
+      }
+    }
+    ,{
+      "name": "applicationInput",
+      "description": "Accessible string input bound to application state.",
+      "slots": [],
+      "events": ["change"],
+      "required_bindings": ["value"],
+      "props_schema": {
+        "type": "object",
+        "properties": {
+          "label": {"type": "string", "minLength": 1},
+          "value": {"type": "string"}
+        },
+        "required": ["label", "value"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "applicationButton",
+      "description": "Explicit user action. Chat sends and model changes must bind press to a declared, target-pinned invokePlugin action.",
+      "slots": [],
+      "events": ["press"],
+      "props_schema": {
+        "type": "object",
+        "properties": {"label": {"type": "string", "minLength": 1}},
+        "required": ["label"],
+        "additionalProperties": false
+      }
+    }
+    ,{
+      "name": "applicationSelect",
+      "description": "Generated provider/model or other selection. Options are current application state; selection changes emit a declared event and never change routing implicitly.",
+      "slots": [],
+      "events": ["change"],
+      "required_bindings": ["value"],
+      "string_item_fields": {"options": ["valueField", "labelField"]},
+      "props_schema": {
+        "type": "object",
+        "properties": {
+          "label": {"type": "string", "minLength": 1},
+          "value": {"type": "string"},
+          "options": {"type": "array", "maxItems": 4096, "items": {"type": "object"}},
+          "valueField": {"type": "string", "minLength": 1},
+          "labelField": {"type": "string", "minLength": 1}
+        },
+        "required": ["label", "value", "options", "valueField", "labelField"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "setState",
+      "description": "Update application-local state only; never grants backend authority.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "statePath": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "value": {}
+        },
+        "required": [
+          "statePath",
+          "value"
+        ],
+        "additionalProperties": false
+      }
+    }
+    ,{
+      "name": "invokePlugin",
+      "description": "Invoke one manifest-pinned plugin method through the existing authenticated door. Target schema supplies argument types; the backend enforces its exact grant. Never retry an uncertain mutation.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "plugin": {"type": "string", "minLength": 1},
+          "method": {"type": "string", "minLength": 1},
+          "capability": {"type": "string", "minLength": 1},
+          "arguments": {"type": "object"},
+          "resultStatePath": {"type": "string", "pattern": "^/", "maxLength": 1024}
+        },
+        "required": ["plugin", "method", "capability", "arguments"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

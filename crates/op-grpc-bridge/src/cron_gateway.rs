@@ -1,4 +1,5 @@
-//! Exact v0.8.4 cron route mapping over the existing hardened tched-router
+//! Prior names: ZeroClawCronGateway, TchedRouterCronGateway.
+//! Exact v0.8.4 cron route mapping over the existing hardened chat-router
 //! runtime client. No second reqwest client or bearer authority is introduced.
 
 use anyhow::{Result, anyhow};
@@ -7,9 +8,9 @@ use op_plugins::state_plugins::cron::*;
 use serde::Deserialize;
 
 use crate::cron_methods::{CronGateway, ProviderMutation};
-use crate::tched_router_runtime::{
+use crate::chat_router_runtime::{
     GatewayJsonRequest, GatewayMethod, GatewayProfile, GatewayRequestError,
-    TchedRouterRuntimeClient,
+    ChatRouterRuntimeClient,
 };
 
 #[derive(Deserialize)]
@@ -34,17 +35,17 @@ struct StatusResponse {
     status: String,
 }
 
-pub(crate) struct TchedRouterCronGateway {
-    client: TchedRouterRuntimeClient,
+pub(crate) struct ChatRouterCronGateway {
+    client: ChatRouterRuntimeClient,
 }
-impl TchedRouterCronGateway {
+impl ChatRouterCronGateway {
     pub(crate) fn production() -> Self {
         Self {
-            client: TchedRouterRuntimeClient::from_env(),
+            client: ChatRouterRuntimeClient::from_env(),
         }
     }
 
-    pub(crate) fn from_client(client: TchedRouterRuntimeClient) -> Self {
+    pub(crate) fn from_client(client: ChatRouterRuntimeClient) -> Self {
         Self { client }
     }
 }
@@ -67,16 +68,16 @@ fn encoded_segment(raw: &str) -> String {
 fn read_error(error: GatewayRequestError) -> anyhow::Error {
     match error {
         GatewayRequestError::BeforeEffect(_) => {
-            anyhow!("tched_router cron request failed before a provider result")
+            anyhow!("chat_router cron request failed before a provider result")
         }
         GatewayRequestError::InvalidResponse(_) => {
-            anyhow!("tched_router cron response was unavailable or invalid")
+            anyhow!("chat_router cron response was unavailable or invalid")
         }
         GatewayRequestError::IndeterminateMutation(_) => {
             anyhow!("unexpected indeterminate classification for cron read")
         }
         GatewayRequestError::ProviderRejected { status, .. } => {
-            anyhow!("tched_router rejected cron request with HTTP {status}")
+            anyhow!("chat_router rejected cron request with HTTP {status}")
         }
     }
 }
@@ -88,10 +89,10 @@ fn mutation<T>(result: std::result::Result<T, GatewayRequestError>) -> Result<Pr
             "native cron request may have taken effect; observe current state before retrying".into(),
         )),
         Err(GatewayRequestError::BeforeEffect(_)) => {
-            Err(anyhow!("tched_router cron mutation failed before submission"))
+            Err(anyhow!("chat_router cron mutation failed before submission"))
         }
         Err(GatewayRequestError::ProviderRejected { status, .. }) => {
-            Err(anyhow!("tched_router rejected cron mutation with HTTP {status}"))
+            Err(anyhow!("chat_router rejected cron mutation with HTTP {status}"))
         }
         // The shared transport promises this only for reads. Fail closed if a
         // future implementation violates that classification.
@@ -119,7 +120,7 @@ fn completed_job(
 }
 
 #[async_trait]
-impl CronGateway for TchedRouterCronGateway {
+impl CronGateway for ChatRouterCronGateway {
     async fn list_jobs(&self) -> Result<Vec<CronJobRecord>> {
         let response: JobsResponse = self
             .client

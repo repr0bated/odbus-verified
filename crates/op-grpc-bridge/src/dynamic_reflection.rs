@@ -452,7 +452,7 @@ mod tests {
             op_blob::blobify_plugin_schema(id, schema)
         };
         let mut producer = op_blob::BlobStore::open(dir.path()).unwrap();
-        producer.write(&seal("tched_router")).unwrap();
+        producer.write(&seal("chat_router")).unwrap();
         // Simulates a catalog sealed before `factory` was retired.
         producer.write(&seal("factory")).unwrap();
 
@@ -466,7 +466,7 @@ mod tests {
         );
         let services = catalog.list_services().await;
         assert!(
-            services.iter().any(|s| s.contains("TchedRouter")),
+            services.iter().any(|s| s.contains("ChatRouter")),
             "live plugin advertised: {services:?}"
         );
         assert!(
@@ -480,7 +480,7 @@ mod tests {
     #[tokio::test]
     async fn same_schema_and_catalog_hash_refreshes_changed_valid_descriptor_artifacts() {
         let dir = tempfile::tempdir().unwrap();
-        let schema = op_state_store::PluginSchema::builder("tched_router")
+        let schema = op_state_store::PluginSchema::builder("chat_router")
             .version("1.0.0")
             .method(op_state_store::MethodDecl {
                 name: "Read".into(),
@@ -492,7 +492,7 @@ mod tests {
                 subid: "obs.service.fixture.read@v1".into(),
             })
             .build();
-        let template = op_blob::blobify_plugin_schema("tched_router", schema);
+        let template = op_blob::blobify_plugin_schema("chat_router", schema);
         // Model two valid sealer code-generation revisions. The source schema
         // stays identical while a generated helper message changes. Only the
         // local producer fixture writes artifacts and the committed manifest.
@@ -559,7 +559,7 @@ mod tests {
                 .list_services()
                 .await
                 .iter()
-                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+                .any(|service| service == "operation.plugin.v1.ChatRouterPluginMethods")
         );
     }
 
@@ -576,12 +576,12 @@ mod tests {
         assert!(
             !before
                 .iter()
-                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+                .any(|service| service == "operation.plugin.v1.ChatRouterPluginMethods")
         );
 
         let mut sealer = op_blob::BlobStore::open(dir.path()).unwrap();
         sealer
-            .write(&crate::tched_router_object_blob::from_plugin_schema())
+            .write(&crate::chat_router_object_blob::from_plugin_schema())
             .unwrap();
         catalog.sync_from_shm().await;
         let after = catalog.list_services().await;
@@ -589,20 +589,20 @@ mod tests {
         assert!(
             after
                 .iter()
-                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+                .any(|service| service == "operation.plugin.v1.ChatRouterPluginMethods")
         );
         assert!(after.iter().all(|service| {
             service == "grpc.reflection.v1.ServerReflection"
-                || service == "operation.plugin.v1.TchedRouterPluginMethods"
+                || service == "operation.plugin.v1.ChatRouterPluginMethods"
         }));
 
-        sealer.remove_blob("tched_router").unwrap();
+        sealer.remove_blob("chat_router").unwrap();
         catalog.sync_from_shm().await;
         let removed = catalog.list_services().await;
         assert!(
             !removed
                 .iter()
-                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+                .any(|service| service == "operation.plugin.v1.ChatRouterPluginMethods")
         );
     }
 
@@ -621,7 +621,7 @@ mod tests {
 
         // External sealer (the op-blob binary's role): seals the blob and
         // commits the manifest — no call into the bridge.
-        let blob = crate::tched_router_object_blob::from_plugin_schema();
+        let blob = crate::chat_router_object_blob::from_plugin_schema();
         let descriptor_only_services = blob.manifest.grpc.services.clone();
         assert!(!descriptor_only_services.is_empty());
         {
@@ -634,7 +634,7 @@ mod tests {
         assert!(
             after
                 .iter()
-                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+                .any(|service| service == "operation.plugin.v1.ChatRouterPluginMethods")
         );
         for service in &descriptor_only_services {
             assert!(
@@ -646,7 +646,7 @@ mod tests {
         // Removal by the external sealer propagates on the next arrival too.
         {
             let mut store = op_blob::BlobStore::open(&dir).unwrap();
-            store.remove_blob("tched_router").unwrap();
+            store.remove_blob("chat_router").unwrap();
         }
         catalog.sync_from_shm().await;
         let removed = catalog.list_services().await;

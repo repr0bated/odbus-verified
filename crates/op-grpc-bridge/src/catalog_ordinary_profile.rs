@@ -3,11 +3,11 @@
 
 use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::model_registry::{ModelListFormat, ProviderConfig};
-use op_plugins::state_plugins::tched_router::{ConfigPatchInput, ConfigPatchOperation};
+use op_plugins::state_plugins::chat_router::{ConfigPatchInput, ConfigPatchOperation};
 use serde_json::{Value, json};
 
 use crate::model_registry_dispatch::{Environment, read_provider_key};
-use crate::tched_router_runtime::{ConfigSecretPolicy, TchedRouterRuntimeClient};
+use crate::chat_router_runtime::{ConfigSecretPolicy, ChatRouterRuntimeClient};
 
 fn profile_section(reference: &str) -> String {
     format!("providers.models.{reference}")
@@ -31,9 +31,9 @@ fn wire_api(format: ModelListFormat) -> &'static str {
 /// Create the ordinary profile section when absent, using provider metadata only.
 pub(crate) async fn ensure_ordinary_profile(
     env: &Environment,
-    runtime: &TchedRouterRuntimeClient,
+    runtime: &ChatRouterRuntimeClient,
     provider: &ProviderConfig,
-    target: &crate::tched_catalog_binding::BindingTarget,
+    target: &crate::chat_router_catalog_binding::BindingTarget,
     model_id: &str,
     secrets: &dyn ConfigSecretPolicy,
 ) -> Result<()> {

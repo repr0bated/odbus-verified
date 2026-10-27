@@ -37,8 +37,8 @@ fn facade() -> PluginSchema {
         .unwrap()
 }
 
-fn tched() -> PluginSchema {
-    op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
+fn chat_router_schema() -> PluginSchema {
+    op_plugins::state_plugins::chat_router::ChatRouterPlugin::new()
         .schema()
         .unwrap()
 }
@@ -97,7 +97,7 @@ async fn nested_target_absence_or_drift_stops_before_http() {
         let _environment = Environment::new();
         let listener = endpoint_without_server();
         let error = invoke(&engine()).await.unwrap_err();
-        assert!(error.to_string().contains("tched_router"));
+        assert!(error.to_string().contains("chat_router"));
         assert_no_http(&listener);
     }
     {

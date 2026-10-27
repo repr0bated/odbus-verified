@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
 
-pub const TARGET_PLUGIN_ID: &str = "tched_router";
+pub const TARGET_PLUGIN_ID: &str = "chat_router";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TargetPlan {
@@ -14,9 +14,9 @@ pub struct TargetPlan {
 /// Resolve the target capability from the owning schema. No capability string
 /// is copied into this compatibility module.
 pub fn target_capability(target_method: &str) -> Result<String> {
-    let schema = super::threetched::sealed_schema("tched_router")?;
+    let schema = super::threetched::sealed_schema("chat_router")?;
     let declaration = schema.methods.get(target_method).ok_or_else(|| {
-        anyhow!("tched_router schema does not declare target method '{target_method}'")
+        anyhow!("chat_router schema does not declare target method '{target_method}'")
     })?;
     Ok(schema
         .resolve_method_capability(declaration)
@@ -29,16 +29,16 @@ fn decode<T: serde::de::DeserializeOwned>(args: &Value, method: &str) -> Result<
         .with_context(|| format!("invalid large_language_model.{method} arguments"))
 }
 
-/// Validate a compatibility call and identify the exact canonical tched_router
+/// Validate a compatibility call and identify the exact canonical chat_router
 /// operation and capability it requires.
 ///
 /// The caller MUST run target-method admission against the same pinned
-/// tched_router PluginSchema and verified identity before invoking this plan.
+/// chat_router PluginSchema and verified identity before invoking this plan.
 /// Possession of the outer large_language_model capability is not sufficient.
 pub fn plan_method(method: &str, args: &Value) -> Result<TargetPlan> {
     let (target_method, target_args) = match method {
         "stream_generate" => {
-            let input: super::tched_router::generation::StartGenerationInput =
+            let input: super::chat_router::generation::StartGenerationInput =
                 decode(args, method)?;
             input.validate()?;
             ("start_generation", serde_json::to_value(input)?)
@@ -58,10 +58,10 @@ pub fn plan_method(method: &str, args: &Value) -> Result<TargetPlan> {
 pub fn complete_method(method: &str, target_result: Value) -> Result<Value> {
     match method {
         "stream_generate" => Ok(serde_json::to_value(
-            serde_json::from_value::<super::tched_router::generation::GenerationMutationOutput>(
+            serde_json::from_value::<super::chat_router::generation::GenerationMutationOutput>(
                 target_result,
             )
-            .context("tched_router generation returned an invalid receipt")?,
+            .context("chat_router generation returned an invalid receipt")?,
         )?),
         other => Err(anyhow!("unknown large_language_model method: {other}")),
     }

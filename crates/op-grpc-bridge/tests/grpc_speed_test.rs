@@ -43,7 +43,7 @@ async fn bench_get_state(channel: Channel, label: &str, n: usize) {
     for _ in 0..3 {
         let _ = client
             .get_state(tonic::Request::new(GetStateRequest {
-                plugin_id: "tched_router".to_string(),
+                plugin_id: "chat_router".to_string(),
                 object_path: String::new(),
             }))
             .await;
@@ -54,7 +54,7 @@ async fn bench_get_state(channel: Channel, label: &str, n: usize) {
         let start = Instant::now();
         let _ = client
             .get_state(tonic::Request::new(GetStateRequest {
-                plugin_id: "tched_router".to_string(),
+                plugin_id: "chat_router".to_string(),
                 object_path: String::new(),
             }))
             .await;

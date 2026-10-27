@@ -1,0 +1,36 @@
+path	inventory_lines	read_status	occurrence_count	notes
+crates/op-cognitive/Cargo.toml	75	complete	0	Full sequential read
+crates/op-cognitive/SPEC.md	145	complete	0	Full sequential read
+crates/op-cognitive/build.rs	14	complete	0	Full sequential read
+crates/op-cognitive/compare-op-cognitive.md	81	complete	0	Full sequential read
+crates/op-cognitive/proto/cognitive.proto	380	complete	0	Full sequential read
+crates/op-cognitive/src/activity_filter.rs	512	complete	0	Full sequential read; touched does not contain contiguous substring tched
+crates/op-cognitive/src/agent_tools.rs	136	complete	0	Full sequential read
+crates/op-cognitive/src/bin/op-chain-vector-ingest.rs	27	complete	0	Full sequential read
+crates/op-cognitive/src/bin/op-chain-vectors.rs	284	complete	0	Full sequential read
+crates/op-cognitive/src/bin/op-cog-admin.rs	52	complete	0	Full sequential read
+crates/op-cognitive/src/blob_catalog_tool.rs	202	complete	0	Full sequential read
+crates/op-cognitive/src/blob_vectors_tool.rs	188	complete	0	Initially lacked read metadata; supplemental complete sequential read 1-188 on 2026-10-24 found zero occurrences
+crates/op-cognitive/src/chain_vectors.rs	1108	complete	1	Full sequential read
+crates/op-cognitive/src/code_tools.rs	550	complete	0	Full sequential read
+crates/op-cognitive/src/cognitive_tools.rs	893	complete	0	Full sequential read
+crates/op-cognitive/src/context_awareness.rs	1167	complete	0	Full sequential read
+crates/op-cognitive/src/cozo_shuttle.rs	5	complete	0	Full sequential read
+crates/op-cognitive/src/dbus_interface.rs	66	complete	0	Full sequential read
+crates/op-cognitive/src/doctor.rs	217	complete	0	Full sequential read
+crates/op-cognitive/src/gemini_fallback.rs	475	complete	0	Full sequential read
+crates/op-cognitive/src/grpc_service.rs	1190	complete	0	Full sequential read
+crates/op-cognitive/src/interceptor.rs	65	complete	0	Full sequential read
+crates/op-cognitive/src/lib.rs	69	complete	0	Full sequential read
+crates/op-cognitive/src/memory_store.rs	769	complete	0	Full sequential read
+crates/op-cognitive/src/qdrant_shuttle.rs	686	complete	5	Full sequential read; touched at line 640 does not contain contiguous substring tched
+crates/op-cognitive/src/quota.rs	140	complete	0	Full sequential read
+crates/op-cognitive/src/rag_pipeline.rs	1316	complete	0	Read through actual EOF at line 1312; supplied inventory line count 1316 is stale
+crates/op-cognitive/src/semantic_search.rs	90	complete	0	Full sequential read
+crates/op-cognitive/src/server.rs	205	complete	0	Full sequential read
+crates/op-cognitive/src/session.rs	235	complete	0	Full sequential read
+crates/op-cognitive/src/soul_memory.rs	257	complete	0	Full sequential read
+crates/op-cognitive/src/tool_profiles.rs	154	complete	0	Full sequential read
+crates/op-cognitive/src/typed_tools.rs	442	complete	0	Full sequential read
+crates/op-cognitive/src/voyage.rs	139	complete	0	Full sequential read
+crates/op-cognitive/tests/e2e_voyage_qdrant.rs	261	complete	1	Full sequential read

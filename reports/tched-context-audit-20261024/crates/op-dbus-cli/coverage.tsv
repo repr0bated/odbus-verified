@@ -1,0 +1,5 @@
+path	lines_reviewed	coverage	receipt
+crates/op-dbus-cli/Cargo.toml	25	complete	Sequential raw read 1-25; directory inventory matches.
+crates/op-dbus-cli/src/identity.rs	53	complete	Sequential raw read 1-53 through EOF.
+crates/op-dbus-cli/src/introspect.rs	732	complete	Sequential raw reads 1-200, 201-400, 401-600, 601-732 through EOF.
+crates/op-dbus-cli/src/main.rs	682	complete	Sequential raw reads 1-200, 201-400, 401-600, 601-682 through EOF.

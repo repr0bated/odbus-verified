@@ -1,0 +1,14 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-snowball/Cargo.toml	1-31 EOF	a039d16e4c4a7b869c2467661ced39890c541924351b213e8b33f569cea82068	No native occurrence; unchanged	complete
+crates/op-snowball/DESIGN.md	1-92 EOF	cdd087309770ff405fcdda2de608ffdeef7edaa431d3c68ce3945134448d805a	No native occurrence; unchanged	complete
+crates/op-snowball/REQUIREMENTS.md	1-81 EOF	3b6c12a3e4fb406e154e2c41af0a4c16fa54f81df3bb086139d2755ece4d09e8	No native occurrence; unchanged	complete
+crates/op-snowball/SPEC.md	1-53 EOF	a91b88bb45b7d8469468ec2793356a265e7b5efd9a4dc8f9b7b1a1c12933f496	No native occurrence; unchanged	complete
+crates/op-snowball/compare-op-snowball.md	1-16 EOF	181f5bf9cb044b86635c3b82d4bcd7c33a3eeb87cb1ca9d666f43f637de6827b	No native occurrence; unchanged	complete
+crates/op-snowball/src/btrfs_delta.rs	1-261 EOF	1009e13e2820814e96f067046b302755586c8d4a2d239ea696f486174e7da069	1 native occurrence retained; J1.delta retain confidence0.73	complete
+crates/op-snowball/src/btrfs_numa_integration.rs	1-260,261-504 EOF	fadef715d154a42278d4860ed8c18b502939697798b7a6d281476b7bee7ae682	No native occurrence; unchanged	complete
+crates/op-snowball/src/footprint.rs	1-170 EOF	d040c3b950495ac7d8b4b830e96e000c442d05ec4a545b33e9434752dfead738	No native occurrence; unchanged	complete
+crates/op-snowball/src/lib.rs	1-39 EOF	56fc881010e31b0083a02959dcf128d34b04a2e44a4158c0e66bb6b9f67d5b70	No native occurrence; unchanged	complete
+crates/op-snowball/src/replication.rs	1-260,261-500,501-616 EOF	a6975c0e992062bffd4db9dce089746122f717369f049954a04f03ed1e193315	13 native occurrences retained; J1.replication0.67 and J1.incremental_claim0.85	complete
+crates/op-snowball/src/retention.rs	1-153 EOF	ca11a90f6bfca9e8967d3cc1db196fe8931a2b37ccd25a1662096077c3784191	No native occurrence; unchanged	complete
+crates/op-snowball/src/snapshot.rs	1-158 EOF	a0fd347b97d506240158589dd8ca6fe4e97232d8540d5e20d4fb7289b7b5a8ee	No native occurrence; unchanged	complete
+crates/op-snowball/src/snowball.rs	1-260,261-520,521-780,781-1040,1041-1300,1301-1560,1561-1820,1821-2080,2081-2340,2341-2600,2601-2860,2861-3120,3121-3381 EOF	50b83b2b9a071ac49d6bbfab1ae7c550e4ad0ecd20e204c7fb282ab8c34986ac	14 native occurrences retained; J1.transfer_docs0.66,J1.fixtures0.95,J2.meaning1,J2.wording0.97; J1.storage_gate0.55 superseded	complete

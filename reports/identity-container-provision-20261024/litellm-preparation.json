@@ -1,0 +1,22 @@
+{
+  "format": "opdbus.seed-litellm.v1",
+  "litellm_version": "1.105.1",
+  "python_version": "3.14",
+  "python_platform": "x86_64-manylinux_2_28",
+  "created_at": "2026-10-25T03:10:34Z",
+  "uv": "uv 0.5.9",
+  "manifest_sha256": "bb9e8899445de8ff4f5e0eac1bc6238cb05785645f44e0d8d8152d20e5e4e3a9",
+  "credentials_included": false,
+  "guest_executed": false,
+  "activated": false,
+  "prepared_at": "2026-10-25T03:16:38Z",
+  "source_payload": "/opt/op-dbus/release-send/identity-container-provision-20261024-litellm-input",
+  "filesystem_uuid": "802bb381-26f4-4392-8ad7-3a9916aad351",
+  "status": "staged",
+  "enabled_offline": true,
+  "guest_boot_verified": false,
+  "activation_file": "/opt/run-mounts/persist/litellm/activation.env",
+  "activation_file_present": false,
+  "missing_key_action": "skip_without_failure",
+  "listen": "127.0.0.1:4000"
+}

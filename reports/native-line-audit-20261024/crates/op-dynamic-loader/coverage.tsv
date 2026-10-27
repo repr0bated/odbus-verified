@@ -1,0 +1,9 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-dynamic-loader/Cargo.toml	1-22 EOF	14de2f3264765b498e98645c6c18e548d624f31b867fadb3b7b561bf5b3fce31	No native occurrence; caller-supplied tool registry dependencies; unchanged	complete
+crates/op-dynamic-loader/SPEC.md	1-84 EOF	622a187e344165beef5c61dfabcfe8f4ca94b3599a1080193fe3a298fe783fb0	No native occurrence; historical op-core dependency drift G3; unchanged	complete
+crates/op-dynamic-loader/compare-op-dynamic-loader.md	1-73 EOF	6738d7414b416c04dc4feb0dd2cd50616c51243b308dd70ea1ac253a209481d6	No native occurrence; historical op-core dependency drift G3; unchanged	complete
+crates/op-dynamic-loader/src/dynamic_registry.rs	1-154 EOF	0eedbff6379255375e6bdf1274a8923cea939dfd9e3192c9fc6fc4ac9d2133eb	No native occurrence; tool-name LRU; generic strategy bypass G1 and TTL G2; JEV Q1/Q3; unchanged	complete
+crates/op-dynamic-loader/src/error.rs	1-19 EOF	fa2bd5cbd376af797cbc2fc7d37e587f15d983e1fb67675faf68a0049856737c	No native occurrence; typed generic loader errors; unchanged	complete
+crates/op-dynamic-loader/src/execution_aware_loader.rs	1-113 EOF	78b1c320fca58fd22e5e89148341c64d829926a4124f41a104236c61c82267e0	No native occurrence; forwards supplied name/context; generic TTL wording G2; JEV Q1; unchanged	complete
+crates/op-dynamic-loader/src/lib.rs	1-17 EOF	9ab4ffcca480038a4f045bfcac686cb0d73227f6908b3b5dd95638c8c41a3d14	No native occurrence; module exports only; unchanged	complete
+crates/op-dynamic-loader/src/loading_strategy.rs	1-103 EOF	bca5b46b84eb8028b7832cd1d3bc7734c80b90f97fde2fc85a954fe6a12de113	No native occurrence; history/critical-label heuristics not provider override; preserve systemd_status; JEV Q1/Q2/Q3; unchanged	complete

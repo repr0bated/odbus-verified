@@ -1,0 +1,15 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-mcp-aggregator/CLEANUP-CONTEXT-AWARE.md	1-74 EOF	a1419ff5abeaaf216273ec07011c9f8f8273132e2ba07e6d220e0bae867bd7f6	No native; historical cleanup claims disagree with present groups module; G2 report only	complete
+crates/op-mcp-aggregator/Cargo.toml	1-45 EOF	8be9ecc94cf02598ebed9f2d8ee25171ca3a7bddb20d27f9759a4e962d6b2b86	No native; no edit	complete
+crates/op-mcp-aggregator/README.md	1-228 EOF	c309e58e6daaa365a619436716734dea514bd07ffe9557db6bcdb0e8783c8c8f	No native; unsupported transport claims G2 report only	complete
+crates/op-mcp-aggregator/SPEC.md	1-95 EOF	02e415a3d0599279cd2dca09aad41840a3566d6cc3c0a47b516d66cce31d5dcf	No native; stale file/dependency inventory G2 report only	complete
+crates/op-mcp-aggregator/compare-op-mcp-aggregator.md	1-87 EOF	33d3bf4321801b296dc1f6b8729914c34dff22056fb1cade1b270311df925a61	No native; stale file/dependency inventory G2 report only	complete
+crates/op-mcp-aggregator/examples/aggregator.json	1-102 EOF	ec7a083a97d7264e06409d0556f872bef3ca8e8f71489f47de18963bbcc37a2b	No native; no edit	complete
+crates/op-mcp-aggregator/src/aggregator.rs	1-263;264-523;524-783;784-1042 EOF	8b89604d35cbebdfe89903fedd5f6fe9a1df1861b53cc66935764e943bc22fbf	No native; tool-presentation J1; generic wrapper distinction J2/G1; no edit	complete
+crates/op-mcp-aggregator/src/cache.rs	1-310 EOF	289ad1b4851db9aa371d7d2f53d7e930a919345efde4b687b82eeeaf1d8c2d1e	No native; no edit	complete
+crates/op-mcp-aggregator/src/client.rs	1-263;264-490 EOF	cd2e5ad95c84c0d61340f794bfe578c6f7a66378141b1b7a94a1a7e9660461ea	No native; unsupported transport rejection J3/G2; no edit	complete
+crates/op-mcp-aggregator/src/compact.rs	1-263;264-523;524-793 EOF	0e562514045b69a23b0d603470987cdbbc6c2c73941f87b187b9bce8e3b741ab	No native; generic wrapper distinction J2/G1; no edit	complete
+crates/op-mcp-aggregator/src/config.rs	1-263;264-523;524-747 EOF	321ff11d728e921dfb2516c7ba41ac9affcf7a5bf86809493ee5ee3488fa9813	No native; tool-presentation detection J1; no edit	complete
+crates/op-mcp-aggregator/src/groups.rs	1-263;264-523;524-783;784-1043;1044-1121 EOF	59ed08579bc90f86ec6f2e7c0129649327fcb0e8a8b93b728f489eab19c8dc16	No native; no edit	complete
+crates/op-mcp-aggregator/src/lib.rs	1-96 EOF	bba19cc4da9fdf26b88ee643cbf6bb8ab727806bdb8964fb81349dc3195556a0	No native; no edit	complete
+crates/op-mcp-aggregator/src/profile.rs	1-263;264-430 EOF	1c38cb218a4036de042db70fa303a0eade7c21c11174677e5e9d8cf54edca1ff	No native; no edit	complete

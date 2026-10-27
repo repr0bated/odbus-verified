@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024/op-runit-systemctl",
+  "crate": "op-runit-systemctl",
+  "status": "complete",
+  "files_reviewed": 5,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 1,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-runit-systemctl/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-runit-systemctl/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-runit-systemctl/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-runit-systemctl/judgments.md"],
+  "limitations": ["Initial mandatory preload omitted json-render skill lines 301-377; fully read in a supplemental pass, not backdated. Other 27 manifest paths had been read; coordinator identified this as the sole missing interval.", "No source gaps; coordinator-read-gaps.json reports all five files covered and no missing or column-limited lines.", "J2 after the supplemental read judges generic meaning as best-supported, but wording accuracy remains insufficient; no specific source correction supported.", "No Cargo/build/check/test/Clippy/fmt/smoke/runtime/deployment actions per assignment; live and deployed state unverified."],
+  "next_action": "Coordinator aggregates this completed static audit."
+}

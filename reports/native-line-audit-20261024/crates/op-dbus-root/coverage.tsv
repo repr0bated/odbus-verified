@@ -1,0 +1,7 @@
+path	inventory_sha256	lines_reviewed	occurrences	result	changed
+Cargo.toml	c5a0abe593552bd9e13ed301041a0eb9a085c16a49b58827f7718b00fec028c3	1-284/284	1	sequential review complete; Native description retained	no
+crates/bun.lock	435bbc20ce4015a8c74a0854fa941c3929017f7d907032094c0f94b81902792f	1-356/356; raw:110-270 re-read un-clipped	0	sequential review complete; full range confirms no additional native-word occurrence	no
+crates/package-lock.json	50e1cb7678d2dc9223098c9cfeebdccc98f4d27905549f7fa1ca73a7a1e41ac2	1-2094/2094	0	sequential review complete; no native-word occurrences	no
+crates/package.json	97071af20f8970f9e385d37acc7993607ecf059aa56986b03f2a802239a11cdf	1-5/5	0	sequential review complete; no native-word occurrences	no
+Cargo.lock	b25235b4001db8588835c1011a52f6ee5616decec5d72c3fc15177719b7e3956	1-9166/9166	11	sequential review complete; names retained exactly; no lockfile rewrite	no
+root src/	n/a	absent	0	not present in assigned repository path	no

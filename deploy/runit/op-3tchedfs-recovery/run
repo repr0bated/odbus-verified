@@ -1,0 +1,4 @@
+#!/bin/sh
+# op-dbus-release: application
+exec 2>&1
+exec /usr/local/libexec/op-dbus/helpers/recover-3tchedfs

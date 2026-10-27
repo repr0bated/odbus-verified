@@ -1,0 +1,2 @@
+# Guest runtime: CPython 3.14, x86_64 glibc; provider credentials are not inputs.
+litellm[proxy]==1.105.1

@@ -1,0 +1,7 @@
+# Findings — op-mcp tched audit
+
+1. **Ambiguous current-ID example generalized.** `crates/op-mcp/src/blob_schema.rs:53` used `tched_router` as an example `plugin_id`. The input is generic and resolves sealed blob filenames; it does not route through a tched-specific alias. Current-source naming and the coordinator's catalog note differ, and neither establishes current deployment. Replaced the concrete example with `Plugin id present in the sealed catalog.` The behavior and schema shape are unchanged.
+2. **`matched_methods` retained.** `crates/op-mcp/src/blob_schema.rs:240` returns method-name hits from the query as `matched_methods`. The substring is ordinary English, not product naming. JEV confidence 1.0 for meaning and retaining the key; no compatibility change.
+3. **Concurrent edit preserved.** `crates/op-mcp/src/cognitive_bridge.rs` had an uncommitted diff before this task's edits. Its current contents were read; no overlap or edit was attempted. This task's source change is limited to `blob_schema.rs`.
+
+No other case-insensitive `tched` substring was observed during the complete sequential reads of the assigned inventory. No compilation or tests were run; project assignment explicitly prohibits them and assigns builds to the coordinator. Runtime/catalog membership and deployment are not claimed.

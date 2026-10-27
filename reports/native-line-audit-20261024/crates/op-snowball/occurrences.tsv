@@ -1,0 +1,29 @@
+path	line_position	exact_token_context	intended_meaning	judgment_reference	jev_outcome_confidence	decision	change_status
+crates/op-snowball/src/btrfs_delta.rs	1:token1	Native btrfs delta primitives: generation numbers, `find-new` deltas, and	Btrfs-owned transaction metadata/CLI primitives	J1.delta	retain/0.73	retain	unchanged
+crates/op-snowball/src/replication.rs	8:token1	destination. Native receive errors are preserved, without remote cleanup.	Btrfs receive executable errors	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	40:token1	Returned only after the native sender and SSH receiver both succeed.	Btrfs kernel ioctl sender	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	84:token1	fn native_facts(file: &File) -> Result<SnapshotFacts>	Btrfs ioctl metadata helper	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	86:token1	source must be on a Btrfs filesystem (native filesystem-info ioctl)	Btrfs kernel filesystem-info ioctl	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	88:token1	read native Btrfs subvolume information	Btrfs kernel subvolume-info ioctl	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	121:token1	native snapshot name is not a safe single path component	Btrfs-reported subvolume name	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	139:token1	require source.parent_uuid == parent.uuid; the native send ioctl checks	Btrfs send ioctl incremental validation	J1.replication;J1.incremental_claim	retain/0.67;retain/0.85	retain	unchanged
+crates/op-snowball/src/replication.rs	305:token1	snapshots or deleting any source or destination. Native receive materializes	Btrfs receive executable materialization	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	328:token1	let source = prepare_with(&request.snapshot, native_facts)?;	Btrfs ioctl helper reference	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	332:token1	.map(|path| prepare_with(path, native_facts))	Btrfs ioctl helper reference	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	372:token1	native Btrfs send failed	Btrfs kernel send ioctl error	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	376:token1	let after = native_facts(&source.file)?;	Btrfs ioctl helper reference	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/replication.rs	390:token1	native Btrfs sender task failed	Blocking task performing kernel send ioctl	J1.replication	retain/0.67	retain	unchanged
+crates/op-snowball/src/snowball.rs	34:token1	All three received members are reported only after every native transfer	Prepared Btrfs transfers	J1.transfer_docs	retain/0.66	retain	unchanged
+crates/op-snowball/src/snowball.rs	677:token1	must be a complete local native triple already present remotely. Both	Btrfs snapshot triple rather than copied historical set	J1.transfer_docs	retain/0.66	retain	unchanged
+crates/op-snowball/src/snowball.rs	736:token1	remote chain root through the native prepared transfer.	Btrfs prepared-snapshot transfer	J1.transfer_docs	retain/0.66	retain	unchanged
+crates/op-snowball/src/snowball.rs	1750:token1	True for a complete native Btrfs triple; false for a complete historical	Three read-only Btrfs subvolumes rather than copied directories	J2.wording	retain/0.97	retain	unchanged
+crates/op-snowball/src/snowball.rs	1765:token1	let mut native = 0;	Count of Btrfs members	J2.meaning	btrfs_count/1	retain	unchanged
+crates/op-snowball/src/snowball.rs	1776:token1	native += 1;	Increment count of verified read-only Btrfs members	J2.meaning	btrfs_count/1	retain	unchanged
+crates/op-snowball/src/snowball.rs	1780:token1	native == 0 || native == 3,	Zero-Btrfs copied set boundary	J2.meaning	btrfs_count/1	retain	unchanged
+crates/op-snowball/src/snowball.rs	1780:token2	native == 0 || native == 3,	Three-Btrfs complete set boundary	J2.meaning	btrfs_count/1	retain	unchanged
+crates/op-snowball/src/snowball.rs	1783:token1	Ok(native == 3)	Return true only for all-three-Btrfs set	J2.meaning	btrfs_count/1	retain	unchanged
+crates/op-snowball/src/snowball.rs	2320:token1	deleted by Btrfs retention. Only complete native triples are owned	Btrfs lifecycle retention ownership excludes historical copies	J2.wording	retain/0.97	retain	unchanged
+crates/op-snowball/src/snowball.rs	2752:token1	async fn failed_native_set_deletion_withdraws_commit_before_touching_members()	Btrfs set-deletion fixture identifier	J1.fixtures	retain/0.95	retain	unchanged
+crates/op-snowball/src/snowball.rs	2889:token1	async fn active_transfer_pin_prevents_native_snapshot_pruning()	Btrfs transfer-pinning fixture identifier	J1.fixtures	retain/0.95	retain	unchanged
+crates/op-snowball/src/snowball.rs	2907:token1	#[ignore = "native Btrfs send/receive requires root; isolated fixture deletes only its own subvolumes"]	Btrfs CLI send/receive fixture prerequisite	J1.fixtures	retain/0.95	retain	unchanged
+crates/op-snowball/src/snowball.rs	2908:token1	async fn native_snapshot_triple_send_receive_round_trip()	Btrfs triple round-trip fixture identifier	J1.fixtures	retain/0.95	retain	unchanged

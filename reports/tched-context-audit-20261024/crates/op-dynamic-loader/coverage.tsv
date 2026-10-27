@@ -1,0 +1,9 @@
+path	listed_lines	read_ranges	status	tched_occurrences
+crates/op-dynamic-loader/Cargo.toml	22	1-22	read-through-EOF	0
+crates/op-dynamic-loader/SPEC.md	84	1-84	read-through-EOF	0
+crates/op-dynamic-loader/compare-op-dynamic-loader.md	73	1-73	read-through-EOF	0
+crates/op-dynamic-loader/src/dynamic_registry.rs	154	1-154	read-through-EOF	0
+crates/op-dynamic-loader/src/error.rs	19	1-19	read-through-EOF	0
+crates/op-dynamic-loader/src/execution_aware_loader.rs	113	1-113	read-through-EOF	0
+crates/op-dynamic-loader/src/lib.rs	17	1-17	read-through-EOF	0
+crates/op-dynamic-loader/src/loading_strategy.rs	103	1-103	read-through-EOF	0

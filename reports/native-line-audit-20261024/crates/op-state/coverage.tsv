@@ -1,0 +1,13 @@
+path	sequential_ranges_read	initial_sha256	finding/action	status
+crates/op-state/Cargo.toml	1-36	1c3aa07a8322d8b66fdcad7b311bb1a985538ada8c921e9659d7c935c520d095	No native occurrence observed	complete
+crates/op-state/SPEC.md	1-104	3ce748bfba45bfedda7aa01d363f063b1cfe4cae7ae09552ff05b17dd6accb15	No native occurrence observed	complete
+crates/op-state/compare-op-state.md	1-100	66cb9a0e2e8d01db747cfd046daacf55292d3a1e0cfba46594611ec47d97128f	No native occurrence observed	complete
+crates/op-state/src/authority.rs	1-50	26532479496a5658b85fa5a379b7ebb033d8a1858574c8fcbb6ccef179893f2d	No native occurrence observed	complete
+crates/op-state/src/crypto.rs	1-363; exact raw reads 1-125,126-250,251-363	ed472f54770965bd41f75d15f9a63c6bf6a67089a51b10f81f3323e4673b6c5a	No native occurrence observed	complete
+crates/op-state/src/dbus_plugin_base.rs	1-336; exact raw reads 1-120,121-240,241-336	be9251ce25af8bb9c093b9d03b216cde2c108de0ccc5f28c81ba11002d3b8dec	No native occurrence observed	complete
+crates/op-state/src/dbus_server.rs	1-64	f0cb4bcf294f9567245fa7dd4cd363d07e3c1213cd7b9904fa46c3dd0d406c23	No native occurrence observed	complete
+crates/op-state/src/lib.rs	1-50	61bd4d525cbf36f18804c81aa9c1a9b2252c80a15d7b4868553c48606870f95e	No native occurrence observed	complete
+crates/op-state/src/plugin.rs	1-306	00cbf85acc38d2eda5746e769d1cd931d96aa82ce6dce0c56463f7474f2514b2	No native occurrence observed	complete
+crates/op-state/src/plugin_workflow.rs	1-434	deeb7c4489fe6eca3d63e82243c93462ccfe0323263bc0b7f511af83a0303e24	No native occurrence observed	complete
+crates/op-state/src/plugtree.rs	1-112	6f3ec4d5b1e7062012054ce58564c7347c518551c778702db6c8c4f84e3720ca	No native occurrence observed	complete
+crates/op-state/src/schema_validator.rs	1-319	835adc3e64c39d20d69027e0c41e1a01d21968c2c0c849a201610b1bcbc5ad9a	No native occurrence observed	complete

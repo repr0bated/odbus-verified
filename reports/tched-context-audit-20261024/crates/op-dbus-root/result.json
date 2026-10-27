@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-dbus-root",
+  "status": "complete",
+  "files_reviewed": ["Cargo.lock", "Cargo.toml", "crates/bun.lock", "crates/package-lock.json", "crates/package.json"],
+  "files_pending": [],
+  "changed_files": ["Cargo.toml"],
+  "occurrence_count": 5,
+  "findings_report": "findings.md",
+  "coverage_report": "coverage.tsv",
+  "occurrences_report": "occurrences.tsv",
+  "jev_receipts": ["judgments.md"],
+  "limitations": ["Static-only review; task prohibited Cargo/build/check/test/Clippy/fmt/smoke/runtime/deploy actions.", "No member crate source or runtime state inspected.", "Cargo.toml BEFORE copy is exact affected hunk only, not byte-exact full file; see /var/tmp/tched-context-audit-20261024/BEFORE/Cargo.toml.comments.txt."],
+  "next_action": "Coordinator may reconcile the root Cargo.toml comment correction; no remaining in-scope action."
+}

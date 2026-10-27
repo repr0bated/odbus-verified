@@ -1,0 +1,15 @@
+path	inventory_lines	status	read_receipt	occurrences
+crates/op-mcp-aggregator/CLEANUP-CONTEXT-AWARE.md	74	complete	Read raw full file 1-74	0
+crates/op-mcp-aggregator/Cargo.toml	45	complete	Read raw full file 1-45	0
+crates/op-mcp-aggregator/README.md	228	complete	Read raw 1-228 in 1-200 and 201-228	0
+crates/op-mcp-aggregator/SPEC.md	95	complete	Read raw full file 1-95	0
+crates/op-mcp-aggregator/compare-op-mcp-aggregator.md	87	complete	Read raw full file 1-87	0
+crates/op-mcp-aggregator/examples/aggregator.json	102	complete	Read raw full file 1-102	0
+crates/op-mcp-aggregator/src/aggregator.rs	1042	complete	Read raw ranges 1-300, 301-600, 601-900, 901-1042	0
+crates/op-mcp-aggregator/src/cache.rs	310	complete	Read raw full file 1-310	0
+crates/op-mcp-aggregator/src/client.rs	490	complete	Read raw ranges 1-300, 301-490	0
+crates/op-mcp-aggregator/src/compact.rs	793	complete	Read raw ranges 1-300, 301-600, 601-793	0
+crates/op-mcp-aggregator/src/config.rs	747	complete	Read raw ranges 1-300, 301-600, 601-747; exact contextual rereads 500-535 and 535-560	2
+crates/op-mcp-aggregator/src/groups.rs	1121	complete	Read raw ranges 1-300, 301-600, 601-900, 901-1121	0
+crates/op-mcp-aggregator/src/lib.rs	96	complete	Read raw full file 1-96	0
+crates/op-mcp-aggregator/src/profile.rs	430	complete	Read ranges 1-300, 301-430; complete through EOF	0

@@ -10,7 +10,7 @@ use super::embedding_model::methods::{
     EmbedInput, EmbedOutput, EmbeddingInputType, EmbeddingProvider,
 };
 use super::runtime_documents::RuntimeDocuments;
-use super::tched_router::{MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES};
+use super::chat_router::{MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES};
 use anyhow::{Context, Result, ensure};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -134,7 +134,7 @@ pub fn build_completed_chat_episode(
         decision_output: Some(input.decision_output),
         outcome_class: OutcomeClass::Inconclusive,
         confidence: None,
-        plugin_id: Some("tched_router".into()),
+        plugin_id: Some("chat_router".into()),
         conversation_id: input.conversation_id,
         content_hash: String::new(),
         pii_flagged: true,

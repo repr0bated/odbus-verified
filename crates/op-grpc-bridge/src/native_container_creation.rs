@@ -33,7 +33,7 @@ async fn admit(engine: &MutationEngine, request: &NativeCreationRequest) -> Resu
         let body: Value = serde_json::from_str(&request.request_json)?;
         let key = crate::identity_sled_dispatch::configured_chatbot_key()
             .context("reserved chatbot key is not configured")?;
-        ensure!(name == "3tchedCtlChatbot" && request.owner_kind == "identity"
+        ensure!(name == "zeroclawCtlChatbot" && request.owner_kind == "identity"
             && request.logical_target == op_identity::session::derive_session_id(&key)
             && crate::identity_sled_dispatch::control_plane_chatbot_session_id().as_deref()
                 == Some(request.logical_target.as_str())

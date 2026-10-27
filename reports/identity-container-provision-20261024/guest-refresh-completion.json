@@ -1,0 +1,13 @@
+{
+  "status": "complete",
+  "exit_code": 0,
+  "last_phase": "complete",
+  "at": "2026-10-25T02:47:11Z",
+  "retention": "/var/lib/cargo-build/staging/identity-container-provision-20261024-guest-refresh.2vweWyCp",
+  "prior_readonly_flags_restored": true,
+  "automatic_retry": false,
+  "sealed": false,
+  "guest_boot_verified": false,
+  "image_metadata_created": false,
+  "identity_created": false
+}

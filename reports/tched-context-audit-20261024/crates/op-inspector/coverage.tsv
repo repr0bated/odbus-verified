@@ -1,0 +1,9 @@
+path	inventory_lines	read_ranges	read_status	case_insensitive_tched_occurrences
+crates/op-inspector/ADAPTER-WORKFLOW.md	383	1-150,154-303,304-383	complete_through_EOF	0
+crates/op-inspector/Cargo.toml	24	1-23,24	complete_through_EOF	0
+crates/op-inspector/SPEC.md	81	1-81	complete_through_EOF	0
+crates/op-inspector/compare-op-inspector.md	75	1-75	complete_through_EOF	0
+crates/op-inspector/src/gcloud.rs	670	1-180,181-360,361-540,541-670	complete_through_EOF	0
+crates/op-inspector/src/introspective_gadget.rs	1100	1-200,201-400,401-600,601-800,801-1000,1001-1100	complete_through_EOF	0
+crates/op-inspector/src/lib.rs	43	1-43	complete_through_EOF	0
+crates/op-inspector/src/runit.rs	529	1-180,181-360,361-529	complete_through_EOF	0

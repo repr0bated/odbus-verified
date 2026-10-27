@@ -1,0 +1,8 @@
+model_list:
+  - model_name: jev
+    litellm_params:
+      model: typesafe/jev-latest
+      api_key: os.environ/TYPESAFE_API_KEY
+
+litellm_settings:
+  telemetry: false

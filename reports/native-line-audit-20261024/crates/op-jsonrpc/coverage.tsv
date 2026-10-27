@@ -1,0 +1,8 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-jsonrpc/Cargo.toml	1-16 EOF	1a05efa1491ab377b8a477d4bd9ba8e93364befed927b1432ee171e905c07455	zero native occurrences; transport dependencies J1	complete
+crates/op-jsonrpc/SPEC.md	1-220;221-414 EOF	36e3c3f27b7dc603bf989b82be9edd0254c841ea067b8c99730875f42f45d762	zero native occurrences; generic stale API/NonNet claims report-only J3	complete
+crates/op-jsonrpc/compare-op-jsonrpc.md	1-63 EOF	49585736eef73e550a99ba8db90ba3770b67e1afa2a099c5b8366eeae55d95ad	zero native occurrences; generic stale inventory report-only J3	complete
+crates/op-jsonrpc/src/lib.rs	1-19 EOF	1b678d65495020025de7f56a078b97e336a67b2586ba665bf00cb26afda2d0b2	zero native occurrences; stale NonNet description report-only J3	complete
+crates/op-jsonrpc/src/ovsdb.rs	1-240;241-480;481-697 EOF	fd22ba0329deecee965c0855f671524ad99d7289c422a1dfdfa5d3158bb61791	zero native occurrences; database transport not AI routing J1; unchanged	complete
+crates/op-jsonrpc/src/protocol.rs	1-144 EOF	34ed0001fe7ada592d964dbcd81ea969ac0c099ab8685086e0e36192f42e1f86	zero native occurrences; request/response types unchanged	complete
+crates/op-jsonrpc/src/server.rs	1-220;221-365 EOF	20a543c549ac2c8638754abba5dd4ec0d0a705546e834ff3873fb1a3a8c5fd1e	zero native occurrences; transport J1 and reserved mutation admission J2 unchanged	complete

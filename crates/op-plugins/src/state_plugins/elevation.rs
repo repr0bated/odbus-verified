@@ -55,7 +55,7 @@ pub struct ProtectedAction {
 pub fn protected_actions() -> Vec<ProtectedAction> {
     let router = |action: &str, methods: &[&str], description: &str| ProtectedAction {
         action_id: action.into(),
-        plugin: "tched_router".into(),
+        plugin: "chat_router".into(),
         methods: methods.iter().map(|m| m.to_string()).collect(),
         description: description.into(),
     };
@@ -120,17 +120,17 @@ pub fn protected_action(plugin: &str, method: &str, args: &JsonValue) -> Option<
     match (plugin, method) {
         ("json_render", "promote_candidate") => Some(CATALOG_PROMOTE),
         ("json_render", "retire_catalog_entry") => Some(CATALOG_RETIRE),
-        ("tched_router", "config_migrate") => Some(ROUTER_CONFIG_MIGRATE),
-        ("tched_router", "config_set") => match args.get("path").and_then(JsonValue::as_str) {
+        ("chat_router", "config_migrate") => Some(ROUTER_CONFIG_MIGRATE),
+        ("chat_router", "config_set") => match args.get("path").and_then(JsonValue::as_str) {
             Some(path) => config_area(path, false),
             None => Some(CONTROL_PLANE_CONFIGURE),
         },
-        ("tched_router", "config_init") => match args.get("section") {
+        ("chat_router", "config_init") => match args.get("section") {
             None | Some(JsonValue::Null) => Some(CONTROL_PLANE_CONFIGURE),
             Some(JsonValue::String(section)) => config_area(section, false),
             Some(_) => Some(CONTROL_PLANE_CONFIGURE),
         },
-        ("tched_router", "config_patch" | "PatchConfig") => {
+        ("chat_router", "config_patch" | "PatchConfig") => {
             let Some(operations) = args.get("operations").and_then(JsonValue::as_array) else {
                 return Some(CONTROL_PLANE_CONFIGURE);
             };
@@ -372,7 +372,7 @@ mod tests {
     fn control_plane_and_provider_changes_are_protected() {
         let set = |path: &str| {
             protected_action(
-                "tched_router",
+                "chat_router",
                 "config_set",
                 &json!({"path": path, "value": "x"}),
             )
@@ -391,7 +391,7 @@ mod tests {
         assert_eq!(set("agents.dashboard.model_provider"), None);
         assert_eq!(set("gateway.request_timeout_secs"), None);
         assert_eq!(
-            protected_action("tched_router", "config_set", &json!({"value": 1})),
+            protected_action("chat_router", "config_set", &json!({"value": 1})),
             Some(CONTROL_PLANE_CONFIGURE),
             "a malformed call is treated as protected"
         );
@@ -400,7 +400,7 @@ mod tests {
     #[test]
     fn patches_are_protected_when_any_operation_reaches_an_area() {
         let patch = |ops: JsonValue| {
-            protected_action("tched_router", "PatchConfig", &json!({"operations": ops}))
+            protected_action("chat_router", "PatchConfig", &json!({"operations": ops}))
         };
         assert_eq!(
             patch(
@@ -421,30 +421,30 @@ mod tests {
         );
         assert_eq!(
             protected_action(
-                "tched_router",
+                "chat_router",
                 "config_patch",
                 &json!({"operations": [{"op": "remove", "path": "/agents/control_plane"}]})
             ),
             Some(CONTROL_PLANE_CONFIGURE)
         );
         assert_eq!(
-            protected_action("tched_router", "config_init", &json!({})),
+            protected_action("chat_router", "config_init", &json!({})),
             Some(CONTROL_PLANE_CONFIGURE)
         );
         assert_eq!(
             protected_action(
-                "tched_router",
+                "chat_router",
                 "config_init",
                 &json!({"section": "gateway"})
             ),
             None
         );
         assert_eq!(
-            protected_action("tched_router", "config_migrate", &json!({})),
+            protected_action("chat_router", "config_migrate", &json!({})),
             Some(ROUTER_CONFIG_MIGRATE)
         );
         assert_eq!(
-            protected_action("tched_router", "SetSelection", &json!({})),
+            protected_action("chat_router", "SetSelection", &json!({})),
             None
         );
     }
@@ -472,7 +472,7 @@ mod tests {
     #[test]
     fn authorize_input_names_a_protected_task_and_a_password() {
         let input = AuthorizeTaskInput {
-            plugin: "tched_router".into(),
+            plugin: "chat_router".into(),
             method: "config_set".into(),
             args: json!({"path": "agents.control_plane.model_provider", "value": "opencode.go_x"}),
             password: "secret".into(),

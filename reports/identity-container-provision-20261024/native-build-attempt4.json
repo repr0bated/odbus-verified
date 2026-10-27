@@ -1,0 +1,11 @@
+{
+  "task": "identity-container-provision-20261024",
+  "phase": "complete",
+  "exit": 0,
+  "completed_at": "2026-10-25T00:52:33Z",
+  "target": "x86_64-unknown-linux-gnu",
+  "upstream_modified": false,
+  "installed": false,
+  "deployed": false,
+  "tested": false
+}

@@ -1,0 +1,23 @@
+{
+  "image": "/run/mounts/seed-3tched/seed.img",
+  "image_loop": "/dev/loop1",
+  "image_bytes": 42949672960,
+  "outer_lv_bytes": 42949672960,
+  "root_partition_bytes": 11849957376,
+  "root_btrfs_device_bytes": 11849957376,
+  "minimum_bytes": 10776215552,
+  "headroom_bytes": 1073741824,
+  "patch_start_sector": 41945088,
+  "patch_sectors": 41940959,
+  "patch_at_empty_writable": true,
+  "patch_mounted": false,
+  "patch_sha256": "36925297daab668e82eab9593d17907eeb5eb542f3676663b8b662218b4aa8c5",
+  "allocated_image_bytes": 8736583680,
+  "gap_bytes": 9624879104,
+  "gap_punched": false,
+  "resize_receipts": "/var/tmp/identity-container-storage-shrink-20261025.gSyp8Vzb/state",
+  "readonly_inspection_option": "rescue=nologreplay",
+  "sealed": false,
+  "guest_boot_verified": false,
+  "identity_created": false
+}

@@ -179,7 +179,7 @@ impl PinnedCanvasValidator {
             ensure!(
                 !matches!(
                     component.name.as_str(),
-                    "antigravityChatContainer" | "tchedRouterPicker" | "pageHeader" | "chatMessage"
+                    "antigravityChatContainer" | "chatRouterPicker" | "pageHeader" | "chatMessage"
                 ),
                 "host shell component cannot appear in generated Canvas"
             );

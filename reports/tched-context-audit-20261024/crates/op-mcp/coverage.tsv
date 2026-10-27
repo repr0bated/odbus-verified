@@ -1,0 +1,28 @@
+path	lines	status	sequential_read_ranges	notes
+crates/op-mcp/AGENTS.md	43	complete	1-43	Crate scope boundary; no tched occurrence.
+crates/op-mcp/Cargo.toml	58	complete	1-58	Manifest.
+crates/op-mcp/README.md	139	complete	1-138;139	No tched occurrence.
+crates/op-mcp/SPEC.md	133	complete	1-133	No tched occurrence; stale/general spec descriptions not changed under task scope.
+crates/op-mcp/build.rs	29	complete	1-29	No tched occurrence.
+crates/op-mcp/compare-op-mcp.md	122	complete	1-122	No tched occurrence.
+crates/op-mcp/docs/ARCHITECTURE.md	134	complete	1-134	No tched occurrence.
+crates/op-mcp/proto/internal_agents.proto	351	complete	1-120;121-240;241-351	No tched occurrence.
+crates/op-mcp/proto/mcp.proto	232	complete	1-120;121-232	No tched occurrence.
+crates/op-mcp/src/agents_server.rs	410	complete	1-140;141-280;281-410	No tched occurrence.
+crates/op-mcp/src/blob_schema.rs	397	complete	1-140;141-280;281-397	Two occurrences; full pre-edit file read. One-line edit afterward; exact before hunk saved.
+crates/op-mcp/src/cognitive_bridge.rs	256	complete	1-140;141-256	Read current working tree after a pre-existing concurrent diff was observed; no changes made by this task.
+crates/op-mcp/src/compact.rs	661	complete	1-170;171-340;341-510;511-661	No tched occurrence.
+crates/op-mcp/src/external_client.rs	783	complete	1-160;161-320;321-480;481-640;641-783	No tched occurrence.
+crates/op-mcp/src/grpc/client.rs	313	complete	1-160;161-313	No tched occurrence.
+crates/op-mcp/src/grpc/mod.rs	37	complete	1-37	No tched occurrence.
+crates/op-mcp/src/grpc/server.rs	317	complete	1-160;161-317	No tched occurrence.
+crates/op-mcp/src/grpc/service.rs	737	complete	1-150;151-300;301-450;451-737	No tched occurrence.
+crates/op-mcp/src/lib.rs	106	complete	1-106	No tched occurrence.
+crates/op-mcp/src/protocol.rs	209	complete	1-209	No tched occurrence.
+crates/op-mcp/src/resources.rs	157	complete	1-157	No tched occurrence.
+crates/op-mcp/src/server.rs	867	complete	1-180;181-360;361-540;541-700;701-867	No tched occurrence.
+crates/op-mcp/src/tool_registry.rs	423	complete	1-180;181-300;301-423	No tched occurrence.
+crates/op-mcp/src/transport/http.rs	750	complete	1-150;151-300;301-450;451-600;601-750	No tched occurrence.
+crates/op-mcp/src/transport/mod.rs	48	complete	1-48	No tched occurrence.
+crates/op-mcp/src/transport/stdio.rs	64	complete	1-64	No tched occurrence.
+crates/op-mcp/src/transport/websocket.rs	197	complete	1-120;121-197	No tched occurrence.

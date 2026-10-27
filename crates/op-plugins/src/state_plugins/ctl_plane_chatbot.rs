@@ -15,6 +15,7 @@ use op_state::{
     ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateAction, StateDiff, StatePlugin,
 };
 use op_state_store::PluginSchema;
+use crate::state_plugins::chat_router::{ChatInput, ChatMessage, ChatOutput};
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;
@@ -933,6 +934,16 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
             "mut.service.ctl-plane-chatbot.vectorize@v1",
         ),
     );
+    schema.methods.insert(
+        "Chat".to_string(),
+        method_decl_from_schemars_with_output::<ChatInput, ChatOutput>(
+            "Chat",
+            SideEffect::Mutation,
+            false,
+            "chatbot.invoke",
+            "mut.service.ctl-plane-chatbot.chat@v1",
+        ),
+    );
 
     schema.dependencies.push("embedding_model".to_string());
 
@@ -948,7 +959,7 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
         "chatbot.invoke".to_string(),
         op_state_store::CapabilityDecl {
             id: "chatbot.invoke".to_string(),
-            description: "Grants: set_config, classify_significance, vectorize.".to_string(),
+            description: "Grants: set_config, classify_significance, vectorize, Chat.".to_string(),
         },
     );
 
@@ -973,6 +984,7 @@ mod tests {
             "query_context",
             "classify_significance",
             "vectorize",
+            "Chat",
         ] {
             let declaration = &schema.methods[method];
             assert!(declaration.returns.is_some());

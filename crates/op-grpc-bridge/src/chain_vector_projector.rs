@@ -306,14 +306,14 @@ mod tests {
         use crate::human_principal_dispatch::tests::temp_shm_with_schemas;
         use op_state::StatePlugin as _;
         let _shm = temp_shm_with_schemas(&[
-            op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
+            op_plugins::state_plugins::chat_router::ChatRouterPlugin::new()
                 .schema()
                 .unwrap(),
         ]);
         let catalog = crate::sealed_schema_reader::blob_catalog_dir_from_env();
         let policy = SchemaProjectionPolicy::new(catalog);
         let block = block(
-            "tched_router",
+            "chat_router",
             "Chat",
             serde_json::json!({
                 "message": "restart the emqx broker",

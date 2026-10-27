@@ -49,12 +49,12 @@ pub async fn llm_status_handler(
     let mut provider = state.chat_manager.current_provider().await.to_string();
     let mut model = state.chat_manager.current_model().await;
     if let Some((selected_provider, selected_model)) =
-        crate::tched_router_routes::selected_provider_model()
+        crate::chat_router_routes::selected_provider_model()
             .await
             .map_err(|error| {
                 (
                     StatusCode::SERVICE_UNAVAILABLE,
-                    format!("committed tched_router state unavailable: {error}"),
+                    format!("committed chat_router state unavailable: {error}"),
                 )
             })?
     {

@@ -40,7 +40,7 @@ pub async fn list_agents_handler(
     let registry = state.agent_registry.read().await;
     let agents = registry.list_instances().await;
     drop(registry);
-    let workflows = crate::tched_router_routes::read_workflows_summaries()
+    let workflows = crate::chat_router_routes::read_workflows_summaries()
         .await
         .map_err(|error| (StatusCode::BAD_GATEWAY, json_error(&error.to_string())))?;
     Ok(ResponseJson(
@@ -111,7 +111,7 @@ pub async fn spawn_agent_handler(
     ResponseJson(request): ResponseJson<SpawnAgentRequest>,
 ) -> Result<ResponseJson<Value>, (StatusCode, ResponseJson<Value>)> {
     info!(agent_type = %request.agent_type, "sealed agent workload requested");
-    let identity = crate::handlers::tched_router::ghostbridge_metadata(&headers)
+    let identity = crate::handlers::chat_router::ghostbridge_metadata(&headers)
         .map_err(|refusal| (refusal_status(&refusal), refusal_body(&refusal)))?;
     let config = request.config.clone().unwrap_or_else(|| json!({}));
     let steps = config.get("steps");
@@ -200,7 +200,7 @@ pub async fn agent_task_handler(
             }
         }
     };
-    let identity = crate::handlers::tched_router::ghostbridge_metadata(&headers)
+    let identity = crate::handlers::chat_router::ghostbridge_metadata(&headers)
         .map_err(|refusal| (refusal_status(&refusal), refusal_body(&refusal)))?;
     let mut arguments = json!({});
     if let Some(path) = request.path {

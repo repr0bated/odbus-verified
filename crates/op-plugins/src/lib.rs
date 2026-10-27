@@ -99,7 +99,7 @@ pub mod prelude {
         MailServerPlugin, McpStatePlugin, MemoryPlugin, NetStatePlugin, OpenFlowObfuscationPlugin,
         OpenFlowPlugin, OvsBridgePlugin, PackageKitPlugin, PciDeclPlugin, ProcfsPlugin,
         ProxyServerPlugin, RovsCommandsPlugin, RtnetlinkPlugin, SchemaRendererPlugin,
-        ServicePlugin, SessDeclPlugin, SoftwarePlugin, TchedRouterPlugin, ToolDefinition,
+        ServicePlugin, SessDeclPlugin, SoftwarePlugin, ChatRouterPlugin, ToolDefinition,
         UnixSocketPlugin, UsersPlugin, WebUiPlugin, WgOpdbusPlugin, WireGuardPlugin,
         WorkflowsPlugin,
     };

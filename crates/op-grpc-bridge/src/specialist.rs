@@ -6,7 +6,7 @@
 //! [`op_agents::dynamic::PieceLibrary`]; this module scopes it to the verified
 //! caller, adds what the session already knows (namespace memory, activity
 //! signals, pending knowledge pushes), composes the persona, and completes it
-//! through `tched_router.Chat`'s guarded native path. The assembled persona
+//! through `chat_router.Chat`'s guarded native path. The assembled persona
 //! (piece ids and sources) is returned with the answer so the decision is
 //! auditable, and the call is recorded as session activity so the context
 //! engine can follow up.
@@ -21,7 +21,7 @@ use op_cognitive::memory_store::EntryQuery;
 use op_plugins::state_plugins::cognitive::{
     SpecialistInput, SpecialistOutput, SpecialistPersona,
 };
-use op_plugins::state_plugins::tched_router::{ChatInput, TchedChatMessage};
+use op_plugins::state_plugins::chat_router::{ChatInput, ChatMessage};
 use op_state_store::PluginSchema;
 use tokio::sync::RwLock;
 
@@ -62,11 +62,11 @@ struct SpecialistGenerationAdmission {
     authority_plugin: &'static str,
     authority_method: String,
     capability: String,
-    facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+    facade_origin: Option<crate::chat_router_admission::FacadeOrigin>,
     sealed_identity: String,
 }
 
-impl crate::tched_router_generation_native::NativeGenerationAdmission
+impl crate::chat_router_generation::NativeGenerationAdmission
     for SpecialistGenerationAdmission
 {
     fn sealed_identity(&self) -> Option<&str> {
@@ -80,21 +80,21 @@ impl crate::tched_router_generation_native::NativeGenerationAdmission
             dyn Future<
                     Output = Result<
                         (),
-                        crate::tched_router_generation_native::NativeGenerationError,
+                        crate::chat_router_generation::NativeGenerationError,
                     >,
                 > + Send
                 + '_,
         >,
     > {
         Box::pin(async move {
-            let caller = crate::tched_router_admission::RouterCaller {
+            let caller = crate::chat_router_admission::RouterCaller {
                 actor: self.actor.clone(),
                 capability: Some(self.capability.clone()),
                 session: Some(self.session.clone()),
                 genesis: Some(self.genesis.clone()),
             };
             let check = async {
-                crate::tched_router_admission::readmit_call(
+                crate::chat_router_admission::readmit_call(
                     &self.engine,
                     &self.schema,
                     self.authority_plugin,
@@ -108,8 +108,8 @@ impl crate::tched_router_generation_native::NativeGenerationAdmission
                 anyhow::Ok(())
             };
             check.await.map_err(|_| {
-                crate::tched_router_generation_native::NativeGenerationError::Terminal(
-                    crate::tched_router_generation_native::NativeErrorCode::Auth,
+                crate::chat_router_generation::NativeGenerationError::Terminal(
+                    crate::chat_router_generation::NativeErrorCode::Auth,
                 )
             })
         })
@@ -122,7 +122,7 @@ pub(crate) fn generation_admission(
     caller: CognitiveCaller<'_>,
     authority_plugin: &'static str,
     authority_method: &str,
-) -> anyhow::Result<Arc<dyn crate::tched_router_generation_native::NativeGenerationAdmission>> {
+) -> anyhow::Result<Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>> {
     generation_admission_with_origin(
         engine,
         schema,
@@ -139,8 +139,8 @@ pub(crate) fn generation_admission_with_origin(
     caller: CognitiveCaller<'_>,
     authority_plugin: &'static str,
     authority_method: &str,
-    facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
-) -> anyhow::Result<Arc<dyn crate::tched_router_generation_native::NativeGenerationAdmission>> {
+    facade_origin: Option<crate::chat_router_admission::FacadeOrigin>,
+) -> anyhow::Result<Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>> {
     let capability = schema
         .methods
         .get(authority_method)
@@ -286,13 +286,13 @@ async fn consult_input(
         .and_then(|method| method.required_capability.as_deref())
         .context("specialist authority method has no exact capability")?;
     let _selection_guard =
-        crate::tched_router_runtime::TchedRouterRuntimeClient::selection_guard().await;
-    crate::tched_router_admission::readmit_call(
+        crate::chat_router_runtime::ChatRouterRuntimeClient::selection_guard().await;
+    crate::chat_router_admission::readmit_call(
         engine,
         admitted_schema,
         "cognitive",
         authority_method,
-        &crate::tched_router_admission::RouterCaller {
+        &crate::chat_router_admission::RouterCaller {
             actor: caller.actor_id.to_owned(),
             capability: Some(capability.to_owned()),
             session: caller.session_id.map(str::to_owned),
@@ -397,11 +397,11 @@ async fn consult_input(
         persona.name.clone()
     };
     route.input.messages = vec![
-        TchedChatMessage {
+        ChatMessage {
             role: "system".into(),
             content: system_prompt,
         },
-        TchedChatMessage {
+        ChatMessage {
             role: "user".into(),
             content: format!("[{}] {question}", operation_name(&input)),
         },
@@ -436,7 +436,7 @@ async fn consult_input(
         sources.push(format!("catalog_agent:{agent_type}"));
     }
     if let Some(routing) = output.usage.get("routing") {
-        sources.push(format!("tched_router.routing:{routing}"));
+        sources.push(format!("chat_router.routing:{routing}"));
     }
     let result = SpecialistOutput {
         answer: output.content,

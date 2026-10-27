@@ -2,7 +2,7 @@
 //! The owner context is not reconstructed from prompt/job fields. An optional
 //! facade origin carries only original schema evidence, never extra authority.
 use anyhow::{Context, Result};
-use op_plugins::state_plugins::tched_router::generation::GenerationOwner;
+use op_plugins::state_plugins::chat_router::generation::GenerationOwner;
 use op_state_store::PluginSchema;
 use std::{
     path::{Path, PathBuf},
@@ -17,7 +17,7 @@ use crate::{
     sealed_schema_reader::{ManifestPinnedSchemaDocument, read_manifest_pinned_catalog},
 };
 
-pub(crate) const PLUGIN: &str = "tched_router";
+pub(crate) const PLUGIN: &str = "chat_router";
 
 #[derive(Clone)]
 pub(crate) struct GenerationOrigin {

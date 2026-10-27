@@ -1,0 +1,27 @@
+{
+  "plugin_id": "notebooklm",
+  "method": "notebook_query_status",
+  "subid": "obs.service.plugin.notebooklm.query.status@v1",
+  "required_capability": "notebooklm.read",
+  "side_effect": "read",
+  "idempotent": true,
+  "result": {
+    "success": true,
+    "event_id": 7249,
+    "event_hash": "aa5fffb684447ebd4c6dd7f5b5440490",
+    "plugin_id": "notebooklm",
+    "method": "notebook_query_status",
+    "result": {
+      "query_id": "648b7e90-3bc6-4ca8-b252-3f73e7eef89d",
+      "notebook_id": "c5c7f347-77cd-464d-bb02-50f422a74df4",
+      "expires_at": 1792886453,
+      "state": "failed",
+      "result": null,
+      "failure": "timed_out"
+    },
+    "operation_id": "da5836c7-46a2-4cd5-aaf3-233fb4839fdc",
+    "outcome": "completed",
+    "terminal_event_id": 7250,
+    "terminal_event_hash": "10d0fe8a29ae968d28916da7a1381a4f"
+  }
+}

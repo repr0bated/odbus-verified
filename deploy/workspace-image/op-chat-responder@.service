@@ -1,0 +1,16 @@
+[Unit]
+Description=Process designated chat response turn %i
+Requires=3tchedfs.service threetchedfs.service
+After=3tchedfs.service threetchedfs.service
+ConditionPathIsMountPoint=/run/mount/3tchedfs
+ConditionPathIsMountPoint=/run/mount/threetched
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/bin/op-chat-responder --turn-id %i
+TimeoutStartSec=600s
+TimeoutStopSec=10s
+KillSignal=SIGTERM
+Restart=no

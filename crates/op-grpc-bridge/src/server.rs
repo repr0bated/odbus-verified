@@ -1,4 +1,4 @@
-//! Axum gRPC/gRPC-Web host for the tched_router plugin schema.
+//! Axum gRPC/gRPC-Web host for the chat_router plugin schema.
 //!
 //! Serves the plugin-owned schema JSON on:
 //!   - host native gRPC over Unix socket `/run/opdbus/grpc.sock`
@@ -41,16 +41,16 @@ use crate::schema_loader::{SchemaLoader, SchemaReloadEvent};
 use crate::schema_router::SchemaRouter;
 use crate::tracing::{GhostbridgeTraceLayer, TraceContext};
 
-use crate::proto::tched_router::{
+use crate::proto::chat_router::{
     GetSchemaRequest, SchemaEvent, SchemaResponse, WatchSchemaRequest,
-    tched_router_service_server::{TchedRouterService, TchedRouterServiceServer},
+    chat_router_service_server::{ChatRouterService, ChatRouterServiceServer},
 };
 
 /// Host-local native gRPC UDS (op-web, zbusctl, operators on the host).
 const DEFAULT_UNIX_SOCKET: &str = "/run/opdbus/grpc.sock";
 /// Shared container socket — bind-mounted into NIC-less CTs as `/run/ghostbridge`.
 const DEFAULT_SHARED_SOCKET: &str = crate::shared_socket::DEFAULT_SOCKET_PATH;
-const DEFAULT_SCHEMA_PLUGIN_ID: &str = "tched_router";
+const DEFAULT_SCHEMA_PLUGIN_ID: &str = "chat_router";
 /// The authenticated shared TCP door. Cognitive methods are in-process routes
 /// on this listener; they do not own a separate bind address.
 const DEFAULT_BIND_ADDR: &str = "0.0.0.0:8090";
@@ -66,7 +66,7 @@ const DEFAULT_EMQX_EXHOOK_CLIENT_CERT: &str = "/etc/op-dbus/tls/emqx-exhook-clie
 const DEFAULT_UI_WORKSPACE_SHM_DIR: &str = "/dev/shm/opdbus/ui-workspaces";
 const DEFAULT_GENERATION_SHM_DIR: &str = "/dev/shm/opdbus/generation-jobs";
 
-/// Runtime configuration for the tched_router Axum host.
+/// Runtime configuration for the chat_router Axum host.
 #[derive(Clone, Debug)]
 pub struct ServerConfig {
     pub plugin_id: String,
@@ -547,12 +547,12 @@ fn configured_schema_plugin_id(getenv: impl Fn(&str) -> Option<String>) -> Strin
 
 /// Shared state for the gRPC service handlers.
 #[derive(Clone)]
-struct TchedRouterGrpcService {
+struct ChatRouterGrpcService {
     loader: Arc<SchemaLoader>,
 }
 
 #[tonic::async_trait]
-impl TchedRouterService for TchedRouterGrpcService {
+impl ChatRouterService for ChatRouterGrpcService {
     type WatchSchemaStream =
         Pin<Box<dyn tokio_stream::Stream<Item = Result<SchemaEvent, Status>> + Send>>;
 
@@ -619,14 +619,14 @@ fn inject_trace_metadata<T>(response: &mut TonicResponse<T>, context: &TraceCont
     }
 }
 
-/// Assemble the gRPC service set for the tched_router bridge.
+/// Assemble the gRPC service set for the chat_router bridge.
 ///
 /// The full backplane surface (StateSync, PluginService, DbusPassthrough,
 /// OvsdbMirror, RuntimeMirror, EventChainService, ComponentRegistry, Mail,
 /// Privacy, Registration, McpService, ChatService, reflection) comes from the
 /// shared [`build_operation_routes`] — identical to what `run_grpc_server` mounts
 /// on op-dbus :50051, so reflection never advertises an unmounted service. On top
-/// of that the tched_router bridge adds its endpoint-specific `TchedRouterService`
+/// of that the chat_router bridge adds its endpoint-specific `ChatRouterService`
 /// (plugin-owned schema get/watch).
 ///
 /// Every container shares this one surface over `container.sock`; the assistant
@@ -638,11 +638,11 @@ fn build_routes(
     server: OperationGrpcServer,
     validator: Arc<AssertionValidator>,
 ) -> tonic::service::Routes {
-    let tched_router_svc =
-        crate::grpc_web::enable(TchedRouterServiceServer::new(TchedRouterGrpcService {
+    let chat_router_svc =
+        crate::grpc_web::enable(ChatRouterServiceServer::new(ChatRouterGrpcService {
             loader,
         }));
-    build_operation_routes_with_validator(server, validator).add_service(tched_router_svc)
+    build_operation_routes_with_validator(server, validator).add_service(chat_router_svc)
 }
 
 /// Build the shared TCP ingress: native MCP HTTP plus gRPC and gRPC-Web.
@@ -793,11 +793,11 @@ pub async fn serve_upgradeable_tcp(
     }
 }
 
-/// Run the tched_router Axum host.
+/// Run the chat_router Axum host.
 ///
 /// Returns only when both listeners exit (which should not happen under normal
 /// operation).
-pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()> {
+pub async fn run_chat_router_server(config: ServerConfig) -> anyhow::Result<()> {
     let tcp_identities = prepare_tcp_identities(&config)?;
     let nextdns_bindings = crate::identity_nextdns::NextDnsBindings::from_env()?;
     let catalog_dir = crate::sealed_schema_reader::blob_catalog_dir_from_env();
@@ -857,7 +857,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         generation_root,
         op_plugins::state_plugins::runtime_documents::runtime_documents().await?,
         crate::sealed_schema_reader::blob_catalog_dir_from_env(),
-        Arc::new(crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()),
+        Arc::new(crate::chat_router_runtime::ChatRouterRuntimeClient::from_env()),
     )?;
     // No prompt replay or automatic activation: each verified owner must invoke
     // recover_generation_jobs. A compatible stateless native ACK is required
@@ -1091,7 +1091,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
                 methods = blob.manifest.methods.len(),
                 dbus_path = %blob.manifest.dbus.object_path,
                 grpc_service = ?blob.manifest.grpc.services,
-                "loaded manifest-pinned tched_router object metadata"
+                "loaded manifest-pinned chat_router object metadata"
             );
             if let Err(error) = operation_server
                 .register_plugin_methods(config.plugin_id.clone(), &pinned.schema)
@@ -1100,7 +1100,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
                 tracing::warn!(
                     plugin_id = %config.plugin_id,
                     %error,
-                    "failed to register pinned tched_router method descriptors for gRPC reflection"
+                    "failed to register pinned chat_router method descriptors for gRPC reflection"
                 );
             }
         }
@@ -1108,7 +1108,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
             tracing::warn!(
                 plugin_id = %config.plugin_id,
                 %error,
-                "pinned tched_router blob unavailable for gRPC reflection"
+                "pinned chat_router blob unavailable for gRPC reflection"
             );
         }
     }
@@ -1193,7 +1193,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         crate::shared_socket::SharedListenerController::open(unix_socket.clone())?;
     unix_controller.start(128)?;
     let unix_incoming = unix_controller.take_incoming()?;
-    info!(path = %unix_socket.display(), "tched_router native gRPC listening on Unix socket");
+    info!(path = %unix_socket.display(), "chat_router native gRPC listening on Unix socket");
 
     // Shared container socket — same gRPC surface, path bind-mounted into CTs.
     // Skip a second bind when env points both knobs at the same path.
@@ -1257,7 +1257,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         let listener = tokio::net::TcpListener::bind(bind_addr)
             .await
             .map_err(|error| anyhow::anyhow!("cannot bind TCP fabric at {bind_addr}: {error}"))?;
-        info!(addr = %bind_addr, "tched_router TLS gRPC/gRPC-Web listening on TCP");
+        info!(addr = %bind_addr, "chat_router TLS gRPC/gRPC-Web listening on TCP");
         tcp_tasks.push(tokio::spawn(serve_upgradeable_tcp(
             listener,
             tls,
@@ -1545,12 +1545,12 @@ mod tests {
 
     #[test]
     fn default_server_loads_the_canonical_router_blob() {
-        assert_eq!(ServerConfig::default().plugin_id, "tched_router");
+        assert_eq!(ServerConfig::default().plugin_id, "chat_router");
     }
 
     #[test]
     fn env_free_server_startup_loads_the_canonical_router_blob() {
-        assert_eq!(configured_schema_plugin_id(|_| None), "tched_router");
+        assert_eq!(configured_schema_plugin_id(|_| None), "chat_router");
     }
 
     #[test]

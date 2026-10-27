@@ -14,7 +14,7 @@ use crate::{
     mutation_engine::MutationEngine,
     project_dispatch,
     sealed_schema_reader::{blob_catalog_dir_from_env, read_manifest_pinned_schema_document},
-    tched_router_admission::FacadeOrigin,
+    chat_router_admission::FacadeOrigin,
 };
 
 async fn configure_tool_groups(
@@ -96,7 +96,7 @@ pub(crate) fn dispatch<'a>(
         }
         let plan = plan_method(method, args)?;
         let target = method_contract_admission::admit_compiled_method(
-            "tched_router",
+            "chat_router",
             plan.target_method,
             Some(&plan.required_capability),
         )?;
@@ -108,7 +108,7 @@ pub(crate) fn dispatch<'a>(
         let origin = FacadeOrigin {
             plugin: "mcp",
             method: method.to_owned(),
-            target_plugin: "tched_router",
+            target_plugin: "chat_router",
             target_method: plan.target_method,
             admitted: admitted.clone(),
             capability,
@@ -116,7 +116,7 @@ pub(crate) fn dispatch<'a>(
         let input = serde_json::to_string(&plan.args)?;
         let result = engine
             .dispatch_method_call_with_facade_origin(
-                "tched_router",
+                "chat_router",
                 plan.target_method,
                 &input,
                 Some(&plan.required_capability),

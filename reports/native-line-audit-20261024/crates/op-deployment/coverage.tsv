@@ -1,0 +1,20 @@
+path	ranges_read	initial_sha256	finding_action	status
+crates/op-deployment/Cargo.toml	1-29 EOF	8c18573470616d39f2fba4c44502720f65afa202a37f8176d0b9b94d36508445	No native selection; actual final line 29 versus supplied 28	complete
+crates/op-deployment/SPEC.md	1-170;171-303 EOF	f9c1bf007240a65be55da9ed5ff5346935bb5c9ade3381a93848afafdd7ca881	Historical ImageManager design; no provider routing	complete
+crates/op-deployment/compare-op-deployment.md	1-68 EOF	149b87c311d43935b6292a1795ca200cfe69f7a17d23660329b5a5d0b4b21a27	Stale source inventory; no native-specific repair	complete
+crates/op-deployment/src/bin/op-release.rs	1-14 EOF	10abe86b399c16befc0b03e08b4d12cfdcbe58b939e85c5e4dcde91fac98e857	Native Btrfs deployment terminology retained	complete
+crates/op-deployment/src/bin/release/boot.rs	1-58 EOF	188e633530e0d56986e561f7748d57a52aff798f8921c6d1623a27ba630ef61e	Committed inventory/catalog checks; no model routing	complete
+crates/op-deployment/src/bin/release/fs.rs	1-190;191-371 EOF	e2b0bb87e0141f4efe1496bb5330ab31b9a570ee435d615bb9d8e1e2757306cb	Descriptor-bound Linux ABI; no native-specific override	complete
+crates/op-deployment/src/bin/release/inventory.rs	1-183 EOF	582ab1da1dbd2d97112db94d71720d68c1076050bc11002468e2c7674b0df2db	Manifest-pinned prepared graph and protected target validation	complete
+crates/op-deployment/src/bin/release/lifetime.rs	1-61 EOF	b791eda8bf43c93162afedf8014e84c5efefa7aa246fef18497f0ed755786463	Native UUID/ABI/cleaner identity vocabulary retained	complete
+crates/op-deployment/src/bin/release/loggers.rs	1-152 EOF	c1a9a3a9b14d0ab518227bd672ca0589ab668f337c5f7a91300bf949318d0f2d	Runit logger lifecycle; no model routing	complete
+crates/op-deployment/src/bin/release/mod.rs	1-225 EOF	140b8ba166bf1031005e44b13e19b0dcd8602db7d0789926cac95be77f6e42be	Root-owner explicit deploy/system flags; no provider/model override	complete
+crates/op-deployment/src/bin/release/model.rs	1-183 EOF	af0ce1ec63b2851117483c6b92efd502fd0062ab72692e30ad1b7d6ff3860e10	native_uuid is Btrfs incarnation identity; host release constants retained	complete
+crates/op-deployment/src/bin/release/mounts.rs	1-176 EOF	c94f72b334f7d00e396eab96176c6226e10f21be7eeadba04868a218328d73c1	Verified read-only overlay generation switching; no native-model gates	complete
+crates/op-deployment/src/bin/release/preserve.rs	1-205;206-406 EOF	d2a3e68a1cd8f2827bb5a756c76dfdaa65f8284ebaa8da56c385b511ca3da861	First-activation approval and exact original preservation; no native override	complete
+crates/op-deployment/src/bin/release/recovery.rs	1-77 EOF	99002e279662f886824c32c8cc2907b2b0dd707f23be5053a3c86ff715343ec6	Durable commit/revert dispatch; no native-model selection	complete
+crates/op-deployment/src/bin/release/services.rs	1-170;171-340;341-510;511-674 EOF	443cc49dd8e732b43639e097102154e35339161ac4b2df70ccdeb034acfced79	Runit wanted-state and catalog publication; no provider/model override	complete
+crates/op-deployment/src/bin/release/system.rs	1-165;166-330;331-495;496-645 EOF	d5beb9a3f027c2d8c5a8af8e5d458f89638f0f9a028940d1848206a11e1460da	Native recovery means Rust controller; explicit graph-pinned system destinations	complete
+crates/op-deployment/src/bin/release/transfer.rs	1-175;176-350;351-516 EOF	40d05f21d7514f35b20ca76a3f1edc0d2d3140342c0ce2ec9a754b27b6f73299	Native ELF/sender/UUID contexts retained; checked delete has no permissive fallback	complete
+crates/op-deployment/src/image_manager.rs	1-175;176-350;351-525;526-678 EOF	886499275ff139ca06933c8a6b54552a65580d2f86746effa0c2eebd0849d6e7	native-image is Btrfs fixture label; generic dependent-symlink deletion risk outside edit scope	complete
+crates/op-deployment/src/lib.rs	1-14 EOF	f4a0de182c6b958db33ebe040eea6cc2b2b06ccf4f92eb299533c3bb2e2f9abf	Library exports only; no native selection	complete

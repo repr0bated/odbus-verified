@@ -20,7 +20,7 @@ pub const PROFILE_ID: &str = "3tched-chat-canvas-v1";
 /// Host controls that never appear inside a generated canvas.
 const HOST_COMPONENTS: [&str; 3] = [
     "antigravityChatContainer",
-    "tchedRouterPicker",
+    "chatRouterPicker",
     "chatMessage",
 ];
 
@@ -389,7 +389,7 @@ mod tests {
         undeclared["elements"]["title"]["props"]["html"] = json!("<script>");
         cases.push(undeclared);
         let mut unknown = sample();
-        unknown["elements"]["title"]["type"] = json!("tchedRouterPicker");
+        unknown["elements"]["title"]["type"] = json!("chatRouterPicker");
         cases.push(unknown);
         let mut orphan = sample();
         orphan["elements"]["loose"] =
@@ -412,7 +412,7 @@ mod tests {
     #[test]
     fn host_controls_and_open_props_are_refused() {
         let mut profile = ChatCanvasProfile::default();
-        profile.components[0].name = "tchedRouterPicker".into();
+        profile.components[0].name = "chatRouterPicker".into();
         assert!(ChatCanvasValidator::new(profile).is_err());
         let mut profile = ChatCanvasProfile::default();
         profile.components[0].props_schema["additionalProperties"] = json!(true);

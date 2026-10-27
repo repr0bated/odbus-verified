@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-uds-relay",
+  "status": "complete",
+  "files_reviewed": 3,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-uds-relay/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-uds-relay/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-uds-relay/occurrences.tsv",
+  "jev_receipts": "reports/tched-context-audit-20261024/crates/op-uds-relay/judgments.md",
+  "limitations": ["Static source review only; runtime/catalog/deployment unverified.", "No Cargo/build/check/test/Clippy/format/smoke/runtime/deployment actions, per assignment."],
+  "next_action": "Coordinator may aggregate this crate receipt."
+}

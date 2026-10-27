@@ -4396,7 +4396,7 @@ mod tests {
             .get_mut("query_events")
             .unwrap()
             .required_capability = Some("snowball_gap.unsealed".into());
-        let router_schema = op_plugins::state_plugins::tched_router::tched_router_plugin_schema();
+        let router_schema = op_plugins::state_plugins::chat_router::chat_router_plugin_schema();
         let router_selection_capability = router_schema.methods["SetSelection"]
             .required_capability
             .clone()
@@ -4514,11 +4514,11 @@ mod tests {
             "fixture operation must be outside every broker toolset"
         );
         assert!(tools.iter().any(|tool| tool_name(tool) == call_name));
-        let selection_name = "plugin.tched_router.SetSelection";
+        let selection_name = "plugin.chat_router.SetSelection";
         assert!(tools.iter().any(|tool| tool_name(tool) == selection_name));
         assert_eq!(
             parse_typed_tool_name(selection_name).unwrap(),
-            ("tched_router", "SetSelection")
+            ("chat_router", "SetSelection")
         );
         assert_eq!(
             backend.typed_tool_descriptor(selection_name).await.unwrap()["authority_method"],

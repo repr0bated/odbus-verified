@@ -25,7 +25,7 @@ use tched_fs::threetched_surface::{SurfaceSnapshot, ThreetchedSurface};
 
 pub const PLUGIN_NAME: &str = "threetched";
 const VERSION: &str = "1.0.0";
-const MANIFEST_FORMAT: &str = "opdbus.threetched.v1";
+const MANIFEST_FORMAT: &str = "opdbus.threetched.v2";
 
 /// Immutable discovery evidence, never a copy of the running configuration.
 /// Capture selectors are build/seal inputs; these paths select the installed
@@ -105,26 +105,33 @@ fn sha256_file(path: &Path) -> Result<String> {
 
 fn manifest_version(manifest: &Value, binary_hash: &str) -> Result<String> {
     ensure!(manifest["format"] == MANIFEST_FORMAT, "unsupported threetched manifest format");
+    ensure!(manifest.pointer("/source/mode").and_then(Value::as_str) == Some("unmodified-upstream"),
+        "threetched manifest is not unmodified upstream");
+    ensure!(manifest.get("patches").is_none(), "threetched manifest still carries the retired patch contract");
     ensure!(manifest.pointer("/artifact/name").and_then(Value::as_str) == Some("threetched"), "manifest is not for the threetched executable");
     ensure!(manifest.pointer("/artifact/sha256").and_then(Value::as_str) == Some(binary_hash), "threetched executable differs from its manifest");
+    let upstream_binary = manifest.pointer("/artifact/upstream_binary").and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .context("threetched manifest has no upstream binary")?;
     let tag = manifest.pointer("/upstream/tag").and_then(Value::as_str)
         .context("threetched manifest has no upstream version")?;
     let version = tag.strip_prefix('v').filter(|value| !value.is_empty())
         .context("threetched manifest version must start with v")?;
-    Ok(format!("threetched {version}"))
+    Ok(format!("{upstream_binary} {version}"))
 }
 
 fn capture() -> Result<Captured> {
-    let binary = super::tched_router_paths::binary()?;
-    let manifest = super::tched_router_paths::manifest()?;
-    let config_dir = super::tched_router_paths::config_dir()?;
-    let (capture_binary, capture_manifest) = super::tched_router_paths::capture_paths()?;
+    let binary = super::chat_router_paths::binary()?;
+    let manifest = super::chat_router_paths::manifest()?;
+    let config_dir = super::chat_router_paths::config_dir()?;
+    let (capture_binary, capture_manifest) = super::chat_router_paths::capture_paths()?;
     let manifest_sha256 = sha256_file(&capture_manifest)?;
     let descriptor: Value = serde_json::from_reader(File::open(&capture_manifest)?)?;
     let binary_sha256 = sha256_file(&capture_binary)?;
     let version = manifest_version(&descriptor, &binary_sha256)?;
-    let bare_version = version.strip_prefix("threetched ")
-        .expect("manifest_version prefixes the bare version").to_owned();
+    let bare_version = version.rsplit_once(' ').map(|(_, bare)| bare.to_owned())
+        .filter(|bare| !bare.is_empty())
+        .expect("manifest_version ends with the bare version");
     let surface = ThreetchedSurface::capture_with_config(&capture_binary, &config_dir)?;
     ensure!(surface.binary_sha256() == binary_sha256, "threetched executable changed during capture");
     ensure!(surface.version() == Some(version.as_str()), "threetched version differs from its manifest");
@@ -298,9 +305,9 @@ fn validate_noninteractive_command(
 }
 
 fn prepare_command(method: &str, value: &Value, source: &ThreetchedState) -> Result<Command> {
-    let binary = super::tched_router_paths::binary()?;
-    let manifest = super::tched_router_paths::manifest()?;
-    let config_dir = super::tched_router_paths::config_dir()?;
+    let binary = super::chat_router_paths::binary()?;
+    let manifest = super::chat_router_paths::manifest()?;
+    let config_dir = super::chat_router_paths::config_dir()?;
     ensure!(binary == Path::new(&source.binary) && manifest == Path::new(&source.manifest)
         && config_dir == Path::new(&source.config_dir), "threetched runtime paths changed since seal");
     ensure!(sha256_file(&manifest)? == source.manifest_sha256,
@@ -316,7 +323,7 @@ fn prepare_command(method: &str, value: &Value, source: &ThreetchedState) -> Res
     // No interactive terminal/content-input contract exists. Refuse before
     // constructing or spawning a command; never translate runner failures.
     validate_noninteractive_command(method, value, &surface)?;
-    // Match the existing tched-router service owner. This backend is a shared
+    // Match the existing chat-router service owner. This backend is a shared
     // service selected by exact capabilities, never a caller-supplied identity
     // or a guessed mapping from SID1 to an operating-system account.
     let mut command = if nix::unistd::geteuid().is_root() {
@@ -425,9 +432,9 @@ esac
         let surface = ThreetchedSurface::capture_with_config(&binary, directory.path()).unwrap();
         let captured = Captured {
             state: ThreetchedState {
-                binary: super::super::tched_router_paths::DEFAULT_BINARY.into(),
-                manifest: super::super::tched_router_paths::DEFAULT_MANIFEST.into(),
-                config_dir: super::super::tched_router_paths::DEFAULT_CONFIG_DIR.into(),
+                binary: super::super::chat_router_paths::DEFAULT_BINARY.into(),
+                manifest: super::super::chat_router_paths::DEFAULT_MANIFEST.into(),
+                config_dir: super::super::chat_router_paths::DEFAULT_CONFIG_DIR.into(),
                 binary_sha256: surface.binary_sha256().into(),
                 manifest_sha256: "a".repeat(64),
                 surface: serde_json::to_value(surface.snapshot()).unwrap(),

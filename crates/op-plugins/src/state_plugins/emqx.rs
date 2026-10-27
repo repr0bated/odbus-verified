@@ -470,6 +470,25 @@ pub struct KickClientOutput {
 /// MQTT topic prefix for responder wakes (chatbot/agent turn notifications).
 pub const RESPONDER_WAKE_TOPIC_PREFIX: &str = "opdbus/responder-wake/";
 
+/// MQTT topic prefix for tool-use acknowledgement receipts.
+pub const TOOL_ACK_PREFIX: &str = "opdbus/ack/";
+
+/// Parse a tool-use acknowledgement from an EMQX message payload.
+/// Returns (owner_key, turn_id) on success, None if the payload is malformed.
+pub fn parse_tool_use_ack(payload: &str) -> Option<(String, String)> {
+    let parsed: serde_json::Value = serde_json::from_str(payload).ok()?;
+    let owner_key = parsed["owner_key"].as_str()?;
+    let turn_id = parsed["turn_id"].as_str()?;
+    // owner_key is 64 hex chars (sha256 hex)
+    if owner_key.len() != 64 || !owner_key.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    if turn_id.is_empty() {
+        return None;
+    }
+    Some((owner_key.to_string(), turn_id.to_string()))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PublishResponderWakeInput {

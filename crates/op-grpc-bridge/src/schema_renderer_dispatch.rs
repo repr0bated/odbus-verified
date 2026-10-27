@@ -28,13 +28,13 @@ pub(crate) fn dispatch<'a>(
 ) -> futures::future::BoxFuture<'a, Result<serde_json::Value>> {
     Box::pin(async move {
         if matches!(method, "list_galleries" | "get_rendering") {
-            let caller = crate::tched_router_admission::RouterCaller {
+            let caller = crate::chat_router_admission::RouterCaller {
                 actor: actor.to_owned(),
                 capability: Some("schema_renderer.read".to_owned()),
                 session: session.map(str::to_owned),
                 genesis: genesis.map(str::to_owned),
             };
-            let pinned = crate::tched_router_admission::readmit_call(
+            let pinned = crate::chat_router_admission::readmit_call(
                 engine,
                 admitted,
                 "schema_renderer",
@@ -78,7 +78,7 @@ pub(crate) fn dispatch<'a>(
                 grants.contains(&plan.capability) && grants.contains("schema_renderer.read"),
                 "gallery read authority was withdrawn"
             );
-            let current = crate::tched_router_admission::readmit_call(
+            let current = crate::chat_router_admission::readmit_call(
                 engine,
                 admitted,
                 "schema_renderer",

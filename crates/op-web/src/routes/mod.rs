@@ -84,27 +84,27 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         // Chat endpoints
         .route(
             "/chat",
-            post(handlers::tched_router::tched_router_chat_handler),
+            post(handlers::chat_router::chat_router_chat_handler),
         )
         .route(
             "/chat/stream",
-            post(handlers::tched_router::tched_router_chat_stream_handler),
+            post(handlers::chat_router::chat_router_chat_stream_handler),
         )
         .route(
             "/tched-router/chat",
-            post(handlers::tched_router::tched_router_chat_handler),
+            post(handlers::chat_router::chat_router_chat_handler),
         )
         .route(
             "/tched-router/chat/stream",
-            post(handlers::tched_router::tched_router_chat_stream_handler),
+            post(handlers::chat_router::chat_router_chat_stream_handler),
         )
         .route(
             "/tched-router/schema",
-            get(handlers::tched_router::tched_router_schema_handler),
+            get(handlers::chat_router::chat_router_schema_handler),
         )
         .route(
             "/tched_router/schema",
-            get(handlers::tched_router::tched_router_schema_handler),
+            get(handlers::chat_router::chat_router_schema_handler),
         )
         // Plugin identity endpoints — model-agnostic, sealed SHM blob catalog
         // (`/dev/shm/opdbus/`) is the single source of truth for both.
@@ -225,7 +225,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/llm/model", post(handlers::llm::switch_model_handler))
         .route(
             "/llm/chat",
-            post(handlers::tched_router::tched_router_chat_handler),
+            post(handlers::chat_router::chat_router_chat_handler),
         )
         // OpenClaw endpoints (internal/base layer)
         .route(
@@ -238,7 +238,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         .route(
             "/openclaw/chat",
-            post(handlers::tched_router::tched_router_chat_handler),
+            post(handlers::chat_router::chat_router_chat_handler),
         )
         .route(
             "/openclaw/models",
@@ -255,7 +255,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         .route(
             "/assistant/chat",
-            post(handlers::tched_router::tched_router_chat_handler),
+            post(handlers::chat_router::chat_router_chat_handler),
         )
         .route(
             "/assistant/models",
@@ -299,11 +299,11 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         // an adapter to a schema-declared bridge method on gRPC :8090.
         .route(
             "/v1/models",
-            get(handlers::tched_router::openai_models_handler),
+            get(handlers::chat_router::openai_models_handler),
         )
         .route(
             "/v1/chat/completions",
-            post(handlers::tched_router::tched_router_chat_handler),
+            post(handlers::chat_router::chat_router_chat_handler),
         )
         // Human-facing privacy verification flow (magic-link target)
         .route(

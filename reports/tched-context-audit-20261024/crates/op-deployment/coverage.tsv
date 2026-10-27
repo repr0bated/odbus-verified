@@ -1,0 +1,20 @@
+path	inventory_lines	actual_lines	sequential_read_ranges	status
+crates/op-deployment/Cargo.toml	28	29	1-28,29	complete; inventory line count is short by one
+crates/op-deployment/SPEC.md	303	303	1-103,104-203,204-303	complete
+crates/op-deployment/compare-op-deployment.md	68	68	1-68	complete
+crates/op-deployment/src/bin/op-release.rs	14	14	1-14	complete
+crates/op-deployment/src/bin/release/boot.rs	58	58	1-58	complete
+crates/op-deployment/src/bin/release/fs.rs	371	371	1-130,131-260,261-371	complete
+crates/op-deployment/src/bin/release/inventory.rs	183	183	1-183; 35-47 supplementary context read	complete
+crates/op-deployment/src/bin/release/lifetime.rs	61	61	1-61	complete
+crates/op-deployment/src/bin/release/loggers.rs	152	152	1-152	complete
+crates/op-deployment/src/bin/release/mod.rs	225	225	1-120,121-225	complete
+crates/op-deployment/src/bin/release/model.rs	183	183	1-183	complete
+crates/op-deployment/src/bin/release/mounts.rs	176	176	1-176	complete
+crates/op-deployment/src/bin/release/preserve.rs	406	406	1-140,141-270,271-406	complete
+crates/op-deployment/src/bin/release/recovery.rs	77	77	1-77	complete
+crates/op-deployment/src/bin/release/services.rs	674	674	1-170,171-340,341-510,511-674	complete
+crates/op-deployment/src/bin/release/system.rs	645	645	1-160,161-320,321-480,481-645	complete
+crates/op-deployment/src/bin/release/transfer.rs	516	516	1-130,131-260,261-390,391-516	complete
+crates/op-deployment/src/image_manager.rs	678	678	1-170,171-340,341-510,511-678	complete
+crates/op-deployment/src/lib.rs	14	14	1-14	complete

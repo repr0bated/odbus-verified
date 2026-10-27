@@ -5,7 +5,7 @@
 //! services requires `freeze_plugin_method_reflection()` to run before routes are
 //! built, because tonic-reflection is immutable once mounted.
 //!
-//! Regression this guards: `run_tched_router_server` (the path the `op-grpc-bridge`
+//! Regression this guards: `run_chat_router_server` (the path the `op-grpc-bridge`
 //! binary actually takes) called `hydrate_reflection_from_shm()` but not
 //! `freeze_plugin_method_reflection()`, so the bridge advertised every sealed
 //! plugin while serving none of their per-method services. `cognitive` is

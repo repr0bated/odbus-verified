@@ -1728,10 +1728,13 @@ async fn start_service_identity_container(
     session_id: &str,
 ) -> anyhow::Result<usize> {
     let state = read_private_state().await?;
-    let configured = state
+    let mut configured = state
         .sleds
         .into_iter()
         .find(|sled| sled.session_id == session_id && sled.instance.is_some());
+    if configured.is_none() {
+        configured = adopt_reserved_chatbot_container(engine, session_id).await?;
+    }
     let Some(sled) = configured else {
         tracing::warn!(
             %session_id,
@@ -1755,6 +1758,45 @@ async fn start_service_identity_container(
             )
         }
     }
+}
+
+/// Record the existing reserved chatbot container on the configured service
+/// sled when the sled has none. Only the configured session/key pair whose
+/// key derives the session may adopt it, and only when the native instance
+/// carries that same session, key and a native UUID. Nothing is created.
+async fn adopt_reserved_chatbot_container(
+    engine: &MutationEngine,
+    session_id: &str,
+) -> anyhow::Result<Option<ContainerIdentitySled>> {
+    let store = engine.identity_sled_store()?.clone();
+    let expected = load_revision(&store, session_id).await?;
+    let Some(mut sled) = revision_sled(&expected)? else {
+        return Ok(None);
+    };
+    if sled.instance.is_some() {
+        return Ok(Some(sled));
+    }
+    let native = op_plugins::state_plugins::incus::IncusRootRepairBackend::local();
+    let Ok((metadata, _)) = native.instance(RESERVED_CHATBOT_CONTAINER).await else {
+        return Ok(None);
+    };
+    let current = IncusPlugin::instance_from_native_metadata(metadata)?;
+    sled.instance = Some(current.clone());
+    if !identity_instance_matches(&sled, &current) || current.name != RESERVED_CHATBOT_CONTAINER {
+        tracing::warn!(%session_id, "reserved chatbot container does not match its identity; not adopted");
+        return Ok(None);
+    }
+    let adopted = commit_sled_update(
+        engine,
+        &store,
+        opid("adopt-reserved-chatbot"),
+        expected,
+        sled.clone(),
+        sled,
+    )
+    .await?;
+    tracing::info!(%session_id, "control-plane chatbot adopted its existing identity container");
+    Ok(Some(adopted))
 }
 
 fn schema_hash_refresh_operation_id(

@@ -3,7 +3,7 @@
 //! owner activation are separate mandatory gates before any private SHM read.
 use anyhow::{Result, ensure};
 
-const ROOT: &str = "/org/opdbus/v1/plugins/tched_router";
+const ROOT: &str = "/org/opdbus/v1/plugins/chat_router";
 const MAX_PATHS: usize = 32;
 const MAX_PATH_BYTES: usize = 2048;
 const MAX_SEGMENTS: usize = 64;
@@ -31,7 +31,7 @@ impl GenerationSelection {
             return Ok(None);
         }
         ensure!(
-            plugin_ids.is_empty() || plugin_ids == ["tched_router"],
+            plugin_ids.is_empty() || plugin_ids == ["chat_router"],
             "private generation subscriptions require one canonical plugin"
         );
         ensure!(
@@ -117,7 +117,7 @@ mod tests {
         }
         assert!(
             GenerationSelection::from_subscription(
-                &["tched_router".into(), "config".into()],
+                &["chat_router".into(), "config".into()],
                 &[root]
             )
             .is_err()

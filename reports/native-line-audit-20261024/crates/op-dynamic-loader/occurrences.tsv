@@ -1,0 +1,2 @@
+path	line/position	exact token/context	intended meaning	judgment reference	JEV outcome/confidence	decision	change/status
+# No `native` token, case variant, compound use, or other native-word occurrence appears in any of the eight fully read crate inventory files (coverage.tsv; 585 supplied lines through EOF). Zero occurrence rows; no occurrence-level JEV judgment applies. Existing JEV Q1-Q3 receipts in judgments.md assess nearby runtime tool-selection/security context, not fabricated native occurrences.

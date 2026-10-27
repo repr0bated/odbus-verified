@@ -1,4 +1,4 @@
-// Integration tests for the tched_router Axum HTTP/gRPC-Web host.
+// Integration tests for the chat_router Axum HTTP/gRPC-Web host.
 //
 // These tests spin up the TCP side of the server on an ephemeral port and
 // exercise the generated TchedRouterService through a native tonic client. The
@@ -14,8 +14,8 @@ use axum::{Json, Router, extract::Query, routing::get};
 use op_grpc_bridge::mcp_policy::{
     McpProjectionPolicy, parse_audience_policy, parse_toolset_manifest,
 };
-use op_grpc_bridge::proto::tched_router::{
-    GetSchemaRequest, WatchSchemaRequest, tched_router_service_client::TchedRouterServiceClient,
+use op_grpc_bridge::proto::chat_router::{
+    GetSchemaRequest, WatchSchemaRequest, chat_router_service_client::ChatRouterServiceClient,
 };
 use op_grpc_bridge::schema_loader::SchemaLoader;
 use op_grpc_bridge::server::build_axum_app_with_policy;
@@ -117,11 +117,11 @@ async fn start_runtime_fixture() -> RuntimeFixture {
 }
 
 fn write_schema(dir: &std::path::Path, version: &str, description: &str) {
-    let schema = op_state_store::PluginSchema::builder("tched_router")
+    let schema = op_state_store::PluginSchema::builder("chat_router")
         .version(version)
         .description(description)
         .build();
-    let blob = op_blob::blobify_plugin_schema("tched_router", schema);
+    let blob = op_blob::blobify_plugin_schema("chat_router", schema);
     op_blob::catalog::BlobStore::open(dir)
         .unwrap()
         .write(&blob)
@@ -149,8 +149,8 @@ async fn start_test_server() -> (SocketAddr, Arc<SchemaLoader>, PathBuf) {
 
     let loader = Arc::new(SchemaLoader::new(&path).unwrap());
 
-    // Build the intercepted plugin service exactly as `run_tched_router_server`
-    // does, so the Axum app mounts both the tched_router service and the plugin
+    // Build the intercepted plugin service exactly as `run_chat_router_server`
+    // does, so the Axum app mounts both the chat_router service and the plugin
     // service behind the Ghostbridge interceptor.
     let event_chain = Arc::new(tokio::sync::RwLock::new(op_state_store::EventChain::new(
         op_state_store::ChainConfig::default(),
@@ -182,7 +182,7 @@ async fn should_serve_schema_over_grpc_web() {
     let (addr, _loader, _path) = start_test_server().await;
 
     let endpoint = format!("http://{}", addr);
-    let mut client = TchedRouterServiceClient::connect(endpoint).await.unwrap();
+    let mut client = ChatRouterServiceClient::connect(endpoint).await.unwrap();
 
     let mut request = tonic::Request::new(GetSchemaRequest {});
     request.metadata_mut().insert(
@@ -198,7 +198,7 @@ async fn should_serve_schema_over_grpc_web() {
     let inner = response.into_inner();
 
     let parsed: serde_json::Value = serde_json::from_str(&inner.schema_json).unwrap();
-    assert_eq!(parsed["name"], "tched_router");
+    assert_eq!(parsed["name"], "chat_router");
     assert_eq!(parsed["version"], "1.0.0");
     assert_eq!(inner.trace_id, "integration-test-trace");
     assert_eq!(inner.session_genesis, "integration-test-genesis");
@@ -209,7 +209,7 @@ async fn should_stream_reload_on_sighup() {
     let (addr, loader, path) = start_test_server().await;
 
     let endpoint = format!("http://{}", addr);
-    let mut client = TchedRouterServiceClient::connect(endpoint).await.unwrap();
+    let mut client = ChatRouterServiceClient::connect(endpoint).await.unwrap();
 
     let mut stream = client
         .watch_schema(tonic::Request::new(WatchSchemaRequest {}))
@@ -247,8 +247,8 @@ async fn should_stream_reload_on_sighup() {
 }
 
 #[tokio::test]
-async fn list_models_uses_the_audited_tched_router_method_dispatcher() {
-    let router_schema = op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
+async fn list_models_uses_the_audited_chat_router_method_dispatcher() {
+    let router_schema = op_plugins::state_plugins::chat_router::ChatRouterPlugin::new()
         .schema()
         .unwrap();
     let _catalog = support::CatalogScope::new(&[
@@ -311,7 +311,7 @@ async fn list_models_uses_the_audited_tched_router_method_dispatcher() {
 
     let result = engine
         .dispatch_method_call_with_identity(
-            "tched_router",
+            "chat_router",
             "ListModels",
             r#"{"provider":"ollama"}"#,
             Some(&capability),
@@ -323,7 +323,7 @@ async fn list_models_uses_the_audited_tched_router_method_dispatcher() {
         .unwrap();
 
     assert_eq!(result["success"], true);
-    assert_eq!(result["plugin_id"], "tched_router");
+    assert_eq!(result["plugin_id"], "chat_router");
     assert_eq!(result["method"], "ListModels");
     let routes = result["result"]["model_routes"].as_array().unwrap();
     assert!(!routes.is_empty());
@@ -335,7 +335,7 @@ async fn list_models_uses_the_audited_tched_router_method_dispatcher() {
 
     let chain = event_chain.read().await;
     let event = chain.events().last().unwrap();
-    assert_eq!(event.plugin_id, "tched_router");
+    assert_eq!(event.plugin_id, "chat_router");
     assert_eq!(event.method_name.as_deref(), Some("ListModels"));
     assert_eq!(
         event.capability_id.as_deref(),

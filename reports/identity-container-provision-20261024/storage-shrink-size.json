@@ -1,0 +1,8 @@
+{
+  "minimum_bytes": 10776215552,
+  "headroom_bytes": 1073741824,
+  "alignment_bytes": 1048576,
+  "alignment_overhead_bytes": 0,
+  "target_bytes": 11849957376,
+  "target_sectors": 23144448
+}

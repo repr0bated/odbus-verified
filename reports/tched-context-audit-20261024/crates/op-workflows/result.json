@@ -1,0 +1,18 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-workflows",
+  "status": "complete",
+  "files_reviewed": 16,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-workflows/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-workflows/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-workflows/occurrences.tsv",
+  "jev_receipts": "reports/tched-context-audit-20261024/crates/op-workflows/judgments.md",
+  "limitations": [
+    "Static source audit only; current sealed catalog membership, runtime behavior, and deployment state were not established.",
+    "No Cargo/build/test/lint/format/smoke/runtime/deployment checks were run per assignment."
+  ],
+  "next_action": "Coordinator may aggregate the completed crate report; no in-scope source fix is pending."
+}

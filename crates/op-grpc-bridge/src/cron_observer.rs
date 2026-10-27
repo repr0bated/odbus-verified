@@ -6,8 +6,8 @@
 //! its consumers.
 
 use crate::{
-    cron_dispatch, cron_gateway::TchedRouterCronGateway, cron_methods::CronMethods,
-    mutation_engine::MutationEngine, tched_router_runtime::TchedRouterRuntimeClient,
+    cron_dispatch, cron_gateway::ChatRouterCronGateway, cron_methods::CronMethods,
+    mutation_engine::MutationEngine, chat_router_runtime::ChatRouterRuntimeClient,
 };
 use anyhow::{Context, Result, bail, ensure};
 use futures::StreamExt;
@@ -128,7 +128,7 @@ fn parse_frame(frame: &[u8]) -> Result<Option<Wakeup>> {
 
 async fn observe_connection(
     engine: &MutationEngine,
-    client: &TchedRouterRuntimeClient,
+    client: &ChatRouterRuntimeClient,
     methods: &CronMethods,
 ) -> Result<()> {
     // Subscribe before the first hydration. Events produced during the bounded
@@ -180,8 +180,8 @@ where
 /// stream is established before its rehydration read; there is no polling or
 /// heartbeat-triggered state read.
 pub(crate) async fn observe(engine: Arc<MutationEngine>) -> Result<()> {
-    let client = TchedRouterRuntimeClient::from_env();
-    let gateway = Arc::new(TchedRouterCronGateway::from_client(client.clone()));
+    let client = ChatRouterRuntimeClient::from_env();
+    let gateway = Arc::new(ChatRouterCronGateway::from_client(client.clone()));
     let methods = CronMethods::new(gateway);
 
     let mut last_error = None;

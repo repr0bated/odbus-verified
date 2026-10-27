@@ -1,0 +1,36 @@
+path	sequential_ranges_read	supplied_initial_sha256	finding_action	status
+crates/op-cognitive/build.rs	1-14	d3cc8f3a81e31003419624e57ec42b708f1af274c4b3fa268c1deb41e8eef6e9	no tched occurrence	complete
+crates/op-cognitive/Cargo.toml	1-75	d28424d6a18c294197c77c66e8bf6b786131c3e0b71016e4b252d49a3ab7235d	no tched occurrence	complete
+crates/op-cognitive/compare-op-cognitive.md	1-81	1a2ae5b552284414ce2d38be80be5b83d0708d7d81141f5e480b673c39fe87ff	no tched occurrence	complete
+crates/op-cognitive/proto/cognitive.proto	1-250;251-380	b38ce59991f29b654782a4675f8a2b57cb19b9a34a4ff936d0fda053da1fdae0	no tched occurrence	complete
+crates/op-cognitive/SPEC.md	1-145	f4ecf0256185b871bde4e16beaddb364ca1314e604687179ef696be79b8ae4e5	3tchedFS at30; leave_as_is J1	complete
+crates/op-cognitive/src/activity_filter.rs	1-260;261-512	b962acc10d5d4fe8a832e08d4c7e739538dfaf34302682dd76dfe2cdffc09559	no tched occurrence	complete
+crates/op-cognitive/src/agent_tools.rs	1-136	b2cea7af970ef17d7bee12387ff34e27011970faff9ce84ee491239d610d2596	no tched occurrence	complete
+crates/op-cognitive/src/bin/op-chain-vector-ingest.rs	1-27	9b44019cc03eb24f8f787489591a243a27862abfe8c09b05253a906757fbdc1a	no tched occurrence	complete
+crates/op-cognitive/src/bin/op-chain-vectors.rs	1-284	dd0a550e4c72e73fcdfe506ec390af95400105bda7f2271ebc2993111211991f	no tched occurrence	complete
+crates/op-cognitive/src/bin/op-cog-admin.rs	1-52	037a8be63e6679eb362a38bc5625c73d5d6b5e2df3667323d05289d92e5ab970	no tched occurrence	complete
+crates/op-cognitive/src/blob_catalog_tool.rs	1-202	cc806a37d129e99906bf8ac8cf170c028951efe519420df0b3b6b02e85699e3a	no tched occurrence	complete
+crates/op-cognitive/src/blob_vectors_tool.rs	1-188	0379540c40fbcaf1c1c712d4956c52f072e14707658bdbd9395f01f0b3ce5329	no tched occurrence	complete
+crates/op-cognitive/src/chain_vectors.rs	1-280;281-560;561-840;841-1108	ab6e0bb81c4a44b8eed30f2d447285f5d1e41c6eb122da3cb764cdf5306dcea5	batched at502 and603; leave_as_is J1	complete
+crates/op-cognitive/src/code_tools.rs	1-280;281-550	4c1f65add1d927f906b443cd4ab1e504a4c0c0e606ada8952716272516f72b32	no tched occurrence	complete
+crates/op-cognitive/src/cognitive_tools.rs	1-280;281-560;561-840;841-893	2a4f5c54d1039f3b319a8194a2e1e59140ffc92eb8836e07117cfefb0ebfbf97	no tched occurrence	complete
+crates/op-cognitive/src/context_awareness.rs	1-280;281-560;561-840;841-1120;1121-1167	1e4e7a2f2fd85ad25a642ec61206ce417a1d3bb96b0e8a10435b7e9d017c7baf	no tched occurrence	complete
+crates/op-cognitive/src/cozo_shuttle.rs	1-5	a413b593103e0badc64c1cb3ba3fa72617491b9664fe7c8c78617d0111ca6675	no tched occurrence	complete
+crates/op-cognitive/src/dbus_interface.rs	1-66	f6369b7b2e204ad766d2738d5b6b5532059cdf732eb005b8ab5f78673b77b486	no tched occurrence	complete
+crates/op-cognitive/src/doctor.rs	1-217	fe3419899df0a810c3ff3d7eaa17fb1911eabb93f72dc7c7e098bfcc72e61c8b	no tched occurrence	complete
+crates/op-cognitive/src/gemini_fallback.rs	1-260;261-475	d40bf4b203603741a589dadb456e18eafb4b2648a459e2099a87d3ce35e8ef46	no tched occurrence	complete
+crates/op-cognitive/src/grpc_service.rs	1-280;281-560;561-840;841-1120;1121-1190	e68cc19055a015e138f9479378860a29d28b6c68d383481eac57a10b5a1c6875	no tched occurrence	complete
+crates/op-cognitive/src/interceptor.rs	1-65	a6c71d4f19751c12a5abd3c1b0dbee36718d682fa6ddf2aa034b24ee2ae9b123	no tched occurrence	complete
+crates/op-cognitive/src/lib.rs	1-69	216f376fe195009557cb7bfb08195a76b93c2a32f93b6905fb52bb60d1899794	no tched occurrence	complete
+crates/op-cognitive/src/memory_store.rs	1-280;281-560;561-769	a795c07a41abfcc1b40a1d3343c05f3747f3bcfe262a92496a07d2cd77dffdcd	no tched occurrence	complete
+crates/op-cognitive/src/qdrant_shuttle.rs	1-280;281-560;561-686	10ddf6b96a34a434028392bbeb35f4dd936b364e8c810f0cb75403650e895022	fetched at149 and196; threetched at575 576 580; leave_as_is J2	complete
+crates/op-cognitive/src/quota.rs	1-140	d39a879b1dea69b78323060f86db0982447cef5aaf0ba5fb48415521085bc094	no tched occurrence	complete
+crates/op-cognitive/src/rag_pipeline.rs	1-280;281-560;561-840;841-1120;1121-1316	b3f19e9aae2bbdd5e08f3dd36042aa46ef9194cd394cb78d9a1daf2b2d8017d0	no tched occurrence	complete
+crates/op-cognitive/src/semantic_search.rs	1-90	a5472b93ea16e2370489a1647cc72645f43de3a36db68426af9e49352807b3d6	no tched occurrence	complete
+crates/op-cognitive/src/server.rs	1-205	9f00a247e34bc7e59a34a4648a15e75b96005931c8fe7fed89424a79328e7738	no tched occurrence	complete
+crates/op-cognitive/src/session.rs	1-235	2e20500c2bd2eba7dbea72084fbd12c08f8ab57d1343704dc27a1f004c51381a	no tched occurrence	complete
+crates/op-cognitive/src/soul_memory.rs	1-257	d4d531f8ab243ebb83281e85d0f7bf41c40976f0b4395efde12743751bb0c676	no tched occurrence	complete
+crates/op-cognitive/src/tool_profiles.rs	1-154	3cd98a740cd8b21244904b30e2419053d56ffa60fc57f77e078e6e14004d47ec	no tched occurrence	complete
+crates/op-cognitive/src/typed_tools.rs	1-280;281-442	8b7cf5c4190738eb0e3d54dcae2d55a0ddcd35fc25c83562568306a9af78a3c4	no tched occurrence	complete
+crates/op-cognitive/src/voyage.rs	1-139	50f150798cc61acdb65b5ed18124869903d32c20cdcdba946e038767aa2dbc39	no tched occurrence	complete
+crates/op-cognitive/tests/e2e_voyage_qdrant.rs	1-261	0dc6115cb96208d7e991d5ed557e0cf48f14cc28a56ff61fbd4eee5f3b010332	mail-3tched at115; leave_as_is J3	complete

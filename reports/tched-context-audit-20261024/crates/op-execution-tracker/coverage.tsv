@@ -1,0 +1,10 @@
+path	inventory_lines	read_lines	coverage	occurrences
+crates/op-execution-tracker/Cargo.toml	18	18	read sequentially through EOF	0
+crates/op-execution-tracker/SPEC.md	79	79	read sequentially through EOF	0
+crates/op-execution-tracker/compare-op-execution-tracker.md	73	73	read sequentially through EOF	0
+crates/op-execution-tracker/src/execution_context.rs	122	122	read sequentially through EOF; reread full file in supplemental follow-up	4
+crates/op-execution-tracker/src/execution_tracker.rs	286	286	read sequentially through EOF	0
+crates/op-execution-tracker/src/lib.rs	28	28	read sequentially through EOF	0
+crates/op-execution-tracker/src/metrics.rs	137	137	read sequentially through EOF	0
+crates/op-execution-tracker/src/record.rs	386	386	read sequentially through EOF	0
+crates/op-execution-tracker/src/telemetry.rs	71	71	read sequentially through EOF	0

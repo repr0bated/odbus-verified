@@ -1,4 +1,4 @@
-//! Capability-preserving facade dispatch into canonical tched_router methods.
+//! Capability-preserving facade dispatch into canonical chat_router methods.
 //!
 //! This module owns no provider, catalog, selection or generation state. The
 //! facade call is admitted first, then the exact nested target method is
@@ -22,7 +22,7 @@ fn admit_target(plan: &TargetPlan, actor: &str) -> Result<()> {
     method_contract_admission::validate_admitted_arguments(&declaration, &plan.args)?;
     anyhow::ensure!(
         load_capability_grants(actor).contains(&plan.required_capability),
-        "exact nested tched_router capability grant is required"
+        "exact nested chat_router capability grant is required"
     );
     Ok(())
 }
@@ -93,23 +93,23 @@ pub(crate) fn dispatch<'a>(
         let target_domain = target_result
             .get("result")
             .cloned()
-            .context("canonical tched_router response is missing its domain result")?;
+            .context("canonical chat_router response is missing its domain result")?;
         complete_method(method, target_domain)
     })
 }
 
 /// Refresh one paired config/selection observation while retaining the caller's
 /// final admission and runtime guard through authoritative publication.
-pub(crate) async fn observed_tched_router_state(
+pub(crate) async fn observed_chat_router_state(
     engine: &MutationEngine,
     pinned: &crate::sealed_schema_reader::ManifestPinnedSchemaDocument,
     sealed_identity: &str,
-) -> Result<op_plugins::state_plugins::tched_router::TchedRouterState> {
+) -> Result<op_plugins::state_plugins::chat_router::ChatRouterState> {
     let (observed, represented) =
-        crate::tched_config_engine::coherent_observation(pinned, sealed_identity).await?;
+        crate::chat_router_config_engine::coherent_observation(pinned, sealed_identity).await?;
     engine
-        .persist_tched_router_observation(&represented, &pinned.schema_hash)
+        .persist_chat_router_observation(&represented, &pinned.schema_hash)
         .await
-        .context("native tched_router read completed but projection publication failed")?;
+            .context("native chat_router read completed but projection publication failed")?;
     Ok(observed)
 }

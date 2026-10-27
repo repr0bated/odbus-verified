@@ -5,7 +5,7 @@
 //! perspectives, and the UI-spec gallery surface. It is the WHAT-to-decide
 //! surface; its retained taxonomy and private UI workspace methods are local,
 //! not inference wrappers. Model selection and inference belong to
-//! [`super::tched_router`]; "gemma" is a brain brand, not a model binding.
+//! [`super::chat_router`]; "gemma" is a brain brand, not a model binding.
 //!
 //! The MutationEngine owns the canonical private workspace methods and commits
 //! their full state to owner-scoped SHM before streaming wakeups. The retained

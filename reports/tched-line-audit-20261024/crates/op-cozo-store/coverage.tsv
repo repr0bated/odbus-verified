@@ -1,0 +1,30 @@
+path	sequential_ranges_read	supplied_lines	supplied_initial_sha256	finding_action	status
+crates/op-cozo-store/Cargo.toml	1-45 EOF	45	426982a3acb621cd126c1b7a64cde18e2505447aec37edfe10d1eafb3b6d2d37	no tched substring	complete
+crates/op-cozo-store/examples/delete_identity_session.rs	1-24 EOF	24	5dc73b0802e1261f7dce130dacd4e9052c3577fa9acf626af3746d2daf9def21	no tched substring	complete
+crates/op-cozo-store/examples/load_crate_graph.rs	1-40 EOF	40	9ea2ec8f16ef58d0328ffe69923d06937204d0dae72025f146d9e6278549230e	line3 3tchedFS leave_as_is J1.example	complete
+crates/op-cozo-store/src/bin/get-migration-preflight.rs	1-48 EOF	48	a33162ad6a32d2d57202c7495ddd719ecd38881e6abac5474b50d99fd32a2454	no tched substring	complete
+crates/op-cozo-store/src/bin/identity_sled_bind.rs	1-75 EOF	75	16a15e75f85d70e8e11e8ed936d59d8a38ef0f333997f2e655b8d3546a4ec90a	no tched substring	complete
+crates/op-cozo-store/src/bin/inventory/mod.rs	1-250;251-500;501-750;751-1000;1001-1250;1251-1500;1501-1750;1751-2000;2001-2095 EOF	2095	cbad8d40c965177b8e2b01fcedcff18f15844df3eb78b79cdf2597521710edfe	11 tched substrings leave_as_is J1.paths/formats	complete
+crates/op-cozo-store/src/bin/inventory/tests.rs	1-250;251-500;501-624 EOF	624	a78d71bf2d3f29c9c2b08a0038ca0b89a29380638b4b0b6dfbecb6d11c45a4c4	8 tched substrings leave_as_is J1.fixtures	complete
+crates/op-cozo-store/src/bin/list-genesis.rs	1-43 EOF	43	ca076ff8eb63b0b3d19b7be083b87fc766ce32e22ad007d5f6dc6ad9778770e8	no tched substring	complete
+crates/op-cozo-store/src/bin/migrate-chatbot-root.rs	1-150 EOF	150	142de2f05ab8ca62285ad0726a334b4ceacdca5921b2660db31c0c054877fbce	line112 3tched-storage leave_as_is J2.pools	complete
+crates/op-cozo-store/src/bin/system_graph_inventory.rs	1-6 EOF	6	2af5b457243526cfd25689f7cccf512b99832736d5c10235956a818865f4d1de	no tched substring	complete
+crates/op-cozo-store/src/bin/update-chatbot-fsid.rs	1-76 EOF	76	4923d39410f2fa4e475cfbb962d5699825ab58b504ee6acfe631685af3eba967	no tched substring	complete
+crates/op-cozo-store/src/bin/validate-chatbot-state.rs	1-107 EOF	107	a9f5f5329cdac644d5b3b99ae7ac900a7e930f9bcf3286810b73d759a1108696	no tched substring	complete
+crates/op-cozo-store/src/chat_response_conversations.rs	1-250;251-500;501-750;751-1000;1001-1116 EOF	1116	4825ee68c7dc4d05cb44f30ac07e082546fc4ee1de4aee3747e71fef18203007	no tched substring	complete
+crates/op-cozo-store/src/ctl_plane_chatbot_episodes.rs	1-250;251-500;501-750;751-1000;1001-1237 EOF	1237	738e41e47a8dd999946f2b1b06f7f84b2e269b7c1cd7f0b16b1e64600ccd7de2	no tched substring	complete
+crates/op-cozo-store/src/external_mcp_sessions.rs	1-250;251-377 EOF	377	eefb1f6625a72c8c644814425b9ac224d32e1f01f551bda4eef82c3cdf4e13e9	line194 mismatched leave_as_is J2.word	complete
+crates/op-cozo-store/src/identity_inventory.rs	1-250;251-491 EOF	491	a066716be91d6920fca42f77341a3361e78bc5a99e05393e9c5da68385427115	no tched substring	complete
+crates/op-cozo-store/src/identity_transactions/clean_provision.rs	1-250;251-384 EOF	384	e6d2825aa9cb32256d52f4eca43b97f1d0ebbb7e2eb30fe83d10ed9a7114ea99	two qualified instance names line183 leave_as_is J2.names	complete
+crates/op-cozo-store/src/identity_transactions/native_creation.rs	1-229 EOF	229	83cc35825782a7dcabc92032581383079ae7b972a005c58c5782d9c3d45a8d81	three qualified reserved names lines40/54/164 leave_as_is J2.names	complete
+crates/op-cozo-store/src/identity_transactions/physical_root.rs	1-250;251-357 EOF	357	e0139fd635529b62b56d7e5e18f6cf60b6953b0c80368ed3a7339b90c63e13de	no tched substring	complete
+crates/op-cozo-store/src/identity_transactions.rs	1-250;251-500;501-750;751-1000;1001-1250;1251-1500;1501-1750;1751-1802 EOF	1802	cdcd7f48e5b419ff541540b5e52c9a85ef7be3cf085a069ac4195e953dda7f4d	no tched substring	complete
+crates/op-cozo-store/src/identity_transactions_tests.rs	1-250;251-500;501-750;751-1000;1001-1250;1251-1500;1501-1750;1751-2000;2001-2143 EOF	2143	46a8d20805d0a2847ab5477da0c70f23a522a6a31e840759ccd7d9fad155702c	two qualified instance names lines1938/1999 leave_as_is J2.names	complete
+crates/op-cozo-store/src/lib.rs	1-250;251-500;501-750;751-1000;1001-1250;1251-1500;1501-1750;1751-2000;2001-2250;2251-2500;2501-2750;2751-2865 EOF	2865	efe6c249d4dca91dd2261fb4e9ad58b556fd9b4c5422f6a10bcb7ed1ec58adc9	5 substrings leave_as_is J3.matched/fixture_pool	complete
+crates/op-cozo-store/src/model_registry.rs	1-250;251-500;501-750;751-922 EOF	922	a367c4c410ed58d73adf54de3119ad3ebcdc9bc5ed82ef527d3e4252b1eea153	no tched substring	complete
+crates/op-cozo-store/src/runtime_document_transactions.rs	1-265 EOF	265	0c1738789b3d078bbb3cd4948c342d211d9528e37ab5de1d7677abd1686391f1	no tched substring	complete
+crates/op-cozo-store/src/runtime_document_transactions_tests.rs	1-250;251-444 EOF	444	4ce74209d22723a23045683412890612d37adb77c1282e135aebd5fcc2a55a49	no tched substring	complete
+crates/op-cozo-store/src/system_graph.rs	1-250;251-500;501-750;751-787 EOF	787	2fa846c2b9a64a36d233a13a0cb7baafb5e460de02c18e02257ee22013245cd8	no tched substring	complete
+crates/op-cozo-store/src/system_graph_tests.rs	1-250;251-479 EOF	479	1833e36df951efd298aa3ae36480d7f6fe43d6cfc47ecdb303eb47a6cdd70851	no tched substring	complete
+crates/op-cozo-store/src/ui_gallery.rs	1-250;251-500;501-750;751-1000;1001-1250;1251-1409 EOF	1409	9bcb5e62a21b89e19eff2cfb038d302672090791eebd57be56143b18bf6bbacb	no tched substring	complete
+crates/op-cozo-store/src/workflow_executions.rs	1-250;251-312 EOF	312	c7a36acd14e3e43ddd73344746b721ac73f3332b1424c48ef1f29e4a937cb27c	no tched substring	complete

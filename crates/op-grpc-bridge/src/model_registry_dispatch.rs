@@ -751,7 +751,7 @@ pub(crate) async fn catalog_binding_target(
     engine: &MutationEngine,
     provider_id: &str,
     model_id: &str,
-) -> Result<crate::tched_catalog_binding::BindingTarget> {
+    ) -> Result<crate::chat_router_catalog_binding::BindingTarget> {
     binding_target_from(
         &Environment::from_env(),
         engine.model_registry_cozo().await?,
@@ -766,7 +766,7 @@ async fn binding_target_from(
     store: Arc<CozoGraphShuttle>,
     provider_id: &str,
     model_id: &str,
-) -> Result<crate::tched_catalog_binding::BindingTarget> {
+    ) -> Result<crate::chat_router_catalog_binding::BindingTarget> {
     ensure!(valid_provider_id(provider_id), "invalid catalog provider");
     ensure!(valid_model_id(model_id), "invalid catalog model");
     let file = load_providers(env)?;
@@ -834,14 +834,14 @@ async fn binding_target_from(
     let ordinary_reference = ordinary.clone();
     let family = ordinary_reference
         .as_deref()
-        .and_then(crate::tched_catalog_binding::reference_family)
+        .and_then(crate::chat_router_catalog_binding::reference_family)
         .map(str::to_string)
         .with_context(|| {
             format!(
                 "provider {provider_id} has no native serve family (declare native_provider_id or control_plane)"
             )
         })?;
-    Ok(crate::tched_catalog_binding::BindingTarget {
+    Ok(crate::chat_router_catalog_binding::BindingTarget {
         provider_id: provider_id.to_string(),
         model_id: model_id.to_string(),
         inference_url_prefix: prefix,
@@ -1046,12 +1046,12 @@ pub(crate) async fn dispatch(
         "native_list_providers" => {
             let _: op_plugins::state_plugins::model_registry::NativeListProvidersInput =
                 args(arguments)?;
-            let runtime = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env();
+            let runtime = crate::chat_router_runtime::ChatRouterRuntimeClient::from_env();
             let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
                 &crate::sealed_schema_reader::blob_catalog_dir_from_env(),
-                "tched_router",
+                "chat_router",
             )?;
-            let secrets = crate::tched_config_engine::pinned_config_secrets(&pinned)?;
+            let secrets = crate::chat_router_config_engine::pinned_config_secrets(&pinned)?;
             let providers = runtime.native_providers_inventory(&secrets).await?;
             serde_json::to_value(
                 op_plugins::state_plugins::model_registry::NativeListProvidersOutput { providers },

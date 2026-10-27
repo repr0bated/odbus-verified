@@ -1,0 +1,7 @@
+# Findings — `op-services`
+
+- **Tched audit:** No case-insensitive `tched` occurrence in the 15 assigned files after sequential full reads (1,825 listed lines). Fresh declarative JEV J1 supports complete-zero coverage (0.92) and no tched-specific correction (1.0). No source changes.
+- **Current source context:** `src/bin/op-services.rs` calls this a compatibility transport and restricts its address to loopback. `src/grpc/auth.rs` uses `FailClosedVerifier`; after structural SID1 parsing it denies service until a canonical shared identity and grant verifier exists. These facts support not assuming this daemon is an available deployed service. No runtime or deployment check was performed.
+- **Inventory disposition:** All inventory entries are readable regular text/source files and present in full source-tree listings. No inventory path is missing, binary, or symlinked.
+- **Stale inventory-like docs:** `SPEC.md` and `compare-op-services.md` list old/non-current paths (`src/bin/systemctl.rs`, `src/dbus/mod.rs`, `src/dbus/interface.rs`, `src/manager/process.rs`, `src/manager/dinit_proxy.rs`) that do not appear in current directory listings. They are individually noted as absent historical doc references, not current tched evidence; no unrelated documentation repair was made.
+- **Limits:** Assignment forbids builds, tests, lint/format checks, custom smoke, runtime/deploy/credential/grant actions. No such checks were run. Coordinator owns scoped GNU builds after reconciliation. Live service, catalog and deployment status remain unknown.

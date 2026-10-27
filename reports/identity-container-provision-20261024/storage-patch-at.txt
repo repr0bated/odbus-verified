@@ -1,0 +1,18 @@
+@
+	Name: 			@
+	UUID: 			dcd7ff23-da72-3a4d-be28-c12a1f8a6bb4
+	Parent UUID: 		-
+	Received UUID: 		-
+	Creation time: 		2026-10-25 02:29:12 +0000
+	Subvolume ID: 		256
+	Generation: 		10
+	Gen at creation: 	10
+	Parent ID: 		5
+	Top level ID: 		5
+	Flags: 			-
+	Send transid: 		0
+	Send time: 		2026-10-25 02:29:12 +0000
+	Receive transid: 	0
+	Receive time: 		-
+	Snapshot(s):
+	Quota group:		n/a

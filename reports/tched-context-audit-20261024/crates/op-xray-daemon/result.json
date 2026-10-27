@@ -1,0 +1,19 @@
+{
+  "task": "tched-context-audit-20261024/op-xray-daemon",
+  "crate": "op-xray-daemon",
+  "status": "complete",
+  "files_reviewed": 29,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 1,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-xray-daemon/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-xray-daemon/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-xray-daemon/occurrences.tsv",
+  "jev_receipts": "reports/tched-context-audit-20261024/crates/op-xray-daemon/judgments.md",
+  "limitations": [
+    "Static source review only; runtime, current catalog, deployment, and Xray service readiness were not verified.",
+    "No Cargo/build/check/test/Clippy/format/smoke/runtime/deployment actions were run, per assignment.",
+    "Cargo author metadata wording remains unverified; no source correction was supported by authoritative author identity evidence."
+  ],
+  "next_action": "Coordinator may aggregate this complete static audit; no crate-local source action remains."
+}

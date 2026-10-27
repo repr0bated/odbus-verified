@@ -1,12 +1,12 @@
-//! Authenticated compatibility facade for the native tched_router MCP section.
+//! Authenticated compatibility facade for the native chat_router MCP section.
 
 use anyhow::{Context, Result, anyhow, ensure};
 use serde_json::Value;
 
-use crate::state_plugins::tched_router::{
+use crate::state_plugins::chat_router::{
     ConfigPatchInput, ConfigPatchOperation, ConfigPatchOutput,
 };
-use crate::state_plugins::tched_router::{EmptyTchedInput, GetMcpConfigOutput};
+use crate::state_plugins::chat_router::{EmptyChatInput, GetMcpConfigOutput};
 
 pub struct McpMethodPlan {
     pub target_method: &'static str,
@@ -15,11 +15,11 @@ pub struct McpMethodPlan {
 }
 
 fn target_capability(method: &str) -> Result<String> {
-    let schema = crate::state_plugins::threetched::sealed_schema("tched_router")?;
+    let schema = crate::state_plugins::threetched::sealed_schema("chat_router")?;
     let declaration = schema
         .methods
         .get(method)
-        .ok_or_else(|| anyhow!("tched_router does not declare '{method}'"))?;
+        .ok_or_else(|| anyhow!("chat_router does not declare '{method}'"))?;
     Ok(schema
         .resolve_method_capability(declaration)
         .capability()
@@ -62,7 +62,7 @@ fn patch_path(operation: &ConfigPatchOperation) -> &str {
 pub fn plan_method(method: &str, args: &Value) -> Result<McpMethodPlan> {
     match method {
         "get_config" => {
-            let _: EmptyTchedInput =
+            let _: EmptyChatInput =
                 serde_json::from_value(args.clone()).context("invalid mcp.get_config arguments")?;
             Ok(McpMethodPlan {
                 target_method: "GetMcpConfig",
@@ -97,11 +97,11 @@ pub fn complete_method(method: &str, result: Value) -> Result<Value> {
     match method {
         "get_config" => Ok(serde_json::to_value(
             serde_json::from_value::<GetMcpConfigOutput>(result)
-                .context("tched_router.GetMcpConfig returned an invalid result")?,
+                .context("chat_router.GetMcpConfig returned an invalid result")?,
         )?),
         "configure_server" => Ok(serde_json::to_value(
             serde_json::from_value::<ConfigPatchOutput>(result)
-                .context("tched_router.PatchConfig returned an invalid result")?,
+                .context("chat_router.PatchConfig returned an invalid result")?,
         )?),
         "configure_tool_groups" => Err(anyhow!(
             "mcp.configure_tool_groups is completed by the bridge MCP projection policy"

@@ -1,0 +1,16 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-services/Cargo.toml	1-54 EOF	89ec6ee654eb5db6884b2b5873cdf3ba7e2fc873fdbc37e8ae80b71e144e4239	No native occurrence; authoritative op-services/op-svctl bin declarations	complete
+crates/op-services/SPEC.md	1-102 EOF; refreshed1-102 before patch	7f0a6e6da588eaf14a98dd5522bb9cd28094480be7db354ed3605fde1a381aec	3 stale systemctl-native occurrences corrected to actual op-svctl; J1; edit1517	complete
+crates/op-services/build.rs	1-7 EOF	2b1e810220752b1137a5f07c4e6a4b1214ac038f139a4a41a1a7cdd2f73bde88	No native occurrence	complete
+crates/op-services/compare-op-services.md	1-100 EOF; refreshed1-100 before patch	becd11ff8c2a1d234e9fcba7bd5b9d3b465c45e60b1fcbf3a55b983515a1fd1b	5 stale systemctl-native occurrences corrected to actual op-svctl; J1; edit26F2	complete
+crates/op-services/proto/services.proto	1-133 EOF	0cfa0b4701334d59144941945bd8b1efacde9d045ff50a29dc5d4420fc4b8c8d	No native occurrence	complete
+crates/op-services/src/bin/op-services.rs	1-47 EOF	e7f512a224f1ade6aee8852b008ee3796b0f6e67f8750e1aefdcbb4976903b76	No native occurrence; loopback-only compatibility transport	complete
+crates/op-services/src/bin/op-svctl.rs	1-87 EOF	14e942611cb396a33cf9c0ebf1a37a8d616ae1951d9645d65edd960c11c51e41	No native occurrence; actual CLI named op-svctl	complete
+crates/op-services/src/grpc/auth.rs	1-97 EOF	e1928e82c412b313f54f8cacf66ec59ac216f091ac5f72cd6d8ff54fc9358dd9	No native occurrence; production verifier fails closed	complete
+crates/op-services/src/grpc/mod.rs	1-8 EOF	84f493ff498703eaf014e7a496bea21f4b4c11abe569b2b4c18882a2c002f974	No native occurrence	complete
+crates/op-services/src/grpc/server.rs	1-200;201-400;401-522 EOF	2f633acbf50149bdfae41f6cacca04d637e3ce3ef0760d2cf590ad2add7f7a94	No native occurrence; all RPCs authorize before manager calls	complete
+crates/op-services/src/lib.rs	1-14 EOF	78146678b5eb0721f3a8d72e6087350112fdf6d3a55677b8f6f1860cef880f84	No native occurrence	complete
+crates/op-services/src/manager/mod.rs	1-5 EOF	394761da1105af0b6d104260517d54dcedc51a0277b4c426a924fc6af6839bcd	No native occurrence	complete
+crates/op-services/src/manager/service_manager.rs	1-230;231-445 EOF	c536b3a2a30299a3a0a4a08857075cb2cab967ec0f7d27fceee10a464ff8f969	No native occurrence; runit service lifecycle not AI selection	complete
+crates/op-services/src/schema/mod.rs	1-9 EOF	025deac6aa0e247976e41f361a24cce654af48cf42d04c25e4b659fee0ce5dd7	No native occurrence; service definition re-exports	complete
+crates/op-services/src/store/mod.rs	1-195 EOF	cedd61dabe1098c678b10fedc34d53c52a00675baf66c3e460d4e8ea1f7e68dd	No native occurrence; JSON catalog persistence	complete

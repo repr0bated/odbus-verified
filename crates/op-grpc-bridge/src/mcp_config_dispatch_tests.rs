@@ -3,7 +3,7 @@ use crate::{
         pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     },
     identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
-    tched_router_runtime::TchedRouterRuntimeClient,
+    chat_router_runtime::ChatRouterRuntimeClient,
 };
 use op_state::StatePlugin;
 use serde_json::json;
@@ -265,13 +265,13 @@ async fn canonical_tool_group_dispatch_commits_file_live_owner_and_member_projec
 async fn queued_mcp_configuration_rechecks_both_original_grants_and_facade_seal() {
     use op_plugins::state_plugins::{
         human_principal::HumanPrincipalPlugin, identity_sled::IdentitySledPlugin,
-        mcp::McpStatePlugin, tched_router::TchedRouterPlugin,
+        mcp::McpStatePlugin, chat_router::ChatRouterPlugin,
     };
     let _cozo = temp_cozo();
     let mcp = McpStatePlugin::new(Arc::new(op_state_store::MemoryStore::new()), "unused")
         .schema()
         .unwrap();
-    let router = TchedRouterPlugin::new().schema().unwrap();
+    let router = ChatRouterPlugin::new().schema().unwrap();
     let _shm = temp_shm_with_schemas(&[
         HumanPrincipalPlugin::new().schema().unwrap(),
         IdentitySledPlugin::new().schema().unwrap(),
@@ -344,7 +344,7 @@ async fn queued_mcp_configuration_rechecks_both_original_grants_and_facade_seal(
         sealer
             .write(&op_blob::blobify_plugin_schema("mcp", mcp.clone()))
             .unwrap();
-        let guard = TchedRouterRuntimeClient::selection_guard().await;
+        let guard = ChatRouterRuntimeClient::selection_guard().await;
         let mut changes = engine.change_tx().subscribe();
         let queued = engine.clone();
         let queued_actor = actor.clone();
@@ -360,7 +360,7 @@ async fn queued_mcp_configuration_rechecks_both_original_grants_and_facade_seal(
         tokio::time::timeout(Duration::from_secs(10), async {
             loop {
                 let event = changes.recv().await.unwrap();
-                if event.plugin_id == "tched_router"
+                if event.plugin_id == "chat_router"
                     && event.member_name.as_deref() == Some("PatchConfig")
                 {
                     break;

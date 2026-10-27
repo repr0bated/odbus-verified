@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024/op-dbus-model",
+  "crate": "op-dbus-model",
+  "status": "complete",
+  "files_reviewed": 5,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-dbus-model/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-dbus-model/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-dbus-model/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-dbus-model/judgments.md"],
+  "limitations": ["Initial inventory hashes not recomputed; reads were non-atomic.", "No runtime, sealed catalog, deployment, build, test, lint, format or smoke verification performed.", "Generic SPEC.md persistence mismatch noted but excluded as non-tched scope."],
+  "next_action": "Coordinator aggregates reports; no tched-specific source change or build indicated."
+}

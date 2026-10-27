@@ -24,6 +24,7 @@
 #   build-golden.sh                 # prepare and validate golden (default)
 #   build-golden.sh --golden-only   # compatibility alias for the default
 #   build-golden.sh --dry-run
+#   build-golden.sh --system    # also stage the declared base-system payload
 #
 # Retired options `--live-only` and `--no-restart` fail explicitly. Requires
 # root to populate the btrfs subvolume. Never builds: run
@@ -40,6 +41,7 @@ OPDBUS_ROOT=$(realpath -e -- "$OPDBUS_ROOT")
 GOLDEN_DIR="$OPDBUS_ROOT/golden"
 
 DRY_RUN=0
+PREPARE_SYSTEM=0
 
 SCRIPT_PATH=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
 # Internal helper of ./activate-golden.sh; every relative input lives in deploy/runit.
@@ -75,11 +77,6 @@ TCHED_ROUTER_VENDORED_SOURCE="$PROJECT_ROOT/vendor/tched-router/source.tar.gz"
 TCHED_ROUTER_ARTIFACT_DIR="$PROJECT_ROOT/target/threetched-artifacts/tched-router"
 THREETCHED_BIN="$TCHED_ROUTER_ARTIFACT_DIR/threetched"
 THREETCHED_MANIFEST="$TCHED_ROUTER_ARTIFACT_DIR/manifest.json"
-TCHED_ROUTER_LAG_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0001-close-threetched-event-stream-on-lag.patch"
-TCHED_ROUTER_GENERATION_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0002-stateless-provider-generation.patch"
-TCHED_ROUTER_BRANDING_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0003-threetched-branding.patch"
-TCHED_ROUTER_PATCH_INVENTORY="$PROJECT_ROOT/vendor/tched-router/patch-inventory"
-TCHED_ROUTER_BASE_MANIFEST="$PROJECT_ROOT/vendor/tched-router/base-sha256sums"
 TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/threetched-runtime.toml"
 TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/threetched-skills/default"
 AGENT_BUNDLE_SOURCE="$SCRIPT_DIR/../config/agents"
@@ -325,6 +322,7 @@ case "${VENDORED_SOURCE_GZIP_SHA256:-}" in *[!0-9a-f]*|'') die "invalid tched_ro
 while [ $# -gt 0 ]; do
     case "$1" in
         --golden-only) ;;
+        --system) PREPARE_SYSTEM=1 ;;
         --live-only)   die "--live-only is retired; deploy only with btrfs send/receive of a prepared snapshot" ;;
         --no-restart)  die "--no-restart is retired because this script never installs or restarts live services" ;;
         --dry-run)     DRY_RUN=1 ;;
@@ -368,46 +366,36 @@ printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/3tched-fs" ||
 THREETCHED_SHA256=$(sha256sum "$THREETCHED_BIN" | cut -d' ' -f1)
 TCHED_ROUTER_MANIFEST_SHA256=$(sha256sum "$THREETCHED_MANIFEST" | cut -d' ' -f1)
 THREETCHED_BYTES=$(wc -c < "$THREETCHED_BIN" | tr -d ' ')
-TCHED_ROUTER_LAG_PATCH_SHA256=$(sha256sum "$TCHED_ROUTER_LAG_PATCH" | cut -d' ' -f1)
-TCHED_ROUTER_GENERATION_PATCH_SHA256=$(sha256sum "$TCHED_ROUTER_GENERATION_PATCH" | cut -d' ' -f1)
-TCHED_ROUTER_BRANDING_PATCH_SHA256=$(sha256sum "$TCHED_ROUTER_BRANDING_PATCH" | cut -d' ' -f1)
-TCHED_ROUTER_PATCH_INVENTORY_SHA256=$(sha256sum "$TCHED_ROUTER_PATCH_INVENTORY" | cut -d' ' -f1)
-TCHED_ROUTER_BASE_MANIFEST_SHA256=$(sha256sum "$TCHED_ROUTER_BASE_MANIFEST" | cut -d' ' -f1)
+TCHED_ROUTER_LOCK_SHA256=$(tar -xOzf "$TCHED_ROUTER_VENDORED_SOURCE" Cargo.lock | sha256sum | cut -d' ' -f1)
 jq -e \
     --arg url "$UPSTREAM_URL" \
     --arg tag "$UPSTREAM_TAG" \
     --arg commit "$UPSTREAM_COMMIT" \
     --arg source_sha "$SOURCE_ARCHIVE_SHA256" \
     --arg vendored_source_gzip_sha "$VENDORED_SOURCE_GZIP_SHA256" \
+    --arg lock_sha "$TCHED_ROUTER_LOCK_SHA256" \
     --arg binary_sha "$THREETCHED_SHA256" \
     --argjson binary_bytes "$THREETCHED_BYTES" \
-    --arg lag_patch_sha "$TCHED_ROUTER_LAG_PATCH_SHA256" \
-    --arg generation_patch_sha "$TCHED_ROUTER_GENERATION_PATCH_SHA256" \
-    --arg branding_patch_sha "$TCHED_ROUTER_BRANDING_PATCH_SHA256" \
-    --arg inventory_sha "$TCHED_ROUTER_PATCH_INVENTORY_SHA256" \
-    --arg base_manifest_sha "$TCHED_ROUTER_BASE_MANIFEST_SHA256" \
-    '.format == "opdbus.threetched.v1" and
+    '.format == "opdbus.threetched.v2" and
+     .source.mode == "unmodified-upstream" and
+     .source.cargo_lock_sha256 == $lock_sha and
+     (has("patches") | not) and
      .upstream.url == $url and
      .upstream.tag == $tag and
      .upstream.commit == $commit and
      .upstream.source_archive_sha256 == $source_sha and
      .upstream.vendored_source_gzip_sha256 == $vendored_source_gzip_sha and
      .artifact.name == "threetched" and
+     .artifact.upstream_binary == "zeroclaw" and
      .artifact.sha256 == $binary_sha and
      .artifact.bytes == $binary_bytes and
-     (.artifact.rust_target | type == "string" and length > 0) and
-     .patches.lagged_sse_sha256 == $lag_patch_sha and
-     .patches.stateless_generation_sha256 == $generation_patch_sha and
-     .patches.branding_sha256 == $branding_patch_sha and
-     .patches.inventory_sha256 == $inventory_sha and
-     .patches.base_manifest_sha256 == $base_manifest_sha and
-     (.patches.patched_cargo_lock_sha256 | type == "string" and test("^[0-9a-f]{64}$"))' \
+     .artifact.rust_target == "x86_64-unknown-linux-gnu"' \
     "$THREETCHED_MANIFEST" >/dev/null ||
     die "threetched provenance does not match its pinned source and binary"
-[ "$("$THREETCHED_BIN" --version)" = "threetched ${UPSTREAM_TAG#v}" ] ||
+[ "$("$THREETCHED_BIN" --version)" = "zeroclaw ${UPSTREAM_TAG#v}" ] ||
     die "threetched candidate reports an unexpected version"
-strings "$THREETCHED_BIN" | grep -Fq 'tched_router.generation.v1' ||
-    die "threetched candidate lacks the patched generation protocol"
+strings "$THREETCHED_BIN" | grep -Fq 'tched_router.generation.v1' &&
+    die "threetched candidate still carries the retired patched generation protocol"
 [ -f "$TCHED_ROUTER_BOOTSTRAP_CONFIG" ] ||
     die "missing tched_router bootstrap configuration: $TCHED_ROUTER_BOOTSTRAP_CONFIG"
 [ -d "$TCHED_ROUTER_BOOTSTRAP_SKILLS" ] ||
@@ -849,6 +837,7 @@ build_golden() {
     run env OP_EXECUTION_PYTHON_ROOT="$GOLDEN_DIR/opt/op-dbus/execution-python" \
         OP_EXECUTION_PYTHON_REPO="$PROJECT_ROOT" OP_EXECUTION_PYTHON_LOCK="$EXECUTION_PYTHON_LOCK" \
         OP_EXECUTION_PYTHON_CACHE="${OP_EXECUTION_PYTHON_CACHE:-/var/cache/op-dbus/execution-python}" \
+        OP_EXECUTION_PYTHON_BUNDLE="${OP_EXECUTION_PYTHON_BUNDLE:-/home/jeremy/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu}" \
         "$EXECUTION_PYTHON_PREPARE"
 
     # One service inventory. Full declarations remain visible, but only marked
@@ -916,6 +905,12 @@ build_golden() {
         } > "$GOLDEN_DIR/MANIFEST"
     fi
     ok "wrote golden/MANIFEST (commit $COMMIT)"
+    if [ "$PREPARE_SYSTEM" = 1 ]; then
+        # shellcheck source=system-payload.sh
+        . "$(dirname -- "$SCRIPT_PATH")/system-payload.sh"
+        stage_system_payload
+        ok "staged explicit system payload"
+    fi
     # Derive inventory from the finished prepared tree. The graph directory and
     # MANIFEST digest are excluded by the collector to prevent self-reference.
     # This is preparation only: importing into live Cozo is an authenticated

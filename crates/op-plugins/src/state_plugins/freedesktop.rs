@@ -582,7 +582,7 @@ mod tests {
     #[test]
     fn property_contract_requires_canonical_target_and_native_json_value() {
         let input: SetPropertyInput = serde_json::from_value(serde_json::json!({
-            "plugin_id": "tched_router",
+            "plugin_id": "chat_router",
             "property_name": "selected_model",
             "value": "model-id"
         }))
@@ -597,7 +597,7 @@ mod tests {
         );
         assert!(
             serde_json::from_value::<SetPropertyInput>(serde_json::json!({
-                "plugin_id": "tched_router", "property_name": "selected_model",
+                "plugin_id": "chat_router", "property_name": "selected_model",
                 "value": "model-id", "destination": "org.external.Service"
             }))
             .is_err()

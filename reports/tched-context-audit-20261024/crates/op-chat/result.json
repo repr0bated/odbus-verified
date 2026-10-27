@@ -1,0 +1,28 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-chat",
+  "status": "complete",
+  "files_reviewed": 54,
+  "files_pending": 0,
+  "changed_files": ["crates/op-chat/src/system_prompt.rs"],
+  "occurrence_count": 15,
+  "current_occurrence_count": 14,
+  "findings_report": "/srv/git/odbus-verified/reports/tched-context-audit-20261024/crates/op-chat/findings.md",
+  "coverage_report": "/srv/git/odbus-verified/reports/tched-context-audit-20261024/crates/op-chat/coverage.tsv",
+  "occurrences_report": "/srv/git/odbus-verified/reports/tched-context-audit-20261024/crates/op-chat/occurrences.tsv",
+  "supplemental_reads_report": "/srv/git/odbus-verified/reports/tched-context-audit-20261024/crates/op-chat/supplemental-reads.md",
+  "jev_receipts": [
+    "jdgb-15b3324ef776d1a0",
+    "jdgb-15b332776bf6d1a1",
+    "jdgb-15b334559151389c",
+    "jdgb-15b334be8411389f",
+    "jdgb-15b334bb7f51389e"
+  ],
+  "limitations": [
+    "The initial mandatory preload was incomplete; all 28 mandatory paths were read fully as supplemental follow-up and are not backdated.",
+    "No runtime/deployment status was established; current mail-3tched existence/state, /run/3tched-lungs.socket availability, and deployed prompt behavior remain unverified.",
+    "Several earlier occurrence-level JEV answers were low-confidence; human dispositions use exact source context and owner guidance, not JEV as permission or runtime proof.",
+    "Only source excerpt readback was performed after the prompt edit. Searches, Cargo/build, tests, runtime, deployment, and delegation were explicitly prohibited and not performed."
+  ],
+  "next_action": "Coordinator review of corrected source-only audit and supplemental receipts; no further op-chat source change is indicated by the reviewed evidence."
+}

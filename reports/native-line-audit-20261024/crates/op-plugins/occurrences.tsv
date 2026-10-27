@@ -1,0 +1,536 @@
+path	line/position	exact_token/context	intended_meaning	judgment_reference	JEV_outcome/confidence	decision	change/status
+crates/op-plugins/Cargo.toml	49/#1	native UDS transport	library-provided Unix socket transport	J1.uds	preserve/0.88	preserve	unchanged; release history not independently verified
+crates/op-plugins/examples/method_coverage.rs	101/#1	"native" in owner|canonical|native	proof-scope label	J1.scope	preserve/0.94	preserve	unchanged; no integration-pass inference
+crates/op-plugins/examples/method_coverage.rs	102/#1	or native behavior	proof-scope diagnostic	J1.scope	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/bin/op-mail-admin.rs	5/#1	native_owner::MailAdminService	mail backend owner module	pending full backend read	pending	unresolved	import read; backend unread
+crates/op-plugins/src/canonical.rs	82/#1	Alternative legacy path	ordinary different legacy path	J2.ordinary	preserve/0.74	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	3/#1	proven native credential	provider credential surface; stronger proven claim	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; reconcile stronger claim	unresolved receiver/tched overlap
+crates/op-plugins/src/state_plugins/antigravity.rs	330/#1	native Google credential owner	Google credential adapter observation	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; receiver unverified	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	334/#1	Native credential kind	Google credential classification	J3.vocabulary	preserve_terms/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	342/#1	native credential owner	OAuth credential adapter	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; receiver unverified	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	646/#1	only native observations	provider observations and consumed intent	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; consumption claim needs receiver	unresolved receiver/tched overlap
+crates/op-plugins/src/state_plugins/antigravity.rs	656/#1	Sanitized native credential observation	redacted credential state	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; receiver unverified	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	789/#1	sanitized native auth	provider auth/schema description	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; applied policy/catalog claims need receiver	unresolved receiver/tched overlap
+crates/op-plugins/src/state_plugins/antigravity.rs	851/#1	Grants native auth observation	capability description	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; declaration not authorization proof	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	893/#1	alternatives binding	JSON Schema union branches	J2.ordinary	preserve/0.74	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	898/#1	for v in alternatives	JSON Schema union traversal	J2.ordinary	preserve/0.74	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity.rs	920/#1	state_schema_contains_only_native_or_durable_observations	provider-observation declaration fixture	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; fixture not runtime proof	unchanged; existing structural test out of native-only repair scope
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	16/#1	native provider requests	direct provider request configuration	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; consumption claim unverified	unresolved receiver/tched overlap
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	22/#1	Bounded native readback	provider models endpoint observation	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; bound needs receiver	unresolved receiver context
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	25/#1	NativeBridgeStatus declaration	provider bridge observation type	J3.vocabulary	preserve_terms/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	41/#1	native credential owner	credential observation timestamp	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; receiver unverified	unchanged
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	47/#1	native Antigravity generation requests	provider configuration consumer	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; consumption needs receiver	unresolved receiver/tched overlap
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	84/#1	native bridge observation	provider bridge state description	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; retired catalog reference needs reconciliation	unresolved tched overlap
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	94/#1	pub bridge: NativeBridgeStatus	bridge observation field type	J3.vocabulary	preserve_terms/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	142/#1	NativeBridgeStatus::default()	unobserved bootstrap status value	J3.vocabulary	preserve_terms/0.97	preserve	unchanged; no reachability assertion
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	199/#1	native Google credential	credential/bridge schema description	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; retired catalog reference needs reconciliation	unresolved tched overlap
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	209/#1	pub bridge: NativeBridgeStatus	method result type	J3.vocabulary	preserve_terms/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	253/#1	bounded native bridge model readback	capability description	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; bound needs receiver	unresolved receiver context
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	261/#1	native Google token refresh	capability description	J3.vocabulary;J3.claims	preserve_terms/0.97;receiver_reconciliation/1	preserve term; refresh needs receiver	unchanged
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	358/#1	alternatives binding	JSON Schema union branches	J2.ordinary	preserve/0.74	preserve	unchanged
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	363/#1	for v in alternatives	JSON Schema union traversal	J2.ordinary	preserve/0.74	preserve	unchanged
+crates/op-plugins/src/state_plugins/btrfs_plugin.rs	251/#1	struct NativeBtrfsBackend	direct kernel/uapi backend	J4.btrfs_terms	preserve/0.80	preserve	unchanged
+crates/op-plugins/src/state_plugins/btrfs_plugin.rs	281/#1	impl NativeBtrfsBackend	kernel backend helper implementation	J4.btrfs_terms	preserve/0.80	preserve	unchanged
+crates/op-plugins/src/state_plugins/btrfs_plugin.rs	290/#1	BtrfsBackend for NativeBtrfsBackend	kernel backend trait implementation	J4.btrfs_terms	preserve/0.80	preserve	unchanged
+crates/op-plugins/src/state_plugins/btrfs_plugin.rs	810/#1	&NativeBtrfsBackend	blocking kernel dispatcher backend	J4.btrfs_terms	preserve/0.80	preserve	unchanged
+crates/op-plugins/src/state_plugins/btrfs_plugin.rs	812/#1	btrfs native operation task failed	blocking task join diagnostic	J4.btrfs_terms	preserve/0.80	preserve	unchanged
+crates/op-plugins/src/state_plugins/btrfs_plugin.rs	887/#1	Native Btrfs filesystem operations and send/receive deployment topology	kernel operations plus declared transport topology	J4.btrfs_terms	preserve/0.80	preserve	unchanged; does not expose send/receive methods
+crates/op-plugins/src/state_plugins/chat_response.rs	127/#1	Alternatives the user could take [PII]	refusal suggestion description	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response.rs	130/#1	alternatives: Vec<String>	refusal suggestion payload	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response.rs	835/#1	"alternatives" private field expectation	refusal privacy assertion	J4.refusal_terms	preserve/0.61	preserve	unchanged; fixture not executed
+crates/op-plugins/src/state_plugins/chat_response.rs	860/#1	"alternatives" committed field expectation	committed refusal privacy assertion	J4.refusal_terms	preserve/0.61	preserve	unchanged; fixture not executed
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	218/#1	Alternatives the user could take [PII]	refusal input description	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	221/#1	pub alternatives: Vec<String>	refusal input field	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	599/#1	alternatives pattern binding	refusal content validation	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	603/#1	"alternatives" argument label	bounded refusal suggestion diagnostic label	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	603/#2	alternatives argument value	bounded refusal suggestion validation	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	653/#1	alternatives: struct field	refusal content construction	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	653/#2	self.alternatives	owned refusal suggestions transfer	J4.refusal_terms	preserve/0.61	preserve	unchanged
+crates/op-plugins/src/state_plugins/cognitive.rs	1523/#1	alternatives binding	JSON Schema union branches	J6.union	preserve/0.85	preserve	unchanged
+crates/op-plugins/src/state_plugins/cognitive.rs	1528/#1	for v in alternatives	JSON Schema union traversal	J6.union	preserve/0.85	preserve	unchanged
+crates/op-plugins/src/state_plugins/common/llm_projection.rs	176/#1	native schema	configuration schema provenance	J4.metadata_terms	preserve/0.95	preserve	unchanged; metadata not schema authority
+crates/op-plugins/src/state_plugins/common/llm_projection.rs	180/#1	Native Rust or Python type name	producer type provenance	J4.metadata_terms	preserve/0.95	preserve	unchanged
+crates/op-plugins/src/state_plugins/common/llm_projection.rs	182/#1	exp.software.llm-config-schema.native-type@v1	provenance field taxonomy	J4.metadata_terms	preserve/0.95	preserve	unchanged
+crates/op-plugins/src/state_plugins/common/llm_projection.rs	183/#1	pub native_type: String	producer type-name metadata field	J4.metadata_terms	preserve/0.95	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo.rs	41/#1	Native Cozo JSON headers/rows	engine JSON import shape	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve vocabulary	unchanged; guarantees not executed
+crates/op-plugins/src/state_plugins/cozo_methods.rs	1/#1	Native operations on the bridge-owned cognitive Cozo database	direct supplied engine handle	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	60/#1	Native Cozo JSON representation	engine public JSON export vs custom backup codec	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	143/#1	native engine transaction commit	engine-scoped receipt; no extra power-loss claim	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve wording; no runtime proof	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	160/#1	serde-tagged native DataValue cells	engine typed values vs display JSON	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	165/#1	fn native_error	engine error adapter	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	186/#1	.map_err(native_error)	engine script error mapping	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	192/#1	flatten native Cozo result chains	NamedRows chain conversion precondition	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	211/#1	native Cozo row/header length mismatch	engine metadata conversion diagnostic	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	338/#1	unexpected native snapshot result	engine snapshot result cardinality diagnostic	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	508/#1	native-endian bytes	upstream vector serde byte order	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve ABI vocabulary; upstream contract unverified	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	582/#1	native Vec expects borrowed bytes	upstream vector serde input representation	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve vocabulary; upstream contract unverified	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	596/#1	Preserve native key equality/order	DataValue comparison for duplicate keys	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	904/#1	native imperative runner	engine whole-script transaction	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve vocabulary; upstream guarantee not proven	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	1254/#1	.map_err(native_error)	engine export error mapping	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	1306/#1	native import exceeds 100000 rows	engine import work bound diagnostic	J5.terms	preserve/0.97	preserve	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	1345/#1	Native :put programs preserve normal write semantics	engine transactional write vs bulk helper	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve vocabulary; upstream semantics not executed	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods.rs	1391/#1	native_engine_transaction_commit	engine-scoped durability receipt value	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve value; no external durability claim	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods_tests.rs	36/#1	all_seven_methods_execute_against_the_supplied_native_handle	engine fixture handle	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve name; test not run	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods_tests.rs	213/#1	import_preserves_triggers_and_rolls_back_every_relation_on_native_failure	engine transaction failure fixture	J5.terms;J5.guarantees	preserve/0.97;dependency_unverified/1	preserve name; test not run	unchanged
+crates/op-plugins/src/state_plugins/cozo_methods_tests.rs	381/#1	archive_type_parser_rejects_programs_and_validates_native_values	engine DataValue type validation	J6.tests;J7.lexical	weak preserve/0.34 rejected;keep_native_word/0.97	preserve native word	unchanged; no execution proof
+crates/op-plugins/src/state_plugins/cozo_methods_tests.rs	408/#1	vector_codec_preserves_nested_bit_words_and_rejects_unsafe_native_tags	engine serde tag rejection fixture	J6.tests;J7.lexical	weak preserve/0.34 rejected;keep_native_word/0.97	preserve native word	unchanged; exact bitwise-strength question separate
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	filename/#1	emqx_native_tests.rs	backend protocol fixture	J13.semantics	preserve/0.72	preserve	full read; unexecuted
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	filename/#1	native_owner.rs	mail backend owner filename	pending file read	pending	unresolved	filename seen in inventory/listing; content unread
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	filename/#1	native_owner_tests.rs	mail backend fixture filename	pending file read	pending	unresolved	filename seen in inventory/listing; content unread
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	filename/#1	qdrant_native_tests.rs	backend fixture filename	pending file read	pending	unresolved	filename seen in inventory/listing; content unread
+crates/op-plugins/src/state_plugins/cron.rs	3/#1	native gateway owns install-wide job store	external scheduler ownership/policy	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; runtime claim unresolved	tched/gateway receiver overlap
+crates/op-plugins/src/state_plugins/cron.rs	41/#1	native wakeup stream	external unsequenced best-effort event transport	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; upstream event contract unverified	unchanged
+crates/op-plugins/src/state_plugins/cron.rs	153/#1	Native /api/events	external wakeups vs bounded /api/cron state readback	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; endpoint/readback claim unresolved	tched/gateway receiver overlap
+crates/op-plugins/src/state_plugins/cron.rs	215/#1	native runtime also has at/every	runtime schedule variants beyond admitted create contract	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; upstream variants unverified	unchanged
+crates/op-plugins/src/state_plugins/cron.rs	349/#1	bounded native transport timeout	external operation uncertainty diagnostic	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; timeout bound needs receiver	unchanged
+crates/op-plugins/src/state_plugins/cron.rs	381/#1	observed from the native gateway	generic lifecycle refusal ownership	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve refusal; observation requires receiver	unchanged
+crates/op-plugins/src/state_plugins/cron.rs	390/#1	native gateway checkpoints	explicit denial of generic checkpoint ownership	J8.words	preserve_terms/0.91	preserve	unchanged
+crates/op-plugins/src/state_plugins/cron.rs	393/#1	native gateway rollback	explicit denial of generic rollback ownership	J8.words	preserve_terms/0.91	preserve	unchanged
+crates/op-plugins/src/state_plugins/cron.rs	411/#1	native tched-router cron store	declared external scheduler schema	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; current owner/receiver needs reconciliation	tched overlap
+crates/op-plugins/src/state_plugins/cron.rs	508/#1	native daemon cron job store	global scheduler observation capability description	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; declaration not runtime grant proof	unchanged
+crates/op-plugins/src/state_plugins/cron.rs	512/#1	execution of native daemon cron jobs	global scheduler mutation capability description	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; receiver admission unverified	tched/gateway receiver overlap
+crates/op-plugins/src/state_plugins/cron.rs	512/#2	configured native agent risk/tool policy	future autonomous policy and explicit no originating-grant recheck	J8.words;J8.claims	preserve_terms/0.91;reconcile_receiver_and_owner/1	preserve term; execution policy claim unresolved	tched/gateway receiver overlap
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs	57/#1	completed native Chat creates one episode	external Chat episode lifecycle	J9.words;J9.claims	preserve_terms/0.92;partial_support_reconcile/1	preserve term; global invocation unverified	tched/caller overlap
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs	365/#1	Native Chat sets this conservatively	PII flag for completed Chat episode	J9.words;J9.claims	preserve_terms/0.92;partial_support_reconcile/1	builder sets flag and planner redacts; every-Chat caller unverified	unchanged; tched caller overlap
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs	541/#1	Native Chat routing selected through tched_router	external Chat route authority description	J9.words;J9.claims	preserve_terms/0.92;partial_support_reconcile/1	preserve term; retired owner reference unresolved	tched overlap
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs	549/#1	Native Chat uses tched_router selection	reserved chatbot model field vs external route owner	J9.words;J9.claims	preserve_terms/0.92;partial_support_reconcile/1	preserve term; no chatbot override config; retired route owner unresolved	tched overlap
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs	594/#1	completed native Chat has its own immutable episode	one completed Chat episode record	J9.words;J9.claims	preserve_terms/0.92;partial_support_reconcile/1	builder creates one record per call; actual global caller unverified	tched/caller overlap
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs	612/#1	completed native Chat creates one episode	flat episode lifecycle	J9.words;J9.claims	preserve_terms/0.92;partial_support_reconcile/1	preserve term; global caller unverified	tched/caller overlap
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot_methods.rs	361/#1	native retrieval input-type field	provider-supported role hint	J9.words;J12.embedding_semantics	preserve_terms/0.92;preserve/0.77	preserve	Voyage gets input_type; other adapters omit; source resolved
+crates/op-plugins/src/state_plugins/decoy_network/mod.rs	1/#1	Native network owners constructed only by decoy service	network backend ownership/exclusive constructor claim	J9.words;J9.claims	preserve_terms/0.92;partial_support_reconcile/1	preserve term; constructor callers unread	unresolved backend/caller context
+crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs	289/#1	async fn native	provider authenticated GET readback helper	J10.meaning	preserve/0.86	preserve	unchanged
+crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs	346/#1	self.native(token, id)	status provider GET before durable update	J10.meaning	preserve/0.86	preserve	unchanged
+crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs	394/#1	self.native(&token, &id)	update provider GET checked against requested name/license	J10.meaning	preserve/0.86	preserve	unchanged
+crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs	439/#1	self.native(&token, &id)	rotation provider GET checked against public key	J10.meaning	preserve/0.86	preserve	unchanged
+crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs	851/#1	all_eight_methods_use_native_readback_match_schema_and_never_project_secrets	provider protocol/readback fixture with injected kernel	J10.meaning;J10.boundary	preserve/0.86;source_only/1	preserve name; not live proof	unchanged; unexecuted
+crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs	1003/#1	update_rejects_name_and_license_when_native_readback_does_not_match	provider stale-value rejection fixture	J10.meaning	preserve/0.86	preserve	unchanged; unexecuted
+crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner.rs	182/#1	explicit native observation	known-absent allowlisted kernel device state	J10.meaning	preserve/0.86	preserve	unchanged
+crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner.rs	523/#1	native link	kernel interface host-address assignment	J10.meaning	preserve/0.86	preserve	unchanged
+crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner.rs	529/#1	native application	kernel peer AllowedIPs canonicalization and readback	J10.meaning	preserve/0.86	preserve	unchanged
+crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs	380/#1	Opt-in native proof	kernel fixture behind explicit environment opt-in	J10.meaning;J10.boundary	preserve/0.86;source_only/1	preserve intended fixture description; no execution proof	unchanged; unexecuted
+crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs	384/#1	all_native_methods_execute_in_isolated_network_namespace	kernel dispatcher exercise after unshare before runtime	J10.meaning;J10.boundary	preserve/0.86;source_only/1	preserve; guard can return without exercising path	unchanged; unexecuted
+crates/op-plugins/src/state_plugins/dnsresolver.rs	343/#1	native org.freedesktop.resolve1.Manager API	direct D-Bus protocol	J11.terms;J12.dns_semantics	weak0.53 supplemented;preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/dnsresolver.rs	1187/#1	native D-Bus method's exact ABI	fixture ABI requirement	J12.dns_semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/dnsresolver.rs	1414/#1	native wire arguments	fixture tuple comparisons	J12.dns_semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/dnsresolver.rs	1447/#1	{method} native arguments	assertion diagnostic	J12.dns_semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/embedding_model.rs	1/#1	native request adapters	configured provider protocols	J12.embedding_semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/embedding_model.rs	269/#1	Native embeddings through a configured Voyage, Ollama, or OpenAI-compatible provider	configured provider adapters	J12.embedding_semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/embedding_model_methods.rs	1/#1	Native embedding adapters	provider protocols	J12.embedding_semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/embedding_model_methods.rs	169/#1	adapters with native support	provider conditional role field	J12.embedding_semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/embedding_model_methods.rs	193/#1	native model-list response	provider vs configured provenance	J12.embedding_semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/embedding_model_methods.rs	604/#1	do not support native truncation	adapter unsupported-option diagnostic	J12.embedding_semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/embedding_model_methods.rs	1018/#1	ollama_uses_native_tags_and_embed_shapes	provider protocol fixture	J12.embedding_semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/embedding_model_methods.rs	1225/#1	do not support native truncation	fixture rejection expectation	J12.embedding_semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx.rs	239/#1	struct EmqxNativeTransport	backend transport declaration	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	245/#1	impl EmqxNativeTransport	backend transport implementation	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	528/#1	EmqxNativeTransport	runit_status backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	550/#1	EmqxNativeTransport	runit_lifecycle backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	595/#1	EmqxNativeTransport	emqx_api backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	742/#1	EmqxNativeTransport	publish_wake backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	767/#1	EmqxNativeTransport	publish_responder_wake backend argument	J13.semantics	preserve/0.72	preserve	unchanged; generic schema mismatch separate
+crates/op-plugins/src/state_plugins/emqx.rs	849/#1	EmqxNativeTransport	publish_toolsets backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	876/#1	EmqxNativeTransport	kick_client backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	902/#1	EmqxNativeTransport	query_listeners backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	1006/#1	EmqxNativeTransport	query_hooks backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	1050/#1	EmqxNativeTransport	configure_hooks backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	1089/#1	EmqxNativeTransport	query_status backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	1143/#1	EmqxNativeTransport::production()	canonical backend construction	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	1147/#1	EmqxNativeTransport	injectable dispatch backend argument	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	1804/#1	emqx_native_tests.rs	fixture module path	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx.rs	1805/#1	native_tests	fixture module	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	317/#1	struct NativeFixture	peer-bus/HTTP fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	318/#1	EmqxNativeTransport	injected transport field	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	324/#1	impl NativeFixture	fixture implementation	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	354/#1	EmqxNativeTransport	injected transport construction	J13.semantics	preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	388/#1	retained_read_methods_use_authenticated_native_readback	backend readback fixture	J13.semantics	preserve/0.72	preserve	static MCP declaration not remote probe; unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	389/#1	NativeFixture::spawn	healthy readback fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	445/#1	NativeFixture::spawn	hook mutation/readback fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	503/#1	NativeFixture::spawn	disabled port-zero fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	515/#1	NativeFixture::spawn	active port-zero rejection fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	525/#1	NativeFixture::spawn	node active-state fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	535/#1	NativeFixture::spawn	fixed D-Bus lifecycle fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	568/#1	native_auth_and_lifecycle_rejections_fail_without_false_success	backend failure fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	569/#1	NativeFixture::spawn	unauthorized API fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	579/#1	NativeFixture::spawn	rejected runit fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	591/#1	NativeFixture::spawn	accepted lifecycle failed health fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	606/#1	native_inventory_policy_violations_fail_closed	backend policy failure fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	607/#1	NativeFixture::spawn	public listener rejection fixture	J13.semantics	preserve/0.72	preserve	unexecuted
+crates/op-plugins/src/state_plugins/fail2ban.rs	4/#1	native adapter	direct daemon Unix-socket protocol	J14.adapter_words;J15.daemon;J16	weak correction/0.49;weak preserve/0.56;supports/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/fail2ban.rs	152/#1	daemon-native ban control	direct daemon ban protocol	J16	supports/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/fail2ban.rs	212/#1	daemon-native ban_ip and unban_ip	daemon command capability	J16	supports/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/fail2ban_methods.rs	1/#1	Native Fail2ban control-socket adapter	direct daemon protocol	J16	supports/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/fail2ban_methods.rs	795/#1	native_fixture_covers_ban_unban_and_status	daemon wire-protocol fixture	J16	supports/0.82	preserve	unexecuted
+crates/op-plugins/src/state_plugins/freedesktop.rs	74/#1	A native JSON value	serde_json::Value rather than encoded JSON string	J14.json_words	preserve/0.80	preserve	bridge sealed-field checking unverified
+crates/op-plugins/src/state_plugins/freedesktop.rs	583/#1	property_contract_requires_canonical_target_and_native_json_value	JSON value/input-boundary fixture	J14.json_words	preserve/0.80	preserve	unexecuted; not proof of receiver
+crates/op-plugins/src/state_plugins/full_system.rs	198/#1	struct NativeHostnameOwner	OS syscall/file backend	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	202/#1	impl NativeHostnameOwner	OS backend implementation	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	216/#1	Shared native effect implementation	direct sethostname/file write	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	218/#1	set_hostname_native	direct OS mutation method	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	228/#1	HostnameOwner for NativeHostnameOwner	OS backend trait implementation	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	230/#1	self.set_hostname_native	delegation to OS effect	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	886/#1	NativeHostnameOwner::system	generic hostname effect backend	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	947/#1	NativeHostnameOwner::system	canonical dispatcher backend	J15.kernel	preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/full_system.rs	1131/#1	native_hostname_owner_effect_isolated_to_uts_namespace_and_file	ignored privileged OS fixture	J15.kernel	preserve/0.94	preserve	unexecuted
+crates/op-plugins/src/state_plugins/full_system.rs	1142/#1	NativeHostnameOwner::with_hostname_path	injected temporary hostname path	J15.kernel	preserve/0.94	preserve	unexecuted
+crates/op-plugins/src/state_plugins/full_system.rs	1143/#1	owner.set_hostname_native	OS effect fixture invocation	J15.kernel	preserve/0.94	preserve	unexecuted
+crates/op-plugins/src/state_plugins/full_system.rs	1143/#2	opdbus-native-fixture	fixture hostname literal	J15.kernel	preserve/0.94	preserve	unexecuted
+crates/op-plugins/src/state_plugins/full_system.rs	1149/#1	native hostname thread panicked	OS fixture diagnostic	J15.kernel	preserve/0.94	preserve	unexecuted
+crates/op-plugins/src/state_plugins/full_system.rs	1152/#1	opdbus-native-fixture	expected child hostname	J15.kernel	preserve/0.94	preserve	unexecuted
+crates/op-plugins/src/state_plugins/full_system.rs	1153/#1	opdbus-native-fixture\n	expected temporary file contents	J15.kernel	preserve/0.94	preserve	unexecuted
+crates/op-plugins/src/state_plugins/hardware.rs	116/#1	fresh native snapshot	fresh OS/library observation	J17.semantics	preserve/0.77	preserve	not atomic/hotplug/mutation claim
+crates/op-plugins/src/state_plugins/hardware.rs	125/#1	fresh native snapshot	fresh OS/library observation	J17.semantics	preserve/0.77	preserve	not atomic/hotplug/mutation claim
+crates/op-plugins/src/state_plugins/hardware.rs	155/#1	same native snapshot	output/state from one collected inventory	J17.semantics	preserve/0.77	preserve	bridge publication caller unverified
+crates/op-plugins/src/state_plugins/hardware.rs	180/#1	validate_native_inventory	OS values sanity check	J17.semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/hardware.rs	285/#1	fn validate_native_inventory	raw OS value validator	J17.semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/hardware.rs	291/#1	native hardware snapshot reported zero total memory	OS invalid-value diagnostic	J17.semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/hardware.rs	294/#1	native hardware snapshot reported available memory greater than total memory	OS invalid-value diagnostic	J17.semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/hardware.rs	297/#1	native hardware snapshot reported no CPUs	OS invalid-value diagnostic	J17.semantics	preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/hardware.rs	569/#1	invalid_native_inventory_is_rejected_before_publication	boundary validation fixture	J17.semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/hardware.rs	570/#1	validate_native_inventory	zero-memory fixture	J17.semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/hardware.rs	571/#1	validate_native_inventory	available-memory bound fixture	J17.semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/hardware.rs	572/#1	validate_native_inventory	zero-CPU fixture	J17.semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/hardware.rs	573/#1	validate_native_inventory	valid raw OS values fixture	J17.semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/hardware.rs	632/#1	native_byte_counts_are_converted_to_kibibytes	raw OS bytes unit conversion fixture	J17.semantics	preserve/0.77	preserve	unexecuted
+crates/op-plugins/src/state_plugins/identity_sled.rs	101/#1	native alias	provider instance-name exception	J18.terms;J18.needed_changes	backend_vocabulary/0.98;specific_reconciliation/1	corrected	durable identity binding and distinct validated name forms
+crates/op-plugins/src/state_plugins/identity_sled.rs	245/#1	native Device discriminants	provider device type tags	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/identity_sled.rs	336/#1	native last-state idmap	Incus original idmap provenance	J18.terms	backend_vocabulary/0.98	preserve	actual bridge producer unverified
+crates/op-plugins/src/state_plugins/identity_sled.rs	342/#1	native_status	provider status output	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/identity_sled.rs	378/#1	native_uuid	provider instance UUID output	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/identity_sled.rs	387/#1	native names	durable provider creation binding	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/identity_sled.rs	390/#1	storage/native state	provider/storage verification contract	J18.terms	backend_vocabulary/0.98	preserve	actual bridge implementation unverified
+crates/op-plugins/src/state_plugins/identity_sled.rs	423/#1	previous_native_instance	raw prior provider observation	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/identity_sled.rs	434/#1	native request bodies	provider payload not caller-selected	J18.terms	backend_vocabulary/0.98	preserve	plan-only input supported; receiver unverified
+crates/op-plugins/src/state_plugins/identity_sled.rs	1028/#1	native_status	provider status fixture field	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus_device.rs	7/#1	native value	JSON primitive vs string coercion	J18.terms	backend_vocabulary/0.98	preserve	StrInt u64 overflow generic report-only
+crates/op-plugins/src/state_plugins/incus_device.rs	named_device_renders_device_as_oneof_union/assert/#1	native discriminant is required	provider type tag requirement	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3/#1	native Incus HTTP API	direct provider UDS protocol	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	bound_identity_session_power_request/condition/#1	numbered_native_name	provider ID-N validation	J18.terms	backend_vocabulary/0.98	preserve	ownership checked by external caller contract
+crates/op-plugins/src/state_plugins/incus.rs	bound_identity_session_power_request/error/#1	native identity power target	provider target validation diagnostic	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	set_identity_session_power_state/doc/#1	native Incus REST API	direct provider power protocol	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	run_incus_command/init/#1	native creation	creation owner refusal	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	instance_from_native_metadata/doc/#1	native Instance	provider source document	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	instance_from_native_metadata/doc/#2	Native device maps	provider string-map conversion	J18.terms	backend_vocabulary/0.98	preserve	lossy observations rejected
+crates/op-plugins/src/state_plugins/incus.rs	instance_from_native_metadata/declaration/#1	instance_from_native_metadata	provider conversion helper	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	instance_from_native_metadata/deserialize-error/#1	native Incus instance metadata	provider shape diagnostic	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	instance_from_native_metadata/project-comment/#1	native responses	provider default-project compatibility	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	instance_from_native_metadata/empty-error/#1	native Incus instance conversion	provider conversion diagnostic	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	bound_identity_power_requests_target_only_the_pinned_native_name/declaration/#1	bound_identity_power_requests_target_only_the_pinned_native_name	false positive; no declaration in initial full source read	J18.terms;J18.needed_changes	backend_vocabulary/0.98;specific_reconciliation/1	false positive, no change	source name not present at baseline
+crates/op-plugins/src/state_plugins/incus.rs	ReconcileNativeCreationInput/declaration/#1	ReconcileNativeCreationInput	provider creation reconciliation input	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	numbered_native_name/declaration/#1	numbered_native_name	provider ID-N predicate	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	native_creation_body/declaration/#1	native_creation_body	provider request preparation	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	create_reserved_native/doc/#1	Native transport only	provider transport vs bridge admission	J18.terms	backend_vocabulary/0.98	preserve	bridge admission/fence unverified
+crates/op-plugins/src/state_plugins/incus.rs	create_reserved_native/declaration/#1	create_reserved_native	allocated provider POST helper	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	create_reserved_native/name-error/#1	allocated native name missing	provider reservation diagnostic	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	create_reserved_native/condition/#1	numbered_native_name	provider ID-N reservation condition	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	create_reserved_native/reservation-error/#1	native create	provider reservation diagnostic	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	IncusRootRepairBackend/doc/#1	Narrow native effects	provider repair backend	J18.terms	backend_vocabulary/0.98	preserve	external identity owner contract unverified
+crates/op-plugins/src/state_plugins/incus.rs	root_subvolume_state/doc/#1	native probe	OS subvolume inspection	J18.terms	backend_vocabulary/0.98	preserve	underlying other-crate implementation unverified
+crates/op-plugins/src/state_plugins/incus.rs	recover_existing_pool/doc/#1	native scanning operation	provider recovery validation side effect	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	redirect_persist_source/doc/#1	stopped native readback	provider stopped-state owner obligation	J18.terms	backend_vocabulary/0.98	preserve	owner obligation not runtime proof
+crates/op-plugins/src/state_plugins/incus.rs	IncusLifecycleObserver/doc/#1	native lifecycle subscription	provider event wakeups	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	IncusLifecycleObserver::default_project_state/doc/#1	native-observation lock	provider observation/SHM sequencing contract	J18.terms	backend_vocabulary/0.98	preserve	external caller unverified
+crates/op-plugins/src/state_plugins/incus.rs	IncusApi::update/comment/#1	native device attributes	raw provider sibling preservation	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	CreateInstanceOutput/native_uuid/#1	native_uuid	provider instance UUID output	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	execute_mounted_ticket/doc/#1	native target	provider guest ingress target	J18.terms	backend_vocabulary/0.98	preserve	bridge ticket admission unverified
+crates/op-plugins/src/state_plugins/incus.rs	execute_mounted_ticket/parameter/#1	native_name	provider guest name argument	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	execute_mounted_ticket/completed_exec/#1	native_name	provider guest target transfer	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	IncusMethodObservation/doc/#1	complete native state	provider root observation pair	J18.terms	backend_vocabulary/0.98	preserve	not SHM commit proof
+crates/op-plugins/src/state_plugins/incus.rs	observe_incus_default_project/doc/#1	native Incus UDS API	provider root snapshot	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	dispatch_incus_method_observed/doc/#1	native method	provider operation execution	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	dispatch_incus_method_observed/doc/#2	native mutation completed	explicit uncertain post-effect readback outcome	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	dispatch_incus_with_api/create_instance/#1	native creation	bridge allocation owner refusal	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	incus_schema/reconcile_creation/type/#1	ReconcileNativeCreationInput	provider reconciliation method shape	J18.terms	backend_vocabulary/0.98	preserve	unchanged
+crates/op-plugins/src/state_plugins/incus.rs	lungs_native_init_pid_requires_a_current_running_positive_pid/declaration/#1	lungs_native_init_pid_requires_a_current_running_positive_pid	provider PID read fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	lungs_native_init_pid_requires_a_current_running_positive_pid/diagnostic/#1	native PID request	provider fixed-path fixture diagnostic	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	lifecycle_methods_send_native_actions_and_await_completion/declaration/#1	lifecycle_methods_send_native_actions_and_await_completion	provider operation fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	lifecycle_methods_send_native_actions_and_await_completion/expect/#1	native lifecycle operation completes	provider fixture completion expectation	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	represented_mutation_returns_complete_sorted_native_readback/declaration/#1	represented_mutation_returns_complete_sorted_native_readback	provider root observation fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3656/#1	native completion without readback	explicit uncertain-state error expectation	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3686/#1	individual_native_instance_conversion_preserves_device_maps_and_uuid	provider conversion fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3687/#1	let mut native	provider input fixture variable	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3688/#1	native["config"]	provider UUID fixture assignment	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3689/#1	native.as_object_mut	provider project omission fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3690/#1	instance_from_native_metadata	provider conversion invocation	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3690/#2	native.clone()	provider fixture input transfer	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3704/#1	native["devices"]	provider field retention expectation	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3706/#1	native["devices"]	provider unknown-field fixture assignment	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3707/#1	instance_from_native_metadata	provider lossy conversion rejection	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3707/#2	native	provider input move	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	3711/#1	create_sends_type_restrictions_and_root_device_in_one_native_operation	obsolete creation fixture	J18.terms;J18.needed_changes	backend_vocabulary/0.98;specific_reconciliation/1	removed	coordinator approved removal; original fixture expected unsupported POST success; BEFORE retained
+crates/op-plugins/src/state_plugins/incus.rs	3732/#1	complete native creation	obsolete fixture success expectation	J18.terms;J18.needed_changes	backend_vocabulary/0.98;specific_reconciliation/1	removed	coordinator approved obsolete fixture removal; BEFORE retained
+crates/op-plugins/src/state_plugins/incus.rs	3736/#1	fn native_instance	raw provider fixture helper	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	instance_read/sync/#1	native_instance()	raw provider read fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	writable_instance/initializer/#1	native_instance()	raw provider writable fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	modify_merges_updates_and_preserves_native_fields_with_etag/declaration/#1	modify_merges_updates_and_preserves_native_fields_with_etag	provider sibling preservation fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/incus.rs	forced_delete_stops_first_and_accounts_for_ephemeral_deletion/initializer/#1	native_instance()	raw provider ephemeral fixture	J18.terms	backend_vocabulary/0.98	preserve	unexecuted
+crates/op-plugins/src/state_plugins/json_render_generation.rs	2/#1	"native execution"	Bridge-owned backend operation execution distinguished from provider-only Canvas generation	J20.change/0.77	change	edited: “backend operation execution”
+crates/op-plugins/src/state_plugins/json_render_methods.rs	870/#1	"react-native"	Declared ReactNative renderer target serialized with kebab-case	J21.preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/json_render_methods.rs	875/#1	let native	fixture-local variable for React Native renderer validation	J21.preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/json_render_methods.rs	880/#1	&native	pass the renderer fixture to validate_spec	J21.preserve/0.94	preserve	unchanged
+crates/op-plugins/src/state_plugins/keypair/agent.rs	142/#1	native_agent_inventory_retains_public_key_and_fingerprint	test name overstates socket-pair SSH-agent protocol fixture as native/live agent interaction	J22.change/0.95	change	renamed to ssh_agent_protocol_fixture_retains_public_key_and_fingerprint
+crates/op-plugins/src/state_plugins/login1/methods.rs	1/#1	Native wire mappings	protocol-accurate mapping to upstream login1 D-Bus methods and typed wire arguments	J23.preserve/0.88	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server.rs	8/#1	native_owner	module path names the concrete mail administration owner implementation	J24.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server.rs	48/#1	native Postfix/Dovecot owner	state is observed from the backend owner	J24.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server.rs	253/#1	native D-Bus administration	plugin metadata identifies the private backend administration service	J24.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server.rs	419/#1	native D-Bus owner	schema identifies the receiving owner service	J24.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server.rs	580/#1	Native Postfix/Dovecot	description identifies exposed owner-managed administration state	J24.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server.rs	736/#1	native owner	credential safety comment identifies the receiving backend	J24.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	21/#1	Native	D-Bus interface suffix identifies concrete mail backend interface	J24.preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	29/#1	native administration readback	receipt contains GetState result from the backend	J24.preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	52/#1	native state	readback instruction after D-Bus timeout	J24.preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	139/#1	native state	readback instruction after queue reply failure	J24.preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	143/#1	native effect	may-have-completed warning after D-Bus reply failure	J24.preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	154/#1	native dispatch	dispatch refers to forwarding to backend D-Bus owner	J24.preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	32/#1	NativePaths	temporary fixture path configuration type	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	92/#1	NativePaths	denied-mutation fixture path configuration	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	274/#1	NativePaths	prepared-owner validation fixture paths	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	299/#1	NATIVE_MAIL_FIXTURE_ENV	opt-in Incus-backed Postfix/Dovecot integration fixture variable	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	300/#1	NATIVE_MAIL_CONTAINER	container target for actual mail-service fixture	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	314/#1	NATIVE_MAIL_CONTAINER	actual container target in fixture cleanup	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	323/#1	/tmp/opdbus-mail-native-	path prefix for isolated temporary tree	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	327/#1	NATIVE_MAIL_CONTAINER	actual container target in fixture cleanup	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	339/#1	native_command	command helper invokes actual binaries	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	354/#1	native_command	helper executes incus for integration fixture	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	354/#2	native output	UTF-8 output from actual incus command	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	358/#1	NATIVE_MAIL_CONTAINER	actual container account-ID lookup	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	371/#1	NATIVE_MAIL_CONTAINER	actual container file transfer	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	388/#1	native_command	actual container ownership adjustment	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	392/#1	NATIVE_MAIL_CONTAINER	actual container ownership adjustment	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	399/#1	native_command	actual container mode adjustment	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	403/#1	NATIVE_MAIL_CONTAINER	actual container mode adjustment	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	416/#1	native_postfix_and_dovecot	test name names real implementation consumers	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	417/#1	NATIVE_MAIL_FIXTURE_ENV	guards actual container fixture opt-in	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	420/#1	native_command	starts actual fixture container info query	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	420/#2	NATIVE_MAIL_CONTAINER	actual container target for fixture query	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	426/#1	NativePaths	file-generation paths for native integration fixture	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	461/#1	/tmp/opdbus-mail-native-	unique isolated container path prefix	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	471/#1	native_command	creates fixture tree in actual container	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	475/#1	NATIVE_MAIL_CONTAINER	actual container target for fixture tree creation	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	489/#1	native_command	sets container mail-tree ownership	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	493/#1	NATIVE_MAIL_CONTAINER	actual container target for chown	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	501/#1	native_command	sets container mail-tree mode	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	505/#1	NATIVE_MAIL_CONTAINER	actual container target for chmod	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	529/#1	NATIVE_MAIL_CONTAINER	actual Postfix postmap domain query	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	539/#1	NATIVE_MAIL_CONTAINER	actual Postfix postmap mailbox query	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	549/#1	NATIVE_MAIL_CONTAINER	actual Postfix postmap alias query	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	561/#1	opdbus-native-fixture	Dovecot instance name denotes isolated integration fixture	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	604/#1	NATIVE_MAIL_CONTAINER	actual container target for doveconf validation	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	612/#1	native IMAP	comment distinguishes actual Dovecot-expanded config consumer	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	614/#1	native_command	starts isolated Dovecot instance	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	618/#1	NATIVE_MAIL_CONTAINER	actual container target for Dovecot instance	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	629/#1	NATIVE_MAIL_CONTAINER	actual container target for Dovecot authentication check	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	644/#1	NATIVE_MAIL_CONTAINER	actual container target for Dovecot user lookup	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	655/#1	NATIVE_MAIL_CONTAINER	actual container target for Dovecot quota query	J25.preserve/0.76	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	1/#1	Native Postfix/Dovecot administration owner	module implements the backend admin service	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	31/#1	mail_server_native	document ID for durable owner state	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	37/#1	NativePaths	backend file/socket path configuration type	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	56/#1	NativePaths	path configuration implementation	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	112/#1	NativePaths	service path configuration field	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	124/#1	NativePaths	constructs production backend paths	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	128/#1	NativePaths	accepts backend paths, including fixtures	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	136/#1	pre-owner	describes legacy flat-file state before owner adoption	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	432/#1	Native	D-Bus interface name for the owner service	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	486/#1	native owner	exact receiving backend where identity/grant context is absent	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	714/#1	NativePaths	materialization path argument	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	718/#1	NativePaths	materialization path argument	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	789/#1	NativePaths	prepared mail root owner lookup path argument	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	832/#1	NativePaths	materialization readback path argument	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	1063/#1	native_owner_tests	test module filename for backend tests	J26.preserve/0.82	preserve	unchanged
+crates/op-plugins/src/state_plugins/mcp_methods.rs	1/#1	native tched_router MCP section	unclear term replaced with canonical to specify upstream provider section	J27.change/0.27	change	canonical
+crates/op-plugins/src/state_plugins/mcp_methods.rs	122/#1	server_patch_targets_native_router_and_retains_args	test name did not identify canonical tched_router target	J27.change/0.27	change	renamed to server_patch_targets_canonical_router_and_retains_args
+crates/op-plugins/src/state_plugins/mod.rs	1/#1	native protocols	blanket overgeneralization across heterogeneous plugin backends	J28.change/0.88	change	reworded to “through its declared backend”
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	159/#1	native state	readback error identifies backend-returned state	J24.preserve/0.72	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	106/#1	native serve families	means router profile namespaces; changed wording	J29.change/0.88	change	router profile families
+crates/op-plugins/src/state_plugins/model_registry.rs	155/#1	native router profile	identifies external router profile, contrasted with Cozo provider key	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	162/#1	native_provider_id	ordinary-selection router profile metadata field	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	171/#1	native_profile_overrides	ordinary-selection profile mappings	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	187/#1	native auth profile	OAuth credential-gate profile identifier	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	192/#1	native auth profile id	family:profile OAuth gate slot	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	235/#1	native_provider_id	ordinary-selection router profile field in method doc	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	240/#1	native lookup	router lookup terminology clarified	J29.change/0.88	change	router lookup
+crates/op-plugins/src/state_plugins/model_registry.rs	242/#1	native accepts	keyed-provider custom profile support claim scoped to router	J29.preserve/0.30	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	243/#1	native gains a family	future router family addition	J29.preserve/0.30	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	246/#1	derived_native_provider_id	function derives router profile binding	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	257/#1	native_provider_id	ordinary-selection router profile field in method doc	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	258/#1	effective_native_provider_id	function returns configured/derived router profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	259/#1	native_provider_id	ordinary-selection router profile field	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	266/#1	native_provider_id_for_model	function maps recorded profile to ordinary-selection profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	271/#1	derived_native_provider_id	function derives router profile binding	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	278/#1	native_provider_id	ordinary-selection router profile field	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	280/#1	derived_native_provider_id	function derives router profile binding	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	282/#1	native_profile_overrides	ordinary-selection profile mappings	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	437/#1	native_provider_id	ordinary-selection router profile metadata field	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	440/#1	native_provider_id	ordinary-selection router profile validation diagnostic	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	453/#1	native_profile_overrides	ordinary-selection profile mapping validation	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	457/#1	native	loop value is a validated router selection profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	463/#1	native override	diagnostic for invalid ordinary-selection profile mapping	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	467/#1	native	loop value is a validated router selection profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	468/#1	native override	diagnostic for invalid ordinary-selection profile mapping	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	510/#1	native profile	profile binding distinguished from Control Plane profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	511/#1	native_owners	ownership map for ordinary-selection profile strings	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	513/#1	natives	vector of ordinary-selection profile strings	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	514/#1	effective_native_provider_id	function returns configured/derived router profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	516/#1	native_profile_overrides	ordinary-selection profile mappings	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	518/#1	natives	loop values are ordinary-selection profile strings	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	519/#1	native	loop value is a router selection profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	521/#1	native selection profile	diagnostic distinguishes ordinary selection from Control Plane profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	523/#1	native_owners	ownership map for ordinary-selection profile strings	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	526/#1	native selection profile	diagnostic distinguishes ordinary selection from Control Plane profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	643/#1	native config dial	explicit caveat; no live router query	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	645/#1	native refs	ordinary router profile identifiers in projected inventory	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	649/#1	NativeProviderProfile	type for projected router profile inventory	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	651/#1	native provider namespace	family segment of family.alias router profile	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	663/#1	NativeProfileModelHint	type for catalog hints to projected profile inventory	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	672/#1	native profile inventory	provider TOML/Cozo projection, not live inventory	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	673/#1	native runtime config	explicit caveat that the projection does not read it	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	675/#1	project_native_provider_profiles	projection function name	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	768/#1	NativeListProvidersInput	method input type for projected router profile list	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	772/#1	NativeListProvidersOutput	method output type for projected router profile list	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	782/#1	native auth-profile	family:profile OAuth gate slot	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	790/#1	native auth-profile	reference passed for OAuth credential gate	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	897/#1	native selection key	ordinary router profile binding for this model	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	900/#1	native_provider_id	ordinary router profile metadata field	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1086/#1	native_list_providers	public method listing projected router profiles	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1091/#1	native_list_providers	schema method name	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1095/#1	native-providers	list method subid	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1135/#1	native_list_providers	capability description names declared listing method	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1295/#1	native_binding	test covers ordinary router profile binding validation	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1303/#1	native_provider_id	test provider profile metadata key	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1306/#1	native_profile_overrides	test profile mapping metadata key	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1311/#1	native_provider_id_for_model	test calls ordinary profile resolver	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1315/#1	native_provider_id_for_model	test calls ordinary profile resolver	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1319/#1	native_provider_id_for_model	test calls ordinary profile resolver	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1323/#1	native_provider_id_for_model	test calls ordinary profile resolver	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1358/#1	native_provider_id	test second-provider metadata key	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1362/#1	native_provider_id	test replacement string for profile metadata key	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1380/#1	native_provider_id	test assertion checks parsed profile metadata	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1590/#1	native_provider_id	provider-list fixture profile metadata key	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1601/#1	native_provider_id	disabled provider fixture profile metadata key	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1605/#1	project_native_provider_profiles	test invokes provider-list projection	J29.preserve/0.77	preserve	unchanged
+crates/op-plugins/src/state_plugins/model_registry.rs	1579/#1	native_inventory	test name implied live router inventory; renamed	J29.change/0.71	change	profile_inventory_projects_from_provider_list_without_router_chat
+crates/op-plugins/src/state_plugins/net.rs	476/#1	native netlink	doc names the rtnetlink API used for link-up	J30.preserve/0.41	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	481/#1	native netlink	doc names the rtnetlink API used for IPv4 configuration	J30.preserve/0.41	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	512/#1	native netlink	doc names the rtnetlink API used for route configuration	J30.preserve/0.41	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	547/#1	native rtnetlink	doc names the rtnetlink API used for port link-up	J30.preserve/0.41	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	1043/#1	NativeNetBackend	production rtnetlink/OVSDB operation adapter	J30.preserve/0.79	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	1046/#1	NativeNetBackend	production adapter implementation	J30.preserve/0.79	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	1375/#1	NativeNetBackend	dispatch passes production adapter	J30.preserve/0.79	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	1382/#1	NativeNetBackend	dispatch passes production adapter	J30.preserve/0.79	preserve	unchanged
+crates/op-plugins/src/state_plugins/net.rs	1720/#1	completed_native_operations	test name overclaimed native operation; MockBackend only records fixture steps	J30.change/0.89	change	renamed to partial_failure_reports_completed_backend_operations
+crates/op-plugins/src/state_plugins/oci.rs	1/#1	native Incus REST API	direct Incus API distinguishes provider from Docker/runc tooling	J31.preserve/0.95	preserve	unchanged
+crates/op-plugins/src/state_plugins/openflow.rs	51/#1	native compare/exchange owner	ambiguous owner/backend term; replaced with compare/exchange owner	J32.change/0.91	change	compare/exchange owner
+crates/op-plugins/src/state_plugins/openflow.rs	78/#1	native observation	ambiguous term for controller-confirmed backend state; replaced	J32.change/0.91	change	backend observation
+crates/op-plugins/src/state_plugins/openflow_obfuscation.rs	9/#1	native controller	wording implied runtime/native behavior; narrowed to method contract and canonical controller	J33.change/0.91	change	canonical controller
+crates/op-plugins/src/state_plugins/openflow_obfuscation.rs	412/#1	native switch readback	unsupported broad claim narrowed to owner-reported state	J33.change/0.83	change	owner-reported state
+crates/op-plugins/src/state_plugins/oscal_subid_registry_methods.rs	1/#1	Native methods	ambiguous implementation label; changed to Service methods	J34.change/0.55	change	Service methods
+crates/op-plugins/src/state_plugins/ovsdb_bridge.rs	51/#1	native owner	ambiguous owner term; explicit OVSDB owner	J35.change/0.64	change	OVSDB owner
+crates/op-plugins/src/state_plugins/ovsdb_bridge.rs	363/#1	native initial monitor observation	precise backend observation; explicit OVSDB monitor observation	J35.change/0.37	change	initial OVSDB monitor observation
+crates/op-plugins/src/state_plugins/ovsdb_bridge.rs	464/#1	native OVS bridge topology	precise backend topology; explicit OVSDB	J35.change/0.27	change	OVSDB bridge topology
+crates/op-plugins/src/state_plugins/ovsdb_topology.rs	1/#1	native IDL view	ambiguous source label; explicit OVSDB IDL	J36.change/0.82	change	OVSDB IDL view
+crates/op-plugins/src/state_plugins/ovsdb_topology.rs	119/#1	native topology snapshot	ambiguous backend error term; explicit OVSDB	J36.change/0.82	change	OVSDB topology snapshot
+crates/op-plugins/src/state_plugins/ovsdb_topology.rs	123/#1	native topology row	ambiguous backend error term; explicit OVSDB	J36.change/0.82	change	OVSDB topology row
+crates/op-plugins/src/state_plugins/ovsdb_topology_tests.rs	97/#1	invalid native types	ambiguous test term; explicitly names OVSDB encoding	J36.change/0.73	change	invalid OVSDB types
+crates/op-plugins/src/state_plugins/shared_unix_socket_methods.rs	1/#1	Durable native adapter	native is imprecise for adapter role	J40.change/0.73	change	Durable adapter
+crates/op-plugins/src/state_plugins/wgcf.rs	190/#1	uses admitted native methods	StatePlugin defaults bail; plugin dispatch is the admitted route	J40.change/0.97	change	uses admitted plugin methods
+crates/op-plugins/src/state_plugins/wgcf.rs	193/#1	uses admitted native methods	StatePlugin defaults bail; plugin dispatch is the admitted route	J40.change/0.97	change	uses admitted plugin methods
+crates/op-plugins/src/state_plugins/wgcf.rs	196/#1	uses admitted native methods	StatePlugin defaults bail; plugin dispatch is the admitted route	J40.change/0.97	change	uses admitted plugin methods
+crates/op-plugins/src/state_plugins/service/methods.rs	1/#1	root-guarded native D-Bus provider	exact provider is D-Bus; “native” ambiguous	J40.change/0.30	change	root-guarded D-Bus provider
+crates/op-plugins/src/state_plugins/service/methods.rs	32/#1	native supervisor	implementation is Runit supervisor	J40.change/0.30	change	Runit supervisor
+crates/op-plugins/src/state_plugins/procfs.rs	123/#1	native snapshot	same sysinfo host snapshot as output; not direct /proc claim	J37.p	preserve	source-level sysinfo snapshot
+crates/op-plugins/src/state_plugins/procfs.rs	131/#1	native system information provider	sysinfo-backed host snapshot	J37.p	preserve	source-level sysinfo provider
+crates/op-plugins/src/state_plugins/procfs.rs	139/#1	native system information provider	sysinfo-backed host snapshot	J37.p	preserve	source-level sysinfo provider
+crates/op-plugins/src/state_plugins/procfs.rs	201/#1	native host snapshot unavailable	sysinfo snapshot diagnostic	J37.p	preserve	scoped source error
+crates/op-plugins/src/state_plugins/procfs.rs	321/#1	native snapshot	sysinfo host snapshot	J37.p	preserve	scoped source term
+crates/op-plugins/src/state_plugins/procfs.rs	341/#1	native_snapshot	sysinfo snapshot helper	J37.p	preserve	identifier
+crates/op-plugins/src/state_plugins/procfs.rs	347/#1	snapshot_from_native	sysinfo conversion helper	J37.p	preserve	identifier
+crates/op-plugins/src/state_plugins/procfs.rs	356/#1	snapshot_from_native	sysinfo conversion helper	J37.p	preserve	identifier
+crates/op-plugins/src/state_plugins/procfs.rs	514/#1	native procfs snapshot	procfs-oriented snapshot diagnostic	J37.p	preserve	identifier/error term
+crates/op-plugins/src/state_plugins/procfs.rs	517/#1	native procfs snapshot	procfs-oriented snapshot diagnostic	J37.p	preserve	identifier/error term
+crates/op-plugins/src/state_plugins/procfs.rs	520/#1	native procfs snapshot	procfs-oriented snapshot diagnostic	J37.p	preserve	identifier/error term
+crates/op-plugins/src/state_plugins/procfs.rs	855/#1	invalid_native_snapshots_are_rejected_before_publication	snapshot validation fixture name	J37.p	preserve	unexecuted test name
+crates/op-plugins/src/state_plugins/procfs.rs	904/#1	native_bytes_are_converted_to_kibibytes_at_the_output_boundary	byte-unit conversion fixture name	J37.p	preserve	unexecuted test name
+crates/op-plugins/src/state_plugins/qdrant.rs	1030/#1	qdrant_native_tests	module reference to Qdrant backend fixture	J37.q	preserve	module path
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	1/#1	native Qdrant test module	actual Qdrant fixture/J37	preserve	fixture vocabulary
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	16/#1	native_dispatch_coverage	dispatch fixture	J37.q	preserve	unexecuted fixture
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	18/#1	native server	Qdrant process fixture	J37.q	preserve	unexecuted fixture
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	20/#1	NativeChild	Qdrant child process wrapper	J37.q	preserve	identifier
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	42/#1	spawn_native	Qdrant fixture process helper	J37.q	preserve	identifier
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	62/#1	spawn_native	Qdrant fixture process helper	J37.q	preserve	identifier
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	94/#1	native Qdrant	backend fixture	J37.q	preserve	fixture term
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	105/#1	native Qdrant	backend fixture	J37.q	preserve	fixture term
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	135/#1	native point ID	Qdrant point identifier	J37.q	preserve	provider type
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	147/#1	native round trip	Qdrant round-trip fixture	J37.q	preserve	unexecuted
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	148/#1	native round trip	Qdrant round-trip fixture	J37.q	preserve	unexecuted
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	150/#1	native request diagnostic	Qdrant request error context	J37.q	preserve	scoped
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	167/#1	native	Qdrant fixture value	J37.q	preserve	fixture
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	192/#1	second native request	Qdrant protocol sequence	J37.q	preserve	fixture
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	307/#1	native snapshots	Qdrant data readback	J37.q	preserve	fixture
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	317/#1	native list	Qdrant list result	J37.q	preserve	fixture
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	330/#1	native provider readback	Qdrant readback fixture	J37.q	preserve	fixture
+crates/op-plugins/src/state_plugins/rtnetlink.rs	4/#1	native rtnetlink protocol	direct kernel rtnetlink interface	J37.n	preserve	protocol
+crates/op-plugins/src/state_plugins/rtnetlink.rs	438/#1	native implementation	direct kernel rtnetlink implementation	J37.n	preserve	backend
+crates/op-plugins/src/state_plugins/rtnetlink.rs	679/#1	Native kernel rtnetlink	direct kernel API	J37.n	preserve	backend
+crates/op-plugins/src/state_plugins/runtime_documents.rs	29/#1	native commit submission	CozoDB document commit wording; JEV results conflicted/weak	J37.r;J40	runtime unsure; preserve not sufficient	unresolved
+crates/op-plugins/src/state_plugins/runtime_documents.rs	40/#1	native diagnostic	Cozo error diagnostic; uncertainty remains	J37.r;J40	runtime unsure; preserve not sufficient	unresolved
+crates/op-plugins/src/state_plugins/runtime_documents.rs	50/#1	Native diagnostics	Cozo error source handling	J37.r;J40	runtime unsure; preserve not sufficient	unresolved
+crates/op-plugins/src/state_plugins/runtime_documents.rs	126/#1	native database operation	Cozo operation	J37.r;J40	runtime unsure; preserve not sufficient	unresolved
+crates/op-plugins/src/state_plugins/runtime_documents.rs	127/#1	native database operation	Cozo operation	J37.r;J40	runtime unsure; preserve not sufficient	unresolved
+crates/op-plugins/src/state_plugins/runtime_documents.rs	140/#1	native handle	Cozo handle	J37.r;J40	runtime unsure; preserve not sufficient	unresolved
+crates/op-plugins/src/state_plugins/service.rs	31/#1	native definition type	service definition discriminator	J37	service-level ambiguity	assessed
+crates/op-plugins/src/state_plugins/service/methods.rs	77/#1	native	GetUnitType returns a D-Bus service definition type	J42.rename/0.91	rename	reported_type
+crates/op-plugins/src/state_plugins/tched_fs_contract.rs	5412/#1	native container	identity-bound runtime semantics; overlap	J37.t	weak/0.09	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_fs_contract.rs	8357/#1	native Linux surface	OS-specific operation filtering; overlap	J37.t	weak/0.09	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_fs_contract.rs	8385/#1	native Linux surface	OS-specific operation filtering; overlap	J37.t	weak/0.09	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_fs_contract.rs	8433/#1	native Linux surface	OS-specific operation filtering; overlap	J37.t	weak/0.09	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	23/#1	native gateway wire bounds	gateway contract boundary	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	315/#1	native observation	owner-reported gateway state	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	323/#1	Native response text	committed response description	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	339/#1	native config observation	masked runtime config	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	343/#1	native-config	schema attribute field identifier	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	344/#1	native_config	field identifier	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	409/#1	native route observation	credential-free observation	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	420/#1	native profiles	ordinary-selection profile contract	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	428/#1	native profile	credential-free profile	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	437/#1	native auth owner	inference-origin role	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	505/#1	native tched_router backend	framework/backend role	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	533/#1	native runtime observation	runtime adapter contract	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	538/#1	native runtime adapter	framework adapter	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	1216/#1	native_type	string schema/source type	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	1724/#1	NATIVE_CONFIG_METHODS	method list identifier	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	1789/#1	native_method	dispatch method identifier	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	2/#1	Native execution	MutationEngine execution boundary	J38.b	weak/0.30	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	94/#1	NativeError	error variant	J38.b	weak/0.30	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	95/#1	NativeDisconnected	error variant	J38.b	weak/0.30	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	96/#1	NativeAborted	error variant	J38.b	weak/0.30	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	108/#1	native task ID	task identity constraint	J38.b	weak/0.30	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	287/#1	native generation fragment	generated response fragment	J38.b	weak/0.30	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	556/#1	native completion	generation state comparison	J38.b	weak/0.30	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	1/#1	native observation	legacy contract heading; source-grounded native runtime/catalog adapter	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	143/#1	native runtime	runtime route lookup diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	147/#1	native runtime catalog	route ambiguity diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	160/#1	native catalog	observed model catalog guard	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	178/#1	native runtime catalog	model existence diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	182/#1	native providers	provider binding ambiguity diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	235/#1	native provider catalog	empty catalog diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	241/#1	native provider catalog	duplicate/empty provider diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	255/#1	native model route	route validation diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	260/#1	native catalog	selected provider validation diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	268/#1	native catalog	selected model validation diagnostic	J38.c	preserve/0.64	retain scoped use
+crates/op-plugins/src/state_plugins/wg_opdbus.rs	86/#1	native projection	WireGuard decoy owner projection	J38.e	low/0.02	unresolved
+crates/op-plugins/src/state_plugins/xray.rs	92/#1	host-native	Xray host backend	J38.d	preserve/0.88	scoped backend term
+crates/op-plugins/src/state_plugins/xray.rs	235/#1	Host-native lifecycle	Xray host lifecycle implementation	J38.d	preserve/0.88	scoped backend term
+crates/op-plugins/src/state_plugins/xray.rs	319/#1	Native HandlerService operation	Xray-core HandlerService API	J38.d	preserve/0.88	scoped API
+crates/op-plugins/src/state_plugins/xray.rs	320/#1	Native HandlerService operation	Xray-core HandlerService API	J38.d	preserve/0.88	scoped API
+crates/op-plugins/src/state_plugins/xray.rs	490/#1	native account/inbound protocols	Xray-supported API protocols	J38.d	preserve/0.88	scoped backend term
+crates/op-plugins/src/state_plugins/xray.rs	517/#1	native RPC	Xray-core RPC API	J38.d	preserve/0.88	scoped API
+crates/op-plugins/src/state_plugins/xray.rs	552/#1	native mutation	HandlerService mutation	J38.d	preserve/0.88	scoped API
+crates/op-plugins/src/state_plugins/xray.rs	572/#1	native RemoveUserOperation	Xray-core operation type	J38.d	preserve/0.88	scoped API
+crates/op-plugins/src/state_plugins/runtime_documents.rs	287/#1	native write	test name uses Cozo-backed store; wording weak/ambiguous	J37.r;J40.runtime	conflicting/low confidence	unresolved
+crates/op-plugins/src/state_plugins/runtime_documents.rs	341/#1	native handles	Cozo store handle; “native” remains source term	J37.r;J40.runtime	conflicting/low confidence	unresolved
+crates/op-plugins/src/state_plugins/runtime_documents.rs	466/#1	private-native-bound-value	fixture sentinel literal	J37.r;J40.runtime	conflicting/low confidence	unresolved fixture literal
+crates/op-plugins/src/state_plugins/snowball_plugin.rs	567/#1	seven native methods	SnowballMethods dispatch; “native” ambiguous for plugin method list	J41.change/0.94	change	seven plugin methods
+crates/op-plugins/src/state_plugins/plugin-struct.txt	1723/#1	installs natively here	tree-sitter wheel installation-mode claim in transcript; J38.h insufficient/0.64	no source-based runtime verification	unresolved transcript claim
+crates/op-plugins/src/state_plugins/tched_router.rs	682/#1	native_config	sealed configuration field reference	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	691/#1	native_config	sealed configuration field reference	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	925/#1	native_config	state field initialization	J38.a	weak/0.38	unresolved owner overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	1808/#1	admitted native bridge dispatch	dispatch refusal text for retained method identifiers	J38.a	weak/0.38	unresolved owner overlap

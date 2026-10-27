@@ -1,0 +1,19 @@
+{
+  "task": "tched-context-audit-20261024/op-services",
+  "crate": "op-services",
+  "status": "complete",
+  "files_reviewed": 15,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-services/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-services/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-services/occurrences.tsv",
+  "jev_receipts": ["J1"],
+  "limitations": [
+    "Static source audit only; runtime/catalog/deployment state unverified.",
+    "Assignment prohibited Cargo/build/check/test/Clippy/fmt/custom smoke/runtime/deploy/credential/grant actions; none were run.",
+    "SPEC.md and compare-op-services.md list five source paths absent from current listings; individually dispositioned as stale references, not repaired because unrelated to tched-specific task."
+  ],
+  "next_action": "Coordinator aggregates receipt and schedules any required scoped GNU build after reconciliation."
+}

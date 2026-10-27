@@ -1,0 +1,172 @@
+path	sequential_ranges_read	initial_sha256_or_inventory_reference	finding_action	status
+crates/op-plugins/Cargo.toml	1-79 EOF	79e52a8d9ad0ff2cb3d32ceed0df9b6f26f4e22eaf8acc7d2ca6f20a5d92fefa	J1.uds preserve native UDS wording	read_complete
+crates/op-plugins/DESIGN.md	1-223;224-342 EOF	85c039bc1b58cd96923130e6ea661fc66114a3d8fa6a60258f711efa45b4ec8a	no native substring; explicitly historical	read_complete
+crates/op-plugins/MIGRATION_RESEARCH_OFFICIAL_SOURCES.md	1-223;224-433;434-538 EOF	3285f1252768ec0c2d1ddbd12f3b786bc20f25617c6a922287dd2eadfff23d2b	no native substring	read_complete
+crates/op-plugins/SPEC.md	1-113 EOF	02a1258acbcd2c09a291a8961e1fdb50521e9194fc6ec72834cab81d35c7814c	no native substring; generic stale inventory outside scope	read_complete
+crates/op-plugins/build.rs	1-67 EOF	1ff98767e03cff4dc70008512906a4a9dcc504de986202aef9a1ddd9bf6fb7d8	no native substring	read_complete
+crates/op-plugins/compare-op-plugins.md	1-107 EOF	532bb7249d085b56bfdc5e883cba48704c7c7f415b53a1e305d05d25ccd0670c	no native substring; historical counts	read_complete
+crates/op-plugins/examples/dump_tched_router_schema.rs	none: read returned not found	-	pre-existing deleted-in-worktree; root/examples listing agrees; not restored	deleted_dispositioned
+crates/op-plugins/examples/method_coverage.rs	1-272 EOF	b2204091e32c13c00a58b82da43b9b2f55df10fa089b54b6014c258407e20cfc	J1.scope preserve both native evidence labels	read_complete
+crates/op-plugins/examples/method_inventory.rs	1-38 EOF	cbc5b9934c0bf1c440547da5a8d3c3d086d5e64efbf1830cc57a39d4ed2c505b	no native substring	read_complete
+crates/op-plugins/src/auto_create.rs	1-305 EOF	996b6d19bb02eb845a79444c0e9af6503167e8388ebeb40e165fa6c5204020c1	no native substring; generic doc drift separate	read_complete
+crates/op-plugins/src/bin/op-mail-admin.rs	1-102 EOF	5a01578b88f2b8108869c3f6696d4e33f171362691a09505b5ca4dee08ec097e	native_owner import awaits backend read	read_complete_context_pending
+crates/op-plugins/src/bin/opblob.rs	1-263;264-523;524-783;784-1025 EOF	4f91488b34985dc8b4aa7bd0521bcf083780c0cf8408696841c568e0630d2ba1	no native substring; tched capture not edited	read_complete
+crates/op-plugins/src/builtin.rs	1-80 EOF	563d18a5fb1c1171c255e091b45adfdd3c6cd31a84f7bbbfae5947065a269f92	no native substring	read_complete
+crates/op-plugins/src/canonical.rs	1-243;244-354 EOF	db68605165086b43982b30e8931663e99844d83735e228472c54844717b51373	J2 preserve Alternative native substring	read_complete
+crates/op-plugins/src/chat.rs	1-91 EOF	777584890c08bdd70f34b1f113c350676b52558c2e351228be7c95196e40d9bb	no native substring	read_complete
+crates/op-plugins/src/default_registry.rs	1-243;244-483;484-628 EOF	905bd6da50c9c80351905b896f21ba1d7abd00162e3dee2481634b8ed17428a9	no native substring; retired tched_router gate preserved	read_complete
+crates/op-plugins/src/dynamic_loading.rs	1-325 EOF	b974389ab2ffe74cfa70aa98a62e285ada784a39893da1915f18048a467607c3	no native substring	read_complete
+crates/op-plugins/src/lib.rs	1-107 EOF	b1d43aa13e715944cddf12137aab3a6ef4f61195bc05b9c931f156bb2dfd74b3	no native substring	read_complete
+crates/op-plugins/src/plugin.rs	1-243;244-374 EOF	9f75b39e853524c62907629d6bd5137b5a0959dcfc9d785ae359228707dadcc8	no native substring; existing incidental tests outside native-only scope	read_complete
+crates/op-plugins/src/registry.rs	1-205 EOF	2a3a12b9e75be5c87cee6f3bb272fe6090cda92d225f57d29cd30772e8723e88	no native substring	read_complete
+crates/op-plugins/src/service_def.rs	1-283;284-554 EOF	2e5dce8f3a2665343ced204b15eae7ad8263adcb862a9e1ec07f8450de93f079	no native substring; generic command/validation concerns separate	read_complete
+crates/op-plugins/src/state.rs	1-282 EOF	783b35aa13708feb4c016914bc2dfdf5cee1fa9f84a74c4d0870f73fd0cc9661	no native substring	read_complete
+crates/op-plugins/src/state_plugins/adc.rs	1-298 EOF	c07bbb66860dc4fc79394dc8db7625542175f3f73e076b98d7d88ea70f59893c	no native substring	read_complete
+crates/op-plugins/src/state_plugins/agent_config.rs	1-263;264-496 EOF	9d8cc87d9ee172436ad4224b0676f9dab064f1db888ca5fabf571d9e3c099b56	no native substring; explicit model update configuration	read_complete
+crates/op-plugins/src/state_plugins/agent_triggers.rs	1-253;254-462 EOF	b9884d7198d777983a6bbb6dad6676b5ed8e5221cb97192739c2e1613740f820	no native substring	read_complete
+crates/op-plugins/src/state_plugins/antigravity.rs	1-253;254-513;514-773;774-991 EOF	59d79ad7d4a430105cf22f69a2c838d7c9c6bf7a1d903c5822fd48c8868155fb	J2/J3 preserve terms; stronger receiver/tched ownership claims unresolved	read_complete_context_pending
+crates/op-plugins/src/state_plugins/antigravity_chat.rs	1-253;254-374 EOF	7b8c1b6ea62b082739b684b0b8c7b1e0e955a5198d063446f1f98ed0e6f661e7	J2/J3 preserve terms; stronger receiver/tched ownership claims unresolved	read_complete_context_pending
+crates/op-plugins/src/state_plugins/btrfs_plugin.rs	1-263;264-523;524-783;784-1043;1044-1303;1304-1563;1564-1742 EOF	17e30643569a7c0a888626210bc0e0c4d8843edcd250e225424661473eed961b	J4 preserve six kernel backend native uses	read_complete
+crates/op-plugins/src/state_plugins/chat_response.rs	1-263;264-523;524-783;784-914 EOF	f788c9e65f086e2b4b124f36cceca17ae07f2c96c18fc1fdcb7e84294ed06640	J4 preserve four Alternatives substrings	read_complete
+crates/op-plugins/src/state_plugins/chat_response_methods.rs	1-263;264-523;524-783;784-1043;1044-1169 EOF	d1a5fc2c5ec4847c64d0b99cece57907c87c3bccc97c38568b4f03e59c48dba0	J4 preserve seven alternatives positions	read_complete
+crates/op-plugins/src/state_plugins/cognitive.rs	1-263;264-523;524-783;784-1043;1044-1303;1304-1563;1564-1743 EOF	acf9336a6507c7fc3604ba17bd77cee5454622d0154a2e5115a37964067dff44	J6 preserve both alternatives identifiers; generic stale collection example separate	read_complete
+crates/op-plugins/src/state_plugins/cognitive_agents.rs	1-263;264-458 EOF	dab5c5ea5cc71d144714cc51ee2588623e131fd9f143d1067ee8558a319c0736	no native substring	read_complete
+crates/op-plugins/src/state_plugins/common/errors.rs	1-47 EOF	7f978539c2d5d87ded1f54cfbd81d7cc02b4ab4c3bf38ba7d3afb8245346cf80	no native substring	read_complete
+crates/op-plugins/src/state_plugins/common/llm_projection.rs	1-263;264-507 EOF	d45c716153ce807a6050ae5a74883d39ba71ccf5d59910877016275cafd34844	J4 preserve four provenance/type metadata native uses	read_complete
+crates/op-plugins/src/state_plugins/common/mod.rs	1-5 EOF	d73121efdae75dfc2c85b7ebd0767ae0f512aad3493eb625b4cb05ef970ef575	no native substring	read_complete
+crates/op-plugins/src/state_plugins/common/oscal.rs	1-281 EOF	07bfb0f898439981a8472b032eb9897e599e5bea404f6c04aca7033591bcd0c6	no native substring	read_complete
+crates/op-plugins/src/state_plugins/config.rs	1-263;264-510 EOF	4b9eba78a2075fa42bd629e4e53163987793aa63547bfb109ea1800971b9e15c	no native substring; generic legacy file-store lifecycle separate	read_complete
+crates/op-plugins/src/state_plugins/cozo.rs	1-263;264-523;524-559 EOF	149f5ebb9a28b0b004b158204bd1df8a33bae17f404bdf02b7af76ff20950606	J5 preserve native JSON terminology; engine guarantee not runtime proof	read_complete
+crates/op-plugins/src/state_plugins/cozo_methods.rs	1-263;264-523;524-783;784-1043;1044-1303;1304-1396 EOF	0dd8a0b42fe1963939edf451f39393324960d9baab86d7ff5b89abbb88b47ded	J5 preserve seventeen native positions; upstream guarantees unverified	read_complete
+crates/op-plugins/src/state_plugins/cozo_methods_tests.rs	1-263;264-523;524-572 EOF	c99af5272b9543c18928410a75dc959641fdc4e908889ffe0cffe78743c63794	J5/J7 preserve four fixture names; weak J6 rejected; tests not run	read_complete
+crates/op-plugins/src/state_plugins/cron.rs	1-263;264-523;524-592 EOF	1b63b4314128d239b80e43cc03e3817f866ace35bad2c8158adf0ef2b3a11713	J8 preserve twelve terms; gateway/caller/tched ownership claims unresolved	read_complete_context_pending
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs	1-263;264-523;524-783;784-1043;1044-1070 EOF	724264a81b77a0d7a4d1973bd12e48b176fce3012b06902d0c87a585476d882e	J9 preserve six native Chat terms; retired routing/global completion claims overlap	read_complete_context_pending
+crates/op-plugins/src/state_plugins/ctl_plane_chatbot_methods.rs	1-263;264-523;524-783;784-1043;1044-1162 EOF	5773cc173320d29734310a6c8b0d963d950251802cfcebdd1608ea569ca9b9fb	J9 preserve native retrieval field term; embedding receiver unread	read_complete_context_pending
+crates/op-plugins/src/state_plugins/datastore.rs	1-263;264-320 EOF	c29380cd2ff32e7bfd01b01d605b13b60d68cf871f4e9b0dfae98eb1a34fe09c	no native substring	read_complete
+crates/op-plugins/src/state_plugins/decoy_network/mod.rs	1-4 EOF	8a8f83a5787a590a531bb39e20c03ed005a5404c4102e97901d0ecf881a1a08c	J9 preserve native owner vocabulary; constructor exclusivity needs backend/caller	read_complete_context_pending
+crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs	1-263;264-700 raw;701-1098 raw EOF	inventory.tsv:47 sha256	J10 preserve six provider readback uses; fixture not live proof	read_complete
+crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner.rs	1-350 raw;351-691 raw EOF	inventory.tsv:48 sha256	J10 preserve three kernel observation/link uses; decoy marker not identity proof	read_complete
+crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs	1-514 raw EOF	inventory.tsv:49 sha256	J10 preserve two opt-in kernel fixture native uses; not run	read_complete
+crates/op-plugins/src/state_plugins/dnsresolver.rs	1-500 raw;501-1000 raw;1001-1464 raw EOF	58184dbe621044b4fecec67a92f3443469823c1b58c2700eb32fe62ed3895f8a	J11 weak terms0.53 supplemented J12 DNS0.77; preserve four protocol uses	read_complete
+crates/op-plugins/src/state_plugins/elevation.rs	1-522 raw EOF	39e36180596d7c1439debee04e56a2c38b6d056babe1cbc0a796773e0fd1dcb9	no native substring; tched policy ownership left unchanged	read_complete
+crates/op-plugins/src/state_plugins/embedding_model.rs	1-377 raw EOF	523057435950807e4a61b2513ae9a1da22e635e09c37d80bcd458ee306a8bd69	J12 preserve two provider-adapter native descriptions	read_complete
+crates/op-plugins/src/state_plugins/embedding_model_methods.rs	1-420 raw;421-840 raw;841-1237 raw EOF	9f3e98f64777d5f60a7afa0a6c3dcb0f3a97ae22efc1a72ac9ce0a5d37ef8532	J12 preserve six adapter/role/list/truncation/fixture uses; chatbot role comment supported	read_complete
+crates/op-plugins/src/state_plugins/emqx.rs	1-500 raw;501-1000 raw;1001-1400 raw;1401-1805 raw EOF	ce3e707da9ed62d5fdb43c9e47cbcb4e30b8ffe5b6ad138ff406a042091b06d6	J13 preserve seventeen backend transport/module source uses	read_complete
+crates/op-plugins/src/state_plugins/emqx_native_tests.rs	1-450 raw;451-622 EOF	c5247dc2d3d26dbaf55af3bd844aef33ba726491b1216cf3ea1f22089d1007b4	J13 preserve seventeen source uses plus previously encountered filename; not run	read_complete
+crates/op-plugins/src/state_plugins/endpoint.rs	1-378 raw EOF	15720924be868ef7c7a698966583159e88233ae68fa8909898ab372250a390ac	no native substring; declaration-only endpoint registration explicit	read_complete
+crates/op-plugins/src/state_plugins/fail2ban.rs	1-237 raw EOF	9211b29fcf6d76bd6eb0ac26f6411d7e0550185fb9d804dfd74cf78b9f8992c0	J16 supports five combined daemon uses0.82 after weak J14/J15; preserve	read_complete
+crates/op-plugins/src/state_plugins/fail2ban_methods.rs	1-450 raw;451-899 raw EOF	1781266943c8a0e89304d82ae65037d1a65d8d029fcc6deab97b18932f87fa3b	J16 preserve direct daemon protocol header/fixture; not run	read_complete
+crates/op-plugins/src/state_plugins/freedesktop.rs	1-350 raw;351-684 raw EOF	12153f743ae612648ac5aca8652bcf2ac67b029ff4e7d753075a5b58fefe6dd4	J14 JSON0.80 preserves two native JSON uses; bridge field enforcement unverified	read_complete_context_pending
+crates/op-plugins/src/state_plugins/full_system.rs	1-400 raw;401-800 raw;801-1164 raw EOF	f6fdafbc72afb125f344cf3f14de9a612214ecd729132519661aef570bdb559d	J15 kernel0.94 preserves fifteen syscall/backend/fixture uses	read_complete
+crates/op-plugins/src/state_plugins/gcloud_adc.rs	1-489 raw EOF	cacb4095c9a8534fb8aabaf70cde46f13be03ffbb2860f3f81981e657c42e16f	no native substring	read_complete
+crates/op-plugins/src/state_plugins/gemma_brain.rs	1-271 raw EOF	82c31a518968a20d66d85cd4ca0a74c5c3f9ed91352b406169e6d9e015dd606f	no native substring; unrelated retired router/lovable references unchanged	read_complete
+crates/op-plugins/src/state_plugins/gemma_brain_methods.rs	1-369 raw EOF	64778ed300d4affe2c6a92ebf9f8fc0a36310065cd34a11d55849e1263c2bf48	no native substring	read_complete
+crates/op-plugins/src/state_plugins/ghostbridge.rs	1-532 raw EOF	e9867c53c9f6f4213baa9460c95570d4b9e6ec97d5034c8ce03111008c519d04	no native substring	read_complete
+crates/op-plugins/src/state_plugins/governance_taxonomy.rs	1-267 raw EOF	0c148006b1b8c2e7461ef811e9d8283e35ae5f4c7d4ab1bd61e7c9ce1b74aa06	no native substring	read_complete
+crates/op-plugins/src/state_plugins/hardware.rs	1-350 raw;351-670 raw EOF	bd0fbd0b8b69259204bd944b40b20c9fb8a81c8c4b39e9c79fa4c623ac17654c	J17 preserves fourteen OS observation/validation/byte uses0.77; publication caller unverified	read_complete_context_pending
+crates/op-plugins/src/state_plugins/human_principal.rs	1-466 raw EOF	2728f70099e53d9ac251e23fbb736abc80ff51b43b25d7efd843000fffc56ef1	no native substring	read_complete
+crates/op-plugins/src/state_plugins/identity_sled.rs	1-420 raw;421-840 raw;841-1236 raw EOF	ecb0e9dd47b17f3ef62f40bb02165c302ef410cc7fe172df397322a293e66823	J18 ten provider terms preserved; alias-only documentation needs tched identity reconciliation	read_complete_changes_pending
+crates/op-plugins/src/state_plugins/identity_sled_metadata.rs	1-119 raw EOF	25f0b9793287d216637ca63ac623d1795353de9c452aceb51c8f28d435b6a7ab	no native substring	read_complete
+crates/op-plugins/src/state_plugins/incus.rs	1-500;501-1000;1001-1500;1501-2000;2001-2500;2501-3000;3001-3500;3501-4000;4001-4261 all raw EOF	056cfab06f6e6c3847e43c202f16eb9d821b4416cef8ae92e8da6f5abe28e8fd	J18 sixty native occurrences; obsolete creation fixture and pinned-only naming need scoped reconciliation	read_complete_changes_pending
+crates/op-plugins/src/state_plugins/incus_device.rs	1-400 raw;401-762 raw EOF	5061a919c7c132cc1022554d3d8621aec679d5e5fbfb9cf0cc9854d350c420c7	J18 preserve JSON primitive/device discriminator vocabulary; generic u64 wrap separately noted	read_complete
+crates/op-plugins/src/state_plugins/json_render.rs	1-500 raw;501-1000 raw;1001-1560 raw EOF	423f39006289d9cffba65030298fc43f98a79c41b0be287686713a94f90f18f0	twelve ReactNative/package/action positions encountered; contextual JEV pending	read_complete_context_pending
+crates/op-plugins/src/state_plugins/json_render_application.rs	1-232 raw EOF	e179824a6c5055df6d5b84e7db0dbb5b92b9e9b99fb0f25bab19e60696eb4544	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_application_profile.json	1-300 raw;301-600 raw;601-900 raw;901-1200 raw;1201-1273 raw EOF	e9786fd2c295472c8086467efc46b0615b6344dcf120ab1a988d0cca21e6e64f	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_authoring.rs	1-150 raw;151-261 raw EOF	22b3f4c90dc7eb8690f5340e8e93b890317b19f7d5c8a56ce665e748467b129f	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_canvas_profile.rs	1-566 raw EOF	68ce9ac37ac3058c1391ea067a334fc0579d859dc289042c8aaff8df566e9f11	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_canvas_profile_tests.rs	1-166 raw EOF	0fbc63762da5a3bf91b17d5f99be076d0b2ba4e4699ba988fcb2ed25f0a0bcbf	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_catalog_v019.rs	1-462 raw EOF	806e820f1979fae0ce7301f2d8e148718c37dd699b71c8c8e17aa0742dc05d99	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_chat_canvas.rs	1-421 raw EOF	95d54b9d936ceb966735cf3652fe761c7de624514fe5d942d0ad241e26a91c78	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_chat_canvas_contract.rs	1-9 raw EOF	84ce3dc5c04a9b07f903d608797960402963cea1388d852f90af94dab9b40b4c	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_gallery.rs	1-400 raw;401-776 raw EOF	2834298514b0037564c7706d5525867d1091addd47eba08c0f3fa7e94d68d92c	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_generation.rs	1-196 raw EOF; line 2 corrected after JEV with exact BEFORE excerpt	3b9082a43694ffb864b1a14d05f87c90ea294e69ed33a56bfa6266505aba2c98	J20 native execution ambiguous; clarified to backend operation execution	read_complete_changed
+crates/op-plugins/src/state_plugins/json_render_methods.rs	1-350 raw;351-700 raw;701-1046 raw EOF	eca941ba3d5e3e60ee44e7f8fb3673477469114b7409ef3b4ce07ccaaabc8912	J21 preserves React Native enum name and bounded fixture variable	read_complete_context_judged
+crates/op-plugins/src/state_plugins/json_render_runtime_contract.rs	1-223 raw EOF	a1ce6804e3bd151e03c7b767e8262e92d7292189e3c17f00825b165529612f2b	no native substring	read_complete
+crates/op-plugins/src/state_plugins/json_render_validation_bounds.rs	1-223 raw EOF	d5b231cbba1dfeb13e8aded0fc475ca1699aebc81b419e38850f0480dea9dbad	no native substring	read_complete
+crates/op-plugins/src/state_plugins/keypair.rs	1-307 raw EOF	fb064aae4b40827d09491f3ff74e4c8f9bca69ea6538b5fadf802a2342811bc3	no native substring	read_complete
+crates/op-plugins/src/state_plugins/keypair/agent.rs	1-218 raw EOF; line 142 renamed after JEV with exact BEFORE excerpt	f06528cd1c6d095caefc433d3d070c16a06977ca719552ed05d7abb5eb46994e	J22 test-name claim distinguished simulated UnixStream peer from live SSH agent	read_complete_changed
+crates/op-plugins/src/state_plugins/keyring.rs	1-434 raw EOF	eeae23792c407cb2ac3b6889c5da5f602dbf4f3ff03b6f1fadae0180b99088f4	no native substring	read_complete
+crates/op-plugins/src/state_plugins/large_language_model.rs	1-152 raw EOF	80c09c4fbf5c1ea64e0f87d1d8bf249a5a3d7e84a1c7b1dd43669d8ec06331b4	no native substring	read_complete
+crates/op-plugins/src/state_plugins/large_language_model_methods.rs	1-82 raw EOF	a89abc5288a54283a3525ef3eee11df583e5a75a68481b1b57618e5b30d269c9	no native substring	read_complete
+crates/op-plugins/src/state_plugins/login1.rs	1-300 raw;301-581 raw EOF	1a4280045dfa5ea240a33437b8ce8f32b2ce32bc841966c63e9e6497e9a32a00	no native substring	read_complete
+crates/op-plugins/src/state_plugins/login1/methods.rs	1-651 raw EOF	a6b0e4aacda87f2c820098ded6f48cf7475f76e47c576a967e6d9423adb6fbd3	J23 preserves exact upstream D-Bus wire mapping terminology	read_complete_context_judged
+crates/op-plugins/src/state_plugins/mail_server.rs	1-300 raw;301-600 raw;601-870 raw EOF	5a8efa7f23d49e8c49a48e9d7e4b50129a85d5deb9e3bf2bde2b38ae50427c6c	J24 native occurrence ledgered; later source intervals read in sequence	read_complete_context_judged
+crates/op-plugins/src/state_plugins/mail_server/methods.rs	1-179 raw EOF	6395138ec60096a433ab39e8113285e83380ffe0335039802308a2e6fb28e9bb	J24 backend terminology judgments	read_complete_context_judged
+crates/op-plugins/src/state_plugins/mail_server/native_owner.rs	1-300 raw;301-650 raw;651-1064 raw EOF	4771d5424c7eac5411499c90610d18391e2ef85345f4cc5c686e77827ee918f8	J26 native owner identifiers and service claims preserved	read_complete_context_judged
+crates/op-plugins/src/state_plugins/mail_server/native_owner_tests.rs	1-300 raw;301-600 raw;601-668 raw EOF	b7c4612df654ab118136faa4bb1084c64c4d48baf3a75a6d2637cac660dac12e	J25 opted-in backend fixture vocabulary preserved	read_complete_context_judged
+crates/op-plugins/src/state_plugins/mcp.rs	1-363 raw EOF	cf38ee3f63b51c88bb51d1a8800beb2766e970b3147b50ed7e45761e2d13ed67	no native substring	read_complete
+crates/op-plugins/src/state_plugins/mcp_methods.rs	1-180 raw EOF	fb94a2d163df8a5cd1dbc1eedafb8b97c0a8e4e1299ed95414bd0fbcc4cbf7dc	J27 weak native target terminology replaced with canonical	read_complete_changed
+crates/op-plugins/src/state_plugins/memory_methods.rs	1-300 raw;301-600 raw;601-842 raw EOF	52ac91e3f10239022c2991fb0b2df15ad257c22bcfea4ed6297b1e72097ce400	no native substring	read_complete
+crates/op-plugins/src/state_plugins/memory_plugin.rs	1-420 raw EOF	c1b9b9b2926c45d5638440e6d242d84fd5c475c29b7d9cb7225c4a8d6373834e	no native substring	read_complete
+crates/op-plugins/src/state_plugins/mod.rs	1-171 raw EOF	9d8461e2f6fa68cca671bbc4e7671bfc44d2bdfc7bf58d397f52bacf91312132	J28 broad native-protocol claim narrowed to declared backend	read_complete_changed
+crates/op-plugins/src/state_plugins/model_registry.rs	1-300 raw;301-600 raw;601-900 raw;901-1200 raw;1201-1500 raw;1501-1626 raw EOF	11775067384f36d414a429a001249cbecb89ddc7d1d8193deb538971ed1d5c34	J29 terminology corrected; model fields/API and OAuth profile names retained; provider-list-only test name clarified	read_complete_changed
+crates/op-plugins/src/state_plugins/net.rs	1-300 raw;301-600 raw;601-900 raw;901-1200 raw;1201-1500 raw;1501-1784 raw EOF	d1624da1de02a08b45904f81a21afe49d0943bbebadc7c1463b7bb5be30d4a7f	J30 production netlink terminology preserved; MockBackend test name narrowed	read_complete_changed
+crates/op-plugins/src/state_plugins/notebooklm.rs	1-300 raw;301-600 raw;601-900 raw;901-1089 raw EOF	42ce9a5e04f3f5cf5b684beef9de88ccf8d724f39abb34b4e0f7c71fa2cbc8d7	no native substring	read_complete
+crates/op-plugins/src/state_plugins/notebooklm/outputs.rs	1-115 raw EOF	54dd4d912cacb6cfadf419bd113f930350d5822955b5c27c1b133e28ef1ac5bc	no native substring	read_complete
+crates/op-plugins/src/state_plugins/notebooklm/provider_outputs.rs	1-350 raw EOF	445d4d963474906d6adecdecdfc675e8cf7f1402552a7a17f0fe6f3a2fbd8311	no native substring	read_complete
+crates/op-plugins/src/state_plugins/oci.rs	1-300 raw;301-600 raw;601-900 raw;901-1034 raw EOF	5efecd9b1783ea2fb833917e33e53359672c275ed7d7cfdd30082cc86e736b3	J31 native Incus REST API term preserved	read_complete_context_judged
+crates/op-plugins/src/state_plugins/openflow.rs	1-300 raw;301-600 raw;601-900 raw;901-1200 raw;1201-1500 raw;1501-1719 raw EOF	a1d1f3a0bbeb1ac117e0423afe68df897e0ef1d25bbc4130a33cd2ca853e90b1	J32 observation ownership wording clarified	read_complete_changed
+crates/op-plugins/src/state_plugins/openflow_obfuscation.rs	1-300 raw;301-600 raw;601-683 raw EOF	6b31192be4d145ed33183676ba8fdac6401a9919efc159d51dd8ebaa42e76b10	J33 overbroad native controller/readback wording narrowed	read_complete_changed
+crates/op-plugins/src/state_plugins/oscal_field_classification.rs	1-400 raw;401-800 raw;801-1237 raw EOF	e74d656fca835e54cd714f3d5a3510704477e78d615d51276844b7a51ba84dd2	no native substring	read_complete
+crates/op-plugins/src/state_plugins/oscal_field_classification_tests.rs	1-346 raw EOF	208be647cb809c168c41a142b31e02580655f88c34bbf172d2e55e7b600173f4	no native substring	read_complete
+crates/op-plugins/src/state_plugins/oscal_subid_registry.rs	1-300 raw;301-605 raw EOF	75b439a609f65f4e13b3aa09aff1f7ade35c3aac30690dacd05c06003026aeb5	no native substring	read_complete
+crates/op-plugins/src/state_plugins/oscal_subid_registry_methods.rs	1-500 raw;501-1000 raw;1001-1449 raw EOF	fa9a6613fe4cb38e2470edfc7c28c6351250203112bafd4570f6fc109c8d45ce	J34 “native methods” narrowed to service methods	read_complete_changed
+crates/op-plugins/src/state_plugins/ovsdb_bridge.rs	1-300 raw;301-600 raw;601-690 raw EOF	b294b5a4e6252eca3ef393d07fcea60e2b3d558356a8abcd36331c553e0f454c	J35 backend references made explicit	read_complete_changed
+crates/op-plugins/src/state_plugins/ovsdb_topology.rs	1-201 raw EOF	0202ac7285f2772403385b9ee7025761e3d26c92d5cfcfc7255a29862167b860	J36 source/error terms clarified	read_complete_changed
+crates/op-plugins/src/state_plugins/ovsdb_topology_tests.rs	1-146 raw EOF	4413a4ca5cad6dc278de9df3bc4b8ad6302253c8d84a61d27e24d08f6218df35	J36 fixture test name clarified	read_complete_changed
+crates/op-plugins/src/state_plugins/packagekit.rs	1-500 raw;501-999 raw EOF	340b214d985ccb73737784e21cd46338e9af2543208cc843873e933bbb85754f	no native substring	read_complete
+crates/op-plugins/src/state_plugins/pcidecl.rs	1-492 raw EOF	bb30e3837f19a9f22dd24b241548700245a7ae5963116e3f80acb3931f1d66fa	no native substring	read_complete
+crates/op-plugins/src/state_plugins/persona.rs	1-661 raw EOF	5c1132f05321b869df9cb7c3909e4371a85cf9c9e26961908f008a8dcef8814a	no native substring	read_complete
+crates/op-plugins/src/state_plugins/plugin-struct.txt	1-4974	866b5302ba25e00d3d9e78a901c37f6d19419e531de9a9c91b4ebd5948e340fe	tree-sitter native-install description; J38 weak/insufficient; no disposition	read_complete
+crates/op-plugins/src/state_plugins/plugin_scaffold.rs.template	1-190	1856ae58130f9420f4538728be0da594c3384fc3f34455b373f0fd4285424695	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/plugin_scaffold_helpers.rs	1-549	32a7910ac52a5a17afcfaee68a4b78a95e5913e5b5416514fb1b0e3074b53c7d	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/privacy_routes.rs	1-697	cd6ec92afacefc571ddf06eeebbc112281162b29cf7abb02d9d789eb26dad23d	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/procfs.rs	1-1021	4a08ced4aa7bf31caa87e26287e56cbe3cd5c2ceadf71e86f9f669ce1f7f6d23	sysinfo host snapshot semantics; J37	preserve-source-level
+crates/op-plugins/src/state_plugins/project.rs	1-692	814ec4e768ffa4b6d208ff2767365c1dd35b9db08d924f2183e0a4c66c221f27	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/proxy_server.rs	1-250	2975b94b1b0387bf2409f49501bbe38eaaf387d2c0d5d51be7c70c9212b7b358	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/qdrant.rs	1-1205	97f8e2d697b3c3a8fb9f49810a90db225c650e9d0e68bb94c7e72470278f82fd	qdrant_native_tests module reference	read_complete
+crates/op-plugins/src/state_plugins/qdrant_native_tests.rs	1-349	b5877fa3b87e31b7bc5243657f9cee7c39cb4bb00301997d4b309bbeefa07aa3	native Qdrant server/transport integration fixture; J37	preserve-fixture-intent
+crates/op-plugins/src/state_plugins/routing_decision.rs	1-724	3bbe8abe1bd682d68cdfef1dc7cc852768b43c59ab4f58d79c3956d2d74f4fa7	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/routing_decision_methods.rs	1-790	0ebd3dfa1d9b55c5436cb89b6e917b1f1086c48c6e743c6fd9fc489ae44f855a	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/rovs_commands.rs	1-402	8c75ec8d55327f19e01a4a8b279ade15c02505412146de7c2b3ce52185a9f5e1	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/rtnetlink.rs	1-1191	9a70c6305cd6020c9896f29f9004e4d8414d3617228422fa48e9185e2b55200f	direct kernel rtnetlink backend; J37	preserve-protocol
+crates/op-plugins/src/state_plugins/runtime_documents.rs	1-539	eaddddc37de952f8fb2092f41a385a23136669d845566484eb2fb94c2895fb3e	native Cozo/document wording requires exact-context adjudication; J37/J38 weak	read_complete_unresolved
+crates/op-plugins/src/state_plugins/schema_contract.rs	1-192	d88b12f28361290fd04cafb1f02a42141a5eb212a5bb2ad4531d57be1b30fd8a	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/schema_renderer.rs	1-212	33a533c023ae5e4b441f36555891183e513bd2fe138cc9d16557218db8aa7bde	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/schema_renderer_methods.rs	1-412	f68b89a0e255d8b7317a93762f8d9d58441af20390786d5c036d92d152e37ca0	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/schema_tag_registry.rs	1-378	3405bdde390787bde5e396eb22dda95a85559a7946f933c537c3f6a17698d762	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/schema_tag_registry_methods.rs	1-919	cc3e5d487f74fb1e63ca66b0225f9abe2d363d961e37392a1df8941ced1edfa0	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/schemars_adapter.rs	1-857	96494a84d1307feab87758857afd18b6114dde46950112785d7f95a121cfe8fa	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/service.rs	1-215	75fe220986f744719583c3e18217d825b25a4b758b48ba0e04af766c8345ff3d	“native definition type” refers to service definition; log	native occurrence assessed
+crates/op-plugins/src/state_plugins/service/methods.rs	1-241	039e0614a11e17d8e0e664c46b8ce487bd9d4a53b6eeb7b2a594805d7128f18f	J40/J42 clarify D-Bus/Runit role and service definition type	read_complete_changed
+crates/op-plugins/src/state_plugins/sessdecl.rs	1-563	4b2feb9f2ab8ce8da39c1cd5b500ab418bf00b31a3c8ab4d71b5395b1cb80073	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/shared_unix_socket.rs	1-229	51ed5d5964d6a4d36c0c2c094c9525f335dcf18edc197f5cd3ecf5f688261ce	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/shared_unix_socket_methods.rs	1-343	476f4aa6b29af33baa36fd0fdec2ca1d272752c0086fb96cba99b904f4d4dca8	J40 removes ambiguous native adapter label	read_complete_changed
+crates/op-plugins/src/state_plugins/snowball_methods.rs	1-468	81647c7fb6c9bd0022f32930fb516226f16f8dfb3e9ee1e5b995ef2d62dda26a	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/snowball_plugin.rs	1-638	50003e65a4bcd429651ac0c9d33806e49c1387fa8b09cb9718f2efb2302da6a7	J41 clarifies native methods as plugin methods	read_complete_changed
+crates/op-plugins/src/state_plugins/software.rs	1-974	0ce835c218f3f71c56f30e164c663a20dd50d06f42965b5fd38b6b7eb09d2733	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/tched_fs.rs	1-623	873d016a3e491758e228b6544d143a6e67a68d0210572db5d5f72bed61487daa	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/tched_fs_contract.rs	1-16102	2f7ed0d4f37675cd4e8245b2fb5358f462405126d51e759c2cbbc111fdb1b793	native/Linux operation-surface wording and binding semantics; J37 weak; identity overlap	read_complete_overlap
+crates/op-plugins/src/state_plugins/tched_router.rs	1-2310	7c246dbf265eebe44b66a525a39bdcd1454986f226afd742367281feca33ad65	native tched-router gateway/runtime/schema semantics; J38 weak; owner boundary	read_complete_overlap
+crates/op-plugins/src/state_plugins/tched_router_contract.rs	1-96	7c9e1282751b5ba9373c32d50f0431981b7004ae15bfb49d75a37a0c751b82ea	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/tched_router_generation.rs	1-692	f74ead12aa7c6a26c61e8e0d380414cecd6be7654cf97fd9ffc5666baaea5c90	native MutationEngine/task boundary wording; J38 weak; overlap	read_complete_overlap
+crates/op-plugins/src/state_plugins/tched_router_generation_tests.rs	1-406	85385edf1c0cf625e9ac058ddcfedc81b92f73fb241197b50eb995b1f67e505e	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs	1-289	835365fda2f372ace482ee04f21e89c825d83173e8a13adcfdf9fee4f9d3e08f	native tched runtime/config catalog observations; J38 weak; overlap	read_complete_overlap
+crates/op-plugins/src/state_plugins/tched_router_legacy_methods_tests.rs	1-213	12308e120b984a08f7dd6cc95d2fa2af3ef7a41fd41b5db9789d0d870c6cbd9d	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/tched_router_paths.rs	1-52	b2ab9b4964c9515da0d81bb179990168e23a32e94ab2ebe246d2745447622f89	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/threetched.rs	1-465	19fdf773b623a214516761def7d1532435773f3c9e386c3b7f4b596fe9b29d6c	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/ui_workspace_contract.rs	1-617	67cca49fc28495c18c84e7069b62d692931c1716a98b989085cf6c44706b3b4e	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/ui_workspace_methods.rs	1-1776	5acf87ae77a605c8e519e2df4195a8c8758ba929a1dabc6d99307106763dd465	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs	1-494	fc814c6f2a16d60568409e3fc63a574f50e59359216586dc32fb1b60c645aab1	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/unix_socket.rs	1-244	019c75d9389fec9e66a708565ed52fadeec8bf03dba8eb4e80156cd751382368	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/users.rs	1-918	b7b8b04aab221180460e348ff80075be3fcf69f4717ea9044cd0d138e9c3af6b	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/web_ui.rs	1-616	7834d33aafe447dedc681d39c40bd15c625006f17d7e165f205fe0542648ad56	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/web_ui_methods.rs	1-227	603cc1766d92ac6f32c7a2dbd5d621c81d8f3dc976009191b9c6445361290a63	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/wg_opdbus.rs	1-268	39e1a48394c0a76c9b0cbc2aa3ab65037fbf43a18115e6a39f8355bc648e3d19	“native projection” for decoy WireGuard owner; J38 group weak	read_complete_unresolved
+crates/op-plugins/src/state_plugins/wgcf.rs	1-330	5b39ffb6ca97ba40f0fee06d2aabe9af86bc4703295df72caac3631c7254845b	J40 replaces unsupported native-method wording with plugin-method dispatch	read_complete_changed
+crates/op-plugins/src/state_plugins/wireguard.rs	1-310	85b5fbb3b482a1201f23c2d4cf77af7b7208ee89325c0ac9838ec4587e333c95	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/workflows_plugin.rs	1-411	a7d075578fed8220b10ca7fcdec9dafb05cda0b256aea6a5c7f3c0f58214ec12	no native occurrence	read_complete
+crates/op-plugins/src/state_plugins/xray.rs	1-645	b3035c40fc3659588ef6ae3ef5cc8c9c7d2b64a781ef53ebcb09dff557534b37	actual native Xray APIs/account protocols; J38 preserves	read_complete
+crates/op-plugins/src/state_plugins/xray_config_types.rs	1-846	dc66f604ffe626366f835e2301961854cf44e6c980f7c70b0c91fa8d78570324	no native occurrence	read_complete
+crates/op-plugins/src/state_publisher.rs	1-26	7dece3ac7ab9b05161edd3ba0923fca84b5d04e454702ace83249d2e38d775e8	no native occurrence	read_complete
+crates/op-plugins/tests/public_state_contracts.rs	1-202	aa6e3a20ee6aeff9b7eadaf4ebbdaf81dbb8a9fef70551e0efebfb195bf8c7dd	no native occurrence	read_complete

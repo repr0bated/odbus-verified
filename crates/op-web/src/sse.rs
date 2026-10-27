@@ -28,7 +28,7 @@ const MAX_HYDRATION_FRAMES: usize = 4096;
 const DEFAULT_SSE_PLUGINS: &[&str] = &[
     "json_render",
     "chat_response",
-    "tched_router",
+    "chat_router",
     "ctl_plane_chatbot",
     "model_registry",
     "gemma_brain",

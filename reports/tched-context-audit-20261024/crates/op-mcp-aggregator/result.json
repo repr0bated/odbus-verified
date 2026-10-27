@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024/op-mcp-aggregator",
+  "crate": "op-mcp-aggregator",
+  "status": "complete",
+  "files_reviewed": 14,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 2,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-mcp-aggregator/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-mcp-aggregator/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-mcp-aggregator/occurrences.tsv",
+  "jev_receipts": ["JEV-2026-10-24-op-mcp-aggregator-1"],
+  "limitations": ["Static source evidence only; runtime, catalog and deployment state unverified.", "Cargo/build/tests/checks/Clippy/format/smoke/runtime/deployment were not run per assignment."],
+  "next_action": "Coordinator may aggregate the completed crate report."
+}

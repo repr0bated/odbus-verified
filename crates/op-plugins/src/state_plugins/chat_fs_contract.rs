@@ -1,0 +1,16102 @@
+//! Plugin-owned 3tchedFS contract, imported once from the fs-schema-20261005 audit.
+//!
+//! This embedded document is the authoring authority. `typed_export` derives
+//! reviewable JSON and binding input from it; exported files are never inputs.
+//! Every call decodes fresh owned data. The static source text is not a decoded
+//! value cache, and this module does not read runtime files or alter a catalog.
+
+use serde_json::Value;
+
+pub const SCHEMA_VERSION: &str = "2.0.8";
+pub const SOURCE_COMMIT: &str = "ed02a783fa9ae99c174544c585106e116ce2c6b1";
+
+pub fn schema_version() -> &'static str {
+    SCHEMA_VERSION
+}
+
+pub fn source_commit() -> &'static str {
+    SOURCE_COMMIT
+}
+
+/// Return an independent owned decode of the plugin-owned contract.
+pub fn document() -> Value {
+    serde_json::from_str(CONTRACT).expect("embedded 3tchedFS contract must be valid JSON")
+}
+
+/// The self-validation schema, with a structural root for generated transports.
+///
+/// The caller may add `const: document()` when declaring the exact sealed
+/// contract return. `$defs` are copied into the same document so local refs
+/// retain their meaning. No parsed value survives this call.
+pub fn schema_document() -> Value {
+    let contract = document();
+    let mut schema = contract["$defs"]["FilesystemContract"]
+        .as_object()
+        .expect("embedded contract must define FilesystemContract")
+        .clone();
+    for key in ["$schema", "$id", "$defs", "title", "description"] {
+        schema.insert(key.to_owned(), contract[key].clone());
+    }
+    Value::Object(schema)
+}
+
+const CONTRACT: &str = r########"
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:3tchedfs:source-derived-filesystem:2",
+  "$ref": "#/$defs/FilesystemContract",
+  "title": "3tchedFS source-derived typed filesystem contract",
+  "description": "Plugin-owned current-source 3tchedFS contract: typed namespace, backing relationships, no reusable filesystem payload caches, bounded per-descriptor I/O, committed public state, workspace CAS, canonical method receipts and recovery. Exported documents and bindings derive from this authority. Each backend's sealed PluginSchema remains the authority for its arguments, results and capability admission. This revision is authored source, not tested or deployed proof.",
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/examples/typed_generate.rs:87-175",
+        "crates/threetched-fs/src/model.rs:6"
+      ]
+    },
+    "U64": {
+      "type": "integer",
+      "minimum": 0,
+      "exclusiveMaximum": 18446744073709552000,
+      "x-source-refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ]
+    },
+    "ObjectHash": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$",
+      "x-source-refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+      ]
+    },
+    "ViewId": {
+      "$ref": "#/$defs/ObjectHash",
+      "x-source-refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+      ]
+    },
+    "SchemaHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "x-source-refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:112-120"
+      ]
+    },
+    "WorkspaceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "not": {
+        "enum": [
+          ".",
+          ".."
+        ]
+      },
+      "x-source-refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:127-138"
+      ]
+    },
+    "SideEffect": {
+      "enum": [
+        "read",
+        "mutation"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:532-535"
+      ]
+    },
+    "MountMetadata": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "3tchedfs/1"
+        },
+        "view_id": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_catalog_hash": {
+          "type": "string"
+        },
+        "source_catalog_generation": {
+          "$ref": "#/$defs/U64"
+        },
+        "object_count": {
+          "$ref": "#/$defs/U64"
+        },
+        "invocation": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "mount_identity": {
+          "$ref": "#/$defs/MountIdentity"
+        },
+        "instance_uuid": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "local_call_owner_uid": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "allowed_operator_uid": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "declared_catalog_dir": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "view_id",
+        "workspace_id",
+        "source_catalog_hash",
+        "source_catalog_generation",
+        "object_count",
+        "mount_identity",
+        "instance_uuid",
+        "local_call_owner_uid",
+        "allowed_operator_uid",
+        "declared_catalog_dir"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/namespace.rs:492-513"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:492-513"
+        ]
+      }
+    },
+    "ViewManifest": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string"
+        },
+        "view_id": {
+          "type": "string"
+        },
+        "source_catalog_hash": {
+          "type": "string"
+        },
+        "source_catalog_generation": {
+          "$ref": "#/$defs/U64"
+        },
+        "parent_view": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objects": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "view_id",
+        "source_catalog_hash",
+        "source_catalog_generation",
+        "objects"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/store.rs:27-35"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:27-35"
+        ]
+      }
+    },
+    "Workspace": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string"
+        },
+        "workspace_id": {
+          "type": "string"
+        },
+        "base_view": {
+          "type": "string"
+        },
+        "staged_objects": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "committed_view": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "workspace_id",
+        "base_view",
+        "staged_objects"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/store.rs:47-54"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:47-54"
+        ]
+      }
+    },
+    "TypedObject": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "3tchedfs/1"
+        },
+        "plugin_id": {
+          "type": "string"
+        },
+        "source_schema_hash": {
+          "type": "string"
+        },
+        "schema": {
+          "$ref": "#/$defs/PluginSchema"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "value_scope": {
+          "$ref": "#/$defs/StateValueScope"
+        }
+      },
+      "required": [
+        "format",
+        "plugin_id",
+        "source_schema_hash",
+        "schema",
+        "value"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:29-37"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:29-37"
+        ]
+      }
+    },
+    "PluginSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FieldSchema"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "immutable_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dialect": {
+          "type": "string"
+        },
+        "mutation_index": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/U64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subids": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "org": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "methods": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/MethodDecl"
+          }
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SignalDecl"
+          }
+        },
+        "guarantees": {
+          "$ref": "#/$defs/PluginGuarantees"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "capability_grants": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "public_state": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "field_writes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "example": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:155-201"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:155-201"
+        ]
+      }
+    },
+    "FieldSchema": {
+      "type": "object",
+      "properties": {
+        "field_type": {
+          "$ref": "#/$defs/FieldType"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "default": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "example": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Constraint"
+          }
+        },
+        "read_only": {
+          "type": "boolean"
+        },
+        "read_only_when": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadOnlyCondition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "field_type"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:307-325"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:307-325"
+        ]
+      }
+    },
+    "FieldType": {
+      "oneOf": [
+        {
+          "enum": [
+            "string",
+            "integer",
+            "float",
+            "boolean",
+            "any"
+          ]
+        },
+        {
+          "type": "object",
+          "required": [
+            "array"
+          ],
+          "properties": {
+            "array": {
+              "$ref": "#/$defs/FieldType"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "object"
+          ],
+          "properties": {
+            "object": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/FieldSchema"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "map"
+          ],
+          "properties": {
+            "map": {
+              "$ref": "#/$defs/FieldType"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "json_schema"
+          ],
+          "properties": {
+            "json_schema": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "enum"
+          ],
+          "properties": {
+            "enum": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "one_of"
+          ],
+          "properties": {
+            "one_of": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/FieldType"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:350-366"
+      ]
+    },
+    "ReadOnlyCondition": {
+      "type": "object",
+      "properties": {
+        "property": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "property",
+        "value"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:458-463"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:458-463"
+        ]
+      }
+    },
+    "Constraint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "min",
+                "max"
+              ]
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ],
+          "x-source-refs": [
+            "crates/threetched-fs/src/model.rs:465-503"
+          ],
+          "x-layout": {
+            "offsets": "variable JSON member positions",
+            "endianness": "not applicable",
+            "alignment": "not applicable",
+            "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+            "source_refs": [
+              "crates/threetched-fs/src/model.rs:465-503"
+            ]
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pattern"
+            },
+            "regex": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "regex"
+          ],
+          "x-source-refs": [
+            "crates/threetched-fs/src/model.rs:465-503"
+          ],
+          "x-layout": {
+            "offsets": "variable JSON member positions",
+            "endianness": "not applicable",
+            "alignment": "not applicable",
+            "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+            "source_refs": [
+              "crates/threetched-fs/src/model.rs:465-503"
+            ]
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "one_of"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/JsonValue"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "values"
+          ],
+          "x-source-refs": [
+            "crates/threetched-fs/src/model.rs:465-503"
+          ],
+          "x-layout": {
+            "offsets": "variable JSON member positions",
+            "endianness": "not applicable",
+            "alignment": "not applicable",
+            "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+            "source_refs": [
+              "crates/threetched-fs/src/model.rs:465-503"
+            ]
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "requires_field"
+            },
+            "field": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "field"
+          ],
+          "x-source-refs": [
+            "crates/threetched-fs/src/model.rs:465-503"
+          ],
+          "x-layout": {
+            "offsets": "variable JSON member positions",
+            "endianness": "not applicable",
+            "alignment": "not applicable",
+            "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+            "source_refs": [
+              "crates/threetched-fs/src/model.rs:465-503"
+            ]
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "custom"
+            },
+            "validator": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "validator"
+          ],
+          "x-source-refs": [
+            "crates/threetched-fs/src/model.rs:465-503"
+          ],
+          "x-layout": {
+            "offsets": "variable JSON member positions",
+            "endianness": "not applicable",
+            "alignment": "not applicable",
+            "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+            "source_refs": [
+              "crates/threetched-fs/src/model.rs:465-503"
+            ]
+          }
+        }
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:465-503"
+      ]
+    },
+    "MethodDecl": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "returns": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "side_effect": {
+          "$ref": "#/$defs/SideEffect"
+        },
+        "idempotent": {
+          "type": "boolean"
+        },
+        "required_capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "args",
+        "side_effect",
+        "idempotent",
+        "subid"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:518-528"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:518-528"
+        ]
+      }
+    },
+    "SignalDecl": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "subid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "subid"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:538-543"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:538-543"
+        ]
+      }
+    },
+    "PluginGuarantees": {
+      "type": "object",
+      "properties": {
+        "supports_rollback": {
+          "type": "boolean"
+        },
+        "supports_checkpoints": {
+          "type": "boolean"
+        },
+        "supports_verification": {
+          "type": "boolean"
+        },
+        "atomic_operations": {
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:546-561"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:546-561"
+        ]
+      }
+    },
+    "Capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-source-refs": [
+        "crates/threetched-fs/examples/typed_generate.rs:87-175",
+        "crates/threetched-fs/src/model.rs:6"
+      ]
+    },
+    "CallReceipt": {
+      "type": "object",
+      "properties": {
+        "plugin_id": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "subid": {
+          "type": "string"
+        },
+        "required_capability": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "side_effect": {
+          "$ref": "#/$defs/SideEffect"
+        },
+        "idempotent": {
+          "type": "boolean"
+        },
+        "result": {
+          "$ref": "#/$defs/MethodExecutionReceipt"
+        }
+      },
+      "required": [
+        "plugin_id",
+        "method",
+        "subid",
+        "required_capability",
+        "side_effect",
+        "idempotent",
+        "result"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/dispatch.rs:30-39",
+        "crates/threetched-fs/src/dispatch.rs:408-456"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/dispatch.rs:30-39",
+          "crates/threetched-fs/src/dispatch.rs:408-456"
+        ]
+      }
+    },
+    "OperationDiagnostic": {
+      "type": "object",
+      "properties": {
+        "plugin": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "parse",
+            "validate",
+            "credential",
+            "register",
+            "call",
+            "transport",
+            "admission",
+            "outcome_unknown",
+            "contract",
+            "commit",
+            "fsync",
+            "limits",
+            "handle"
+          ]
+        },
+        "error": {
+          "type": "string"
+        },
+        "operation_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "plugin",
+        "method",
+        "stage",
+        "error"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:555-581",
+        "crates/threetched-fs/src/typed_runtime.rs:1653-1682"
+      ],
+      "x-layout": {
+        "offsets": "variable JSON member positions",
+        "endianness": "not applicable",
+        "alignment": "not applicable",
+        "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:555-581",
+          "crates/threetched-fs/src/typed_runtime.rs:1653-1682"
+        ]
+      }
+    },
+    "FilesystemContract": {
+      "type": "object",
+      "required": [
+        "types",
+        "nodes",
+        "methods",
+        "invariants",
+        "enumeration",
+        "versioning",
+        "bindings",
+        "authority"
+      ],
+      "properties": {
+        "types": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "kind",
+              "source_refs"
+            ],
+            "properties": {
+              "source_refs": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "class",
+              "path_template",
+              "params",
+              "backing",
+              "source_refs"
+            ],
+            "properties": {
+              "backing": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "locator_template",
+                  "payload_type"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "shm",
+                      "blob",
+                      "synthetic"
+                    ]
+                  },
+                  "locator_template": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "payload_type": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "methods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Method"
+          }
+        },
+        "invariants": {
+          "type": "object"
+        },
+        "enumeration": {
+          "type": "array"
+        },
+        "versioning": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "source_commit",
+            "source_files"
+          ]
+        },
+        "bindings": {
+          "type": "object",
+          "required": [
+            "classes"
+          ]
+        },
+        "authority": {
+          "type": "object",
+          "required": [
+            "owner_plugin",
+            "authoring_source",
+            "deployment",
+            "memory"
+          ],
+          "properties": {
+            "owner_plugin": {
+              "const": "tched_fs"
+            },
+            "authoring_source": {
+              "const": "crates/op-plugins/src/state_plugins/tched_fs_contract.rs"
+            },
+            "deployment": {
+              "type": "object"
+            },
+            "memory": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "x-source-refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ]
+    },
+    "Method": {
+      "type": "object",
+      "required": [
+        "name",
+        "receiver",
+        "params",
+        "returns",
+        "errors",
+        "idempotent",
+        "atomic",
+        "blocking",
+        "side_effects",
+        "route",
+        "route_reason",
+        "fuse_ops",
+        "required_steps",
+        "source_refs"
+      ],
+      "properties": {
+        "route": {
+          "enum": [
+            "direct-shm",
+            "direct-blob",
+            "via-fuse"
+          ]
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type"
+            ]
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1
+        }
+      },
+      "x-source-refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ]
+    },
+    "StateValueScope": {
+      "enum": [
+        "full",
+        "public_projection",
+        "schema_only"
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/model.rs:14-20"
+      ]
+    },
+    "MountIdentity": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "host_session"
+            },
+            "session": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "required": [
+            "kind",
+            "session"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "guest_kernel",
+                "credential",
+                "unbound"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "x-source-refs": [
+        "crates/threetched-fs/src/namespace.rs:15-23",
+        "crates/threetched-fs/src/namespace.rs:492-513"
+      ]
+    },
+    "MethodEventProof": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/U64"
+            }
+          ],
+          "minimum": 1
+        },
+        "event_hash": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 32,
+          "pattern": "^[0-9a-f]{32}$"
+        }
+      },
+      "required": [
+        "event_id",
+        "event_hash"
+      ],
+      "additionalProperties": false,
+      "x-source-refs": [
+        "crates/op-state-store/src/method_receipt.rs:9-16",
+        "crates/op-state-store/src/method_receipt.rs:53-78",
+        "crates/op-state-store/src/event_chain.rs:1100-1109"
+      ]
+    },
+    "MethodRecoveryStatus": {
+      "enum": [
+        "completed",
+        "failed",
+        "unknown",
+        "not_found"
+      ],
+      "x-source-refs": [
+        "crates/op-state-store/src/method_receipt.rs:18-25"
+      ]
+    },
+    "MethodExecutionReceipt": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "const": true
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 36,
+          "maxLength": 36,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "outcome": {
+          "const": "completed"
+        },
+        "event_id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/U64"
+            }
+          ],
+          "minimum": 1
+        },
+        "event_hash": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 32,
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "terminal_event_id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/U64"
+            }
+          ],
+          "minimum": 1
+        },
+        "terminal_event_hash": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 32,
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "plugin_id": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "success",
+        "operation_id",
+        "outcome",
+        "event_id",
+        "event_hash",
+        "terminal_event_id",
+        "terminal_event_hash",
+        "plugin_id",
+        "method",
+        "result"
+      ],
+      "additionalProperties": false,
+      "x-source-refs": [
+        "crates/op-state-store/src/method_receipt.rs:9-16",
+        "crates/op-state-store/src/method_receipt.rs:53-78",
+        "crates/op-state-store/src/event_chain.rs:1100-1109"
+      ],
+      "x-domain-validation": "result must validate against the exact admitted MethodDecl.returns; absent returns rejects before effects. Runtime additionally verifies UUID canonical form, exact target and ordered event proofs."
+    },
+    "MethodReceiptRecovery": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "minLength": 36,
+          "maxLength": 36,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "status": {
+          "$ref": "#/$defs/MethodRecoveryStatus"
+        },
+        "plugin_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MethodEventProof"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "terminal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MethodEventProof"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "result_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "operation_id",
+        "status",
+        "plugin_id",
+        "method",
+        "attempt",
+        "terminal",
+        "result_digest"
+      ],
+      "additionalProperties": false,
+      "x-source-refs": [
+        "crates/op-state-store/src/method_receipt.rs:37-52"
+      ],
+      "x-privacy": "No domain result, private arguments, principal/session selectors or raw result commitment is returned; result_digest remains null without an authoritative safe-redaction contract."
+    },
+    "GetMethodReceiptInput": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "minLength": 36,
+          "maxLength": 36,
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "operation_id"
+      ],
+      "additionalProperties": false,
+      "x-source-refs": [
+        "crates/op-state-store/src/method_receipt.rs:27-35"
+      ]
+    }
+  },
+  "versioning": {
+    "source_files": [
+      {
+        "sha256": "b1b31b4008cf0513c00e23f1b09570ebd2851ae1e8edc626cad3f7e23fa59630",
+        "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs"
+      },
+      {
+        "sha256": "cba7d11c358e011d58767e53f9cdae5f451ac8dd06a2c17ec2156a286d5d43f4",
+        "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs"
+      },
+      {
+        "sha256": "09eb6d57411c29d23f28d19c0709e3c59ce19e2bf7f14bdf9c46f44cc31f59f3",
+        "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/session.rs"
+      },
+      {
+        "sha256": "c2ff1353afaa7291c87f0a40ca4d65c183133cc6ffd4dc57cc16eef7ad1620eb",
+        "path": "crates/op-blob/src/blob.rs"
+      },
+      {
+        "sha256": "80f067e5598ad88e424ca96861eec43e44b90351cc63e18f4298c9d428cf5c80",
+        "path": "crates/op-blob/src/catalog.rs"
+      },
+      {
+        "sha256": "22c60c25b41b1ac9f7677008c872a509ded9aa24f6c0363a56bb728de6f187d0",
+        "path": "crates/op-blob/src/identity.rs"
+      },
+      {
+        "sha256": "245a578f509fc4682502d5d80a5e76dcec3ee4588f7db397c3319e45eb8ea561",
+        "path": "crates/op-blob/src/lib.rs"
+      },
+      {
+        "sha256": "52042299ff89361f744c423e2215c1eca026c647e58c6b3cfcca094e5f373515",
+        "path": "crates/op-core/src/identity_projection_transaction.rs"
+      },
+      {
+        "sha256": "dc28bf6bfa9e99dd435e7605ec5fa1051165998ff9c360aa38a7bd0307ec9077",
+        "path": "crates/op-core/src/projection_shm.rs"
+      },
+      {
+        "sha256": "928240ff74fd8486354491cc8b31b18c19321b8b0bb25b8d802f0aded64a76d5",
+        "path": "crates/op-core/src/projection_transactions.rs"
+      },
+      {
+        "sha256": "0c1738789b3d078bbb3cd4948c342d211d9528e37ab5de1d7677abd1686391f1",
+        "path": "crates/op-cozo-store/src/runtime_document_transactions.rs"
+      },
+      {
+        "sha256": "ba88089d5ae60fce5930c5851a08679b8e9097c7d90b410145136a2cc4d9499c",
+        "path": "crates/op-grpc-bridge/src/chatbot_episode_state.rs"
+      },
+      {
+        "sha256": "9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26",
+        "path": "crates/op-grpc-bridge/src/lungs_socket.rs"
+      },
+      {
+        "sha256": "71152d6c0e3dc8c17828748e21cefa2986243441e1a9b7e1ea919d23c88c2d32",
+        "path": "crates/op-grpc-bridge/src/method_receipt_audit.rs"
+      },
+      {
+        "sha256": "0950b0950343b538dcab4777503b95ca8420d6307c8319c0065f566f3ca1ea07",
+        "path": "crates/op-grpc-bridge/src/mutation_engine.rs"
+      },
+      {
+        "sha256": "6ef8da351c5861be9081261c749ac969e7cf958e891cc59d6c5cc7bfb9e4a450",
+        "path": "crates/op-grpc-bridge/src/owned_method_task.rs"
+      },
+      {
+        "sha256": "f9dd5a2802502ad3d1bf3d0d9772808a7bdbe77ef1ba768c13749524acba1afb",
+        "path": "crates/op-grpc-bridge/src/schema_router.rs"
+      },
+      {
+        "sha256": "3c82d3e1358dfd919231a5885468bc9e442044e44191f22cd4fd05c8bbb5a5cf",
+        "path": "crates/op-grpc-bridge/src/state_tree_fold.rs"
+      },
+      {
+        "sha256": "12b253adbc51b280a457eccd019174cff8107e10a42f70d4b419bd2233bcc891",
+        "path": "crates/op-plugins/src/bin/opblob.rs"
+      },
+      {
+        "sha256": "eaddddc37de952f8fb2092f41a385a23136669d845566484eb2fb94c2895fb3e",
+        "path": "crates/op-plugins/src/state_plugins/runtime_documents.rs"
+      },
+      {
+        "sha256": "9a87b6ad09a9fa98c74dcd6660a924adbc6d450d8853f3f60770bf7ab4a19af9",
+        "path": "crates/op-plugins/src/state_plugins/chat_router.rs"
+      },
+      {
+        "sha256": "2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b",
+        "path": "crates/op-plugins/src/state_plugins/tched_fs.rs"
+      },
+      {
+        "sha256": "17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49",
+        "path": "crates/op-state-store/Cargo.toml"
+      },
+      {
+        "sha256": "b1079a93337ed851b4888307a313f32175a0b16d54447714ea659da5b8baf34b",
+        "path": "crates/op-state-store/src/event_chain.rs"
+      },
+      {
+        "sha256": "65940c2b1daffeab9867c9dab5ef8b668775a38bfe889a75e04a37914f66c395",
+        "path": "crates/op-state-store/src/method_receipt.rs"
+      },
+      {
+        "sha256": "359e328c190c3847231ecdb87449fd95fde53741a063cfc0c1d0b262359e8f17",
+        "path": "crates/op-state-store/src/plugin_schema.rs"
+      },
+      {
+        "sha256": "c649f87cc0c979713261d738de708a0175dec601c23897e40c358d1370ac2362",
+        "path": "crates/op-state-store/src/public_state.rs"
+      },
+      {
+        "sha256": "71122379896ff949f8f83bc66381d1273834c7855a07e79ea7cf412fe7ec05a3",
+        "path": "crates/threetched-fs/Cargo.toml"
+      },
+      {
+        "sha256": "4a9f8c9e345aff0e792e79d6204e964b573a497a9ebbef09c77221cec1e5c983",
+        "path": "crates/threetched-fs/examples/typed_export.rs"
+      },
+      {
+        "sha256": "fdd3cb70e87f49b1d0fc86856867f1996ab6066a03a5c6d74858bade19f4a667",
+        "path": "crates/threetched-fs/examples/typed_generate.rs"
+      },
+      {
+        "sha256": "ff2aa10a4ce51b368fdd254a69eb589a0196fdf5fa0358d6498ff0bddb53a456",
+        "path": "crates/threetched-fs/examples/typed_specialize.rs"
+      },
+      {
+        "sha256": "74e0f6a829e19c880809dece6bed764c861a8f8c7a7ef1d02b9983dbe1e7bdcd",
+        "path": "crates/threetched-fs/src/dispatch.rs"
+      },
+      {
+        "sha256": "62509bff1b0b99839fc05bcb524c6ac4d4054c08de000450a14b83580bb8c187",
+        "path": "crates/threetched-fs/src/fuse_buffers.rs"
+      },
+      {
+        "sha256": "5b38308b3b687caa017e4f4350d575132bdbc83aeae5088f36d1dc9ce06312e2",
+        "path": "crates/threetched-fs/src/fuse_fs.rs"
+      },
+      {
+        "sha256": "a695702addbf084dca518265b8c5e7c54ffdf369cb66b08199d148cb7c6f6926",
+        "path": "crates/threetched-fs/src/fuse_process.rs"
+      },
+      {
+        "sha256": "7b018ef12791707bcd1b6fb926e1c453b7ce569af037dfbd3e38cb039a2bf759",
+        "path": "crates/threetched-fs/src/lib.rs"
+      },
+      {
+        "sha256": "68cb9d882d0ea0df90331bc2576fe7ddcf022ada249975c28020e0e26b854e24",
+        "path": "crates/threetched-fs/src/main.rs"
+      },
+      {
+        "sha256": "f5661e0bb50222085b3b975110d23f7f2316bd935851ecba7b515ac370f4d90b",
+        "path": "crates/threetched-fs/src/mcp.rs"
+      },
+      {
+        "sha256": "4bc7b17bd49f1c564ba1efb97182421f8b958a339ecc32fb65e42e76a3a241c0",
+        "path": "crates/threetched-fs/src/model.rs"
+      },
+      {
+        "sha256": "2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8",
+        "path": "crates/threetched-fs/src/mounted.rs"
+      },
+      {
+        "sha256": "4c778b04ad597208f21a6d2403e3b7631fac2bad38d23cfab1181cb01e7a7cd3",
+        "path": "crates/threetched-fs/src/namespace.rs"
+      },
+      {
+        "sha256": "24f3cd2ef38c40fdf9217f3a47a7eccb9620ec29ee50125e1c326777f0ae7a32",
+        "path": "crates/threetched-fs/src/source.rs"
+      },
+      {
+        "sha256": "943f3bbd29a1cef8caa3f9c135f72479935dfed5abfed29e93b260498c088ffb",
+        "path": "crates/threetched-fs/src/store.rs"
+      },
+      {
+        "sha256": "027d2d834d871b7801e2a8c007fbc638447ed6a36d7443ea43904fa4737b7989",
+        "path": "crates/threetched-fs/src/typed_runtime.rs"
+      },
+      {
+        "sha256": "5ff3fe01ebf662c97f711fbb78ac4963ba14843ea4f1bb39168c4e5fd52aa375",
+        "path": "crates/threetched-fs/src/threetched-surface.rs"
+      },
+      {
+        "sha256": "bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05",
+        "path": "deploy/config/container-socket-contract.schema.json"
+      },
+      {
+        "sha256": "452da1ecc40282b904c3a13a7c303e35f5c319726970d92b3ef766775e1caab9",
+        "path": "deploy/runit/threetched-fs/run"
+      }
+    ],
+    "source_hash_algorithm": "SHA-256",
+    "assembly_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+    "schema_version": "2.0.8",
+    "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+    "derivation": "Incremental revision of the fs-core-20261005 audit. source_commit retains that audit baseline; reviewed filesystem source hashes were updated for threetched-inode-20261011 and threetched-source-authority-20261011 on baseline 2e0e714. Unrelated pins and historical citations remain pending reconciliation as described in latest_source_refresh. Generated review exports are outputs, not authorities.",
+    "pin_exclusions": [
+      "Plugin-owned embedded contract excludes itself to avoid a self-hash cycle; its canonical sealed document supplies exact identity.",
+      "Derived docs and typed_bindings.rs are outputs and excluded from source input pins."
+    ],
+    "citation_policy": "Existing source references derive from the prior audit and require reconciliation after this incremental lifecycle update. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only. Do not treat in-bounds citations as fresh semantic verification.",
+    "latest_source_refresh": "2.0.8: inode/handle admission, bounded child lifecycle and sealed threetched integration source (threetched-production-graft-20261011 on 9778c32). Shared binary discovery supplies exact CLI paths, flags and literal-token contracts to the threetched plugin; opblob is the sole sealer. Production FUSE projects the sealed catalog and uses canonical capability admission and receipts. Local graft execution is test-only. Reviewed filesystem and mount-launcher pins were refreshed; unrelated backend pins and historical citations still require full provenance reconciliation. Build, tests, sealing and activation of this integration are pending under the owner build hold; authored source is not runtime proof. See HANDOFF."
+  },
+  "convention": [
+    {
+      "id": "schema_convention_applicability_1",
+      "statement": "This plugin-owned filesystem contract defines filesystem classes and typed binding shapes. Referenced backend PluginSchema remains the sealed authority for plugin-specific state, methods and capability admission; this contract does not invent those shapes.",
+      "basis": "source",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked",
+      "source_refs": [
+        "AGENTS.md:252",
+        "crates/threetched-fs/src/model.rs:52-55",
+        "crates/threetched-fs/src/model.rs:369-426"
+      ]
+    },
+    {
+      "id": "schema_convention_applicability_2",
+      "statement": "schema.json is serialized deterministic projection PluginSchema (not a JSON Schema describing filesystem); input/output files contain actual method JSON Schema values; field contracts retain String,Integer,Float,Boolean,Array,Object,Map,JsonSchema,Enum,OneOf,Any.",
+      "basis": "source",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:52-103",
+        "crates/threetched-fs/src/model.rs:214-280",
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "id": "schema_convention_applicability_3",
+      "statement": "Generic Rust filesystem bindings can encode fixed node classes/path component rules and carry plugin-specific args/returns as sealed references; they cannot safely invent per-plugin requests from method names.",
+      "basis": "design applicability inference",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472",
+        "crates/threetched-fs/src/dispatch.rs:103-173"
+      ]
+    },
+    {
+      "id": "schema_convention_applicability_4",
+      "statement": "TypedObjectBlob format3tchedfs/1 is content-addressed local derivative with schema and captured value. object.blob.json is not sealed OPBLOB01; source_schema_hash and local object.hash have different authorities/hash algorithms.",
+      "basis": "source",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:8-17",
+        "crates/threetched-fs/src/source.rs:11-17",
+        "crates/threetched-fs/src/source.rs:269-339",
+        "crates/threetched-fs/src/store.rs:363-388",
+        "crates/threetched-fs/src/store.rs:514-528"
+      ]
+    },
+    {
+      "id": "schema_convention_applicability_5",
+      "statement": "Existing non-plugin interface description precedent uses JSON Schema draft2020-12, $id/title/type/required/properties/$defs/additionalProperties:false. This convention is suitable for validating a filesystem-description artifact; it does not replace sealed PluginSchema.",
+      "basis": "source convention plus design applicability inference",
+      "verification": "source-audited; no validator run against planned final schema",
+      "source_refs": [
+        "deploy/config/container-socket-contract.schema.json:1-24",
+        "deploy/config/container-socket-contract.schema.json:60-88"
+      ]
+    }
+  ],
+  "types": {
+    "JsonValue": {
+      "kind": "recursive_json",
+      "source_refs": [
+        "crates/threetched-fs/examples/typed_generate.rs:87-175",
+        "crates/threetched-fs/src/model.rs:6"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/JsonValue"
+      }
+    },
+    "PluginId": {
+      "kind": "validated_string",
+      "validator": "plugin",
+      "validation_origin": "canonical SourceCatalog plugin grammar: nonempty <=128 lowercase ASCII, digits, underscore",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:102-111"
+      ],
+      "source_layout": []
+    },
+    "MethodId": {
+      "kind": "validated_string",
+      "validator": "identifier",
+      "validation_origin": "source arbitrary UTF-8 key incl empty; encoded component from canonical source, membership checked at use",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+      ],
+      "source_layout": []
+    },
+    "SessionId": {
+      "kind": "validated_string",
+      "validator": "session",
+      "validation_origin": "canonical lungs bootstrap grammar plus exact mounted session match",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:92-101"
+      ],
+      "source_layout": []
+    },
+    "WorkspaceId": {
+      "kind": "validated_string",
+      "validator": "store_name",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:127-138"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/WorkspaceId"
+      }
+    },
+    "ViewId": {
+      "kind": "validated_string",
+      "validator": "hash",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/ViewId"
+      }
+    },
+    "ObjectHash": {
+      "kind": "validated_string",
+      "validator": "hash",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/ObjectHash"
+      }
+    },
+    "MountMetadata": {
+      "kind": "struct",
+      "fields": {
+        "format": "String",
+        "view_id": "String",
+        "workspace_id": "Option<String>",
+        "source_catalog_hash": "String",
+        "source_catalog_generation": "u64",
+        "object_count": "usize",
+        "session_id": "Option<String>",
+        "invocation": "Option<String>",
+        "mount_identity": "MountIdentity",
+        "instance_uuid": "Option<String>",
+        "local_call_owner_uid": "Option<u32>",
+        "allowed_operator_uid": "Option<u32>",
+        "declared_catalog_dir": "String"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:492-513"
+      ],
+      "source_layout": [
+        {
+          "name": "MountMetadata",
+          "status": "observed_current_source",
+          "encoding": "UTF-8 JSON; variable member positions",
+          "fields": {
+            "format": "String",
+            "view_id": "String",
+            "workspace_id": "Option<String>",
+            "source_catalog_hash": "String",
+            "source_catalog_generation": "u64",
+            "object_count": "usize",
+            "session_id": "Option<String>",
+            "invocation": "Option<String>",
+            "mount_identity": "MountIdentity",
+            "instance_uuid": "Option<String>",
+            "local_call_owner_uid": "Option<u32>",
+            "allowed_operator_uid": "Option<u32>",
+            "declared_catalog_dir": "String"
+          },
+          "evidence": [
+            "crates/threetched-fs/src/namespace.rs:492-513"
+          ],
+          "fixed_offsets": false,
+          "endianness": "not applicable",
+          "alignment": "not applicable"
+        }
+      ],
+      "json_schema": {
+        "$ref": "#/$defs/MountMetadata"
+      }
+    },
+    "ViewManifest": {
+      "kind": "alias",
+      "rust": "crate::store::ViewManifest",
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:27-35"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/ViewManifest"
+      }
+    },
+    "Workspace": {
+      "kind": "alias",
+      "rust": "crate::store::Workspace",
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:47-54"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/Workspace"
+      }
+    },
+    "TypedObject": {
+      "kind": "alias",
+      "rust": "crate::model::TypedObjectBlob",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:29-37"
+      ],
+      "source_layout": [
+        {
+          "name": "TypedObjectBlob",
+          "status": "observed_current_source",
+          "encoding": "UTF-8 JSON; variable member positions",
+          "fields": {
+            "format": "3tchedfs/1",
+            "plugin_id": "String",
+            "source_schema_hash": "String",
+            "schema": "PluginSchema",
+            "value": "JSON",
+            "value_scope": "full(default/omitted)|public_projection|schema_only"
+          },
+          "evidence": [
+            "crates/threetched-fs/src/model.rs:29-37"
+          ],
+          "fixed_offsets": false,
+          "endianness": "not applicable",
+          "alignment": "not applicable"
+        }
+      ],
+      "json_schema": {
+        "$ref": "#/$defs/TypedObject"
+      }
+    },
+    "PluginSchema": {
+      "kind": "alias",
+      "rust": "crate::model::PluginSchema",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:155-201"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/PluginSchema"
+      }
+    },
+    "MethodDecl": {
+      "kind": "alias",
+      "rust": "crate::model::MethodDecl",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:518-528"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/MethodDecl"
+      }
+    },
+    "SideEffect": {
+      "kind": "alias",
+      "rust": "crate::model::SideEffect",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:532-535"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/SideEffect"
+      }
+    },
+    "JsonSchema": {
+      "kind": "alias",
+      "rust": "JsonValue",
+      "source_refs": [
+        "crates/threetched-fs/examples/typed_generate.rs:87-175",
+        "crates/threetched-fs/src/model.rs:6"
+      ],
+      "source_layout": []
+    },
+    "Capabilities": {
+      "kind": "alias",
+      "rust": "Vec<CapabilityId>",
+      "source_refs": [
+        "crates/threetched-fs/examples/typed_generate.rs:87-175",
+        "crates/threetched-fs/src/model.rs:6"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/Capabilities"
+      }
+    },
+    "CallReceipt": {
+      "kind": "struct",
+      "fields": {
+        "plugin_id": "PluginId",
+        "method": "MethodId",
+        "subid": "Subid",
+        "required_capability": "Option<CapabilityId>",
+        "side_effect": "SideEffect",
+        "idempotent": "bool",
+        "result": "MethodExecutionReceipt"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/dispatch.rs:30-39",
+        "crates/threetched-fs/src/dispatch.rs:408-456"
+      ],
+      "source_layout": [
+        {
+          "name": "CallReceipt",
+          "status": "observed_current_source",
+          "encoding": "UTF-8 JSON; variable member positions",
+          "fields": {
+            "plugin_id": "PluginId",
+            "method": "MethodId",
+            "subid": "Subid",
+            "required_capability": "Option<CapabilityId>",
+            "side_effect": "SideEffect",
+            "idempotent": "bool",
+            "result": "MethodExecutionReceipt"
+          },
+          "evidence": [
+            "crates/threetched-fs/src/dispatch.rs:30-39",
+            "crates/threetched-fs/src/dispatch.rs:408-456"
+          ],
+          "fixed_offsets": false,
+          "endianness": "not applicable",
+          "alignment": "not applicable"
+        }
+      ],
+      "json_schema": {
+        "$ref": "#/$defs/CallReceipt"
+      }
+    },
+    "StaticPayload": {
+      "kind": "enum",
+      "variants": {
+        "MountMetadata": "MountMetadata",
+        "View": "ViewManifest",
+        "Workspace": "Workspace",
+        "Object": "TypedObject",
+        "Schema": "PluginSchema",
+        "Capabilities": "Capabilities",
+        "Arguments": "JsonSchema",
+        "Returns": "JsonSchema",
+        "MethodMetadata": "MethodDecl"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:26-38",
+        "crates/threetched-fs/src/typed_runtime.rs:1072-1098"
+      ],
+      "source_layout": []
+    },
+    "DirectoryEntry": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::DirectoryEntry",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:204-231"
+      ],
+      "binding_accessors": {
+        "plugin": "Option<&PluginId>",
+        "method": "Option<&MethodId>",
+        "pointer": "Option<&JsonPointer>",
+        "capability": "Option<&CapabilityId>",
+        "dependency": "Option<&DependencyId>"
+      },
+      "source_layout": []
+    },
+    "SemanticLocator": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::SemanticLocator",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:234-241"
+      ],
+      "binding_fields": {
+        "raw_target": "String",
+        "projection_components": "Option<Vec<String>>",
+        "external": "bool",
+        "target_entry": "Option<DirectoryEntry> (pass to pinned factory node)"
+      },
+      "source_layout": []
+    },
+    "BlobRef<T>": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::BlobRef<T>",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:173-181"
+      ],
+      "source_layout": []
+    },
+    "ShmHandle<T>": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::ShmHandle<T>",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:183-191"
+      ],
+      "ownership": "immutable owned decoded per-open snapshot, no mmap or zero-copy",
+      "source_layout": []
+    },
+    "ValidatedArguments": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::ValidatedArguments",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:243-250",
+        "crates/threetched-fs/src/typed_runtime.rs:1248-1267"
+      ],
+      "source_layout": []
+    },
+    "MountRoot": {
+      "kind": "validated_string",
+      "validator": "root",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+      ],
+      "validation_origin": "binding restriction: absolute no traversal; actual mount type and FD pins checked at factory",
+      "source_layout": []
+    },
+    "StoreRoot": {
+      "kind": "validated_string",
+      "validator": "root",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+      ],
+      "validation_origin": "binding restriction: absolute no traversal; already-existing frozen store required",
+      "source_layout": []
+    },
+    "JsonPointer": {
+      "kind": "validated_string",
+      "validator": "pointer",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:139-156"
+      ],
+      "validation_origin": "binding additionally rejects malformed RFC6901 tilde escapes",
+      "source_layout": []
+    },
+    "FieldKey": {
+      "kind": "validated_string",
+      "validator": "identifier",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+      ],
+      "validation_origin": "source arbitrary UTF-8 key incl empty; encoded component from canonical source, membership checked at use",
+      "source_layout": []
+    },
+    "ArrayIndex": {
+      "kind": "validated_index",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_layout": []
+    },
+    "SchemaHash": {
+      "kind": "validated_string",
+      "validator": "schema_hash",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:112-120"
+      ],
+      "validation_origin": "canonical SourceCatalog lower-hex64 schema hash grammar",
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/SchemaHash"
+      }
+    },
+    "CatalogHash": {
+      "kind": "validated_string",
+      "validator": "identifier",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+      ],
+      "validation_origin": "source arbitrary UTF-8 catalog marker; actual view pins enforce exact value",
+      "source_layout": []
+    },
+    "SnapshotName": {
+      "kind": "validated_string",
+      "validator": "store_name",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:127-138"
+      ],
+      "source_layout": []
+    },
+    "FieldSchema": {
+      "kind": "alias",
+      "rust": "crate::model::FieldSchema",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:307-325"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/FieldSchema"
+      }
+    },
+    "FieldType": {
+      "kind": "alias",
+      "rust": "crate::model::FieldType",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:350-366"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/FieldType"
+      }
+    },
+    "Constraint": {
+      "kind": "alias",
+      "rust": "crate::model::Constraint",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:465-503"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/Constraint"
+      }
+    },
+    "SignalDecl": {
+      "kind": "alias",
+      "rust": "crate::model::SignalDecl",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:538-543"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/SignalDecl"
+      }
+    },
+    "PluginGuarantees": {
+      "kind": "alias",
+      "rust": "crate::model::PluginGuarantees",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:546-561"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/PluginGuarantees"
+      }
+    },
+    "HandleKind": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::HandleKind",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:193-202"
+      ],
+      "source_layout": []
+    },
+    "TypedFilesystem": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::TypedFilesystem",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:450-698"
+      ],
+      "source_layout": []
+    },
+    "CallFile": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+      ],
+      "source_layout": []
+    },
+    "CallFileError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "Directory": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+      ],
+      "source_layout": []
+    },
+    "DirectoryError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "FrozenValue": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+      ],
+      "source_layout": []
+    },
+    "FrozenValueError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "LiveValue": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+      ],
+      "source_layout": []
+    },
+    "LiveValueError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "ObjectHashFile": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+      ],
+      "source_layout": []
+    },
+    "ObjectHashFileError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "StaticJson": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+      ],
+      "source_layout": []
+    },
+    "StaticJsonError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "Symlink": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+      ],
+      "source_layout": []
+    },
+    "SymlinkError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "WorkspaceField": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+      ],
+      "source_layout": []
+    },
+    "WorkspaceFieldError": {
+      "kind": "binding_error",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80",
+        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+      ],
+      "variants": [
+        "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
+        "Contract (binding-defined)",
+        "Decode",
+        "Schema",
+        "Denied (reserved binding variant)",
+        "Terminal {condition: FsCondition, diagnostic: OperationDiagnostic, raw: JsonValue}",
+        "Ambiguous (never retry)",
+        "Unavailable"
+      ],
+      "source_layout": []
+    },
+    "NodeError": {
+      "kind": "alias",
+      "rust": "crate::typed_runtime::NodeError",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:25-80"
+      ],
+      "authority": "binding-defined error conditions; source errno retained in Io diagnostics",
+      "source_layout": []
+    },
+    "ReadOnlyCondition": {
+      "kind": "alias",
+      "rust": "crate::model::ReadOnlyCondition",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:458-463"
+      ],
+      "source_layout": [],
+      "json_schema": {
+        "$ref": "#/$defs/ReadOnlyCondition"
+      }
+    },
+    "TypedNode": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "DirectBlobDirectory": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseDirectory": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "DirectBlobStaticJson": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseStaticJson": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "DirectBlobObjectHashFile": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseObjectHashFile": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "DirectBlobFrozenValue": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseFrozenValue": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseWorkspaceField": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseLiveValue": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseCallFile": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "DirectBlobSymlink": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "ViaFuseSymlink": {
+      "kind": "binding_node",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-103",
+        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+      ],
+      "source_layout": []
+    },
+    "CapabilityId": {
+      "kind": "validated_string",
+      "validator": "identifier",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+      ],
+      "validation_origin": "canonical declaration membership, no new string grammar",
+      "source_layout": []
+    },
+    "Subid": {
+      "kind": "validated_string",
+      "validator": "identifier",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+      ],
+      "validation_origin": "exact canonical method declaration, no new grammar",
+      "source_layout": []
+    },
+    "PathSegment": {
+      "kind": "enum",
+      "variants": {
+        "Field": "FieldKey",
+        "Index": "ArrayIndex"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_layout": []
+    },
+    "OperationDiagnostic": {
+      "kind": "struct",
+      "fields": {
+        "plugin": "PluginId",
+        "method": "MethodId",
+        "stage": "DiagnosticStage",
+        "error": "String",
+        "operation_id": "Option<String>"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:555-581",
+        "crates/threetched-fs/src/typed_runtime.rs:1653-1682"
+      ],
+      "source_layout": [
+        {
+          "name": "OperationDiagnostic",
+          "status": "observed_current_source",
+          "encoding": "UTF-8 JSON; variable member positions",
+          "fields": {
+            "plugin": "PluginId",
+            "method": "MethodId",
+            "stage": "DiagnosticStage",
+            "error": "String",
+            "operation_id": "Option<String>"
+          },
+          "evidence": [
+            "crates/threetched-fs/src/dispatch.rs:81-105",
+            "crates/threetched-fs/src/fuse_fs.rs:555-581"
+          ],
+          "fixed_offsets": false,
+          "endianness": "not applicable",
+          "alignment": "not applicable"
+        }
+      ],
+      "json_schema": {
+        "$ref": "#/$defs/OperationDiagnostic"
+      }
+    },
+    "DiagnosticStage": {
+      "kind": "enum",
+      "serde_rename_all": "snake_case",
+      "variants": {
+        "Parse": null,
+        "Validate": null,
+        "Credential": null,
+        "Register": null,
+        "Call": null,
+        "Transport": null,
+        "Admission": null,
+        "OutcomeUnknown": null,
+        "Contract": null,
+        "Commit": null,
+        "Fsync": null,
+        "Limits": null,
+        "Handle": null
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1653-1682",
+        "crates/threetched-fs/src/fuse_fs.rs:555-581"
+      ],
+      "source_layout": []
+    },
+    "FsCondition": {
+      "kind": "enum",
+      "variants": {
+        "MissingNode": null,
+        "ReadOnly": null,
+        "InvalidValue": null,
+        "PermissionDenied": null,
+        "BackendUnavailable": null,
+        "IsDirectory": null,
+        "OtherIo": null,
+        "StaleVersion": null,
+        "TooLarge": null,
+        "ResourceExhausted": null,
+        "Busy": null,
+        "InvalidHandle": null,
+        "InFlight": null
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1636-1651"
+      ],
+      "source_layout": []
+    },
+    "StateDirectory": {
+      "kind": "validated_string",
+      "validator": "root",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+      ],
+      "validation_origin": "Binding absolute traversal-free directory for read-only canonical committed public snapshots",
+      "source_layout": []
+    },
+    "DependencyId": {
+      "kind": "validated_string",
+      "validator": "identifier",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+      ],
+      "validation_origin": "source arbitrary UTF-8 dependency reference; distinct from captured PluginId grammar",
+      "source_layout": []
+    },
+    "MountIdentity": {
+      "kind": "alias",
+      "rust": "crate::namespace::MountIdentity",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:15-23",
+        "crates/threetched-fs/src/namespace.rs:492-513"
+      ],
+      "source_layout": []
+    },
+    "StateValueScope": {
+      "kind": "alias",
+      "rust": "crate::model::StateValueScope",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:14-20"
+      ],
+      "source_layout": []
+    },
+    "MethodExecutionReceipt": {
+      "kind": "alias",
+      "rust": "op_state_store::method_receipt::MethodExecutionReceipt",
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:54-101"
+      ],
+      "source_layout": []
+    },
+    "MethodEventProof": {
+      "kind": "alias",
+      "rust": "op_state_store::method_receipt::MethodEventProof",
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:9-16"
+      ],
+      "source_layout": []
+    },
+    "MethodReceiptRecovery": {
+      "kind": "alias",
+      "rust": "op_state_store::method_receipt::MethodReceiptRecovery",
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:37-52"
+      ],
+      "source_layout": []
+    },
+    "MethodRecoveryStatus": {
+      "kind": "alias",
+      "rust": "op_state_store::method_receipt::MethodRecoveryStatus",
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:18-25"
+      ],
+      "source_layout": []
+    },
+    "GetMethodReceiptInput": {
+      "kind": "alias",
+      "rust": "op_state_store::method_receipt::GetMethodReceiptInput",
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:27-35"
+      ],
+      "source_layout": []
+    },
+    "CatalogRoot": {
+      "kind": "validated_string",
+      "validator": "root",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+      ],
+      "validation_origin": "Binding absolute traversal-free directory; active catalog provenance checked before/after live operations",
+      "source_layout": []
+    },
+    "DirectShmDirectory": {
+      "kind": "binding_node",
+      "class": "Directory",
+      "route": "direct-shm",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+      ],
+      "source_layout": []
+    },
+    "DirectShmStaticJson": {
+      "kind": "binding_node",
+      "class": "StaticJson",
+      "route": "direct-shm",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+      ],
+      "source_layout": []
+    },
+    "DirectShmObjectHashFile": {
+      "kind": "binding_node",
+      "class": "ObjectHashFile",
+      "route": "direct-shm",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+      ],
+      "source_layout": []
+    },
+    "DirectShmLiveValue": {
+      "kind": "binding_node",
+      "class": "LiveValue",
+      "route": "direct-shm",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+      ],
+      "source_layout": []
+    },
+    "DirectShmSymlink": {
+      "kind": "binding_node",
+      "class": "Symlink",
+      "route": "direct-shm",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+      ],
+      "source_layout": []
+    }
+  },
+  "nodes": [
+    {
+      "id": "root:Directory",
+      "class": "Directory",
+      "path_template": "/",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:669-697"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:669-697"
+      ],
+      "source_node_class": "root",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "mount_metadata:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/.3tchedfs.json",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "MountMetadata",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "MountMetadata",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ],
+      "source_node_class": "mount_metadata",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "view_manifest:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/view.json",
+      "params": [],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/views/{view_id:ViewId}.json",
+        "payload_type": "ViewManifest",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/views/{view_id:ViewId}.json",
+          "payload_type": "ViewManifest",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ],
+      "source_node_class": "view_manifest",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "workspace_manifest:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/workspace.json",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Workspace",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Workspace",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "workspace mount only",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ],
+      "source_node_class": "workspace_manifest",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "plugins:Directory",
+      "class": "Directory",
+      "path_template": "/plugins",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "plugins",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "operations:Directory",
+      "class": "Directory",
+      "path_template": "/operations",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "operations",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "relationships:Directory",
+      "class": "Directory",
+      "path_template": "/relationships",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "relationships",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "relationships/dependencies:Directory",
+      "class": "Directory",
+      "path_template": "/relationships/dependencies",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "relationships/dependencies",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "capabilities:Directory",
+      "class": "Directory",
+      "path_template": "/capabilities",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "always",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "capabilities",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "plugin_directory:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "per pinned object",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "plugin_directory",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "typed_object:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/object.blob.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "TypedObject",
+        "source_descriptor": {
+          "kind": "sanitized_typed_object_projection",
+          "locator_template": "ObjectStore.objects[view.objects[plugin]] + optional locked current public state",
+          "payload_type": "TypedObject",
+          "description": "Frozen object state is sanitized by its sealed policy. Live mounts render fresh committed public state; unavailable live state yields explicit schema_only envelope, never stale private values."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "per pinned object",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "typed_object",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "plugin_schema:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+        "payload_type": "PluginSchema",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+          "payload_type": "PluginSchema",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "per pinned object",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "plugin_schema",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "plugin_value:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "plugin_value",
+      "source_node_kind": "LiveFile",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/LiveValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "plugin_value:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View without state_dir or Workspace (value.json is never writable); per pinned object",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "plugin_value",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/FrozenValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "required_capabilities:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/capabilities.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+        "payload_type": "Capabilities",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+          "payload_type": "Capabilities",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "per pinned object",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "required_capabilities",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "object_hash:ObjectHashFile",
+      "class": "ObjectHashFile",
+      "path_template": "/plugins/{plugin}/object.hash",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "ObjectHash",
+        "source_descriptor": {
+          "kind": "captured_object_hash",
+          "locator_template": "view.objects[plugin] or workspace.staged_objects[plugin] fallback base_view.objects[plugin]",
+          "payload_type": "ObjectHash",
+          "description": "Real captured artifact identity, never a hash of live rendered state. User data field named object.hash remains its declared value class."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "text/plain; ASCII hex plus LF",
+      "existence_condition": "per pinned object",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "object_hash",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/ObjectHashFile",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "data_root:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/data",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "per pinned object",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "data_root",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "object_container:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more encoded object keys / padded array indices",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "captured JSON object child is object or array",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "object_container",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "object_scalar:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "object_scalar",
+      "source_node_kind": "LiveFile",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/LiveValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "object_scalar:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View without state_dir or Workspace when write_target absent; captured JSON object child is scalar or null",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "object_scalar",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/FrozenValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "object_scalar:WorkspaceField",
+      "class": "WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "Workspace staged/base public value pointer with effective writable target; immutable and conditional fields remain read-only.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "object_scalar",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/WorkspaceField",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "container_value:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "container_value",
+      "source_node_kind": "LiveFile",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/LiveValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "container_value:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View without state_dir or Workspace when write_target absent; non-root object container or any array container",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "container_value",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/FrozenValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "container_value:WorkspaceField",
+      "class": "WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "Workspace staged/base public value pointer with effective writable target; immutable and conditional fields remain read-only.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "container_value",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/WorkspaceField",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "array_container:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "format!(\"{index:08}\"); minimum 8 decimal digits, no fixed upper width",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "captured JSON array element is object or array",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "array_container",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "array_scalar:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "array_scalar",
+      "source_node_kind": "LiveFile",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/LiveValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "array_scalar:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "View without state_dir or Workspace when write_target absent; captured JSON array element is scalar or null",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "array_scalar",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/FrozenValue",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "array_scalar:WorkspaceField",
+      "class": "WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "Workspace staged/base public value pointer with effective writable target; immutable and conditional fields remain read-only.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ],
+      "source_node_class": "array_scalar",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/WorkspaceField",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "plugin_operations:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/operations",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "per pinned object, including no-method plugins",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "plugin_operations",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "method_directory:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/operations/{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "per schema.methods map entry",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "method_directory",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "input_schema:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/input.schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/args",
+        "payload_type": "JsonSchema",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/args",
+          "payload_type": "JsonSchema",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/schema+json",
+      "existence_condition": "every method",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "input_schema",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "output_schema:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/output.schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/returns",
+        "payload_type": "JsonSchema",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/returns",
+          "payload_type": "JsonSchema",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/schema+json",
+      "existence_condition": "method.returns is Some",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "output_schema",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "method_metadata:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/metadata.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}",
+        "payload_type": "MethodDecl",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}",
+          "payload_type": "MethodDecl",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "content_type": "application/json",
+      "existence_condition": "every method",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "method_metadata",
+      "source_node_kind": "File",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/StaticJson",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "method_call:CallFile",
+      "class": "CallFile",
+      "path_template": "/plugins/{plugin}/operations/{method}/call",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "CallReceipt",
+        "source_descriptor": {
+          "kind": "canonical_method_call",
+          "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
+          "payload_type": "CallReceipt",
+          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:844-873"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": "application/json (arguments on write; terminal receipt/diagnostic on same handle read)",
+      "existence_condition": "Lungs identity mount; declared method. Missing output contract blocks dispatch before any effect.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:844-873"
+      ],
+      "source_node_class": "method_call",
+      "source_node_kind": "CallFile",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/CallFile",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "root_plugin_operations:Directory",
+      "class": "Directory",
+      "path_template": "/operations/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "per pinned object, including no methods",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "root_plugin_operations",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "operation_alias:Symlink",
+      "class": "Symlink",
+      "path_template": "/operations/{plugin}/{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "SemanticLocator",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": "../../plugins/{plugin}/operations/{method}",
+          "payload_type": "SemanticLocator",
+          "description": "Relative target remains inside the mounted namespace."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "every method",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "operation_alias",
+      "source_node_kind": "Symlink",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Symlink",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "capability_directory:Directory",
+      "class": "Directory",
+      "path_template": "/capabilities/{capability}",
+      "params": [
+        {
+          "name": "capability",
+          "type": "CapabilityId",
+          "description": "encode_component(required_capability string)",
+          "source_path_encoding": "EncodedCapabilityId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "some method requires capability",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "capability_directory",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "capability_method_alias:Symlink",
+      "class": "Symlink",
+      "path_template": "/capabilities/{capability}/{plugin}.{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        },
+        {
+          "name": "capability",
+          "type": "CapabilityId",
+          "description": "encode_component(required_capability)",
+          "source_path_encoding": "EncodedCapabilityId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "SemanticLocator",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": "../../plugins/{plugin}/operations/{method}",
+          "payload_type": "SemanticLocator",
+          "description": "Relative target remains inside the mounted namespace."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "method.required_capability is Some",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "capability_method_alias",
+      "source_node_kind": "Symlink",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Symlink",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "dependency_directory:Directory",
+      "class": "Directory",
+      "path_template": "/relationships/dependencies/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "per pinned object, including no dependencies",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "dependency_directory",
+      "source_node_kind": "Directory",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Directory",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "dependency_alias:Symlink",
+      "class": "Symlink",
+      "path_template": "/relationships/dependencies/{plugin}/{dependency}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "dependency",
+          "type": "DependencyId",
+          "description": "encode_component(schema.dependencies element)",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "SemanticLocator",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": "../../../plugins/{dependency}",
+          "payload_type": "SemanticLocator",
+          "description": "Relative target remains inside the mounted namespace; missing dependency target remains unresolved."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "content_type": null,
+      "existence_condition": "per schema.dependencies list entry",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ],
+      "source_node_class": "dependency_alias",
+      "source_node_kind": "Symlink",
+      "fuse_operation_profile": "#/fuse_operations",
+      "class_operation_profile": "#/class_fuse_operations/Symlink",
+      "verification": "implemented-source-unverified"
+    }
+  ],
+  "methods": [
+    {
+      "id": "Directory.list:direct-blob",
+      "name": "list",
+      "receiver": "Directory",
+      "borrow": "&self",
+      "params": [],
+      "returns": "Vec<DirectoryEntry>",
+      "errors": "DirectoryError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-blob",
+      "route_reason": "Pinned immutable captured object through existing ObjectStore and shared namespace constructors",
+      "fuse_ops": [
+        "lookup",
+        "opendir",
+        "readdir",
+        "releasedir"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "Directory.list:direct-shm",
+      "name": "list",
+      "receiver": "Directory",
+      "borrow": "&self",
+      "params": [],
+      "returns": "Vec<DirectoryEntry>",
+      "errors": "DirectoryError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-shm",
+      "route_reason": "Read-only pinned real capture plus active catalog and fresh locked canonical public-state snapshots; owned decoded value, no raw mmap/layout inference",
+      "fuse_ops": [
+        "lookup",
+        "opendir",
+        "readdir",
+        "releasedir"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:988-1015",
+        "crates/threetched-fs/src/typed_runtime.rs:525-561",
+        "crates/threetched-fs/src/source.rs:42-149"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "Directory.list:via-fuse",
+      "name": "list",
+      "receiver": "Directory",
+      "borrow": "&self",
+      "params": [],
+      "returns": "Vec<DirectoryEntry>",
+      "errors": "DirectoryError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "opendir",
+        "readdir",
+        "releasedir"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "StaticJson.get:direct-blob",
+      "name": "get",
+      "receiver": "StaticJson",
+      "borrow": "&self",
+      "params": [],
+      "returns": "StaticPayload",
+      "errors": "StaticJsonError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-blob",
+      "route_reason": "Pinned immutable captured object through existing ObjectStore and shared namespace constructors",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "StaticJson.get:direct-shm",
+      "name": "get",
+      "receiver": "StaticJson",
+      "borrow": "&self",
+      "params": [],
+      "returns": "StaticPayload",
+      "errors": "StaticJsonError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-shm",
+      "route_reason": "Read-only pinned real capture plus active catalog and fresh locked canonical public-state snapshots; owned decoded value, no raw mmap/layout inference",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1017-1098",
+        "crates/threetched-fs/src/typed_runtime.rs:525-561",
+        "crates/threetched-fs/src/source.rs:42-149"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "StaticJson.get:via-fuse",
+      "name": "get",
+      "receiver": "StaticJson",
+      "borrow": "&self",
+      "params": [],
+      "returns": "StaticPayload",
+      "errors": "StaticJsonError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "ObjectHashFile.get:direct-blob",
+      "name": "get",
+      "receiver": "ObjectHashFile",
+      "borrow": "&self",
+      "params": [],
+      "returns": "ObjectHash",
+      "errors": "ObjectHashFileError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-blob",
+      "route_reason": "Pinned immutable captured object through existing ObjectStore and shared namespace constructors",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "ObjectHashFile.get:direct-shm",
+      "name": "get",
+      "receiver": "ObjectHashFile",
+      "borrow": "&self",
+      "params": [],
+      "returns": "ObjectHash",
+      "errors": "ObjectHashFileError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-shm",
+      "route_reason": "Read-only pinned real capture plus active catalog and fresh locked canonical public-state snapshots; owned decoded value, no raw mmap/layout inference",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1100-1132",
+        "crates/threetched-fs/src/typed_runtime.rs:525-561",
+        "crates/threetched-fs/src/source.rs:42-149"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "ObjectHashFile.get:via-fuse",
+      "name": "get",
+      "receiver": "ObjectHashFile",
+      "borrow": "&self",
+      "params": [],
+      "returns": "ObjectHash",
+      "errors": "ObjectHashFileError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "FrozenValue.get:direct-blob",
+      "name": "get",
+      "receiver": "FrozenValue",
+      "borrow": "&self",
+      "params": [],
+      "returns": "BlobRef<JsonValue>",
+      "errors": "FrozenValueError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-blob",
+      "route_reason": "Pinned immutable captured object through existing ObjectStore and shared namespace constructors",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "FrozenValue.get:via-fuse",
+      "name": "get",
+      "receiver": "FrozenValue",
+      "borrow": "&self",
+      "params": [],
+      "returns": "BlobRef<JsonValue>",
+      "errors": "FrozenValueError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "WorkspaceField.get:via-fuse",
+      "name": "get",
+      "receiver": "WorkspaceField",
+      "borrow": "&self",
+      "params": [],
+      "returns": "BlobRef<JsonValue>",
+      "errors": "WorkspaceFieldError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "WorkspaceField.put:via-fuse",
+      "name": "put",
+      "receiver": "WorkspaceField",
+      "borrow": "&mut self",
+      "params": [
+        {
+          "name": "value",
+          "type": "JsonValue"
+        }
+      ],
+      "returns": "BlobRef<JsonValue>",
+      "errors": "WorkspaceFieldError",
+      "idempotent": true,
+      "atomic": "Expected-object CAS and atomic store manifest publication; not a backend mutation",
+      "blocking": true,
+      "side_effects": [
+        "Captured workspace object and manifest publication"
+      ],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "write",
+        "fsync",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance",
+          "workspace-write-admission",
+          "store-writer-lock"
+        ],
+        "post": [
+          "workspace-atomic-publication",
+          "namespace-refresh",
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "LiveValue.get:direct-shm",
+      "name": "get",
+      "receiver": "LiveValue",
+      "borrow": "&self",
+      "params": [],
+      "returns": "ShmHandle<JsonValue>",
+      "errors": "LiveValueError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-shm",
+      "route_reason": "Read-only pinned real capture plus active catalog and fresh locked canonical public-state snapshots; owned decoded value, no raw mmap/layout inference",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1165-1182",
+        "crates/threetched-fs/src/typed_runtime.rs:525-561",
+        "crates/threetched-fs/src/source.rs:42-149"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "LiveValue.get:via-fuse",
+      "name": "get",
+      "receiver": "LiveValue",
+      "borrow": "&self",
+      "params": [],
+      "returns": "ShmHandle<JsonValue>",
+      "errors": "LiveValueError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "CallFile.validate_arguments:via-fuse",
+      "name": "validate_arguments",
+      "receiver": "CallFile",
+      "borrow": "&self",
+      "params": [
+        {
+          "name": "arguments",
+          "type": "JsonValue"
+        }
+      ],
+      "returns": "ValidatedArguments",
+      "errors": "CallFileError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "CallFile.invoke:via-fuse",
+      "name": "invoke",
+      "receiver": "CallFile",
+      "borrow": "&mut self",
+      "params": [
+        {
+          "name": "arguments",
+          "type": "ValidatedArguments"
+        },
+        {
+          "name": "confirm_side_effects",
+          "type": "bool"
+        }
+      ],
+      "returns": "CallReceipt",
+      "errors": "CallFileError",
+      "idempotent": false,
+      "atomic": "Durable scoped reservation and ordered attempt/terminal proof; owner stores are not one cross-store atomic transaction; unknown effects never imply rollback",
+      "blocking": true,
+      "side_effects": [
+        "Exact sealed MethodDecl side effect after explicit confirmation/identity/capability admission"
+      ],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "open",
+        "write",
+        "fsync",
+        "read",
+        "release"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance",
+          "sealed-arguments",
+          "identity-capability-dispatch"
+        ],
+        "post": [
+          "terminal-receipt-no-retry"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "Symlink.target:direct-blob",
+      "name": "target",
+      "receiver": "Symlink",
+      "borrow": "&self",
+      "params": [],
+      "returns": "SemanticLocator",
+      "errors": "SymlinkError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-blob",
+      "route_reason": "Pinned immutable captured object through existing ObjectStore and shared namespace constructors",
+      "fuse_ops": [
+        "lookup",
+        "readlink"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "Symlink.target:direct-shm",
+      "name": "target",
+      "receiver": "Symlink",
+      "borrow": "&self",
+      "params": [],
+      "returns": "SemanticLocator",
+      "errors": "SymlinkError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "direct-shm",
+      "route_reason": "Read-only pinned real capture plus active catalog and fresh locked canonical public-state snapshots; owned decoded value, no raw mmap/layout inference",
+      "fuse_ops": [
+        "lookup",
+        "readlink"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1320-1360",
+        "crates/threetched-fs/src/typed_runtime.rs:525-561",
+        "crates/threetched-fs/src/source.rs:42-149"
+      ],
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "id": "Symlink.target:via-fuse",
+      "name": "target",
+      "receiver": "Symlink",
+      "borrow": "&self",
+      "params": [],
+      "returns": "SemanticLocator",
+      "errors": "SymlinkError",
+      "idempotent": true,
+      "atomic": "One owned decoded snapshot/listing; no multi-node atomic snapshot inferred",
+      "blocking": true,
+      "side_effects": [],
+      "route": "via-fuse",
+      "route_reason": "Pinned mounted identity mode/instance and declared locator; writes use only existing FUSE/CAS/canonical admission",
+      "fuse_ops": [
+        "lookup",
+        "readlink"
+      ],
+      "required_steps": {
+        "pre": [
+          "pinned-topology",
+          "path-encoding",
+          "permission-boundary",
+          "content-hash-and-schema",
+          "pin-mounted-instance"
+        ],
+        "post": [
+          "owned-decoded-snapshot"
+        ]
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+      ],
+      "verification": "implemented-source-unverified"
+    }
+  ],
+  "invariants": {
+    "source_facts": {
+      "path_encoding": [
+        {
+          "id": "path-components",
+          "statement": "Canonical UTF-8 percent encoding is distinct from JSON-pointer ~0/~1 escaping. Empty key is %, dots are encoded; real .value.json becomes %2Evalue.json while synthetic aggregate stays .value.json.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:1041-1067",
+            "crates/threetched-fs/src/mounted.rs:499-581"
+          ]
+        },
+        {
+          "id": "inode-and-links",
+          "statement": "Root inode1; other inodes derive from eight BLAKE3 path bytes, little-endian, high bit set. Duplicate path or inode collision fails construction. Index links are relative to their parent and stay inside the mount.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:912-961",
+            "crates/threetched-fs/src/namespace.rs:1069-1077",
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ]
+        }
+      ],
+      "projection_modes": [
+        {
+          "id": "explicit-state-provenance",
+          "statement": "TypedObjectBlob.value_scope distinguishes legacy Full, sanitized PublicProjection and SchemaOnly. Full values are sanitized before public rendering; SchemaOnly has null plus explicit provenance, which is unavailable state rather than a template.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/model.rs:10-144"
+          ]
+        },
+        {
+          "id": "committed-public-state",
+          "statement": "Live reads use canonical bounded projection lock/manifest protocol, require committed generation and validate complete state before sealed public allowlist projection. Pinned catalog hash/generation/schema membership and active declaration/policy are checked around reads. Invalid/pending data fails closed; absent/deleted pointers are unavailable.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/source.rs:24-149",
+            "crates/op-core/src/projection_transactions.rs:197-237",
+            "crates/op-core/src/projection_transactions.rs:451-510"
+          ]
+        },
+        {
+          "id": "strict-capture",
+          "statement": "capture_schema_only records sealed declarations without fabricated state and supports boot ordering. Strict capture reads the complete committed public snapshot and rejects unavailable, pending, malformed or invalid state; bounded catalog retry is read-only and never resubmits an operation.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/source.rs:184-267"
+          ]
+        },
+        {
+          "id": "workspace-projection",
+          "statement": "Workspaces stage sanitized frozen public values and never commit backend mutations. Individual conditional/read-only/immutable leaves remain read-only; complete candidate value and immutable base constraints validate under the store lock.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/store.rs:150-249",
+            "crates/threetched-fs/src/namespace.rs:997-1039"
+          ]
+        },
+        {
+          "id": "fresh-topology",
+          "statement": "No Namespace file payloads are retained: File stores FileSource locators. Fresh lookup/getattr/open/opendir/readdir rebuild topology; one live snapshot generation supplies directory shape. Absent live values produce unavailable/empty data topology, not stale shape; open handles preserve their own version.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:26-38",
+            "crates/threetched-fs/src/namespace.rs:108-472",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        {
+          "id": "source-authored-custom-constraints",
+          "statement": "Custom validator names are not inferred as runnable code. Constraint::Custom returns explicit validation unavailable; exact supported field/schema/constraint checks remain enforced. Capture/staging/specialization fail or report unsupported rather than silently passing.",
+          "basis": "current source",
+          "verification": "implemented-source-unverified",
+          "source_refs": [
+            "crates/threetched-fs/src/model.rs:475-514",
+            "crates/threetched-fs/examples/typed_specialize.rs:120-602"
+          ]
+        }
+      ],
+      "file_attributes": [
+        {
+          "id": "effective-local-modes",
+          "statement": "Directories0555,nlink2; public ordinary/live files0444; writable workspace and call files0600; symlinks0777. Writable nodes belong to assigned local caller UID, others to daemon UID; GID is daemon GID. Times remain epoch, block size4096. Root may assign a different local caller UID; other daemons may assign only their own UID. Backend identity/grants remain separately enforced.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:207-277"
+          ]
+        },
+        {
+          "id": "format-and-xattrs",
+          "statement": "Rendered JSON is pretty UTF-8 plus LF; object.hash is text plus LF. Content types are descriptive contract labels, not xattrs. No xattr surface is implemented.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/store.rs:580-626",
+            "crates/threetched-fs/src/namespace.rs:515-667"
+          ]
+        }
+      ],
+      "cache_and_freshness": [
+        {
+          "id": "no-reusable-payloads",
+          "statement": "Entry and attribute TTL are zero. Successful file opens use FOPEN_DIRECT_IO; fresh opens snapshot their exact declared source once. Namespace stores topology/locators only; no live_cache or latest-result/error cache remains.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:24-26",
+            "crates/threetched-fs/src/fuse_fs.rs:275-353",
+            "crates/threetched-fs/src/fuse_fs.rs:765-771",
+            "crates/threetched-fs/src/namespace.rs:26-38"
+          ]
+        },
+        {
+          "id": "per-handle-version",
+          "statement": "An already-open file keeps its Node, UID, access, source bytes and workspace expected hash independently of later refresh. Directory handles keep their owned listing. Reopening reads new authoritative source; this is transient ownership, not derived-result reuse.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:54-119",
+            "crates/threetched-fs/src/fuse_fs.rs:885-1012"
+          ]
+        },
+        {
+          "id": "targeted-authoritative-discovery",
+          "statement": "Startup/static traversal builds locators without SHM. Data discovery clears stale descendants and rebuilds only the addressed committed public plugin subtree; no schema/value/rendered-document or generation cache. Target catalog verification occurs before and after the canonical committed read. Existing handle getattr/readdir use owned descriptor/listing without refresh.",
+          "basis": "current source",
+          "verification": "implemented-source-unverified",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:143-334",
+            "crates/threetched-fs/src/namespace.rs:400-471",
+            "crates/threetched-fs/src/namespace.rs:621-667",
+            "crates/threetched-fs/src/fuse_fs.rs:660-693",
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        {
+          "id": "typed-scoped-discovery",
+          "statement": "Direct SHM and mounted live factories initially retain static locators only. Explicit data enumeration refreshes only the selected plugin subtree; direct dynamic reads discover that same subtree before locating bytes. Scoped replacements retain unrelated locators, remove stale target descendants on failure, and propagate target errors. Mounted static enumeration consumes declared directory entry kinds and skips data recursion and all-plugin object/value reads. Workspace frozen enumeration remains separate. No value/schema/document or generation cache is introduced.",
+          "basis": "current source",
+          "verification": "implemented-source-unverified",
+          "source_refs": [
+            "crates/threetched-fs/src/typed_runtime.rs:525-561",
+            "crates/threetched-fs/src/typed_runtime.rs:730-777",
+            "crates/threetched-fs/src/typed_runtime.rs:784-875",
+            "crates/threetched-fs/src/typed_runtime.rs:939-1015",
+            "crates/threetched-fs/src/typed_runtime.rs:1456-1529"
+          ]
+        }
+      ],
+      "identity_and_admission": [
+        {
+          "id": "typed-mount-modes",
+          "statement": "HostSession carries public named-session selector; GuestKernel carries no selector and binds current native container using kernel peer evidence; Credential rereads SID1 and registers on the same D-Bus connection; Unbound cannot invoke. Mounted and typed factories require exact declared mode and canonical mount instance UUID; no cross-mode transport fallback occurs.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:15-23",
+            "crates/threetched-fs/src/mounted.rs:39-181",
+            "crates/threetched-fs/src/dispatch.rs:174-346"
+          ]
+        },
+        {
+          "id": "canonical-stable-operation-id",
+          "statement": "Dispatch creates a canonical UUID before submission and calls PluginV1.CallWithOperationId through the same verified connection/admission. UUID is correlation only; receiver-derived actor/session and exact sealed capabilities select authority. Backend denial cannot be routed around; failed/unknown calls never automatically retry.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/dispatch.rs:67-92",
+            "crates/threetched-fs/src/dispatch.rs:347-456",
+            "crates/op-grpc-bridge/src/schema_router.rs:841-930",
+            "crates/op-grpc-bridge/src/schema_router.rs:961-1036"
+          ]
+        }
+      ],
+      "write_receipt_concurrency": [
+        {
+          "id": "bounded-async-fuse",
+          "statement": "FUSE callbacks enqueue bounded jobs and return without waiting for backend round trips. Per-handle state owns one execution, up to32 reply waiters; repeated flush/fsync reuses terminal status and does not execute again. Release removes FH lookup, while an already-admitted worker retains charged buffers, slot and workspace guard until completion.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:275-581"
+          ]
+        },
+        {
+          "id": "workspace-object-cas",
+          "statement": "At most one local writer owns a workspace/plugin object guard. The store validates expected captured object hash under its existing filesystem writer lock; cross-process changes cause StageConflict/ESTALE without overwriting. Failed staging is terminal for that FD; successful staging updates expected hash, and future discovery rebuilds shape.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:234-353",
+            "crates/threetched-fs/src/fuse_fs.rs:351-554",
+            "crates/threetched-fs/src/store.rs:198-249"
+          ]
+        },
+        {
+          "id": "durable-attempt-and-terminal",
+          "statement": "The cancellation-owned task atomically reserves permanent scoped operation ID in the existing durable Cozo runtime-document owner before audit/backend. Confirmed durable attempt and journal proof precede effect; durable terminal audit links exact attempt before journal status publishes. Completion requires validated declared result and successful authoritative publication. Cross-store or post-effect failure is unknown, never rolled back success.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-736",
+            "crates/op-grpc-bridge/src/mutation_engine.rs:3421-3621",
+            "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
+          ]
+        },
+        {
+          "id": "private-recovery",
+          "statement": "get_receipt reads one receiver-derived actor/session/UUID journal key durably. Every reused ID is rejected before effects, including conflicting methods/visible arguments and after restart/audit retention. Recovery exposes status and attempt/terminal proofs only, never private domain data or raw argument/result digests. No caller may select journal namespace/key/principal. Generic cognitive-owner DB path aliases are rejected.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-414",
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:644-736",
+            "crates/op-plugins/src/state_plugins/runtime_documents.rs:154-252"
+          ]
+        },
+        {
+          "id": "receipt-validation",
+          "statement": "Both direct dispatch and mounted helper validate nested canonical envelope target, canonical operation UUID, ordered positive event IDs/hashes and exact declared result. Missing returns is unknown source contract and rejects before effects; explicit null schema validates null. Same-call FD carries receipt or bounded attributed error; no result/error nodes survive release.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/op-state-store/src/method_receipt.rs:40-141",
+            "crates/threetched-fs/src/dispatch.rs:128-141",
+            "crates/threetched-fs/src/dispatch.rs:408-456",
+            "crates/threetched-fs/src/mounted.rs:184-497"
+          ]
+        }
+      ],
+      "source_errors": [
+        {
+          "id": "explicit-error-and-offsets",
+          "statement": "Negative offsets and invalid values EINVAL; unknown FD or wrong access EBADF; foreign FD UID EACCES; inflight data I/O EAGAIN; already-terminal writes EINVAL; immutable writes/chmod/chown EROFS; CAS stale ESTALE; oversized EFBIG; allocation/budget ENOMEM; job/writer/waiter capacity EBUSY. Transport/outcome unknown EIO and missing result contract EPROTO. Typed bindings preserve semantic condition plus exact raw diagnostic/errno; unknown effect is never a retryable success.",
+          "basis": "current source",
+          "verification": "implemented source; build, deployment and tests pending",
+          "source_refs": [
+            "crates/threetched-fs/src/dispatch.rs:81-105",
+            "crates/threetched-fs/src/fuse_fs.rs:555-581",
+            "crates/threetched-fs/src/typed_runtime.rs:1636-1682"
+          ]
+        }
+      ],
+      "source_refresh": [
+        {
+          "id": "source-current-surfaces",
+          "statement": "CLI strict or explicit schema-only capture and bounded invocation input remain. Mounted CLI/MCP delivery starts before ObjectStore resolution, derives declarations without reading object/state payloads, and reads addressed public state/calls solely through its assigned namespace. Existing lungs resources retain fresh canonical public-state/workspace reads with active catalog checks. MCP retains declarations and tool registry, never live state values.",
+          "basis": "current source",
+          "verification": "implemented-source-unverified",
+          "source_refs": [
+            "crates/threetched-fs/src/main.rs:314-387",
+            "crates/threetched-fs/src/mounted.rs:184-207",
+            "crates/threetched-fs/src/mcp.rs:95-143",
+            "crates/threetched-fs/src/mcp.rs:581-706",
+            "crates/threetched-fs/src/mcp.rs:867-906"
+          ]
+        },
+        {
+          "id": "audit-ordering",
+          "statement": "Existing session-arrival/state-change events persist while holding the same audit chain write lock; known durability failure marks method_audit_uncertain. Method completed proofs require their own confirmed durable ordered attempt and terminal; no broader global cryptographic prefix theorem inferred.",
+          "basis": "current source",
+          "verification": "implemented-source-unverified",
+          "source_refs": [
+            "crates/op-grpc-bridge/src/mutation_engine.rs:1081-1100",
+            "crates/op-grpc-bridge/src/mutation_engine.rs:2147-2171",
+            "crates/op-grpc-bridge/src/mutation_engine.rs:2876-2883",
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
+          ]
+        }
+      ]
+    },
+    "required": [
+      {
+        "id": "pinned-topology",
+        "steps": [
+          "Startup builds pinned static locators and empty data directories without SHM reads. Live data discovery reads only the addressed plugin from fresh committed public state with active catalog checks. Open handles keep their admitted version; reopening rereads authoritative state."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "id": "path-encoding",
+        "steps": [
+          "Use canonical component encoding and exact pointer escaping; validate enumerated membership rather than inventing backend identifier grammars."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:1041-1067"
+        ]
+      },
+      {
+        "id": "permission-boundary",
+        "steps": [
+          "Preserve exact local UID/access mode, mount NoDev/NoSuid/NoExec/DefaultPermissions, caller identity and sealed grants; direct read routes grant no mutation capability."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:202-353",
+          "crates/threetched-fs/src/main.rs:314-656"
+        ]
+      },
+      {
+        "id": "content-hash-and-schema",
+        "steps": [
+          "Captured objects verify their content address; active catalog pins and declaration/public-policy equality govern live reads and operation admission. The sealed backend plugin remains schema authority."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:330-388",
+          "crates/threetched-fs/src/source.rs:42-77"
+        ]
+      },
+      {
+        "id": "pin-mounted-instance",
+        "steps": [
+          "Pin kernel mount identity/root descriptor, metadata/view and canonical instance UUID; require exact host/guest/credential/workspace mode and reject replacement."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/mounted.rs:39-181",
+          "crates/threetched-fs/src/typed_runtime.rs:271-439"
+        ]
+      },
+      {
+        "id": "sealed-arguments",
+        "steps": [
+          "Arguments match exact pinned MethodDecl; canonical bridge re-admits compiled sealed declaration and validates inputs. Absent output contract rejects before effect."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/dispatch.rs:128-141",
+          "crates/op-grpc-bridge/src/mutation_engine.rs:3421-3621"
+        ]
+      },
+      {
+        "id": "identity-capability-dispatch",
+        "steps": [
+          "Same receiver-authenticated connection selects identity; UUID never selects principal or grants. Preserve canonical method-specific admission and backend-specific checks."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/dispatch.rs:174-407",
+          "crates/op-grpc-bridge/src/schema_router.rs:841-930"
+        ]
+      },
+      {
+        "id": "terminal-receipt-no-retry",
+        "steps": [
+          "A local successful write only stages input. A terminal admission diagnostic rejects before dispatch and has no backend effect or operation ID; later flush/fsync/release cannot retry rejected input. Reopening is an explicit new attempt, never an automatic replay. An admitted operation must produce a canonical validated terminal receipt; backend or publication uncertainty remains unknown. Recover proof/status through declared get_receipt, never automatic replay or private result export."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/mounted.rs:184-497",
+          "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
+        ]
+      },
+      {
+        "id": "workspace-write-admission",
+        "steps": [
+          "Only writable frozen public workspace data can stage; validate complete candidate state and immutable base; backend mutation goes through CallFile."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:150-249",
+          "crates/threetched-fs/src/namespace.rs:997-1039"
+        ]
+      },
+      {
+        "id": "store-writer-lock",
+        "steps": [
+          "CAS and workspace stage occur under one existing exclusive store lock; caller's expected object hash must still match."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:198-249",
+          "crates/threetched-fs/src/store.rs:484-499"
+        ]
+      },
+      {
+        "id": "workspace-atomic-publication",
+        "steps": [
+          "Object write and atomic workspace manifest publication use temporary file sync, rename and parent sync. Store/SHM/journal boundaries are not represented as one cross-store transaction."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:150-185",
+          "crates/threetched-fs/src/store.rs:453-479"
+        ]
+      },
+      {
+        "id": "namespace-refresh",
+        "steps": [
+          "Refresh only addressed live data topology on lookup/open/getattr/opendir; startup and static traversal avoid SHM. Handle-bound getattr and readdir use admitted owned descriptors/listings without refresh. Workspace staging retains checked publication. Existing handles retain explicit bytes/listing until release."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031",
+          "crates/threetched-fs/src/typed_runtime.rs:988-1015",
+          "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+        ]
+      },
+      {
+        "id": "owned-decoded-snapshot",
+        "steps": [
+          "Return explicit owned decoded BlobRef/ShmHandle snapshots with provenance. No reusable rendered data or live-value memoization, and no promise of POSIX shared-memory mapping/zero-copy layout."
+        ],
+        "status": "implemented-source-unverified",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:173-191",
+          "crates/threetched-fs/src/source.rs:24-149"
+        ]
+      }
+    ]
+  },
+  "enumeration": [
+    {
+      "node_id": "root:Directory",
+      "path_template": "/",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:669-697"
+      ]
+    },
+    {
+      "node_id": "mount_metadata:StaticJson",
+      "path_template": "/.3tchedfs.json",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ]
+    },
+    {
+      "node_id": "view_manifest:StaticJson",
+      "path_template": "/view.json",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ]
+    },
+    {
+      "node_id": "workspace_manifest:StaticJson",
+      "path_template": "/workspace.json",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ]
+    },
+    {
+      "node_id": "plugins:Directory",
+      "path_template": "/plugins",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "operations:Directory",
+      "path_template": "/operations",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "relationships:Directory",
+      "path_template": "/relationships",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "relationships/dependencies:Directory",
+      "path_template": "/relationships/dependencies",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "capabilities:Directory",
+      "path_template": "/capabilities",
+      "params": [],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_directory:Directory",
+      "path_template": "/plugins/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "typed_object:StaticJson",
+      "path_template": "/plugins/{plugin}/object.blob.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_schema:StaticJson",
+      "path_template": "/plugins/{plugin}/schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_value:LiveValue",
+      "path_template": "/plugins/{plugin}/value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_value:FrozenValue",
+      "path_template": "/plugins/{plugin}/value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "required_capabilities:StaticJson",
+      "path_template": "/plugins/{plugin}/capabilities.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "object_hash:ObjectHashFile",
+      "path_template": "/plugins/{plugin}/object.hash",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "data_root:Directory",
+      "path_template": "/plugins/{plugin}/data",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "object_container:Directory",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more encoded object keys / padded array indices",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "object_scalar:LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "object_scalar:FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "object_scalar:WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "container_value:LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "container_value:FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "container_value:WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_container:Directory",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "format!(\"{index:08}\"); minimum 8 decimal digits, no fixed upper width",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_scalar:LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_scalar:FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_scalar:WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "plugin_operations:Directory",
+      "path_template": "/plugins/{plugin}/operations",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "method_directory:Directory",
+      "path_template": "/plugins/{plugin}/operations/{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "input_schema:StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/input.schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "output_schema:StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/output.schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "method_metadata:StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/metadata.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "method_call:CallFile",
+      "path_template": "/plugins/{plugin}/operations/{method}/call",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:844-873"
+      ]
+    },
+    {
+      "node_id": "root_plugin_operations:Directory",
+      "path_template": "/operations/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "operation_alias:Symlink",
+      "path_template": "/operations/{plugin}/{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "capability_directory:Directory",
+      "path_template": "/capabilities/{capability}",
+      "params": [
+        {
+          "name": "capability",
+          "type": "CapabilityId",
+          "description": "encode_component(required_capability string)",
+          "source_path_encoding": "EncodedCapabilityId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "capability_method_alias:Symlink",
+      "path_template": "/capabilities/{capability}/{plugin}.{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        },
+        {
+          "name": "capability",
+          "type": "CapabilityId",
+          "description": "encode_component(required_capability)",
+          "source_path_encoding": "EncodedCapabilityId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "dependency_directory:Directory",
+      "path_template": "/relationships/dependencies/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "dependency_alias:Symlink",
+      "path_template": "/relationships/dependencies/{plugin}/{dependency}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "dependency",
+          "type": "DependencyId",
+          "description": "encode_component(schema.dependencies element)",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "method": "Directory.list",
+      "returns": "Vec<DirectoryEntry>",
+      "route": [
+        "direct-blob",
+        "direct-shm",
+        "via-fuse"
+      ],
+      "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    }
+  ],
+  "fuse_operations": {
+    "init": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn init(&mut self, _request: &Request<'_>, config: &mut KernelConfig) -> Result<(), i32>",
+      "behavior": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:634-642"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "config",
+          "rust_type": "&mut KernelConfig",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "lookup": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn lookup(&mut self, _request: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEntry)",
+      "behavior": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:643-659"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEntry",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "getattr": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn getattr(&mut self, request: &Request<'_>, ino: u64, fh: Option<u64>, reply: ReplyAttr)",
+      "behavior": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:660-693"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "Option<u64>",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyAttr",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "setattr": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn setattr(&mut self, request: &Request<'_>, ino: u64, mode: Option<u32>, uid: Option<u32>, gid: Option<u32>, size: Option<u64>, _atime: Option<TimeOrNow>, _mtime: Option<TimeOrNow>, _ctime: Option<std::time::SystemTime>, fh: Option<u64>, _crtime: Option<std::time::SystemTime>, _chgtime: Option<std::time::SystemTime>, _bkuptime: Option<std::time::SystemTime>, _flags: Option<u32>, reply: ReplyAttr)",
+      "behavior": "mode/uid/gid changes EROFS. Requires original FH and exact UID, writable access and node. Checked resize bounded before growth; EBADF unknown handle, EACCES attribution, EAGAIN inflight, EINVAL terminal writes, EFBIG/ENOMEM limits. Times/flags ignored; truncation alone does not execute empty CallFile.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:695-753"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "mode",
+          "rust_type": "Option<u32>",
+          "ignored": false
+        },
+        {
+          "name": "uid",
+          "rust_type": "Option<u32>",
+          "ignored": false
+        },
+        {
+          "name": "gid",
+          "rust_type": "Option<u32>",
+          "ignored": false
+        },
+        {
+          "name": "size",
+          "rust_type": "Option<u64>",
+          "ignored": false
+        },
+        {
+          "name": "atime",
+          "rust_type": "Option<TimeOrNow>",
+          "ignored": true
+        },
+        {
+          "name": "mtime",
+          "rust_type": "Option<TimeOrNow>",
+          "ignored": true
+        },
+        {
+          "name": "ctime",
+          "rust_type": "Option<std::time::SystemTime>",
+          "ignored": true
+        },
+        {
+          "name": "fh",
+          "rust_type": "Option<u64>",
+          "ignored": false
+        },
+        {
+          "name": "crtime",
+          "rust_type": "Option<std::time::SystemTime>",
+          "ignored": true
+        },
+        {
+          "name": "chgtime",
+          "rust_type": "Option<std::time::SystemTime>",
+          "ignored": true
+        },
+        {
+          "name": "bkuptime",
+          "rust_type": "Option<std::time::SystemTime>",
+          "ignored": true
+        },
+        {
+          "name": "flags",
+          "rust_type": "Option<u32>",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyAttr",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "readlink": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn readlink(&mut self, _request: &Request<'_>, ino: u64, reply: ReplyData)",
+      "behavior": "Static relative symlink bytes require no SHM discovery. ENOENT absent node, EINVAL non-symlink, EIO addressed dynamic refresh failure.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:754-764"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyData",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "open": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn open(&mut self, request: &Request<'_>, ino: u64, flags: i32, reply: ReplyOpen)",
+      "behavior": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:765-771"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyOpen",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "read": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn read(&mut self, request: &Request<'_>, ino: u64, fh: u64, offset: i64, size: u32, _flags: i32, _lock_owner: Option<u64>, reply: ReplyData)",
+      "behavior": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:772-801"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "offset",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "size",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": true
+        },
+        {
+          "name": "lock_owner",
+          "rust_type": "Option<u64>",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyData",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "write": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn write(&mut self, request: &Request<'_>, ino: u64, fh: u64, offset: i64, data: &[u8], _write_flags: u32, _flags: i32, _lock_owner: Option<u64>, reply: ReplyWrite)",
+      "behavior": "Original writable handle only. Checked nonnegative offset/end and growth; gaps zero-filled; accepts complete provided chunk or error. Unknown FH/O_RDONLY EBADF, wrong UID/inode EACCES, inflight EAGAIN, terminal EINVAL, read-only node EROFS, size EFBIG, allocation ENOMEM. Input chunk at most1 MiB; total call input1 MiB/workspace document16 MiB. No effect until flush/fsync/release.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:802-852"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "offset",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "data",
+          "rust_type": "&[u8]",
+          "ignored": false
+        },
+        {
+          "name": "write_flags",
+          "rust_type": "u32",
+          "ignored": true
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": true
+        },
+        {
+          "name": "lock_owner",
+          "rust_type": "Option<u64>",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyWrite",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "flush": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn flush(&mut self, request: &Request<'_>, ino: u64, fh: u64, _lock_owner: u64, reply: ReplyEmpty)",
+      "behavior": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:853-862"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "lock_owner",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "release": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn release(&mut self, request: &Request<'_>, ino: u64, fh: u64, _flags: i32, _lock_owner: Option<u64>, _flush: bool, reply: ReplyEmpty)",
+      "behavior": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file. Kernel cleanup validates exact FH/inode without requiring the unset request UID to match the opener; accepted data and pinned mount identity remain authoritative.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:863-874"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": true
+        },
+        {
+          "name": "lock_owner",
+          "rust_type": "Option<u64>",
+          "ignored": true
+        },
+        {
+          "name": "flush",
+          "rust_type": "bool",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "fsync": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn fsync(&mut self, request: &Request<'_>, ino: u64, fh: u64, _datasync: bool, reply: ReplyEmpty)",
+      "behavior": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:875-884"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "datasync",
+          "rust_type": "bool",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "readdir": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn readdir(&mut self, request: &Request<'_>, ino: u64, fh: u64, offset: i64, mut reply: ReplyDirectory)",
+      "behavior": "Paginates the admitted opendir listing without SHM discovery, using nonnegative index offsets. Unknown FH EBADF; wrong inode/UID EACCES; negative offset EINVAL. Stops at reply capacity; stable entries until releasedir.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:969-995"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "offset",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyDirectory",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "access": {
+      "status": "implemented",
+      "platform": "Linux GNU (also compiled elsewhere if crate supported)",
+      "rust_signature": "fn access(&mut self, request: &Request<'_>, ino: u64, mask: i32, reply: ReplyEmpty)",
+      "behavior": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "mask",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "destroy": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn destroy(&mut self)",
+      "behavior": "no-op; no reply",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "forget": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn forget(&mut self, _req: &Request<'_>, _ino: u64, _nlookup: u64)",
+      "behavior": "no-op; no reply",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "nlookup",
+          "rust_type": "u64",
+          "ignored": true
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "batch_forget": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn batch_forget(&mut self, req: &Request<'_>, nodes: &[fuse_forget_one])",
+      "behavior": "calls no-op forget for every input; no reply",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "nodes",
+          "rust_type": "&[fuse_forget_one]",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "mknod": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn mknod( &mut self, _req: &Request<'_>, parent: u64, name: &OsStr, mode: u32, umask: u32, rdev: u32, reply: ReplyEntry, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "mode",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "umask",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "rdev",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEntry",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "mkdir": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn mkdir( &mut self, _req: &Request<'_>, parent: u64, name: &OsStr, mode: u32, umask: u32, reply: ReplyEntry, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "mode",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "umask",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEntry",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "unlink": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn unlink(&mut self, _req: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEmpty)",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "rmdir": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn rmdir(&mut self, _req: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEmpty)",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "symlink": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn symlink( &mut self, _req: &Request<'_>, parent: u64, link_name: &OsStr, target: &Path, reply: ReplyEntry, )",
+      "behavior": "EPERM",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "link_name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "target",
+          "rust_type": "&Path",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEntry",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "rename": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn rename( &mut self, _req: &Request<'_>, parent: u64, name: &OsStr, newparent: u64, newname: &OsStr, flags: u32, reply: ReplyEmpty, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "newparent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "newname",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "link": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn link( &mut self, _req: &Request<'_>, ino: u64, newparent: u64, newname: &OsStr, reply: ReplyEntry, )",
+      "behavior": "EPERM",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "newparent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "newname",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEntry",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "opendir": {
+      "status": "implemented",
+      "platform": "Linux GNU",
+      "rust_signature": "fn opendir(&mut self, request: &Request<'_>, ino: u64, flags: i32, reply: ReplyOpen)",
+      "behavior": "Read-only flag required EROFS otherwise; only addressed live data discovery is refreshed, static directories avoid SHM. Directory only EINVAL. Charged immutable listing includes . and .. plus sorted children; bounded handle/capacity/try_reserve allocation. FH pins inode and UID.",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+        "crates/threetched-fs/src/fuse_fs.rs:885-968"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": false
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyOpen",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "readdirplus": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn readdirplus( &mut self, _req: &Request<'_>, ino: u64, fh: u64, offset: i64, reply: ReplyDirectoryPlus, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "offset",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyDirectoryPlus",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "releasedir": {
+      "status": "implemented",
+      "platform": "Linux GNU",
+      "rust_signature": "fn releasedir(&mut self, _request: &Request<'_>, ino: u64, fh: u64, _flags: i32, reply: ReplyEmpty)",
+      "behavior": "Drops charged listing for exact kernel FH/inode regardless of the unset release UID. Unknown FH EBADF and wrong inode EACCES; readdir still requires opener UID.",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+        "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+      ],
+      "params": [
+        {
+          "name": "request",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "fsyncdir": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn fsyncdir( &mut self, _req: &Request<'_>, ino: u64, fh: u64, datasync: bool, reply: ReplyEmpty, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "datasync",
+          "rust_type": "bool",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "statfs": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn statfs(&mut self, _req: &Request<'_>, _ino: u64, reply: ReplyStatfs)",
+      "behavior": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": true
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyStatfs",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "setxattr": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn setxattr( &mut self, _req: &Request<'_>, ino: u64, name: &OsStr, _value: &[u8], flags: i32, position: u32, reply: ReplyEmpty, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "value",
+          "rust_type": "&[u8]",
+          "ignored": true
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "position",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "getxattr": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn getxattr( &mut self, _req: &Request<'_>, ino: u64, name: &OsStr, size: u32, reply: ReplyXattr, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "size",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyXattr",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "listxattr": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn listxattr(&mut self, _req: &Request<'_>, ino: u64, size: u32, reply: ReplyXattr)",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "size",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyXattr",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "removexattr": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn removexattr(&mut self, _req: &Request<'_>, ino: u64, name: &OsStr, reply: ReplyEmpty)",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "create": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn create( &mut self, _req: &Request<'_>, parent: u64, name: &OsStr, mode: u32, umask: u32, flags: i32, reply: ReplyCreate, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "mode",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "umask",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyCreate",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "getlk": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn getlk( &mut self, _req: &Request<'_>, ino: u64, fh: u64, lock_owner: u64, start: u64, end: u64, typ: i32, pid: u32, reply: ReplyLock, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "lock_owner",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "start",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "end",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "typ",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "pid",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyLock",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "setlk": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn setlk( &mut self, _req: &Request<'_>, ino: u64, fh: u64, lock_owner: u64, start: u64, end: u64, typ: i32, pid: u32, sleep: bool, reply: ReplyEmpty, )",
+      "behavior": "ENOSYS; kernel may still implement local file locks",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "lock_owner",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "start",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "end",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "typ",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "pid",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "sleep",
+          "rust_type": "bool",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "bmap": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn bmap(&mut self, _req: &Request<'_>, ino: u64, blocksize: u32, idx: u64, reply: ReplyBmap)",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "blocksize",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "idx",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyBmap",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "ioctl": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn ioctl( &mut self, _req: &Request<'_>, ino: u64, fh: u64, flags: u32, cmd: u32, in_data: &[u8], out_size: u32, reply: ReplyIoctl, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "cmd",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "in_data",
+          "rust_type": "&[u8]",
+          "ignored": false
+        },
+        {
+          "name": "out_size",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyIoctl",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "poll": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn poll( &mut self, _req: &Request<'_>, ino: u64, fh: u64, ph: PollHandle, events: u32, flags: u32, reply: ReplyPoll, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "ph",
+          "rust_type": "PollHandle",
+          "ignored": false
+        },
+        {
+          "name": "events",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyPoll",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "fallocate": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn fallocate( &mut self, _req: &Request<'_>, ino: u64, fh: u64, offset: i64, length: i64, mode: i32, reply: ReplyEmpty, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "offset",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "length",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "mode",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "lseek": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn lseek( &mut self, _req: &Request<'_>, ino: u64, fh: u64, offset: i64, whence: i32, reply: ReplyLseek, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "offset",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "whence",
+          "rust_type": "i32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyLseek",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "copy_file_range": {
+      "status": "inherited fuser default",
+      "platform": "Linux GNU",
+      "rust_signature": "fn copy_file_range( &mut self, _req: &Request<'_>, ino_in: u64, fh_in: u64, offset_in: i64, ino_out: u64, fh_out: u64, offset_out: i64, len: u64, flags: u32, reply: ReplyWrite, )",
+      "behavior": "ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino_in",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh_in",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "offset_in",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "ino_out",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "fh_out",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "offset_out",
+          "rust_type": "i64",
+          "ignored": false
+        },
+        {
+          "name": "len",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "flags",
+          "rust_type": "u32",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyWrite",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "setvolname": {
+      "status": "inherited fuser default",
+      "platform": "macOS only; not native Linux surface",
+      "rust_signature": "fn setvolname(&mut self, _req: &Request<'_>, name: &OsStr, reply: ReplyEmpty)",
+      "behavior": "macOS only, ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "exchange": {
+      "status": "inherited fuser default",
+      "platform": "macOS only; not native Linux surface",
+      "rust_signature": "fn exchange( &mut self, _req: &Request<'_>, parent: u64, name: &OsStr, newparent: u64, newname: &OsStr, options: u64, reply: ReplyEmpty, )",
+      "behavior": "macOS only, ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "parent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "name",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "newparent",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "newname",
+          "rust_type": "&OsStr",
+          "ignored": false
+        },
+        {
+          "name": "options",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyEmpty",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    },
+    "getxtimes": {
+      "status": "inherited fuser default",
+      "platform": "macOS only; not native Linux surface",
+      "rust_signature": "fn getxtimes(&mut self, _req: &Request<'_>, ino: u64, reply: ReplyXTimes)",
+      "behavior": "macOS only, ENOSYS",
+      "source_refs": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ],
+      "params": [
+        {
+          "name": "req",
+          "rust_type": "&Request<'_>",
+          "ignored": true
+        },
+        {
+          "name": "ino",
+          "rust_type": "u64",
+          "ignored": false
+        },
+        {
+          "name": "reply",
+          "rust_type": "ReplyXTimes",
+          "ignored": false
+        }
+      ],
+      "verification": "source inspected; current runtime unverified"
+    }
+  },
+  "class_fuse_operations": {
+    "Directory": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "EINVAL when node exists",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "EISDIR; use opendir",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "Paginates the admitted opendir listing without SHM discovery, using nonnegative index offsets. Unknown FH EBADF; wrong inode/UID EACCES; negative offset EINVAL. Stops at reply capacity; stable entries until releasedir.",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "Read-only flag required EROFS otherwise; only addressed live data discovery is refreshed, static directories avoid SHM. Directory only EINVAL. Charged immutable listing includes . and .. plus sorted children; bounded handle/capacity/try_reserve allocation. FH pins inode and UID.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "Drops charged listing for exact kernel FH/inode regardless of the unset release UID. Unknown FH EBADF and wrong inode EACCES; readdir still requires opener UID.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    },
+    "StaticJson": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "EINVAL when node exists",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    },
+    "ObjectHashFile": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "EINVAL when node exists",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    },
+    "FrozenValue": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "EINVAL when node exists",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    },
+    "WorkspaceField": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "mode/uid/gid changes EROFS. Requires original FH and exact UID, writable access and node. Checked resize bounded before growth; EBADF unknown handle, EACCES attribution, EAGAIN inflight, EINVAL terminal writes, EFBIG/ENOMEM limits. Times/flags ignored; truncation alone does not execute empty CallFile.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "EINVAL when node exists",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "Original writable handle only. Checked nonnegative offset/end and growth; gaps zero-filled; accepts complete provided chunk or error. Unknown FH/O_RDONLY EBADF, wrong UID/inode EACCES, inflight EAGAIN, terminal EINVAL, read-only node EROFS, size EFBIG, allocation ENOMEM. Input chunk at most1 MiB; total call input1 MiB/workspace document16 MiB. No effect until flush/fsync/release.",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    },
+    "LiveValue": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "EINVAL when node exists",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    },
+    "CallFile": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "mode/uid/gid changes EROFS. Requires original FH and exact UID, writable access and node. Checked resize bounded before growth; EBADF unknown handle, EACCES attribution, EAGAIN inflight, EINVAL terminal writes, EFBIG/ENOMEM limits. Times/flags ignored; truncation alone does not execute empty CallFile.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "EINVAL when node exists",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "Original writable handle only. Checked nonnegative offset/end and growth; gaps zero-filled; accepts complete provided chunk or error. Unknown FH/O_RDONLY EBADF, wrong UID/inode EACCES, inflight EAGAIN, terminal EINVAL, read-only node EROFS, size EFBIG, allocation ENOMEM. Input chunk at most1 MiB; total call input1 MiB/workspace document16 MiB. No effect until flush/fsync/release.",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    },
+    "Symlink": {
+      "operations": {
+        "init": {
+          "operation_ref": "#/fuse_operations/init",
+          "outcome": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+          ]
+        },
+        "lookup": {
+          "operation_ref": "#/fuse_operations/lookup",
+          "outcome": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+          ]
+        },
+        "getattr": {
+          "operation_ref": "#/fuse_operations/getattr",
+          "outcome": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+          ]
+        },
+        "setattr": {
+          "operation_ref": "#/fuse_operations/setattr",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+          ]
+        },
+        "readlink": {
+          "operation_ref": "#/fuse_operations/readlink",
+          "outcome": "Static relative symlink bytes require no SHM discovery. ENOENT absent node, EINVAL non-symlink, EIO addressed dynamic refresh failure.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+          ]
+        },
+        "open": {
+          "operation_ref": "#/fuse_operations/open",
+          "outcome": "EINVAL; use readlink or resolve target",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+          ]
+        },
+        "read": {
+          "operation_ref": "#/fuse_operations/read",
+          "outcome": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
+          "partial_io": "Pinned same-FD snapshot slice/EOF",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+          ]
+        },
+        "write": {
+          "operation_ref": "#/fuse_operations/write",
+          "outcome": "EROFS for node mutation/write admission; other handle/offset/UID errors can precede node checks",
+          "partial_io": "Full bounded chunk or error; offset gaps zero-filled",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+          ]
+        },
+        "flush": {
+          "operation_ref": "#/fuse_operations/flush",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+          ]
+        },
+        "release": {
+          "operation_ref": "#/fuse_operations/release",
+          "outcome": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+          ]
+        },
+        "fsync": {
+          "operation_ref": "#/fuse_operations/fsync",
+          "outcome": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
+          "partial_io": "not applicable",
+          "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
+          "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
+          "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+          ]
+        },
+        "readdir": {
+          "operation_ref": "#/fuse_operations/readdir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "Stable open listing pagination",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+          ]
+        },
+        "access": {
+          "operation_ref": "#/fuse_operations/access",
+          "outcome": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+          ]
+        },
+        "destroy": {
+          "operation_ref": "#/fuse_operations/destroy",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "forget": {
+          "operation_ref": "#/fuse_operations/forget",
+          "outcome": "no-op; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "batch_forget": {
+          "operation_ref": "#/fuse_operations/batch_forget",
+          "outcome": "calls no-op forget for every input; no reply",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mknod": {
+          "operation_ref": "#/fuse_operations/mknod",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "mkdir": {
+          "operation_ref": "#/fuse_operations/mkdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "unlink": {
+          "operation_ref": "#/fuse_operations/unlink",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rmdir": {
+          "operation_ref": "#/fuse_operations/rmdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "symlink": {
+          "operation_ref": "#/fuse_operations/symlink",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "rename": {
+          "operation_ref": "#/fuse_operations/rename",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "link": {
+          "operation_ref": "#/fuse_operations/link",
+          "outcome": "EPERM",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "opendir": {
+          "operation_ref": "#/fuse_operations/opendir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
+            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+          ]
+        },
+        "readdirplus": {
+          "operation_ref": "#/fuse_operations/readdirplus",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "releasedir": {
+          "operation_ref": "#/fuse_operations/releasedir",
+          "outcome": "opendir EINVAL; no valid directory FH exists for this class; readdir/releasedir reject unknown/mismatched FH",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
+            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+          ]
+        },
+        "fsyncdir": {
+          "operation_ref": "#/fuse_operations/fsyncdir",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "statfs": {
+          "operation_ref": "#/fuse_operations/statfs",
+          "outcome": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setxattr": {
+          "operation_ref": "#/fuse_operations/setxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxattr": {
+          "operation_ref": "#/fuse_operations/getxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "listxattr": {
+          "operation_ref": "#/fuse_operations/listxattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "removexattr": {
+          "operation_ref": "#/fuse_operations/removexattr",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "create": {
+          "operation_ref": "#/fuse_operations/create",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getlk": {
+          "operation_ref": "#/fuse_operations/getlk",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setlk": {
+          "operation_ref": "#/fuse_operations/setlk",
+          "outcome": "ENOSYS; kernel may still implement local file locks",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "bmap": {
+          "operation_ref": "#/fuse_operations/bmap",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "ioctl": {
+          "operation_ref": "#/fuse_operations/ioctl",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "poll": {
+          "operation_ref": "#/fuse_operations/poll",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "fallocate": {
+          "operation_ref": "#/fuse_operations/fallocate",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "lseek": {
+          "operation_ref": "#/fuse_operations/lseek",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "copy_file_range": {
+          "operation_ref": "#/fuse_operations/copy_file_range",
+          "outcome": "ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "setvolname": {
+          "operation_ref": "#/fuse_operations/setvolname",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "exchange": {
+          "operation_ref": "#/fuse_operations/exchange",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        },
+        "getxtimes": {
+          "operation_ref": "#/fuse_operations/getxtimes",
+          "outcome": "macOS only, ENOSYS",
+          "partial_io": "not applicable",
+          "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
+          "blocking": "Synchronous source read/callback; no latency bound",
+          "side_effects_ref": null,
+          "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
+          "source_refs": [
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
+            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          ]
+        }
+      },
+      "mmap": {
+        "status": "intentional-unsupported",
+        "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      }
+    }
+  },
+  "absent_surfaces": [
+    {
+      "id": "node-kind-closure",
+      "statement": "NodeKind has only Directory, File(FileSource), LiveFile, Symlink and CallFile. No devices, FIFOs, socket nodes, hardlink constructor, xattrs, cross-call result/error nodes or filesystem lifecycle commands are projected.",
+      "basis": "current source",
+      "verification": "implemented source; build, deployment and tests pending",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:78-97",
+        "crates/threetched-fs/src/namespace.rs:844-873"
+      ]
+    },
+    {
+      "id": "unsupported-posix-and-stream",
+      "statement": "create/unlink/mkdir/rmdir/rename/link/symlink-node creation, locking/ioctl/fallocate/lseek/readdirplus/poll and xattrs retain fuser default behavior. Signals remain schema declarations; no watch/stream node is implemented. No mmap or raw POSIX segment route is claimed.",
+      "basis": "current source",
+      "verification": "implemented source; build, deployment and tests pending",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031",
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+      ]
+    }
+  ],
+  "protocol_extras": [
+    {
+      "statement": "FUSE_INTERRUPT unimplemented ENOSYS; no callback to stop operation.",
+      "sources": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:173-175"
+      ],
+      "basis": "source",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked"
+    },
+    {
+      "statement": "FUSE_NOTIFY_REPLY and CUSE_INIT unimplemented ENOSYS; unknown/undecodable opcode ENOSYS; pre-init/post-destroy operation EIO.",
+      "sources": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:74",
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:156-175",
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:511-513",
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:605-607"
+      ],
+      "basis": "source",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked"
+    },
+    {
+      "statement": "Unrestricted ioctl request ENOSYS before filesystem trait; ordinary ioctl reaches inherited ENOSYS.",
+      "sources": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:482-495"
+      ],
+      "basis": "source",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked"
+    },
+    {
+      "statement": "macOS-only setvolname/exchange/getxtimes are listed for trait completeness, excluded from native Linux operation surface.",
+      "sources": [
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:915-948"
+      ],
+      "basis": "source",
+      "verification": "source-audited; runtime behavior unverified unless explicitly marked"
+    },
+    {
+      "statement": "describe --mount <path> --expected-session <session> [--plugin <plugin>] returns { methods: [{ plugin_id, method, path, declaration }] } from the identity-bound mounted catalog. Declarations are sorted by plugin/method and bounded to 16 MiB aggregate; optional plugin limits selection. Mount/identity/catalog are verified before and after. No operation is submitted and no backend transport fallback is selected.",
+      "sources": [
+        "crates/threetched-fs/src/main.rs:124-137",
+        "crates/threetched-fs/src/main.rs:314-329",
+        "crates/threetched-fs/src/mounted.rs:292-333"
+      ],
+      "basis": "current source",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "statement": "Static specialization recognizes nested authored schema scopes through $defs, definitions and $id. Local references and oneOf validator documents use the current nested scope; external/recursive references, allOf and unsupported custom cases remain rejected.",
+      "sources": [
+        "crates/threetched-fs/examples/typed_specialize.rs:120-232",
+        "crates/threetched-fs/examples/typed_specialize.rs:416-442",
+        "crates/threetched-fs/examples/typed_specialize.rs:1122-1136"
+      ],
+      "basis": "current source",
+      "verification": "implemented-source-unverified"
+    },
+    {
+      "statement": "mcp --mount uses the assigned identity-bound namespace, with direct store/view/workspace/lungs/state/catalog selectors excluded. Mounted delivery reads only schema.json/object.hash and verifies mount/view/identity for declaration discovery; present resource values use the addressed value.json and operations use call files with the existing canonical receipt validation. Missing or changed mount identity/declaration and target read/dispatch errors propagate; no alternate delivery fallback. Existing lungs delivery remains for schema-only guests. No FUSE metadata or node shape is added.",
+      "sources": [
+        "crates/threetched-fs/src/main.rs:168-198",
+        "crates/threetched-fs/src/main.rs:358-387",
+        "crates/threetched-fs/src/mounted.rs:184-207",
+        "crates/threetched-fs/src/mounted.rs:247-333",
+        "crates/threetched-fs/src/mcp.rs:95-143",
+        "crates/threetched-fs/src/mcp.rs:319-386",
+        "crates/threetched-fs/src/mcp.rs:581-706"
+      ],
+      "basis": "current source",
+      "verification": "implemented-source-unverified; current revision awaits regeneration/build/runtime verification"
+    }
+  ],
+  "backing_evidence": {
+    "format": "3tchedfs-backing-evidence/2",
+    "task_id": "fs-core-20261005",
+    "authority": "Current plugin-owned contract, exported mechanically; no second schema authority",
+    "scope": "Source-backed physical locators, typed payload relationships and admission/recovery owner boundaries",
+    "storage": {
+      "sealed_catalog": {
+        "directory": "/dev/shm/opdbus/plugin-blobs",
+        "manifest": ".manifest.json",
+        "blob": "{plugin}.{schema_hash16}.blob",
+        "format": "OPBLOB01",
+        "schema_section": 1,
+        "schema_authority": "op_state_store::PluginSchema from manifest-pinned sealed blob",
+        "source_refs": [
+          "crates/threetched-fs/src/source.rs:14-22",
+          "crates/threetched-fs/src/source.rs:290-400"
+        ]
+      },
+      "committed_state": {
+        "directory": "/dev/shm/opdbus/state",
+        "document": "{plugin}.json",
+        "format": "UTF-8 JSON under canonical lock + committed manifest generation; pending publication rejects",
+        "public_policy": "Complete value validates before exact sealed public projection; current catalog/policy pin checked before and after",
+        "layout": "No POSIX segment ABI, fixed offset or raw mapped address; owned decoded snapshot",
+        "source_refs": [
+          "crates/op-core/src/projection_transactions.rs:451-510",
+          "crates/threetched-fs/src/source.rs:42-149"
+        ]
+      },
+      "captured_store": {
+        "directory": "/dev/shm/3tchedfs by default",
+        "object": "objects/{object_hash}.blob",
+        "view": "views/{view_id}.json",
+        "workspace": "workspaces/{workspace_id}.json",
+        "snapshot": "snapshots/{snapshot_name}.ref",
+        "format": "Captured TypedObject/ViewManifest/Workspace UTF-8 JSON with BLAKE3 content addresses; not OPBLOB01 plugin authority",
+        "writer": "Existing .lock + file sync/atomic rename/parent sync; workspace expected-object CAS",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:16-54",
+          "crates/threetched-fs/src/store.rs:198-249",
+          "crates/threetched-fs/src/store.rs:453-543",
+          "crates/threetched-fs/src/store.rs:498-528",
+          "crates/threetched-fs/src/store.rs:531-626"
+        ]
+      },
+      "method_journal": {
+        "owner": "existing RuntimeDocuments durable private Cozo plugin_runtime_documents relation",
+        "default_directory": "/var/lib/op-dbus/plugin-runtime-cozo",
+        "key": "__method_operation_v1:blake3(JSON(namespace,receiver_actor,Option<receiver_session>)):canonical_UUID",
+        "retention": "Permanent authoritative reservation/tombstone; never a domain result cache; no automatic reuse after restart/retention",
+        "payload": "Bounded sanitized scope/schema provenance/status/attempt+terminal proof only; no raw private arguments or results; result_digest null",
+        "mutation_order": "CAS absent revision0 reserve -> confirmed durable attempt -> attempt journal CAS -> backend commit -> result validation -> terminal durable audit -> terminal journal CAS",
+        "recovery": "One receiver-scoped durable point read with persistence barrier; missing/foreign IDs do not reveal another caller's operation",
+        "source_refs": [
+          "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-736",
+          "crates/op-plugins/src/state_plugins/runtime_documents.rs:154-252",
+          "crates/op-cozo-store/src/runtime_document_transactions.rs:113-213"
+        ]
+      }
+    },
+    "surface_backing": [
+      {
+        "node_id": "root:Directory",
+        "class": "Directory",
+        "path_template": "/",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:669-697"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:669-697"
+        ]
+      },
+      {
+        "node_id": "mount_metadata:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/.3tchedfs.json",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "MountMetadata",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "MountMetadata",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:699-712"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ]
+      },
+      {
+        "node_id": "view_manifest:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/view.json",
+        "params": [],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/views/{view_id:ViewId}.json",
+          "payload_type": "ViewManifest",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/views/{view_id:ViewId}.json",
+            "payload_type": "ViewManifest",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:699-712"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ]
+      },
+      {
+        "node_id": "workspace_manifest:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/workspace.json",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Workspace",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Workspace",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:699-712"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ]
+      },
+      {
+        "node_id": "plugins:Directory",
+        "class": "Directory",
+        "path_template": "/plugins",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "operations:Directory",
+        "class": "Directory",
+        "path_template": "/operations",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "relationships:Directory",
+        "class": "Directory",
+        "path_template": "/relationships",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "relationships/dependencies:Directory",
+        "class": "Directory",
+        "path_template": "/relationships/dependencies",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "capabilities:Directory",
+        "class": "Directory",
+        "path_template": "/capabilities",
+        "params": [],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "plugin_directory:Directory",
+        "class": "Directory",
+        "path_template": "/plugins/{plugin}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "typed_object:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/plugins/{plugin}/object.blob.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "TypedObject",
+          "source_descriptor": {
+            "kind": "sanitized_typed_object_projection",
+            "locator_template": "ObjectStore.objects[view.objects[plugin]] + optional locked current public state",
+            "payload_type": "TypedObject",
+            "description": "Frozen object state is sanitized by its sealed policy. Live mounts render fresh committed public state; unavailable live state yields explicit schema_only envelope, never stale private values."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "plugin_schema:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/plugins/{plugin}/schema.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+          "payload_type": "PluginSchema",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+            "payload_type": "PluginSchema",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "plugin_value:LiveValue",
+        "class": "LiveValue",
+        "path_template": "/plugins/{plugin}/value.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "shm",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "committed_public_projection",
+            "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+            "payload_type": "JsonValue",
+            "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "plugin_value:FrozenValue",
+        "class": "FrozenValue",
+        "path_template": "/plugins/{plugin}/value.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+            "payload_type": "JsonValue",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "required_capabilities:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/plugins/{plugin}/capabilities.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+          "payload_type": "Capabilities",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+            "payload_type": "Capabilities",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "object_hash:ObjectHashFile",
+        "class": "ObjectHashFile",
+        "path_template": "/plugins/{plugin}/object.hash",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "ObjectHash",
+          "source_descriptor": {
+            "kind": "captured_object_hash",
+            "locator_template": "view.objects[plugin] or workspace.staged_objects[plugin] fallback base_view.objects[plugin]",
+            "payload_type": "ObjectHash",
+            "description": "Real captured artifact identity, never a hash of live rendered state. User data field named object.hash remains its declared value class."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "data_root:Directory",
+        "class": "Directory",
+        "path_template": "/plugins/{plugin}/data",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "object_container:Directory",
+        "class": "Directory",
+        "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "zero or more encoded object keys / padded array indices",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "key",
+            "type": "FieldKey",
+            "description": "encode_component(JSON object key)",
+            "source_path_encoding": "EncodedJsonObjectKey"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "object_scalar:LiveValue",
+        "class": "LiveValue",
+        "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "zero or more container path components",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "key",
+            "type": "FieldKey",
+            "description": "encode_component(JSON object key)",
+            "source_path_encoding": "EncodedJsonObjectKey"
+          }
+        ],
+        "backing": {
+          "kind": "shm",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "committed_public_projection",
+            "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+            "payload_type": "JsonValue",
+            "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "object_scalar:FrozenValue",
+        "class": "FrozenValue",
+        "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "zero or more container path components",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "key",
+            "type": "FieldKey",
+            "description": "encode_component(JSON object key)",
+            "source_path_encoding": "EncodedJsonObjectKey"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+            "payload_type": "JsonValue",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "object_scalar:WorkspaceField",
+        "class": "WorkspaceField",
+        "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "zero or more container path components",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "key",
+            "type": "FieldKey",
+            "description": "encode_component(JSON object key)",
+            "source_path_encoding": "EncodedJsonObjectKey"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+            "payload_type": "JsonValue",
+            "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "container_value:LiveValue",
+        "class": "LiveValue",
+        "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "one or more encoded keys / padded indices leading to container",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          }
+        ],
+        "backing": {
+          "kind": "shm",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "committed_public_projection",
+            "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+            "payload_type": "JsonValue",
+            "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842",
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "container_value:FrozenValue",
+        "class": "FrozenValue",
+        "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "one or more encoded keys / padded indices leading to container",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+            "payload_type": "JsonValue",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842",
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "container_value:WorkspaceField",
+        "class": "WorkspaceField",
+        "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "one or more encoded keys / padded indices leading to container",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+            "payload_type": "JsonValue",
+            "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842",
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "array_container:Directory",
+        "class": "Directory",
+        "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "container path to JSON array",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "index",
+            "type": "ArrayIndex",
+            "description": "format!(\"{index:08}\"); minimum 8 decimal digits, no fixed upper width",
+            "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "array_scalar:LiveValue",
+        "class": "LiveValue",
+        "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "container path to JSON array",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "index",
+            "type": "ArrayIndex",
+            "description": "usize zero-based array position formatted to minimum 8 digits",
+            "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+          }
+        ],
+        "backing": {
+          "kind": "shm",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "committed_public_projection",
+            "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+            "payload_type": "JsonValue",
+            "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "array_scalar:FrozenValue",
+        "class": "FrozenValue",
+        "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "container path to JSON array",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "index",
+            "type": "ArrayIndex",
+            "description": "usize zero-based array position formatted to minimum 8 digits",
+            "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+            "payload_type": "JsonValue",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "array_scalar:WorkspaceField",
+        "class": "WorkspaceField",
+        "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "segments",
+            "type": "Vec<PathSegment>",
+            "description": "container path to JSON array",
+            "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+          },
+          {
+            "name": "index",
+            "type": "ArrayIndex",
+            "description": "usize zero-based array position formatted to minimum 8 digits",
+            "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+            "payload_type": "JsonValue",
+            "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:714-842"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ]
+      },
+      {
+        "node_id": "plugin_operations:Directory",
+        "class": "Directory",
+        "path_template": "/plugins/{plugin}/operations",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "method_directory:Directory",
+        "class": "Directory",
+        "path_template": "/plugins/{plugin}/operations/{method}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "method",
+            "type": "MethodId",
+            "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+            "source_path_encoding": "EncodedMethodKey"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "input_schema:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/plugins/{plugin}/operations/{method}/input.schema.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "method",
+            "type": "MethodId",
+            "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+            "source_path_encoding": "EncodedMethodKey"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/args",
+          "payload_type": "JsonSchema",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/args",
+            "payload_type": "JsonSchema",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "output_schema:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/plugins/{plugin}/operations/{method}/output.schema.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "method",
+            "type": "MethodId",
+            "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+            "source_path_encoding": "EncodedMethodKey"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/returns",
+          "payload_type": "JsonSchema",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/returns",
+            "payload_type": "JsonSchema",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "method_metadata:StaticJson",
+        "class": "StaticJson",
+        "path_template": "/plugins/{plugin}/operations/{method}/metadata.json",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "method",
+            "type": "MethodId",
+            "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+            "source_path_encoding": "EncodedMethodKey"
+          }
+        ],
+        "backing": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}",
+          "payload_type": "MethodDecl",
+          "source_descriptor": {
+            "kind": "blob",
+            "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}",
+            "payload_type": "MethodDecl",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "method_call:CallFile",
+        "class": "CallFile",
+        "path_template": "/plugins/{plugin}/operations/{method}/call",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "method",
+            "type": "MethodId",
+            "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+            "source_path_encoding": "EncodedMethodKey"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "CallReceipt",
+          "source_descriptor": {
+            "kind": "canonical_method_call",
+            "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
+            "payload_type": "CallReceipt",
+            "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:844-873"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:844-873"
+        ]
+      },
+      {
+        "node_id": "root_plugin_operations:Directory",
+        "class": "Directory",
+        "path_template": "/operations/{plugin}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "operation_alias:Symlink",
+        "class": "Symlink",
+        "path_template": "/operations/{plugin}/{method}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "method",
+            "type": "MethodId",
+            "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+            "source_path_encoding": "EncodedMethodKey"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "SemanticLocator",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": "../../plugins/{plugin}/operations/{method}",
+            "payload_type": "SemanticLocator",
+            "description": "Relative target remains inside the mounted namespace."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "capability_directory:Directory",
+        "class": "Directory",
+        "path_template": "/capabilities/{capability}",
+        "params": [
+          {
+            "name": "capability",
+            "type": "CapabilityId",
+            "description": "encode_component(required_capability string)",
+            "source_path_encoding": "EncodedCapabilityId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "capability_method_alias:Symlink",
+        "class": "Symlink",
+        "path_template": "/capabilities/{capability}/{plugin}.{method}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "method",
+            "type": "MethodId",
+            "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+            "source_path_encoding": "EncodedMethodKey"
+          },
+          {
+            "name": "capability",
+            "type": "CapabilityId",
+            "description": "encode_component(required_capability)",
+            "source_path_encoding": "EncodedCapabilityId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "SemanticLocator",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": "../../plugins/{plugin}/operations/{method}",
+            "payload_type": "SemanticLocator",
+            "description": "Relative target remains inside the mounted namespace."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "dependency_directory:Directory",
+        "class": "Directory",
+        "path_template": "/relationships/dependencies/{plugin}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": null,
+            "payload_type": "Vec<DirectoryEntry>",
+            "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "node_id": "dependency_alias:Symlink",
+        "class": "Symlink",
+        "path_template": "/relationships/dependencies/{plugin}/{dependency}",
+        "params": [
+          {
+            "name": "plugin",
+            "type": "PluginId",
+            "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+            "source_path_encoding": "EncodedPluginId"
+          },
+          {
+            "name": "dependency",
+            "type": "DependencyId",
+            "description": "encode_component(schema.dependencies element)",
+            "source_path_encoding": "EncodedPluginId"
+          }
+        ],
+        "backing": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "SemanticLocator",
+          "source_descriptor": {
+            "kind": "synthetic",
+            "locator_template": "../../../plugins/{dependency}",
+            "payload_type": "SemanticLocator",
+            "description": "Relative target remains inside the mounted namespace; missing dependency target remains unresolved."
+          },
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:108-472"
+          ],
+          "locator_status": "no independent persistent locator"
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      }
+    ],
+    "workflow": "Live backend effects use sealed PluginV1.CallWithOperationId with exact existing identity/grants; workspace staging does not mutate backend. SHM commits precede change notifications; receipts link durable attempt/terminal. Recovery never replays or exposes private domain payload.",
+    "unverified": [
+      "Current build/deployment/tests pending; backend-specific domain invariants require their own authoritative evidence."
+    ]
+  },
+  "source_payload_types": {
+    "MountMetadata": {
+      "type": "MountMetadata",
+      "schema": {
+        "$ref": "#/$defs/MountMetadata"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:15-23",
+        "crates/threetched-fs/src/namespace.rs:492-513"
+      ]
+    },
+    "TypedObjectBlob": {
+      "type": "TypedObject",
+      "schema": {
+        "$ref": "#/$defs/TypedObject"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:29-37"
+      ]
+    },
+    "ViewManifest": {
+      "type": "ViewManifest",
+      "schema": {
+        "$ref": "#/$defs/ViewManifest"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:27-35"
+      ]
+    },
+    "Workspace": {
+      "type": "Workspace",
+      "schema": {
+        "$ref": "#/$defs/Workspace"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:47-54"
+      ]
+    },
+    "MethodDecl": {
+      "type": "MethodDecl",
+      "schema": {
+        "$ref": "#/$defs/MethodDecl"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:518-528"
+      ]
+    },
+    "CallReceipt": {
+      "type": "CallReceipt",
+      "schema": {
+        "$ref": "#/$defs/CallReceipt"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/dispatch.rs:29-37",
+        "crates/threetched-fs/src/dispatch.rs:432-456"
+      ]
+    },
+    "LungsDiagnostic": {
+      "type": "OperationDiagnostic",
+      "schema": {
+        "$ref": "#/$defs/OperationDiagnostic"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/dispatch.rs:81-105",
+        "crates/threetched-fs/src/fuse_fs.rs:555-581"
+      ]
+    },
+    "MethodExecutionReceipt": {
+      "type": "MethodExecutionReceipt",
+      "schema": {
+        "$ref": "#/$defs/MethodExecutionReceipt"
+      },
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:7-68"
+      ]
+    },
+    "MethodReceiptRecovery": {
+      "type": "MethodReceiptRecovery",
+      "schema": {
+        "$ref": "#/$defs/MethodReceiptRecovery"
+      },
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:7-68"
+      ]
+    }
+  },
+  "source_error_shapes": {
+    "diagnostic_fields": [
+      "plugin",
+      "method",
+      "stage",
+      "error",
+      "operation_id(optional/null)"
+    ],
+    "errno_by_stage": {
+      "parse": "EINVAL",
+      "validate": "EINVAL",
+      "credential": "EACCES",
+      "register": "EACCES",
+      "call": "EACCES",
+      "transport": "EIO",
+      "admission": "EBUSY",
+      "outcome_unknown": "EIO",
+      "contract": "EPROTO (binding condition InvalidValue; errno is diagnostic)"
+    },
+    "diagnostic_limit": "error UTF-8 text bounded4096bytes; total serialized diagnostic8192bytes; preallocated fallback retains target attribution",
+    "admission_semantics": "Admission is a terminal rejection before dispatch, with no backend effect or operation ID. The descriptor cannot dispatch rejected input on later flush, fsync or release. Reopening and staging input is an explicit new attempt; clients never retry automatically. It is distinct from outcome_unknown after an operation may have started.",
+    "not_a_full_backend_error_taxonomy": true,
+    "sources": [
+      "crates/threetched-fs/src/dispatch.rs:81-105",
+      "crates/threetched-fs/src/fuse_fs.rs:555-581"
+    ]
+  },
+  "bindings": {
+    "runtime_module": "crate::typed_runtime",
+    "generated_path": "crates/threetched-fs/src/typed_bindings.rs",
+    "classes": {
+      "Directory": {
+        "operations": [
+          {
+            "name": "list",
+            "receiver": "&self",
+            "args": [],
+            "return": "Vec<DirectoryEntry>",
+            "handler": "list"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+        ],
+        "routes": [
+          "direct-blob",
+          "direct-shm",
+          "via-fuse"
+        ]
+      },
+      "StaticJson": {
+        "operations": [
+          {
+            "name": "get",
+            "receiver": "&self",
+            "args": [],
+            "return": "StaticPayload",
+            "handler": "static_payload"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+        ],
+        "routes": [
+          "direct-blob",
+          "direct-shm",
+          "via-fuse"
+        ]
+      },
+      "ObjectHashFile": {
+        "operations": [
+          {
+            "name": "get",
+            "receiver": "&self",
+            "args": [],
+            "return": "ObjectHash",
+            "handler": "object_hash"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+        ],
+        "routes": [
+          "direct-blob",
+          "direct-shm",
+          "via-fuse"
+        ]
+      },
+      "FrozenValue": {
+        "operations": [
+          {
+            "name": "get",
+            "receiver": "&self",
+            "args": [],
+            "return": "BlobRef<JsonValue>",
+            "handler": "frozen_value"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+        ],
+        "routes": [
+          "direct-blob",
+          "via-fuse"
+        ]
+      },
+      "WorkspaceField": {
+        "operations": [
+          {
+            "name": "get",
+            "receiver": "&self",
+            "args": [],
+            "return": "BlobRef<JsonValue>",
+            "handler": "frozen_value"
+          },
+          {
+            "name": "put",
+            "receiver": "&mut self",
+            "args": [
+              {
+                "name": "value",
+                "type": "JsonValue"
+              }
+            ],
+            "return": "BlobRef<JsonValue>",
+            "handler": "put_workspace"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+        ],
+        "routes": [
+          "via-fuse"
+        ]
+      },
+      "LiveValue": {
+        "operations": [
+          {
+            "name": "get",
+            "receiver": "&self",
+            "args": [],
+            "return": "ShmHandle<JsonValue>",
+            "handler": "live_value"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+        ],
+        "routes": [
+          "direct-shm",
+          "via-fuse"
+        ]
+      },
+      "CallFile": {
+        "operations": [
+          {
+            "name": "validate_arguments",
+            "receiver": "&self",
+            "args": [
+              {
+                "name": "arguments",
+                "type": "JsonValue"
+              }
+            ],
+            "return": "ValidatedArguments",
+            "handler": "validate_arguments"
+          },
+          {
+            "name": "invoke",
+            "receiver": "&mut self",
+            "args": [
+              {
+                "name": "arguments",
+                "type": "ValidatedArguments"
+              },
+              {
+                "name": "confirm_side_effects",
+                "type": "bool"
+              }
+            ],
+            "return": "CallReceipt",
+            "handler": "invoke"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+        ],
+        "routes": [
+          "via-fuse"
+        ]
+      },
+      "Symlink": {
+        "operations": [
+          {
+            "name": "target",
+            "receiver": "&self",
+            "args": [],
+            "return": "SemanticLocator",
+            "handler": "symlink_target"
+          }
+        ],
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+        ],
+        "routes": [
+          "direct-blob",
+          "direct-shm",
+          "via-fuse"
+        ]
+      }
+    },
+    "factories": [
+      {
+        "signature": "TypedFilesystem::direct_blob(ObjectStore, ViewId)",
+        "route": "direct-blob",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:575-615"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::direct_blob_at(StoreRoot, ViewId)",
+        "route": "direct-blob",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:563-573"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::direct_shm(StoreRoot, ViewId, CatalogRoot, StateDirectory)",
+        "route": "direct-shm",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:525-561"
+        ],
+        "requirements": "Real captured view and object-store pins, active sealed catalog and canonical committed public-state directory; read-only, owned decoded values"
+      },
+      {
+        "signature": "TypedFilesystem::via_fuse(MountRoot, SessionId)",
+        "route": "via-fuse",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:617-622"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::via_workspace_fuse(MountRoot, WorkspaceId)",
+        "route": "via-fuse",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:624-629"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::via_guest_fuse(MountRoot)",
+        "route": "via-fuse",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:631-636"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::via_credential_fuse(MountRoot)",
+        "route": "via-fuse",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:638-643"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::root() -> Directory",
+        "route": "mode-pinned",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:659-660"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::node(DirectoryEntry) -> Result<TypedNode, NodeError>",
+        "route": "mode-pinned",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:662-672"
+        ]
+      },
+      {
+        "signature": "TypedFilesystem::call_file(PluginId, MethodId) -> Result<CallFile, NodeError>",
+        "route": "via-fuse",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:674-685"
+        ]
+      }
+    ],
+    "limitations": [
+      {
+        "route": "direct-shm",
+        "status": "read-only-owned-decoded",
+        "reason": "Only Directory/StaticJson/ObjectHashFile/LiveValue/Symlink routes. Mandatory captured StoreRoot/ViewId plus current CatalogRoot/StateDirectory preserve real pins; no direct mutation, frozen value, raw mmap or zero-copy guarantee.",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:525-561",
+          "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+        ]
+      },
+      {
+        "route": "direct-blob",
+        "status": "owned-decoded",
+        "reason": "Captured sanitized public state and immutable artifact reads are owned decodes; artifact access confers no backend capability or live identity authentication.",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:575-615",
+          "crates/threetched-fs/src/model.rs:95-144"
+        ]
+      },
+      {
+        "route": "via-fuse",
+        "status": "same-handle-receipt",
+        "reason": "No Outcome/latest-result/error files. Shared nested receipt attribution, ordered attempt/terminal proofs and exact domain returns validate before completed success. Unknown completion forbids replay; declared recovery supplies caller-private status/proofs only.",
+        "source_refs": [
+          "crates/threetched-fs/src/mounted.rs:184-497",
+          "crates/threetched-fs/src/dispatch.rs:408-456",
+          "crates/op-state-store/src/method_receipt.rs:40-141"
+        ]
+      },
+      {
+        "route": "symlink",
+        "status": "relative-semantic-target",
+        "reason": "Parent-relative operation/capability/dependency aliases stay inside mount; dependency target may be absent. Typed resolver does not silently follow an external OS target.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472",
+          "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+        ]
+      },
+      {
+        "route": "plugin-specialization",
+        "status": "authored-source-unverified",
+        "reason": "Generator emits exact supported source schema constructs and explicit unsupported/dynamic reports. Prior fs-core generation and GNU compilation ran before the Grok mounted-MCP changes; see reports/fs-core-20261005/release-preparation.json and HANDOFF.md 2026-10-05 final2 build entries. This source revision still requires regenerated artifacts and compilation; no deployment of its specializations is claimed.",
+        "source_refs": [
+          "crates/threetched-fs/examples/typed_specialize.rs:120-476",
+          "crates/threetched-fs/examples/typed_specialize.rs:507-602",
+          "crates/threetched-fs/examples/typed_specialize.rs:666-1050",
+          "crates/threetched-fs/src/typed_runtime.rs:454-510"
+        ]
+      }
+    ],
+    "error_conditions": {
+      "ENOENT": {
+        "condition": "MissingNode",
+        "source_condition": "Namespace child or file missing",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EROFS": {
+        "condition": "ReadOnly",
+        "source_condition": "Node does not admit requested write",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EINVAL": {
+        "condition": "InvalidValue",
+        "source_condition": "Negative offset/invalid payload/schema/terminal write",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EACCES": {
+        "condition": "PermissionDenied",
+        "source_condition": "Exact UID, mount mode, credential, session or capability admission refused",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EPERM": {
+        "condition": "PermissionDenied",
+        "source_condition": "Preserved OS permission refusal",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EIO": {
+        "condition": "BackendUnavailable",
+        "source_condition": "Source/transport/unknown completion",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EISDIR": {
+        "condition": "IsDirectory",
+        "source_condition": "Directory opened as regular file",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "ESTALE": {
+        "condition": "StaleVersion",
+        "source_condition": "Workspace expected-object CAS conflict",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EFBIG": {
+        "condition": "TooLarge",
+        "source_condition": "Bounded serialized document/argument/offset growth",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "ENOMEM": {
+        "condition": "ResourceExhausted",
+        "source_condition": "Bounded charge/allocation unavailable",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EBUSY": {
+        "condition": "Busy",
+        "source_condition": "Concurrent workspace writer or async job/reply waiter capacity; terminal admission diagnostic means rejected before dispatch, with no automatic retry",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EBADF": {
+        "condition": "InvalidHandle",
+        "source_condition": "Unknown FD or wrong read/write access",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "EAGAIN": {
+        "condition": "InFlight",
+        "source_condition": "Operation is inflight",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      "other": {
+        "condition": "OtherIo",
+        "source_condition": "Other I/O preserved; raw errno remains diagnostic only",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/threetched-fs/src/fuse_fs.rs:60-92",
+          "crates/threetched-fs/src/fuse_fs.rs:275-443",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      }
+    },
+    "limits": {
+      "document_bytes": 16777216,
+      "argument_bytes": 1048576,
+      "workspace_write_bytes": 1048576,
+      "json_depth": 128,
+      "json_nodes": 100000,
+      "projection_depth": 128,
+      "projection_nodes": 100000,
+      "origin": "Current source bounds across mounted/store/source/FUSE/typed JSON ownership; backend allocator/native buffers and global EventChain are not claimed fully bounded",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_buffers.rs:7-10",
+        "crates/threetched-fs/src/fuse_fs.rs:24-26",
+        "crates/threetched-fs/src/store.rs:17-18",
+        "crates/threetched-fs/src/source.rs:21-22",
+        "crates/op-state-store/src/method_receipt.rs:6-7",
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:20-21"
+      ],
+      "fuse_workspace_document_bytes": 16777216,
+      "fuse_total_serialized_capacity": 67108864,
+      "fuse_handles": 256,
+      "fuse_jobs": 4,
+      "fuse_waiters_per_handle": 32,
+      "canonical_method_owners": 32,
+      "method_receipt_bytes": 16777216,
+      "journal_document_bytes": 8192,
+      "credential_bytes": 16384,
+      "source_snapshot_bytes": 67108864,
+      "topology_nodes": 100000
+    },
+    "memory_policy": "Fresh owned source decode per API operation; locator/topology/schema pins are bounded contract ownership; per-FD snapshots and explicitly returned BlobRef/ShmHandle values are owned snapshots, not shared reusable caches. No direct SHM mutation or raw memory mapping."
+  },
+  "gaps": {
+    "format": "3tchedfs-gap-inventory/2",
+    "task_id": "fs-core-20261005",
+    "scope": "Current core filesystem repair; implemented source is not tested/deployed proof.",
+    "ranking": "Remaining unresolved and verification work precedes intentional unsupported surfaces.",
+    "deployment": {
+      "status": "Prior baseline 20261005T194135Z-26a4ad1-fs activated on 2026-10-05T19:45:16Z; this source revision is not deployed. Evidence: reports/fs-core-20261005/deployment.json. Follow-up catalog1425 is preparation only: reports/fs-core-20261005/followup-preparation.json.",
+      "tests": "Current repaired source/release workflow remains unverified here; separate owner-assigned agent owns tests. Earlier dated source/build claims do not prove the new mounted-MCP/workflow revision."
+    },
+    "gaps": [
+      {
+        "rank": 1,
+        "id": "deployed-workflow-verification",
+        "status": "verification-pending",
+        "finding": "Source changes require native GNU release build, snapshot/send-receive activation and postdeployment complete workflow/failure/cancellation checks.",
+        "source_refs": [
+          "AGENTS.md:88-123"
+        ]
+      },
+      {
+        "rank": 2,
+        "id": "existing-cache-policy-conflict",
+        "status": "implemented-source-unverified",
+        "finding": "Reusable filesystem payload/live/outcome caches replaced by declared locators and charged active descriptor ownership; TTLzero/directIO.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:25-38",
+          "crates/threetched-fs/src/fuse_fs.rs:24-130",
+          "crates/threetched-fs/src/fuse_buffers.rs:4-109"
+        ]
+      },
+      {
+        "rank": 3,
+        "id": "committed-state-and-exposure",
+        "status": "implemented-source-unverified",
+        "finding": "Canonical bounded locked read validates complete committed state and derives only exact sealed public projection; pending/invalid/absent state and catalog/policy drift fail closed. Schema-only boot capture explicitly has unavailable state.",
+        "source_refs": [
+          "crates/threetched-fs/src/source.rs:42-149",
+          "crates/threetched-fs/src/source.rs:184-267",
+          "crates/threetched-fs/src/model.rs:10-144"
+        ]
+      },
+      {
+        "rank": 4,
+        "id": "canonical-mutations-are-not-blob-writes",
+        "status": "intentional-separation",
+        "finding": "Workspace staging remains captured public-state artifact editing; backend mutations only canonical identity/capability-admitted CallFile. Direct SHM route is read-only; no direct state mutation/write pointer bypass exists.",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:198-249",
+          "crates/threetched-fs/src/dispatch.rs:174-456"
+        ]
+      },
+      {
+        "rank": 5,
+        "id": "audit-attempt-versus-completion",
+        "status": "implemented-source-unverified",
+        "finding": "Durable reservation and confirmed attempt precede effect; validated result+committed publication+durable linked terminal precede completed receipt. Post-effect/cross-store failure remains unknown; cancellation-owned task continues.",
+        "source_refs": [
+          "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736",
+          "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
+        ]
+      },
+      {
+        "rank": 6,
+        "id": "topology-staleness",
+        "status": "implemented-source-unverified",
+        "finding": "Addressed data discovery rebuilds only its current committed public subtree; absent/deleted keys disappear, unrelated locators remain intact, and target errors propagate. Static factories/traversal avoid unrelated live values. Existing FD/listing snapshots stay versioned and bounded.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472",
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        ]
+      },
+      {
+        "rank": 7,
+        "id": "workspace-mount-refresh",
+        "status": "implemented-source-unverified",
+        "finding": "Per-object local guard plus expected-object CAS reject cross-process stale writers; successful stage updates descriptor hash and fresh inventory; failed FD cannot retry on release.",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:198-249",
+          "crates/threetched-fs/src/fuse_fs.rs:351-554"
+        ]
+      },
+      {
+        "rank": 8,
+        "id": "outcome-locators",
+        "status": "implemented-source-unverified",
+        "finding": "Result/error files and Outcome nodes removed. Same original call descriptor carries transient terminal payload; declared get_receipt recovers permanent caller-private status/proofs, never a private result.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:844-873",
+          "crates/op-grpc-bridge/src/method_receipt_audit.rs:644-736"
+        ]
+      },
+      {
+        "rank": 9,
+        "id": "absolute-symlinks",
+        "status": "implemented-source-unverified",
+        "finding": "Operation/capability/dependency links are parent-relative and stay inside the mount.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "rank": 10,
+        "id": "nested-receipt-contract",
+        "status": "implemented-source-unverified",
+        "finding": "Shared closed envelope validates target/operation/proof order and exact MethodDecl.returns. Missing result declaration blocks before effects rather than inferring null.",
+        "source_refs": [
+          "crates/op-state-store/src/method_receipt.rs:40-141",
+          "crates/threetched-fs/src/dispatch.rs:408-456",
+          "crates/threetched-fs/src/mounted.rs:184-497"
+        ]
+      },
+      {
+        "rank": 11,
+        "id": "mount-modes-and-cancellation",
+        "status": "implemented-source-unverified",
+        "finding": "Exact typed host/guest/credential identity mode+UUID pin; local UID/access enforcement; bounded async jobs with single execution and durable owned attempt/backend/terminal across caller cancellation. No backend cancellation/rollback API fabricated.",
+        "source_refs": [
+          "crates/threetched-fs/src/mounted.rs:39-181",
+          "crates/threetched-fs/src/fuse_fs.rs:202-581",
+          "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
+        ]
+      },
+      {
+        "rank": 12,
+        "id": "dynamic-schema-specialization",
+        "status": "authored-source-unverified",
+        "finding": "Source-authored schema-only sealed specialization emits exact supported object presence/null/maps/arrays/enums/OneOf shapes. Context-dependent source OneOf, general intersections/unions, recursive/external references, custom validation and partial public map/array shapes report unsupported; dynamic slots stay explicit. Prior generation and generated-use GNU compilation completed before the Grok mounted-MCP changes; current-source regeneration/rebuild remains pending. Dated preparation evidence: reports/fs-core-20261005/release-preparation.json and HANDOFF.md final2 build entries.",
+        "source_refs": [
+          "crates/threetched-fs/examples/typed_specialize.rs:120-476",
+          "crates/threetched-fs/examples/typed_specialize.rs:507-602",
+          "crates/threetched-fs/examples/typed_specialize.rs:666-1050",
+          "crates/threetched-fs/src/typed_runtime.rs:454-510"
+        ]
+      },
+      {
+        "rank": 13,
+        "id": "no-posix-segment-or-zero-copy-layout",
+        "status": "intentional-unsupported",
+        "finding": "Read-only direct SHM is a fresh owned decoded canonical committed snapshot. No raw address, fixed ABI segment, mmap, pointer layout or zero-copy guarantee is claimed.",
+        "source_refs": [
+          "crates/threetched-fs/src/source.rs:24-149",
+          "crates/threetched-fs/src/typed_runtime.rs:173-191"
+        ]
+      },
+      {
+        "rank": 14,
+        "id": "watch-and-arbitrary-posix-mutation",
+        "status": "intentional-unsupported",
+        "finding": "No watch/stream/mmap node or arbitrary create/delete/rename/xattr/locking API is authored. fuser default errors remain explicit. These are not implemented features or hidden repair failures.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:582-1031",
+          "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+        ]
+      },
+      {
+        "rank": 15,
+        "id": "global-audit-memory-retention",
+        "status": "existing-system-limitation",
+        "finding": "Existing EventChain.events lifetime Vec grows with events and is independent of filesystem's bounded descriptor ownership; permanent journal recovery/dedup does not depend on bounded startup replay. Global audit retention is outside this repair.",
+        "source_refs": [
+          "crates/op-state-store/src/event_chain.rs:552-560",
+          "crates/op-state-store/src/event_chain.rs:607-623"
+        ]
+      },
+      {
+        "rank": 16,
+        "id": "pre-spawn-elevation-consumption",
+        "status": "implemented-source-unverified",
+        "finding": "Exact original admitted argument elevation consumption is inside the cancellation-owned method task, before durable reservation/attempt/backend, after cancellable attribution/compliance and owner capacity admission; extra private argument copy dropped before audit.",
+        "source_refs": [
+          "crates/op-grpc-bridge/src/mutation_engine.rs:3421-3732"
+        ]
+      },
+      {
+        "rank": 17,
+        "id": "reserved-aggregate-key",
+        "status": "implemented-source-unverified",
+        "finding": "Real JSON key .value.json is encoded %2Evalue.json, distinct from synthetic aggregate marker; empty key remains canonical %.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:1041-1067"
+        ]
+      },
+      {
+        "rank": 18,
+        "id": "direct-shm-read-only",
+        "status": "implemented-source-unverified",
+        "finding": "Mandatory captured store/view plus active catalog and committed state provenance; five readonly classes only. Artifact hash identifies capture, not hash of current state.",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:525-561",
+          "crates/threetched-fs/src/typed_runtime.rs:1100-1182"
+        ]
+      },
+      {
+        "rank": 19,
+        "id": "named-custom-validator",
+        "status": "intentional-unsupported",
+        "finding": "No invented execution authority for Constraint::Custom names. Explicit unavailable/report replaces silent validation success. Backend-owned custom implementation is outside this filesystem's authored surface.",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:475-514",
+          "crates/threetched-fs/examples/typed_specialize.rs:120-602"
+        ]
+      }
+    ]
+  },
+  "proposed_rw_policy_and_memory_strategy": {
+    "format": "3tchedfs-rw-memory-policy/2",
+    "task_id": "fs-core-20261005",
+    "status": "implemented-source-unverified",
+    "implementation_status": "Current source implementation; tests and deployment pending",
+    "owner_directive": "No reusable caches; preserve identity and sealed capability admission; deploy then test.",
+    "interpretation": "Policy below describes authored current behavior, not a passed historical proposal. Source pointers and topology are required bounded contract ownership; explicitly returned snapshots and active FD buffers are transient ownership, never lookup caches.",
+    "access_matrix": [
+      {
+        "class": "Directory",
+        "read": "Fresh current discovery; per-opendir stable listing.",
+        "write": "Unsupported arbitrary node lifecycle mutation.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:885-1012"
+        ]
+      },
+      {
+        "class": "StaticJson",
+        "read": "Fresh selected immutable declaration/artifact; TypedObject payload sanitized public or explicit schema_only.",
+        "write": "EROFS",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:515-667"
+        ]
+      },
+      {
+        "class": "FrozenValue",
+        "read": "Sanitized captured immutable public state snapshot.",
+        "write": "EROFS",
+        "source_refs": [
+          "crates/threetched-fs/src/model.rs:92-144"
+        ]
+      },
+      {
+        "class": "WorkspaceField",
+        "read": "Current frozen workspace public state pointer.",
+        "write": "Stage complete validated candidate only under expected-object CAS; backend state untouched.",
+        "source_refs": [
+          "crates/threetched-fs/src/store.rs:198-249"
+        ]
+      },
+      {
+        "class": "LiveValue",
+        "read": "Fresh canonical committed public state with exact active catalog/policy pin and generation; absent/pending/invalid pointer unavailable.",
+        "write": "EROFS; direct SHM route read-only.",
+        "source_refs": [
+          "crates/threetched-fs/src/source.rs:42-149"
+        ]
+      },
+      {
+        "class": "CallFile",
+        "read": "Own originating descriptor's terminal receipt or attributed diagnostic only.",
+        "write": "Bounded schema-admitted input; exactly one canonical backend dispatch, permanent scoped operation reservation, durable linked attempt/terminal, exact result validation, no automatic replay.",
+        "source_refs": [
+          "crates/threetched-fs/src/fuse_fs.rs:275-581",
+          "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
+        ]
+      },
+      {
+        "class": "Symlink",
+        "read": "Relative semantic target inside mount.",
+        "write": "Unsupported link creation/retarget.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ]
+      },
+      {
+        "class": "ObjectHashFile",
+        "read": "Real captured artifact pin; not a digest of current live state.",
+        "write": "EROFS",
+        "source_refs": [
+          "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+        ]
+      }
+    ],
+    "read_protocol": [
+      "Resolve only pinned declared locator and validate identity/public exposure policy.",
+      "Read one bounded locked committed snapshot and decode fresh owned value; verify active catalog before/after live read.",
+      "Refresh discovery shape independently; snapshot existing open file/directory version until release.",
+      "Fail unavailable/pending/malformed/invalid/drift explicitly; no schema-template/stale-value/null fallback for authoritative reads."
+    ],
+    "write_protocol": [
+      "Check exact per-FD UID/access/local writable class and bounded input before acceptance.",
+      "Workspace: single local object writer; checked expected-object CAS under durable store lock; complete candidate/public constraints and immutable base; atomic file publication.",
+      "Call: exact sealed args and returns contract admission, identity/grants, canonical UUID reservation and confirmed durable attempt before effect.",
+      "Cancellation-owned backend commit must precede change notification; validate declared domain output, append durable linked terminal and journal status before completed receipt.",
+      "Unknown effects remain unknown; preserve operation UUID and query only declared caller-scoped proof recovery, never resubmit automatically."
+    ],
+    "memory_strategy": {
+      "reusable_caches": "none",
+      "fd_ownership": "Capacity charged before vector growth; RAII charge remains until descriptor and any admitted worker drop. Freed source decodes are not memoized.",
+      "limits": {
+        "input_bytes": 1048576,
+        "document_bytes": 16777216,
+        "total_fuse_serialized_capacity": 67108864,
+        "file_and_directory_handles": 256,
+        "async_fuse_jobs": 4,
+        "reply_waiters_per_handle": 32,
+        "canonical_engine_owners": 32,
+        "credential_bytes": 16384,
+        "journal_document_bytes": 8192,
+        "source_snapshot_bytes": 67108864,
+        "topology_nodes": 100000,
+        "json_depth": 128
+      },
+      "scope": "Limits bound serialized/source/staging/topology ownership, not every allocator/native backend or system-wide audit Vec. Large domain method buffers remain each backend owner's responsibility.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_buffers.rs:4-109",
+        "crates/threetched-fs/src/source.rs:21-22",
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:20-21"
+      ]
+    },
+    "concurrency": {
+      "callbacks": "Backend execution is asynchronous relative to FUSE loop; at most four jobs and32 per-FD flush waiters.",
+      "cancellation": "Exact elevation arguments are consumed inside owned task after cancellable compliance/session attribution and capacity admission, then dropped before audit. Dropping FD/caller does not erase admitted reservation/attempt/backend/terminal and never causes replay.",
+      "cross_process": "Workspace object CAS checks expected hash under existing exclusive writer lock; no local mutex alone is claimed cross-process protection.",
+      "cross_store": "Cozo journal, audit timing trail, and SHM/filesystem owners do not form one invented atomic transaction; failed uncertainty remains unknown."
+    },
+    "identity_rules": [
+      "Mounted mode declaration and UUID are provenance, not credentials; source authentication stays bridge.",
+      "Local UID ownership supplements kernel/default_permissions; it does not replace caller identity or grant capability.",
+      "No grants broadened, no alternate transport, no principal/session selectors in receipt arguments.",
+      "Private Cozo journal namespace receiver-derived and disjoint from public domain document keys; generic cognitive DB alias rejected."
+    ],
+    "validation": {
+      "status": "not-run",
+      "sequence": "source freeze -> preparatory generation -> native GNU release build -> snapshot/send-receive deployment -> tests and /verify",
+      "historical": "Prior audit/component receipts retained under verification.historical only."
+    },
+    "remaining_limits": [
+      "Existing global audit EventChain lifetime RAM growth.",
+      "No raw mmap/watch/arbitrary node mutation/cancellation rollback guarantees."
+    ]
+  },
+  "verification": {
+    "task_id": "fs-core-20261005",
+    "status": "implemented-source-unverified",
+    "source_review": "current implementations and citations refreshed",
+    "build": "Prior GNU workspace/native and generated-wrapper builds completed before Grok follow-up; current modified-source rebuild pending. Evidence: HANDOFF.md final2 and 211158Z preparation entries, reports/fs-core-20261005/native-build.json.",
+    "tests": "No current-source test claim by this contract refresh; separate owner-assigned testing agent owns execution. Grok source-test handoff claims require their dated evidence and do not establish complete deployed workflow proof.",
+    "deployment": "Prior baseline194135Z deployed, functional follow-up required; current source revision and prepared follow-up catalog1425 remain undeployed. See reports/fs-core-20261005/deployment.json and followup-preparation.json.",
+    "next_gate": "Wait for mounted-MCP/workflow source freeze, refresh affected fingerprints/citations, regenerate exports/specializations and compile native GNU release, then prepare immutable snapshot/send-receive activation and verify affected mounted workflow. Preserve separate test ownership.",
+    "historical": {
+      "fs_schema_20261005": {
+        "task_id": "fs-schema-20261005",
+        "status": "scoped validation passed; full workspace gate blocked",
+        "target": "x86_64-unknown-linux-gnu",
+        "schema_version": "1.0.0",
+        "schema_validation": {
+          "status": "passed",
+          "checks": [
+            "JSON Schema 2020-12 metaschema",
+            "contract self-validation",
+            "type and local reference closure",
+            "unique node/method identifiers",
+            "method-to-generator signature and route equality",
+            "source citation line bounds",
+            "source SHA-256 equality"
+          ],
+          "types": 82,
+          "node_variants": 42,
+          "routed_methods": 16,
+          "source_citations_checked": 667,
+          "log": "/var/tmp/fs-schema-20261005-final2-validate.log"
+        },
+        "generated_binding_compile": {
+          "status": "passed",
+          "generator_input": "crates/threetched-fs/docs/typed-filesystem.schema.json",
+          "output": "crates/threetched-fs/src/typed_bindings.rs",
+          "compile_integration": "examples/typed_check.rs includes the generated module, runtime and existing authoritative source modules; main.rs and production binary integration were not changed",
+          "deterministic_regeneration": "passed --check against the complete schema",
+          "logs": [
+            "/var/tmp/fs-schema-20261005-final2-generate.log",
+            "/var/tmp/fs-schema-20261005-final2-regenerate.log"
+          ]
+        },
+        "tests": {
+          "status": "passed",
+          "command": "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check",
+          "passed": 31,
+          "failed": 0,
+          "ignored": 0,
+          "coverage": [
+            "disposable immutable capture and real ObjectStore routes",
+            "same-owner typed entry and route guards",
+            "empty/special/reserved-looking field names",
+            "typed pointer/link target enumeration",
+            "schema-bound arguments and preserved terminal diagnostic stages",
+            "ordinary-directory impersonation refusal",
+            "bounded JSON input",
+            "backing corruption rejected on a subsequent get; no reusable value cache; prior owned result remains valid",
+            "existing imported source model/store/mounted helper tests"
+          ],
+          "timing_note": "31 tests passed before three lint-only expression fixes; final compilation and scoped Clippy passed afterward. Tests were not redundantly rerun for those expression changes.",
+          "log": "/var/tmp/fs-schema-20261005-final-test.log"
+        },
+        "route_fixture": {
+          "status": "passed",
+          "frozen_values": 14,
+          "object_hashes": 1,
+          "semantic_symlinks": 3,
+          "static_payloads": 8,
+          "log": "/var/tmp/fs-schema-20261005-final-run.log"
+        },
+        "scoped_clippy": {
+          "status": "passed",
+          "command": "cargo clippy -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate --example typed_validate --example typed_check -- -D warnings",
+          "log": "/var/tmp/fs-schema-20261005-final2-clippy.log"
+        },
+        "workspace_verify": {
+          "status": "failed at format gate",
+          "command": "cargo fmt --all -- --check",
+          "exit_code": 1,
+          "reason": "Pre-existing formatting drift across unrelated workspace source, including op-web; no unrelated source was reformatted.",
+          "log": "/var/tmp/fs-schema-20261005-final-verify-fmt.log",
+          "workspace_clippy": "skipped after failing format gate",
+          "workspace_tests": "skipped after failing format gate"
+        },
+        "unverified": [
+          "Live execution of the newly generated via-fuse bindings against an actual mount",
+          "Guest/credential/plain-view factory parity",
+          "Direct-shm/mmap route",
+          "Static specialization of each dynamic plugin method contract",
+          "Nested canonical receipt event/hash and backend output proof",
+          "Implementation of proposed RW/no-cache memory policy in the production filesystem"
+        ],
+        "deployment": "not deployed; no service, mount, grant, catalog or live state mutation",
+        "reproduction": [
+          "sh crates/threetched-fs/docs/typed-filesystem-build.sh",
+          "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs",
+          "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs --check",
+          "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_validate",
+          "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check"
+        ],
+        "execution_routing": "Cargo commands run from repository root through the assigned gpt-6-luna execution worker with CARGO_CALLER_FAMILY=gpt and CARGO_DISPATCHED=1; normal callers follow scripts/cargo-dispatch.md."
+      },
+      "pre_repair_gaps": {
+        "format": "3tchedfs/typed-filesystem-gaps/1",
+        "task_id": "fs-schema-20261005",
+        "scope": "Source analysis and generated bindings; production filesystem behavior is unchanged.",
+        "deployment": "not deployed",
+        "ranking": "Identity and committed-state correctness first, then typed access coverage and performance.",
+        "gaps": [
+          {
+            "rank": 1,
+            "id": "existing-cache-policy-conflict",
+            "status": "verified",
+            "affected_methods": [
+              "LiveValue.get"
+            ],
+            "finding": "TypedFuse currently retains rendered live values in live_cache across opens. The owner explicitly disallows caches in this session. Source behavior is documented, not endorsed by the proposed memory policy.",
+            "owner_policy": "no l1 cache. caches generall not allowed on this system",
+            "owner_policy_provenance": "User steering in fs-schema-20261005; policy instruction, not a source-code fact.",
+            "fixable": true,
+            "source_change": "Remove TypedFuse.live_cache and StateKey memoization. Each open should obtain an authorized committed snapshot through the canonical reader and decode it into a bounded transient handle buffer. Drop buffers on release; do not add per-mount, cross-mount or SHM result caches. Audit the existing one-second view metadata TTL against the same no-cache policy.",
+            "payoff": "Conforms read behavior and memory ownership to the owner's no-cache policy.",
+            "source_refs": [
+              "crates/threetched-fs/src/fuse_fs.rs:17-35",
+              "crates/threetched-fs/src/fuse_fs.rs:92-93",
+              "crates/threetched-fs/src/fuse_fs.rs:314-342"
+            ]
+          },
+          {
+            "rank": 2,
+            "id": "committed-state-and-exposure",
+            "status": "verified",
+            "affected_methods": [
+              "LiveValue.get",
+              "SourceCatalog.capture"
+            ],
+            "finding": "FUSE live reads stat/read a raw plugin JSON pathname without the existing projection transaction lock, publishing gate, pending-document/credential gates, or sealed public-state projection. Capture compares generations but its StateManifest decodes only generation and can substitute templates. A matching generation is not proof of a committed, identity-scoped state snapshot.",
+            "route_difference": "An authoritative direct reader using the existing projection API can reject an incomplete publication which the current FUSE reader may expose. Direct-shm is deliberately unavailable in the generated bindings.",
+            "fixable": true,
+            "source_change": "Use read_projection_snapshot_bounded_in (or an identity-scoped equivalent owned by the existing backend) in capture and live reads; apply the plugin-owned exposure policy with verified caller scope before projection. Return a typed unavailable/incomplete-publication result instead of silently substituting defaults when authority is required.",
+            "payoff": "Makes direct and mounted reads agree on committed state and identity boundaries; prerequisite to safe direct-shm access.",
+            "source_refs": [
+              "crates/threetched-fs/src/fuse_fs.rs:314-342",
+              "crates/threetched-fs/src/source.rs:40-43",
+              "crates/threetched-fs/src/source.rs:53-78",
+              "crates/threetched-fs/src/source.rs:86-123",
+              "crates/op-core/src/projection_transactions.rs:279-305",
+              "crates/op-core/src/projection_transactions.rs:425-489"
+            ]
+          },
+          {
+            "rank": 3,
+            "id": "canonical-mutations-are-not-blob-writes",
+            "status": "verified",
+            "affected_methods": [
+              "CallFile.invoke",
+              "WorkspaceField.put"
+            ],
+            "finding": "Workspace staging changes content-addressed local COW objects. A call authenticates an identity and executes a declared method through D-Bus/MutationEngine. These are different effects; a direct SHM/blob replacement cannot implement a plugin call.",
+            "route_difference": "CallFile has only via-fuse; no direct mutation implementation is emitted. Workspace put does not apply backend state.",
+            "fixable": true,
+            "source_change": "Keep mutations on the existing authenticated dispatch path. If a native typed transport is needed, expose the existing declaration, validation, identity, capability, audit and receipt contract through that owner rather than adding a store writer.",
+            "payoff": "Preserves identity and audit semantics while allowing generated typed arguments and results.",
+            "source_refs": [
+              "crates/threetched-fs/src/store.rs:143-189",
+              "crates/threetched-fs/src/fuse_fs.rs:187-253",
+              "crates/threetched-fs/src/dispatch.rs:190-252",
+              "crates/threetched-fs/src/mounted.rs:284-333"
+            ]
+          },
+          {
+            "rank": 4,
+            "id": "audit-attempt-versus-completion",
+            "status": "verified",
+            "affected_methods": [
+              "CallFile.invoke"
+            ],
+            "finding": "MutationEngine appends the attempt event and emits MethodCall before backend execution; durable audit persistence failure is logged. An event/hash alone does not prove effect completion. Caller cancellation does not cancel admitted backend work.",
+            "route_difference": "A direct mutation implementation would have to preserve admission, attempt ordering, owned execution, state publication and terminal result semantics. No such implementation is claimed.",
+            "fixable": true,
+            "source_change": "Add a linked, durable terminal outcome in the existing audit/receipt owner if completion-proof semantics are desired; preserve the attempt record. Define succeeded, failed and unknown outcomes plus retry rules. Do not reorder the existing attempt record and call it an equivalent change.",
+            "payoff": "Lets callers distinguish attempted, completed and unknown effects and avoid duplicate mutations after disconnect.",
+            "source_refs": [
+              "crates/op-grpc-bridge/src/mutation_engine.rs:3483-3559",
+              "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922",
+              "crates/op-grpc-bridge/src/owned_method_task.rs:15-38",
+              "crates/threetched-fs/src/mounted.rs:327-333"
+            ]
+          },
+          {
+            "rank": 5,
+            "id": "dynamic-schema-specialization",
+            "status": "verified",
+            "affected_methods": [
+              "CallFile.invoke",
+              "LiveValue.get",
+              "FrozenValue.get",
+              "WorkspaceField.put"
+            ],
+            "finding": "Plugin state and method args/results depend on the selected sealed catalog. The generic filesystem module uses an explicit recursive JSON sum type and the canonical runtime schema; it does not invent static Rust structs for every possible future plugin. Custom field validators are named but not executed by the standalone projection; OneOf accepts at least one reduced branch.",
+            "route_difference": "Full per-plugin compile-time shapes are not generated by this generic binding. JSON is structured and decoded, not opaque bytes.",
+            "fixable": true,
+            "source_change": "Specialize this generator against an explicitly pinned sealed PluginSchema catalog, using the existing schema authority for input/output definitions; carry the schema hash in generated method handles and reject a different catalog. Keep plugin custom validation in canonical dispatch.",
+            "payoff": "Compile-time per-plugin fields and tighter return types without a second plugin schema authority.",
+            "source_refs": [
+              "crates/threetched-fs/src/model.rs:202-219",
+              "crates/threetched-fs/src/model.rs:269-286",
+              "crates/threetched-fs/src/model.rs:361-364",
+              "crates/threetched-fs/src/model.rs:371-381",
+              "crates/threetched-fs/src/model.rs:413-421",
+              "crates/threetched-fs/src/dispatch.rs:103-108"
+            ]
+          },
+          {
+            "rank": 6,
+            "id": "topology-staleness",
+            "status": "verified",
+            "affected_methods": [
+              "Directory.list",
+              "LiveValue.get"
+            ],
+            "finding": "The namespace tree is built from captured object.value. Live file content changes at open, but newly added keys and array elements do not gain nodes in an existing view. Missing live pointers produce JSON null.",
+            "route_difference": "Enumerating current SHM keys would differ from mounted readdir. Bindings enumerate pinned topology to retain existing semantics.",
+            "fixable": true,
+            "source_change": "Add an explicit generation-pinned topology refresh owned by the filesystem, or define schema-backed map/array enumeration with a separate typed generation token. Update inode/cache invalidation at the same boundary.",
+            "payoff": "Reliable typed enumeration of changing collections.",
+            "source_refs": [
+              "crates/threetched-fs/src/namespace.rs:119-172",
+              "crates/threetched-fs/src/namespace.rs:323-423",
+              "crates/threetched-fs/src/fuse_fs.rs:329-342",
+              "crates/threetched-fs/src/fuse_fs.rs:346-360"
+            ]
+          },
+          {
+            "rank": 7,
+            "id": "workspace-mount-refresh",
+            "status": "verified",
+            "affected_methods": [
+              "WorkspaceField.put",
+              "FrozenValue.get",
+              "Directory.list"
+            ],
+            "finding": "ObjectStore stage_pointer holds the store-wide lock and publishes the workspace manifest atomically. FUSE then rebuilds its in-memory namespace. Direct store staging cannot refresh another running mount's namespace; concurrent open handles retain their original buffers.",
+            "route_difference": "A direct WorkspaceField.put would leave the existing mounted topology stale; the generated workspace mutation uses via-fuse. A refresh failure after successful store publication returns EIO even though staging already occurred.",
+            "fixable": true,
+            "source_change": "Provide an explicit store-generation notification and mount refresh acknowledgement through the filesystem owner; define conflict detection/versioned compare-and-swap for stale same-field writes if needed.",
+            "payoff": "Safe direct workspace staging and clear post-write consistency.",
+            "source_refs": [
+              "crates/threetched-fs/src/store.rs:143-189",
+              "crates/threetched-fs/src/store.rs:385-407",
+              "crates/threetched-fs/src/fuse_fs.rs:363-405",
+              "crates/threetched-fs/src/fuse_fs.rs:576-632"
+            ]
+          },
+          {
+            "rank": 8,
+            "id": "outcome-locators",
+            "status": "verified",
+            "affected_methods": [
+              "Outcome.get",
+              "CallFile.invoke"
+            ],
+            "finding": "result and error are synthetic last-outcome buffers indexed only by plugin and method inside the mount. They have no stable SHM/blob locator and can be overwritten by another call. The invoking file handle retains its own terminal receipt.",
+            "route_difference": "No direct outcome read exists. Bindings return call receipts from the same opened descriptor; Outcome.get is explicitly a last-method snapshot.",
+            "fixable": true,
+            "source_change": "If durable retrieval is required, add a caller-scoped operation ID and immutable terminal receipt location owned by canonical dispatch. Do not use shared last-result files for correlation.",
+            "payoff": "Reliable correlation and recovery after caller disconnect.",
+            "source_refs": [
+              "crates/threetched-fs/src/fuse_fs.rs:48-56",
+              "crates/threetched-fs/src/fuse_fs.rs:77-93",
+              "crates/threetched-fs/src/fuse_fs.rs:145-184",
+              "crates/threetched-fs/src/fuse_fs.rs:367-389",
+              "crates/threetched-fs/src/mounted.rs:264-282"
+            ]
+          },
+          {
+            "rank": 9,
+            "id": "absolute-symlinks",
+            "status": "verified",
+            "affected_methods": [
+              "Symlink.target"
+            ],
+            "finding": "Namespace links target absolute /plugins/... paths. Kernel following resolves them relative to the process root, which is not necessarily the mount root. The binding returns a semantic target without following the operating-system symlink.",
+            "route_difference": "Semantic mount-local resolution is intentionally different from kernel absolute-path following.",
+            "fixable": true,
+            "source_change": "Generate correct relative targets for operation/capability/dependency aliases, or formally constrain the mount to the process root and enforce that constraint.",
+            "payoff": "Aliases work reliably at arbitrary mount locations.",
+            "source_refs": [
+              "crates/threetched-fs/src/namespace.rs:186-211",
+              "crates/threetched-fs/src/fuse_fs.rs:535-541"
+            ]
+          },
+          {
+            "rank": 10,
+            "id": "no-posix-segment-or-zero-copy-layout",
+            "status": "verified",
+            "affected_methods": [
+              "FrozenValue.get",
+              "LiveValue.get",
+              "map"
+            ],
+            "finding": "The filesystem consumes ordinary JSON/OPBLOB files under tmpfs paths with fs::read. ObjectStore JSON is compact content-addressed BLAKE3 data, distinct from the source OPBLOB01 binary schema container. No POSIX shared-memory segment name or fixed-layout plugin state record is exposed by this code.",
+            "route_difference": "BlobRef and ShmHandle are immutable owned decoded values, not mapped borrowed Rust structs. No map method or shm_open implementation is emitted; segment size/alignment/lifetime cannot be invented from a /dev/shm prefix.",
+            "fixable": true,
+            "source_change": "If measured decoding cost warrants it, define a versioned validated binary state ABI in the existing owner, with publication, mapping lifetime and exposure rules. For current JSON, a bounded mapped byte source still requires decoding and does not make T zero-copy.",
+            "payoff": "Performance only after correctness and a measured need; prevents invalid typed mmap claims.",
+            "source_refs": [
+              "crates/threetched-fs/src/source.rs:11-17",
+              "crates/threetched-fs/src/source.rs:143-160",
+              "crates/threetched-fs/src/store.rs:14",
+              "crates/threetched-fs/src/store.rs:297-309",
+              "crates/threetched-fs/src/store.rs:340-350",
+              "crates/threetched-fs/src/fuse_fs.rs:314-342"
+            ]
+          },
+          {
+            "rank": 11,
+            "id": "nested-receipt-contract",
+            "status": "verified",
+            "affected_methods": [
+              "CallFile.invoke"
+            ],
+            "finding": "The mounted helper validates outer plugin/method attribution, declaration metadata, successful fsync and existence of result. It does not validate nested engine success/event_id/event_hash or the domain result against MethodDecl.returns. The generic binding preserves that nested structured result without claiming a verified audit proof.",
+            "fixable": true,
+            "source_change": "Define and validate the common engine receipt envelope in its existing owner, then validate the nested domain result against the pinned method return schema. Keep a distinct typed unknown-outcome error when a backend effect may already have occurred.",
+            "payoff": "Typed terminal results and stronger completion evidence without retrying an ambiguous mutation.",
+            "source_refs": [
+              "crates/threetched-fs/src/mounted.rs:336-368",
+              "crates/threetched-fs/src/dispatch.rs:273-284",
+              "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922"
+            ]
+          },
+          {
+            "rank": 12,
+            "id": "mount-modes-and-cancellation",
+            "status": "verified",
+            "affected_methods": [
+              "TypedFilesystem.via_fuse",
+              "CallFile.invoke",
+              "watch",
+              "seal",
+              "map"
+            ],
+            "finding": "The new mounted binding pins a declared human session; guest kernel-authenticated, credential-backed and plain view mounts may not expose session_id and therefore do not have equivalent factory support. The FUSE loop blocks while the scoped D-Bus thread is joined; FUSE_INTERRUPT is unsupported. No watch, map, seal, capture, workspace commit/abort or snapshot control node is projected.",
+            "fixable": true,
+            "source_change": "Add a verifiable public mount-mode/identity declaration without credentials for the other supported modes. Define cancellation semantics in the existing operation owner before adding asynchronous handles. Expose additional operations only through an explicitly authored canonical schema; ObjectStore CLI lifecycle methods are not filesystem node methods.",
+            "payoff": "Broader factory coverage and responsive mounts with honest cancellation guarantees.",
+            "source_refs": [
+              "crates/threetched-fs/src/fuse_fs.rs:59-73",
+              "crates/threetched-fs/src/fuse_fs.rs:120-125",
+              "crates/threetched-fs/src/fuse_fs.rs:207-253",
+              "crates/threetched-fs/src/namespace.rs:101-215",
+              "crates/threetched-fs/src/namespace.rs:276-321",
+              "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:173-175"
+            ]
+          }
+        ],
+        "opaque_payloads": {
+          "status": "verified",
+          "projected_file_contents": [],
+          "explanation": "Projected payloads are structured JSON, hash text, or symlink targets. Runtime-defined JSON uses a recursive JSON type plus the canonical sealed schema, not Opaque. Unconsumed OPBLOB binary sections are outside the projected content contract; see schema backing evidence.",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:129-211",
+            "crates/threetched-fs/src/namespace.rs:491-504",
+            "crates/threetched-fs/src/source.rs:174-215"
+          ]
+        },
+        "unverified": [
+          "Performance and end-to-end behavior of a future direct-shm implementation.",
+          "Durable completion outcome for every individual plugin/backend method; only the common dispatch and projection paths were traced.",
+          "Live mounted execution of the new generated binding module; no user operation was submitted for this analysis."
+        ]
+      }
+    }
+  },
+  "unverified": [
+    "No current release build, deployed workflow, test or /verify receipt has run for fs-core-20261005.",
+    "Backend-specific effects, rollback and domain invariants are still owned by each sealed plugin; result validation does not invent a rollback proof.",
+    "Raw mmap/zero-copy/POSIX segment layouts are intentionally unsupported; ShmHandle is an owned decoded committed public snapshot.",
+    "Global EventChain lifetime RAM retention and long-run workload measurements are existing system-wide concerns outside this targeted filesystem repair."
+  ],
+  "authority": {
+    "owner_plugin": "tched_fs",
+    "authoring_source": "crates/op-plugins/src/state_plugins/tched_fs_contract.rs",
+    "derived_exports": [
+      "crates/threetched-fs/docs/typed-filesystem.schema.json",
+      "crates/threetched-fs/docs/typed-filesystem-binding-input.json",
+      "crates/threetched-fs/docs/typed-filesystem-provenance.json",
+      "crates/threetched-fs/docs/typed-filesystem-nodes.evidence.json",
+      "crates/threetched-fs/docs/typed-filesystem-backing.evidence.json",
+      "crates/threetched-fs/docs/typed-filesystem-gaps.json",
+      "crates/threetched-fs/docs/typed-filesystem-policy.json",
+      "crates/threetched-fs/docs/typed-filesystem-verification.json"
+    ],
+    "maintenance": "Edit the plugin-owned embedded Rust contract, then run typed_export. Exported JSON is not an independent authoring source.",
+    "backend_schema_authority": "Each referenced backend PluginSchema remains the manifest-pinned sealed authority for its state, arguments, returns and capability admission.",
+    "deployment": {
+      "status": "source-only",
+      "live_seal": false,
+      "live_catalog_change": false,
+      "live_deployment": false
+    },
+    "memory": {
+      "policy": "No reusable filesystem payload caches",
+      "document": "Fresh owned decode of embedded contract for each call; immutable embedded text is source, not a parsed-value cache.",
+      "bindings": "Fresh owned decode per API operation; pinned topology, locators, schema/identity provenance and explicitly returned immutable snapshots are bounded ownership, not reusable rendered results.",
+      "production": "FUSE retains only active per-FD snapshots/staging/terminal bytes; they remain charged until the handle and any admitted worker release them. No cross-call latest result/error files.",
+      "remaining_system_limit": "The pre-existing global EventChain retains a lifetime Vec of events; its system-wide RAM retention is outside this filesystem repair."
+    },
+    "verification": {
+      "historical_receipts": "verification.historical retains pre-repair audit receipts only. They do not prove current source, build or deployment.",
+      "migration_status": "Authored source; no current tests have run."
+    },
+    "refresh": {
+      "task_id": "fs-core-20261005",
+      "status": "source-frozen-unverified",
+      "inventory": {
+        "node_variants": 40,
+        "semantic_classes": 8,
+        "semantic_methods": 20,
+        "type_entries": 91,
+        "fuse_operations": 44
+      },
+      "generation": "Prior exports/specialization ran; regeneration required after current mounted-MCP/workflow source freeze.",
+      "release_build": "Prior final2 GNU compilation completed before Grok mounted-MCP changes; current-source build pending.",
+      "deployment": "Baseline194135Z active; current revision not activated. External dated receipt: reports/fs-core-20261005/deployment.json.",
+      "tests": "not run"
+    },
+    "import": {
+      "task_id": "fs-contract-20261005",
+      "imported_from_task": "fs-schema-20261005",
+      "imported_document_sha256": "faf1a75b09d4b05fae6e2a0f317f3e0004a5a41f3e28531af2c678dbd40c4435",
+      "imported_at_utc": "2026-10-05",
+      "historical_versioning": {
+        "source_files": [
+          {
+            "sha256": "b1b31b4008cf0513c00e23f1b09570ebd2851ae1e8edc626cad3f7e23fa59630",
+            "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs"
+          },
+          {
+            "sha256": "cba7d11c358e011d58767e53f9cdae5f451ac8dd06a2c17ec2156a286d5d43f4",
+            "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs"
+          },
+          {
+            "sha256": "09eb6d57411c29d23f28d19c0709e3c59ce19e2bf7f14bdf9c46f44cc31f59f3",
+            "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/session.rs"
+          },
+          {
+            "sha256": "313296519b762aa21593f142dd556924f4c014cdf74ec58501a4c19998db9bd2",
+            "path": "crates/op-blob/src/blob.rs"
+          },
+          {
+            "sha256": "80f067e5598ad88e424ca96861eec43e44b90351cc63e18f4298c9d428cf5c80",
+            "path": "crates/op-blob/src/catalog.rs"
+          },
+          {
+            "sha256": "22c60c25b41b1ac9f7677008c872a509ded9aa24f6c0363a56bb728de6f187d0",
+            "path": "crates/op-blob/src/identity.rs"
+          },
+          {
+            "sha256": "f22db8e3570c63e30f88155b6168aa9d90315c4b36966d4eff0b6fa8ab1356e8",
+            "path": "crates/op-blob/src/lib.rs"
+          },
+          {
+            "sha256": "52042299ff89361f744c423e2215c1eca026c647e58c6b3cfcca094e5f373515",
+            "path": "crates/op-core/src/identity_projection_transaction.rs"
+          },
+          {
+            "sha256": "dc28bf6bfa9e99dd435e7605ec5fa1051165998ff9c360aa38a7bd0307ec9077",
+            "path": "crates/op-core/src/projection_shm.rs"
+          },
+          {
+            "sha256": "b1cd6ace0dda3e50a1677cc9629b9c896c28005ed1570b8280a193e30be58274",
+            "path": "crates/op-core/src/projection_transactions.rs"
+          },
+          {
+            "sha256": "9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26",
+            "path": "crates/op-grpc-bridge/src/lungs_socket.rs"
+          },
+          {
+            "sha256": "6eaca04bc700ef996ae16176fb4c46dd1a6a757b012f94e3b645d23b8495373a",
+            "path": "crates/op-grpc-bridge/src/mutation_engine.rs"
+          },
+          {
+            "sha256": "6ef8da351c5861be9081261c749ac969e7cf958e891cc59d6c5cc7bfb9e4a450",
+            "path": "crates/op-grpc-bridge/src/owned_method_task.rs"
+          },
+          {
+            "sha256": "590a83fc5b8a124944f33a6931c29ebe76b51caddaea95682db8742a960e2541",
+            "path": "crates/op-grpc-bridge/src/schema_router.rs"
+          },
+          {
+            "sha256": "3c82d3e1358dfd919231a5885468bc9e442044e44191f22cd4fd05c8bbb5a5cf",
+            "path": "crates/op-grpc-bridge/src/state_tree_fold.rs"
+          },
+          {
+            "sha256": "12b253adbc51b280a457eccd019174cff8107e10a42f70d4b419bd2233bcc891",
+            "path": "crates/op-plugins/src/bin/opblob.rs"
+          },
+          {
+            "sha256": "359e328c190c3847231ecdb87449fd95fde53741a063cfc0c1d0b262359e8f17",
+            "path": "crates/op-state-store/src/plugin_schema.rs"
+          },
+          {
+            "sha256": "c649f87cc0c979713261d738de708a0175dec601c23897e40c358d1370ac2362",
+            "path": "crates/op-state-store/src/public_state.rs"
+          },
+          {
+            "sha256": "34525606d8f08069ab1eb5f50f5b1cd257cb0abbff6b2fa2b0ac072bb28dc0cf",
+            "path": "crates/threetched-fs/Cargo.toml"
+          },
+          {
+            "sha256": "38f51eea39745abb037871bcfdd4c4fb747e3ae6e6d18f9518441431a739e3cd",
+            "path": "crates/threetched-fs/examples/typed_generate.rs"
+          },
+          {
+            "sha256": "6c1ca38e1d43d9d2e5b429da58af84f2354834f3bd21854e6b4005c33897b531",
+            "path": "crates/threetched-fs/src/dispatch.rs"
+          },
+          {
+            "sha256": "81aea4519626b0238ec3f588d5443606d7551eaa696a94fff7e8cbf9c37e2279",
+            "path": "crates/threetched-fs/src/fuse_fs.rs"
+          },
+          {
+            "sha256": "3c19610a6d645cdd963fb6928049ec4dc4e687d3d0713c6a5274b51990d7b154",
+            "path": "crates/threetched-fs/src/main.rs"
+          },
+          {
+            "sha256": "502bdbe6a9b47dd1970135d985d8f0956e1837fe8b9ccbb8523d2addcba44919",
+            "path": "crates/threetched-fs/src/model.rs"
+          },
+          {
+            "sha256": "246195e1c34fdd92ba39c08f7f5618735812816179d08db56e941265c2acb73f",
+            "path": "crates/threetched-fs/src/mounted.rs"
+          },
+          {
+            "sha256": "abb0236369fb624e8ad07a5db138f5f79884285f0e2caa00e1a80b2d3e4dba97",
+            "path": "crates/threetched-fs/src/namespace.rs"
+          },
+          {
+            "sha256": "86f4bc6455679aeebcddb1386679e08eb342c44b38b587d78661341d5170c0a8",
+            "path": "crates/threetched-fs/src/source.rs"
+          },
+          {
+            "sha256": "bbcfd9886f146c4faa718825ad88443f5b3ec347e1ba8d7005b5a080cf500acc",
+            "path": "crates/threetched-fs/src/store.rs"
+          },
+          {
+            "sha256": "811ecff5f4ccb8695f47e9c52718a5ff237c5d85fe5f426817bd340b0b83c446",
+            "path": "crates/threetched-fs/src/typed_runtime.rs"
+          },
+          {
+            "sha256": "bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05",
+            "path": "deploy/config/container-socket-contract.schema.json"
+          },
+          {
+            "sha256": "aa6fe9812af03fc62634305ddef99f2324881459095aed0f11cc4f9b279323c9",
+            "path": "deploy/runit/threetched-fs/run"
+          }
+        ],
+        "source_hash_algorithm": "SHA-256",
+        "assembly_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+        "schema_version": "1.0.0",
+        "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+        "derivation": "Working-tree source; source_commit is the baseline, source_files pins actual analyzed contents including pre-existing uncommitted work."
+      },
+      "status": "historical-import-provenance-only; pre-repair pins do not assert current contents"
+    }
+  },
+  "plugin_surface": {
+    "plugin_id": "tched_fs",
+    "version": "2.0.8",
+    "methods": [
+      {
+        "name": "get_protocol",
+        "read_only": true,
+        "capability": "cap.storage.3tchedfs.protocol.read@v1"
+      },
+      {
+        "name": "get_contract",
+        "read_only": true,
+        "capability": "cap.storage.3tchedfs.contract.read@v1",
+        "return": "GetContractOutput {contract: FilesystemContract}",
+        "exact_const": true
+      },
+      {
+        "name": "get_receipt",
+        "read_only": true,
+        "capability": "cap.storage.3tchedfs.receipt.read@v1",
+        "input": "GetMethodReceiptInput",
+        "return": "MethodReceiptRecovery",
+        "scope": "receiver exact actor + Option<session>; no caller-selected scope; no private domain result"
+      }
+    ],
+    "source_refs": [
+      "crates/op-plugins/src/state_plugins/tched_fs.rs:18-22",
+      "crates/op-plugins/src/state_plugins/tched_fs.rs:241-338",
+      "crates/op-grpc-bridge/src/mutation_engine.rs:4198-4221"
+    ]
+  },
+  "runtime_observations": {
+    "status": "historical-only",
+    "observation": [
+      {
+        "basis": "read-only runtime",
+        "observed_at": "2026-10-05T17:25Z",
+        "commands": [
+          "findmnt -no TARGET,FSTYPE,OPTIONS /run/mount/3tchedFS",
+          "cat /run/mount/3tchedFS/.3tchedfs.json",
+          "readlink /run/mount/3tchedFS/operations/chat_router/Chat"
+        ],
+        "results": {
+          "mountpoint": "/run/mount/3tchedFS",
+          "fstype": "fuse.3tchedFS",
+          "options": "rw,nosuid,nodev,noexec,noatime,user_id=0,group_id=0,default_permissions,allow_other",
+          "format": "3tchedfs/1",
+          "view_id": "005d511a82dfdbec332a85f93ed0be81e3e2f38ea94b1b74103b2c57901f645d",
+          "catalog_hash": "df76b99ce180e967bcb4199c946036bcccf614229748d909f612fb483dbde41d",
+          "catalog_generation": 1287,
+          "object_count": 68,
+          "workspace_id": null,
+          "session_selector_present": true,
+          "invocation_reference_present": false,
+          "operation_symlink_target": "/plugins/chat_router/operations/Chat"
+        },
+        "limits": "Does not prove exact running binary/source equality, operation execution, grant admission, private state isolation, file type changes, cancellation, runtime directory freshness or xattr kernel errno."
+      }
+    ],
+    "interpretation": "Pre-repair mounted observations cannot establish deployment or behavior of this source revision."
+  }
+}
+"########;

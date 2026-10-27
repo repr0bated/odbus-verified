@@ -1,4 +1,4 @@
-//! Native tched_router MCP server facade plus the bridge-owned public gateway
+//! Native chat_router MCP server facade plus the bridge-owned public gateway
 //! toolset policy.
 
 use crate::state_plugins::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
@@ -172,7 +172,7 @@ pub struct ExecutionResult {
 /// MCP state plugin
 pub struct McpStatePlugin {
     // Retained for constructor compatibility. Native ownership belongs to
-    // tched_router; this facade never reads or writes either value.
+    // chat_router; this facade never reads or writes either value.
     _state_store: Arc<dyn op_state_store::StateStore>,
     _config_path: String,
 }
@@ -186,7 +186,7 @@ impl McpStatePlugin {
     }
 }
 
-// ── Schema-only borrowed view of the native tched_router MCP section ──
+// ── Schema-only borrowed view of the native chat_router MCP section ──
 
 fn default_empty_object() -> serde_json::Value {
     serde_json::json!({})
@@ -198,7 +198,7 @@ fn default_empty_object() -> serde_json::Value {
 pub struct McpState {
     #[serde(default = "default_empty_object")]
     #[schemars(
-        description = "Native tched_router mcp configuration",
+        description = "Native chat_router mcp configuration",
         extend("x-oscal-subid" = "exp.software.plugin.mcp.config@v2")
     )]
     config: serde_json::Value,
@@ -226,11 +226,11 @@ pub(crate) fn mcp_schema() -> PluginSchema {
         .get_mut("config")
         .expect("MCP config field exists")
         .field_type =
-        op_state_store::FieldType::exact_json_schema(super::tched_router_contract::section("mcp"))
+        op_state_store::FieldType::exact_json_schema(super::chat_router_contract::section("mcp"))
             .expect("native MCP section is a self-contained exact schema");
-    schema.dependencies = vec!["tched_router".to_string()];
+    schema.dependencies = vec!["chat_router".to_string()];
 
-    let native = super::tched_router::tched_router_schema();
+    let native = super::chat_router::chat_router_schema();
     let mut get_config = native.methods["GetMcpConfig"].clone();
     get_config.name = "get_config".to_string();
     get_config.required_capability = Some("mcp.read".to_string());
@@ -291,16 +291,16 @@ impl StatePlugin for McpStatePlugin {
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {
         let _ = (current, desired);
-        anyhow::bail!("mcp facade has no local diff owner; use tched_router PatchConfig")
+        anyhow::bail!("mcp facade has no local diff owner; use chat_router PatchConfig")
     }
 
     async fn apply_state(&self, diff: &StateDiff) -> Result<ApplyResult> {
         let _ = diff;
-        anyhow::bail!("mcp facade has no local apply owner; use tched_router PatchConfig")
+        anyhow::bail!("mcp facade has no local apply owner; use chat_router PatchConfig")
     }
 
     async fn verify_state(&self, _desired: &Value) -> Result<bool> {
-        anyhow::bail!("mcp facade has no local verification owner; use tched_router readback")
+        anyhow::bail!("mcp facade has no local verification owner; use chat_router readback")
     }
 
     async fn create_checkpoint(&self) -> Result<Checkpoint> {
@@ -369,12 +369,12 @@ mod tests {
         assert_eq!(schema.name, "mcp");
         assert_eq!(schema.version, "3.0.0");
         assert!(schema.fields.contains_key("config"));
-        assert_eq!(schema.dependencies, vec!["tched_router".to_string()]);
+        assert_eq!(schema.dependencies, vec!["chat_router".to_string()]);
     }
 
     #[test]
     fn native_method_contracts_are_cloned_before_facade_renames() {
-        let native = crate::state_plugins::tched_router::tched_router_schema();
+        let native = crate::state_plugins::chat_router::chat_router_schema();
         let facade = mcp_schema();
         for (facade_name, native_name) in [
             ("get_config", "GetMcpConfig"),

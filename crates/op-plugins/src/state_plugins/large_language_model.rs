@@ -1,8 +1,8 @@
-//! Streaming generation facade backed exclusively by the canonical tched_router.
+//! Streaming generation facade backed exclusively by the canonical chat_router.
 //!
 //! Only stream_generate remains: its llm.invoke admission and pinned generation
 //! origin protect canonical private jobs. Provider/model discovery, selection,
-//! configuration and synchronous inference use tched_router directly.
+//! configuration and synchronous inference use chat_router directly.
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -101,21 +101,21 @@ pub(crate) fn large_language_model_schema() -> PluginSchema {
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "large_language_model",
         "3.0.0",
-        "Streaming generation facade; tched_router exclusively owns provider, model, configuration, inference, and state",
+        "Streaming generation facade; chat_router exclusively owns provider, model, configuration, inference, and state",
         &root,
     );
     let state = simd_json::serde::to_owned_value(LargeLanguageModelPlugin::state())
         .expect("state serializes");
     super::schemars_adapter::apply_state_defaults(&mut schema, &state);
     schema.example = Some(state);
-    schema.dependencies = vec!["tched_router".to_string()];
-    // The facade starts one canonical private tched_router generation job.
+    schema.dependencies = vec!["chat_router".to_string()];
+    // The facade starts one canonical private chat_router generation job.
     // Existing StateSync subscriptions read committed job children.
     schema.methods.insert(
         "stream_generate".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
-            super::tched_router::generation::StartGenerationInput,
-            super::tched_router::generation::GenerationMutationOutput,
+            super::chat_router::generation::StartGenerationInput,
+            super::chat_router::generation::GenerationMutationOutput,
         >(
             "stream_generate",
             SideEffect::Mutation,
@@ -129,7 +129,7 @@ pub(crate) fn large_language_model_schema() -> PluginSchema {
         CapabilityDecl {
             id: "llm.invoke".to_string(),
             description:
-                "Invoke the generation facade; the exact nested tched_router start grant is also required."
+                "Invoke the generation facade; the exact nested chat_router start grant is also required."
                     .to_string(),
         },
     );

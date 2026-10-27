@@ -84,29 +84,41 @@ printf '%s' "$CONTROL_PLANE_MODEL_PROVIDER" |
 manifest_format=$(jq -er '.format' "$THREETCHED_MANIFEST")
 manifest_tag=$(jq -er '.upstream.tag | select(test("^v[0-9]+[.][0-9]+[.][0-9]+([-+][A-Za-z0-9.-]+)?$"))' "$THREETCHED_MANIFEST")
 manifest_binary_sha256=$(jq -er '.artifact.sha256' "$THREETCHED_MANIFEST")
-[ "$manifest_format" = opdbus.threetched.v1 ] || { echo "unsupported tched_router provenance" >&2; exit 78; }
-jq -e '.artifact.name == "threetched" and
-    (.upstream.commit | test("^[0-9a-f]{40}$")) and
-    (.patches.branding_sha256 | test("^[0-9a-f]{64}$"))' "$THREETCHED_MANIFEST" >/dev/null || {
-    echo "invalid threetched artifact provenance" >&2; exit 78;
-}
-[ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
-[ "$("$THREETCHED_BIN" --version)" = "threetched ${manifest_tag#v}" ] || { echo "unexpected threetched version" >&2; exit 78; }
+if [ "$manifest_format" = "opdbus.threetched.v2" ]; then
+    jq -e '.artifact.name == "threetched" and
+        .artifact.upstream_binary == "zeroclaw" and
+        (.upstream.commit | test("^[0-9a-f]{40}$"))' "$THREETCHED_MANIFEST" >/dev/null || {
+        echo "invalid threetched artifact provenance" >&2; exit 78;
+    }
+    [ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
+    [ "$("$THREETCHED_BIN" --version)" = "zeroclaw ${manifest_tag#v}" ] || { echo "unexpected threetched version" >&2; exit 78; }
+elif [ "$manifest_format" = "opdbus.threetched.v1" ]; then
+    jq -e '.artifact.name == "threetched" and
+        (.upstream.commit | test("^[0-9a-f]{40}$")) and
+        (.patches.branding_sha256 | test("^[0-9a-f]{64}$"))' "$THREETCHED_MANIFEST" >/dev/null || {
+        echo "invalid threetched artifact provenance" >&2; exit 78;
+    }
+    [ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
+    [ "$("$THREETCHED_BIN" --version)" = "threetched ${manifest_tag#v}" ] || { echo "unexpected threetched version" >&2; exit 78; }
+else
+    echo "unsupported tched_router provenance: $manifest_format" >&2
+    exit 78
+fi
 
-install -d -o jeremy -g jeremy -m 0700 "$CONFIG_DIR" "$CONFIG_DIR/home"
+install -d -o root -g root -m 0700 "$CONFIG_DIR" "$CONFIG_DIR/home"
 if [ ! -f "$CONFIG_DIR/config.toml" ]; then
-    install -o jeremy -g jeremy -m 0600 "$BOOTSTRAP_CONFIG" "$CONFIG_DIR/config.toml"
+    install -o root -g root -m 0600 "$BOOTSTRAP_CONFIG" "$CONFIG_DIR/config.toml"
 fi
 if [ -d "$BOOTSTRAP_SKILLS" ]; then
-    install -d -o jeremy -g jeremy -m 0755 "$CONFIG_DIR/shared/skills/default"
+    install -d -o root -g root -m 0755 "$CONFIG_DIR/shared/skills/default"
     cp -a "$BOOTSTRAP_SKILLS"/. "$CONFIG_DIR/shared/skills/default/"
-    chown -R jeremy:jeremy "$CONFIG_DIR/shared/skills/default"
+    chown -R root:root "$CONFIG_DIR/shared/skills/default"
 fi
 
 # Use the threetched configuration owner for both fresh installs and migration.
 # Observe model presence before init: init itself supplies a threetched default.
 threetched_config() {
-    chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+    chpst -u root:root env HOME="$CONFIG_DIR/home" USER=root \
         PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
         "$THREETCHED_BIN" config "$@" --config-dir "$CONFIG_DIR"
 }
@@ -295,7 +307,7 @@ jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
    ["opencode","cp_route_glm_53_flash"],["anthropic","cp_route_qwen38_flash"],
    ["opencode","cp_route_gpt6_luna"],["anthropic","cp_route_claude_fable_51"]] |
   map({op:"add",path:("/providers/models/" + .[0] + "/go_" + .[1] + "/api_key"),value:$key})' |
-    chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+    chpst -u root:root env HOME="$CONFIG_DIR/home" USER=root \
         PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
         "$THREETCHED_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 
@@ -327,7 +339,7 @@ if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
        {op:"add",path:($p+"/native_tools"),value:false},
        {op:"add",path:($p+"/api_key"),value:$key}
       ]' |
-        chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+        chpst -u root:root env HOME="$CONFIG_DIR/home" USER=root \
             PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
             "$THREETCHED_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 else
@@ -335,11 +347,11 @@ else
 fi
 
 /usr/local/libexec/op-dbus/helpers/prepare-salad-control-plane "$CONFIG_DIR"
-export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin
+export HOME="$CONFIG_DIR/home" USER=root PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin
 export THREETCHED_CONFIG_DIR="$CONFIG_DIR"
 # The Sled-authenticated MCP door remains the identity authority. These are
 # public endpoint/CA settings, never reconstructed credentials.
 export OPDBUS_SLED_AUTH_URL OPDBUS_SLED_CA_FILE
 unset TCHED_ROUTER_SANITIZED
-exec chpst -u jeremy:jeremy \
+exec chpst -u root:root \
     "$THREETCHED_BIN" daemon --config-dir "$CONFIG_DIR" --host "$HOST" --port "$PORT" --log-level warn

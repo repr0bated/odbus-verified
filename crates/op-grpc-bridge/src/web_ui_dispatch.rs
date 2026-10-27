@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 
 use crate::{
     interceptor::load_capability_grants, method_contract_admission,
-    mutation_engine::MutationEngine, project_dispatch, tched_router_admission::FacadeOrigin,
+    mutation_engine::MutationEngine, project_dispatch, chat_router_admission::FacadeOrigin,
 };
 use op_plugins::state_plugins::web_ui_methods::{TargetPlan, complete_method, plan_method};
 use op_state_store::PluginSchema;

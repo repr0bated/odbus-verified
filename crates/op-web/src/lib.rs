@@ -46,7 +46,7 @@ pub mod sse;
 pub mod state;
 pub mod state_manager_client;
 pub mod state_tree;
-pub mod tched_router_routes;
+pub mod chat_router_routes;
 pub mod users;
 pub mod websocket;
 pub mod wireguard;

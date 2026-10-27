@@ -1,0 +1,55 @@
+path	lines	status	read_ranges	notes
+crates/op-chat/Cargo.toml	52	complete	1-52	Sequential full read; no tched substring identified
+crates/op-chat/DESIGN.md	2740	complete	1-2740	Sequential full read; retain source/design distinctions
+crates/op-chat/SPEC.md	2297	complete	1-2297	Sequential full read
+crates/op-chat/build.rs	41	complete	1-41	Sequential full read
+crates/op-chat/compare-op-chat.md	141	complete	1-141	Sequential full read
+crates/op-chat/proto/agents.proto	459	complete	1-459	Sequential full read
+crates/op-chat/proto/chat.proto	119	complete	1-119	Four threetched occurrences
+crates/op-chat/proto/orchestration.proto	954	complete	1-954	Sequential full read
+crates/op-chat/src/actor.rs	730	complete	1-730	Sequential full read
+crates/op-chat/src/agent_tools.rs	713	complete	1-713	Three incidental matched occurrences
+crates/op-chat/src/bin/list_tools_client.rs	48	complete	1-48	Sequential full read
+crates/op-chat/src/chat_service.rs	238	complete	1-238	Source has routing TODO and echo stub; not runtime verified
+crates/op-chat/src/forced_execution.rs	488	complete	1-488	Sequential full read
+crates/op-chat/src/forced_tool_pipeline.rs	301	complete	1-301	Sequential full read
+crates/op-chat/src/lib.rs	40	complete	1-40	Sequential full read
+crates/op-chat/src/memory_loop.rs	523	complete	1-523	One incidental matched occurrence
+crates/op-chat/src/nl_admin.rs	757	complete	1-757	Sequential full read
+crates/op-chat/src/orchestration/error.rs	490	complete	1-490	Sequential full read
+crates/op-chat/src/orchestration/grpc_pool.rs	1403	complete	1-1403	Sequential full read
+crates/op-chat/src/orchestration/mod.rs	357	complete	1-357	Sequential full read
+crates/op-chat/src/orchestration/proto/.gitkeep	0	complete	empty	Empty inventory entry dispositioned
+crates/op-chat/src/orchestration/proto/mod.rs	16	complete	1-16	Sequential full read
+crates/op-chat/src/orchestration/proto/op_chat.chat.rs	605	complete	1-605	Two threetched generated comments
+crates/op-chat/src/orchestration/proto/op_chat.orchestration.rs	7634	complete	1-7634	Sequential reads completed through EOF; no tched occurrence identified
+crates/op-chat/src/orchestration/services/agent_execution.rs	428	complete	1-428	Sequential full read
+crates/op-chat/src/orchestration/services/agent_lifecycle.rs	330	complete	1-330	Sequential full read
+crates/op-chat/src/orchestration/services/backend_architect.rs	381	complete	1-381	Sequential full read
+crates/op-chat/src/orchestration/services/context_manager.rs	539	complete	1-539	Sequential full read
+crates/op-chat/src/orchestration/services/memory_service.rs	490	complete	1-490	Sequential full read
+crates/op-chat/src/orchestration/services/mod.rs	300	complete	1-300	Sequential full read
+crates/op-chat/src/orchestration/services/rust_pro.rs	483	complete	1-483	Sequential full read
+crates/op-chat/src/orchestration/services/sequential_thinking.rs	426	complete	1-426	Sequential full read
+crates/op-chat/src/orchestration/services/workstack.rs	465	complete	1-465	Sequential full read
+crates/op-chat/src/orchestration/skills.rs	479	complete	1-479	Sequential full read; no tched occurrence identified
+crates/op-chat/src/orchestration/skills_builtin/architecture_patterns.md	35	complete	1-35	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/auth_implementation_patterns.md	65	complete	1-65	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/btrfs_deployment.md	87	complete	1-87	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/code_review_excellence.md	61	complete	1-61	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/debugging_strategies.md	85	complete	1-85	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/distributed_tracing.md	65	complete	1-65	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/e2e_testing_patterns.md	58	complete	1-58	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/error_handling_patterns.md	96	complete	1-96	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/gitops_workflow.md	71	complete	1-71	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/k8s_manifest_generator.md	106	complete	1-106	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/microservices_patterns.md	41	complete	1-41	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/prometheus_configuration.md	79	complete	1-79	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/python_testing_patterns.md	72	complete	1-72	One incidental `test_patched` occurrence
+crates/op-chat/src/orchestration/skills_builtin/secrets_management.md	69	complete	1-69	Sequential full read
+crates/op-chat/src/orchestration/skills_builtin/sql_optimization_patterns.md	70	complete	1-70	Sequential full read
+crates/op-chat/src/orchestration/workstack_executor.rs	1570	complete	1-1570	Sequential full read through EOF
+crates/op-chat/src/session.rs	292	complete	1-292	Sequential full read
+crates/op-chat/src/system_prompt.rs	558	complete	1-558	Full pre-edit read; assistant/container claim corrected and mail state set UNVERIFIED; current file 557 lines
+crates/op-chat/src/tool_executor.rs	504	complete	1-504	Sequential full read
+crates/op-chat/tests/e2e_memory_loop_voyage_qdrant.rs	144	complete	1-144	Sequential full read

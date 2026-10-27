@@ -1,0 +1,8 @@
+#!/bin/sh
+# systemd ExecCondition: 1 skips startup without failing or restarting the unit.
+# EnvironmentFile is parsed by systemd, never sourced as shell code here.
+# Do not log the credential or make a provider request just to check activation.
+case "${TYPESAFE_API_KEY:-}" in
+    *[![:space:]]*) exit 0 ;;
+    *) exit 1 ;;
+esac

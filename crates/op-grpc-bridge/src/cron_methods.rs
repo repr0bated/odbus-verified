@@ -134,11 +134,11 @@ impl CronMethods {
                 let runs = self.gateway.list_runs(&input.job_id, input.limit).await?;
                 ensure!(
                     runs.len() <= input.limit as usize,
-                    "tched_router returned more history rows than requested"
+                    "chat_router returned more history rows than requested"
                 );
                 ensure!(
                     runs.iter().all(|run| run.job_id == input.job_id),
-                    "tched_router returned history for another job"
+                    "chat_router returned history for another job"
                 );
                 output(GetHistoryOutput {
                     scope: CronScope::GlobalDaemon,
@@ -297,14 +297,14 @@ impl CronMethods {
         let jobs = self.gateway.list_jobs().await?;
         ensure!(
             jobs.len() <= MAX_CRON_JOBS,
-            "tched_router returned more than {MAX_CRON_JOBS} cron jobs"
+            "chat_router returned more than {MAX_CRON_JOBS} cron jobs"
         );
         let mut ids = BTreeSet::new();
         for job in &jobs {
             validate_job(job)?;
             ensure!(
                 ids.insert(job.id.as_str()),
-                "tched_router returned duplicate cron job IDs"
+                "chat_router returned duplicate cron job IDs"
             );
         }
         Ok(jobs)
@@ -737,7 +737,7 @@ fn exact_job(jobs: Vec<CronJobRecord>, id: &str) -> Result<CronJobRecord> {
     let job = matches.next().context("cron job not found")?;
     ensure!(
         matches.next().is_none(),
-        "tched_router returned duplicate cron job IDs"
+        "chat_router returned duplicate cron job IDs"
     );
     Ok(job)
 }

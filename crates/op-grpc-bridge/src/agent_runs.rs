@@ -24,7 +24,7 @@ use op_plugins::state_plugins::ctl_plane_chatbot::{RunAction, RunRecord, RunStat
 use op_plugins::state_plugins::ctl_plane_chatbot_methods::{
     CompletedAgentRun, build_completed_agent_run,
 };
-use op_plugins::state_plugins::tched_router::{ChatInput, ChatOutput, TchedChatMessage};
+use op_plugins::state_plugins::chat_router::{ChatInput, ChatOutput, ChatMessage};
 use tokio::sync::{Mutex, mpsc};
 
 use crate::mutation_engine::MutationEngine;
@@ -63,7 +63,7 @@ impl Completer for RouterCompleter {
             &scope.session_id,
             &scope.session_genesis,
         )?;
-        crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
+        crate::chat_router_runtime::ChatRouterRuntimeClient::from_env()
             .with_sealed_identity(Some(&sealed_identity))
             .chat_under_guard(input)
             .await
@@ -346,11 +346,11 @@ You may request at most {} actions, only from: {}. Request none when nothing sho
             .complete(ChatInput {
                 message: String::new(),
                 messages: vec![
-                    TchedChatMessage {
+                    ChatMessage {
                         role: "system".into(),
                         content: system,
                     },
-                    TchedChatMessage {
+                    ChatMessage {
                         role: "user".into(),
                         content: user,
                     },

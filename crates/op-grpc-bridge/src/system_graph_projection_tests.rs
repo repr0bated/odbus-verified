@@ -403,7 +403,7 @@ fn embedding_configuration_and_ui_catalog_keep_semantics_but_no_secret_config() 
             "json_render",
             Some(
                 json!({"packages":[{"package_name":"@json-render/react","version":"0.12.0"}],
-            "components":[{"name":"tchedRouterPicker","category":"chat","props_schema":{"example":"secret-prop"}}],"actions":[{"name":"applyModel","mutates_state":true}],"config":{"auth":"secret-config"}}),
+            "components":[{"name":"chatRouterPicker","category":"chat","props_schema":{"example":"secret-prop"}}],"actions":[{"name":"applyModel","mutates_state":true}],"config":{"auth":"secret-config"}}),
             ),
         ),
     ]);
@@ -412,7 +412,7 @@ fn embedding_configuration_and_ui_catalog_keep_semantics_but_no_secret_config() 
         "unprobed"
     );
     assert_eq!(
-        node(&snapshot, "ui_component", "tchedRouterPicker").attributes["category"],
+        node(&snapshot, "ui_component", "chatRouterPicker").attributes["category"],
         "chat"
     );
     assert!(

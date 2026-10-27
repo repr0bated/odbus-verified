@@ -33,7 +33,7 @@ use crate::AutoPlugin;
 ///   reflected plugin and not a second MCP listener.
 /// - `factory`: the former account/platform plugin is retired; Factory CLI/SSH
 ///   provider vocabulary remains in `op-llm`, while model routing stays in
-///   `tched_router`.
+///   `chat_router`.
 pub const RETIRED_PLUGIN_IDS: &[&str] = &["compact_mcp", "factory", "mongodb_mcp", "netmaker"];
 
 pub fn is_retired_plugin(plugin_id: &str) -> bool {
@@ -302,7 +302,7 @@ mod tests {
         assert!(!plugins.is_empty());
         assert!(!plugins.iter().any(|plugin| plugin.name() == "factory"));
         assert!(plugins.iter().any(|plugin| plugin.name() == "mail_server"));
-        assert!(plugins.iter().any(|plugin| plugin.name() == "tched_router"));
+        assert!(plugins.iter().any(|plugin| plugin.name() == "chat_router"));
     }
 
     #[tokio::test]

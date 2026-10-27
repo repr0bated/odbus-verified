@@ -1,0 +1,19 @@
+{
+  "task": "tched-context-audit-20261024/op-deployment",
+  "crate": "op-deployment",
+  "status": "complete",
+  "files_reviewed": 19,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 1,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-deployment/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-deployment/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-deployment/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-deployment/judgments.md#JEV-1"],
+  "limitations": [
+    "Static source-only audit; current deployed path, release graph and runtime behavior were not verified.",
+    "Cargo.toml inventory supplied 28 lines; current source was 29 lines and was read through EOF.",
+    "Initial inventory hashes were not recomputed."
+  ],
+  "next_action": "Coordinator aggregates completed static crate report; no tched-specific source change is indicated."
+}

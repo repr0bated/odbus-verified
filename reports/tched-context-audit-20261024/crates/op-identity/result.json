@@ -1,0 +1,25 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-identity",
+  "status": "complete",
+  "files_reviewed": 20,
+  "files_pending": [],
+  "changed_files": [
+    "crates/op-identity/src/session.rs"
+  ],
+  "occurrence_count": 7,
+  "occurrences_remaining_in_source": 6,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-identity/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-identity/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-identity/occurrences.tsv",
+  "jev_receipts": "reports/tched-context-audit-20261024/crates/op-identity/judgments.md",
+  "preload_receipt": "reports/tched-context-audit-20261024/crates/op-identity/preload-coverage.tsv",
+  "source_before_receipt": "reports/tched-context-audit-20261024/crates/op-identity/session.rs.before.txt",
+  "limitations": [
+    "The prior initial-session full-read receipts for 28 mandatory skill paths were not established; all 28 were reread as supplemental full raw reads and are not backdated.",
+    "Source-level parser compatibility does not establish live UI deployment or receiver behavior; current catalog/runtime state remains unverified.",
+    "No Cargo/build/check/test/lint/format/smoke/runtime/deployment/credential actions were run, as prohibited by assignment.",
+    "JEV J5 honesty check passed (0.94); its complete choice was low-confidence (0.23; complete 0.49/pending 0.42/insufficient 0.09) and is recorded as uncertainty, not standalone completion proof."
+  ],
+  "next_action": "Coordinator may consume the completed static audit and reassess cross-crate context. No further op-identity source change or execution check is indicated by this assignment."
+}

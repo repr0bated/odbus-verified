@@ -134,7 +134,7 @@ struct AdmittedMethodCall {
     parsed_value: simd_json::OwnedValue,
     admitted_schema: op_state_store::PluginSchema,
     generation_origin: Option<crate::generation_admission::GenerationOrigin>,
-    facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+    facade_origin: Option<crate::chat_router_admission::FacadeOrigin>,
     bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     change: StateChange,
     routing_admission: Option<crate::routing_dispatch::RoutingAdmission>,
@@ -213,7 +213,7 @@ fn audit_method_arguments(
             | "routing_decision"
             | "schema_tag_registry"
     ) || (plugin_id == "xray" && matches!(method, "add_user" | "add_inbound"))
-        || (plugin_id == "tched_router"
+        || (plugin_id == "chat_router"
             && (matches!(
                 method,
                 "Chat" | "PatchConfig" | "config_set" | "config_patch"
@@ -1242,6 +1242,10 @@ impl MutationEngine {
                 ),
             ))
             .map_err(|_| anyhow::anyhow!("UI workspace owner is already configured"))
+    }
+
+    pub(crate) fn chat_manager(&self) -> &Arc<ChatManager> {
+        &self.chat_manager
     }
 
     pub fn configure_chatbot_episode_projection(
@@ -3483,7 +3487,7 @@ impl MutationEngine {
         actor_id: &'a str,
         session_id: Option<&'a str>,
         session_genesis: Option<&'a str>,
-        origin: crate::tched_router_admission::FacadeOrigin,
+        origin: crate::chat_router_admission::FacadeOrigin,
     ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
         self.dispatch_method_call_with_origins(
             plugin_id,
@@ -3540,7 +3544,7 @@ impl MutationEngine {
         session_id: Option<&'a str>,
         session_genesis: Option<&'a str>,
         generation_origin: Option<crate::generation_admission::GenerationOrigin>,
-        facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+        facade_origin: Option<crate::chat_router_admission::FacadeOrigin>,
         bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
         operation_id: Option<&'a str>,
     ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
@@ -3935,13 +3939,13 @@ impl MutationEngine {
                 static OVSDB_PROJECTION_LOCK: tokio::sync::Mutex<()> =
                     tokio::sync::Mutex::const_new(());
                 let _operation = OVSDB_PROJECTION_LOCK.lock().await;
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.into(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     "ovsdb_bridge",
@@ -4286,13 +4290,13 @@ impl MutationEngine {
                 static PROJECTION_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
                 let _guard = PROJECTION_LOCK.lock().await;
                 let args = serde_json::to_value(&parsed_value)?;
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.to_owned(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     "embedding_model",
@@ -4368,11 +4372,11 @@ impl MutationEngine {
                             .await?,
                     )?
                 } else {
-                    op_plugins::state_plugins::tched_fs::dispatch(method, &args)?
+                    op_plugins::state_plugins::chat_fs::dispatch(method, &args)?
                 };
                 self.publish_plugin_projection_state(
                     plugin_id,
-                    op_plugins::state_plugins::tched_fs::protocol_value()?,
+                    op_plugins::state_plugins::chat_fs::protocol_value()?,
                     ChangeType::PropertySet,
                     true,
                 )
@@ -4385,16 +4389,16 @@ impl MutationEngine {
                 // operation guard, then recheck the pinned seal and caller's
                 // current session/grant after any queue wait.
                 let operation = Arc::new(
-                    crate::tched_router_runtime::TchedRouterRuntimeClient::selection_guard()
+                    crate::chat_router_runtime::ChatRouterRuntimeClient::selection_guard()
                         .await,
                 );
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.to_owned(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     "threetched",
@@ -4455,7 +4459,7 @@ impl MutationEngine {
                     "wg_opdbus" => "wg_opdbus",
                     _ => "wgcf",
                 };
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.into(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
@@ -4482,13 +4486,13 @@ impl MutationEngine {
             }
             "mail_server" => {
                 let _operation = self.mail_projection.lock().await;
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.into(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     "mail_server",
@@ -4520,13 +4524,13 @@ impl MutationEngine {
                 } else {
                     "antigravity_chat"
                 };
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.into(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     plugin,
@@ -4557,13 +4561,13 @@ impl MutationEngine {
             }
             "proxy_server" => {
                 let _operation = self.proxy_projection.lock().await;
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.into(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     "proxy_server",
@@ -4746,13 +4750,13 @@ impl MutationEngine {
             }
             "openflow_obfuscation" => {
                 let _operation = self.obfuscation_projection.lock().await;
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.into(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     "openflow_obfuscation",
@@ -4791,13 +4795,13 @@ impl MutationEngine {
                 let args = serde_json::to_value(&parsed_value)?;
                 if !matches!(method, "add_flow" | "delete_flow" | "modify_flow") {
                     let _operation = self.openflow_projection.lock().await;
-                    let caller = crate::tched_router_admission::RouterCaller {
+                    let caller = crate::chat_router_admission::RouterCaller {
                         actor: actor_id.into(),
                         capability: capability_id.map(str::to_owned),
                         session: session_id.map(str::to_owned),
                         genesis: session_genesis.map(str::to_owned),
                     };
-                    let _pinned = crate::tched_router_admission::readmit_call(
+                    let _pinned = crate::chat_router_admission::readmit_call(
                         self,
                         &admitted_schema,
                         "openflow",
@@ -4819,13 +4823,13 @@ impl MutationEngine {
                             .validate_exact_schema_fields(&existing)
                             .context("OpenFlow projection does not satisfy the admitted schema")?;
                     }
-                    let caller = crate::tched_router_admission::RouterCaller {
+                    let caller = crate::chat_router_admission::RouterCaller {
                         actor: actor_id.into(),
                         capability: capability_id.map(str::to_owned),
                         session: session_id.map(str::to_owned),
                         genesis: session_genesis.map(str::to_owned),
                     };
-                    let pinned = crate::tched_router_admission::readmit_call(
+                    let pinned = crate::chat_router_admission::readmit_call(
                         self,
                         &admitted_schema,
                         "openflow",
@@ -4853,7 +4857,7 @@ impl MutationEngine {
                                 Box::pin(async move {
                                     // The dispatch worker retains openflow_projection.
                                     // Do not reacquire that lock in the controller callback.
-                                    crate::tched_router_admission::readmit_call(
+                                    crate::chat_router_admission::readmit_call(
                                         &engine, &admitted, "openflow", &method, &caller,
                                     )
                                     .await?;
@@ -4912,13 +4916,13 @@ impl MutationEngine {
                 // slower earlier delete could republish a removed sibling.
                 static CALLS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
                 let _owner = CALLS.lock().await;
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.into(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
-                let pinned = crate::tched_router_admission::readmit_call(
+                let pinned = crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
                     "privacy_routes",
@@ -4967,7 +4971,7 @@ impl MutationEngine {
                 )
                 .await?
             }
-            "tched_router" if crate::generation_jobs_dispatch::is_generation_method(method) => {
+            "chat_router" if crate::generation_jobs_dispatch::is_generation_method(method) => {
                 self.generation_jobs()?
                     .dispatch(
                         self,
@@ -4981,14 +4985,14 @@ impl MutationEngine {
                     )
                     .await?
             }
-            "tched_router" => {
+            "chat_router" => {
                 let engine = self.clone();
                 let method = method.to_string();
                 let json_args = json_args.to_string();
                 let args = serde_json::to_value(&parsed_value)?;
                 let admitted_schema = admitted_schema.clone();
                 let change = change.clone();
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor_id.to_owned(),
                     capability: capability_id.map(str::to_owned),
                     session: session_id.map(str::to_owned),
@@ -4997,7 +5001,7 @@ impl MutationEngine {
                 let owned_bound_oracle = bound_oracle.clone();
                 tokio::spawn(async move {
                     engine
-                        .dispatch_tched_router_owned(
+                        .dispatch_chat_router_owned(
                             &method,
                             &json_args,
                             args,
@@ -5010,7 +5014,7 @@ impl MutationEngine {
                         .await
                 })
                 .await
-                .map_err(|error| anyhow::anyhow!("tched_router owned task failed: {error}"))??
+                .map_err(|error| anyhow::anyhow!("chat_router owned task failed: {error}"))??
             }
             "ghostbridge" => {
                 let state = self
@@ -5226,19 +5230,19 @@ impl MutationEngine {
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn dispatch_tched_router_owned(
+    async fn dispatch_chat_router_owned(
         &self,
         method: &str,
         json_args: &str,
         parsed_value: serde_json::Value,
         admitted_schema: op_state_store::PluginSchema,
         change: StateChange,
-        caller: crate::tched_router_admission::RouterCaller,
-        facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+        caller: crate::chat_router_admission::RouterCaller,
+        facade_origin: Option<crate::chat_router_admission::FacadeOrigin>,
         bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     ) -> anyhow::Result<serde_json::Value> {
         let guarded =
-            crate::tched_router_admission::admit_guarded(self, &admitted_schema, method, &caller)
+            crate::chat_router_admission::admit_guarded(self, &admitted_schema, method, &caller)
                 .await?;
         if let Some(proof) = &bound_oracle {
             crate::interceptor::revalidate_bound_oracle(
@@ -5269,7 +5273,7 @@ impl MutationEngine {
                 .context("verified genesis is required")?,
         )?;
         if method == "get_own_agent_route" {
-            let _: op_plugins::state_plugins::tched_router::GetOwnAgentRouteInput =
+            let _: op_plugins::state_plugins::chat_router::GetOwnAgentRouteInput =
                 serde_json::from_value(parsed_value)?;
             let session = caller
                 .session
@@ -5285,20 +5289,20 @@ impl MutationEngine {
                 "current chat mode has no dedicated native route"
             );
             let (_, represented) =
-                crate::tched_config_engine::coherent_observation(pinned, &sealed_identity).await?;
-            self.persist_tched_router_config_observation(method, &represented, &pinned.schema_hash)
+                crate::chat_router_config_engine::coherent_observation(pinned, &sealed_identity).await?;
+            self.persist_chat_router_config_observation(method, &represented, &pinned.schema_hash)
                 .await?;
             let committed = self
-                .read_tched_router_config_field("native_config", &pinned.schema_hash)
+                .read_chat_router_config_field("native_config", &pinned.schema_hash)
                 .await?;
-            let output = serde_json::to_value(crate::tched_own_agent_route::project(
+            let output = serde_json::to_value(crate::chat_router_agent_route::project(
                 before.mode,
                 &committed,
             )?)?;
-            crate::tched_router_admission::readmit_call(
+            crate::chat_router_admission::readmit_call(
                 self,
                 &admitted_schema,
-                "tched_router",
+                "chat_router",
                 method,
                 &caller,
             )
@@ -5334,7 +5338,7 @@ impl MutationEngine {
             "resolve_catalog_model_binding" | "apply_catalog_model_binding"
         ) {
             let applying = method == "apply_catalog_model_binding";
-            let input: op_plugins::state_plugins::tched_router::ResolveCatalogModelBindingInput =
+            let input: op_plugins::state_plugins::chat_router::ResolveCatalogModelBindingInput =
                 serde_json::from_value(parsed_value)?;
             let context = if applying {
                 let grants = crate::interceptor::load_capability_grants(&caller.actor)
@@ -5365,10 +5369,10 @@ impl MutationEngine {
             .await?;
             // The catalog lookup may have waited for Cozo. Readmit this exact
             // reflected read before inspecting the native router configuration.
-            crate::tched_router_admission::readmit_call(
+            crate::chat_router_admission::readmit_call(
                 self,
                 &admitted_schema,
-                "tched_router",
+                "chat_router",
                 method,
                 &caller,
             )
@@ -5392,9 +5396,9 @@ impl MutationEngine {
                     .iter()
                     .find(|provider| provider.id == input.provider_id)
                 {
-                    let secrets = crate::tched_config_engine::pinned_config_secrets(pinned)?;
+                    let secrets = crate::chat_router_config_engine::pinned_config_secrets(pinned)?;
                     let runtime =
-                        crate::tched_router_runtime::TchedRouterRuntimeClient::for_agent_alias(
+                        crate::chat_router_runtime::ChatRouterRuntimeClient::for_agent_alias(
                             "dashboard",
                         )
                         .with_sealed_identity(Some(&sealed_identity));
@@ -5409,7 +5413,7 @@ impl MutationEngine {
                     .await?;
                 }
             }
-            let mut observation = crate::tched_config_engine::observe_catalog_binding(
+            let mut observation = crate::chat_router_config_engine::observe_catalog_binding(
                 pinned,
                 &sealed_identity,
                 &target,
@@ -5429,10 +5433,10 @@ impl MutationEngine {
             if applying {
                 // This method owns only a catalog-verified ordinary selection.
                 // It never forwards to the broad SetSelection/config facade.
-                crate::tched_router_admission::readmit_call(
+                crate::chat_router_admission::readmit_call(
                     self,
                     &admitted_schema,
-                    "tched_router",
+                    "chat_router",
                     method,
                     &caller,
                 )
@@ -5466,16 +5470,16 @@ impl MutationEngine {
                 }
                 let expected = observation.binding.clone();
                 let runtime =
-                    crate::tched_router_runtime::TchedRouterRuntimeClient::for_agent_alias(
+                    crate::chat_router_runtime::ChatRouterRuntimeClient::for_agent_alias(
                         "dashboard",
                     )
                     .with_sealed_identity(Some(&sealed_identity));
                 runtime
                     .set_selection(&expected.reference, &expected.model)
                     .await?;
-                let fields = crate::tched_config_engine::coherent_catalog_selection_observation(pinned, &sealed_identity)
+                let fields = crate::chat_router_config_engine::coherent_catalog_selection_observation(pinned, &sealed_identity)
                     .await.context("native catalog selection may have completed but coherent readback failed; reconcile before retry")?;
-                observation = crate::tched_config_engine::observe_catalog_binding(pinned, &sealed_identity, &target)
+                observation = crate::chat_router_config_engine::observe_catalog_binding(pinned, &sealed_identity, &target)
                     .await.context("native catalog selection may have completed but binding readback failed; reconcile before retry")?;
                 anyhow::ensure!(
                     observation.binding == expected
@@ -5499,13 +5503,13 @@ impl MutationEngine {
             let binding = serde_json::to_value(observation.binding)?;
             represented["native_config"] = observation.native_config;
             represented["catalog_model_binding"] = binding.clone();
-            self.persist_tched_router_config_observation(method, &represented, &pinned.schema_hash)
+            self.persist_chat_router_config_observation(method, &represented, &pinned.schema_hash)
                 .await?;
             let committed_config = self
-                .read_tched_router_config_field("native_config", &pinned.schema_hash)
+                .read_chat_router_config_field("native_config", &pinned.schema_hash)
                 .await?;
             let committed = self
-                .read_tched_router_config_field("catalog_model_binding", &pinned.schema_hash)
+                .read_chat_router_config_field("catalog_model_binding", &pinned.schema_hash)
                 .await?;
             anyhow::ensure!(
                 committed_config == represented["native_config"] && committed == binding,
@@ -5521,10 +5525,10 @@ impl MutationEngine {
                 target == after,
                 "catalog authority changed after binding publication"
             );
-            crate::tched_router_admission::readmit_call(
+            crate::chat_router_admission::readmit_call(
                 self,
                 &admitted_schema,
-                "tched_router",
+                "chat_router",
                 method,
                 &caller,
             )
@@ -5565,7 +5569,7 @@ impl MutationEngine {
             )?;
             return Ok(committed);
         }
-        if let Some(result) = crate::tched_config_engine::dispatch(
+        if let Some(result) = crate::chat_router_config_engine::dispatch(
             self,
             pinned,
             method,
@@ -5577,19 +5581,19 @@ impl MutationEngine {
             return Ok(result);
         }
         if matches!(method, "GetState" | "ListProviders" | "ListModels") {
-            let observed = crate::large_language_model_dispatch::observed_tched_router_state(
+            let observed = crate::large_language_model_dispatch::observed_chat_router_state(
                 self,
                 pinned,
                 &sealed_identity,
             )
             .await?;
-            return op_plugins::state_plugins::tched_router::dispatch_tched_router_method(
+            return op_plugins::state_plugins::chat_router::dispatch_chat_router_method(
                 method, json_args, &observed,
             )
             .map(|outcome| outcome.result)
             .map_err(|error| {
                 anyhow::anyhow!(
-                    "tched_router observed read dispatch error for '{}': {}",
+                    "chat_router observed read dispatch error for '{}': {}",
                     method,
                     error
                 )
@@ -5598,10 +5602,10 @@ impl MutationEngine {
 
         if method == "Chat" {
             let args =
-                serde_json::from_value::<op_plugins::state_plugins::tched_router::ChatInput>(
+                serde_json::from_value::<op_plugins::state_plugins::chat_router::ChatInput>(
                     parsed_value,
                 )
-                .context("invalid tched_router.Chat arguments")?;
+                .context("invalid chat_router.Chat arguments")?;
             if let Some(id) = &args.conversation_id {
                 anyhow::ensure!(
                     !id.is_empty() && id.len() <= 128 && !id.chars().any(char::is_control),
@@ -5664,10 +5668,10 @@ impl MutationEngine {
             )
             .await
             .context("human message was not recorded on the conversation")?;
-            crate::tched_router_admission::readmit_call(
+            crate::chat_router_admission::readmit_call(
                 self,
                 &admitted_schema,
-                "tched_router",
+                "chat_router",
                 method,
                 &caller,
             )
@@ -5693,14 +5697,14 @@ impl MutationEngine {
                 if args.messages.is_empty() && !args.message.trim().is_empty() {
                     let message = std::mem::take(&mut args.message);
                     args.messages
-                        .push(op_plugins::state_plugins::tched_router::TchedChatMessage {
+                        .push(op_plugins::state_plugins::chat_router::ChatMessage {
                             role: "user".into(),
                             content: message,
                         });
                 }
                 args.messages.insert(
                     0,
-                    op_plugins::state_plugins::tched_router::TchedChatMessage {
+                    op_plugins::state_plugins::chat_router::ChatMessage {
                         role: "system".into(),
                         content: recalled,
                     },
@@ -5715,7 +5719,7 @@ impl MutationEngine {
                         &scope.session_id,
                         op_cognitive::context_awareness::ActivityType::Query,
                         turn_query.clone(),
-                        serde_json::json!({ "source": "tched_router.chat", "context": provenance }),
+                        serde_json::json!({ "source": "chat_router.chat", "context": provenance }),
                     )
                     .await;
             }
@@ -5731,7 +5735,7 @@ impl MutationEngine {
                         session_id: caller.session.as_deref(),
                         session_genesis: caller.genesis.as_deref(),
                     },
-                    "tched_router",
+                    "chat_router",
                     method,
                     facade_origin.clone(),
                 )?;
@@ -5745,7 +5749,7 @@ impl MutationEngine {
                         session_id: caller.session.as_deref(),
                         session_genesis: caller.genesis.as_deref(),
                     },
-                    "tched_router",
+                    "chat_router",
                     method,
                     facade_origin.clone(),
                 )?;
@@ -5757,7 +5761,7 @@ impl MutationEngine {
             if let Some(episode_effect) = episode_effect {
                 let mut provenance = provenance;
                 if let Some(routing) = output.usage.get("routing") {
-                    provenance.push(format!("tched_router.routing:{routing}"));
+                    provenance.push(format!("chat_router.routing:{routing}"));
                 }
                 let episode =
                 op_plugins::state_plugins::ctl_plane_chatbot_methods::build_completed_chat_episode(
@@ -5778,10 +5782,10 @@ impl MutationEngine {
                     "native chat completed but episode publication failed; recover before retry",
                 )?;
             }
-            crate::tched_router_admission::readmit_call(
+            crate::chat_router_admission::readmit_call(
                 self,
                 &admitted_schema,
-                "tched_router",
+                "chat_router",
                 method,
                 &caller,
             )
@@ -5810,7 +5814,7 @@ impl MutationEngine {
             } else {
                 Some(op_plugins::state_plugins::runtime_documents::runtime_documents().await?)
             };
-            let receipt = crate::tched_router_legacy_dispatch::dispatch(
+            let receipt = crate::chat_router_legacy_dispatch::dispatch(
                 pinned,
                 method,
                 &parsed_value,
@@ -5818,15 +5822,15 @@ impl MutationEngine {
                 &sealed_identity,
             )
             .await?;
-            self.persist_tched_router_fields(
+            self.persist_chat_router_fields(
                 &receipt.represented_state,
                 receipt.schema_hash,
-                format!("tched_router_legacy:{method}"),
+                format!("chat_router_legacy:{method}"),
             )
             .await
             .with_context(|| {
                 format!(
-                    "tched_router.{method} completed but its authoritative observation could not be published"
+                    "chat_router.{method} completed but its authoritative observation could not be published"
                 )
             })?;
             return Ok(receipt.output);
@@ -5837,24 +5841,24 @@ impl MutationEngine {
             // Reject an unreadable committed projection before any native effect.
             // Absence is valid for a router that has not published state yet.
             let _ = self
-                .projected_state::<serde_json::Value>("tched_router")
+                .projected_state::<serde_json::Value>("chat_router")
                 .await?;
-            let runtime = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
+            let runtime = crate::chat_router_runtime::ChatRouterRuntimeClient::from_env()
                 .with_sealed_identity(Some(&sealed_identity));
             let prior = runtime.current_selection().await?;
             let selected = match method {
                 "SetProvider" => {
-                    let input: op_plugins::state_plugins::tched_router::SetProviderInput =
+                    let input: op_plugins::state_plugins::chat_router::SetProviderInput =
                         serde_json::from_value(parsed_value)?;
                     runtime.set_provider(&input.provider_id).await?
                 }
                 "SetModel" => {
-                    let input: op_plugins::state_plugins::tched_router::SetModelInput =
+                    let input: op_plugins::state_plugins::chat_router::SetModelInput =
                         serde_json::from_value(parsed_value)?;
                     runtime.set_model(&input.model_id).await?
                 }
                 _ => {
-                    let input: op_plugins::state_plugins::tched_router::SetSelectionInput =
+                    let input: op_plugins::state_plugins::chat_router::SetSelectionInput =
                         serde_json::from_value(parsed_value)?;
                     runtime
                         .set_selection(&input.provider_id, &input.model_id)
@@ -5865,20 +5869,20 @@ impl MutationEngine {
                 "selected_provider": selected.provider.clone(),
                 "selected_model": selected.model.clone(),
             });
-            let (readback, represented) = crate::tched_config_engine::coherent_observation(pinned, &sealed_identity)
+            let (readback, represented) = crate::chat_router_config_engine::coherent_observation(pinned, &sealed_identity)
                 .await
                 .context(
-                    "native tched_router selection completed but coherent runtime readback failed; outcome requires reconciliation before retry",
+                    "native chat_router selection completed but coherent runtime readback failed; outcome requires reconciliation before retry",
                 )?;
             anyhow::ensure!(
                 readback.selected_provider == selected.provider
                     && readback.selected_model == selected.model,
-                "native tched_router selection completed but provider response diverges from authoritative readback; outcome requires reconciliation before retry"
+                "native chat_router selection completed but provider response diverges from authoritative readback; outcome requires reconciliation before retry"
             );
-            self.persist_tched_router_observation(&represented, &expected_schema_hash)
+            self.persist_chat_router_observation(&represented, &expected_schema_hash)
                 .await
                 .context(
-                    "native tched_router selection completed but its authoritative observation could not be published; outcome requires reconciliation before retry",
+                    "native chat_router selection completed but its authoritative observation could not be published; outcome requires reconciliation before retry",
                 )?;
             let result = match method {
                 "SetProvider" => {
@@ -5908,12 +5912,12 @@ impl MutationEngine {
         }
 
         let stored = self
-            .projected_state::<serde_json::Value>("tched_router")
+            .projected_state::<serde_json::Value>("chat_router")
             .await?
-            .context("tched_router legacy state-backed method has no committed complete state")?;
+            .context("chat_router legacy state-backed method has no committed complete state")?;
         let object = stored
             .as_object()
-            .context("committed tched_router state is not an object")?;
+            .context("committed chat_router state is not an object")?;
         for required in [
             "status",
             "selected_provider",
@@ -5936,20 +5940,20 @@ impl MutationEngine {
         ] {
             anyhow::ensure!(
                 object.contains_key(required),
-                "tched_router legacy state-backed method requires observed/stored field '{required}'"
+                "chat_router legacy state-backed method requires observed/stored field '{required}'"
             );
         }
         let state = serde_json::from_value::<
-            op_plugins::state_plugins::tched_router::TchedRouterState,
+            op_plugins::state_plugins::chat_router::ChatRouterState,
         >(stored)
-        .context("committed complete tched_router state does not match its typed contract")?;
-        match op_plugins::state_plugins::tched_router::dispatch_tched_router_method(
+        .context("committed complete chat_router state does not match its typed contract")?;
+        match op_plugins::state_plugins::chat_router::dispatch_chat_router_method(
             method, json_args, &state,
         ) {
             Ok(outcome) => {
                 if method.starts_with("Set") {
                     anyhow::bail!(
-                        "tched_router.{method} has no canonical native/durable mutation adapter"
+                        "chat_router.{method} has no canonical native/durable mutation adapter"
                     );
                 }
                 if let Some(signal) = &outcome.signal {
@@ -5958,7 +5962,7 @@ impl MutationEngine {
                 Ok(outcome.result)
             }
             Err(error) => Err(anyhow::anyhow!(
-                "tched_router dispatch error for '{}': {}",
+                "chat_router dispatch error for '{}': {}",
                 method,
                 error
             )),
@@ -6172,7 +6176,7 @@ impl MutationEngine {
         .map(|_| ())
     }
 
-    pub(crate) async fn persist_tched_router_config_observation(
+    pub(crate) async fn persist_chat_router_config_observation(
         &self,
         method: &str,
         represented: &serde_json::Value,
@@ -6180,17 +6184,17 @@ impl MutationEngine {
     ) -> anyhow::Result<()> {
         anyhow::ensure!(
             represented.is_object(),
-            "tched_router config observation must be an object"
+            "chat_router config observation must be an object"
         );
-        self.persist_tched_router_fields(
+        self.persist_chat_router_fields(
             represented,
             expected_schema_hash.to_string(),
-            format!("tched_router_config:{method}"),
+            format!("chat_router_config:{method}"),
         )
         .await
     }
 
-    pub(crate) async fn read_tched_router_config_field(
+    pub(crate) async fn read_chat_router_config_field(
         &self,
         field: &str,
         expected_schema_hash: &str,
@@ -6207,7 +6211,7 @@ impl MutationEngine {
                     | "identity_chain"
                     | "privacy_policy"
             ),
-            "field is not owned by the tched_router config facade"
+            "field is not owned by the chat_router config facade"
         );
         let field = field.to_string();
         let expected = expected_schema_hash.to_string();
@@ -6215,38 +6219,38 @@ impl MutationEngine {
             let catalog = crate::sealed_schema_reader::blob_catalog_dir_from_env();
             let before = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
                 &catalog,
-                "tched_router",
+                "chat_router",
             )?;
             anyhow::ensure!(
                 before.schema_hash == expected,
-                "tched_router seal changed before committed config read"
+                "chat_router seal changed before committed config read"
             );
             let mut snapshot =
-                op_core::projection_shm::read_projection_snapshot(&["tched_router".to_string()])?;
+                op_core::projection_shm::read_projection_snapshot(&["chat_router".to_string()])?;
             let bytes = snapshot
                 .states
-                .remove("tched_router")
-                .context("tched_router has no committed state")?;
+                .remove("chat_router")
+                .context("chat_router has no committed state")?;
             let state: serde_json::Value = serde_json::from_slice(&bytes)
-                .context("committed tched_router state is invalid JSON")?;
+                .context("committed chat_router state is invalid JSON")?;
             let value = state
                 .get(&field)
                 .cloned()
-                .with_context(|| format!("committed tched_router field '{field}' is absent"))?;
+                .with_context(|| format!("committed chat_router field '{field}' is absent"))?;
             let after = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
                 &catalog,
-                "tched_router",
+                "chat_router",
             )?;
             anyhow::ensure!(
                 after.schema_hash == expected,
-                "tched_router seal changed during committed config read"
+                "chat_router seal changed during committed config read"
             );
             Ok(value)
         })
         .await?
     }
 
-    async fn persist_tched_router_fields(
+    async fn persist_chat_router_fields(
         &self,
         fields: &serde_json::Value,
         expected_schema_hash: String,
@@ -6254,14 +6258,14 @@ impl MutationEngine {
     ) -> anyhow::Result<()> {
         anyhow::ensure!(
             fields.is_object(),
-            "tched_router observed fields must be an object"
+            "chat_router observed fields must be an object"
         );
         self.commit_state_update(
             StateChange {
                 change_id: uuid::Uuid::new_v4().to_string(),
                 event_id: 0,
-                plugin_id: "tched_router".to_string(),
-                object_path: op_plugins::canonical::plugin_path("tched_router"),
+                plugin_id: "chat_router".to_string(),
+                object_path: op_plugins::canonical::plugin_path("chat_router"),
                 change_type: ChangeType::PropertySet,
                 member_name: None,
                 old_value: None,
@@ -6279,34 +6283,34 @@ impl MutationEngine {
         .map(|_| ())
     }
 
-    pub(crate) async fn persist_tched_router_observation(
+    pub(crate) async fn persist_chat_router_observation(
         &self,
         represented: &serde_json::Value,
         expected_schema_hash: &str,
     ) -> anyhow::Result<()> {
         let documents = op_plugins::state_plugins::runtime_documents::runtime_documents().await?;
         let methods =
-            op_plugins::state_plugins::tched_router_legacy_methods::TchedRouterLegacyMethods::new(
+            op_plugins::state_plugins::chat_router_legacy_methods::ChatRouterLegacyMethods::new(
                 documents,
             );
         let (_, assignments) = methods.assignments().await?;
         let mut complete = represented.clone();
         let object = complete
             .as_object_mut()
-            .context("tched_router runtime observation must be an object")?;
+            .context("chat_router runtime observation must be an object")?;
         object.insert(
             "model_assignments".into(),
             serde_json::to_value(assignments)?,
         );
-        self.persist_tched_router_fields(
+        self.persist_chat_router_fields(
             &complete,
             expected_schema_hash.to_string(),
-            "tched_router_selection".to_string(),
+            "chat_router_selection".to_string(),
         )
         .await
         .map_err(|error| {
             anyhow::anyhow!(
-                "tched_router native read completed but observation publication failed: {error}"
+                "chat_router native read completed but observation publication failed: {error}"
             )
         })
     }
@@ -7763,7 +7767,7 @@ mod private_method_audit_tests {
 
     #[test]
     fn elevation_audit_contains_no_password_verifier() {
-        let first = r#"{"plugin":"tched_router","method":"config_set","args":{"path":"agents.control_plane.model_provider","value":"custom.route"},"password":"first-password"}"#;
+        let first = r#"{"plugin":"chat_router","method":"config_set","args":{"path":"agents.control_plane.model_provider","value":"custom.route"},"password":"first-password"}"#;
         let second = first.replace("first-password", "different-password");
         let audit = audit_method_arguments("elevation", "authorize_task", first, None);
         assert_eq!(
@@ -7798,7 +7802,7 @@ mod private_method_audit_tests {
                 "start_workflow",
                 r#"{"workflow_id":"deploy","params":{"steps":["agent.operation|{private credentials}"]}}"#,
             ),
-            ("tched_router", "Chat", r#"{"message":"private message"}"#),
+            ("chat_router", "Chat", r#"{"message":"private message"}"#),
         ] {
             let audit = audit_method_arguments(plugin, method, input, None);
             assert!(audit.contains("arguments_redacted"));

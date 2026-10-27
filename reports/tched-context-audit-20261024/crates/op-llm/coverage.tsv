@@ -1,0 +1,27 @@
+path	inventory_lines	read_status	read_coverage	tched_occurrences
+crates/op-llm/Cargo.toml	32	complete	1-32 EOF	1
+crates/op-llm/SPEC.md	97	complete	1-97 EOF	0
+crates/op-llm/compare-op-llm.md	91	complete	1-91 EOF	0
+crates/op-llm/scripts/authenticate-chatbot.js	99	complete	1-99 EOF	0
+crates/op-llm/scripts/extract-cursor-auth.js	195	complete	1-195 EOF	0
+crates/op-llm/scripts/record-login.js	229	complete	1-229 EOF	0
+crates/op-llm/scripts/spoof-auth.js	150	complete	1-150 EOF	0
+crates/op-llm/src/anthropic.rs	447	complete	1-447 EOF	0
+crates/op-llm/src/antigravity.rs	1329	complete	1-1329 EOF	0
+crates/op-llm/src/assistant.rs	206	complete	1-206 EOF	0
+crates/op-llm/src/chat.rs	795	complete	1-795 EOF	0
+crates/op-llm/src/factory.rs	426	complete	1-426 EOF	0
+crates/op-llm/src/gcloud_adc.rs	414	complete	1-414 EOF	0
+crates/op-llm/src/gemini.rs	1281	complete	1-1281 EOF	0
+crates/op-llm/src/gemini_cli.rs	344	complete	1-344 EOF	0
+crates/op-llm/src/graph_turn_manager_tests.rs	113	complete	1-113 EOF	0
+crates/op-llm/src/graph_turn_reminder.rs	73	complete	1-73 EOF	1
+crates/op-llm/src/headless_oauth.rs	356	complete	1-356 EOF	0
+crates/op-llm/src/huggingface.rs	339	complete	1-339 EOF	0
+crates/op-llm/src/lib.rs	90	complete	1-90 EOF	0
+crates/op-llm/src/openclaw.rs	649	complete	1-649 EOF	0
+crates/op-llm/src/perplexity.rs	285	complete	1-285 EOF	0
+crates/op-llm/src/provider.rs	370	complete	1-370 EOF	0
+crates/op-llm/src/pty_bridge.rs	585	complete	1-585 EOF	0
+crates/op-llm/src/salad.rs	508	complete	1-508 EOF	0
+crates/op-llm/src/schema.rs	18	complete	1-18 EOF	6

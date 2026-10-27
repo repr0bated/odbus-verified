@@ -1,0 +1,32 @@
+path	inventory_lines	current_eof	read_status	fresh_read_receipt
+crates/op-tools/Cargo.toml	62	62	complete	Read sequentially from line 1 through EOF
+crates/op-tools/SPEC.md	113	113	complete	Read sequentially from line 1 through EOF
+crates/op-tools/compare-op-tools.md	114	114	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/bin/op-packagekit-install.rs	138	138	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/builtin/agent_tool.rs	914	914	complete	Contiguous sequential reads 1-914
+crates/op-tools/src/builtin/anydesk.rs	147	147	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/builtin/code_search.rs	262	262	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/builtin/dbus_introspection.rs	1485	1485	complete	Contiguous sequential reads 1-1485
+crates/op-tools/src/builtin/file.rs	449	449	complete	Contiguous sequential reads 1-449
+crates/op-tools/src/builtin/gcloud_tools.rs	499	499	complete	Contiguous sequential reads 1-499
+crates/op-tools/src/builtin/mod.rs	109	109	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/builtin/ovs_tools.rs	1305	1305	complete	Contiguous sequential reads 1-1305
+crates/op-tools/src/builtin/response_tools.rs	574	574	complete	Contiguous sequential reads 1-574
+crates/op-tools/src/builtin/rtnetlink_tools.rs	604	604	complete	Contiguous sequential reads 1-604
+crates/op-tools/src/builtin/shell.rs	581	581	complete	Contiguous sequential reads 1-581
+crates/op-tools/src/builtin/sv.rs	244	244	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/discovery/mod.rs	440	440	complete	Contiguous sequential reads 1-440
+crates/op-tools/src/discovery/projection_engine.rs	228	228	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/discovery/sources/agent.rs	196	196	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/discovery/sources/dbus.rs	320	320	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/discovery/sources/mod.rs	14	14	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/discovery/sources/plugin.rs	140	140	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/dynamic_tool.rs	129	129	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/lib.rs	83	83	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/mcptools.rs	453	453	complete	Contiguous sequential reads 1-453
+crates/op-tools/src/orchestration_plugin.rs	483	483	complete	Contiguous sequential reads 1-483
+crates/op-tools/src/registry.rs	270	270	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/router.rs	140	140	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/security.rs	783	762	complete	Contiguous current-source reread 1-762 through observed EOF; inventory says 783; explicit 763-783 request confirmed beyond EOF
+crates/op-tools/src/tool.rs	139	139	complete	Read sequentially from line 1 through EOF
+crates/op-tools/src/validation.rs	741	741	complete	Contiguous sequential reads 1-741

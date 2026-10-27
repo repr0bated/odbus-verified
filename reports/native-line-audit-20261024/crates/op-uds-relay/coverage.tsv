@@ -1,0 +1,4 @@
+path	complete_sequential_ranges	initial_sha256	finding/action	status
+crates/op-uds-relay/Cargo.lock	1-7	2d8f802fc04ccf352306fa9d5f9b3c3012308d10d8b54c7a363cd7d83272afef	No native occurrence; fully read	complete
+crates/op-uds-relay/Cargo.toml	1-15	b2df9a43d6f886359c947cb57d53cbc1e8a1f1dd131f66a2c02459aa798b6af6	No native occurrence; fully read	complete
+crates/op-uds-relay/src/bin/op-uds-relay.rs	1-17 supplemental exact reread; 18-344 previously read	50f92b0a62aa2d69404d9773e08ea67d748c1bf90e4c30c31b8cf3ebd02c0839	Lines 1-17 now read exactly after coordinator identified an evidence-display gap; no native occurrence. Remaining lines had prior full-range reads.	complete

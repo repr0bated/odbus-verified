@@ -24,7 +24,7 @@
 //! such as OpenCode Go's Messages or Responses endpoints). Each provider
 //! names its default Control Plane profile and the alternatives it offers,
 //! so a model chosen from the catalog maps to exactly one profile. Choosing
-//! the Control Plane model remains a protected `tched_router` task
+//! the Control Plane model remains a protected `chat_router` task
 //! (elevation); this plugin never changes a route.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -102,7 +102,7 @@ pub const MAX_QUERY_BYTES: usize = 100;
 pub const MAX_ERROR_BYTES: usize = 300;
 const MAX_ALTERNATIVES: usize = 8;
 /// Router provider families a control-plane profile may name
-/// (`providers.models.<family>.<alias>` in the tched_router contract).
+/// (`providers.models.<family>.<alias>` in the chat_router contract).
 pub const ROUTER_FAMILIES: &[&str] = &[
     "anthropic",
     "custom",
@@ -636,7 +636,7 @@ pub fn bounded_error(message: &str) -> String {
 pub struct ListProvidersInput {}
 
 /// One natively configured provider profile, observed live from the
-/// tched_router runtime. `oauth` distinguishes subscription-native
+/// chat_router runtime. `oauth` distinguishes subscription-native
 /// (`requires_openai_auth`) profiles from keyed HTTP profiles; credential
 /// values themselves are never part of this surface.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]

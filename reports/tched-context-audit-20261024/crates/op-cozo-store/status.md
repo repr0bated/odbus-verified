@@ -1,0 +1,8 @@
+# op-cozo-store tched context audit
+
+Status: complete review; no source changes. All 29 inventory-listed files were read sequentially through EOF. Every identified case-insensitive `tched` substring (26 positions, including ordinary-English `matched`) is recorded in `occurrences.tsv` and adjudicated in `judgments.md`.
+
+The native creation contract consistently reserves `3tchedCtlChatbot`; clean-provision separately accepts the two named singleton identities and numbered identities. The prepared manifest filename `threetched-manifests/tched-router.json` is confirmed by the complete producer/staging contract and is distinct from the sealed plugin ID `threetched`; no mismatch or rename is evidenced. `3tched-storage` is a serialization fixture only. Incidental `matched` identifiers/text are unrelated.
+
+No Cargo/build/test/Clippy/fmt/smoke/runtime/deployment check was run, per the audit assignment. No deployment or runtime state is claimed. Coordinator handles shared root bookkeeping; the provenance path contract is resolved by its producer and staging evidence.
+Supplemental completeness: the first audit did not have full read receipts for the 28 mandatory skill paths. This continuation read all 28 paths listed in `mandatory-preload.txt` through EOF, including omitted tails; it does not retroactively claim those reads occurred in the initial audit. `coordinator-read-gaps.json` lists 29 files with read metadata and no missing-line or column-limited files; no additional crate-source display gap was identified. The complete `deploy/lib/golden/build-golden.sh`, `vendor/tched-router/source.pin`, and `vendor/tched-router/build-threetched.sh` were read to resolve F1.

@@ -1,0 +1,20 @@
+{
+  "task": "tched-context-audit-20261024/op-state-store",
+  "crate": "op-state-store",
+  "status": "complete",
+  "files_reviewed": 18,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 3,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-state-store/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-state-store/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-state-store/occurrences.tsv",
+  "jev_receipts": [
+    "reports/tched-context-audit-20261024/crates/op-state-store/judgments.md"
+  ],
+  "limitations": [
+    "Static source review only; runtime catalog membership and deployment status are unverified.",
+    "No source changes; coordinator owns build after reconciliation. No Cargo, tests, lint, formatting, smoke, runtime, identity, grant, seal, or deployment actions were run."
+  ],
+  "next_action": "Coordinator reviews report and reconciles scoped build."
+}

@@ -39,7 +39,7 @@ use crate::{
     sealed_schema_reader::{
         ManifestPinnedCatalog, ManifestPinnedSchemaDocument, read_manifest_pinned_catalog,
     },
-    tched_router_admission::{FacadeOrigin, RouterCaller, readmit_call},
+    chat_router_admission::{FacadeOrigin, RouterCaller, readmit_call},
 };
 
 const PLUGIN: &str = "gemma_brain";

@@ -1,0 +1,24 @@
+{
+  "plugin_id": "notebooklm",
+  "method": "source_add",
+  "subid": "mut.service.plugin.notebooklm.source.add@v1",
+  "required_capability": "notebooklm.invoke",
+  "side_effect": "mutation",
+  "idempotent": false,
+  "result": {
+    "success": true,
+    "event_id": 7247,
+    "event_hash": "1ab8cb1334fb6efa917c0e537d2ce41c",
+    "plugin_id": "notebooklm",
+    "method": "source_add",
+    "result": {
+      "source_type": "text",
+      "source_id": "1987a52a-d615-4498-acba-f59b78b0d148",
+      "title": "Codex identity-container-provision-20261024 discovery and pending target"
+    },
+    "operation_id": "d91dc568-3628-4a70-862c-69e04ef19a07",
+    "outcome": "completed",
+    "terminal_event_id": 7248,
+    "terminal_event_hash": "fd144bcb5e072ecd26475b4dfb048287"
+  }
+}

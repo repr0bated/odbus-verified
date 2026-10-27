@@ -1693,7 +1693,7 @@ mod od06_tag_match_prep_tests {
             match_fields: HashMap::from([
                 ("oscal_subid".into(), "obs.software.plugin.x@v1".into()),
                 ("identity_tag".into(), "chatbot".into()),
-                ("service_tag".into(), "tched_router".into()),
+                ("service_tag".into(), "chat_router".into()),
             ]),
             actions: vec![FlowAction::Normal],
             cookie: None,
@@ -1712,7 +1712,7 @@ mod od06_tag_match_prep_tests {
         );
         assert_eq!(
             back.match_fields.get("service_tag").map(String::as_str),
-            Some("tched_router")
+            Some("chat_router")
         );
         assert!(matches!(back.actions.as_slice(), [FlowAction::Normal]));
     }

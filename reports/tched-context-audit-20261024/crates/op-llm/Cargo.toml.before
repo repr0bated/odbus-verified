@@ -1,0 +1,32 @@
+[package]
+name = "op-llm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "LLM provider integration with dynamic model discovery for HuggingFace"
+
+[dependencies]
+serde_json = { workspace = true }
+google-cloud-auth = "1.15"
+# Single schema source: the tched_router plugin owns the LLM schema; op-llm embeds
+# it (see src/schema.rs) instead of defining a divergent copy.
+op-plugins = { path = "../op-plugins" }
+op-state-store = { path = "../op-state-store" }
+op-identity = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+simd-json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+reqwest = { workspace = true }
+chrono = { workspace = true }
+rsa = "0.9.9"
+sha2.workspace = true
+hex.workspace = true
+base64.workspace = true
+jsonwebtoken = "9"
+uuid = { version = "1.0", features = ["v4"] }
+dirs = "5.0"

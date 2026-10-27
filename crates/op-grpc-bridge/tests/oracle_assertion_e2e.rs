@@ -1055,7 +1055,7 @@ async fn oracle_assertion_cannot_write_unmapped_property() {
 #[tokio::test(flavor = "multi_thread")]
 async fn writable_property_set_without_target_capability_is_denied_before_effects() {
     let env = TestEnv::new().await;
-    let schema = op_plugins::state_plugins::tched_router::tched_router_plugin_schema();
+    let schema = op_plugins::state_plugins::chat_router::chat_router_plugin_schema();
     let plugin_id = schema.name.clone();
     op_blob::catalog::BlobStore::open(env._root.path().join("plugin-blobs"))
         .expect("fixture blob store")
@@ -1075,8 +1075,8 @@ async fn writable_property_set_without_target_capability_is_denied_before_effect
     let before = srv.engine.event_chain.read().await.events().len();
 
     let mut request = Request::new(SetPropertyRequest {
-        plugin_id: "tched_router".to_string(),
-        object_path: "/org/opdbus/v1/plugins/tched_router".to_string(),
+        plugin_id: "chat_router".to_string(),
+        object_path: "/org/opdbus/v1/plugins/chat_router".to_string(),
         interface_name: "org.opdbus.v1.PluginV1".to_string(),
         property_name: "selected_provider".to_string(),
         value: Some(prost_str("salad")),

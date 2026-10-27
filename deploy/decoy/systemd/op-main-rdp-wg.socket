@@ -1,0 +1,12 @@
+[Unit]
+Description=WireGuard-only RDP forwarding to the main host
+Requires=wg-quick@wg-opdbus.service
+After=wg-quick@wg-opdbus.service
+
+[Socket]
+ListenStream=10.0.0.1:3389
+NoDelay=true
+KeepAlive=true
+
+[Install]
+WantedBy=sockets.target

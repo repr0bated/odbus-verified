@@ -199,7 +199,7 @@ async fn abandoned_failure_remains_observable_without_private_diagnostics() {
 async fn nested_admitted_tasks_complete_without_a_global_execution_lock() {
     let result = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         spawn(operation("large_language_model", "stream_generate"), async {
-            let target = spawn(operation("tched_router", "start_generation"), async {
+            let target = spawn(operation("chat_router", "start_generation"), async {
                 Ok(serde_json::json!({"job_id":"fixture"}))
             })
             .await??;

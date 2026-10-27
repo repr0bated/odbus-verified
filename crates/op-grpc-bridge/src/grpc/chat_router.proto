@@ -1,0 +1,37 @@
+// Prior names: tched_router, ZeroClawRouterService.
+// chat_router gRPC schema host contract.
+// This proto only defines the service envelope. The actual PluginSchema payload
+// is serialized JSON from `chat_router_schema()` in `op-plugins` — never hand-edited
+// structs here.
+syntax = "proto3";
+package chat_router;
+
+service ChatRouterService {
+  // Return the current plugin-owned PluginSchema JSON plus trace headers.
+  rpc GetSchema(GetSchemaRequest) returns (SchemaResponse);
+
+  // Stream the initial schema, then emit a new event on every reload.
+  rpc WatchSchema(WatchSchemaRequest) returns (stream SchemaEvent);
+}
+
+message GetSchemaRequest {}
+message WatchSchemaRequest {}
+
+message SchemaResponse {
+  // Canonical PluginSchema JSON serialized by `chat_router_schema()`.
+  string schema_json = 1;
+
+  // Accountability trace identifier.
+  string trace_id = 2;
+
+  // Anchored Ghostbridge session genesis from the incoming request.
+  string session_genesis = 3;
+}
+
+message SchemaEvent {
+  // Canonical PluginSchema JSON.
+  string schema_json = 1;
+
+  // "initial" on stream start, "reload" after a successful SIGHUP/D-Bus reload.
+  string event_type = 2;
+}

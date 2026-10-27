@@ -146,7 +146,7 @@ async fn full_config(State(f): State<Fixture>) -> Json<Value> {
 // Fixture data comes from the one imported native contract. It is served by
 // the private HTTP owner; no schema or runtime catalog is materialized here.
 fn native_config_defaults() -> Value {
-    use op_plugins::state_plugins::tched_router_contract::document;
+    use op_plugins::state_plugins::chat_router_contract::document;
     static DEFAULTS: OnceLock<Value> = OnceLock::new();
     DEFAULTS
         .get_or_init(|| {
@@ -400,12 +400,12 @@ async fn dispatch(
     args: Value,
 ) -> anyhow::Result<Value> {
     use op_state::StatePlugin;
-    let schema = op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
+    let schema = op_plugins::state_plugins::chat_router::ChatRouterPlugin::new()
         .schema()
         .unwrap();
     engine
         .dispatch_method_call_with_identity(
-            "tched_router",
+            "chat_router",
             method,
             &args.to_string(),
             schema.methods[method].required_capability.as_deref(),
@@ -486,7 +486,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         )
     };
     let catalog = root.path().join("blobs");
-    let schema = op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
+    let schema = op_plugins::state_plugins::chat_router::ChatRouterPlugin::new()
         .schema()
         .unwrap();
     let schemas = [
@@ -771,14 +771,14 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     )
     .unwrap();
     let before_mcp_failure =
-        op_core::projection_shm::read_projection_bytes("tched_router").unwrap();
+        op_core::projection_shm::read_projection_bytes("chat_router").unwrap();
     fixture.inner.lock().await.write_fail = true;
     assert!(dispatch_mcp(&engine, &caller, "configure_server", json!({"operations":[{
         "op":"replace", "path":"/mcp/servers/docs/url", "value":"https://rejected.example.test/mcp"
     }]})).await.is_err());
     assert_eq!(fixture.inner.lock().await.mcp_url, updated_url);
     assert_eq!(
-        op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
         before_mcp_failure
     );
     fixture.inner.lock().await.write_fail = false;
@@ -830,7 +830,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     ] {
         let result = engine
             .dispatch_method_call_with_identity(
-                "tched_router",
+                "chat_router",
                 "ResolveRoute",
                 &args.to_string(),
                 Some("cap.software.3tched-router.route.resolve@v1"),
@@ -946,11 +946,11 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .is_some_and(|providers| !providers.is_empty())
     );
     let committed: Value = serde_json::from_slice(
-        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
     )
     .unwrap();
     assert_eq!(committed["model_assignments"]["ovs_routing"], "old-model");
-    let initial = engine.get_state("tched_router").await.unwrap();
+    let initial = engine.get_state("chat_router").await.unwrap();
     let writes_before_invalid = fixture.inner.lock().await.writes;
     let invalid = dispatch(
         &engine,
@@ -961,7 +961,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     .await;
     assert!(invalid.is_err());
     assert_eq!(fixture.inner.lock().await.writes, writes_before_invalid);
-    assert_eq!(engine.get_state("tched_router").await.unwrap(), initial);
+    assert_eq!(engine.get_state("chat_router").await.unwrap(), initial);
 
     // The native loopback client never follows an upstream redirect. In
     // particular, a config mutation body and bearer credential cannot be
@@ -1028,7 +1028,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .await
         .is_err()
     );
-    assert_eq!(engine.get_state("tched_router").await.unwrap(), initial);
+    assert_eq!(engine.get_state("chat_router").await.unwrap(), initial);
     fixture.inner.lock().await.ignore_writes = false;
 
     // A second admitted assignment updates the durable sibling after the read
@@ -1043,7 +1043,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     .await
     .unwrap();
     let before_generation =
-        op_core::projection_shm::read_projection_snapshot(&["tched_router".into()])
+        op_core::projection_shm::read_projection_snapshot(&["chat_router".into()])
             .unwrap()
             .generation;
 
@@ -1060,13 +1060,13 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         json!({"selected_provider":"openai","selected_model":"new-model"})
     );
     let selected: Value =
-        serde_json::to_value(engine.get_state("tched_router").await.unwrap()).unwrap();
+        serde_json::to_value(engine.get_state("chat_router").await.unwrap()).unwrap();
     assert_eq!(selected["selected_provider"], "openai");
     assert_eq!(selected["selected_model"], "new-model");
     assert_eq!(selected["model_assignments"]["ovs_routing"], "old-model");
     assert_eq!(selected["model_assignments"]["vectorization"], "old-alt");
     assert_eq!(
-        op_core::projection_shm::read_projection_snapshot(&["tched_router".into()])
+        op_core::projection_shm::read_projection_snapshot(&["chat_router".into()])
             .unwrap()
             .generation,
         before_generation + 1,
@@ -1130,7 +1130,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         0
     );
 
-    let before_failed_write = engine.get_state("tched_router").await.unwrap();
+    let before_failed_write = engine.get_state("chat_router").await.unwrap();
     fixture.inner.lock().await.write_fail = true;
     assert!(
         dispatch(
@@ -1143,7 +1143,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .is_err()
     );
     assert_eq!(
-        engine.get_state("tched_router").await.unwrap(),
+        engine.get_state("chat_router").await.unwrap(),
         before_failed_write
     );
     fixture.inner.lock().await.write_fail = false;
@@ -1157,7 +1157,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     .unwrap();
     assert_eq!(changed["result"], json!({"selected_provider":"ollama"}));
     let selected: Value =
-        serde_json::to_value(engine.get_state("tched_router").await.unwrap()).unwrap();
+        serde_json::to_value(engine.get_state("chat_router").await.unwrap()).unwrap();
     assert_eq!(selected["selected_model"], "old-model");
     let changed_model = dispatch(&engine, &caller, "SetModel", json!({"model_id":"old-alt"}))
         .await
@@ -1167,8 +1167,8 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     // An unreadable committed store invalidates the caller's credential
     // projection at the first admission boundary, before any upstream mutation;
     // a process-local identity or router mirror cannot stand in for SHM.
-    let before_publication_failure = engine.get_state("tched_router").await.unwrap();
-    let before_shm = op_core::projection_shm::read_projection_bytes("tched_router").unwrap();
+    let before_publication_failure = engine.get_state("chat_router").await.unwrap();
+    let before_shm = op_core::projection_shm::read_projection_bytes("chat_router").unwrap();
     let blocked = root.path().join("blocked-state");
     std::fs::write(&blocked, b"not a directory").unwrap();
     // FIXME: Audit that the environment access only happens in single-threaded code.
@@ -1188,13 +1188,13 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     );
     assert_eq!(fixture.inner.lock().await.provider, "ollama.main");
     assert_eq!(
-        engine.get_state("tched_router").await.unwrap(),
+        engine.get_state("chat_router").await.unwrap(),
         before_publication_failure
     );
     // FIXME: Audit that the environment access only happens in single-threaded code.
     unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state")) };
     assert_eq!(
-        op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
         before_shm
     );
 
@@ -1202,9 +1202,9 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     // report an indeterminate completed-provider outcome, retain the old
     // committed projection/mirror, and reconcile from native observation once
     // the authoritative projection path is restored.
-    let before_post_effect = engine.get_state("tched_router").await.unwrap();
+    let before_post_effect = engine.get_state("chat_router").await.unwrap();
     let before_post_effect_shm =
-        op_core::projection_shm::read_projection_bytes("tched_router").unwrap();
+        op_core::projection_shm::read_projection_bytes("chat_router").unwrap();
     let blocked_after_effect = root.path().join("blocked-after-native-effect");
     std::fs::write(&blocked_after_effect, b"not a directory").unwrap();
     fixture.inner.lock().await.projection_block_after_patch = Some(blocked_after_effect);
@@ -1219,19 +1219,19 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     let error_chain = format!("{error:#}");
     assert!(
         error_chain.contains(
-            "native tched_router selection completed but its authoritative observation could not be published"
+            "native chat_router selection completed but its authoritative observation could not be published"
         ),
         "unexpected post-effect failure: {error_chain}"
     );
     assert_eq!(fixture.inner.lock().await.provider, "openai.main");
     assert_eq!(
-        engine.get_state("tched_router").await.unwrap(),
+        engine.get_state("chat_router").await.unwrap(),
         before_post_effect
     );
     // FIXME: Audit that the environment access only happens in single-threaded code.
     unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state")) };
     assert_eq!(
-        op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
         before_post_effect_shm
     );
     let reconciled = dispatch(&engine, &caller, "GetState", json!({}))
@@ -1239,7 +1239,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .unwrap();
     assert_eq!(reconciled["result"]["state"]["selected_provider"], "openai");
     assert_eq!(
-        engine.get_state("tched_router").await.unwrap()["selected_provider"],
+        engine.get_state("chat_router").await.unwrap()["selected_provider"],
         "openai"
     );
     for (method, field, model) in [
@@ -1248,7 +1248,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         ("SetCozoRetrievalModel", "cozo_retrieval", "old-model"),
     ] {
         let before: Value = serde_json::from_slice(
-            &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+            &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
         )
         .unwrap();
         let output = dispatch(&engine, &caller, method, json!({"model_id":model}))
@@ -1256,7 +1256,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .unwrap();
         assert_eq!(output["result"][field], model);
         let after: Value = serde_json::from_slice(
-            &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+            &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
         )
         .unwrap();
         assert_eq!(after["model_assignments"][field], model);
@@ -1294,7 +1294,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     assert_eq!(tool["description"], "Look up a fixture record");
     assert_eq!(tool["parameters"]["required"], json!(["id"]));
     let reconciled_shm: Value = serde_json::from_slice(
-        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
     )
     .unwrap();
     assert_eq!(reconciled_shm["selected_provider"], "openai");
@@ -1392,7 +1392,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     assert_eq!(generated["result"]["model"], "new-model");
     assert_eq!(fixture.inner.lock().await.chats, chats + 1);
     let after_calls: Value = serde_json::from_slice(
-        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
     )
     .unwrap();
     assert_eq!(after_calls["selected_provider"], "openai");
@@ -1415,7 +1415,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         "***MASKED***"
     );
     assert!(!native.to_string().contains("fixture-private-mcp-token"));
-    use op_grpc_bridge::tched_config_dispatch::{ConfigMethodBacking, config_method_backing};
+    use op_grpc_bridge::chat_router_config_dispatch::{ConfigMethodBacking, config_method_backing};
 
     let mut tested = std::collections::BTreeSet::new();
     for method in schema.methods.keys() {
@@ -1433,7 +1433,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             "{method} never reached native HTTP"
         );
         let committed: Value = serde_json::from_slice(
-            &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+            &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
         )
         .unwrap();
         assert_eq!(
@@ -1461,11 +1461,11 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     // This tests configured reads; it does not establish a production producer
     // for every local descriptor.
     let mut local = serde_json::to_value(
-        op_plugins::state_plugins::tched_router::TchedRouterPlugin::current_state(),
+        op_plugins::state_plugins::chat_router::ChatRouterPlugin::current_state(),
     )
     .unwrap();
     let observed: Value = serde_json::from_slice(
-        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
     )
     .unwrap();
     local
@@ -1474,8 +1474,8 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .extend(observed.as_object().unwrap().clone());
     engine
         .process_authoritative_change(
-            "tched_router".into(),
-            "/org/opdbus/v1/plugins/tched_router".into(),
+            "chat_router".into(),
+            "/org/opdbus/v1/plugins/chat_router".into(),
             op_grpc_bridge::mutation_engine::ChangeType::ObjectAdded,
             None,
             None,
@@ -1488,7 +1488,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .await
         .unwrap();
     let committed: Value = serde_json::from_slice(
-        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        &op_core::projection_shm::read_projection_bytes("chat_router").unwrap(),
     )
     .unwrap();
     let requests = fixture.requests.load(Ordering::SeqCst);

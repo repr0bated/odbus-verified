@@ -1,0 +1,52 @@
+{
+  "release": "identity-container-provision-20261024-attempt8-guest-input",
+  "release_kind": "source-snapshot",
+  "client_sha256": "32090c85463f770dd2a60f632f26cb4b95fc21386e0dec728bd84b1a3dd81929",
+  "catalog_manifest_sha256": "a2b26c05dd52836ff4fdad2880bc996d0d84bfcfefec5c0893c5aa42edcb32c6",
+  "native_runtime": {
+    "binary": "/usr/local/libexec/op-dbus/threetched/threetched",
+    "manifest": "/usr/share/op-dbus/threetched-manifests/tched-router.json",
+    "config_dir": "/var/lib/tched-router",
+    "binary_sha256": "454ff4c18822535e782b0f9010d348302d4555709872b9f0e3830239c07ddf65",
+    "manifest_sha256": "a08341900e3fc3bb7a1f4f263bbbfe23c2e73a2eced66724bc3359e01e48bfad",
+    "source_mode": "unmodified-upstream",
+    "config_state": "empty",
+    "config_binding": {
+      "source": "/opt/run-mounts/persist/threetched",
+      "target": "/var/lib/tched-router",
+      "type": "none",
+      "options": [
+        "bind"
+      ],
+      "status": "staged",
+      "guest_boot_verified": false
+    }
+  },
+  "socket": "/run/3tched-lungs.socket",
+  "binding": "BindCurrentContainer",
+  "state": "empty",
+  "mounts": [
+    {
+      "service": "3tchedfs.service",
+      "mountpoint": "/run/mount/3tchedfs",
+      "store": "/usr/share/op-dbus/lungs-view"
+    },
+    {
+      "service": "threetchedfs.service",
+      "mountpoint": "/run/mount/threetched",
+      "store": "/usr/share/op-dbus/threetched-view"
+    }
+  ],
+  "mount_table": "/etc/fstab",
+  "command": [
+    "3tched-fs",
+    "--store",
+    "/usr/share/op-dbus/lungs-view",
+    "mcp",
+    "--state",
+    "/usr/share/op-dbus/lungs-empty-state",
+    "--lungs-socket",
+    "/run/3tched-lungs.socket",
+    "--all"
+  ]
+}

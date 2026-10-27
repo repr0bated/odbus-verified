@@ -128,16 +128,16 @@ mod state_stream;
 mod state_tree_fold;
 mod system_graph_dispatch;
 mod system_graph_projection;
-mod tched_catalog_binding;
-pub mod tched_config_dispatch;
-mod tched_config_engine;
-mod tched_config_secret_policy;
-mod tched_own_agent_route;
-mod tched_router_admission;
-mod tched_router_generation_native;
-mod tched_router_legacy_dispatch;
-pub mod tched_router_object_blob;
-pub mod tched_router_runtime;
+mod chat_router_catalog_binding;
+pub mod chat_router_config_dispatch;
+mod chat_router_config_engine;
+mod chat_router_config_secret_policy;
+mod chat_router_agent_route;
+mod chat_router_admission;
+mod chat_router_generation;
+mod chat_router_legacy_dispatch;
+pub mod chat_router_object_blob;
+pub mod chat_router_runtime;
 pub mod tracing;
 mod ui_workspace_dispatch;
 mod ui_workspace_stream;
@@ -164,11 +164,11 @@ pub use plugin_grpc_gen::{
     generate_method_file_descriptor, generate_method_proto, generate_plugin_method_protos,
 };
 pub use proto_gen::{ProtoGenConfig, ProtoGenerator};
-pub use server::{PemIdentity, ServerConfig, run_tched_router_server, serve_upgradeable_tcp};
+pub use server::{PemIdentity, ServerConfig, run_chat_router_server, serve_upgradeable_tcp};
 // Object blob artifacts (schema-coupled D-Bus + gRPC reflection units),
 // backed by the op-blob crate.
 pub use plugin_object_blob::{BlobMethod, DbusObjectIdentity, PluginObjectBlob};
-pub use tched_router_object_blob::TchedRouterObjectBlob;
+pub use chat_router_object_blob::ChatRouterObjectBlob;
 
 /// Generated protobuf types — one sub-module per domain proto.
 /// All are compiled into the combined operation_descriptor.bin for reflection.
@@ -194,9 +194,10 @@ pub mod proto {
         tonic::include_proto!("emqx.exhook.v3");
     }
 
-    /// 3tched Router plugin schema gRPC service (GetSchema / WatchSchema).
-    pub mod tched_router {
-        tonic::include_proto!("tched_router");
+    /// chat_router schema host (GetSchema / WatchSchema).
+    /// Prior name: tched_router.
+    pub mod chat_router {
+        tonic::include_proto!("chat_router");
     }
 
     /// ChatService — operator-to-system chat interface (delegator, forced tool calling).

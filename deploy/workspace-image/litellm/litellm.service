@@ -1,0 +1,34 @@
+[Unit]
+Description=LiteLLM JEV gateway for this identity
+After=local-fs.target network.target
+# The seed contains no activation file. Missing/empty files skip before execution.
+ConditionFileNotEmpty=/opt/run-mounts/persist/litellm/activation.env
+
+[Service]
+Type=exec
+User=nobody
+Group=nogroup
+UMask=0077
+RuntimeDirectory=litellm
+RuntimeDirectoryMode=0700
+WorkingDirectory=/run/litellm
+Environment=HOME=/run/litellm
+Environment=XDG_CACHE_HOME=/run/litellm/cache
+Environment=PYTHONPATH=/usr/local/lib/op-dbus/litellm
+Environment=PYTHONNOUSERSITE=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=LITELLM_MODE=PRODUCTION
+Environment=LITELLM_LOCAL_MODEL_COST_MAP=True
+# Optional so a missing file cannot cause a startup failure. This is per-leaf.
+EnvironmentFile=-/opt/run-mounts/persist/litellm/activation.env
+# Also handles an existing file with no key, an empty key, or only whitespace.
+ExecCondition=/usr/local/libexec/op-dbus/litellm-key-present
+ExecStart=/usr/bin/python3 -P -m litellm.proxy.proxy_cli --config /etc/op-dbus/litellm/config.yaml --host 127.0.0.1 --port 4000
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=multi-user.target

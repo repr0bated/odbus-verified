@@ -1,8 +1,8 @@
 //! Check actual generated and freshly sealed transport descriptors. Their field
 //! numbers and message layouts differ; the plugin's output contract owns value
 //! semantics. Fixtures never read or reseal a live catalog.
-use op_plugins::state_plugins::tched_router::{
-    ConfigPropertyKind, ConfigPropertyOutput, tched_router_plugin_schema,
+use op_plugins::state_plugins::chat_router::{
+    ConfigPropertyKind, ConfigPropertyOutput, chat_router_plugin_schema,
 };
 use op_state_store::PluginSchema;
 use prost::Message;
@@ -21,8 +21,8 @@ struct Contracts {
 fn contracts() -> &'static Contracts {
     static CONTRACTS: OnceLock<Contracts> = OnceLock::new();
     CONTRACTS.get_or_init(|| {
-        let schema = tched_router_plugin_schema();
-        let blob = op_blob::blobify_plugin_schema("tched_router", schema.clone());
+        let schema = chat_router_plugin_schema();
+        let blob = op_blob::blobify_plugin_schema("chat_router", schema.clone());
         let bytes = blob.seal();
         let pinned =
             op_blob::BlobRef::from_manifest_pinned(&bytes, &blob.manifest.schema_hash).unwrap();
@@ -203,12 +203,12 @@ fn native_config_outputs_survive_generated_and_sealed_descriptors() {
     for (method, native_name, value) in [
         (
             "GetConfig",
-            "TchedRouterGetConfigResponse",
+            "ChatRouterGetConfigResponse",
             json!({"config":{}}),
         ),
         (
             "GetConfig",
-            "TchedRouterGetConfigResponse",
+            "ChatRouterGetConfigResponse",
             json!({"config":{"gateway":gateway.clone()}}),
         ),
     ] {
@@ -232,7 +232,7 @@ fn native_config_outputs_survive_generated_and_sealed_descriptors() {
         serde_json::to_value(contracts.schema.fields["native_config"].field_type.clone()).unwrap()
             ["json_schema"]
             .clone();
-    for descriptor in contracts.outputs("GetConfig", "TchedRouterGetConfigResponse") {
+    for descriptor in contracts.outputs("GetConfig", "ChatRouterGetConfigResponse") {
         let actual = roundtrip(&descriptor, &invalid);
         jsonschema::validate(&output, &actual).expect("receipt shape survives transport");
         jsonschema::validate(&native_field_schema, &actual["config"])
@@ -250,7 +250,7 @@ fn config_property_kind_path_and_nullable_fields_survive_both_descriptors() {
         output.pointer(kind_ref.strip_prefix('#').unwrap()).unwrap()["enum"],
         json!(["value", "secret"])
     );
-    let [native, sealed] = contracts.outputs("config_get", "TchedRouterConfigGetResponse");
+    let [native, sealed] = contracts.outputs("config_get", "ChatRouterConfigGetResponse");
     // The native mapper preserves unresolved refs as Value. The sealed mapper
     // resolves this local enum as string; neither creates a second enum owner.
     let Kind::Message(kind) = native.get_field_by_name("kind").unwrap().kind() else {

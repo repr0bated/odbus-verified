@@ -1,4 +1,4 @@
-//! Global operator cron surface backed by the v0.8.4 tched-router gateway.
+//! Global operator cron surface backed by the v0.8.4 chat-router gateway.
 //!
 //! The plugin owns this schema. The native gateway owns the install-wide job
 //! store and applies the configured agent's risk/tool policy at execution.
@@ -408,7 +408,7 @@ pub(crate) fn cron_schema() -> PluginSchema {
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "cron",
         "2.1.0",
-        "Global operator view and management of the native tched-router cron store",
+        "Global operator view and management of the native chat-router cron store",
         &root,
     );
     macro_rules! method {

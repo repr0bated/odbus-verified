@@ -70,7 +70,7 @@ async fn startup_restores_observations_without_publishing_schema_examples_or_res
             .exists()
     );
     assert!(!root.path().join("state/.manifest.json").exists());
-    assert!(engine.get_state("tched_router").await.is_none());
+    assert!(engine.get_state("chat_router").await.is_none());
     assert_eq!(engine.seed_missing_plugin_projections().await.unwrap(), 0);
     assert_eq!(std::fs::read(manifest).unwrap(), before);
     assert_eq!(std::fs::read_dir(&catalog).unwrap().count(), files_before);

@@ -1,0 +1,45 @@
+#!/bin/sh
+exec 2>&1
+
+# Hyprland for jeremy: start-hyprland + seatd + session dbus.
+# setpriv --init-groups keeps video (DRM + /run/seatd.sock).
+
+install -d -o jeremy -g jeremy -m 0700 /run/user/1000
+
+i=0
+while [ "$i" -lt 60 ]; do
+    if [ -e /dev/dri/card0 ] && [ -S /run/seatd.sock ] && pgrep -x seatd >/dev/null 2>&1; then
+        break
+    fi
+    i=$((i + 1))
+    sleep 1
+done
+
+pkill -u jeremy -x Hyprland 2>/dev/null || true
+pkill -u jeremy -x hypr-rdp 2>/dev/null || true
+pkill -u jeremy -x start-hyprland 2>/dev/null || true
+pkill -u jeremy -x swaybg 2>/dev/null || true
+pkill -u jeremy -x waybar 2>/dev/null || true
+sleep 1
+
+cd /home/jeremy || exit 1
+
+echo "hyprland-jeremy: starting start-hyprland for jeremy (uid $(id -u jeremy))"
+exec setpriv --reuid=jeremy --regid=jeremy --init-groups --inh-caps=-all -- \
+    env -i \
+    HOME=/home/jeremy \
+    USER=jeremy \
+    LOGNAME=jeremy \
+    SHELL=/bin/bash \
+    PATH=/usr/local/bin:/home/jeremy/.local/bin:/usr/bin:/bin \
+    XDG_RUNTIME_DIR=/run/user/1000 \
+    XDG_SESSION_TYPE=wayland \
+    XDG_CURRENT_DESKTOP=Hyprland \
+    XDG_SESSION_DESKTOP=Hyprland \
+    XDG_SESSION_CLASS=user \
+    DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus \
+    LIBSEAT_BACKEND=seatd \
+    SEATD_SOCK=/run/seatd.sock \
+    dbus-run-session -- \
+    /usr/bin/start-hyprland -- \
+    -c /home/jeremy/.config/hypr/hyprland.lua

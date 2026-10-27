@@ -1,6 +1,6 @@
 //! What the control-plane chatbot recalls before it answers.
 //!
-//! Before 2026-09-19 the production turn (`tched_router.Chat`) forwarded the
+//! Before 2026-09-19 the production turn (`chat_router.Chat`) forwarded the
 //! UI's messages verbatim: episodes were written to Cozo and vectorised, user
 //! memory sat in namespaces, the context engine produced knowledge pushes —
 //! and none of it reached a turn. The chatbot is the consumer now. This module

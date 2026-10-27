@@ -1,0 +1,43 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-network/Cargo.toml	1-76 EOF; current1-76 reread before edit	f17bbb6744d4cbcf5678d8c9a6d35cc77af480afc800b1f2adb7655859b5d1f1	F1 wording corrected J2.wording0.97	complete
+crates/op-network/SPEC.md	1-95 EOF; current1-95 reread before edit	0e14af9de3bb7935f2e279d088dc369746432ffb548c576256ae9e240ab755c7	F1 wording corrected J2.wording0.97; generic inventory drift report-only	complete
+crates/op-network/compare-op-network.md	1-88 EOF; current1-88 reread before edit	2340895f68d6039ff706178aa7cdc31bb8e1d07778433828d7e4701c8333d734	F1 wording corrected J2.wording0.97; generic inventory drift report-only	complete
+crates/op-network/examples/ensure_seeded_root.rs	1-35 EOF	4cde721e306ff12ee38d3c21a807adef7cb06921130791f9bf07107699b7f9ae	no native observed	read_complete
+crates/op-network/src/bin/op-identity-storage.rs	1-53 EOF	2392e8e0fac1b242bb5cfc6d665199da6eafe3dd4f1b42b4f97365d96f1cf247	no native observed	read_complete
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	1-240;241-458 EOF	e58c6ec6b1aa4727055a7190b35b7380e4ce4be78f8df9184154dee7eec1f10d	Incus identity native names preserved J3.storage0.85 supersedes weak J1	complete
+crates/op-network/src/bin/op-of-controller.rs	1-300 EOF; current1-300 reread before edit	5644d51dff1ddf2ad2a0f5cb4eb7baf1d0cf29faa78f8c3bf3fbe5fd508817db	F3 legacy denial/readback documentation corrected J3.legacy0.91	complete
+crates/op-network/src/bin/op-ovsbr0-setup.rs	1-250;251-520;521-801 EOF	cf5d982b2ab1c3b5d803bfbd457c36f4a21b3a6cffef74c88623307eecbf20e8	no native observed; generic boot network prose drift	read_complete
+crates/op-network/src/bin/op-rtnetlink-init.rs	1-155 EOF	4b8f50df82e2076554fc8ef6a626c7da5dcdd6178b14ec211634b645f5462e42	native netlink implementation preserved J3.routes0.94	complete
+crates/op-network/src/btrfs.rs	1-250;251-483 EOF	69459df94fcd3c6b37403c755fa63d6be87155db3f7771c232efbad72273abd9	native ioctl/fixture terminology preserved J3.storage0.85	complete
+crates/op-network/src/controller.rs	1-260;261-560;561-850;851-1150;1151-1415 EOF	c59fa97b3c42d3d01a66b2860386f9af36126d714bb32f8dde0fb651ed98acd9	J1 flow preserve0.98; generic version documentation drift	read_complete
+crates/op-network/src/controller_flow_verify.rs	1-321 EOF	31da782ecbcd489ca7e37990a563c2814808739af1f713c245c56d73e8f0a88e	J1 flow preserve0.98	read_complete
+crates/op-network/src/controller_native_tests.rs	1-349 EOF	cea5e8fc72f7245ca0ec5e78a2602913f37e827c99f4626b6a41d476f2e7c892	J1 flow preserve0.98; tests not run	read_complete
+crates/op-network/src/datapath_safe.rs	1-351 EOF	9a79788312767c2ff95ad2989bdfa5a9f3c0c70760afa9f9b6f13674f9272eb7	no native observed; generic fallback/controller scoping concerns	read_complete
+crates/op-network/src/dbus_tls.rs	1-299 EOF	7ea867b0a43583e25542d25f81f294fe1068a1f042561eaee900c95a10179161	J1 TLS preserve0.98	read_complete
+crates/op-network/src/door/mod.rs	1-27 EOF	183bfee481749f7383f25ab00bfab1d9cc03fdcac2f065b8ef30f024cb0bfcdc	no native observed; not declared in lib.rs	read_complete
+crates/op-network/src/door/proxy.rs	1-193 EOF	f749604b93ecceb0e4de0c6e45a05f84e2c6bf20d70265aea0a639ce32a28c66	no native observed; constructed metadata discarded; not declared in lib.rs	read_complete
+crates/op-network/src/error.rs	1-70 EOF	0ff84ecf49fc68ae9bb2c74b78c3d374fdb965dcc31cc17ffb7e8c19e060d3ab	no native observed; not declared in lib.rs	read_complete
+crates/op-network/src/identity/mod.rs	1-113 EOF	5435bd6fae59f90d1b5d873ef33b45739d478024b7104c4c41eb25da39781c9d	no native observed; not declared in lib.rs	read_complete
+crates/op-network/src/identity/sealed_id.rs	1-147 EOF	3c915ad1d96d1a880387624dbf49d8a0209315afddda54ecb388da0e29e4c0ef	no native observed; not declared in lib.rs	read_complete
+crates/op-network/src/incus_root_subvolume.rs	1-280;281-526 EOF	0c73e3af0e870cb7719315778a01c44d52eca3f2a121a830ab1aa3a12c216a72	native pool source preserved J3.storage0.85	complete
+crates/op-network/src/lib.rs	1-57 EOF; current1-57 reread before edit	3968b7b540fbbd04b527b07ba315580fe8a0f8812f35b88bfec5da36eea1fb0a	F1 OpenFlow wording corrected J2.wording0.97; REST native preserved J3.rest1	complete
+crates/op-network/src/openflow.rs	1-222 EOF	e5723354f9d460af77e15f22386300d789da35144b885f072516350d8d3ad8e0	no native; API versions1.0/1.3 and active1.3 versus passive1.5; generic placeholders	read_complete
+crates/op-network/src/openflow_translate.rs	1-350;351-677 EOF	37ffa56b022652eaf677de7f8d44c83e971ff8f1a3190277504f6d3a8f23dfa1	no native observed	read_complete
+crates/op-network/src/ovs_capabilities.rs	1-345 EOF; current1-345 reread before edit	8e341d2cf487e53070f5a9e802ffb5dc926487deed424007a873f9b4787178d8	F2 two native direct-socket prompt claims corrected J2.caps1; Rust term preserved	complete
+crates/op-network/src/ovs_error.rs	1-236 EOF	750fba464de7b2d830002ebf37e62d0a3bdc90370638091b6651d7baf3b51ecd	no native observed	read_complete
+crates/op-network/src/ovs_netlink.rs	1-280;281-560;561-840;841-1064 EOF	cff71be3fa34502e5e5c5ef1abac9f2d4a31a3fe59c12f3d53a3ceaf0bc8c93e	NativeEndian ABI and direct backend vocabulary preserved J3.netlink1	complete
+crates/op-network/src/ovsdb.rs	1-260;261-520;521-702 EOF	e398b5b97d5f10cf14a65a870745c0e87251353926c8960ee0cfe469d2ed6f33	no native observed; canonical D-Bus Call contract; generic monitor placeholder	read_complete
+crates/op-network/src/ovsdb_monitor.rs	1-280;281-560;561-840;841-1069 EOF	8589897c87a2cdd346072b9d536bb9025d6f3b0d59e2390aad8caf8bc78130d0	native upstream transport/schema/revision preserved J4.monitor0.72	complete
+crates/op-network/src/ovsdb_monitor_tests.rs	1-317 EOF	134ab914de41ebaa97e690dc8009cf260f6cf9056162adae9284abc189f7a834	native parser/protocol fixture terms preserved J4.monitor0.72	complete
+crates/op-network/src/plugin.rs	1-260;261-501 EOF	e9c20446c651c77e902db87a243a06a50fc5322cb28da457a74c48b3e18877ba	native DHCP absent-client terms preserved J2.dhcp0.95; generic behavior report-only	complete
+crates/op-network/src/proxmox.rs	1-250;251-500;501-645 EOF	eca5a0c5f947bcae4c9d614b91313f2e31c7906ab464f323ca48c23a03a2c8e7	native REST labels preserved J3.rest1; generic TLS issue report-only	complete
+crates/op-network/src/rovs_proxy.rs	1-280;281-560;561-850;851-1131 EOF; current1-45 reread before edit	342c152b649f72cadf70e23fffba068461dd01d422b776eafbe4328f0742be7a	F4 backend library attribution corrected J4.backend0.79; other terms J4.rpc0.7	complete
+crates/op-network/src/rovs_proxy_native_tests.rs	1-300 EOF	78049774d05799d56bde054d007686fa4ec3d07dde9b2609711b409537d4fd91	native backend fixture terms preserved J4.fixtures0.88	complete
+crates/op-network/src/rtnetlink.rs	1-280;281-560;561-850;851-1143 EOF	6c8545055e20829844a65e049327574a26f461f1ca2aa8de367bb9921b8bf1d2	native kernel API terms preserved J3.routes0.94	complete
+crates/op-network/src/seeded_boot.rs	1-240;241-406 EOF	5959977ecdc798ab1bd13e20b803b063110f6e4a91c3fed84418cea69108e6bb	native guards/mount preserved J3.storage0.85	complete
+crates/op-network/src/seeded_prepare.rs	1-308 EOF	8e6487388695ccb29153c3a17e538901e18d966ef2a78bd206492aa3db49f6f0	native receipt-local/readback terminology preserved J3.storage0.85	complete
+crates/op-network/src/seeded_root.rs	1-280;281-560;561-850;851-1130;1131-1450;1451-1770;1771-2102 EOF	33254cde51119b9e435526e8daec7d1a5d1e2ce436a875be7b6c770d7c1201c4	native owner/INTENT vocabulary preserved J3.storage0.85	complete
+crates/op-network/src/transport/mod.rs	1-69 EOF	9fb0d92bebc60018aab24bfa5c9818feb74957db9621c705f669f90d0b1616b2	no native; undeclared module references absent children; generic report-only	complete
+crates/op-network/src/unixctl.rs	1-289 EOF	cf696b5d293d1688b526eef6e9d1451730fb9f33a97ae3cf1882ad46a8f944f4	no native; generic CLI/FDB observations report-only	complete
+crates/op-network/src/wgcf_egress.rs	1-135 EOF	5f118e822800fbff12a7701f5ed1a241b56d15a67363c491f160a1af4997eafd	no native observed; no policy operations	complete
+crates/op-network/src/wireguard_kernel.rs	1-349 EOF	dd62590cd568826c5056db099874f207533cd7eb3b522d809aadfa6fbce0c665	native opt-in fixture terminology preserved J3.routes0.94	complete

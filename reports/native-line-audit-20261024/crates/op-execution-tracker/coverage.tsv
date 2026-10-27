@@ -1,0 +1,10 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-execution-tracker/Cargo.toml	1-18 EOF	f81ac1924d9bc490f1d77f15a2e585adcbbe3db46833160c7d9d40a5292a8e1d	No native occurrence; dependency manifest only; unchanged	reviewed
+crates/op-execution-tracker/SPEC.md	1-79 EOF	6d347d51a2a475d1c50d7df724b1cda86a2e21ecd485681250ed4e164436562c	No native occurrence; generated historical inventory; unchanged	reviewed
+crates/op-execution-tracker/compare-op-execution-tracker.md	1-73 EOF	1d50819c7c077d89eb645a886b4755fa7a0a17a9c2f3496d547bdc81f404d167	No native occurrence; historical presence comparison not runtime proof; unchanged	reviewed
+crates/op-execution-tracker/src/execution_context.rs	1-122 EOF	1fcdafbcffa1eabe20eef1f04282c1a7a5b29c4bea497e7420e270294c54ca0e	No native occurrence; context/status/metadata records only; unchanged	reviewed
+crates/op-execution-tracker/src/execution_tracker.rs	1-286 EOF	0b36a6e61fd72a9bca73167d0e91745d93052bff9a7ba6cdd787d7ebe8eba3db	No native occurrence; local record/stat/event tracking; generic active-record eviction risk G1; inline terminal-update tests read; unchanged	reviewed
+crates/op-execution-tracker/src/lib.rs	1-28 EOF	f9ae8e508e3dcb242daf57a9b64b6cf9f03d1d23ea533773568682493f4caa49	No native occurrence; module declarations and exports only; unchanged	reviewed
+crates/op-execution-tracker/src/metrics.rs	1-137 EOF	791d2caeb1e350bfb7224ac48fb652ee08756d06054b3da512534ead477829f8	No native occurrence; Prometheus counters/gauge/histogram and descriptive JSON; unchanged	reviewed
+crates/op-execution-tracker/src/record.rs	1-200;201-386 EOF	f235632b463debbb9efe61bb4d48f38e75c81700984692eff00b0fab55eff8bf	No native occurrence; policy/hash fields are record metadata not routing; UTF-8 regression fixture read; unchanged	reviewed
+crates/op-execution-tracker/src/telemetry.rs	1-71 EOF	67d08152c782f1f9df240b4425b6988e0080103db9213ff4c5901f6af095bb05	No native occurrence; tracing-only service/tool/status labels; unchanged	reviewed

@@ -1,0 +1,155 @@
+path	line_position_before	current_position	exact_token_context	intended_meaning	judgment_reference	JEV_outcome_confidence	decision	change_status
+crates/op-network/Cargo.toml	7 first	7	Native networking: OpenFlow (all versions, pure Rust)	Rust protocol implementation scope	J2.wording	correct_wording 0.97	retain Native; remove unsupported all-versions	F1 corrected
+crates/op-network/SPEC.md	83 first	83	Native networking: OpenFlow (all versions, pure Rust)	Rust protocol implementation scope	J2.wording	correct_wording 0.97	retain Native; remove unsupported all-versions	F1 corrected
+crates/op-network/compare-op-network.md	25 first	25	Native networking: OpenFlow (all versions, pure Rust)	Rust protocol implementation scope	J2.wording	correct_wording 0.97	retain Native; remove unsupported all-versions	F1 corrected
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	223 first	223	native_uuid = string(storage, instance_uuid)	Incus instance UUID	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	225 first	225 first	Uuid::parse_str(native_uuid)	Incus instance UUID canonical check	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	225 second	225 second	to_string() == native_uuid	Incus instance UUID canonical check	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	226 first	226	invalid native UUID pin	Incus instance UUID diagnostic	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	228 first	228	let native_root = Path::new(string(storage, root))	Incus root path	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	233 first	233	native_root.starts_with	Incus root ancestry check	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	234 first	234	native_root.ends_with	Incus root ancestry check	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	235 first	235 first	fs::canonicalize(native_root)	Incus root canonical check	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	235 second	235 second	== native_root	Incus root canonical check	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	236 first	236	native root pin changed	Incus root diagnostic	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	242 first	242	.join(native_uuid)	private instance-scoped lungs path	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	245 first	245	this native instance's private lungs mount	instance-scoped source constraint	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-identity-storage/lungs_attach.rs	347 first	347	native_root	open pinned Incus root	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/bin/op-of-controller.rs	46 first	46	Legacy native methods receive only a system-bus sender	underlying D-Bus entrypoints lack principal attribution	J3.legacy	clarify_comment 0.91	preserve this accurate term	unchanged
+crates/op-network/src/bin/op-of-controller.rs	104 first	104	native readback is required before success	actual switch readback applies to attributed CAS not denied legacy method	J3.legacy	clarify_comment 0.91	clarify always-denied entrypoint and attributed readback	F3 corrected; native retained
+crates/op-network/src/bin/op-rtnetlink-init.rs	1 first	1	Native rtnetlink boot configuration	Rust kernel network control	J3.routes	preserve 0.94	preserve	unchanged
+crates/op-network/src/btrfs.rs	1 first	1	Native btrfs device operations via ioctl	kernel ioctl not CLI	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/btrfs.rs	35 first	35	natively	device_add issued by ioctl	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/btrfs.rs	419 first	419	native_uuid_mount_fixture	isolated real Btrfs UUID/mount fixture	J3.storage	preserve 0.85	preserve; no run claim	unchanged
+crates/op-network/src/controller.rs	49 first	49	controller_native_tests.rs	installed OVS backend fixture module path	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller.rs	50 first	50	mod native_tests	backend fixture module	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller.rs	1131 first	1131	Serialized native compare/read/modify/barrier/readback	actual switch wire operations	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller.rs	1190 first	1190	Native readback for recovery	read-only live switch query not installed cache	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller_flow_verify.rs	215 first	215	native_description_requires_exact_cookie_match_actions_and_valid_lengths	protocol description validation fixture	J1.flow	preserve 0.98	preserve; synthetic frame test not live deployment	unchanged
+crates/op-network/src/controller_flow_verify.rs	237 first	237	native_wire_requires_matching_barrier_and_actual_readback	wire/barrier/readback fixture	J1.flow	preserve 0.98	preserve; no run claim	unchanged
+crates/op-network/src/controller_flow_verify.rs	293 first	293	native_rejection_is_not_success_even_after_barrier	wire rejection fixture	J1.flow	preserve 0.98	preserve; no run claim	unchanged
+crates/op-network/src/controller_native_tests.rs	filename	filename	controller_native_tests.rs	installed backend fixture filename	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller_native_tests.rs	1 first	1	Isolated native OVS userspace datapath	installed OVS dummy datapath fixture	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller_native_tests.rs	10 first	10	struct NativeChild(Child)	RAII real child process wrapper	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller_native_tests.rs	11 first	11	impl Drop for NativeChild	RAII real child cleanup	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller_native_tests.rs	145 first	145	native_ovs_exact_add_modify_delete_and_recovery_readback	installed OVS backend fixture	J1.flow	preserve 0.98	preserve; no D-Bus end-to-end/run claim	unchanged
+crates/op-network/src/controller_native_tests.rs	162 first	162	NativeChild	private ovsdb-server child	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/controller_native_tests.rs	197 first	197	NativeChild	private ovs-vswitchd child	J1.flow	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	1 first	1	Private native D-Bus transport	D-Bus framing over mutual TLS	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	53 first	53	opdbus-native-v1	fixed client ALPN wire identifier	J1.tls	preserve 0.98	preserve protocol string	unchanged
+crates/op-network/src/dbus_tls.rs	67 first	67	opdbus-native-v1	fixed server ALPN wire identifier	J1.tls	preserve 0.98	preserve protocol string	unchanged
+crates/op-network/src/dbus_tls.rs	98 first	98	opdbus-native-v1	connect ALPN equality check	J1.tls	preserve 0.98	preserve protocol string	unchanged
+crates/op-network/src/dbus_tls.rs	122 first	122	opdbus-native-v1	accept ALPN equality check	J1.tls	preserve 0.98	preserve protocol string	unchanged
+crates/op-network/src/dbus_tls.rs	169 first	169	native TLS transport cannot pass file descriptors	TCP/TLS backend FD restriction	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	218 first	218	struct NativeFixture	D-Bus over TLS fixture type	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	219 first	219	org.opdbus.NativeFixture	fixture D-Bus interface name	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	220 first	220	impl NativeFixture	fixture type implementation	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	239 first	239	NativeFixture	fixture service object	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	257 first	257	org.opdbus.NativeFixture	fixture proxy destination	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/dbus_tls.rs	259 first	259	org.opdbus.NativeFixture	fixture proxy interface	J1.tls	preserve 0.98	preserve	unchanged
+crates/op-network/src/incus_root_subvolume.rs	47 first	47	native pool API's pinned config.source	Incus-owned pool source authority	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/lib.rs	4 first	4	Native OpenFlow protocol implementation (all versions, pure Rust)	Rust library-backed protocol support	J2.wording	correct_wording 0.97	retain Native; name client/1.5 controller/library instead of all versions	F1 corrected
+crates/op-network/src/lib.rs	9 first	9	Native Proxmox API client	direct reqwest REST versus pct shell	J3.rest	preserve_report_tls 1	preserve; generic TLS observation separate	unchanged
+crates/op-network/src/ovs_capabilities.rs	208 first	removed	We have native OVSDB JSON-RPC client at /var/run/openvswitch/db.sock	caller/backend communication claim	J2.caps	correct_two 1	replace incorrect direct-access claim with canonical D-Bus and required grants	F2 corrected
+crates/op-network/src/ovs_capabilities.rs	227 first	removed	We use native OVSDB JSON-RPC protocol ... All operations are direct socket communication	caller/backend communication claim	J2.caps	correct_two 1	replace with canonical D-Bus versus backend protocol/caller authorization distinction	F2 corrected
+crates/op-network/src/ovs_capabilities.rs	234 first	234	Both are native Rust	rtnetlink/OVS kernel implementation language	J2.caps	correct_two 1	preserve this accurate term; not grant evidence	unchanged
+crates/op-network/src/ovs_netlink.rs	1 first	1	Native OVS Generic Netlink client	direct kernel ABI backend	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	8 first	8	NativeEndian import	byteorder host-endian kernel ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	256 first	256	NativeEndian::write_u32 UpcallPid	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	258 first	258	NativeEndian::write_u64 n_hit	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	259 first	259	NativeEndian::write_u64 n_missed	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	260 first	260	NativeEndian::write_u64 n_lost	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	261 first	261	NativeEndian::write_u64 n_flows	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	268 first	268	NativeEndian::write_u64 n_mask_hit	kernel megaflow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	269 first	269	NativeEndian::write_u32 n_masks	kernel megaflow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	271 first	271	NativeEndian::write_u64 n_cache_hit	kernel megaflow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	273 first	273	NativeEndian::write_u32 UserFeatures	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	274 first	274	NativeEndian::write_u32 IfIndex	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	295 first	295	NativeEndian::read_u32 UpcallPid	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	302 first	302	NativeEndian::read_u64 n_hit	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	303 first	303	NativeEndian::read_u64 n_missed	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	304 first	304	NativeEndian::read_u64 n_lost	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	305 first	305	NativeEndian::read_u64 n_flows	kernel stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	313 first	313	NativeEndian::read_u64 n_mask_hit	kernel megaflow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	314 first	314	NativeEndian::read_u32 n_masks	kernel megaflow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	315 first	315	NativeEndian::read_u64 n_cache_hit	kernel megaflow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	322 first	322	NativeEndian::read_u32 UserFeatures	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	328 first	328	NativeEndian::read_u32 IfIndex	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	383 first	383	NativeEndian::write_u32 PortNo	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	384 first	384	NativeEndian::write_u32 Type	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	390 first	390	NativeEndian::write_u32 UpcallPid	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	392 first	392	NativeEndian::write_u32 IfIndex	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	406 first	406	NativeEndian::read_u32 PortNo	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	412 first	412	NativeEndian::read_u32 Type	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	426 first	426	NativeEndian::read_u32 UpcallPid	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	433 first	433	NativeEndian::read_u32 IfIndex	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	470 first	470	NativeEndian::read_u64 n_packets	kernel flow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	471 first	471	NativeEndian::read_u64 n_bytes	kernel flow stats ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	484 first	484	NativeEndian::read_u64 Used	kernel scalar attribute ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	682 first	682	NativeEndian::write_u32 length	kernel Netlink header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	683 first	683	NativeEndian::write_u16 family_id	kernel Netlink header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	684 first	684	NativeEndian::write_u16 flags	kernel Netlink header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	685 first	685	NativeEndian::write_u32 seq	kernel Netlink header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	686 first	686	NativeEndian::write_u32 pid	kernel Netlink header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	695 first	695	NativeEndian::write_u32 dp_ifindex	kernel OVS header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	721 first	721	NativeEndian::read_u16 msg_type	kernel Netlink header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	733 first	733	NativeEndian::read_i32 error_code	kernel Netlink error ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	788 first	788	NativeEndian::read_u32 dp_ifindex	kernel OVS header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	866 first	866	NativeEndian::read_u32 dp_ifindex	kernel OVS header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovs_netlink.rs	948 first	948	NativeEndian::read_u32 dp_ifindex	kernel OVS header ABI	J3.netlink	preserve 1	preserve	unchanged
+crates/op-network/src/ovsdb_monitor.rs	3 first	3	native JSON-RPC transport and IDL	upstream protocol library implementation	J4.monitor	preserve 0.72	preserve	unchanged
+crates/op-network/src/ovsdb_monitor.rs	70 first	70	native monitor revision	backend observation sequence not public authority	J4.monitor	preserve 0.72	preserve	unchanged
+crates/op-network/src/ovsdb_monitor.rs	137 first	137	invalid native OVSDB schema	backing database protocol schema not parallel plugin schema	J4.monitor	preserve 0.72	preserve	unchanged
+crates/op-network/src/ovsdb_monitor_tests.rs	27 first	27	native parser/logs	upstream JSON/IDL parser fixture	J4.monitor	preserve 0.72	preserve	unchanged
+crates/op-network/src/ovsdb_monitor_tests.rs	132 first	132	native_monitor_hydrates_then_coalesces_complete_rows_and_deletes	wire/IDL snapshot behavior fixture	J4.monitor	preserve 0.72	preserve; no run claim	unchanged
+crates/op-network/src/ovsdb_monitor_tests.rs	186 first	186	idle_has_no_poll_and_last_receiver_drop_closes_native_connection	backend protocol connection lifetime fixture	J4.monitor	preserve 0.72	preserve; no run claim	unchanged
+crates/op-network/src/plugin.rs	399 first	399	TODO: Implement native DHCP handshake	missing pure-Rust DHCP implementation explicitly pending	J2.dhcp	preserve_native_report_generic 0.95	preserve; generic behavior separate	unchanged
+crates/op-network/src/plugin.rs	419 first	419	DHCP not enabled — native client required	missing DHCP backend diagnostic	J2.dhcp	preserve_native_report_generic 0.95	preserve; no implemented claim	unchanged
+crates/op-network/src/plugin.rs	424 first	424	native client pending	missing DHCP backend diagnostic	J2.dhcp	preserve_native_report_generic 0.95	preserve; generic Ok behavior separate	unchanged
+crates/op-network/src/proxmox.rs	1 first	1	Native Proxmox API Client	direct REST implementation	J3.rest	preserve_report_tls 1	preserve; generic security gap separate	unchanged
+crates/op-network/src/proxmox.rs	3 first	3	native REST API access	direct REST instead of pct shell	J3.rest	preserve_report_tls 1	preserve	unchanged
+crates/op-network/src/rovs_proxy.rs	4 first	4	natively via vendor rovs_ovsdb::Client	direct backend connection	J4.backend	clarify_family 0.79	preserve this accurate term	unchanged
+crates/op-network/src/rovs_proxy.rs	7 first	7	native client	admitted bridge's direct backend	J4.backend	clarify_family 0.79	preserve this accurate term	unchanged
+crates/op-network/src/rovs_proxy.rs	23 first	23	rovs_proxy_native_tests.rs	installed backend fixture module path	J4.rpc	preserve 0.7	preserve	unchanged
+crates/op-network/src/rovs_proxy.rs	24 first	24	mod native_tests	backend fixture module	J4.rpc	preserve 0.7	preserve	unchanged
+crates/op-network/src/rovs_proxy.rs	34 first	32	natively ... by op-network::openflow via rovs_openflow	wrong rovs_ovsdb versus OpenFlow library attribution	J4.backend	clarify_family 0.79	replace inaccurate parenthetical with separate OVSDB backend/D-Bus caller/OpenFlow library description	F4 corrected; native retained at32
+crates/op-network/src/rovs_proxy.rs	810 first	808	dedicated native connection	separate selected-topology backend monitor	J4.rpc	preserve 0.7	preserve	unchanged; shifted -2
+crates/op-network/src/rovs_proxy.rs	823 first	821	Issue one native OVSDB JSON-RPC request	backend non-transaction RPC	J4.rpc	preserve 0.7	preserve	unchanged; shifted -2
+crates/op-network/src/rovs_proxy.rs	825 first	823	pub async fn native_rpc	backend RPC API identifier	J4.rpc	preserve 0.7	preserve	unchanged; shifted -2
+crates/op-network/src/rovs_proxy.rs	835 first	833	connect to OVSDB native RPC endpoint	backend connection failure diagnostic	J4.rpc	preserve 0.7	preserve	unchanged; shifted -2
+crates/op-network/src/rovs_proxy.rs	839 first	837	OVSDB native RPC timed out	backend RPC timeout diagnostic	J4.rpc	preserve 0.7	preserve	unchanged; shifted -2
+crates/op-network/src/rovs_proxy.rs	1018 first	1016	retain the native session	caller-scoped backend protocol monitor connection	J4.rpc	preserve 0.7	preserve	unchanged; shifted -2
+crates/op-network/src/rovs_proxy_native_tests.rs	filename	filename	rovs_proxy_native_tests.rs	installed backend fixture filename	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	8 first	8	struct NativeOvsdbFixture	private installed ovsdb-server fixture	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	14 first	14	impl Drop for NativeOvsdbFixture	real child process cleanup	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	21 first	21 first	native_ovsdb_fixture	private installed backend fixture constructor	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	21 second	21 second	NativeOvsdbFixture	private installed backend fixture return type	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	72 first	72	NativeOvsdbFixture	private installed backend fixture value	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	102 first	102	native_owner_round_trip_covers_rovs_commands_and_ovsdb_bridge_methods	backend functions shared by bridge; not actual D-Bus endpoint coverage	J4.fixtures	preserve 0.88	preserve; no end-to-end/run claim	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	104 first	104	native_ovsdb_fixture	private backend fixture creation	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	114 first	114	.native_rpc	backend echo RPC fixture	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rovs_proxy_native_tests.rs	169 first	169	retain their native connections	RFC7047 lock-owned connection lifetime	J4.fixtures	preserve 0.88	preserve	unchanged
+crates/op-network/src/rtnetlink.rs	1 first	1	native netlink operations for IP addresses and routes	direct kernel API	J3.routes	preserve 0.94	preserve	unchanged
+crates/op-network/src/rtnetlink.rs	461 first	461	via native netlink	kernel route onlink message	J3.routes	preserve 0.94	preserve	unchanged
+crates/op-network/src/rtnetlink.rs	726 first	726	using native RTM_NEWLINK	kernel link creation API	J3.routes	preserve 0.94	preserve	unchanged
+crates/op-network/src/rtnetlink.rs	745 first	745	unsupported native link type	unsupported kernel link operation diagnostic	J3.routes	preserve 0.94	preserve	unchanged
+crates/op-network/src/rtnetlink.rs	750 first	750	using native RTM_DELLINK	kernel link deletion API	J3.routes	preserve 0.94	preserve	unchanged
+crates/op-network/src/rtnetlink.rs	816 first	816	native route netlink API	kernel route API	J3.routes	preserve 0.94	preserve	unchanged
+crates/op-network/src/seeded_boot.rs	209 first	209	Native guards	backing/hash/filesystem verification implementation	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_boot.rs	294 first	294	verified, held native mount	held actual kernel mount authority	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	217 first	217	let native = guard.receipt.clone()	actual provisioning receipt local	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	219 first	219	&native.seed_image	actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	220 first	220	&native.seed_sha256	actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	221 first	221	native.seed_fsid	actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	222 first	222	&native.leaf_image	actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	223 first	223	native.sprout_fsid	actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	224 first	224	&native.mount_point	actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	231 first	231	new persist path differs from native readback	verified actual persistence path diagnostic	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	238 first	238	native.sprout_fsid	actual provisioning receipt journal field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	244 first	244	native.seed_fsid	returned actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	245 first	245	native.sprout_fsid	returned actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	246 first	246	native.leaf_image	returned actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_prepare.rs	248 first	248	native.journal_path	returned actual provisioning receipt field	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_root.rs	324 first	324	Serializes this native owner	flock coordination of storage implementation	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/seeded_root.rs	1851 first	1851	No durable native INTENT exists yet	provision journal versus live effect bookkeeping	J3.storage	preserve 0.85	preserve	unchanged
+crates/op-network/src/wireguard_kernel.rs	307 first	307	Opt-in native fixture	isolated actual kernel backend fixture	J3.routes	preserve 0.94	preserve; no run claim	unchanged

@@ -1,0 +1,3 @@
+path	inventory_lines	lines_read	read_order	status	notes
+crates/op-chat-responder/Cargo.toml	19	19	1	complete	Entire manifest read before src/main.rs; no tched occurrence
+crates/op-chat-responder/src/main.rs	448	448	2	complete	Read exact contiguous ranges 1-100, 101-200, 201-300, 301-400, 401-448 through EOF

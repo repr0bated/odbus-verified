@@ -1,0 +1,10 @@
+#!/bin/sh
+r=/run/opdbus-release/ready
+IFS= read -r state < "$r" || exit 111
+case "$state" in
+  complete\ *) ;;
+  transition\ *)
+    if grep -Fqx 'q op-3tchedfs-recovery' "$r" && ! grep -Fqx 'allow op-3tchedfs-recovery' "$r"; then exit 111; fi ;;
+  *) exit 111 ;;
+esac
+exec /usr/local/libexec/op-dbus/sv/op-3tchedfs-recovery/run "$@"

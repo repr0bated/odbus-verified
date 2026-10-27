@@ -54,13 +54,13 @@ impl CallContext {
         let runtime = tokio::runtime::Handle::current();
         move || {
             runtime.block_on(async move {
-                let caller = crate::tched_router_admission::RouterCaller {
+                let caller = crate::chat_router_admission::RouterCaller {
                     actor: actor.clone(),
                     capability: Some(capability),
                     session: Some(session),
                     genesis: Some(genesis),
                 };
-                crate::tched_router_admission::readmit_call(
+                crate::chat_router_admission::readmit_call(
                     &engine, &admitted, plugin, &method, &caller,
                 )
                 .await?;

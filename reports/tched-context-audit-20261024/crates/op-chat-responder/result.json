@@ -1,0 +1,30 @@
+{
+  "task": "tched-context-audit-20261024/op-chat-responder",
+  "crate": "op-chat-responder",
+  "status": "complete",
+  "files_reviewed": 2,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 16,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-chat-responder/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-chat-responder/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-chat-responder/occurrences.tsv",
+  "jev_receipts": "reports/tched-context-audit-20261024/crates/op-chat-responder/judgments.md",
+  "followup": {
+    "mandatory_preload": "The initial mandatory skill preload was incomplete. All 28 paths from mandatory-preload.txt were reread during this follow-up; those reads are supplemental and are not backdated as initial compliance.",
+    "in_scope_read_gaps": "coordinator-read-gaps.json reports none; both assigned source files had complete sequential reads.",
+    "additional_source_reads": [
+      "crates/op-plugins/src/default_registry.rs (628 lines)",
+      "crates/op-plugins/src/state_plugins/threetched.rs (465 lines)"
+    ],
+    "jev": "Fourth successful declarative call; 3 new choices (O2/O7/O8), 22 choices total. O8: retain_bounded, confidence 0.85.",
+    "runtime_receipts": "Reviewed existing 3tchedFS mounted-view generation 216 and projected config.get metadata/input/output receipts; no operation, grant check, or runtime command was performed. Coordinator reports listings of plugins/threetched/data and value.json returned EIO."
+  },
+  "limitations": [
+    "The projected config.get declaration requires a method-specific capability and is labeled side_effect=mutation, idempotent=false. No grant, successful invocation, or read-only semantics were established.",
+    "The dated generation-216 view contains both tched_router and threetched while current source retires tched_router. Current source/deployment parity is not established; mounted runtime state is unavailable after the coordinator-reported EIO, and no namespace bypass was attempted.",
+    "our_stack_generate remains an explicit non-tched stub requiring a separate combiner/schema/grant integration; this is not a tched naming defect and was not changed.",
+    "No Cargo, build, test, lint, format, smoke, runtime invocation, or deployment was run. Initial inventory hashes were not recomputed."
+  ],
+  "next_action": "Coordinator reconciles the updated static/context report; no scoped crate-source correction is supported by current evidence."
+}

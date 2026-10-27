@@ -1,0 +1,9 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-http/Cargo.toml	1-42 EOF	b888eadffef9820f86993576fc63c47bddf69458f4b5b850114ef084e8d03d97	No native occurrence; generic HTTP/TLS dependencies	complete
+crates/op-http/SPEC.md	1-93 EOF	56353fb9a472450a06dd2e2a362afdbbf7781914cc12962f7ba391a2ea978fe0	No native occurrence; historical inventory drift outside scope	complete
+crates/op-http/compare-op-http.md	1-84 EOF	8e2ae6498b5c048714032637096f67af799ab1052103a471d89f3e0a2cfdca11	No native occurrence; historical inventory drift outside scope	complete
+crates/op-http/src/lib.rs	1-69 EOF	9491dae8e6b8d0fe6b2d094cbebc23fec79e399ee6d79736e5b02548efdae211	No native occurrence; HTTP library entry and reexports	complete
+crates/op-http/src/middleware.rs	1-237 EOF	7024d0518c7f5dd1ac049ab42dd87d09d776a668676e768483137eb3a9423a12	No native occurrence; transport middleware only; no source edit	complete
+crates/op-http/src/router.rs	1-121 EOF	2680ca3563d87bdd83ea547b692d6c3fe8940d9bc1615d2db2daf553c1b531e6	No native occurrence; J1 HTTP composition only; no source edit	complete
+crates/op-http/src/server.rs	1-294 EOF	c1406f1d810979cff7da5b238079aa3e5b6bc3a537eaef2ae03e90ab4f3d8101	No native occurrence; J2 transport configuration; G1 plaintext path outside scope	complete
+crates/op-http/src/tls.rs	1-200;201-319 EOF	894eb8ad04a07416653fdaa1a1321aa0a27f7cffc40bd3e57a819dfdf254aa8f	No native occurrence; J2 certificate configuration; G1 Auto HTTP fallback outside scope; inline test read not run	complete

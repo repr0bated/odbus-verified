@@ -1,4 +1,4 @@
-//! Shared LLM projection types used by `tched_router` and `antigravity`.
+//! Shared LLM projection types used by `chat_router` and `antigravity`.
 //!
 //! These structs define the common schema surface that both plugins expose at
 //! the top level: provider catalog, model routes, router metadata, tool
@@ -264,7 +264,7 @@ pub struct UiSurface {
 
 /// Rewrite shared `llm-projection` subids so they are plugin-specific.
 ///
-/// Both `antigravity` and `tched_router` flatten the shared [`LlmProjection`] struct,
+/// Both `antigravity` and `chat_router` flatten the shared [`LlmProjection`] struct,
 /// so without this rewrite the top-level projection subids collide. The rewrite
 /// replaces the subject token `llm-projection` with `{plugin_name}-llm-projection` in
 /// every top-level subid carried by the schema (nested `$defs` subids are not
@@ -325,7 +325,7 @@ pub struct StructuredOutput {
     pub refusals_as_none: bool,
 }
 
-/// Shared LLM projection embedded by both `tched_router` and `antigravity`.
+/// Shared LLM projection embedded by both `chat_router` and `antigravity`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "sch.software.llm-projection.schema@v1"))]
 pub struct LlmProjection {

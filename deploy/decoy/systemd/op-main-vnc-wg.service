@@ -1,0 +1,15 @@
+[Unit]
+Description=Proxy WireGuard VNC connections to the main host
+Requires=op-main-vnc-wg.socket
+After=op-main-vnc-wg.socket
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd 10.0.0.2:5900
+DynamicUser=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+Restart=on-failure
+RestartSec=2

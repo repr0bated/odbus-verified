@@ -1,0 +1,8 @@
+{
+  "path": "/var/lib/cargo-build/staging/identity-container-provision-20261024.v2FToSfM/current-lv-40GiB.raw.img",
+  "stat": "42:371551:42949672960",
+  "bytes": 42949672960,
+  "sha256": "4a4b836e42283a5c4420dee1415a1728699624c0dda1f62a4c2c6087548b8228",
+  "full_source_readback_matches": true,
+  "fsynced": true
+}
