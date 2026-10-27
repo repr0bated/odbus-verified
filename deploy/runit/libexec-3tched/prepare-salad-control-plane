@@ -8,7 +8,7 @@ key=/etc/op-dbus/secrets/salad-api-key
 [ -f "$key" ] && [ ! -L "$key" ] || exit 0
 case "$(stat -c %u:%a "$key")" in 0:400|0:600) ;; *) exit 78 ;; esac
 native_config() {
-    chpst -u jeremy:jeremy env HOME="$config/home" USER=jeremy \
+    chpst -u root:root env HOME="$config/home" USER=root \
         THREETCHED_CONFIG_DIR="$config" "$binary" config "$@" --config-dir "$config"
 }
 existing=$(native_config get providers.models.custom.salad_control_plane.model --json 2>/dev/null || true)
