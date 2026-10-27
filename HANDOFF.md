@@ -23,7 +23,7 @@ another agent's uncommitted work.
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
-| Grok (Cursor cloud) | Cloud Agent development environment. Smoke failed because `/usr/bin/c++` is clang++; fix is `CC=gcc` `CXX=g++` plus the cstdint flag, then re-run smoke | branch `cursor/cloud-agent-env-760f` | 2026-10-27 | Do not start control-plane services or reseal the catalog. Do not touch `feat/chat-response` or host release state |
+| Grok (Cursor cloud) | Cloud Agent development environment. g++ pin is in. Next failure is rust-lld missing `-lstdc++`; symlink the multiarch `.so`, then re-run smoke | branch `cursor/cloud-agent-env-760f` | 2026-10-27 | Do not start control-plane services or reseal the catalog. Do not touch `feat/chat-response` or host release state |
 | Grok (Cursor) | Add Cheaper Inference (`api.cheaperinference.com`) as a router provider | `/srv/git/odbus-verified` `main` | 2026-09-28 | Do not touch `feat/chat-response` or its plugin files |
 | Claude (host, session odbus-verified-f0) | OD-90, continuing the cloud's two-sided `chat_response` work at the owner's request. Stage 1 is verified on the host: fmt and clippy clean; op-cozo-store 58, op-plugins 528, op-grpc-bridge 734 passed, 0 failed. Next, stage 2 over the cognitive MCP door: a `chat_response_reply` toolset in `mcp-toolsets.json`, the door's `Chat` opening the turn, and first a live check of which identity the router presents to `/mcp` | branch `feat/chat-response`, host worktree `/srv/git/odbus-verified/.claude/worktrees/chat-response`, pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the bridge `chat_response_*` modules. The cloud session is idle on this; do not push to this branch from it. |
 

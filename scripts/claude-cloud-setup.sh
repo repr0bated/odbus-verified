@@ -17,6 +17,14 @@ apt-get install -y --no-install-recommends \
     libclang-dev protobuf-compiler libprotobuf-dev libssl-dev libdbus-1-dev libudev-dev \
     jq gzip tar patch binutils sudo
 
+# rustc's bundled lld searches the multiarch lib directory. The unversioned
+# libstdc++.so from libstdc++-13-dev lives only in the GCC private directory,
+# so -lstdc++ fails. Point lld at the shared library.
+stdcxx_link=/usr/lib/x86_64-linux-gnu/libstdc++.so
+if [ ! -e "$stdcxx_link" ] && [ -e /usr/lib/x86_64-linux-gnu/libstdc++.so.6 ]; then
+    ln -s libstdc++.so.6 "$stdcxx_link"
+fi
+
 export CXXFLAGS="${CXXFLAGS:--include cstdint}"
 export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"
 export CARGO_HOME="${CARGO_HOME:-/usr/local/cargo}"
