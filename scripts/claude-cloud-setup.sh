@@ -69,6 +69,49 @@ for tool in rustup cargo rustc rustdoc rustfmt cargo-fmt cargo-clippy clippy-dri
     fi
 done
 
+# Login shells read /etc/profile.d. This image's agent shells also source
+# ~/.bashrc and do not see profile.d, so write the same flags there once.
+# Cozo/RocksDB fails on modern GCC without -include cstdint.
+cat > /etc/profile.d/op-dbus-build.sh <<'EOF'
+# OP-DBUS native builds. See docs/src/getting-started/verified-workspace.md.
+case " ${CXXFLAGS:-} " in
+    *' -include cstdint '*) ;;
+    *) export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-include cstdint" ;;
+esac
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
+export CARGO_TERM_COLOR="${CARGO_TERM_COLOR:-never}"
+export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
+export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"
+EOF
+chmod 644 /etc/profile.d/op-dbus-build.sh
+
+if [ -f /etc/environment ]; then
+    if ! grep -q '^CXXFLAGS=' /etc/environment; then
+        printf '%s\n' 'CXXFLAGS=-include cstdint' >> /etc/environment
+    fi
+    if ! grep -q '^CARGO_BUILD_JOBS=' /etc/environment; then
+        printf '%s\n' 'CARGO_BUILD_JOBS=2' >> /etc/environment
+    fi
+fi
+
+bashrc=/home/ubuntu/.bashrc
+marker='# op-dbus cloud build environment'
+if [ -f "$bashrc" ] && ! grep -q "$marker" "$bashrc"; then
+    cat >> "$bashrc" <<'EOF'
+
+# op-dbus cloud build environment
+case " ${CXXFLAGS:-} " in
+    *' -include cstdint '*) ;;
+    *) export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-include cstdint" ;;
+esac
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
+export CARGO_TERM_COLOR="${CARGO_TERM_COLOR:-never}"
+export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
+export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"
+EOF
+    chown ubuntu:ubuntu "$bashrc"
+fi
+
 if [ -f Cargo.toml ]; then
     fetched=0
     for delay in 2 4 8 16; do

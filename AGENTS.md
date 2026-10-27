@@ -212,3 +212,11 @@ Prefer the **least-expensive subagent whose output matches a more capable model*
 - `general-purpose` only when the task needs multi-step reasoning or execution that Explore or Plan cannot cover.
 - Use a more capable model for complex cross-crate reasoning, security review, or ambiguous architectural decisions, and for any standard edit, build fix, or test whose quality would drop on the low-cost agent.
 - Do not spawn a subagent for a single-file edit or a direct grep you can do yourself.
+
+## Cursor Cloud specific instructions
+
+- Provision from the repository root with `sh scripts/claude-cloud-setup.sh`. It installs the verified-workspace packages and Rust 1.97.1, fetches the lockfile, and runs `scripts/check-workspace.sh preflight`. It is safe to run again. It does not start services, seal a catalog, or copy host credentials.
+- Native Cozo/RocksDB builds need `CXXFLAGS` to include `-include cstdint`. The setup script persists that, plus `CARGO_BUILD_JOBS=2`, for login shells and the `ubuntu` bashrc. `scripts/check-workspace.sh` also sets `CXXFLAGS` itself. Keep the job count at 2 on a 16 GB agent VM.
+- Prove a checkout with `sh scripts/check-workspace.sh preflight`, `cargo fetch --locked`, then `sh scripts/check-workspace.sh smoke` (`cargo check --locked --workspace`, then `op-core` and `op-plugins` library tests). `verify` is the full fmt, Clippy, and workspace test gate and is much larger.
+- Do not start the control plane here. `op-web`, the gRPC bridge, OVS, catalog seal, and runit need the Artix host, the sealed blob catalog, and identity state. `op-plugin-lint` can read plugin source without those services.
+- Node.js 22.22.2 or newer is already on the default image for `vendor/3tched-json-render-ui/build-assets.sh`. That UI build is not a backend prerequisite.
