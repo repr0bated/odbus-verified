@@ -70,18 +70,26 @@ for tool in rustup cargo rustc rustdoc rustfmt cargo-fmt cargo-clippy clippy-dri
 done
 
 # Login shells read /etc/profile.d. This image's agent shells also source
-# ~/.bashrc and do not see profile.d, so write the same flags there once.
-# Cozo/RocksDB fails on modern GCC without -include cstdint.
-cat > /etc/profile.d/op-dbus-build.sh <<'EOF'
-# OP-DBUS native builds. See docs/src/getting-started/verified-workspace.md.
+# ~/.bashrc and do not see profile.d, so keep the same block there.
+# Cozo/RocksDB fails on modern GCC without -include cstdint. The default
+# image points /usr/bin/c++ at clang++, and clang does not search the
+# versioned libstdc++ directory for that forced include. Cargo must use g++.
+build_env='# op-dbus cloud build environment
+# /usr/bin/c++ is clang on the default image; -include cstdint needs g++.
+export CC="${CC:-gcc}"
+export CXX="${CXX:-g++}"
 case " ${CXXFLAGS:-} " in
-    *' -include cstdint '*) ;;
+    *'"'"' -include cstdint '"'"'*) ;;
     *) export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-include cstdint" ;;
 esac
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
 export CARGO_TERM_COLOR="${CARGO_TERM_COLOR:-never}"
 export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
-export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"
+export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"'
+
+cat > /etc/profile.d/op-dbus-build.sh <<EOF
+# OP-DBUS native builds. See docs/src/getting-started/verified-workspace.md.
+$build_env
 EOF
 chmod 644 /etc/profile.d/op-dbus-build.sh
 
@@ -92,24 +100,22 @@ if [ -f /etc/environment ]; then
     if ! grep -q '^CARGO_BUILD_JOBS=' /etc/environment; then
         printf '%s\n' 'CARGO_BUILD_JOBS=2' >> /etc/environment
     fi
+    if ! grep -q '^CC=' /etc/environment; then
+        printf '%s\n' 'CC=gcc' >> /etc/environment
+    fi
+    if ! grep -q '^CXX=' /etc/environment; then
+        printf '%s\n' 'CXX=g++' >> /etc/environment
+    fi
 fi
 
 bashrc=/home/ubuntu/.bashrc
 marker='# op-dbus cloud build environment'
-if [ -f "$bashrc" ] && ! grep -q "$marker" "$bashrc"; then
-    cat >> "$bashrc" <<'EOF'
-
-# op-dbus cloud build environment
-case " ${CXXFLAGS:-} " in
-    *' -include cstdint '*) ;;
-    *) export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-include cstdint" ;;
-esac
-export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
-export CARGO_TERM_COLOR="${CARGO_TERM_COLOR:-never}"
-export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
-export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"
-EOF
-    chown ubuntu:ubuntu "$bashrc"
+if [ -f "$bashrc" ]; then
+    tmp=$(mktemp)
+    awk -v marker="$marker" 'index($0, marker) {exit} {print}' "$bashrc" > "$tmp"
+    printf '\n%s\n' "$build_env" >> "$tmp"
+    chown ubuntu:ubuntu "$tmp"
+    mv "$tmp" "$bashrc"
 fi
 
 if [ -f Cargo.toml ]; then
