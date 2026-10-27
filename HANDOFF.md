@@ -23,11 +23,16 @@ another agent's uncommitted work.
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
-| Grok (Cursor cloud) | Cloud Agent environment. Smoke compiles; op-core 50 passed; op-plugins 515 passed and 3 snowball tests need a btrfs kernel this VM does not have. Next: lint a plugin, snapshot, and propose | branch `cursor/cloud-agent-env-760f` | 2026-10-27 | Do not start control-plane services, reseal the catalog, or skip the snowball tests. Do not touch `feat/chat-response` or host release state |
 | Grok (Cursor) | Add Cheaper Inference (`api.cheaperinference.com`) as a router provider | `/srv/git/odbus-verified` `main` | 2026-09-28 | Do not touch `feat/chat-response` or its plugin files |
 | Claude (host, session odbus-verified-f0) | OD-90, continuing the cloud's two-sided `chat_response` work at the owner's request. Stage 1 is verified on the host: fmt and clippy clean; op-cozo-store 58, op-plugins 528, op-grpc-bridge 734 passed, 0 failed. Next, stage 2 over the cognitive MCP door: a `chat_response_reply` toolset in `mcp-toolsets.json`, the door's `Chat` opening the turn, and first a live check of which identity the router presents to `/mcp` | branch `feat/chat-response`, host worktree `/srv/git/odbus-verified/.claude/worktrees/chat-response`, pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the bridge `chat_response_*` modules. The cloud session is idle on this; do not push to this branch from it. |
 
 ## Handoffs
+
+### 2026-10-27 · Grok (Cursor cloud: development environment)
+- **Where:** branch `cursor/cloud-agent-env-760f`, pushed, PR #45. Not on the host.
+- **What:** `scripts/claude-cloud-setup.sh` pins `CC=gcc`, `CXX=g++`, `CXXFLAGS=-include cstdint`, and the multiarch `libstdc++.so` link. The environment install is that script. No start script. The control plane stays stopped.
+- **Verified:** workspace check finished; `op-core` 50 passed; `op-plugins` 515 passed and 3 Snowball tests failed because this kernel has no btrfs. `op-plugin-lint` audited `proxy_server.rs`. Draft build `bld-20261027-5c870e78-d006-46bc-a81d-55c1d44d857e` preflight passed, and a fresh agent booted from that build passed preflight.
+- **Still manual:** Save the environment in the panel. The three Snowball tests need a btrfs kernel. Do not skip them.
 
 ### 2026-10-01 · Grok (Cursor cloud: KeePassXC for Cursor in the CRD Plasma session)
 - **Where:** branch `cursor/crd-cursor-keepass-5bbc`, pushed, draft PR #7. Not copied onto the host. The running launcher is still `/usr/local/lib/chrome-remote-desktop/crd-launch`.
