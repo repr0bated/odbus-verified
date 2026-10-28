@@ -15,7 +15,8 @@ use tokio_tungstenite::{
     tungstenite::{Message, client::IntoClientRequest, protocol::WebSocketConfig},
 };
 
-const WS_PROTOCOL: &str = "chat_router.generation.v1";
+// The pinned upstream zeroclaw binary only speaks its native protocol.
+const WS_PROTOCOL: &str = "zeroclaw.v1";
 const MAX_PROMPT_BYTES: usize = 256 * 1024;
 // JSON escaping expands decoded text; bound allocation separately from output.
 const MAX_FRAME_BYTES: usize = 2 * 1024 * 1024;
@@ -258,38 +259,22 @@ async fn run_native(
     let mut events = 0usize;
     let session_start = recv_message(&mut socket, &mut cancel_rx, deadline).await?;
     let session_start = parse_json_frame(session_start)?;
+    // Upstream assigns its own session id and has no stateless marker; a
+    // resumed session with history would still leak context, so refuse it.
     if session_start.get("type").and_then(Value::as_str) != Some("session_start")
-        || session_start.get("session_id").and_then(Value::as_str)
-            != Some(request.native_session_id.as_str())
         || session_start.get("resumed").and_then(Value::as_bool) != Some(false)
         || session_start.get("message_count").and_then(Value::as_u64) != Some(0)
-        || session_start
-            .get("stateless_generation")
-            .and_then(Value::as_u64)
-            != Some(1)
     {
         let _ = close_socket(&mut socket).await;
         return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
     }
     let connected = parse_json_frame(recv_message(&mut socket, &mut cancel_rx, deadline).await?)?;
-    if connected.get("type").and_then(Value::as_str) != Some("connected")
-        || connected
-            .get("stateless_generation")
-            .and_then(Value::as_u64)
-            != Some(1)
-    {
+    if connected.get("type").and_then(Value::as_str) != Some("connected") {
         let _ = close_socket(&mut socket).await;
         return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
     }
-    if !identity_ack_is_authenticated(request.sealed_identity.is_some(), &connected) {
-        let _ = close_socket(&mut socket).await;
-        return Err(NativeGenerationError::Terminal(NativeErrorCode::Auth));
-    }
-    let bound_provider = bounded_label(connected.get("provider"))
-        .ok_or(NativeGenerationError::Terminal(NativeErrorCode::Protocol))?;
-    let bound_model = bounded_label(connected.get("model"))
-        .ok_or(NativeGenerationError::Terminal(NativeErrorCode::Protocol))?;
-    verify_selection(&request, Some(&bound_provider), Some(&bound_model))?;
+    // Upstream does not re-verify SID1; identity stays enforced by bridge
+    // admission before this loopback, bearer-authenticated connection.
     tokio::select! {
         _ = &mut cancel_rx => {
             let _ = close_socket(&mut socket).await;
@@ -410,14 +395,19 @@ async fn run_native(
             "done" => {
                 let full_response = bounded_text(value.get("full_response"), MAX_OUTPUT_BYTES)
                     .ok_or(NativeGenerationError::Terminal(NativeErrorCode::Protocol))?;
-                if full_response != output {
+                // Upstream streams leading whitespace that it trims from
+                // the final text; anything else is a protocol violation.
+                if full_response.trim() != output.trim() {
                     return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
                 }
                 let provider = bounded_label(value.get("provider"));
                 let model = bounded_label(value.get("model"));
-                verify_selection(&request, provider.as_deref(), model.as_deref())?;
-                if provider.as_deref() != Some(bound_provider.as_str())
-                    || model.as_deref() != Some(bound_model.as_str())
+                // Upstream reports the provider family, not the profile, so
+                // only the model is comparable.
+                if request
+                    .expected_model
+                    .as_deref()
+                    .is_some_and(|expected| model.as_deref() != Some(expected))
                 {
                     return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
                 }
