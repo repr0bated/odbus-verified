@@ -585,7 +585,8 @@
       "cap.software.chat-router.generation.read@v1",
       "cap.software.chat-router.generation.cancel@v1",
       "cap.software.chat-router.generation.delete@v1",
-      "cap.software.chat-router.generation.recover@v1"
+      "cap.software.chat-router.generation.recover@v1",
+      "openflow.read"
     ]
   }
 }
