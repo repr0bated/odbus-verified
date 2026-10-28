@@ -518,7 +518,13 @@
       "cap.data.cozo.system-graph.read@v1",
       "cap.data.cozo.system-graph.write@v1",
       "cap.data.cozo.system-graph.refresh@v1",
-      "snowball.read"
+      "snowball.read",
+      "cap.software.chat-router.generation.start@v1",
+      "cap.software.chat-router.generation.read@v1",
+      "cap.software.chat-router.generation.cancel@v1",
+      "cap.software.chat-router.generation.delete@v1",
+      "cap.software.chat-router.generation.recover@v1",
+      "cap.software.tched-router.agent.route.self.read@v1"
     ]
   },
   "1262e982-14c1-44d4-0771-7ce74213211b": {
@@ -574,7 +580,12 @@
       "notebooklm.read",
       "snowball.read",
       "workflows.read",
-      "workflows.write"
+      "workflows.write",
+      "cap.software.chat-router.generation.start@v1",
+      "cap.software.chat-router.generation.read@v1",
+      "cap.software.chat-router.generation.cancel@v1",
+      "cap.software.chat-router.generation.delete@v1",
+      "cap.software.chat-router.generation.recover@v1"
     ]
   }
 }

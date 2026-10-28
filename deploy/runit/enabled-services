@@ -19,6 +19,7 @@ notebook-sources-sync
 # Identity-centric storage: restore completed physical roots and their scoped
 # lungs after incusd, then honor each explicit boot-completion start policy.
 identity-roots
+chatbot-identity
 
 # Base network ownership is independent of application release activation.
 # The distro openvswitch-switch owner retains both daemons and conf.db;
