@@ -20,6 +20,7 @@ notebook-sources-sync
 # lungs after incusd, then honor each explicit boot-completion start policy.
 identity-roots
 chatbot-identity
+subsidiary-hackathon-3tchedfs
 
 # Base network ownership is independent of application release activation.
 # The distro openvswitch-switch owner retains both daemons and conf.db;
