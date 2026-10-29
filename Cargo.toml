@@ -41,7 +41,7 @@ members = [
     "crates/op-chat-responder",
     "crates/threetched-fs",
 ]
-exclude = ["crates/op-uds-relay"]
+exclude = ["crates/op-uds-relay", "hackathon"]
 
 [workspace.package]
 version = "1.0.0"

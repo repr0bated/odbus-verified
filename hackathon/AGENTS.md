@@ -1,5 +1,11 @@
 # AGENTS.md — etched-in-schema (read by omp)
 
+**Where this lives (owner, 2026-10-29):** hackathon work happens on the `hackathon` branch of
+`odbus-verified` (this directory is `hackathon/` there) and changes `odbus-verified` directly.
+`repr0bated/etched-in-schema` is the original record of the history merged here; never rebase,
+squash, cherry-pick or rewrite those commits — Meta Muse Spark provenance depends on their SHAs
+(tag `spark-provenance-20261029`).
+
 **Core rule — 3tchedFS dev cycle:** every method is a sealed blob; the identity acts only by writing to its mount's call files (`operations/<plugin>/<method>/call`) and keeps the receipt. New methods: logic here → plugin registration → sealed blob → operation file → call → receipt (`docs/DEV-CYCLE.md`). No MCP, no direct API calls, no `ovs-*` commands.
 
 Start with `START-HERE.md`, then read `CONTEXT.md` in full (it bundles every doc).
@@ -30,6 +36,6 @@ Read `SPARK-BRIEF.md` first: it is the current project state, paths, rules and p
 Then `README.md`, `docs/3TCHED-RESOURCES.md`, `docs/SUBSIDIARY-SLED.md`, `docs/PRIOR-ART.md`, `docs/WINNING.md` and `docs/DROP-IN-SPEC.md` (the drop-in to build).
 For any backend work, also read `/srv/git/odbus-verified/AGENTS.md` and its `HANDOFF.md`.
 
-- Schemas here are drafts. They become sealed 3tched plugins (Rust) later; do not copy them into op-dbus as files.
+- Schemas here are drafts that become sealed 3tched plugins (Rust); since this is the `hackathon` branch of `odbus-verified`, promote them into `crates/` here with normal commits.
 - Keep claims honest: mark what is proven vs planned.
 - Record decisions and progress at the end of `SPARK-BRIEF.md` (dated), so Claude, Codex, Grok and Spark share one state.
