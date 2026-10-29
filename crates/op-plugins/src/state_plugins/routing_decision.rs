@@ -275,8 +275,8 @@ inventory::submit! {
 mod tests {
     use super::*;
     use crate::state_plugins::schema_tag_registry_methods::{
-        CanonicalMappingRef, PolicyRecord, PolicyRule, ProtectedMethodMarker, ResolvedTagRef,
-        SchemaTagAssociation, TagDisposition,
+        CanonicalMappingRef, PolicyRecord, PolicyRule, PolicySnapshot, ProtectedMethodMarker,
+        ResolvedTagRef, SchemaTagAssociation, TagDisposition,
     };
     use std::collections::BTreeSet;
 
