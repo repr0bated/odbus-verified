@@ -4,6 +4,10 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 description = "Bidirectional D-Bus <-> gRPC bridge with event chain integration"
+# Fresh bridge: legacy src/bin targets and integration tests stay on disk but
+# are not compiled (see the module docs in src/lib.rs).
+autobins = false
+autotests = false
 
 [dependencies]
 op-core = { workspace = true }
@@ -88,18 +92,6 @@ base64 = "0.21"
 qdrant-client = "1.17"
 rcgen = "0.13"
 
-[[bin]]
-name = "op-grpc-bridge"
-path = "src/bin/op-grpc-bridge.rs"
-
-[[bin]]
-name = "dump-protos"
-path = "src/bin/dump-protos.rs"
-
-[[bin]]
-name = "op-grants-materializer"
-path = "src/bin/op-grants-materializer.rs"
-
 [build-dependencies]
 tonic-build = { workspace = true }
 op-blob = { path = "../op-blob" }
@@ -116,19 +108,3 @@ tokio-test = "0.4"
 tempfile = { workspace = true }
 serde_json = { workspace = true }
 rustls = { version = "0.23", features = ["aws_lc_rs"] }
-
-[[test]]
-name = "tched_router_integration"
-path = "tests/tched_router_integration.rs"
-
-[[test]]
-name = "tonic_tls_reflection"
-path = "tests/tonic_tls_reflection.rs"
-
-[[test]]
-name = "negative_topology_gates"
-path = "tests/negative_topology_gates.rs"
-
-[[test]]
-name = "oracle_assertion_e2e"
-path = "tests/oracle_assertion_e2e.rs"
