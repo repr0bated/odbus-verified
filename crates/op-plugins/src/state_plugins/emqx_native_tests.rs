@@ -391,7 +391,8 @@ async fn retained_read_methods_use_authenticated_native_readback() {
     let mcp = fixture.call("get_mcp_status", json!({})).await.unwrap();
     assert_eq!(mcp["gateway_installed"], false);
     assert_eq!(mcp["internal_transport_only"], true);
-    assert_eq!(mcp["external_mcp_endpoint"], "https://10.0.0.2:8090/mcp");
+    // MCP is retired: no external MCP endpoint exists to report.
+    assert_eq!(mcp["external_mcp_endpoint"], "");
 
     let status = fixture.call("get_status", json!({})).await.unwrap();
     assert_eq!(status["running"], true);

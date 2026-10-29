@@ -113,6 +113,51 @@ pub const REGISTERED_HOOKS: &[&str] = &[
     "message.dropped",
 ];
 
+/// User-defined category that determines how the EMQX plugin treats a hook.
+/// Hooks live in this plugin, not in the bridge: the category is the behavior
+/// switch, declared in schema so the GUI renders it and the seal pins it.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum HookCategory {
+    /// Record metadata only; never act on the event.
+    #[default]
+    Observe,
+    /// Gate the connection or subscription decision.
+    Authorize,
+    /// Content-free doorbell: wake the owning session, carry no body.
+    Wake,
+    /// Chat message flow (publish into the conversation path).
+    Chat,
+}
+
+/// One registered hook and the category that defines its behavior.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+pub struct EmqxHookBinding {
+    pub hook: String,
+    pub category: HookCategory,
+}
+
+/// Category for one registered hook name. Unknown hooks observe.
+pub fn hook_category(hook: &str) -> HookCategory {
+    match hook {
+        "client.authenticate" | "client.authorize" => HookCategory::Authorize,
+        "message.publish" => HookCategory::Chat,
+        "message.delivered" => HookCategory::Wake,
+        _ => HookCategory::Observe,
+    }
+}
+
+/// Every registered hook with its behavior category, in declaration order.
+pub fn hook_bindings() -> Vec<EmqxHookBinding> {
+    REGISTERED_HOOKS
+        .iter()
+        .map(|hook| EmqxHookBinding {
+            hook: (*hook).to_string(),
+            category: hook_category(hook),
+        })
+        .collect()
+}
+
 /// Metadata-only observation of the authenticated broker's ExHook callback.
 /// References are digests, not MQTT identities or reusable credentials. Broker
 /// message bodies must never enter the globally visible accountability stream.
@@ -152,6 +197,10 @@ pub struct EmqxExhookDeclaration {
     pub target: String,
     pub transport: String,
     pub registered_hooks: Vec<String>,
+    /// Per-hook behavior categories. `registered_hooks` is the name list the
+    /// ExHook protocol requires; this is the same set with its behavior.
+    #[serde(default)]
+    pub hook_bindings: Vec<EmqxHookBinding>,
 }
 
 /// Deterministic declared state. No live probe or credential is allowed here;
@@ -172,8 +221,9 @@ pub struct EmqxState {
     pub api_base: String,
     pub listeners: Vec<EmqxDeclaredListener>,
     pub exhook: EmqxExhookDeclaration,
-    /// EMQX's MCP Bridge is intentionally not installed. The only external
-    /// MCP endpoint is the bridge-owned `https://10.0.0.2:8090/mcp`.
+    /// EMQX's MCP Bridge is intentionally not installed. There is no MCP
+    /// endpoint anywhere: MCP is retired; identities act only through
+    /// their 3tchedFS mount.
     pub mcp_gateway_installed: bool,
 }
 
@@ -211,6 +261,7 @@ impl EmqxState {
                     .iter()
                     .map(|hook| (*hook).to_string())
                     .collect(),
+                hook_bindings: hook_bindings(),
             },
             mcp_gateway_installed: false,
         }
@@ -433,7 +484,7 @@ pub struct AnnouncedToolset {
     pub title: String,
     #[serde(default)]
     pub description: String,
-    /// MCP tool names in this set.
+    /// Tool names in this set.
     pub tools: Vec<String>,
 }
 
@@ -1180,7 +1231,8 @@ async fn dispatch_emqx_method_on(
                 gateway_version: None,
                 topic_prefix: None,
                 internal_transport_only: true,
-                external_mcp_endpoint: "https://10.0.0.2:8090/mcp".to_string(),
+                // MCP is retired: there is no external MCP endpoint.
+                external_mcp_endpoint: String::new(),
             })?
         }
         "list_listeners" => {
@@ -1573,6 +1625,25 @@ mod tests {
             ("wss", EMQX_MQTT_WSS_BIND)
         );
         assert!(!state.mcp_gateway_installed);
+    }
+
+    #[test]
+    fn hook_bindings_cover_registered_hooks_with_categories() {
+        let state = EmqxState::declared();
+        let bindings = &state.exhook.hook_bindings;
+        assert_eq!(bindings.len(), REGISTERED_HOOKS.len());
+        for (binding, hook) in bindings.iter().zip(REGISTERED_HOOKS.iter()) {
+            assert_eq!(&binding.hook, hook);
+            assert_eq!(binding.category, hook_category(hook));
+        }
+        assert_eq!(hook_category("client.authenticate"), HookCategory::Authorize);
+        assert_eq!(hook_category("client.authorize"), HookCategory::Authorize);
+        assert_eq!(hook_category("message.publish"), HookCategory::Chat);
+        assert_eq!(hook_category("message.delivered"), HookCategory::Wake);
+        assert_eq!(hook_category("client.connect"), HookCategory::Observe);
+        assert_eq!(hook_category("unknown.hook"), HookCategory::Observe);
+        let names: Vec<&str> = bindings.iter().map(|b| b.hook.as_str()).collect();
+        assert_eq!(names, state.exhook.registered_hooks.iter().map(|h| h.as_str()).collect::<Vec<_>>());
     }
 
     #[test]
