@@ -31,8 +31,10 @@
 
 pub mod catalog;
 pub mod core;
+pub mod grpc_client;
 pub mod router;
 pub mod server;
+pub mod tls_door;
 pub mod service;
 
 /// Generated protobuf types for `package operation.v1`.
@@ -46,5 +48,9 @@ pub mod proto {
 
 pub use catalog::{Catalog, CatalogError, PluginEntry, PluginMethod};
 pub use core::{BridgeCore, Journal, StateStore};
+pub use grpc_client::{
+    GhostbridgeCallMetadata, GrpcClientPool, RemoteEndpoint, RemoteOperationClient,
+};
 pub use router::{Handler, Router, RouterError};
 pub use server::serve;
+pub use tls_door::{serve_upgradeable_tcp, PemIdentity};

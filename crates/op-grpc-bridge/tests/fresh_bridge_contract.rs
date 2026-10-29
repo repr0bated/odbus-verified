@@ -289,3 +289,96 @@ async fn reflection_and_mounts_cover_exactly_three_services() {
 
     server.abort();
 }
+
+#[tokio::test]
+async fn client_roundtrip_set_get_subscribe() {
+    use op_grpc_bridge::grpc_client::{GhostbridgeCallMetadata, GrpcClientPool, RemoteOperationClient};
+    use std::sync::Arc;
+    use tokio_stream::StreamExt;
+
+    let core = BridgeCore::new(test_catalog());
+    let probe = std::net::TcpListener::bind("127.0.0.1:0").expect("free port");
+    let port = probe.local_addr().expect("addr").port();
+    drop(probe);
+    let addr: std::net::SocketAddr = format!("127.0.0.1:{port}").parse().expect("addr");
+    let server = tokio::spawn(op_grpc_bridge::serve(addr, core));
+    let endpoint = format!("http://127.0.0.1:{port}");
+
+    let identity = GhostbridgeCallMetadata {
+        sealed_id: Some(b"SID1-contract-test".to_vec()),
+        oracle_assertion: None,
+        session_genesis: None,
+        trace_id: None,
+        wireguard_pubkey: None,
+    };
+    let pool = Arc::new(GrpcClientPool::new());
+    let client = RemoteOperationClient::new(pool, &endpoint, "contract-test");
+
+    // Wait for the server, then set state through the real client.
+    let mut set = None;
+    let mut last_error = None;
+    for _ in 0..100 {
+        match client
+            .set_state_with_identity(
+                "demo.plugin",
+                "/demo/obj",
+                simd_json::json!({"volume": 7}),
+                "contract-test",
+                "",
+                &identity,
+            )
+            .await
+        {
+            Ok(result) => {
+                set = Some(result);
+                break;
+            }
+            Err(error) => {
+                last_error = Some(error);
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+        }
+    }
+    let set = match set {
+        Some(result) => result,
+        None => panic!("set_state through client never succeeded: {last_error:?}"),
+    };
+    assert!(set.event_id >= 1);
+
+    let got = client
+        .get_state_with_identity("demo.plugin", "/demo/obj", &identity, None)
+        .await
+        .expect("get_state through client");
+    assert_eq!(got["volume"], simd_json::json!(7));
+
+    // Subscribe receives the next mutation as a state frame.
+    let mut stream = client
+        .subscribe_with_identity(
+            vec!["demo.plugin".to_string()],
+            vec![],
+            vec![],
+            &identity,
+            None,
+        )
+        .await
+        .expect("subscribe through client");
+    client
+        .set_state_with_identity(
+            "demo.plugin",
+            "/demo/obj",
+            simd_json::json!({"volume": 9}),
+            "contract-test",
+            "",
+            &identity,
+        )
+        .await
+        .expect("second set_state");
+    let frame = tokio::time::timeout(std::time::Duration::from_secs(5), stream.next())
+        .await
+        .expect("frame within timeout")
+        .expect("stream open")
+        .expect("frame ok");
+    assert_eq!(frame.plugin_id, "demo.plugin");
+
+    server.abort();
+}

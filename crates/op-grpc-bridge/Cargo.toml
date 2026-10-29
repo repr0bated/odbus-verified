@@ -110,6 +110,10 @@ tempfile = { workspace = true }
 serde_json = { workspace = true }
 rustls = { version = "0.23", features = ["aws_lc_rs"] }
 
+[[bin]]
+name = "op-grpc-bridge"
+path = "src/bin/op-grpc-bridge.rs"
+
 [[test]]
 name = "fresh_bridge_contract"
 path = "tests/fresh_bridge_contract.rs"
