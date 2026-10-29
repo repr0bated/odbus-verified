@@ -19,6 +19,10 @@
 //!   proto services onto the core. `EventChainService` proof/snapshot
 //!   RPCs are honestly `UNIMPLEMENTED`; everything else is real.
 //!
+//! - OvsdbMirror, RuntimeMirror, ComponentRegistry, MailService, PrivacyNetworkService, DbusPassthrough — dropped, surface already covered by plugin state/catalog.
+//! - HookProvider — dropped from bridge, hooks move to the EMQX plugin (user-defined category field, separate work).
+//! - RegistrationService — dropped, super old, fresh start later.
+//!
 //! Deliberately gone (the old pollution): build-time live-host schema
 //! capture, generated per-plugin protos, chat-router/tched-router legacy,
 //! and the ~140 dispatch modules. Old files remain on disk unreferenced;
