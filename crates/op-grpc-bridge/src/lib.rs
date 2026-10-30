@@ -52,5 +52,5 @@ pub use grpc_client::{
     GhostbridgeCallMetadata, GrpcClientPool, RemoteEndpoint, RemoteOperationClient,
 };
 pub use router::{Handler, Router, RouterError};
-pub use server::serve;
+pub use server::{serve, serve_with_listener};
 pub use tls_door::{serve_upgradeable_tcp, PemIdentity};

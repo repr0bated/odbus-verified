@@ -252,7 +252,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 **Frontend — single Vite app, external repo**:
 
-The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a SvelteKit + Svelte + Vite chat app using `@json-render/svelte` that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. Golden preparation builds from that checkout; the former pinned archive is retired.
+The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a SvelteKit + Svelte + Vite chat app using `@json-render/svelte` that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. The current successor golden builder reads the bundled source at `vendor/3tched-json-render-ui`; check that builder and its inputs before treating newer sibling-checkout instructions as implemented.
 
 **Owner UI stack rule (2026-10-11):** implement application interfaces only
 with Svelte/SvelteKit, Vite and json-render's Svelte renderer. This applies to

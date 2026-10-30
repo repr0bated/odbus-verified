@@ -6,13 +6,17 @@ use op_grpc_bridge::catalog::{Catalog, PluginEntry, PluginMethod};
 use op_grpc_bridge::core::{BridgeCore, CoreMutation, CoreOperation};
 use op_grpc_bridge::proto::dbus_passthrough_client::DbusPassthroughClient;
 use op_grpc_bridge::proto::event_chain_service_client::EventChainServiceClient;
+use op_grpc_bridge::proto::event_chain_service_server::EventChainService;
 use op_grpc_bridge::proto::ovsdb_mirror_client::OvsdbMirrorClient;
 use op_grpc_bridge::proto::plugin_service_client::PluginServiceClient;
+use op_grpc_bridge::proto::plugin_service_server::PluginService;
 use op_grpc_bridge::proto::runtime_mirror_client::RuntimeMirrorClient;
 use op_grpc_bridge::proto::state_sync_client::StateSyncClient;
+use op_grpc_bridge::proto::state_sync_server::StateSync;
 use op_grpc_bridge::proto::{DbusCallRequest, MutateRequest, OperationType, OvsdbEchoRequest};
 use tonic_reflection::pb::v1::server_reflection_client::ServerReflectionClient;
 use tonic_reflection::pb::v1::{ServerReflectionRequest, server_reflection_request};
+use tokio_stream::StreamExt;
 
 fn test_catalog() -> Catalog {
     Catalog::from_entries(vec![PluginEntry {
@@ -151,15 +155,226 @@ fn rejected_mutations_journal_nothing() {
     assert!(events.try_recv().is_err(), "no chain event published");
 }
 
+#[test]
+fn atomic_batch_rejects_nontransactional_handlers_before_any_effect() {
+    use op_grpc_bridge::{Handler, RouterError};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    let core = BridgeCore::new(test_catalog());
+    let calls = Arc::new(AtomicUsize::new(0));
+    let handler_calls = calls.clone();
+    core.register_handler(
+        "demo.plugin",
+        "Ping",
+        Handler::new(move |_| {
+            handler_calls.fetch_add(1, Ordering::SeqCst);
+            Err(RouterError::HandlerFailed {
+                plugin_id: "demo.plugin".into(),
+                method: "Ping".into(),
+                message: "runtime failure".into(),
+            })
+        }),
+    );
+    let mut states = core.subscribe_state();
+    let mut events = core.subscribe_events();
+    let outcome = core.batch_mutate(
+        vec![
+            set_property_op("volume", serde_json::json!(7)),
+            CoreMutation {
+                operation: CoreOperation::CallMethod,
+                member_name: "Ping".into(),
+                ..set_property_op("", serde_json::Value::Null)
+            },
+        ],
+        true,
+    );
+
+    assert_eq!(outcome.failed_index, Some(1));
+    assert!(outcome.results.iter().all(Result::is_err));
+    assert_eq!(calls.load(Ordering::SeqCst), 0, "handler never ran");
+    assert!(core.get_object("demo.plugin", "/demo/obj").is_none());
+    assert!(core.journal().is_empty());
+    assert!(states.try_recv().is_err());
+    assert!(events.try_recv().is_err());
+}
+
+#[test]
+fn atomic_state_batch_commits_all_or_rejects_all() {
+    let core = BridgeCore::new(test_catalog());
+    let accepted = core.batch_mutate(
+        vec![
+            set_property_op("volume", serde_json::json!(7)),
+            CoreMutation {
+                operation: CoreOperation::ApplyPatch,
+                ..set_property_op("", serde_json::json!({"muted": true}))
+            },
+        ],
+        true,
+    );
+    assert_eq!(accepted.failed_index, None);
+    assert!(accepted.results.iter().all(Result::is_ok));
+    assert_eq!(
+        core.get_property("demo.plugin", "/demo/obj", "volume"),
+        Some(serde_json::json!(7)),
+    );
+    assert_eq!(
+        core.get_property("demo.plugin", "/demo/obj", "muted"),
+        Some(serde_json::json!(true)),
+    );
+
+    let rejected = core.batch_mutate(
+        vec![
+            set_property_op("volume", serde_json::json!(9)),
+            set_property_op("", serde_json::json!(false)),
+        ],
+        true,
+    );
+    assert_eq!(rejected.failed_index, Some(1));
+    assert!(rejected.results.iter().all(Result::is_err));
+    assert_eq!(
+        core.get_property("demo.plugin", "/demo/obj", "volume"),
+        Some(serde_json::json!(7)),
+    );
+    assert_eq!(core.at_event_id(), 2);
+}
+
+async fn next_stream_item<T>(
+    stream: &mut tokio_stream::wrappers::ReceiverStream<Result<T, tonic::Status>>,
+) -> Result<T, tonic::Status> {
+    tokio::time::timeout(std::time::Duration::from_secs(5), stream.next())
+        .await
+        .expect("stream produced an item")
+        .expect("stream remains open")
+}
+
+#[tokio::test]
+async fn state_hydration_keeps_updates_received_while_output_is_full() {
+    use op_grpc_bridge::core::proto_value_to_json;
+    use op_grpc_bridge::proto::{StateFrameKind, SubscribeRequest};
+    use op_grpc_bridge::service::BridgeService;
+
+    let core = BridgeCore::new(test_catalog());
+    // More than the service's 128 output slots: hydration must backpressure.
+    for index in 0..130 {
+        core.mutate(CoreMutation {
+            object_path: format!("/demo/{index:03}"),
+            ..set_property_op("volume", serde_json::json!(0))
+        })
+        .expect("seed object");
+    }
+    let service = BridgeService::new(core.clone());
+    let mut stream = service
+        .subscribe(tonic::Request::new(SubscribeRequest {
+            include_initial_state: true,
+            ..Default::default()
+        }))
+        .await
+        .expect("subscribe")
+        .into_inner();
+    let first = next_stream_item(&mut stream).await.expect("first snapshot frame");
+    assert_eq!(first.frame_kind, StateFrameKind::InitialState as i32);
+
+    // The producer is blocked sending hydration. Change an object already
+    // sent, so a later snapshot frame cannot accidentally cover this update.
+    core.mutate(CoreMutation {
+        object_path: first.object_path.clone(),
+        ..set_property_op("volume", serde_json::json!(99))
+    })
+    .expect("concurrent update");
+    for _ in 1..130 {
+        let initial = next_stream_item(&mut stream).await.expect("snapshot frame");
+        assert_eq!(initial.frame_kind, StateFrameKind::InitialState as i32);
+    }
+    let update = next_stream_item(&mut stream).await.expect("live update");
+    assert_eq!(update.frame_kind, StateFrameKind::Update as i32);
+    assert_eq!(update.object_path, first.object_path);
+    assert_eq!(update.event_id, 131);
+    assert_eq!(
+        proto_value_to_json(update.new_value.as_ref().expect("new value")).as_f64(),
+        Some(99.0),
+    );
+}
+
+#[tokio::test]
+async fn event_replay_keeps_concurrent_events_once_and_in_order() {
+    use op_grpc_bridge::proto::SubscribeEventsRequest;
+    use op_grpc_bridge::service::BridgeService;
+
+    let core = BridgeCore::new(test_catalog());
+    for index in 0..130 {
+        core.mutate(set_property_op("volume", serde_json::json!(index)))
+            .expect("seed event");
+    }
+    let service = BridgeService::new(core.clone());
+    let mut stream = service
+        .subscribe_events(tonic::Request::new(SubscribeEventsRequest {
+            from_event_id: 1,
+            ..Default::default()
+        }))
+        .await
+        .expect("subscribe events")
+        .into_inner();
+    assert_eq!(
+        next_stream_item(&mut stream).await.expect("first event").event_id,
+        1,
+    );
+    core.mutate(set_property_op("volume", serde_json::json!(999)))
+        .expect("concurrent event");
+    for expected in 2..=131 {
+        assert_eq!(
+            next_stream_item(&mut stream).await.expect("next event").event_id,
+            expected,
+        );
+    }
+}
+
+#[tokio::test]
+async fn lagging_state_event_and_signal_streams_require_resynchronization() {
+    use op_grpc_bridge::proto::{SubscribeEventsRequest, SubscribeRequest, SubscribeSignalsRequest};
+    use op_grpc_bridge::service::BridgeService;
+
+    let core = BridgeCore::new(test_catalog());
+    let service = BridgeService::new(core.clone());
+    let mut states = service
+        .subscribe(tonic::Request::new(SubscribeRequest::default()))
+        .await
+        .expect("subscribe state")
+        .into_inner();
+    let mut events = service
+        .subscribe_events(tonic::Request::new(SubscribeEventsRequest::default()))
+        .await
+        .expect("subscribe events")
+        .into_inner();
+    let mut signals = service
+        .subscribe_signals(tonic::Request::new(SubscribeSignalsRequest::default()))
+        .await
+        .expect("subscribe signals")
+        .into_inner();
+    // All three receivers are registered before their RPC returns. On this
+    // current-thread runtime no producer task can drain them until we await.
+    for index in 0..1025 {
+        core.mutate(set_property_op("volume", serde_json::json!(index)))
+            .expect("publish update");
+    }
+    let state_error = next_stream_item(&mut states).await.expect_err("state lag is visible");
+    let event_error = next_stream_item(&mut events).await.expect_err("event lag is visible");
+    let signal_error = next_stream_item(&mut signals).await.expect_err("signal lag is visible");
+    assert_eq!(state_error.code(), tonic::Code::DataLoss);
+    assert_eq!(event_error.code(), tonic::Code::DataLoss);
+    assert_eq!(signal_error.code(), tonic::Code::DataLoss);
+}
+
 #[tokio::test]
 async fn reflection_and_mounts_cover_exactly_three_services() {
     let core = BridgeCore::new(test_catalog());
-    let probe = std::net::TcpListener::bind("127.0.0.1:0").expect("free port");
-    let port = probe.local_addr().expect("addr").port();
-    drop(probe);
-    let addr: std::net::SocketAddr = format!("127.0.0.1:{port}").parse().expect("addr");
-    let server = tokio::spawn(op_grpc_bridge::serve(addr, core));
-    let endpoint = format!("http://127.0.0.1:{port}");
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("listener");
+    let endpoint = format!("http://{}", listener.local_addr().expect("addr"));
+    let server = tokio::spawn(op_grpc_bridge::serve_with_listener(listener, core));
 
     let mut reflection = None;
     for _ in 0..100 {
@@ -297,12 +512,11 @@ async fn client_roundtrip_set_get_subscribe() {
     use tokio_stream::StreamExt;
 
     let core = BridgeCore::new(test_catalog());
-    let probe = std::net::TcpListener::bind("127.0.0.1:0").expect("free port");
-    let port = probe.local_addr().expect("addr").port();
-    drop(probe);
-    let addr: std::net::SocketAddr = format!("127.0.0.1:{port}").parse().expect("addr");
-    let server = tokio::spawn(op_grpc_bridge::serve(addr, core));
-    let endpoint = format!("http://127.0.0.1:{port}");
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("listener");
+    let endpoint = format!("http://{}", listener.local_addr().expect("addr"));
+    let server = tokio::spawn(op_grpc_bridge::serve_with_listener(listener, core));
 
     let identity = GhostbridgeCallMetadata {
         sealed_id: Some(b"SID1-contract-test".to_vec()),

@@ -721,11 +721,12 @@ impl AntigravityProvider {
     }
 
     fn convert_messages(messages: &[ChatMessage]) -> (Vec<Value>, Option<Value>) {
-        let mut system_instruction = None;
+        let system_instruction = crate::graph_turn_reminder::ordered_system_content(messages)
+            .map(|content| json!({"parts": [{"text": content}]}));
         let mut contents = Vec::new();
         for message in messages {
             if message.role == "system" {
-                system_instruction = Some(json!({"parts": [{"text": message.content}]}));
+                continue;
             } else {
                 let role = if message.role == "assistant" {
                     "model"

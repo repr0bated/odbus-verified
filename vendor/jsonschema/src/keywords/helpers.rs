@@ -1,5 +1,5 @@
 use num_cmp::NumCmp;
-use serde_json::{Map, Value};
+use serde_json::{Map, Number, Value};
 
 use crate::{compiler, paths::Location, primitive_type::PrimitiveType, ValidationError};
 
@@ -16,21 +16,24 @@ macro_rules! num_cmp {
 }
 
 #[inline]
+pub(crate) fn equal_numbers(left: &Number, right: &Number) -> bool {
+    if let Some(a) = left.as_u64() {
+        num_cmp!(a, right)
+    } else if let Some(a) = left.as_i64() {
+        num_cmp!(a, right)
+    } else {
+        let a = left.as_f64().expect("Always valid");
+        num_cmp!(a, right)
+    }
+}
+
+#[inline]
 pub(crate) fn equal(left: &Value, right: &Value) -> bool {
     match (left, right) {
         (Value::String(left), Value::String(right)) => left == right,
         (Value::Bool(left), Value::Bool(right)) => left == right,
         (Value::Null, Value::Null) => true,
-        (Value::Number(left), Value::Number(right)) => {
-            if let Some(a) = left.as_u64() {
-                num_cmp!(a, right)
-            } else if let Some(a) = left.as_i64() {
-                num_cmp!(a, right)
-            } else {
-                let a = left.as_f64().expect("Always valid");
-                num_cmp!(a, right)
-            }
-        }
+        (Value::Number(left), Value::Number(right)) => equal_numbers(left, right),
         (Value::Array(left), Value::Array(right)) => equal_arrays(left, right),
         (Value::Object(left), Value::Object(right)) => equal_objects(left, right),
         (_, _) => false,
@@ -80,7 +83,7 @@ pub(crate) fn map_get_u64<'a>(
         ))),
         None => {
             if let Some(value) = value.as_f64() {
-                if value.trunc() == value {
+                if value >= 0.0 && value.trunc() == value {
                     // NOTE: Imprecise cast as big integers are not supported yet
                     #[allow(clippy::cast_possible_truncation)]
                     return Some(Ok(value as u64));
@@ -118,6 +121,28 @@ mod tests {
     use super::equal;
     use serde_json::{json, Value};
     use test_case::test_case;
+
+    #[test]
+    fn negative_float_size_limits_fail_without_meta_validation() {
+        for keyword in [
+            "maxItems", "minItems", "maxLength", "minLength",
+            "maxProperties", "minProperties",
+        ] {
+            let mut schema = json!({});
+            schema[keyword] = json!(-1.0);
+            assert!(crate::options()
+                .with_draft(crate::Draft::Draft202012)
+                .without_schema_validation()
+                .build(&schema)
+                .is_err(), "{keyword} accepted a negative bound");
+            schema[keyword] = json!(1.0);
+            assert!(crate::options()
+                .with_draft(crate::Draft::Draft202012)
+                .without_schema_validation()
+                .build(&schema)
+                .is_ok(), "{keyword} rejected a nonnegative integer-valued float");
+        }
+    }
 
     #[test_case(&json!(1), &json!(1.0))]
     #[test_case(&json!([2]), &json!([2.0]))]

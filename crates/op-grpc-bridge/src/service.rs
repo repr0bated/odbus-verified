@@ -172,36 +172,45 @@ impl StateSync for BridgeService {
         request: Request<SubscribeRequest>,
     ) -> Result<Response<Self::SubscribeStream>, Status> {
         let req = request.into_inner();
-        let core = self.core.clone();
+        // Register before returning the RPC, and snapshot under the same
+        // commit boundary. No updates can fall between hydration and live.
+        let (initial, schemas, mut sub) = self.core.state_subscription(
+            req.include_initial_state,
+            req.include_schema,
+        );
         let (tx, rx) = mpsc::channel(128);
         tokio::spawn(async move {
-            if req.include_initial_state {
-                for frame in core.initial_frames() {
-                    if state_matches(&req, &frame) && tx.send(Ok(frame)).await.is_err() {
-                        return;
-                    }
+            for frame in initial {
+                if state_matches(&req, &frame) && tx.send(Ok(frame)).await.is_err() {
+                    return;
                 }
             }
-            if req.include_schema {
-                for frame in core.schema_frames() {
-                    // Contracts carry no path or tags; the plugin filter still applies.
-                    if !req.plugin_ids.is_empty() && !req.plugin_ids.contains(&frame.plugin_id) {
-                        continue;
-                    }
-                    if tx.send(Ok(frame)).await.is_err() {
-                        return;
-                    }
+            for frame in schemas {
+                // Contracts carry no path or tags; the plugin filter still applies.
+                if !req.plugin_ids.is_empty() && !req.plugin_ids.contains(&frame.plugin_id) {
+                    continue;
+                }
+                if tx.send(Ok(frame)).await.is_err() {
+                    return;
                 }
             }
-            let mut sub = core.subscribe_state();
             loop {
-                match sub.recv().await {
+                let received = tokio::select! {
+                    _ = tx.closed() => return,
+                    received = sub.recv() => received,
+                };
+                match received {
                     Ok(frame) => {
                         if state_matches(&req, &frame) && tx.send(Ok(frame)).await.is_err() {
                             return;
                         }
                     }
-                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                        let _ = tx.send(Err(Status::data_loss(format!(
+                            "state stream missed {skipped} updates; resubscribe with include_initial_state",
+                        )))).await;
+                        return;
+                    }
                     Err(broadcast::error::RecvError::Closed) => return,
                 }
             }
@@ -223,13 +232,13 @@ impl StateSync for BridgeService {
         request: Request<GetStateRequest>,
     ) -> Result<Response<GetStateResponse>, Status> {
         let req = request.into_inner();
-        match self.core.get_object(&req.plugin_id, &req.object_path) {
-            Some((map, hash)) => {
+        match self.core.get_object_snapshot(&req.plugin_id, &req.object_path) {
+            Some((map, hash, event_id)) => {
                 let value = serde_json::Value::Object(map.clone());
                 Ok(Response::new(GetStateResponse {
                     state: Some(json_map_to_proto_struct(&map)),
                     effective_hash: hash,
-                    at_event_id: self.core.at_event_id(),
+                    at_event_id: event_id,
                     value: Some(json_to_proto_value(&value)),
                 }))
             }
@@ -359,7 +368,7 @@ impl PluginService for BridgeService {
                 req.plugin_id
             )));
         }
-        match self.core.store().get_member(
+        match self.core.get_property(
             &req.plugin_id,
             &req.object_path,
             &req.property_name,
@@ -420,12 +429,15 @@ impl PluginService for BridgeService {
         // SIGNAL-kind frames (none today) over real plumbing. The stream
         // stays open until the client leaves.
         let req = request.into_inner();
-        let core = self.core.clone();
+        let mut sub = self.core.subscribe_state();
         let (tx, rx) = mpsc::channel(128);
         tokio::spawn(async move {
-            let mut sub = core.subscribe_state();
             loop {
-                match sub.recv().await {
+                let received = tokio::select! {
+                    _ = tx.closed() => return,
+                    received = sub.recv() => received,
+                };
+                match received {
                     Ok(frame) => {
                         if frame.change_type != ChangeType::Signal as i32 {
                             continue;
@@ -453,7 +465,12 @@ impl PluginService for BridgeService {
                             return;
                         }
                     }
-                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                        let _ = tx.send(Err(Status::data_loss(format!(
+                            "signal stream missed {skipped} state frames; resubscribe and refresh state",
+                        )))).await;
+                        return;
+                    }
                     Err(broadcast::error::RecvError::Closed) => return,
                 }
             }
@@ -499,27 +516,36 @@ impl EventChainService for BridgeService {
         request: Request<SubscribeEventsRequest>,
     ) -> Result<Response<Self::SubscribeEventsStream>, Status> {
         let req = request.into_inner();
-        let core = self.core.clone();
+        let (history, mut sub) = self.core.event_subscription(req.from_event_id);
         let (tx, rx) = mpsc::channel(128);
         tokio::spawn(async move {
             // Replay from from_event_id (0 = live events only).
-            if req.from_event_id != 0 {
-                for event in core.journal().range(req.from_event_id, 0) {
-                    let event = ChainEvent::from(&event);
-                    if chain_matches(&req, &event) && tx.send(Ok(event)).await.is_err() {
-                        return;
-                    }
+            for event in history {
+                let event = ChainEvent::from(&event);
+                if chain_matches(&req, &event) && tx.send(Ok(event)).await.is_err() {
+                    return;
                 }
             }
-            let mut sub = core.subscribe_events();
             loop {
-                match sub.recv().await {
+                let received = tokio::select! {
+                    _ = tx.closed() => return,
+                    received = sub.recv() => received,
+                };
+                match received {
                     Ok(event) => {
+                        if event.event_id < req.from_event_id {
+                            continue;
+                        }
                         if chain_matches(&req, &event) && tx.send(Ok(event)).await.is_err() {
                             return;
                         }
                     }
-                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                        let _ = tx.send(Err(Status::data_loss(format!(
+                            "event stream missed {skipped} events; resume with from_event_id after the last received event",
+                        )))).await;
+                        return;
+                    }
                     Err(broadcast::error::RecvError::Closed) => return,
                 }
             }

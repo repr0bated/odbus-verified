@@ -1,7 +1,7 @@
 use crate::{
     compiler, ecma,
-    error::{no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::{BoxedValidator, CompilationResult},
     node::SchemaNode,
     output::BasicOutput,
     paths::{LazyLocation, Location},
@@ -10,6 +10,75 @@ use crate::{
 };
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
+
+// additionalProperties can own the optimized value validators below. Keep the
+// fallible name matching check at patternProperties itself in every case, so a
+// regex runtime error cannot turn a constrained property into a non-match.
+struct CheckedPatternProperties {
+    patterns: Vec<(Regex, Location)>,
+    inner: Option<BoxedValidator>,
+}
+
+impl CheckedPatternProperties {
+    fn check<'i>(
+        &self,
+        instance: &'i Value,
+        location: &LazyLocation,
+    ) -> Result<(), ValidationError<'i>> {
+        if let Value::Object(properties) = instance {
+            for (pattern, schema_path) in &self.patterns {
+                for (name, value) in properties {
+                    if let Err(error) = pattern.is_match(name) {
+                        return Err(ValidationError::backtrack_limit(
+                            schema_path.clone(),
+                            (&location.push(name)).into(),
+                            value,
+                            error,
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Validate for CheckedPatternProperties {
+    fn is_valid(&self, instance: &Value) -> bool {
+        self.check(instance, &LazyLocation::new()).is_ok()
+            && self.inner.as_ref().map_or(true, |inner| inner.is_valid(instance))
+    }
+
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: &LazyLocation,
+    ) -> Result<(), ValidationError<'i>> {
+        self.check(instance, location)?;
+        self.inner
+            .as_ref()
+            .map_or(Ok(()), |inner| inner.validate(instance, location))
+    }
+
+    fn iter_errors<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+        if let Err(err) = self.check(instance, location) {
+            return error(err);
+        }
+        self.inner
+            .as_ref()
+            .map_or_else(no_error, |inner| inner.iter_errors(instance, location))
+    }
+
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+        if let Err(error) = self.check(instance, location) {
+            return PartialApplication::invalid_empty(vec![error.into()]);
+        }
+        match self.inner.as_ref() {
+            Some(inner) => inner.apply(instance, location),
+            None => PartialApplication::valid_empty(),
+        }
+    }
+}
 
 pub(crate) struct PatternPropertiesValidator {
     patterns: Vec<(Regex, SchemaNode)>,
@@ -219,6 +288,37 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
+    Some((|| {
+        let inner = compile_inner(ctx, parent, schema).transpose()?;
+        let mut patterns = Vec::new();
+        if let Value::Object(map) = schema {
+            for (pattern, subschema) in map {
+                let compiled = match ecma::to_rust_regex(pattern).map(|p| Regex::new(&p)) {
+                    Ok(Ok(regex)) => regex,
+                    _ => {
+                        return Err(ValidationError::format(
+                            Location::new(),
+                            ctx.location().join("patternProperties").join(pattern),
+                            subschema,
+                            "regex",
+                        ));
+                    }
+                };
+                patterns.push((
+                    compiled,
+                    ctx.location().join("patternProperties").join(pattern),
+                ));
+            }
+        }
+        Ok(Box::new(CheckedPatternProperties { patterns, inner }) as BoxedValidator)
+    })())
+}
+
+fn compile_inner<'a>(
+    ctx: &compiler::Context,
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
+) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `patternProperties` logic
         Some(Value::Bool(false)) | Some(Value::Object(_)) => None,
@@ -249,6 +349,32 @@ mod tests {
     use crate::tests_util;
     use serde_json::{json, Value};
     use test_case::test_case;
+
+    #[test]
+    fn matching_errors_reject_each_optimized_property_path() {
+        let pattern = "(a|b|ab)*(?=c)";
+        let name = "ab".repeat(28);
+        for additional in [None, Some(json!(false)), Some(json!({})), Some(json!(true))] {
+            for extra_pattern in [false, true] {
+                for unevaluated_first in [false, true] {
+                    let mut schema = json!({});
+                    if unevaluated_first {
+                        schema["unevaluatedProperties"] = json!(false);
+                    }
+                    schema["patternProperties"] = json!({pattern: false});
+                    if extra_pattern {
+                        schema["patternProperties"]["^ordinary"] = json!(true);
+                    }
+                    if let Some(additional) = &additional {
+                        schema["additionalProperties"] = additional.clone();
+                    }
+                    let mut instance = json!({});
+                    instance[&name] = json!(1);
+                    tests_util::is_not_valid_with_draft(crate::Draft::Draft202012, &schema, &instance);
+                }
+            }
+        }
+    }
 
     #[test_case(&json!({"patternProperties": {"^f": {"type": "string"}}}), &json!({"f": 42}), "/patternProperties/^f/type")]
     #[test_case(&json!({"patternProperties": {"^f": {"type": "string"}, "^x": {"type": "string"}}}), &json!({"f": 42}), "/patternProperties/^f/type")]

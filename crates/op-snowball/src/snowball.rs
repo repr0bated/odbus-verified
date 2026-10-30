@@ -2072,9 +2072,20 @@ async fn remote_ssh_command(
         .context("start SSH command for vector dump")?;
     let mut stderr = child.stderr.take().context("SSH stderr missing")?;
     let completed = tokio::time::timeout(timeout, async move {
-        let status = child.wait().await?;
-        let mut buffer = Vec::new();
-        tokio::io::AsyncReadExt::read_to_end(&mut stderr, &mut buffer).await?;
+        // Drain while waiting: SSH may otherwise block on a full stderr pipe.
+        // Keep a bounded diagnostic prefix while continuing to consume output.
+        let (status, buffer) = tokio::try_join!(child.wait(), async {
+            let mut buffer = Vec::new();
+            let mut chunk = [0_u8; 8192];
+            loop {
+                let count = tokio::io::AsyncReadExt::read(&mut stderr, &mut chunk).await?;
+                if count == 0 {
+                    return Ok::<_, std::io::Error>(buffer);
+                }
+                let retained = count.min((64 * 1024_usize).saturating_sub(buffer.len()));
+                buffer.extend_from_slice(&chunk[..retained]);
+            }
+        })?;
         let diagnostic = String::from_utf8_lossy(&buffer);
         ensure!(
             status.success(),

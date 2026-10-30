@@ -26,6 +26,18 @@ pub fn with_system_graph_reminder(mut messages: Vec<ChatMessage>) -> Vec<ChatMes
     messages
 }
 
+/// Providers with a separate system field must retain every trusted system
+/// message in order. User and tool content never enters that field.
+pub(crate) fn ordered_system_content(messages: &[ChatMessage]) -> Option<String> {
+    let mut systems = messages.iter().filter(|message| message.role == "system");
+    let mut content = systems.next()?.content.clone();
+    for message in systems {
+        content.push_str("\n\n");
+        content.push_str(&message.content);
+    }
+    Some(content)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

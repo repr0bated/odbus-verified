@@ -35,7 +35,17 @@ pub struct StartWorkflowInput {
     /// binding is at most 256 bytes and argument JSON at most 16384 bytes.
     /// The serialized execution parameters must fit 131072 bytes in total.
     #[schemars(extend("x-opdbus-private" = true))]
+    #[schemars(with = "Option<WorkflowExecutionParameters>")]
     pub params: Option<serde_json::Value>,
+}
+
+/// Schema view of the existing JSON parameters; wire deserialization stays JSON.
+/// Byte limits and operation binding validation remain execution-owner checks.
+#[derive(schemars::JsonSchema)]
+#[allow(dead_code)] // Used only to derive the sealed schema, never instantiated.
+struct WorkflowExecutionParameters {
+    #[schemars(length(min = 1, max = 32))]
+    steps: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]

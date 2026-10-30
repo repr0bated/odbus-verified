@@ -550,6 +550,8 @@ pub struct BatchOutcome {
 }
 
 struct BridgeCoreInner {
+    /// Serializes state/journal publication and subscription snapshot boundaries.
+    commit: Mutex<()>,
     catalog: Catalog,
     store: StateStore,
     journal: Journal,
@@ -573,6 +575,7 @@ impl BridgeCore {
         let (event_tx, _) = broadcast::channel(1024);
         Self {
             inner: Arc::new(BridgeCoreInner {
+                commit: Mutex::new(()),
                 catalog,
                 store: StateStore::new(),
                 journal: Journal::new(),
@@ -634,7 +637,76 @@ impl BridgeCore {
         plugin_id: &str,
         object_path: &str,
     ) -> Option<(serde_json::Map<String, serde_json::Value>, String)> {
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
         self.inner.store.get_object(plugin_id, object_path)
+    }
+
+    /// Read state, hash and resume cursor from the same committed snapshot.
+    pub fn get_object_snapshot(
+        &self,
+        plugin_id: &str,
+        object_path: &str,
+    ) -> Option<(serde_json::Map<String, serde_json::Value>, String, u64)> {
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+        let (state, hash) = self.inner.store.get_object(plugin_id, object_path)?;
+        let event_id = self
+            .inner
+            .journal
+            .tip()
+            .map(|event| event.event_id)
+            .unwrap_or(0);
+        Some((state, hash, event_id))
+    }
+
+    /// Read a property after any in-progress atomic state batch commits.
+    pub fn get_property(
+        &self,
+        plugin_id: &str,
+        object_path: &str,
+        member: &str,
+    ) -> Option<serde_json::Value> {
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+        self.inner.store.get_member(plugin_id, object_path, member)
+    }
+
+    /// Capture hydration and its live receiver at one commit boundary.
+    pub(crate) fn state_subscription(
+        &self,
+        include_state: bool,
+        include_schema: bool,
+    ) -> (
+        Vec<StateChange>,
+        Vec<StateChange>,
+        broadcast::Receiver<StateChange>,
+    ) {
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+        let live = self.subscribe_state();
+        let initial = if include_state {
+            self.initial_frames_locked()
+        } else {
+            Vec::new()
+        };
+        let schemas = if include_schema {
+            self.schema_frames_locked()
+        } else {
+            Vec::new()
+        };
+        (initial, schemas, live)
+    }
+
+    /// History ends before any event that can arrive on the returned receiver.
+    pub(crate) fn event_subscription(
+        &self,
+        from: u64,
+    ) -> (Vec<JournalEvent>, broadcast::Receiver<ChainEvent>) {
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+        let live = self.subscribe_events();
+        let history = if from == 0 {
+            Vec::new()
+        } else {
+            self.inner.journal.range(from, 0)
+        };
+        (history, live)
     }
 
     /// Side-effect-free admission. Every check [`mutate`](Self::mutate) can
@@ -708,14 +780,10 @@ impl BridgeCore {
     /// Validate, apply, journal and publish one mutation.
     pub fn mutate(&self, op: CoreMutation) -> Result<MutationOutcome, CoreRejection> {
         self.validate(&op)?;
-        let plugin = self
-            .inner
-            .catalog
-            .plugin(&op.plugin_id)
-            .expect("validated plugin exists");
 
         // Method calls dispatch before the store write so a handler failure
-        // rejects the mutation without journaling anything.
+        // rejects the mutation without journaling anything. Run user handlers
+        // outside the commit lock so a handler may itself call the core.
         let (change_type, result) = match op.operation {
             CoreOperation::CallMethod => {
                 let args = match &op.value {
@@ -745,6 +813,25 @@ impl BridgeCore {
             }
         };
 
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+        Ok(self.commit_mutation(op, change_type, result))
+    }
+
+    /// Commit an already validated operation while holding `inner.commit`.
+    /// State-only operations cannot fail after validation; handlers have
+    /// already run (and are forbidden inside atomic batches).
+    fn commit_mutation(
+        &self,
+        op: CoreMutation,
+        change_type: ChangeType,
+        result: Option<serde_json::Value>,
+    ) -> MutationOutcome {
+        let plugin = self
+            .inner
+            .catalog
+            .plugin(&op.plugin_id)
+            .expect("validated plugin exists");
+
         let (old_value, effective_hash) = match op.operation {
             CoreOperation::SetProperty => {
                 let (old, hash) = self.inner.store.set_member(
@@ -773,7 +860,7 @@ impl BridgeCore {
                 (None, hash)
             }
             CoreOperation::Unknown => {
-                return Err(reject(ErrorCode::ValidationFailed, "unknown operation type"));
+                unreachable!("only validated operations can commit");
             }
         };
 
@@ -810,24 +897,31 @@ impl BridgeCore {
         };
         let _ = self.inner.state_tx.send(change.clone());
         let _ = self.inner.event_tx.send(ChainEvent::from(&event));
-        Ok(MutationOutcome {
+        MutationOutcome {
             event,
             change,
             result,
-        })
+        }
     }
 
-    /// Run a batch. Atomic batches validate every op first and apply none
-    /// when any op is rejected; a handler that fails at runtime aborts the
-    /// remaining ops. Non-atomic batches attempt every op independently.
-    ///
-    /// Already-journaled events are never rolled back: an atomic abort stops
-    /// future ops but keeps the audit trail of what happened.
+    /// Atomic batches support state writes only: validate all before committing
+    /// any. Arbitrary method handlers have no rollback contract, so an atomic
+    /// batch containing one is rejected before any handler or write runs.
+    /// Non-atomic batches attempt every operation independently.
     pub fn batch_mutate(&self, ops: Vec<CoreMutation>, atomic: bool) -> BatchOutcome {
         if atomic {
             if let Some((failed, rejection)) = ops
                 .iter()
-                .map(|op| self.validate(op))
+                .map(|op| {
+                    self.validate(op)?;
+                    if op.operation == CoreOperation::CallMethod {
+                        return Err(reject(
+                            ErrorCode::ValidationFailed,
+                            "CALL_METHOD is not supported in atomic batches: handlers are not transactional",
+                        ));
+                    }
+                    Ok(())
+                })
                 .enumerate()
                 .filter_map(|(index, check)| check.err().map(|rej| (index, rej)))
                 .next()
@@ -851,19 +945,18 @@ impl BridgeCore {
                     failed_index: Some(failed),
                 };
             }
+            let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+            return BatchOutcome {
+                results: ops
+                    .into_iter()
+                    .map(|op| Ok(self.commit_mutation(op, ChangeType::PropertySet, None)))
+                    .collect(),
+                failed_index: None,
+            };
         }
         let mut results = Vec::with_capacity(ops.len());
         let mut failed_index = None;
         for (index, op) in ops.into_iter().enumerate() {
-            if let Some(aborted_at) = failed_index {
-                if atomic {
-                    results.push(Err(reject(
-                        ErrorCode::ValidationFailed,
-                        format!("not attempted: atomic batch aborted at op {aborted_at}"),
-                    )));
-                    continue;
-                }
-            }
             match self.mutate(op) {
                 Ok(outcome) => results.push(Ok(outcome)),
                 Err(rejection) => {
@@ -883,6 +976,11 @@ impl BridgeCore {
     /// One `INITIAL_STATE` frame per stored object, for subscribers that
     /// asked for the present state. Not journaled (`event_id` 0).
     pub fn initial_frames(&self) -> Vec<StateChange> {
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+        self.initial_frames_locked()
+    }
+
+    fn initial_frames_locked(&self) -> Vec<StateChange> {
         let catalog_hash = self.inner.catalog.hash().to_string();
         let generation = self.inner.store.generation();
         self.inner
@@ -917,6 +1015,11 @@ impl BridgeCore {
     /// schemas. `new_value` is the catalog's sealed schema, or a synthesized
     /// id/version/methods summary when the catalog carries none.
     pub fn schema_frames(&self) -> Vec<StateChange> {
+        let _commit = self.inner.commit.lock().expect("commit lock poisoned");
+        self.schema_frames_locked()
+    }
+
+    fn schema_frames_locked(&self) -> Vec<StateChange> {
         let catalog_hash = self.inner.catalog.hash().to_string();
         let generation = self.inner.store.generation();
         self.inner

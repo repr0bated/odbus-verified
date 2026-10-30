@@ -38,6 +38,8 @@ use qdrant_client::qdrant::{
 use qdrant_client::{Payload, Qdrant, QdrantError};
 use serde::Serialize;
 use std::collections::HashSet;
+use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 
 use crate::voyage::VoyageClient;
@@ -54,6 +56,32 @@ const BLOCK_POINT_NAMESPACE: uuid::Uuid =
 
 /// File holding the highest block number whose vector has been indexed.
 const INDEXED_BLOCK_FILE: &str = ".vector-index-block";
+
+/// Publish a durable complete watermark without exposing a truncated destination.
+/// Keep blocking writes, synchronization and rename in one task so cancellation
+/// cannot split publication; readers only open the final checkpoint path.
+async fn publish_checkpoint(path: PathBuf, content: Vec<u8>) -> Result<()> {
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let parent = path.parent().filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        let temporary = parent.join(format!(".vector-checkpoint-{}.tmp", uuid::Uuid::new_v4()));
+        let mut file = std::fs::OpenOptions::new()
+            .write(true).create_new(true).mode(0o600).open(&temporary)
+            .context("create checkpoint temporary file")?;
+        let result = (|| -> Result<()> {
+            file.write_all(&content).context("write complete checkpoint")?;
+            file.sync_all().context("sync checkpoint contents")?;
+            drop(file);
+            std::fs::rename(&temporary, &path).context("atomically replace checkpoint")?;
+            std::fs::File::open(parent)?.sync_all().context("sync checkpoint directory")?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&temporary);
+        }
+        result
+    }).await.context("checkpoint publication task failed")?
+}
 
 /// Decides what of a block is signal. The bridge supplies the sealed plugin
 /// schema of the mutation (OD-64: "filter out noise with the original
@@ -544,7 +572,6 @@ impl ChainVectorIndex {
 
             match blocks.iter().find(|block| block.block_num == *block_num) {
                 Some(block) => {
-                    self.upsert_block(block, vector).await?;
                     let links = chain_links(block);
                     let link_refs: Vec<(&str, &str)> = links
                         .iter()
@@ -559,6 +586,8 @@ impl ChainVectorIndex {
                                 block.block_num
                             )
                         })?;
+                    // A visible point suppresses gap retries: commit its links first.
+                    self.upsert_block(block, vector).await?;
                 }
                 // Vector present without its timing record (partial or
                 // out-of-order receive). Index it by block number so a later
@@ -735,7 +764,7 @@ impl ChainVectorIndex {
 
         let point = PointStruct::new(point_id(block.block_num).to_string(), vector, payload);
         self.qdrant
-            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]))
+            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
             .await
             .with_context(|| {
                 format!(
@@ -756,7 +785,7 @@ impl ChainVectorIndex {
 
         let point = PointStruct::new(point_id(block_num).to_string(), vector, payload);
         self.qdrant
-            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]))
+            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
             .await
             .with_context(|| format!("failed to upsert orphan vector for block {block_num}"))?;
         Ok(())
@@ -794,7 +823,7 @@ impl ChainVectorIndex {
     }
 
     async fn write_indexed_block(&self, block_num: u64) -> Result<()> {
-        tokio::fs::write(self.indexed_block_path(), format!("{block_num}\n"))
+        publish_checkpoint(self.indexed_block_path(), format!("{block_num}\n").into_bytes())
             .await
             .context("failed to persist index watermark")
     }

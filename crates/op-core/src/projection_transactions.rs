@@ -227,7 +227,7 @@ fn read_file(directory: &File, name: &str, maximum: u64, private: bool) -> Resul
             "projection file grew beyond its size limit"
         );
         bytes
-            .try_reserve_exact(count)
+            .try_reserve(count)
             .context("allocate bounded projection document")?;
         bytes.extend_from_slice(&chunk[..count]);
     }

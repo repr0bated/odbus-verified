@@ -918,7 +918,7 @@ Manually reviewed text files across all 39 directories under `crates/`, replacin
 
 ### 2026-10-30 · Codex — source-first PR reconciliation
 
-Task `pr-relevance-20261030`: owner says newer and hackathon code take precedence over old prose. PR46 includes hackathon `2a6e40e`; isolated integration branch preserves it. PR45 cloud shell repair merged as `5d08e2a`; seven superseded old PRs closed. Blob/validator, retained-library and fresh-bridge corrections under independent review. No deployment or suite execution. Older handoffs remain in git at `380f692:HANDOFF.md`; original PR45 repair notes remain at `7f72ba3:HANDOFF.md`. Build/review receipt and final disposition to follow.
+Task `pr-relevance-20261030`: owner says newer and hackathon code take precedence over old prose. PR46 includes hackathon `2a6e40e`; isolated integration branch preserves it. PR45 cloud shell repair merged as `5d08e2a`; seven superseded old PRs closed. Blob/validator, retained-library and fresh-bridge corrections passed independent source review; ShellExecutor feature-disable was rejected and reverted, and GetState now snapshots its cursor with state. Scoped GNU build1 passed exit0 in12m36s; final build including op-web pending. No deployment or suite execution. Older handoffs remain in git at `380f692:HANDOFF.md`; original PR45 repair notes remain at `7f72ba3:HANDOFF.md`. Build/review receipt and final disposition to follow.
 
 ### 2026-10-23 · Codex / OMP — registered-session repair, post-deploy verification in progress
 
