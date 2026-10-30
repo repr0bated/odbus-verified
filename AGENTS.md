@@ -109,7 +109,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 **Frontend — single Vite app, external repo**:
 
-The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a Vite + React Json Render chat app that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. The pinned release archive of that checkout is `vendor/3tched-json-render-ui`.
+The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a Vite + React Json Render chat app that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`.
 
 ```bash
 # Build and deploy at op-web's root (from the UI repo)
@@ -121,11 +121,6 @@ cd /srv/git/3tched.com && npm run dev
 ```
 
 `LANDING` is the mount name under the static root (`live`, `prod`, `3tched`). `URL_PREFIX=/` is the dashboard root, and there the script replaces only `assets/` and `index.html`. A named mount is a separate directory under that root. op-web does **not** embed the UI via RustEmbed — it serves the deployed static files. The browser's credential comes from `GET /api/identity/self` (op-web, `OP_WEB_HUMAN_PEERS`), from an injecting host page, or from the connect gate; there is no pairing.
-
-Fresh source exports also include the pinned UI source archive and verifier at
-`vendor/3tched-json-render-ui/build-assets.sh`. That helper builds and checks the
-captured UI without the sibling checkout or live rsync; golden preparation
-stages only its validated asset archive and provenance manifest.
 
 **Deprecated** (do not use for new work):
 - `crates/op-web/ui/` and `crates/zeroclaw-gui/` — deleted 2026-09-18 together with the device-pairing path they existed to call (`/pair`, `/admin/paircode/new`, removed 2026-09-04). Do not resurrect either.
@@ -217,7 +212,6 @@ Prefer the **least-expensive subagent whose output matches a more capable model*
 
 - Provision from the repository root with `sh scripts/claude-cloud-setup.sh`. It installs the verified-workspace packages and Rust 1.97.1, fetches the lockfile, and runs `scripts/check-workspace.sh preflight`. It is safe to run again. It does not start services, seal a catalog, or copy host credentials.
 - Native Cozo/RocksDB builds need `CXXFLAGS` to include `-include cstdint`, and they need `CC=gcc` and `CXX=g++`. On the default image `/usr/bin/c++` is clang++, which does not find `cstdint` for that forced include. The setup script persists these variables for login shells and the `ubuntu` bashrc, and it links `/usr/lib/x86_64-linux-gnu/libstdc++.so` so rustc's bundled lld can resolve `-lstdc++`. `scripts/check-workspace.sh` also sets `CXXFLAGS` itself. Keep `CARGO_BUILD_JOBS=2` on a 16 GB agent VM.
-- Prove a checkout with `sh scripts/check-workspace.sh preflight`, `cargo fetch --locked`, then `sh scripts/check-workspace.sh smoke` (`cargo check --locked --workspace`, then `op-core` and `op-plugins` library tests). `verify` is the full fmt, Clippy, and workspace test gate and is much larger.
+- Smoke checks and tests are manual/on-request under the owner's policy. Do not run them automatically or treat the general `/verify` guidance above as authorization. When requested, `sh scripts/check-workspace.sh smoke` runs `cargo check --locked --workspace`, then `op-core` and `op-plugins` library tests. `verify` is the full fmt, Clippy, and workspace test gate and also requires an explicit request.
 - The Cloud Agent kernel has no `btrfs` filesystem and no `/lib/modules`. `btrfs-progs` is installed, but `btrfs subvolume create` cannot succeed. These `op-plugins` library tests need a btrfs temp directory and fail here: `failed_unknown_rollback_preserves_state_and_retained_snapshots_after_reopen`, `rejects_missing_invalid_and_unsafe_requests`, and `seven_methods_use_persistent_snapshot_state`. Do not skip or weaken them.
 - Do not start the control plane here. `op-web`, the gRPC bridge, OVS, catalog seal, and runit need the Artix host, the sealed blob catalog, and identity state. `op-plugin-lint` can read plugin source without those services.
-- Node.js 22.22.2 or newer is already on the default image for `vendor/3tched-json-render-ui/build-assets.sh`. That UI build is not a backend prerequisite.
