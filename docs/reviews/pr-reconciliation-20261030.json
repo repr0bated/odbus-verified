@@ -8,7 +8,8 @@
     "source_head": "380f692dceb6a73b2a5e6567dbd5955ce99786dd",
     "hackathon_head": "2a6e40e",
     "hackathon_tree": "byte-identical in successor",
-    "cloud_fix_merge": "5d08e2aca7933537849bb4782d0231467ee8dfac"
+    "cloud_fix_merge": "5d08e2aca7933537849bb4782d0231467ee8dfac",
+    "repair_commit": "6276a187a0ca3b539689f4a42917977e375ae55c"
   },
   "meaning": "Superseded closes an obsolete source-delivery PR, not every historical review concern. Branches and review histories are preserved. Confirmed compatible fixes are ported onto the successor; current defects and uncertain applicability remain explicitly recorded.",
   "jev": {
@@ -19,7 +20,7 @@
   },
   "validation": {
     "source_review": "Independent source review completed; rejected ShellExecutor blanket disable reverted; GetState state/hash/cursor now read under one commit guard",
-    "build": "Final scoped build pending after source followups, including direct consumer op-web",
+    "build": "passed: locked native GNU build of ten scoped package libraries and four binaries",
     "tests": "not run under manual/on-request owner policy",
     "deployment": "none",
     "initial_build": {
@@ -29,6 +30,37 @@
       "duration": "12m36s",
       "scope": "nine changed-package libraries plus bridge/opblob binaries; pre-final two followups",
       "receipt": "/var/tmp/pr-relevance-20261030/build/receipt.txt"
+    },
+    "final_build": {
+      "head_after": "6276a187a0ca3b539689f4a42917977e375ae55c",
+      "source_hash_changes": [],
+      "worktree_status": " M docs/reviews/pr-reconciliation-20261030.json\n",
+      "artifacts": {
+        "op-grpc-bridge": {
+          "path": "/var/lib/cargo-build/odbus-verified/x86_64-unknown-linux-gnu/debug/op-grpc-bridge",
+          "sha256": "297a21107b827ae13c6ec6a9b60c4c96183473591beaf57aa316df55d3a56fb9",
+          "bytes": 38269104
+        },
+        "opblob": {
+          "path": "/var/lib/cargo-build/odbus-verified/x86_64-unknown-linux-gnu/debug/opblob",
+          "sha256": "0e385a8b1f7041db61ef586fa503e811856b8c610ac0d1f94281ec2fa89116be",
+          "bytes": 197475584
+        },
+        "op-web-server": {
+          "path": "/var/lib/cargo-build/odbus-verified/x86_64-unknown-linux-gnu/debug/op-web-server",
+          "sha256": "0efcd4298b350ea89bb99a6b208ffa1ab078fd9d9f743b65a979e48a05a55732",
+          "bytes": 284368552
+        },
+        "opdbus": {
+          "path": "/var/lib/cargo-build/odbus-verified/x86_64-unknown-linux-gnu/debug/opdbus",
+          "sha256": "c344c5295209b9697734bc2562e487d1ad20d14ad2ea09119cc3425604930cc1",
+          "bytes": 42241872
+        }
+      },
+      "input_manifest_sha256": "1cba9a32dece6d0dea7cdf152a79fa9c1598679580c575b7c638642184b3f0dc",
+      "source_inputs_verified": 1320,
+      "scope": "op-grpc-bridge, op-blob, op-plugins, op-cozo-store, op-cognitive, op-llm, op-agents, op-core, op-snowball, op-web libraries; op-grpc-bridge, opblob, op-web-server and opdbus binaries",
+      "receipt": "/var/tmp/pr-relevance-20261030/build-final/receipt.txt"
     }
   },
   "prs": [
@@ -3922,5 +3954,147 @@
       "Cozo gallery pagination has no aggregate document-byte budget",
       "ShellExecutor unrestricted defaults require a separate admitted-policy design; blanket disable was rejected because it breaks retained root-gated execution"
     ]
+  },
+  "integration_review": {
+    "thread_decisions": [
+      {
+        "id": "PRRT_kwDOUgxzzc6xxT45",
+        "disposition": "fixed",
+        "evidence": "Removed unrelated root HTML artifact."
+      },
+      {
+        "id": "PRRT_kwDOUgxzzc6xxT49",
+        "disposition": "obsolete-for-active-target",
+        "evidence": "interceptor.rs is not in lib.rs module graph and legacy automatic tests are disabled. Environment mutation remains dormant debt if reintroduced."
+      },
+      {
+        "id": "PRRT_kwDOUgxzzc6xxT5C",
+        "disposition": "incorrect",
+        "evidence": "TLS semaphore is private and never closed; propagating a hypothetical close is coherent, while continuing would spin on a permanently closed semaphore."
+      },
+      {
+        "id": "PRRT_kwDOUgxzzc6xxT5G",
+        "disposition": "incorrect-duplicate",
+        "evidence": "Same private, never-closed semaphore finding as T5C."
+      },
+      {
+        "id": "PRRT_kwDOUgxzzc6xxT5I",
+        "disposition": "incorrect",
+        "evidence": "RAII permit ownership intentionally spans concurrent HTTP/2 requests. H2 is not limited to one request and no concrete leaked reference exists in the source."
+      },
+      {
+        "id": "PRRT_kwDOUgxzzc6xxT5L",
+        "disposition": "fixed",
+        "evidence": "Both fixtures pass an owned bound Tokio TcpListener to serve_with_listener; no free-port drop/rebind window remains."
+      }
+    ],
+    "native_jev": {
+      "model": "jev-1.14.0",
+      "answers": {
+        "random_html": {
+          "type": "choice",
+          "choice": "fix",
+          "confidence": 0.25,
+          "probabilities": {
+            "fix": 0.44,
+            "obsolete": 0.22,
+            "incorrect": 0.06,
+            "uncertain": 0.28
+          }
+        },
+        "interceptor_test_env": {
+          "type": "choice",
+          "choice": "obsolete",
+          "confidence": 0.99,
+          "probabilities": {
+            "fix": 0.0,
+            "obsolete": 0.99,
+            "incorrect": 0.01,
+            "uncertain": 0.0
+          }
+        },
+        "semaphore_error_1": {
+          "type": "choice",
+          "choice": "incorrect",
+          "confidence": 1.0,
+          "probabilities": {
+            "fix": 0.0,
+            "obsolete": 0.0,
+            "incorrect": 1.0,
+            "uncertain": 0.0
+          }
+        },
+        "semaphore_error_2": {
+          "type": "choice",
+          "choice": "incorrect",
+          "confidence": 0.97,
+          "probabilities": {
+            "fix": 0.0,
+            "obsolete": 0.02,
+            "incorrect": 0.98,
+            "uncertain": 0.0
+          }
+        },
+        "permit_leak": {
+          "type": "choice",
+          "choice": "incorrect",
+          "confidence": 0.97,
+          "probabilities": {
+            "fix": 0.01,
+            "obsolete": 0.0,
+            "incorrect": 0.98,
+            "uncertain": 0.01
+          }
+        },
+        "port_race": {
+          "type": "choice",
+          "choice": "fix",
+          "confidence": 0.8,
+          "probabilities": {
+            "fix": 0.85,
+            "obsolete": 0.01,
+            "incorrect": 0.1,
+            "uncertain": 0.04
+          }
+        }
+      }
+    },
+    "github_threads": "All six original PR46 threads resolved after publication of 6276a187"
+  },
+  "github_before_final_merge": {
+    "merged": [
+      45
+    ],
+    "superseded": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      26,
+      27,
+      28,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      42,
+      43
+    ],
+    "only_open": 46
   }
 }
