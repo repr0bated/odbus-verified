@@ -1,0 +1,444 @@
+diff --git a/src/chat/ChatRuntimeProvider.tsx b/src/chat/ChatRuntimeProvider.tsx
+index e723709..c51c3c4 100644
+--- a/src/chat/ChatRuntimeProvider.tsx
++++ b/src/chat/ChatRuntimeProvider.tsx
+@@ -2,6 +2,7 @@ import {
+   createContext,
+   useContext,
+   useEffect,
++  useRef,
+   useState,
+   type ReactNode,
+ } from "react";
+@@ -21,6 +22,9 @@ interface ChatRuntimeValue {
+   route: RouteSelection;
+   routePending: boolean;
+   routeError: string | null;
++  catalogPending: boolean;
++  catalogError: string | null;
++  refreshProviders: () => Promise<void>;
+   chatContext: ResolvedChatContext | null;
+   scopeKey: string;
+   setChatContext: (context: ResolvedChatContext) => void;
+@@ -55,15 +59,28 @@ export function ChatRuntimeProvider({
+   adapter: ChatAdapter;
+   children: ReactNode;
+ }) {
+-  const firstProvider = adapter.providers[0];
+-  if (!firstProvider) {
+-    throw new Error("ChatAdapter must expose at least one provider.");
+-  }
+-
+-  const [route, setRoute] = useState<RouteSelection>({
+-    providerId: firstProvider.id,
+-    modelId: firstProvider.models[0]?.id ?? "",
++  const [providers, setProviders] = useState(adapter.providers);
++  const [route, setRoute] = useState<RouteSelection>(() => {
++    const firstProvider = adapter.providers[0];
++    if (!firstProvider) throw new Error("ChatAdapter must expose at least one provider.");
++    return { providerId: firstProvider.id, modelId: firstProvider.models[0]?.id ?? "" };
+   });
++  const [catalogPending, setCatalogPending] = useState(false);
++  const [catalogError, setCatalogError] = useState<string | null>(null);
++  const catalogRead = useRef<Promise<void> | null>(null);
++  const refreshProviders = (): Promise<void> => {
++    if (!adapter.refreshProviders) return Promise.resolve();
++    if (catalogRead.current) return catalogRead.current;
++    setCatalogPending(true);
++    setCatalogError(null);
++    catalogRead.current = adapter.refreshProviders().then(setProviders).catch((error: unknown) => {
++      setCatalogError(error instanceof Error ? error.message : "Model catalog refresh failed.");
++    }).finally(() => {
++      setCatalogPending(false);
++      catalogRead.current = null;
++    });
++    return catalogRead.current;
++  };
+   const [routePending, setRoutePending] = useState(false);
+   const [routeError, setRouteError] = useState<string | null>(null);
+   const [chatContext, setChatContext] = useState<ResolvedChatContext | null>(null);
+@@ -100,7 +117,10 @@ export function ChatRuntimeProvider({
+ 
+   const value: ChatRuntimeValue = {
+     adapter,
+-    providers: adapter.providers,
++    providers,
++    catalogPending,
++    catalogError,
++    refreshProviders,
+     route,
+     routePending,
+     routeError,
+@@ -110,7 +130,7 @@ export function ChatRuntimeProvider({
+     canvasSpec,
+     setCanvasSpec,
+     selectProvider: async (providerId) => {
+-      const provider = adapter.providers.find((entry) => entry.id === providerId);
++      const provider = providers.find((entry) => entry.id === providerId);
+       const model = provider?.models[0];
+       if (!provider) return;
+       if (!model) {
+diff --git a/src/chat/chat-adapter.ts b/src/chat/chat-adapter.ts
+index 196d413..307c768 100644
+--- a/src/chat/chat-adapter.ts
++++ b/src/chat/chat-adapter.ts
+@@ -53,6 +53,8 @@ export interface ChatResponse {
+ export interface ChatAdapter {
+   readonly kind: "local" | "remote";
+   readonly providers: ProviderOption[];
++  /** Re-read the shared model lookup; absent on the offline adapter. */
++  refreshProviders?(): Promise<ProviderOption[]>;
+   selectRoute(selection: RouteSelection): Promise<RouteSelection>;
+   submit(request: ChatRequest): Promise<ChatResponse>;
+ }
+diff --git a/src/chat/door-chat-adapter.test.ts b/src/chat/door-chat-adapter.test.ts
+index 129685d..d673d4f 100644
+--- a/src/chat/door-chat-adapter.test.ts
++++ b/src/chat/door-chat-adapter.test.ts
+@@ -320,3 +320,28 @@ describe("UI reference and rendering transport", () => {
+     expect(calls).toHaveLength(before);
+   });
+ });
++
++it("reloads Cozo choices without mutating routing and preserves them when a reload fails", async () => {
++  let current = "old";
++  let fail = false;
++  const calls = mockDoor({
++    list_providers: () => {
++      if (fail) throw new Error("catalog unavailable");
++      return envelope("list_providers", { providers: [{ provider_id: "vendor", configured: true, enabled: true, status: "ok", control_plane_profiles: ["custom.control_plane"] }], revision: 1 });
++    },
++    list_models: () => envelope("list_models", { models: [{ provider_id: "vendor", model_id: current, available: true }], more: false, revision: 1 }),
++  });
++  const adapter = await connectDoorChatAdapter(config);
++  expect(adapter.providers[0].models[0].id).toBe("old");
++  current = "new";
++  const one = adapter.refreshProviders!();
++  const two = adapter.refreshProviders!();
++  expect(one).toBe(two);
++  await one;
++  expect(adapter.providers[0].models[0].id).toBe("new");
++  expect(adapter.providers[0].models.some(m => m.id === "custom.control_plane")).toBe(false);
++  fail = true;
++  await expect(adapter.refreshProviders!()).rejects.toThrow("The door is not reachable right now.");
++  expect(adapter.providers[0].models[0].id).toBe("new");
++  expect(calls.map(c => c.request.methodName)).toEqual(["list_providers", "list_models", "list_providers", "list_models", "list_providers"]);
++});
+diff --git a/src/chat/door-chat-adapter.ts b/src/chat/door-chat-adapter.ts
+index 7f5151a..eb2b3c4 100644
+--- a/src/chat/door-chat-adapter.ts
++++ b/src/chat/door-chat-adapter.ts
+@@ -147,7 +147,8 @@ export async function connectDoorChatAdapter(config: DoorConfig): Promise<DoorCh
+   let identity: DoorIdentity = config.identity;
+ 
+   const catalog = await listCatalog(client);
+-  const providers = catalogOptions(catalog.providers, catalog.models);
++  let providers = catalogOptions(catalog.providers, catalog.models);
++  let refreshing: Promise<ProviderOption[]> | undefined;
+ 
+   if (providers.length === 0) {
+     throw new DoorError("NOT_FOUND", "No provider is configured.");
+@@ -156,7 +157,16 @@ export async function connectDoorChatAdapter(config: DoorConfig): Promise<DoorCh
+   return {
+     kind: "remote",
+     door: client.url,
+-    providers,
++    get providers() { return providers; },
++    refreshProviders: () => {
++      if (!refreshing) {
++        refreshing = listCatalog(client).then((next) => {
++          providers = catalogOptions(next.providers, next.models);
++          return providers;
++        }).finally(() => { refreshing = undefined; });
++      }
++      return refreshing;
++    },
+     setIdentity: (next: DoorIdentity) => {
+       identity = next;
+       client.setIdentity(next);
+diff --git a/src/chat/model-catalog.ts b/src/chat/model-catalog.ts
+index efe2578..e718da6 100644
+--- a/src/chat/model-catalog.ts
++++ b/src/chat/model-catalog.ts
+@@ -25,15 +25,34 @@ export interface CatalogModel {
+ 
+ interface ListProvidersOutput {
+   providers?: CatalogProvider[];
++  revision?: number;
+ }
+ 
+ interface ListModelsOutput {
+   models?: CatalogModel[];
+   more?: boolean;
++  revision?: number;
+ }
+ 
+ const PAGE_LIMIT = 500;
+ const MAX_PAGES = 40;
++const MAX_READ_ATTEMPTS = 3;
++
++class CatalogChanged extends Error {
++  constructor() {
++    super("Model catalog changed while reading. Refresh models again.");
++  }
++}
++
++async function consistentRead<T>(read: () => Promise<T>): Promise<T> {
++  for (let attempt = 1; ; attempt += 1) {
++    try {
++      return await read();
++    } catch (error) {
++      if (!(error instanceof CatalogChanged) || attempt === MAX_READ_ATTEMPTS) throw error;
++    }
++  }
++}
+ 
+ /**
+  * Providers come from the owner's list. Models are whatever the last
+@@ -44,25 +63,33 @@ export async function listCatalog(
+   client: DoorClient,
+   options?: { models?: boolean },
+ ): Promise<{ providers: CatalogProvider[]; models: CatalogModel[] }> {
+-  const { result } = await client.call<ListProvidersOutput>(
+-    MODEL_REGISTRY,
+-    "list_providers",
+-    {},
+-    MODEL_REGISTRY_READ,
+-  );
+-  const providers = result.providers ?? [];
+-  if (options?.models === false) return { providers, models: [] };
++  return consistentRead(async () => {
++    const { result } = await client.call<ListProvidersOutput>(
++      MODEL_REGISTRY,
++      "list_providers",
++      {},
++      MODEL_REGISTRY_READ,
++    );
++    if (!Array.isArray(result.providers)) throw new Error("Model catalog returned an invalid provider list.");
++    const providers = result.providers;
++    if (options?.models === false) return { providers, models: [] };
++    if (!Number.isSafeInteger(result.revision)) throw new Error("Model catalog returned an invalid revision.");
+ 
+-  const models: CatalogModel[] = [];
+-  for (const provider of providers) {
+-    if (!provider.configured || !provider.enabled || !provider.provider_id) continue;
+-    models.push(...await listProviderModels(client, provider.provider_id));
+-  }
+-  return { providers, models };
++    const models: CatalogModel[] = [];
++    for (const provider of providers) {
++      if (!provider.configured || !provider.enabled || !provider.provider_id) continue;
++      models.push(...await readProviderModels(client, provider.provider_id, result.revision));
++    }
++    return { providers, models };
++  });
+ }
+ 
+ /** Models stored for one provider. `provider_id` is the Cozo key. */
+ export async function listProviderModels(client: DoorClient, providerId: string): Promise<CatalogModel[]> {
++  return consistentRead(() => readProviderModels(client, providerId));
++}
++
++async function readProviderModels(client: DoorClient, providerId: string, revision?: number): Promise<CatalogModel[]> {
+   const models: CatalogModel[] = [];
+   let after: { provider_id: string; model_id: string } | undefined;
+   for (let page = 0; page < MAX_PAGES; page += 1) {
+@@ -72,13 +99,26 @@ export async function listProviderModels(client: DoorClient, providerId: string)
+       { provider_id: providerId, limit: PAGE_LIMIT, ...(after ? { after } : {}) },
+       MODEL_REGISTRY_READ,
+     );
+-    const batch = (listed.models ?? []).filter((model) => model.provider_id === providerId);
++    if (!Array.isArray(listed.models) || typeof listed.more !== "boolean" || !Number.isSafeInteger(listed.revision)) {
++      throw new Error("Model catalog returned an invalid model page.");
++    }
++    if (revision !== undefined && listed.revision !== revision) throw new CatalogChanged();
++    revision = listed.revision;
++    const batch = listed.models;
++    let previous = after?.model_id;
++    for (const model of batch) {
++      if (model.provider_id !== providerId || typeof model.model_id !== "string" || !model.model_id ||
++          (previous !== undefined && model.model_id <= previous)) {
++        throw new Error("Model catalog returned an invalid pagination cursor.");
++      }
++      previous = model.model_id;
++    }
+     models.push(...batch);
+-    if (!listed.more || batch.length === 0) break;
++    if (!listed.more) return models;
++    if (batch.length === 0) throw new Error("Model catalog pagination made no progress.");
+     const last = batch[batch.length - 1];
+     const next = { provider_id: last.provider_id, model_id: last.model_id };
+-    if (after && after.provider_id === next.provider_id && after.model_id === next.model_id) break;
+     after = next;
+   }
+-  return models;
++  throw new Error("Model catalog exceeds the 20,000-model provider read limit.");
+ }
+diff --git a/src/json-render/catalog/chat-registry.tsx b/src/json-render/catalog/chat-registry.tsx
+index eed71c5..18c382f 100644
+--- a/src/json-render/catalog/chat-registry.tsx
++++ b/src/json-render/catalog/chat-registry.tsx
+@@ -211,6 +211,9 @@ const registryDefinition = defineRegistry(chatCatalog, {
+         route,
+         routeError,
+         routePending,
++        catalogPending,
++        catalogError,
++        refreshProviders,
+         selectModel,
+         selectProvider,
+       } = useChatRuntime();
+@@ -228,6 +231,8 @@ const registryDefinition = defineRegistry(chatCatalog, {
+             <p className="route-status route-status--error">
+               No provider is configured.
+             </p>
++            {remote ? <button type="button" onClick={() => void refreshProviders()} disabled={catalogPending}>Refresh models</button> : null}
++            {catalogError ? <p role="status">{catalogError}</p> : null}
+           </section>
+         );
+       }
+@@ -248,9 +253,12 @@ const registryDefinition = defineRegistry(chatCatalog, {
+             <span>Provider</span>
+             <select
+               value={route.providerId}
++              onFocus={() => void refreshProviders()}
+               onChange={(event) => void selectProvider(event.target.value)}
+               disabled={routePending}
+             >
++              {!providers.some((provider) => provider.id === route.providerId) ?
++                <option value={route.providerId} disabled>{route.providerId} (no longer listed)</option> : null}
+               {providers.map((provider) => (
+                 <option key={provider.id} value={provider.id}>
+                   {provider.label}
+@@ -262,10 +270,13 @@ const registryDefinition = defineRegistry(chatCatalog, {
+             <span>Model</span>
+             <select
+               value={models.length === 0 ? "" : route.modelId}
++              onFocus={() => void refreshProviders()}
+               onChange={(event) => void selectModel(event.target.value)}
+               disabled={routePending || models.length === 0}
+             >
+               {models.length === 0 ? <option value="">No models for this provider yet</option> : null}
++              {models.length > 0 && !models.some((model) => model.id === route.modelId) ?
++                <option value={route.modelId} disabled>{route.modelId || "Select a model"} (no longer listed)</option> : null}
+               {models.map((model) => (
+                 <option key={model.id} value={model.id}>
+                   {model.label}
+@@ -273,16 +284,21 @@ const registryDefinition = defineRegistry(chatCatalog, {
+               ))}
+             </select>
+           </label>
+-          <p className={routeError ? "route-status route-status--error" : "route-status"} role="status">
+-            {routeError ??
+-              (routePending
+-                ? remote
+-                  ? "committing selection to the router"
+-                  : "switching local route"
+-                : remote
+-                  ? "selection is committed server-side"
+-                  : "no network calls")}
+-          </p>
++          <div className="route-catalog">
++            {remote ? (
++              <button type="button" onClick={() => void refreshProviders()} disabled={catalogPending}>
++                Refresh models
++              </button>
++            ) : null}
++            <p className={routeError || catalogError ? "route-status route-status--error" : "route-status"} role="status">
++              {routeError ?? catalogError ??
++                (catalogPending
++                  ? "reading the model catalog"
++                  : routePending
++                    ? remote ? "committing selection to the router" : "switching local route"
++                    : remote ? "selection is committed server-side" : "no network calls")}
++            </p>
++          </div>
+         </section>
+       );
+     },
+diff --git a/src/json-render/pages/antigravity.pagespec.test.tsx b/src/json-render/pages/antigravity.pagespec.test.tsx
+index b337bca..a7ecbb4 100644
+--- a/src/json-render/pages/antigravity.pagespec.test.tsx
++++ b/src/json-render/pages/antigravity.pagespec.test.tsx
+@@ -161,3 +161,30 @@ describe("ChatOnly page spec", () => {
+     expect(screen.getByRole("alert")).toHaveTextContent("Personal route failed");
+   });
+ });
++
++it("refreshes the picker from the shared lookup on focus and button without selecting a replacement", async () => {
++  const old = [{ id: "vendor", label: "Vendor", models: [{ id: "old", label: "Old", detail: "" }] }];
++  const next = [{ ...old[0], models: [{ id: "new", label: "New", detail: "" }] }];
++  const refreshProviders = vi.fn().mockResolvedValue(next);
++  const selectRoute = vi.fn();
++  const adapter = {
++    ...createLocalChatAdapter(),
++    kind: "remote",
++    providers: old,
++    refreshProviders,
++    selectRoute,
++    getChatContext: vi.fn().mockResolvedValue(personal),
++    selectChatMode: vi.fn().mockResolvedValue(personal),
++    listProjects: vi.fn().mockResolvedValue([]),
++  } as unknown as DoorChatAdapter;
++  render(<JsonRenderProvider adapter={adapter}><CatalogPage /></JsonRenderProvider>);
++  const model = await screen.findByRole("combobox", { name: "Model" });
++  await act(async () => { fireEvent.focus(model); });
++  expect(screen.getByRole("option", { name: "New" })).toBeInTheDocument();
++  expect(screen.getByRole("option", { name: "old (no longer listed)" })).toBeDisabled();
++  expect(model).toHaveValue("old");
++  expect(selectRoute).not.toHaveBeenCalled();
++  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Refresh models" })); });
++  expect(refreshProviders).toHaveBeenCalledTimes(2);
++  expect(selectRoute).not.toHaveBeenCalled();
++});
+diff --git a/src/styles.css b/src/styles.css
+index 2a4a786..6ddbcf2 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -236,6 +236,27 @@ select:focus-visible {
+   color: var(--red);
+ }
+ 
++.route-catalog {
++  display: grid;
++  gap: 4px;
++  justify-items: end;
++  align-self: center;
++}
++
++.route-catalog .route-status {
++  margin: 0;
++}
++
++.route-catalog button {
++  border: 1px solid var(--line-strong);
++  border-radius: 3px;
++  padding: 4px 8px;
++  color: #dce5ee;
++  background: #11151a;
++  font-family: var(--mono);
++  font-size: 10px;
++}
++
+ .workbench {
+   display: flex;
+   flex: 1;
+@@ -856,6 +877,7 @@ select:focus-visible {
+     grid-column: 1 / -1;
+   }
+ 
++  .route-catalog,
+   .route-status {
+     grid-column: 1 / -1;
+     min-width: 0;
+@@ -863,6 +885,10 @@ select:focus-visible {
+     text-align: left;
+   }
+ 
++  .route-catalog {
++    justify-items: start;
++  }
++
+   .workbench,
+   .workspace {
+     min-height: auto;

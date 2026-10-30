@@ -1,0 +1,44 @@
+{
+  "request": 18,
+  "started": "2026-10-20T17:04:42.061537+00:00",
+  "finished": "2026-10-20T17:06:46.661432+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [],
+  "response": {
+    "id": "chatcmpl-0c445e5406fe1e11016ad79fa6f1d087d19276292fe8a577a1",
+    "created": 1792516006,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "<title>\ud83d\udce6 REL</title>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 50,
+      "prompt_tokens": 3810,
+      "total_tokens": 3860,
+      "completion_tokens_details": {
+        "reasoning_tokens": 9
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:06:43.560028+00:00",
+  "stream_chunks": 3
+}

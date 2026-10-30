@@ -1,0 +1,127 @@
+{
+  "request": 31,
+  "started": "2026-10-20T17:09:34.197443+00:00",
+  "finished": "2026-10-20T17:09:47.778898+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0a400d3243688fa8016ad7a054243487d1bd20a3148c454e5d",
+    "created": 1792516180,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://grpc-expert\"}",
+                "name": "read"
+              },
+              "id": "call_eQs6IghGQ27LYJ9nn9cd6hgc",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://grpc-protocol-expert\"}",
+                "name": "read"
+              },
+              "id": "call_WGkWjciIVsLKztgdftiaxGEh",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://json-render\"}",
+                "name": "read"
+              },
+              "id": "call_OukiuZ4MzflbWf0CZRBTGlr7",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://ovs-db-analysis\"}",
+                "name": "read"
+              },
+              "id": "call_pqSZ3QawX20k0gbm2pfxVhzC",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://kernel-fuse-diagnosis\"}",
+                "name": "read"
+              },
+              "id": "call_Ct3H7dzRJQ7b96XNn6oqDKWN",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://fuse\"}",
+                "name": "read"
+              },
+              "id": "call_iqYBH8fNY90Mb7GdG0w40q2k",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://btrfs\"}",
+                "name": "read"
+              },
+              "id": "call_prpVLcrOqO7bryVU4O2e6kWd",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://rust-memory-optimization\"}",
+                "name": "read"
+              },
+              "id": "call_3K5fk4RXqyWbcdQFmGpsHDXe",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Loading mandatory execution skill\",\"path\":\"skill://memory-safety-patterns\"}",
+                "name": "read"
+              },
+              "id": "call_nmSjmQ4KCTiizrjgOXQzGmsH",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 701,
+      "prompt_tokens": 47291,
+      "total_tokens": 47992,
+      "completion_tokens_details": {
+        "reasoning_tokens": 194
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 35176
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:09:47.774909+00:00",
+  "stream_chunks": 20
+}

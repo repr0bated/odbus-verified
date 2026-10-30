@@ -1,0 +1,64 @@
+{
+  "request": 76,
+  "started": "2026-10-19T04:42:05.294515+00:00",
+  "finished": "2026-10-19T04:42:12.414624+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0a8dc38e135676a9016ad59fa0658887d09f99839b38a7d7eb",
+    "created": 1792384928,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory filesystem skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:1101-1500\"}",
+                "name": "read"
+              },
+              "id": "call_GtL7y38GsFNPwrbB7sRPFQzE",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 171,
+      "prompt_tokens": 52405,
+      "total_tokens": 52576,
+      "completion_tokens_details": {
+        "reasoning_tokens": 44
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 40621
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:42:12.413161+00:00",
+  "stream_chunks": 4
+}

@@ -1,9 +1,9 @@
-//! Client of the cognitive-mcp owner over the session-bus plugin socket.
+//! Client of the cognitive owner over the session-bus plugin socket.
 //!
 //! Production memory/soul/namespace traffic goes through
-//! `org.opdbus.v1.PluginV1.Call` on `/org/opdbus/v1/plugins/cognitive_mcp`
+//! `org.opdbus.v1.PluginV1.Call` on `/org/opdbus/v1/plugins/cognitive`
 //! (destination `org.opdbus.v1.plugins`), matching `op-mcp`'s
-//! `cognitive_bridge`. Cognitive-mcp is the sole CozoDB owner; this crate
+//! `cognitive_bridge`. Cognitive is the sole CozoDB owner; this crate
 //! must not open RocksDB on the serve path.
 //!
 //! In-process `CognitiveMemoryStore` / `SoulMemoryStore` exist only so unit
@@ -12,10 +12,10 @@
 
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
-use op_cognitive_mcp::memory_store::{
+use op_cognitive::memory_store::{
     CognitiveMemoryStore, EntryQuery, MemoryEntry as StoreEntry, NamespaceKind,
 };
-use op_cognitive_mcp::soul_memory::{
+use op_cognitive::soul_memory::{
     AgentNamespaceBinding, SoulMemory as StoreSoul, SoulMemoryStore, SoulUpdate,
 };
 use serde_json::{Value, json};
@@ -25,7 +25,7 @@ use std::sync::Arc;
 pub const DEFAULT_SESSION_BUS_ADDRESS: &str = "unix:path=/run/opdbus/session-bus.sock";
 const BRIDGE_BUS_NAME: &str = "org.opdbus.v1.plugins";
 const PLUGIN_INTERFACE: &str = "org.opdbus.v1.PluginV1";
-const COGNITIVE_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/cognitive_mcp";
+const COGNITIVE_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/cognitive";
 
 /// Reserved namespaces used to persist assistant soul/bindings through the
 /// existing `memory_*` plugin methods (those relations are not separate
@@ -34,14 +34,14 @@ const SOUL_NAMESPACE: &str = "assistant:soul";
 const BINDING_NAMESPACE: &str = "assistant:binding";
 const META_KEY: &str = "_meta";
 
-/// Session-bus address used to reach the cognitive_mcp plugin.
+/// Session-bus address used to reach the cognitive plugin.
 pub fn default_cognitive_bus_address() -> String {
     std::env::var("DBUS_SESSION_BUS_ADDRESS")
-        .or_else(|_| std::env::var("COGNITIVE_MCP_BUS_ADDRESS"))
+        .or_else(|_| std::env::var("COGNITIVE_BUS_ADDRESS"))
         .unwrap_or_else(|_| DEFAULT_SESSION_BUS_ADDRESS.to_string())
 }
 
-/// D-Bus client for `PluginV1.Call` on the cognitive_mcp plugin.
+/// D-Bus client for `PluginV1.Call` on the cognitive plugin.
 #[derive(Clone)]
 pub struct CognitivePluginClient {
     connection: zbus::Connection,
@@ -75,12 +75,12 @@ impl CognitivePluginClient {
                 &(method, json_args.as_str()),
             )
             .await
-            .with_context(|| format!("PluginV1.Call({method}) on cognitive_mcp"))?;
+            .with_context(|| format!("PluginV1.Call({method}) on cognitive"))?;
 
         let body: String = reply
             .body()
             .deserialize()
-            .context("cognitive_mcp PluginV1.Call returned a non-string body")?;
+            .context("cognitive PluginV1.Call returned a non-string body")?;
         unwrap_call_payload(method, &body)
     }
 
@@ -578,13 +578,13 @@ fn parse_ts(s: &str) -> DateTime<Utc> {
 /// Unwrap PluginV1 + MCP wrappers down to the tool payload.
 pub(crate) fn unwrap_call_payload(method: &str, body: &str) -> Result<Value> {
     let envelope: Value = serde_json::from_str(body)
-        .with_context(|| format!("cognitive_mcp {method} returned non-JSON: {body}"))?;
+        .with_context(|| format!("cognitive {method} returned non-JSON: {body}"))?;
     if envelope.get("success").and_then(|v| v.as_bool()) == Some(false) {
         let msg = envelope
             .get("error")
             .and_then(|e| e.as_str())
             .or_else(|| envelope.get("message").and_then(|m| m.as_str()))
-            .unwrap_or("cognitive_mcp call failed");
+            .unwrap_or("cognitive call failed");
         return Err(anyhow!("{method}: {msg}"));
     }
     let result = envelope
@@ -637,7 +637,7 @@ mod tests {
             "success": true,
             "event_id": 1,
             "event_hash": "abc",
-            "plugin_id": "cognitive_mcp",
+            "plugin_id": "cognitive",
             "method": "memory_store",
             "result": {
                 "content": [{ "type": "text", "text": tool.to_string() }],

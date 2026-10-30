@@ -796,9 +796,9 @@
           "optional": false,
           "json_type": "array"
         },
-        "cognitive_mcp_endpoint": {
+        "cognitive_endpoint": {
           "rust_type": "String",
-          "description": "Cognitive MCP endpoint used by the user container memory flow.",
+          "description": "Cognitive endpoint used by the user container memory flow.",
           "subid": "exp.service.zeroclaw-options.user-container.mcp-endpoint@v1",
           "has_serde_default": true,
           "optional": false,
@@ -4157,7 +4157,6 @@
         "enum.zeroclaw_api.ObserverEvent.DeploymentFailed",
         "enum.zeroclaw_api.ObserverEvent.DeploymentStarted",
         "enum.zeroclaw_api.ObserverEvent.Error",
-        "enum.zeroclaw_api.ObserverEvent.HeartbeatTick",
         "enum.zeroclaw_api.ObserverEvent.HistoryTrimmed",
         "enum.zeroclaw_api.ObserverEvent.LlmRequest",
         "enum.zeroclaw_api.ObserverEvent.LlmResponse",

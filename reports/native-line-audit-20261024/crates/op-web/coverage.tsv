@@ -1,0 +1,66 @@
+path	initial_sha256	read_ranges	finding/action	status
+crates/op-web/Cargo.toml	028413b597d501f997e15df723aeacadf4d1af69715ae92b0e4fc770f9b19a12	1-87	O1 retained	complete
+crates/op-web/SPEC.md	f505d94f3c75446a741729649d472f2a517cf48743d06a095b41899a53074f63	1-134	No native occurrences	complete
+crates/op-web/build.rs	b30b7130f49b88dca23eb5c4de95d3c2ff82f1f358959a22a942e0a4a96a415f	1-5 pre-edit	N1 corrected stale native UI description	complete-edited
+crates/op-web/compare-op-web.md	722e0d554bfd3b9dcaccf39ce5839b3635aa890b843f7ad0dcc1501debb10ad8	1-144	No native occurrences	complete
+crates/op-web/examples/check_and_delete_user.rs	f25e19abd0c3e5355c0f422ab215aedf11de14454e64e1bc2e1bc87e1a260cf8	1-33	No native occurrences	complete
+crates/op-web/examples/check_user.rs	0443d79b5ab2c8160dee20a77983ef9ebe18ab81143ab8b7f9bb2e84aaa2f3d6	1-12	No native occurrences	complete
+crates/op-web/setup-antigravity-agents.sh	a8e41ae655c8af766c4341065f98c700b691a5244b85c5d7a99907ae44a97f06	1-181	No native occurrences	complete
+crates/op-web/setup-antigravity-mcp.sh	f7b426feb00a0e0219b72257ad996ed080621f2f9ecd37f262a78a249a98e9e3	1-49	No native occurrences	complete
+crates/op-web/setup-antigravity-remote.sh	ac3c44a9440deb1fd1898dd9d435a7f8fa6e5ca3366449bdfa439e9e852a2b03	1-128	No native occurrences	complete
+crates/op-web/src/bin/opdbus.rs	d4f27e193e161dc7ff100302e76416758794eb347990f3bda8fb8c64602577b4	1-87	No native occurrences	complete
+crates/op-web/src/chat_store.rs	1560801b8a7a8ccba8e29f58ea89267f5939be5ea7ad1f6d26fe8236e2a41202	1-161	No native occurrences	complete
+crates/op-web/src/door_proxy.rs	a65a94b8368b6eb49dfb2cb86a064ac58328488b85ac621f6da4f709563fe7d6	1-312	O2 retained	complete
+crates/op-web/src/email.rs	59d8d871f3f2b8a07473c799def15a4113e898f6941495e6138b769897ed1e77	1-154	No native occurrences	complete
+crates/op-web/src/groups_admin.rs	4486ea3e8b0b750c6f67c04011995fd8091c9832e2f30300bf9e7c3dd98c9e06	1-1014	No native occurrences	complete
+crates/op-web/src/handlers/agents.rs	ddd33ccdf70b210fc312a86ba4fb34d16fdf94913a49590985c92a56b2d6957f	1-449	No native occurrences	complete
+crates/op-web/src/handlers/analytics.rs	bf1116a69b5d073016527faa3b0b5d6a1aee4dcedf573c51caafe61cd6adf2c0	1-66	No native occurrences	complete
+crates/op-web/src/handlers/chat.rs	3d9547f6c9c2544a07fec2e38125adedb5a05b4ea755d3078a403ebb47e30abd	1-925; supplemental current reread 1-925 across 1-200, 204-450, 454-925	No native occurrences; complete current-file source receipt reconciled	complete
+crates/op-web/src/handlers/dashboard.rs	710a29a421e64984061f3aa839f2c29c2fd2801a988f1187bb8875f6a8c9ec8c	1-123	No native occurrences	complete
+crates/op-web/src/handlers/health.rs	bf98ee161d14ba02fa4ecac6efd89f17b252b55af1657157d4eedd20a01e93ec	1-23	No native occurrences	complete
+crates/op-web/src/handlers/identity.rs	755637fe7576c67f2e4d01ecfd1bcfb851e6d3cbbc493723ad04fa6a0bbfbc77	1-75	No native occurrences	complete
+crates/op-web/src/handlers/identity_self.rs	b6ccc1784218399da6d815d3f700547bcf78af07c3726f3fc7ab1b9a417f10e2	1-57	No native occurrences	complete
+crates/op-web/src/handlers/llm.rs	d1db902f47bff3e3a1064afae64a6a053f493a146dd8a02a5a0890772fb059a8	1-181	No native occurrences	complete
+crates/op-web/src/handlers/logs.rs	069e88de6b5cab0ded5996254cd0f6a59dd54bf7e2c483f498992cdb8589ac5c	1-50	No native occurrences	complete
+crates/op-web/src/handlers/mail.rs	a12e4e0d0ef10ce33743b150f59bafa2ade4aef341e2cdef80dfc4ca5494f403	1-48	No native occurrences	complete
+crates/op-web/src/handlers/mod.rs	ad68add92e5b5d512662122d211b86ef85dda6ce07ac3f355472d6536c5195ae	1-22	No native occurrences	complete
+crates/op-web/src/handlers/openclaw.rs	24cd1978dffbe07c8d8dbe95fec598fb61afccae3409a295110613ee468b1405	1-272	No native occurrences	complete
+crates/op-web/src/handlers/plugin_schema.rs	4f18b748d19956ead26d4b118ad58cf12df7d233455dea458d952c9f91ec484e	1-31	No native occurrences	complete
+crates/op-web/src/handlers/privacy.rs	669fe1fa07e6cf73862843dab81bae31d55386891fe41fc9a910dfa87e8c8c4b	1-1104	No native occurrences	complete
+crates/op-web/src/handlers/schema.rs	ef8571cfce80d04cf7b95902f1fc2e242c7c5a3ca298cf377bca31d3161dc51b	1-56	No native occurrences	complete
+crates/op-web/src/handlers/status.rs	5bd98bc5c023c5aebf08b4ea73955c08f7e68fce33e5f575433c45fd31da4241	1-147	No native occurrences	complete
+crates/op-web/src/handlers/tched_router.rs	c1996295aa9c9336c7b8d6f47db41f3019415d307afbbefcc70b2407e90c0318	1-786	No native occurrences	complete
+crates/op-web/src/handlers/tools.rs	5b3654e5aaf218a5d9dfaa82547c6b89c588d3149caca78a9e98d99d8f5e4907	1-158	No native occurrences	complete
+crates/op-web/src/handlers/ui_model.rs	40fc2d4b862eed9c51f3462bc4855d85decb923ea563f883150b877be6266d63	1-249	No native occurrences	complete
+crates/op-web/src/handlers/users.rs	8a41d02fa3e5ab6acc755848e7c3d539c2f9405f76830a31c072aebdb45d0ec7	1-72	No native occurrences	complete
+crates/op-web/src/handlers/vpn.rs	70ee3812539606ff15df56ea8a8c3e21879361c9070f6a3085907b2e455410d2	1-68	No native occurrences	complete
+crates/op-web/src/lib.rs	081d203f078b08708fa0896e6589ebfe46fa77e2bd5369d09b03d1f8831bc8f4	1-77	No native occurrences	complete
+crates/op-web/src/main.rs	a050788a67aa3b485ecc3774b74aea9af6d883053398154abc196ef19b3eb18e	1-125	No native occurrences	complete
+crates/op-web/src/middleware/access_log.rs	71308a47492ab4bac4b97e6099bedf0d5b64a2f55fdd308cdf5264d3e7b84b80	1-36	No native occurrences	complete
+crates/op-web/src/middleware/mod.rs	241dc3e6f9a13d3a29d4e7b4623864aec3c2c041e9cf3ba6389c9ce9aa93dda2	1-3	No native occurrences	complete
+crates/op-web/src/middleware/security.rs	3022214aff69a3b2634901775577fef13ae3bd6af6289a1fa399665340d1757c	1-558	No native occurrences	complete
+crates/op-web/src/middleware/spa_cache.rs	0d919e7fad3058b6581587ff594298a71da1607c8d7b159fac34650756547d2a	1-51	No native occurrences	complete
+crates/op-web/src/orchestrator/execution.rs	00d5ddba61d725fdde669e7dde90852f0cb8633e2f057c3d5e660916fdece596	1-324; supplemental current reread 1-324 EOF (earlier receipt listed nonexistent 325-339)	N2 corrected unsupported native-protocol description; full EOF confirmed	complete-edited
+crates/op-web/src/orchestrator/formatting.rs	5d862e01e8366c50d0048fc2701cbbbac2f835d9900cf36c5c3f02de5ffd165c	1-396	No native occurrences	complete
+crates/op-web/src/orchestrator/mod.rs	34cfe32e6ae669187fa9f81baee10691ebb5ac7226ef83d05edd174e4ce77eef	1-39	No native occurrences	complete
+crates/op-web/src/orchestrator/parsing.rs	bfa652f50ce9e17ab2baf017c1ce5828d85f2fc824e1d02fb24e5d686fd0502a	1-185; supplemental current reread 1-185	Three native parser occurrences retained; full current-file context/JEV disposition complete	complete
+crates/op-web/src/orchestrator/process.rs	324eb0184014bf7753fa30230089f7866cf4b3b6960444b08f72a33f3b3d3e6a	1-414	No native occurrences	complete
+crates/op-web/src/orchestrator/tools.rs	d13592bf31b5c8615d913971ba5f4d1526534a33f53b67ecafbd8d21bbf5771d	1-198; follow-up re-read current lines 108-184 and 170-172	N2 final wording directs discovery through dynamic registry; no specific NetworkManager availability promise	complete-edited
+crates/op-web/src/orchestrator/types.rs	73adaf1d2e7a17797c8aace51bb9f17bc44057f16b4d5145c122dc15d8ffcd4c	1-91	No native occurrences	complete
+crates/op-web/src/privacy_container.rs	9494de27cecb758d6f4f738ea925a260b4cec63b08388aa587acc20499d0d284	1-318	No native occurrences	complete
+crates/op-web/src/privacy_network.rs	125f17f71fa72d0e25a1b53e5941d3253ba867018f65250fb15e0b5af8dfc194	1-8	No native occurrences	complete
+crates/op-web/src/privacy_openflow.rs	a8cc13b0f0ad2e0a8dc0fe01d5a4d08f049ddd14ce2e3d81c450053d010a542c	1-342	No native occurrences	complete
+crates/op-web/src/privacy_routes.rs	c1e28d2a293ea33de3cac38205206f30de029ff8dffc8210f1f3a459a286624a	1-154	No native occurrences	complete
+crates/op-web/src/routes/admin.rs	5d6640f85bdbcbb7c2ec6cdfbf2c53da77cfd169338b04a37734502c095c9c5b	1-265	N3 corrected ambiguous native descriptor	complete-edited
+crates/op-web/src/routes/chat.rs	35cf49f0bc3beb7ea02bc91602952556ea545735dc5f3396135f9a3f3f021ccd	1-210	No native occurrences	complete
+crates/op-web/src/routes/llm.rs	f213e91eda6cab03e7dfd05b16964f5b90c71ded455bd1fe05e782cbacc1f8a1	1-238	No native occurrences	complete
+crates/op-web/src/routes/mod.rs	b622a26ecedc2318e4725fda9ab194ec983b3adaa44033d8c8f37773c6629f64	1-338	No native occurrences	complete
+crates/op-web/src/sse.rs	ab14ca6a9d97b5e9c705ef454ee845d264ae13d764f468f2ab8b5fbd4eb2037d	1-399	No native occurrences	complete
+crates/op-web/src/sse_tests.rs	2108712eec1dddbb34e0ae12dae47abc1722354793df1f4be553cc97c2f85002	1-325	No native occurrences	complete
+crates/op-web/src/state.rs	293e464a5a0db5bb0579faae79f7438084b2294c33682110ef851b70d1a63817	1-664	No native occurrences	complete
+crates/op-web/src/state_manager_client.rs	4bc6133383783bea0032c59c8d159b00c0f7c542a18ddb5c5b0dc5a4156a5cf7	1-80	No native occurrences	complete
+crates/op-web/src/state_tree.rs	3e8acd760c77b7410eeb352c24a574f9df4c77214303d07e24133d811ed146e3	1-499	No native occurrences	complete
+crates/op-web/src/tched_router_routes.rs	c49f57c297ca66900bdd9d997cbfcdf8f9d6ddf91d89abee82d91caf12d883d8	1-207	No native occurrences	complete
+crates/op-web/src/users.rs	9c6d1163ece52f6dfc1b5f9cc90f5158d74386fcade1293d6eba7f38d32073b6	1-668	No native occurrences	complete
+crates/op-web/src/websocket.rs	69762392de66acf99532cd1ecc2de13062cafe155aca2fdd09385d6b0dad6ca1	1-213	No native occurrences	complete
+crates/op-web/src/wireguard.rs	7e83cb7b2d02fda135ff9233c931338ac0d96863c20875bef0349f3483c7f007	1-145	No native occurrences	complete

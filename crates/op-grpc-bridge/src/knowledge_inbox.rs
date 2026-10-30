@@ -11,7 +11,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use op_cognitive_mcp::context_awareness::KnowledgePush;
+use op_cognitive::context_awareness::KnowledgePush;
 use tokio::sync::{Mutex, broadcast};
 
 /// Pushes kept per session.
@@ -113,7 +113,7 @@ fn render(push: &KnowledgePush) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use op_cognitive_mcp::context_awareness::{KnowledgeContent, PushTrigger};
+    use op_cognitive::context_awareness::{KnowledgeContent, PushTrigger};
 
     fn push(session: &str, reason: &str) -> KnowledgePush {
         KnowledgePush {

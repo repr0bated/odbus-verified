@@ -1,0 +1,94 @@
+{
+  "format": "opdbus.fs-enomem-repair.v1",
+  "task_id": "fs-core-20261005",
+  "recorded_at": "2026-10-05T23:33:08Z",
+  "agent": "Codex",
+  "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+  "status": "deployed-operational-cleanup-observed-tests-delegated",
+  "reproduction": {
+    "caller_uid": 1001,
+    "mount": "/run/mount/3tchedFS-native",
+    "operation": "ls",
+    "error": "ENOMEM",
+    "host_available_bytes_approx": 26164731904
+  },
+  "diagnosis": {
+    "slots_used": 256,
+    "slot_limit": 256,
+    "bytes_used": 1264511,
+    "open_files": 116,
+    "open_directories": 140,
+    "inflight_jobs": 0,
+    "kernel_release": {
+      "opcode": 29,
+      "request_uid": 0,
+      "opener_uid": 1001,
+      "reply": "EACCES"
+    },
+    "conclusion": "Kernel cleanup UID rejected before releasing FUSE handles; exhausted handle slots produce ENOMEM",
+    "sources": [
+      "crates/threetched-fs/src/fuse_fs.rs:360",
+      "crates/threetched-fs/src/fuse_fs.rs:1005",
+      "crates/threetched-fs/src/fuse_buffers.rs:15"
+    ],
+    "private_trace": "/var/tmp/fs-enomem-20261005/default-fuse.trace"
+  },
+  "repair": {
+    "file_release": "Match kernel FH/inode; retain opener attribution and previously accepted bytes",
+    "directory_release": "Match kernel FH/inode and drop listing/slot charges",
+    "io_authorization": "Opener UID checks unchanged for reads, writes, flush, fsync, getattr and readdir",
+    "limits": "Unchanged 256 handles,64MiB aggregate,4jobs; no cache added",
+    "regression": "kernel_release_reclaims_nonroot_handles_without_weakening_io_checks; authored, not run"
+  },
+  "temporary_recovery": {
+    "native_mount_restarted": true,
+    "inflight_jobs_before_restart": 0,
+    "root_listing": "restored",
+    "sync": "Paused while idle; service down, logger retained; resume after fixed received release"
+  },
+  "verification": {
+    "tests": "Not run; owner assigned another testing agent",
+    "permanent_deployment": "active received read-only filesystem",
+    "source_inclusion": "All42 contract input pins and three changed source pins match frozen files",
+    "initial_build": "Interrupted130 to refresh wrapper version pin before final compilation; not a pass",
+    "final_build": "passed native GNU workspace release12m32; export/generation passed",
+    "root_listing": "passed as UID1001",
+    "kernel_cleanup": "Actual RELEASEDIR and RELEASE UID0 requests acknowledged with success after activation; private bounded trace retained",
+    "grants": "unchanged digest",
+    "recursive_traversal": "unverified; owner testing agent"
+  },
+  "deployment": {
+    "release": "20261005T232836Z-ed02a78-fs-enomem",
+    "catalog": {
+      "generation": 1494,
+      "catalog_hash": "eebbb65b5a4ba739fb17dcce0834f596d962120e5520d2ccb1a4cb22f9fdd0dd"
+    },
+    "removed_plugins": [],
+    "added_plugins": [],
+    "changed_plugins": [
+      "threetched_fs"
+    ],
+    "filesystem_contract_version": "2.0.2",
+    "filesystem_plugin_hash": "82119631941d616af7be64bc3d5937b7ac8ddf1354ed62da58d0e9f18a44c1b5",
+    "filesystem_binary_sha256": "e2d7d480dda13750c5f1dd848fdde3676553a27216fedde01fe7380e612751ec",
+    "bridge_binary_sha256": "6e4e57eb546e57dbc7d1e5cee32e941da92481a7cf88c13c5f4e24ac80c47b72",
+    "manifest_sha256": "20c37eff24067f3824f27d3a00f4b8c9cb58c88e4d97539d7b61665d6cabc8f3",
+    "catalogs_equal": true,
+    "identity_permissions": "unchanged; nativeUID1001 and guestUID1000000",
+    "network_pins": "retained083153Z; no network/container/native-router restart",
+    "evidence": "/var/tmp/fs-enomem-20261005-release",
+    "rollback": "releases/20261005T224836Z-f373feb; matching previous catalog in /opt/op-dbus/recovery/fs-enomem-20261005"
+  },
+  "notebook_sync": {
+    "service": "resumed",
+    "successful_cycle": "unverified; retained status is previous failed cycle; do not infer auth/sync success"
+  },
+  "testing": {
+    "executed": false,
+    "owner": "separate user-assigned agent",
+    "commands": [
+      "CARGO_CALLER_FAMILY=gpt cargo test -p threetched-fs kernel_release_reclaims_nonroot_handles_without_weakening_io_checks",
+      "find /run/mount/3tchedFS-native/ >/dev/null"
+    ]
+  }
+}

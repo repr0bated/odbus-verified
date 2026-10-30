@@ -1,0 +1,13 @@
+{
+  "task_id": "fs-core-20261005",
+  "status": "built-not-activated",
+  "rust_target": "x86_64-unknown-linux-gnu",
+  "patch_sha256": "1b7b2d6ad3347b795a6b740084e962d66655b37a681d2f95016b031262a81876",
+  "binary_sha256": "35157b824fdb0a74b7c47f72fbd6bcb3ed61ec6805ab9e20bbdedee6fb2b873b",
+  "manifest_sha256": "8cdc116629ba71437fb6ffa93847cb5ea2c521ce7cff964d09c2c55db10b3e16",
+  "exit_code": 0,
+  "log": "/var/tmp/fs-core-20261005-native-build-3.log",
+  "tests": "not-run-by-this-task",
+  "activation": "scoped-local-permission-approved; release-held-for-Grok-and-sync-repair",
+  "scope": "SID1-scoped native tool turns; stateless provider generation has no tool loop"
+}

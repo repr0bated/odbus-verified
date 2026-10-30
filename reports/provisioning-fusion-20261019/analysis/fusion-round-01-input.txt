@@ -1,0 +1,2213 @@
+{"round":"01-history-causality","original_request":"# Provisioning Fusion: complete history, drift and evidence-backed decisions\n\nWork in `/srv/git/odbus-verified`. Task: `provisioning-fusion-20261019`.\n\nThe owner wants LiteLLM Fusion to diagnose why the existing identity-container provisioning workflow remains unfinished, using the latest relevant Astra, Claude and Kiro conversations and especially the COMPLETE stored Hermes/Astra Pro audit and follow-through, including tool calls, arguments, results, errors, worker histories and owner corrections. Previous provisioning scripts are evidence, not commands to replay. Do not replace this task with another partial component audit.\n\n## Latest owner instructions — override historical interpretations\n\n1. **“no loops  on host”**: NO HOST LOOP DEVICES. Not merely no per-container loops. Do not silently exempt the existing pool loop, seed wrappers or a mapping described as stored in Cozo. Existing pool backing is a recorded conflict, not permission to detach it.\n2. **“woould prfer no  disk image if possibgle to use subvolumes olnly”**: prefer subvolumes only, without disk images, if compatible with the complete required behavior. This is a preference, not permission to silently replace immutable-seed/sprout semantics with copied roots or snapshots.\n3. JEV is the **decision judge**, NOT model routing. Never activate `jev-router`, class-router, a Cargo model dispatcher or Haiku fallback. Judge substantive proposals, evidence sufficiency, drift and completion with saved questions/answers and citations.\n4. Bootstrap already exists and is out of scope. Preserve existing identity/session/native UUID/creation records. Modify the design of the EXISTING Hermes workflow, not a new provisioning script, orchestrator, endpoint or control plane.\n\nRetain immutable shared seed, isolated persistent writes, separate upgrade replica, Btrfs send/receive, correct root composition, unprivileged Incus container, native instance/profile declarations, identity admission, storage proofs, durable intents/recovery, final authoritative adoption and startup. Do not introduce new LVM management or VM conversion. Do not infer that Cozo metadata itself supplies a kernel block device. Conversely, do not declare native Incus integration impossible merely because a familiar image-based implementation cannot do it: investigate the actual older scripts and exact supported primitives.\n\n## Scope and safety\n\nThis run is **read-only diagnosis and a concrete modification specification**. You may write analysis, coverage and decision receipts only under `reports/provisioning-fusion-20261019/analysis/`. Do not edit application or host source, shared HANDOFF/SIGNALS owned by the parent, grants, credentials, service settings or storage. Do not run provisioning helpers, storage operations, builds, tests, formatters, deployments, service actions, or historical commands. Existing historical approvals are not current authorization. No direct database mutations or alternate-identity bypasses. Do not read authentication stores or unredacted history; use the supplied exports. No missing-prerequisite claim until evidence distinguishes a genuine current blocker from a stale or invented one.\n\n## Required workflow\n\n- Read the latest constraint files and corpus manifest. Write `analysis/ingestion-receipt.json` early, listing exact files/record IDs actually read, the two latest owner constraints, the judge-only role and known coverage gaps. A manifest read is NOT complete history ingestion.\n- Review the complete supplied Hermes main conversation and all linked workers, with the Astra, Claude and Kiro records. Use bounded batches/read-only research workers if needed. All workers must preload the ten mandatory repo skills and preserve this scope. Retain physical record order, IDs, parent links, correction events, active/compacted flags and source dates. Exact duplicate content can be read once only if every duplicate reference remains accounted for.\n- Maintain `analysis/coverage.json`: file hashes, covered record/byte ranges, duplicates, unavailable/truncated content and outstanding ranges. The corpus is too large for one model context. Never silently truncate it or claim every panel member read a file merely because a path was supplied.\n- The Fusion outer agent has tools; individual panel/analyst calls are stateless. Include the relevant ORIGINAL evidence excerpts and IDs in each panel question, not just filesystem paths or an outer-agent summary. Save which evidence actually reached each panel round. Separate exported/available/read/panel-reviewed/JEV-adjudicated status.\n- Trace the complete existing post-bootstrap chain: admission → native preparation → storage establishment → initial upgrade receive/pairing → root binding → authoritative Cozo adoption → start → stopped boot restoration/sync → failure/cancellation/resume. Identify the owner and authoritative receipt at every stage.\n- Compare current source snapshots, installed application helpers, installed base boot service and immutable historical commit blobs. They are not interchangeable. Where current state needs inspection, use read-only source inspection; runtime operations outside supplied receipts require a separately authorized follow-up, not speculative replay.\n- Build an explicit drift ledger: original ask; agent interpretation; actual tool action/result; owner correction; propagation into code/delegates/deployment; remaining discrepancy. Distinguish legitimate clarification, agent-added work, stale evidence, genuine encountered failures and incomplete execution.\n- Use JEV through native typed `judge`/`judge_batch` with the configured `typesafe/jev-latest` judge role. Read `xd://eval/judge`. For each substantive decision, save exact state/evidence refs, question/rubric, returned answer and uncertainty. Never use JEV to choose models or to grant mutation authority. Existing parent judgments cover scope and the no-host-loop rule, not root-cause or design feasibility.\n- Produce `analysis/diagnosis.md`, `analysis/drift-ledger.md`, `analysis/proposed-changes.md`, `analysis/decisions.jsonl`, final coverage and completion receipts. Concrete modifications must target existing scripts/modules, include exact proposed Incus declarations when supported, retain security checks, and expose unresolved requirement conflicts. A guessed YAML configuration is not a solution.\n- If subvolume-only native storage cannot preserve a required semantic, show the specific evidence and smallest decision needed. Do not silently relax no-host-loops, invent a pool-loop exemption, remove the seed contract, or call a copied root equivalent.\n\nStop when the diagnostic/specification deliverables are complete and their limitations explicit. Do not start implementation or provisioning. Do not report the chatbot provisioned, built, deployed, started or tested based on this run.\n\n---\n# Evidence index and preliminary anchors\n\nEvidence root: `/srv/git/odbus-verified/reports/provisioning-fusion-20261019/`.\nRepository snapshot commit: `051a20d056afba074e21d797aa34f8947c543c5a`. Working-tree snapshots include later uncommitted changes and are NOT that commit's contents.\n\nRead `manifest.json`, `latest-owner-correction.json`, `subvolume-preference.json`, `jev-initial-decision.json`, `jev-no-host-loops.json` first. The source transcripts, not these preliminary anchors, are the evidence for conclusions.\n\n## Complete stored conversation exports\n\n**42 selected session histories, 6,620 public message/event records.** Hidden reasoning and credential metadata are excluded; credential-like content is redacted. Historical tool-output truncation remains a declared limitation, not silently reconstructed text.\n\n### Hermes — main priority\n\n`evidence/hermes/manifest.json` maps 35 sessions and 4,462 message rows: full main audit/follow-through, all 30 recursively linked workers, two preceding failed audit starts and two later failed handoff attempts. `delegations.jsonl` preserves 23 delegation records. No active-only filtering; compacted/inactive copies are retained with provenance.\n\nMain: `evidence/hermes/20261018_190519_b780ef.jsonl`, actual model `openai/gpt-6-astra-pro`, Oct18 19:05:49Z–Oct19 01:29:54Z. 1,778 rows: 152 user, 480 assistant, 1,146 tool results. Some role=user entries are injected worker messages, not new owner instructions.\n\nUseful ORIGINAL message IDs, not a replacement for full reading:\n- 23 audit request; 216 D-Bus first; 617 fix.\n- 1123/1125/1171 and 1435/1437 numbering/display naming; 2655 explicitly says numbering is only Incus display for humans. 2658/2663 acknowledge overcomplication and unnecessary boot restrictions. Inspect correction patches/delegates, not just apology.\n- 4012–4032: owner asks whether provisioning happened; assistant admits no genuine blocker had been established and unfinished checks were presented as blockers.\n- 4091/4095/4099: persistent writable leaf was conflated with an overlay upper, then corrected.\n- 4111: implemented layout but wrong pool integration acknowledged. 4112/4120: upgrade send/receive each boot and pairing at provisioning. 4123/4125 explicitly acknowledge component-only audit missed complete integration.\n- 4127 delegates actual repair; subsequent real admission failures must not be erased. Later Oct19 repairs supersede the final historical denial.\n\n### Astra\n\n`evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl` plus its two worker exports and the 02:28 seed/FUSE session. Actual model `openai-codex/gpt-6-astra`.\n\n**87 owner corrections in the main session are `custom_message/live-delegation`, not ordinary user-role messages.** Preserve them. The final prompt `e1aa9d0e`, original physical line1204, is separately available as `evidence/astra/latest-kiro-brief.txt`; its narrower loop wording is superseded by the latest owner constraint above.\n\nAnchors: actual installed helper failure `e84b7ba8` (`fsconfig: File exists`), failed blank disk deletion `47e15770`, temporary seed-loop cleanup `54f08ba3`; worker edits stopped unbuilt/undeployed. Rejected extra egress and unrelated network daemon were removed in the earlier session. Do not reintroduce either as a prerequisite.\n\n### Claude\n\n`evidence/claude/f4c461eb-d25f-4247-9bd7-eddda9ade635.jsonl` and linked worker `agent-a6b199e4c3071de99.jsonl`. Main actual `claude-opus-5-5`; worker `claude-sonnet-5-5`. Queued owner corrections and approval tool results are retained.\n\nOriginal request to read Hermes history instead caused a read of an older Claude network session. Native creation later succeeded, but storage/binding/adoption remained separate. Historical `seed is not sealed` was genuine; claiming old missing `/dev/sdc2` was the required seed was retracted. A background wrapper reported exit0 while its build receipt says exit101; judge the underlying command, not notification status.\n\n### Kiro\n\n`evidence/kiro/sess_e49a5a84-8491-4c1d-987a-a3b2916a8615.jsonl`, Oct19 04:02–04:18Z. Dispatched `claude-opus-5.5` (provider metadata qdev). User steering and all tool receipts retained; hidden Reasoning omitted. Only one public assistant utterance was stored; no completed specification. The only write was cancelled before execution.\n\nLatest corrections: old provisioning worked; inspect prior scripts; persistent device added to seed supplies RW; seed remains permanently mounted and immutable; no retiring seed; no requirement that device-add use a loop. Do not manufacture a public Kiro statement from hidden reasoning. User's later current no-host-loop instruction has highest precedence.\n\n## Source, installed and historical versions\n\n`manifest.json` maps **49 current/installed snapshots** and **65 historical blobs** from Oct5 admission/helper, Oct11 successful-start and boot-persistence checkpoints, and pre-Hermes HEAD. Seven paths did not yet exist at older commits; extraction errors are recorded rather than replaced by modern content.\n\n- Current worktree: `evidence/source/`.\n- Installed application helpers and base service: `evidence/installed/`.\n- Immutable historical commit blobs: `evidence/history/`.\n- Full research indices with source IDs: `evidence/research/{AstraHistory,ClaudeKiroHistory,ProvisionScriptHistory}.md`.\n- Dated shared context snapshots: `evidence/context/{HANDOFF,SIGNALS}.md`; these are historical claims, not fresh runtime verification.\n\nExisting call chain:\n`provision-workspace-subscriber` → `prepare-instance-disk` → `sync-instance-upgrade` → `bind-instance-root` → `prepare-chatbot-adoption` → `identity_sled.provision_container` / Rust native+storage proof / Cozo final CAS.\nBoot: `identity-roots` → `restore-chatbot-root` → established-storage restoration.\n\nPreliminary source-backed mismatches to verify in context:\n- Most Oct19 drafts use the new pool/upgrade FSID; sync still uses old pool/FSID.\n- Installed base `/etc/sv/identity-roots/run` remains old single-chatbot/early-exit wiring, distinct from application helper staging.\n- Both old root helper and current GPT proof rely on host loops. Cozo association alone does not remove those mappings.\n- Oct5 manual working leaf and scripted candidate receipts were unreconciled. Oct11 has a canonical-start/guest-identity receipt; cold reboot was not exercised. Neither proves today's requested subvolume-only/no-host-loop architecture already works.\n\n## Last recorded target and limits\n\nNative `3tchedCtlChatbot`, logical ID0, UUID `137c61ff-435c-4300-b3c0-c605e461be13`, stopped/never-used in latest receipts, root still directory pool `identity-roots`. Native creation is not authoritative identity adoption. Existing ordinary names begin ID-1; naming is not identity authorization.\n\nHistorical pool `3tched`: Btrfs, 150GiB, backing `/var/lib/incus/disks/3tched.img` on `/dev/loop0`; no managed volumes listed in Kiro receipt. **This conflicts with the latest no-host-loops requirement; do not exempt it.** No pool alteration authorized by this investigation.\n\nSeed `8468cc14-a5e4-409c-96f6-1e157d470ab5`, SEEDING, read-only, seven original subvolumes. Upgrade filesystem `7ac6c955-4028-439c-80b4-c55a647abcb4`, filesystem writable, `@` read-only in latest recorded preparation. Failed blank image deleted; retained filesystem-prepare-intent is NOT completion.\n\nBootstrap/self-read admission denial was repaired after Hermes; native creation followed. Do not recycle the last Hermes denial as current root cause. Application release was deployed; this does not mean chatbot storage/adoption/start completed. No guest boot or sole8090 network completion proof is supplied. Guard/AppArmor protections require separate runtime evidence, not assumed from source.\n\nKeep same-handle operation receipts, exact identity/native/storage binding, root-private locked plans/intents, pre-receive destination proof, immutable seed, one-time explicit membership establishment, no lifecycle member churn, unprivileged/nonnested isolation, storage ioctl restrictions, stopped overlay updates, ancestry proof and final digest/revision CAS. Preserve security fixes while resolving architectural drift.\n","constraints":[{"task":"provisioning-fusion-20261019","owner_text":"no loops  on host","precedence":"Latest owner correction supersedes narrower no-per-container-loop interpretations in historical conversations and draft briefs.","required_design_constraint":"No host loop devices. Do not silently exempt pool-level backing, seed wrappers, per-container images or device mappings described as stored in Cozo.","observed_conflict":"Historical Oct19 receipts show /dev/loop0 backing existing Incus pool 3tched at /var/lib/incus/disks/3tched.img. This is evidence of current-versus-required drift, not permission to preserve it as an architectural exemption.","mutation_scope":"Evidence and diagnostic handoff only. No detach, pool migration, deletion, seed modification or other storage operation authorized by this correction.","jev_requirement":"Judge each proposal against no-host-loops and the complete retained provisioning, immutable-seed, identity and upgrade requirements. A database association alone is not proof that a host kernel loop mapping has been eliminated. Return exact evidence or uncertainty; do not invent impossibility proofs."},{"task":"provisioning-fusion-20261019","owner_text":"woould prfer no  disk image if possibgle to use subvolumes olnly","precedence":"Latest owner storage preference; supplements the immediately preceding hard no-host-loops correction.","hard_constraint":"No host loop devices.","preferred_design":"Subvolumes only, without disk images, if feasible while retaining the required provisioning semantics.","retain":["Existing already-bootstrapped identity and native container","Immutable shared Btrfs seed and isolated persistent identity writes","Separate upgrade replica delivered by Btrfs send/receive and the required root composition","Native Incus container declarations and existing supported workflow","Identity, admission, storage-proof, recovery and authoritative completion guarantees"],"analysis_required":"Explain the exact storage and kernel primitives. Determine whether subvolume-only storage preserves the seed/sprout contract, or instead changes it. Do not silently substitute copying, snapshots, VM conversion, new LVM management or weakened proofs. If a requirement conflict remains, cite evidence and identify the smallest owner decision; do not treat preference as unconditional permission to redesign.","scope":"Evidence and diagnosis only; no pool migration, disk creation, device changes or source repair."}],"evidence":[{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":5,"id":23,"session_id":"20261018_190519_b780ef","role":"user","content":"audit the provisioning script","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792350444.6491184,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":"[Note: model was just switched from openai/gpt-6-astra-pro-flex to openai/gpt-6-astra-pro via Nous Portal. Adjust your self-identification accordingly.]\n\naudit the provisioning script","display_kind":null,"display_metadata":null,"display_order":23,"message_uid":"5333c4859a56407f8ebbe854670ea0ea","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":83,"id":216,"session_id":"20261018_190519_b780ef","role":"user","content":"be sure using dbus first","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792350801.635758,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":"[Context from the interrupted assistant response]\n[This response was interrupted by a user correction.]\n\nbe sure using dbus first","display_kind":null,"display_metadata":null,"display_order":216,"message_uid":"2efb0e25dbc4497a95a7529ca11d5503","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":282,"id":617,"session_id":"20261018_190519_b780ef","role":"user","content":"fix","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792352895.9747446,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":617,"message_uid":"e850f78b76aa4a64a97c7063174c1bad","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":567,"id":1123,"session_id":"20261018_190519_b780ef","role":"user","content":"the containerws are ging to be seqentially nubered as created starting at 1","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792354165.3460488,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":1123,"message_uid":"7a2954cdd5204376bb3916cd0aa9ddf8","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":569,"id":1125,"session_id":"20261018_190519_b780ef","role":"user","content":"container name","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792354177.4462004,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":"[Context from the interrupted assistant response]\n[This response was interrupted by a user correction.]\n\ncontainer name","display_kind":null,"display_metadata":null,"display_order":1125,"message_uid":"7f14054f9bb94597bb412729e7840e66","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":599,"id":1171,"session_id":"20261018_190519_b780ef","role":"user","content":"ID-1","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792354357.2864418,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":"[Context from the interrupted assistant response]\n[This response was interrupted by a user correction.]\n\nID-1","display_kind":null,"display_metadata":null,"display_order":1171,"message_uid":"2908e825acb64d7d85a31736ca1bf68a","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":650,"id":1435,"session_id":"20261018_190519_b780ef","role":"user","content":"finish naming convention ID1,2,3,4 and deploy","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792355133.2022913,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":1435,"message_uid":"874271a0424040bf89271128ac4928c4","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":652,"id":1437,"session_id":"20261018_190519_b780ef","role":"user","content":"with dash","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792355145.1702528,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":"[Context from the interrupted assistant response]\n[This response was interrupted by a user correction.]\n\nwith dash","display_kind":null,"display_metadata":null,"display_order":1437,"message_uid":"291743994a0540bbbfa8af7ac5aabbbb","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1174,"id":2655,"session_id":"20261018_190519_b780ef","role":"user","content":"thats what i thought the nubering is just for incus display for humans","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792360369.3997202,"finish_reason":null,"_compressed_summary":0,"active":0,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":2655,"message_uid":"d024dff26b5b4705ac2701a827f6906e","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1177,"id":2658,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Exactly—the human-readable Incus name only. ID-1, ID-2, … should not change identity UUIDs, storage layout, permissions, or lifecycle behavior.\n\nI overcomplicated it. I’ve told the build worker to pause before starting another build; nothing has been deployed.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792360395.0911126,"finish_reason":"stop","_compressed_summary":0,"active":0,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":2658,"message_uid":"c92b552813854d2099fb5f7a56336b0d","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1182,"id":2663,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Yes. I added unnecessary provisioning and boot restrictions that need removing. The change should only assign sequential Incus names, keeping existing identity and storage behavior intact. Nothing has been deployed, so this is a source correction—not a live-system rollback.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792360460.4099288,"finish_reason":"stop","_compressed_summary":0,"active":0,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":2663,"message_uid":"85eb57ae084641b1a896bd1b906d76ca","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1641,"id":4012,"session_id":"20261018_190519_b780ef","role":"user","content":"did you provision?","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792366747.090895,"finish_reason":null,"_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4012,"message_uid":"7038e13da0154377ab1cf4e0e542c5c5","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1643,"id":4014,"session_id":"20261018_190519_b780ef","role":"user","content":"i asked you to ande made sure you were not blocked","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792366768.3247237,"finish_reason":null,"_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4014,"message_uid":"9a8ea066f2cf4c51ba6785bd0da0e77f","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1646,"id":4020,"session_id":"20261018_190519_b780ef","role":"assistant","content":"You did. I stopped short and treated unresolved investigation items as proven blockers without attempting the authorized provisioning. That was my mistake.\n\nProvisioning is now assigned for execution using your existing identity and pool—not another audit. No further approval is needed unless an actual permission denial requires a new grant.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792366798.6256318,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4020,"message_uid":"650f623f8dcb4222a19408058a54a1c6","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1648,"id":4032,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Nothing further from you. You already specified the name, existing 10.0.0.9 identity, storage pool, and container-only root scope.\n\nWhat I’m missing is verified execution: confirming the current identity binding and completing the provisioning operation. I haven’t established a genuine blocker; I should not have presented those unfinished checks as one.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792366818.4087737,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4032,"message_uid":"5ae55ac3fc8c4ed49fc980ed43d553fc","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1662,"id":4091,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Two partitions, yes:\n\n  1. Root partition: the identity’s writable Btrfs leaf attached to the read-only seed.\n  2. Upgrade partition: a separate Btrfs filesystem with its own @ subvolume.\n\nThe current code combines upgrade/@ and root/@ into a read-only OverlayFS view. It does not create an additional writable overlay subvolume or upper/work directories. If that extra writable subvolume is what you meant, it is missing from the current implementation.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792366976.5210197,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4091,"message_uid":"a6ef03c02e6848fb872903ffc3603159","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1663,"id":4095,"session_id":"20261018_190519_b780ef","role":"user","content":"no the persistent cozo iws addedwith btrfs add disk","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792367007.4498794,"finish_reason":null,"_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4095,"message_uid":"78af43c507094ce6823671b9b1773ae4","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1666,"id":4099,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Right—the persistent writable storage is added to the seed with btrfs device add, and Cozo tracks the identity’s leaf assignment. It is not a writable OverlayFS upper layer.\n\nThe separate upgrade partition supplies upgrade/@ for the read-only overlay. I conflated those two roles.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792367027.7000499,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4099,"message_uid":"853d8dd5b5184fb5a8ecbaf09b289439","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1678,"id":4111,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Yes—the script uses btrfs device add to attach the persistent root partition to the seed, then mounts that pair read-write.\n\n  prepare-instance-disk.sh:111 — adds the root partition.\n  prepare-instance-disk.sh:116–118 — formats the separate upgrade partition and creates @.\n  bind-instance-root.sh:216 — combines upgrade and seed layers into a read-only overlay.\n\nBut the storage path is still wrong: the script requires /var/lib/3tched-leaf-pool, rather than your selected /var/lib/incus/storage-pools/3tched-pool. The layout is implemented; that integration is not finished.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792367083.916432,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4111,"message_uid":"d80c31b429564cdcbdd3473e55ab522b","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1679,"id":4112,"session_id":"20261018_190519_b780ef","role":"user","content":"btrfs send to upgrade evgery boot from upgrade partiton","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792367109.1377525,"finish_reason":null,"_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4112,"message_uid":"4f001a4a361a43b2a6d66a2da4bcb586","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1687,"id":4120,"session_id":"20261018_190519_b780ef","role":"user","content":"on provisoion it defines the pair","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792367148.7835863,"finish_reason":null,"_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4120,"message_uid":"186c5a25a0164a528e49e24d46d89954","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1690,"id":4123,"session_id":"20261018_190519_b780ef","role":"assistant","content":"You’re right. You paid for Pro and asked for an audit so I would trace and verify the complete provisioning workflow—not make you explain it afterward.\n\nI audited pieces, missed integration gaps, and deployed before completing the provisioning you requested. The chatbot is still not provisioned. That is my failure, not missing instructions from you.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792367195.548538,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4123,"message_uid":"aba8266fcf2940babbf40072f7531383","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1692,"id":4125,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Exactly. The audit should have established the disk layout, persistent-leaf attachment, upgrade pairing at provisioning, and boot-time synchronization—and caught the path and identity mismatches before deployment.\n\nInstead, I left you to reconstruct that workflow for me afterward. I did not deliver the end-to-end audit you asked for.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792367212.978625,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4125,"message_uid":"e65ea91d32cf4ac490e2c23ef152f402","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1694,"id":4127,"session_id":"20261018_190519_b780ef","role":"assistant","content":"","tool_call_id":null,"tool_calls":"[{\"id\":\"call_cOsqpIeoYWMflK4h90SMfvG7\",\"call_id\":\"call_cOsqpIeoYWMflK4h90SMfvG7\",\"response_item_id\":\"fc_cOsqpIeoYWMflK4h90SMfvG7\",\"type\":\"function\",\"function\":{\"name\":\"delegate_task\",\"arguments\":\"{\\\"tasks\\\":[{\\\"goal\\\":\\\"Finish the existing authorized 3tchedCtlChatbot provisioning quickly with minimal repair, not another audit. Execute existing supported path and stop on concrete failure. First mandatory nine skill preload AGENTS/HANDOFF. Own narrowly scoped provisioning source repairs if necessary: replace outdated leaf-pool path assumptions with user-selected existing mounted Incus loop FS and reconcile configured-chatbot target selection with explicitly chosen existing10.0.0.9 public identity using supported configuration, preserving identity authentication/admission and ownership checks. Do not bypass previously denied prepare operation or unavailable authoritative session: diagnose/restore supported session binding first; if unavailable report exact action user must take. No new keys/grants/direct DB mutation. No retry of tool/user-denied command without renewed applicable authorization. User now says 'so justt get it edone quicly dont over ananolyze it if it dfails it fails.' Prior actual denial evidence must not be hidden. Use current architecture exactly: two GPT partitions, persistent leaf added once via btrfs device add, provisioning records upgrade pair, boot send/receive existing pair, readonly overlay. No redesign. Return real operation receipt or exact failure, no further speculative investigation.\\\",\\\"context\\\":\\\"Repo/srv/git/odbus-verified. User repeatedly authorized provisioning then demanded immediate action. Prior worker receipt/home/jeremy/.hermes/cache/scratch/chatbot-provision-execute-20261018.c3ZlM0: mounted identity_sled.inspect_provision_preflight denied stage register org.freedesktop.DBus.Error.AccessDenied lungs identity binding refused; log D-Bus authoritative session unavailable. Mounted caller414fbc56-03fb-20ab-758a-bcc7a7cbdc0e. prepare_container subsequent command blocked tool/user before execution, no instance created. Existing10.0.0.9 key retained privately in receipt, do not print values; no privatekey. Current backend hardpins oldsessionb0c777e3-0955-cd8b-3d01-ca12998cae28 and different configured key (identity_sled_dispatch2559-61). sync-instance-upgrade.sh55-59 hardpins samelegacy. User explicitly wants existing10.0.0.9 identity temporary oneweek not keyrotation. Do not just replace IDs to bypass checks. Pool existing/var/lib/incus/storage-pools/3tched-pool rw directloop0 image/var/lib/incus/disks/3tched.img FSIDa1ab7b42-12a8-437c-8f65-d0469892c8dd logicalIncus3tched; old scripts require/var/lib/3tched-leaf-pool FSROOT/@3tched-leaf-pool nonexistent. Source prepare-instance-disk.sh create usesqemu-imgrawGPT; prepare adds rootpartition seed once, formats upgrade partition+@; bind-instance-root readonlylower overlay; sync pair records relationship then boot sendsnapshot host upgrade to replica; preserve persistent leaf. Seed8468cc14-a5e4-409c-96f6-1e157d470ab5 onLVM mount/run/mount/3tched-seed, upgrade7ac6c955-4028-439c-80b4-c55a647abcb4/run/mount/3tched-ct-upgrade prior staleUUID. App deployedA315 release-c068ba1e-02d3-4362-88f7-faf41919a837 tenservices catalog72pins; canonicaldeploy entryactivate-golden. No tests/fmt/clippy ownerdeferred. Do not run workspacebuild absent actual source need, oneCargo check; useJEV currentrouting no overrides. Guard/storage services OFF and AppArmorinactive separate followups not manufactured provisioning gate. No reboot/guard change. Only native container qdrant-recovered running preserve. Legacy3tchedChatbot preserve if encountered. Usercontainer-onlyroot nohost accountchanges. Read only exact needed code no multiminute broad audits. ClaimHANDOFF row before edits preserve others. Parent available no recursive delegates.\\\"}]}\"}}]","tool_name":null,"effect_disposition":null,"timestamp":1792367255.5823426,"finish_reason":"tool_calls","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4127,"message_uid":"59b0218b004e439888b7993d0549299c","tool_call_uid":null,"tool_call_uids":"{\"call_cOsqpIeoYWMflK4h90SMfvG7\":\"feb64adf98e74011801d293ff9e56b30\"}"},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1776,"id":4472,"session_id":"20261018_190519_b780ef","role":"assistant","content":"This time the command ran: the bridge restarted successfully, and the one-shot bootstrap selector was removed.\n\nThe caller now authenticates, but identity readback hit a different denial: missing capability cap.identity.sled.self.read@v1.\n\nNo grants were changed, and the container is not provisioned yet.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792373334.8875003,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4472,"message_uid":"82ae81df1aa64279a0cbbdff83f9ca08","tool_call_uid":null,"tool_call_uids":null},{"source":"reports/provisioning-fusion-20261019/evidence/hermes/20261018_190519_b780ef.jsonl","row":1778,"id":4474,"session_id":"20261018_190519_b780ef","role":"assistant","content":"Correct. Root was used only to install the bootstrap selector and restart the service. The mounted call ran as your existing session, not as root.\n\nRunning the call with sudo would not legitimately replace your identity or supply its missing capability. We need to preserve your caller identity and resolve its authorization—not switch identities.","tool_call_id":null,"tool_calls":null,"tool_name":null,"effect_disposition":null,"timestamp":1792373386.7265663,"finish_reason":"stop","_compressed_summary":0,"active":1,"compacted":0,"api_content":null,"display_kind":null,"display_metadata":null,"display_order":4474,"message_uid":"1a9f3550f99e4b83baaffffc0a25e035","tool_call_uid":null,"tool_call_uids":null}],"question":"Evaluate these ORIGINAL excerpts only, not an assumed full history. What causal drift is evidenced versus mere assistant admission? Identify claims requiring actual tool receipts, subsequent corrections, and complete worker coverage. Do not declare current admission blocked from Hermes final denial; later supplied case reports repair not yet original-reviewed in this round. Do not propose implementation or routing. Return concise evidence-backed findings and uncertainty, plus what must be established before an end-to-end specification. Mandatory repo skills supplied below."}
+
+MANDATORY SKILL grpc-expert
+---
+name: grpc-expert
+description: "Expert guidance for gRPC/Protocol Buffers work in the operation-dbus-proto (OP-DBUS) workspace — designing plugin methods, generating .proto/service definitions, wiring the op-grpc-bridge, or fixing plugins with missing gRPC methods. Use this whenever the user mentions gRPC, proto/protobuf, plugin methods, the gRPC bridge, tonic, reflection descriptors, 'missing plugins' in the gRPC diagnostic page, or the seal/freeze/hot pipeline — even if they don't say 'gRPC' explicitly (e.g. 'the plugin isn't showing up on the diagnostic page', 'add a method to plugin X', 'regen protos')."
+metadata:
+  version: 1.0.0
+disable-model-invocation: false
+---
+
+# gRPC Expert — OP-DBUS
+
+This workspace does **not** hand-write per-plugin `.proto` files. Proto generation is
+automatic, driven entirely by each plugin's `PluginSchema`. If you remember one thing
+from this skill: **fixing a plugin's gRPC surface means editing its Rust schema
+function, not writing `.proto`.**
+
+## The real pipeline (roll → seal → freeze → hot)
+
+```
+1. Plugin declares  → PluginSchema { methods: HashMap<String, MethodDecl>, signals: Vec<SignalDecl>, ... }
+                       in crates/op-plugins/src/state_plugins/<plugin>.rs
+2. Schema gets put   → op-projection's SchemaEngine publishes the catalog hash
+                       (op_identity::schema_bridge::schema_catalog_hash())
+3. Sealed by blob    → op-blob seals the plugin object into an immutable blob:
+                       /dev/shm/opdbus/plugin-blobs/<plugin_id>.<schema_hash16>.blob
+                       (op-blob is the ONLY writer — never write blobs elsewhere)
+4. Descriptors       → TWO separate reflection layers exist, don't confuse them:
+   for reflection       a) STATIC: crates/op-grpc-bridge/build.rs generates
+                            plugin_methods.proto from every plugin's schema.methods,
+                            compiles it with tonic_build into operation_descriptor.bin
+                            (a protobuf FileDescriptorSet), served by tonic-reflection.
+                         b) DYNAMIC: crates/op-grpc-bridge/src/dynamic_reflection.rs
+                            (ActiveReflectionCatalog) hydrates live from the sealed
+                            SHM blob catalog via hydrate_reflection_from_shm() —
+                            this is the "frozen" descriptor set for what's actually
+                            present right now, independent of what's compiled in.
+5. Frozen            → the blob + its descriptors are immutable once sealed.
+6. gRPC socket = hot → crates/op-grpc-bridge/src/grpc_server.rs registers the
+                       generated per-plugin service (plugin_method_routes.rs,
+                       add_routes()) on the tonic UDS bridge, dispatching each
+                       RPC to call_generated_plugin_method_typed(plugin_id,
+                       schema_name, ...) which routes through PluginService.CallMethod
+                       — i.e. gRPC never bypasses D-Bus, it's a bridge, not a
+                       second control plane.
+```
+
+A plugin shows green/connected on the gRPC diagnostic page **iff**:
+- its `PluginSchema.methods` is non-empty (empty → `build.rs` silently skips it —
+  see `collect_plugin_methods()`), **and**
+- the plugin is sealed in the SHM blob catalog.
+
+These are discovery prerequisites, not proof of execution. Canonical dispatch
+also requires the method's complete declaration and plugin version to match the
+compiled handler, argument validation, verified identity, and its exact grant.
+An advertised method whose adapter is absent is unfinished work.
+
+## Where to actually make changes
+
+| Task | File |
+|---|---|
+| Add/fix methods for plugin `<name>` | `crates/op-plugins/src/state_plugins/<name>.rs`, inside `<name>_schema()` |
+| Reusable input/output builders | `crates/op-plugins/src/state_plugins/plugin_scaffold_helpers.rs` |
+| Regenerate the derived `.proto` + routes | Just rebuild — `build.rs` regenerates on every `cargo build -p op-grpc-bridge` (it `rerun-if-changed`s `../op-plugins/src/state_plugins`) |
+| Wire a genuinely new (non-plugin-derived) service | `crates/op-grpc-bridge/proto/*.proto`, add to the `compile_protos` list + `rerun-if-changed` in `crates/op-grpc-bridge/build.rs`, then register in `crates/op-grpc-bridge/src/grpc_server.rs` |
+| Inspect what's currently generated | `target/{debug,release}/build/op-grpc-bridge-*/out/plugin_methods.proto` (build artifact — never hand-edit) |
+
+**Never** create files under a `/proto/plugin_methods/` directory or a
+`plugin_methods_unified.proto` by hand — those paths don't exist in this repo and
+aren't part of the real pipeline; that was a stale spec from an earlier session.
+The single source of truth is `schema.methods`.
+
+## Adding methods to a plugin (the actual workflow)
+
+Look at `crates/op-plugins/src/state_plugins/proxy_server.rs` (`proxy_server_schema()`)
+for the canonical pattern:
+
+```rust
+use op_state_store::{MethodDecl, PluginSchema, SideEffect};
+
+schema.methods.insert(
+    "start_proxy".to_string(),
+    method_decl_from_schemars_with_output::<StartProxyInput, plugin_scaffold_helpers::AckOutput>(
+        "start_proxy",
+        SideEffect::Mutation,       // Read | Mutation
+        false,                       // idempotent?
+        "cap.network.proxy.start@v1",   // required_capability
+        "mut.network.proxy.start@v1",   // subid — must follow the taxonomy in CLAUDE.md
+    ),
+);
+```
+
+- Define `StartProxyInput` (and a typed output struct, or reuse `AckOutput`) as
+  `#[derive(schemars::JsonSchema)]` structs — the JSON Schema is derived, never
+  hand-written as `serde_json::json!({...})` unless there's no existing helper.
+- `method_decl_from_schemars_with_output::<Input, Output>` is the current
+  (non-deprecated) helper; the single-generic `method_decl_from_schemars` is
+  deprecated but still present for legacy callers.
+- `subid` must be registered in the canonical registry per CLAUDE.md
+  (`crates/op-plugins/src/state_plugins/oscal_subid_registry.rs`) — CI enforces
+  uniqueness.
+- For plugins with **zero** declared methods today (the ones missing from the
+  diagnostic page), don't hand-author their methods one by one — see
+  **The Auto-Creator Plugin** below. That's the actual deliverable: a plugin
+  that finds these gaps and fills them itself, using real research per plugin.
+
+## The Auto-Creator Plugin (an ongoing capability, not a one-off batch)
+
+This is **not** a one-time task to fix ~11 named plugins. It's a standing
+system capability: whenever the system encounters *any* missing plugin —
+now, or a new one added in the future — it automatically generates that
+plugin and submits it for **human review**, never auto-merges/auto-seals it
+unreviewed. The current ~11 gaps are just the first real instances that
+exercise this, not the scope.
+
+Consistent with this workspace's "reactive, not polled" principle (CLAUDE.md):
+this should be triggered by an actual arrival/lookup that reveals the gap
+(e.g. a D-Bus/gRPC call or reflection lookup against a plugin whose
+`schema.methods` is empty, or a plugin name that doesn't resolve at all),
+not a cron-style sweep re-scanning all plugins on a timer.
+
+Build it as a plugin itself (same `PluginSchema`/`MethodDecl` pattern as every
+plugin in `crates/op-plugins/src/state_plugins/`), whose job is to:
+
+1. **Detect a gap on encounter** — when something references a plugin that's
+   missing or has `schema.methods.is_empty()` (same emptiness check
+   `build.rs::collect_plugin_methods` already uses to skip plugins), that's
+   the trigger — not a periodic scan of the whole registry.
+2. **Research that specific gap** — drive deep research via the **NotebookLM
+   MCP** (once wired up) to determine what capabilities/operations the
+   missing plugin should realistically expose, given its existing state
+   struct (if any), documentation, and prior art from comparable plugins
+   already in the registry. This replaces guessing or generic Get/List/Watch
+   stubs with a grounded, plugin-specific proposal.
+3. **Synthesize typed schemas** — turn the research output into real Rust
+   input/output structs (`#[derive(schemars::JsonSchema)]`) and `MethodDecl`
+   entries — per the "no `AckOutput`" rule above, every synthesized method
+   needs its own meaningful typed request/response, not a generic ack.
+4. **Submit for human review — do not auto-apply.** The output is a proposed
+   plugin/schema (e.g. a diff/PR against `<name>_schema()`, or a new
+   `crates/op-plugins/src/state_plugins/<name>.rs` for a wholly new plugin),
+   held for a human to approve before it's merged. Only after human approval
+   does it enter the normal pipeline (build → proto → reflection → sealed
+   blob → hot). The auto-creator must never seal a blob or register a plugin
+   into the live catalog on its own. It never emits `.proto` directly and
+   never writes to `/proto/plugin_methods/` — the single source of truth
+   stays `schema.methods`, authored by a human-approved change.
+
+In short: this is a **standing, reactive meta-plugin that drafts schemas for
+whatever plugin is found missing, research-backed via NotebookLM, gated by
+human review** — not a fixed batch job for a specific list of plugins.
+
+## JSON Schema → proto mapping
+
+The shared mapper lives in `crates/op-blob/src/json_schema_proto.rs`; the bridge
+uses it for generated native messages. Structured objects become typed nested
+messages; typed string-key maps retain their value types. Scalars preserve
+presence, including explicit false, zero and empty strings. Unsigned 64-bit
+contracts use `uint64`. Nulls, arbitrary JSON, unions and nested arrays use the
+appropriate standard `Value`/`Struct`/`ListValue` dependencies. Arbitrary numbers
+inside `Value` remain subject to protobuf's double-precision limit.
+
+Two existing wire layouts have distinct numbering rules: generated native
+bridge fields use stable FNV-1a numbers; sealed per-method messages retain their
+sorted sequential numbering. Preserve both layouts. Canonical schema map keys
+and declared transport method names are separate identities, not interchangeable
+aliases. Consumers register the original sealed descriptors and never reseal,
+regenerate, or hash them as an existence check.
+
+## Known project-specific tensions vs. generic gRPC best practice
+
+Be aware of these before applying textbook advice unmodified:
+
+- **Do not use `AckOutput { success: bool }` for new/generated methods.**
+  It exists in the codebase (see `proxy_server.rs`) as a legacy shortcut for
+  "no meaningful return value," but every method a plugin exposes should have
+  a real, dedicated typed **input** struct and typed **output** struct that
+  reflect what the operation actually consumes and returns — not a generic
+  bool. This matters especially for the auto-creator (below): when it
+  synthesizes methods for a previously-empty plugin, it must generate a
+  specific `<Method>Input` and `<Method>Output` schemars struct per method,
+  never fall back to `AckOutput`. Errors still go through `tonic::Status` /
+  D-Bus error replies, never a `success: false` field.
+- **Enums are flattened to `string`, not real proto `enum`.** JSON Schema
+  `enum` currently maps to proto `string` (see table above), so the classic
+  `FOO_STATUS_UNSPECIFIED = 0` convention isn't applied by the generator today.
+  If asked to add real proto enums, that requires changing
+  `json_schema_type_to_proto` in `crates/op-grpc-bridge/build.rs`, not just the
+  plugin schema.
+- **Streaming comes from state in SHM.** The owner reaffirmed this on
+  2026-09-13. Methods update authoritative SHM state before notifications;
+  existing state subscriptions read that state. Current generated method RPCs
+  being unary does not require another streaming method/service. Preserve
+  private principal/session scope. Method arguments, event payloads and
+  generator buffers are not independent state authorities, and buffered unary
+  responses are not a substitute for SHM state streaming.
+- **One generated file per bridge crate**, not the "1-1-1" file-per-message
+  convention — `plugin_methods.proto` bundles every plugin's messages/services
+  in one generated file. That's fine; it's a build artifact, not hand-maintained
+  source, so the usual "small modular .proto files" guidance doesn't apply to it.
+
+## Generic protobuf/gRPC conventions (still apply to hand-written `.proto`)
+
+For any `.proto` you *do* hand-write (domain services under
+`crates/op-grpc-bridge/proto/`, not plugin-derived ones):
+
+- `snake_case` field names, `CamelCase` message/service/RPC names, package names
+  lowercase (this repo uses `operation.plugin.v1`-style packages).
+- Reserve field numbers for removed fields; never reuse them.
+- Prefer `optional` for fields that may be absent; avoid letting one field's
+  value change the semantic meaning of another.
+- Real proto `enum`s (where you control the generator, e.g. hand-written
+  services) always start with `..._UNSPECIFIED = 0`.
+- Use gRPC status codes (`tonic::Status`) for error paths; reserve response
+  message fields for actual data.
+- TLS is mandatory in this workspace (per CLAUDE.md zero-trust transport) —
+  never wire a new gRPC service as plaintext, even over UDS.
+- Server reflection (`tonic-reflection`) must stay wired for every new service
+  so it's discoverable by `op-cognitive-mcp` and the gRPC diagnostic page —
+  don't add a service that bypasses reflection registration.
+
+## Quick diagnostic checklist
+
+If a plugin isn't showing up / isn't callable over gRPC:
+
+1. Does `crates/op-plugins/src/state_plugins/<name>.rs`'s `<name>_schema()`
+   actually populate `schema.methods`? (Empty → `build.rs` skips it entirely.)
+2. Is the plugin registered via `inventory::submit! { PluginReg::new(...) }` in
+   its own file (self-registration — check `crates/op-plugins/src/default_registry.rs`
+   only if the plugin doesn't show up in `available_plugins()` at all)?
+3. Did `cargo build -p op-grpc-bridge` actually rerun? (`build.rs` only reruns on
+   changes under `../op-plugins/src/state_plugins` or `build.rs` itself.)
+4. Is the plugin actually **sealed** in the SHM blob catalog
+   (`/dev/shm/opdbus/plugin-blobs/`)? Static compiled-in proto support and the
+   *dynamic* "hot" reflection/routing are two different gates — a plugin can
+   compile fine and still be invisible if it was never sealed.
+
+MANDATORY SKILL grpc-protocol-expert
+---
+name: grpc-protocol-expert
+description: >-
+  Generic specialist in gRPC protocol, streaming RPCs, Protocol Buffers, channel
+  config, load balancing, auth, and observability. Use for general gRPC/protobuf
+  work outside the OP-DBUS PluginSchema seal/freeze/hot pipeline. For OP-DBUS
+  plugin gRPC surfaces, prefer the grpc-expert skill instead.
+disable-model-invocation: false
+---
+
+# gRPC Protocol Expert
+
+## Focus Areas
+
+- gRPC protocol intricacies and best practices
+- Unary, server-streaming, client-streaming, and bidirectional streaming RPCs
+- Protocol Buffers (protobuf) for efficient serialization
+- Service definition and implementation in gRPC
+- Channel configuration and management
+- Load balancing strategies within gRPC
+- gRPC authentication and authorization mechanisms
+- Network optimization for gRPC communication
+- Observability setups, including logging, tracing, and metrics
+- Efficient handling of gRPC errors and status codes
+
+## Approach
+
+- Begin with a clear understanding of service requirements before implementing
+- Use Protocol Buffers for defining service interfaces and messages
+- Implement efficient error handling with gRPC status codes
+- Leverage streaming for real-time data processing where applicable
+- Optimize network usage by compressing messages and headers
+- Employ deadline and timeouts for better control over communication
+- Choose appropriate load balancing strategies for scalability
+- Configure multiple channels and target services for robustness
+- Utilize SSL/TLS for secure communication
+- Implement structured logging, tracing, and metrics setup for observability
+
+## Quality Checklist
+
+- Thoroughly defined .proto files adhering to defined conventions
+- Service implementation matches the .proto specification
+- Correctly configured server and client channels
+- Stream types appropriately used based on data flow needs
+- Efficient serialization and deserialization processes
+- Comprehensive unit and integration testing for gRPC calls
+- Implemented error handling with descriptive status codes
+- Adequate logging of gRPC requests and responses
+- Metrics capturing for latency, error rates, and payload size
+- Secure communication ensured with proper encryption standards
+
+## Output
+
+- Clear and comprehensive .proto files defining all services and methods
+- High-performance gRPC services with optimized channel settings
+- Robust client applications with efficient service consumers
+- Detailed logging and monitoring setup for gRPC calls
+- Secure and scalable gRPC-based systems
+- Reliable streaming implementations for real-time data
+- Documentation including gRPC integration guides and best practices
+- Load testing results showing stable performance under expected traffic
+- Error handling guides for service developers
+- Benchmarks demonstrating gRPC performance improvements over alternatives
+
+MANDATORY SKILL json-render
+---
+name: json-render
+description: >-
+  Expert skill for building json-render.dev catalog components, page specs, and
+  generative UI across three repos: /srv/git/json-render (library source),
+  /srv/git/odbus (Rust backend + op-web Axum server), and
+  /srv/git/3tched.com (separate chatbot-rendered UI repository).
+  Covers the full stack: defineCatalog → Zod schema → React component →
+  pageSpec → NAV_MANIFEST → factory plugin wiring → sealed blob pipeline →
+  gallery/catalog promotion gate. Also covers the D-Bus plugin schema for
+  json-render and schema-renderer in op-plugins.
+---
+
+# json-render Skill
+
+## Local deployment policy — runit, not systemd
+
+The user-designated UI repository is `/srv/git/3tched.com`, separate
+from `/srv/git/odbus`. Inspect its actual catalog, registry and build/sync inputs;
+the reference layouts below do not establish its implemented components.
+`/srv/git/operation-dashboard-ui-07` and `crates/op-web/ui/` are retired UI paths.
+
+The host uses runit. Backend runtime actions go through the authenticated D-Bus
+plugin surface. Only for authorized operator service work use `sudo -n sv`
+(for example `sudo -n sv status op-web`); never use `systemctl`, its shim, s6 or
+service6. Edit versioned runit inputs, not `/run/runit/service`. Backend deployment
+is btrfs send/receive of an explicitly prepared filesystem snapshot; there is no
+deployment script. Never hand-copy binaries. Static UI synchronization does not itself
+require an op-web restart. Do not create a parallel frontend backend or expose
+broker credentials to the browser.
+
+EMQX is the retained vendor-binary-backed `emqx` D-Bus plugin, independent of
+retired Netmaker. Broker events may drive authorized live state updates while
+the chatbot generates schema-pinned layout patches. A generated mode, component
+or action never grants permissions: enforce verified session and project ACLs
+server-side, including on streamed updates and reconnects.
+
+## Overview — Three Repos, One System
+
+```
+/srv/git/json-render                   ← upstream library (source of truth for API)
+/srv/git/odbus                         ← Rust backend
+  crates/op-plugins/src/state_plugins/json_render.rs    D-Bus plugin schema
+  crates/op-plugins/src/state_plugins/schema_renderer.rs
+  crates/op-web/src/handlers/ui_model.rs                Axum gallery/catalog routes
+/srv/git/3tched.com        ← active UI target; paths below are layout examples
+  src/json-render/
+    catalog/catalog.ts                 defineCatalog (app catalog contract)
+    catalog/registry.tsx               defineRegistry (component implementations)
+    catalog/components/                React component render functions
+      shell.tsx   dashboard.tsx   network.tsx   primitives.tsx
+    navigation/manifest.ts             NAV_MANIFEST (sidebar)
+    navigation/capabilities.ts
+    navigation/icons.ts
+    pages/                             pageSpec files per route
+    runtime/                           JsonRenderProvider, SpecPage, PageSpecOutlet
+    shell/shellSpec.ts                 shell composition spec
+    spec-builders.ts                   dataToSpec / streamToSpec helpers
+```
+
+---
+
+## 1. Spec Wire Format
+
+```typescript
+interface Spec {
+  root: string;                         // key of the root element
+  elements: Record<string, UIElement>;  // FLAT map — no nesting
+}
+
+interface UIElement {
+  type: string;                         // catalog component name
+  props: Record<string, unknown>;       // validated by catalog Zod schema
+  children?: string[];                  // keys into elements map
+  slots?: Record<string, string[]>;     // named slot overrides
+  visible?: VisibilityCondition;        // { $state: "path" } or literal bool
+  on?: Record<string, ActionBinding>;   // event → action
+  repeat?: { statePath: string; key?: string };
+  watch?: Record<string, ActionBinding>;
+}
+```
+
+**Critical:** `elements` is a flat key-value map. Children are string keys, not
+nested objects. `dataToSpec`/`streamToSpec` in `spec-builders.ts` handle this.
+
+Dynamic prop state references:
+```typescript
+{ collapsed: { $state: "/shell/navCollapsed" } }  // resolved at render time
+{ collapsed: false }                               // literal value
+```
+
+---
+
+## 2. Catalog Contract (reference layout)
+
+**File:** `src/json-render/catalog/catalog.ts`
+
+```typescript
+import { defineCatalog } from "@json-render/core";
+import { schema } from "@json-render/react/schema";
+import { z } from "zod";
+
+export const appCatalog = defineCatalog(schema, {
+  components: {
+    myComponent: {
+      props: z.object({
+        title: z.string(),
+        subtitle: z.string().nullable(),  // nullable = omittable in specs
+        variant: z.enum(["default","ok","warn","danger"]).nullable(),
+      }),
+      slots: ["default"],
+      description: "One-line LLM prompt description.",
+    },
+  },
+  actions: {
+    navigate: {
+      params: z.object({ route: z.string() }),
+      description: "Navigate the router to a route path.",
+    },
+  },
+});
+```
+
+**Rules:**
+- Every component needs a `description` — feeds `catalog.prompt()` for generative runs.
+- Use `z.nullable()` not `z.optional()` — spec JSON uses `null`, not missing keys.
+- Never invent props outside the Zod schema — specs are validated before render.
+- camelCase names in TypeScript catalog; lowercase-hyphen in egui DSL.
+
+---
+
+## 3. React Component Implementation
+
+**Pattern:** Use `El<"componentName">` from `catalog/components/types.ts`.
+
+```typescript
+// src/json-render/catalog/components/myFeature.tsx
+import type { El } from "./types";
+
+export const MyComponentEl: El<"myComponent"> = ({ props, children, emit }) => (
+  <div>
+    <h2>{props.title}</h2>
+    {props.subtitle && <p>{props.subtitle}</p>}
+    <button onClick={() => emit("press")}>Go</button>
+    {children}
+  </div>
+);
+```
+
+Register in `src/json-render/catalog/registry.tsx`:
+```typescript
+myComponent: myFeature.MyComponentEl,
+```
+
+Component anatomy:
+- `props` — typed, already validated against Zod schema
+- `children` — React nodes from `slots["default"]` or `children[]`
+- `emit(eventName)` — fires action bound to `on.eventName` in the spec
+- Read live data internally (hooks/stores) — specs stay pure composition
+
+---
+
+## 4. Adding a Page (reference layout)
+
+### Step 1 — NAV_MANIFEST entry
+**File:** `src/json-render/navigation/manifest.ts`
+
+```typescript
+{
+  id: "factory",
+  label: "Factory",
+  route: "/factory",
+  icon: "Factory",        // any Lucide icon name
+  section: "Agent",       // must be in SECTION_ORDER
+  order: 45,
+  wip: true,
+  wipReason: "Sessions tab not yet wired to factory.list_sessions.",
+}
+```
+
+Sections (SECTION_ORDER): `"Chat"`, `"UI Model"`, `"Control"`, `"Agent"`,
+`"Infrastructure"`, `"ZeroClaw"`, `"Settings"`.
+
+### Step 2 — Page spec
+**File:** `src/json-render/pages/factory.pagespec.ts`
+
+```typescript
+import type { Spec } from "@json-render/core";
+
+export const factorySpec: Spec = {
+  root: "root",
+  elements: {
+    root: {
+      type: "container",
+      props: {},
+      children: ["header", "row1"],
+    },
+    header: {
+      type: "pageHeader",
+      props: {
+        title: "Factory",
+        subtitle: "Session management · model routing · computer inventory",
+      },
+    },
+    row1: {
+      type: "grid",
+      props: { cols: 2, gap: 4, className: "grid-cols-1 lg:grid-cols-2" },
+      children: ["sessions", "computers"],
+    },
+    sessions: { type: "factorySessionsPanel", props: {} },
+    computers: { type: "factoryComputersPanel", props: {} },
+  },
+};
+```
+
+### Step 3 — Register in pages/index.ts
+```typescript
+export const PAGE_SPECS: Record<string, Spec> = {
+  "/": overviewSpec,
+  "/network": networkSpec,
+  "/factory": factorySpec,
+};
+```
+
+If still using a legacy React page, skip step 3 and register in `App.tsx` router instead.
+
+---
+
+## 5. Factory Plugin — gRPC Methods
+
+Generated files in `src/grpc/gen/plugin_methods/`:
+
+| Subid | Input | Output |
+|---|---|---|
+| `factory.list_sessions` | `{}` | `sessions: Value[]` |
+| `factory.get_session` | `{}` | `session?: Value` |
+| `factory.list_models` | `{}` | `models: Value[]` |
+| `factory.list_computers` | `{}` | `computers: Value[]` |
+| `factory.discover_byom` | `{}` | `{}` |
+| `factory.set_autonomy` | `{}` | `{}` |
+
+Call pattern (see AntigravityService in `src/grpc/client.ts`):
+```typescript
+import { getPluginMethodsClient } from "@/grpc/client";
+
+const client = getPluginMethodsClient();
+const { response } = await client.callSubid({
+  subid: "factory.list_sessions",
+  input: {},
+});
+// response.output is a protobuf Value — unwrap with valueToJson()
+```
+
+---
+
+## 6. Factory / odbus Architecture Rules
+
+From `FACTORY-HANDOFF.md` and `CLAUDE.md` in `/srv/git/odbus`:
+
+- Plugin IS schema. Schema lives in the plugin `.rs` file, not in `plugin_schema_defs.rs`.
+- D-Bus object existence = system existence. Plugin objects at `/org/opdbus/v1/plugins/<name>`.
+- `uuid` = machine identity. Never replace with `subid`.
+- `subid` = OSCAL operational taxonomy key. Must be an OSCAL prop value, not remarks.
+- `mut.*` records require `actor_id` and `capability_id`.
+- `evt.*` records require `event_id` or `event_hash`.
+- No `bool success` fields — use gRPC status codes.
+- No JSON string payloads — use `google.protobuf.Struct`.
+- Compliance mappings belong in metadata arrays, not inside the `subid` string.
+
+tched_router context:
+
+- `tched_router` is the OP-DBUS scaffolding for the autonomous `zeroclaw` binary.
+- `op-grpc-bridge`, not that binary, owns the `:8090` TLS fabric. Cognitive MCP
+  is in-process; do not start a standalone cognitive MCP runit service.
+- The factory examples above are historical; verify current methods, input
+  types, capabilities and bus names from the sealed plugin surface before use.
+
+---
+
+## 7. Gallery → Catalog Promotion Pipeline
+
+```
+tched_router reads plugin PluginSchema blob
+  ↓ (sealed blob at /dev/shm/opdbus/plugin-blobs/<plugin>.<hash>.blob)
+gemma_brain / op-gallery-gen generates Spec
+  ↓
+/api/gallery-gen/* (op-web Axum: ui_model.rs) → /dev/shm/ui-specs.json
+  ↓
+Gallery page (/gallery) — human reviews
+  ↓ human promotes
+Catalog page (/catalog) — approved specs only
+  ↓
+<SpecPage> renders in React dashboard
+```
+
+Schema hash pinning (critical — see `.specs/generative-ui-catalog/vision.md`):
+- Gallery entries MUST carry the `schema_hash` they were drawn against.
+- Catalog entries are PINNED to that hash.
+- A reseal identifies which approved elements are stale.
+- Never promote without verifying hash matches the current sealed blob.
+- Plugin presence comes from the current sealed manifest; counts change with reseals.
+
+---
+
+## 8. D-Bus json_render Plugin
+
+**File:** `crates/op-plugins/src/state_plugins/json_render.rs`
+
+Publishes the full json-render surface at `/org/opdbus/v1/plugins/json_render`:
+- `packages` — `@json-render/*` package inventory
+- `components` — catalog component declarations
+- `actions` — action type declarations
+- `validation_checks` — built-in validation rules
+- `directives` — `$format`, `$math`, `$concat`, `$count`, etc.
+- `methods` — D-Bus method surface
+- `inspector_fields` — uncapped fields from authoritative packages
+- `source` — provenance (docs URL, repo URL, commit hash)
+
+This blob is what generative runs read to know the available surface area.
+
+---
+
+## 9. spec-builders Utility
+
+**File:** `src/json-render/spec-builders.ts`
+
+```typescript
+import { dataToSpec, streamToSpec } from "@/json-render";
+
+// Any JSON → renderable spec (uses card/kv/container)
+const spec = dataToSpec(myJsonObject, "My Label");
+
+// List of streaming messages → spec
+const spec = streamToSpec(messageArray, "Stream Title");
+```
+
+Use when rendering raw gRPC response data without a custom component.
+
+---
+
+## 10. Checklist: Adding a New Feature Page
+
+- [ ] Add `NavItem` to `NAV_MANIFEST` in `navigation/manifest.ts`
+- [ ] Create `src/json-render/pages/<name>.pagespec.ts` with a typed `Spec`
+- [ ] Register in `pages/index.ts` PAGE_SPECS map (or use legacy React route)
+- [ ] If new components needed:
+  - [ ] Add to `catalog/catalog.ts` (Zod schema + description)
+  - [ ] Implement in `catalog/components/<file>.tsx` using `El<"name">` type
+  - [ ] Register in `catalog/registry.tsx`
+- [ ] For factory methods: `client.callSubid({ subid: "factory.<method>", input: {} })`
+- [ ] For schema hash integrity: verify blob hash before promoting gallery → catalog
+- [ ] Mark `wip: true` on nav entry until real backend is wired
+
+---
+
+## 11. Key File Locations
+
+| What | Path |
+|---|---|
+| Catalog contract (reference layout; inspect target first) | `/srv/git/3tched.com/src/json-render/catalog/catalog.ts` |
+| Component registry | `src/json-render/catalog/registry.tsx` |
+| Shell components | `src/json-render/catalog/components/shell.tsx` |
+| Dashboard widgets | `src/json-render/catalog/components/dashboard.tsx` |
+| Network components | `src/json-render/catalog/components/network.tsx` |
+| Primitives | `src/json-render/catalog/components/primitives.tsx` |
+| Nav manifest | `src/json-render/navigation/manifest.ts` |
+| Page specs index | `src/json-render/pages/index.ts` |
+| Shell spec | `src/json-render/shell/shellSpec.ts` |
+| Spec builders | `src/json-render/spec-builders.ts` |
+| Factory gRPC types | `src/grpc/gen/plugin_methods/factory__*.ts` |
+| gRPC client | `src/grpc/client.ts` |
+| json_render plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/json_render.rs` |
+| schema_renderer plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/schema_renderer.rs` |
+| tched_router plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/tched_router.rs` |
+| Gallery/catalog routes | `/srv/git/odbus/crates/op-web/src/handlers/ui_model.rs` |
+| json-render library | `/srv/git/json-render/packages/core/src/` |
+| json-render.dev docs | https://json-render.dev/docs |
+
+MANDATORY SKILL ovs-db-analysis
+---
+name: ovs-db-analysis
+description: >-
+  Analyze Open vSwitch data from sosreport — conf.db, OpenFlow dumps, port stats,
+  tunnels, and datapath health. Use when troubleshooting OVS packet drops, flow
+  performance, bridge/port/interface issues, DPDK vs kernel datapath, or when the
+  user mentions sosreport openvswitch, ovs-ofctl, ovsdb-tool, or ovs-db-analysis.
+---
+
+# OVS Database and Flow Analysis
+
+This skill provides detailed analysis of Open vSwitch (OVS) data collected via sosreport. It operates in four modes:
+
+1. **Default mode**: Full analysis - conf.db + all text files (requires ovsdb-tool, falls back to text files if not available)
+2. **Database mode (`--db`)**: Database only - analyze conf.db (requires ovsdb-tool)
+3. **Text files mode (`--flows-only`)**: Text files only - no ovsdb-tool needed
+4. **Query mode (`--query`)**: Run custom OVSDB JSON queries (requires ovsdb-tool)
+
+## When to Use This Skill
+
+Use this skill when:
+- **Troubleshooting packet drops** - Find drop flows being hit
+- **Analyzing flow performance** - View top flows by packet count
+- Analyzing OVS configuration from a sosreport
+- Troubleshooting bridge, port, or interface issues
+- Investigating DPDK vs kernelspace datapath
+- Reviewing tunnel configurations (VXLAN, Geneve, GRE)
+- Checking port statistics (drops, errors, traffic)
+- Mapping Kubernetes pods to OVS interfaces
+
+## Prerequisites
+
+**Default mode** (full analysis):
+- **ovsdb-tool** must be installed (from openvswitch package)
+- Falls back to `--flows-only` if ovsdb-tool not found
+- Sosreport with `sos_commands/openvswitch/` directory and `conf.db`
+
+**Database mode** (`--db`):
+- **ovsdb-tool** must be installed (from openvswitch package)
+  - Check: `which ovsdb-tool`
+  - Fedora/RHEL: `sudo dnf install openvswitch`
+  - Ubuntu/Debian: `sudo apt install openvswitch-common`
+- Sosreport with `conf.db` file
+
+**Text files mode** (`--flows-only`):
+- No special tools needed - works out of the box!
+- Sosreport with `sos_commands/openvswitch/` directory
+
+**Query mode** (`--query`):
+- **ovsdb-tool** must be installed
+- Incompatible with `--flows-only`
+
+## File Locations in Sosreport
+
+The sosreport collects:
+```
+sosreport-hostname-date/
+├── etc/openvswitch/conf.db              (OVS database - for --db mode)
+├── var/lib/openvswitch/conf.db          (alternate location)
+└── sos_commands/openvswitch/            (default mode uses these)
+    ├── ovs-vsctl_-t_5_show              (topology)
+    ├── ovs-vsctl_-t_5_list_bridge       (bridge details)
+    ├── ovs-vsctl_-t_5_list_interface    (interface details)
+    ├── ovs-vsctl_-t_5_list_Open_vSwitch (system info)
+    ├── ovs-ofctl_dump-flows_<bridge>    (OpenFlow entries)
+    ├── ovs-ofctl_dump-ports_<bridge>    (Port statistics)
+    ├── ovs-appctl_coverage.show         (internal stats)
+    ├── ovs-appctl_upcall.show           (datapath health)
+    ├── ovs-appctl_tnl.ports.show_-v     (tunnel ports)
+    └── ...
+```
+
+## Analysis Script
+
+The analysis script is located at:
+```
+<plugin-root>/skills/ovs-db-analysis/scripts/analyze_ovs_db.py
+```
+
+## Implementation Steps
+
+### Step 1: Locate the Analysis Script
+
+```bash
+SCRIPT_PATH=$(find ~ -name "analyze_ovs_db.py" -path "*/sosreport/skills/ovs-db-analysis/scripts/*" 2>/dev/null | head -1)
+
+if [ -z "$SCRIPT_PATH" ]; then
+    echo "ERROR: analyze_ovs_db.py script not found."
+    exit 1
+fi
+```
+
+### Step 2: Run the Analysis
+
+```bash
+# Default: Full analysis - conf.db + text files (requires ovsdb-tool)
+python3 "$SCRIPT_PATH" /path/to/sosreport-hostname-date/
+
+# Analyze from archive
+python3 "$SCRIPT_PATH" /path/to/sosreport-hostname-date.tar.xz
+
+# Database only mode (requires ovsdb-tool)
+python3 "$SCRIPT_PATH" /path/to/sosreport/ --db
+
+# Text files only mode (no ovsdb-tool needed)
+python3 "$SCRIPT_PATH" /path/to/sosreport/ --flows-only
+```
+
+### Step 3: Custom Queries (Optional, requires --db)
+
+For specific investigations, use raw OVSDB queries:
+
+```bash
+# Query all bridges
+python3 "$SCRIPT_PATH" /path/to/sosreport/ --query '["Open_vSwitch", {"op":"select", "table":"Bridge", "where":[], "columns":["name","datapath_type","fail_mode"]}]'
+
+# Query VXLAN interfaces
+python3 "$SCRIPT_PATH" /path/to/sosreport/ --query '["Open_vSwitch", {"op":"select", "table":"Interface", "where":[["type","==","vxlan"]], "columns":["name","options"]}]'
+
+# Query interfaces with errors
+python3 "$SCRIPT_PATH" /path/to/sosreport/ --query '["Open_vSwitch", {"op":"select", "table":"Interface", "where":[], "columns":["name","error"]}]'
+```
+
+## Analysis Output
+
+The default mode analyzes:
+
+| Analysis | Source File | Description |
+|----------|-------------|-------------|
+| System Info | `ovs-vsctl_-t_5_list_Open_vSwitch` | OVS/DPDK version, system type, external IDs |
+| Topology | `ovs-vsctl_-t_5_show` | Bridge overview with ports grouped by type |
+| Bridge Details | `ovs-vsctl_-t_5_list_bridge` | Datapath type, fail mode, CT zones |
+| Interfaces | `ovs-vsctl_-t_5_list_interface` | By type, pod interfaces with mapping |
+| OpenFlow | `ovs-ofctl_dump-flows_*` | Flow counts, drops, top flows |
+| Port Stats | `ovs-ofctl_dump-ports_*` | RX/TX drops and errors |
+| Tunnels | `ovs-appctl_tnl.ports.show_-v` | Configured tunnel ports |
+| Datapath Health | `ovs-appctl_upcall.show` | Flow table usage vs limit |
+| OVS Stats | `ovs-appctl_coverage.show` | Internal counters (netlink, OVSDB, etc.) |
+
+## OpenFlow Analysis Features
+
+| Feature | Description |
+|---------|-------------|
+| Flow Count | Total flows per bridge (total, drop, with hits) |
+| Drop Detection | Flows with `actions=drop` that have packet hits |
+| Top Flows | Most active flows sorted by n_packets |
+| Table Distribution | Flow counts per OpenFlow table |
+| Port Drops | RX/TX drop counters per port |
+| Port Errors | RX/TX error counters per port |
+| Datapath Health | Flow table usage vs limit (from upcall.show) |
+| OVS Stats | Internal statistics (netlink, OpenFlow, OVSDB transactions) |
+
+## OVN Internal Tables (Ignore Drops in These)
+
+When analyzing drop flows in OVN-managed bridges (br-int), **ignore drops in table 44 and tables 64-87** as these are internal OVN mechanics, not security policy or real packet drops.
+
+> **⚠️ Note:** OVN and OVS are complex systems and table mappings can change between releases. Always verify drop analysis against the specific OVN version in use. When in doubt, check the OVN source code for your release.
+
+| Table | Name | Purpose |
+|-------|------|---------|
+| **44** | **CHK_LB_OUTPUT** | **Loopback prevention - drops packets that would loop back (high volume, normal)** |
+| 64 | SAVE_INPORT | Save ingress port for later |
+| 65 | LOG_TO_PHY | Logical to physical mapping |
+| 66 | MAC_BINDING | MAC binding lookups |
+| 67 | MAC_LOOKUP | MAC address table lookups |
+| 68-69 | CHK_LB_HAIRPIN | Load balancer hairpin checks |
+| 70 | CT_SNAT_HAIRPIN | Conntrack SNAT hairpin |
+| 71-72 | GET/LOOKUP_FDB | FDB (forwarding DB) lookups |
+| 73-74 | CHK_IN_PORT_SEC | Ingress port security |
+| 75 | CHK_OUT_PORT_SEC | Egress port security |
+| 76-77 | ECMP_NH | ECMP next-hop handling |
+| 78 | CHK_LB_AFFINITY | Load balancer affinity |
+| **79** | **MAC_CACHE_USE** | **MAC cache miss (high volume, normal)** |
+| 80 | CT_ZONE_LOOKUP | Conntrack zone lookup |
+| 81-83 | CT_ORIG_*_LOAD | Conntrack original tuple loading |
+| 84 | FLOOD_REMOTE_CHASSIS | Remote chassis flooding |
+| 85 | CT_STATE_SAVE | Conntrack state save |
+| 86 | CT_ORIG_PROTO_LOAD | Conntrack protocol loading |
+| 87 | GET_REMOTE_FDB | Remote FDB lookup |
+
+**Relevant drop tables for troubleshooting:**
+- **Table 9**: Ingress ACLs - actual policy drops (look for `reg0=0x8000`)
+- **Table 0**: Initial classification drops
+- **Tables < 64**: Generally meaningful drops
+
+## Common Analysis Scenarios
+
+### 1. Troubleshooting Packet Drops
+
+```bash
+# Quick analysis (default mode, no ovsdb-tool)
+python3 "$SCRIPT_PATH" /path/to/sosreport/
+```
+
+Look for:
+- **ACTIVE DROP FLOWS** section showing flows dropping packets
+- **PORT STATISTICS** showing ports with drops/errors
+
+### 2. Checking DPDK Configuration
+
+```bash
+# Default mode shows DPDK info from text files
+python3 "$SCRIPT_PATH" /path/to/sosreport/
+
+# Or use database mode for custom queries
+python3 "$SCRIPT_PATH" /path/to/sosreport/ --query '["Open_vSwitch", {"op":"select", "table":"Open_vSwitch", "where":[], "columns":["dpdk_initialized","other_config"]}]'
+```
+
+### 3. Investigating Pod Connectivity
+
+The interface analysis shows pod-to-OVS mapping:
+- Interfaces with `external_ids` containing `iface-id`
+- Interface names ending with `_h` (veth host side)
+
+### 4. Datapath Health Check
+
+The upcall stats show:
+```
+DATAPATH FLOW TABLE HEALTH
+  Current flows: 155 / 200,000 (0.1% used)
+  Average: 156, Max seen: 215
+  ✓ Flow table healthy
+```
+
+If usage > 90%, flows are being evicted too aggressively.
+
+## Output Example
+
+```
+================================================================================
+OVS ANALYSIS - sosreport-hostname-2024-01-15
+================================================================================
+Mode: Text file analysis (no ovsdb-tool required)
+
+================================================================================
+OVS SYSTEM INFORMATION
+================================================================================
+
+  Field                     Value
+  ------------------------- --------------------------------------------------
+  OVS Version               "3.3.4-62.el9fdp"
+  DB Version                "8.5.0"
+  System Type               rhcos
+  System Version            "4.16"
+  DPDK Initialized          false
+  Datapath Types            [netdev, system]
+
+  External IDs:
+    hostname: master2.example.com
+    ovn-encap-ip: 10.32.110.5
+    ovn-encap-type: geneve
+
+================================================================================
+OVS TOPOLOGY
+================================================================================
+
+  System UUID: 7e9a3f70-86fa-4578-a849-4fd807a64a10
+  Total Bridges: 2
+
+  Bridge: br-ex
+    ports: 3
+      internal: br-ex
+      patch: patch-br-ex-to-br-int
+      system: nm-bond
+
+  Bridge: br-int
+    fail_mode: secure
+    datapath_type: system
+    ports: 12
+      geneve: 9 ports
+      internal: ovn-k8s-mp0, br-int
+      patch: patch-br-int-to-br-ex
+
+================================================================================
+OPENFLOW ANALYSIS
+================================================================================
+
+  Bridge: br-int
+  ----------------------------------------------------------------------
+  Total flows: 2,017
+  Flows with hits: 318
+  Drop flows: 150 (9 actively dropping)
+
+  ⚠️  ACTIVE DROP FLOWS (9):
+    table=40, priority=0, packets=8,105
+    table=79, priority=100, packets=1,356
+      match: ip,reg14=0x2,metadata=0x5,dl_src=00:62:0b:ea:b5:e0
+
+--------------------------------------------------------------------------------
+DATAPATH FLOW TABLE HEALTH
+--------------------------------------------------------------------------------
+
+  Current flows: 155 / 200,000 (0.1% used)
+  Average: 156, Max seen: 215
+  ✓ Flow table healthy
+```
+
+## Error Handling
+
+| Error | Solution |
+|-------|----------|
+| `ovsdb-tool not found` | Install openvswitch package OR use default mode (no --db) |
+| `conf.db not found` | Use default mode (analyzes text files instead) |
+| `sos_commands/openvswitch not found` | Ensure sosreport has OVS data collected |
+
+## See Also
+
+- [OVN Database Analysis](../../must-gather/skills/must-gather-analyzer/scripts/analyze_ovn_dbs.py) - For OVN NB/SB databases
+- [sosreport openvswitch plugin](https://github.com/sosreport/sos/blob/main/sos/report/plugins/openvswitch.py) - What sosreport collects
+
+MANDATORY SKILL kernel-fuse-diagnosis
+---
+name: kernel-fuse-diagnosis
+description: >
+  FUSE（用户态文件系统）内核端故障诊断技能。当用户提到 FUSE 文件系统 hang、
+  所有操作返回 EIO、FUSE daemon 崩溃/重启、请求队列阻塞、D 状态进程堆积、
+  /sys/fs/fuse/connections/ 异常、libfuse 兼容性、max_read/max_write 配置不当、
+  writeback cache 一致性问题、多线程 FUSE daemon 死锁、容器中 /dev/fuse 权限问题、
+  FUSE 性能退化等关键词时，必须使用本技能。
+  覆盖场景：FUSE daemon 崩溃后 EIO、请求队列阻塞与 D 状态、max_read/max_write 配置不当、
+  writeback cache 一致性问题、多线程 daemon 死锁、/dev/fuse 权限问题、内核 FUSE 模块 Bug、
+  混合复杂 FUSE 故障。即使只收到"文件系统挂了"、"目录打不开"、"ls 卡死"但挂载点
+  为 FUSE 类型时也应触发本技能。
+  支持 FUSE 全链路诊断（sysfs 队列 → 内核参数 → daemon 进程 → 代码级根因）。
+---
+
+# FUSE 内核端故障诊断（三层下钻：系统层 → 类型层 → 代码根因层）
+
+## 第一节：故障目录结构
+
+```text
+fuse_case/                  # 故障案例目录
+├── scripts/                # 【内置】本技能的诊断脚本
+│   ├── 01_baseline_info.sh
+│   ├── branch_A_daemon_crash.sh
+│   ├── branch_B_req_queue.sh
+│   ├── branch_C_max_read_write.sh
+│   ├── branch_D_writeback_cache.sh
+│   ├── branch_E_mt_deadlock.sh
+│   ├── branch_F_dev_fuse_perm.sh
+│   ├── branch_G_kernel_bug.sh
+│   └── branch_H_mixed.sh
+├── logs/                   # 【可选】应用日志
+│   ├── application.log
+│   └── dmesg_output.txt
+├── fuse_state/             # 【可选】故障时刻的 FUSE 状态快照
+│   ├── connections.txt     # ls /sys/fs/fuse/connections/
+│   ├── waiting.txt         # cat .../waiting
+│   └── abort.txt           # cat .../abort
+└── report/                 # 【输出】诊断报告目录
+```
+
+```bash
+# 检查 FUSE 文件系统挂载状态基线
+mount -t fuse
+```
+
+---
+
+## 第二节：分析策略（三层下钻，逐层收敛）
+
+FUSE 内核端故障诊断采用**三层下钻模型**，从最外层逐层深入，层间存在依赖关系：
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   三层下钻分析模型                                 │
+│                                                                 │
+│   L1: 系统层         mount -t fuse /proc/mounts                 │
+│       │               /sys/fs/fuse/connections/*                │
+│       └─ 判断：FUSE 挂载点是否正常？连接是否存在？               │
+│                                                                 │
+│   L2: 类型层         strace -p <daemon_pid>                     │
+│       │               cat /sys/fs/fuse/connections/*/waiting     │
+│       └─ 判断：是 EIO？请求阻塞？性能退化？权限问题？            │
+│                                                                 │
+│   L3: 代码/内核层    FUSE daemon 源码分析                       │
+│                      内核 FUSE 模块参数 (/sys/module/fuse/)     │
+│                      /dev/fuse 设备状态                          │
+│                      └─ 根因定位：daemon 崩溃 / 队列阻塞 / 配置  │
+│                                                                 │
+│   每层输出：证据 + 结论。L3 输出最终根因。                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 故障分类树
+
+```
+L1 ─ FUSE 挂载点与连接检查
+│
+├─ L2 ─ 挂载点正常？─────── 否 ──→ 非 FUSE 问题，转其他技能
+│                         是
+│                         ↓
+├─ L2 ─ 操作返回 EIO？──── 是 ──→ Branch A (Daemon Crash)
+│                         否
+│                         ↓
+├─ L2 ─ 进程 D 状态/Hang？ 是 ──→ Branch B (Req Queue) / Branch E (MT Deadlock)
+│                         否
+│                         ↓
+├─ L2 ─ 性能退化？─────── 是 ──→ Branch C (Max Read/Write)
+│                         否
+│                         ↓
+├─ L2 ─ 数据一致性异常？─ 是 ──→ Branch D (Writeback Cache)
+│                         否
+│                         ↓
+├─ L2 ─ 权限问题？─────── 是 ──→ Branch F (dev/fuse Perm)
+│                         否
+│                         ↓
+├─ L2 ─ 内核崩溃/Oops？── 是 ──→ Branch G (Kernel Bug)
+│                         否
+│                         ↓
+└─ L2 ─ 混合/复杂现象？── 是 ──→ Branch H (Mixed)
+```
+
+---
+
+## 第三节：诊断流程
+
+### L1: 系统层 — 基线采集与挂载点检查
+
+检查系统 FUSE 基础配置与挂载状态，判断是否为系统级配置问题。
+
+```bash
+# 1. 检查 FUSE 挂载点
+mount -t fuse
+
+# 2. 检查 /proc/mounts 中 FUSE 条目
+grep fuse /proc/mounts
+
+# 3. 检查 FUSE 内核连接状态
+ls /sys/fs/fuse/connections/ 2>/dev/null
+
+# 4. 检查 FUSE daemon 进程
+ps aux | grep -E "[f]use|[F]ILESYSTEM_NAME"
+
+# 5. 基本连通性测试
+ls -la <FUSE_mount_point>
+stat <FUSE_mount_point>/test_file 2>&1
+```
+
+**L1 结论判定**：
+
+| 现象 | 可能原因 | 下一层 |
+|------|---------|--------|
+| 挂载点 ls 返回 EIO | FUSE daemon 崩溃 | Branch A |
+| ls 卡死/D 状态 | 请求队列阻塞 | Branch B |
+| 性能异常慢 | max_read/max_write 配置不当 | Branch C |
+| 数据不一致 | writeback cache 问题 | Branch D |
+| daemon 进程存在但无响应 | 多线程死锁 | Branch E |
+| 权限 denied | /dev/fuse 权限 | Branch F |
+| 内核 Panic/Oops | FUSE 内核模块 Bug | Branch G |
+| 多种现象共存 | 混合故障 | Branch H |
+
+### L2 → L3: 类型层与代码根因层
+
+#### Branch A — FUSE Daemon 崩溃后 EIO
+
+**触发条件**：L1 中访问 FUSE 挂载点返回 "Transport endpoint is not connected" 或 EIO。
+
+```
+L2 诊断：
+├── 1. stat <mount_point>（确认 EIO 错误码）
+├── 2. grep <mount_point> /proc/mounts（挂载条目是否仍存在）
+├── 3. ls /sys/fs/fuse/connections/（连接是否已销毁）
+├── 4. ps aux | grep <daemon_name>（daemon 进程是否存在）
+├── 5. journalctl -u <daemon_service> --since "5 min ago"（daemon 退出日志）
+├── 6. dmesg | grep -i fuse（内核 FUSE 消息）
+├── 7. cat /sys/fs/fuse/connections/*/abort 2>/dev/null（abort 状态）
+│
+└── L3 根因判定：
+    ├── daemon 进程不存在 + 连接已销毁 → daemon 崩溃/被 OOM Kill
+    ├── daemon 进程不存在 + 连接残留 → daemon 退出但连接未清理
+    ├── daemon 存在但连接状态异常 → daemon 内部状态机错误
+    ├── dmesg 显示 "fuse: aborting connection" → 内核主动中止
+    ├── OOM Killer 日志 → daemon 因内存超限被内核杀死
+    └── 连接 abort 状态为 1 → 手动触发 abort 或 daemon 调用 abort
+```
+
+**典型输出**：
+```
+结论: FUSE daemon 进程不存在（已崩溃），
+      /sys/fs/fuse/connections/ 目录为空（连接已销毁）。
+      dmesg 无 FUSE 相关错误，但 journalctl 显示 daemon 因
+      SIGSEGV (signal 11) 退出。
+根因: FUSE daemon 程序存在内存访问越界 Bug，导致段错误崩溃。
+```
+
+#### Branch B — FUSE 请求队列阻塞
+
+**触发条件**：LS 卡死、进程 D 状态（uninterruptible sleep）、`/sys/fs/fuse/connections/*/waiting` 持续增长。
+
+```
+L2 诊断：
+├── 1. cat /sys/fs/fuse/connections/*/waiting（请求队列深度）
+├── 2. cat /sys/fs/fuse/connections/*/max_background（最大后台请求数）
+├── 3. ps aux | grep D | grep -v grep（D 状态进程列表）
+├── 4. cat /proc/<D_pid>/stack（查看 D 状态内核栈）
+├── 5. strace -e trace=write,read,ioctl -p <daemon_pid>（daemon 系统调用）
+├── 6. cat /sys/fs/fuse/connections/*/congested_threshold_ms（拥塞阈值）
+├── 7. dmesg | grep -i "fuse.*block"（阻塞告警）
+│
+└── L3 根因判定：
+    ├── waiting 持续增长 + daemon 未处理请求 → daemon 侧线程阻塞
+    ├── daemon 进程 strace 显示 read() 未被唤醒 → 内核/FUSE 调度问题
+    ├── D 状态进程内核栈显示 fuse_request_send → 请求队列已满等待
+    ├── max_background 设置过小 → 请求队列排队上限低导致积压
+    ├── daemon write() 变慢或阻塞 → daemon 后端存储 I/O 瓶颈
+    └── congested_threshold 触发 → FUSE 内核主动限流
+```
+
+**典型输出**：
+```
+结论: /sys/fs/fuse/connections/*/waiting 持续增长（当前值: 512），
+      进程 D 状态栈显示 fuse_request_send。
+      strace 显示 daemon read() 调用未被及时唤醒。
+根因: FUSE daemon 工作线程池太小或线程卡在后端 I/O 上，
+      无法及时消费内核下发的 FUSE 请求。
+```
+
+#### Branch C — max_read/max_write 配置不当
+
+**触发条件**：FUSE 文件系统性能显著低于预期，小文件/大文件读写性能异常。
+
+```
+L2 诊断：
+├── 1. cat /sys/fs/fuse/connections/*/max_read（当前 FUSE 最大读取大小）
+├── 2. cat /sys/module/fuse/parameters/max_read（内核模块参数）
+├── 3. mount | grep <fuse_type>（挂载参数 -o max_read=,max_write=）
+├── 4. dd if=<mount_point>/test of=/dev/null bs=1M count=100（读性能测试）
+├── 5. dd if=/dev/zero of=<mount_point>/test bs=1M count=100（写性能测试）
+├── 6. iostat -x 1 <device>（底层 I/O 延迟）
+├── 7. strace -e pread64,pwrite64 -p <daemon_pid>（系统调用大小对比）
+│
+└── L3 根因判定：
+    ├── max_read=4096（4K）→ 每次读请求仅传输 4K，大文件读性能极差
+    ├── max_write=4096（4K）→ 每次写请求仅传输 4K，写性能瓶颈
+    ├── max_read 与底层存储块大小不匹配 → 产生大量小 I/O
+    ├── 挂载时未指定 max_read= → 使用默认值（通常 1MB，但某些 FUSE 缩减）
+    ├── daemon 未实现 readdir 缓存 → 目录遍历性能退化
+    └── 内核 max_read 参数被 sysfs 限制 → 无法超过内核模块设置的上限
+```
+
+**典型输出**：
+```
+结论: max_read=4096（4K），远低于默认 1MB。
+      dd 读测试仅 12 MB/s，远低于预期 200+ MB/s。
+      strace 确认每次 pread64 仅传输 4096 字节。
+根因: FUSE 挂载时未指定 max_read，daemon 初始化协商值为 4K
+      （libfuse 旧版本默认），导致大文件顺序读性能退化。
+```
+
+#### Branch D — Writeback Cache 一致性问题
+
+**触发条件**：FUSE 文件系统写入后读取数据不一致、写入顺序错误、重复内容。
+
+```
+L2 诊断：
+├── 1. mount | grep <fuse_type> | grep -o "writeback_cache"（检查是否启用）
+├── 2. cat /sys/module/fuse/parameters/use_writeback_cache（内核参数）
+├── 3. echo "test" > <mount_point>/file && cat <mount_point>/file（一致性测试）
+├── 4. strace -e write,pwrite64,fsync -p <daemon_pid>（跟踪写操作时序）
+├── 5. dd if=/dev/urandom of=<mount_point>/test bs=4K count=100（并发写入）
+├── 6. md5sum <mount_point>/test && sleep 1 && md5sum <mount_point>/test（变化检测）
+├── 7. grep -i "fuse.*invalidate" /proc/<daemon_pid>/stack（缓存无效化状态）
+│
+└── L3 根因判定：
+    ├── writeback_cache 启用但 daemon 未实现 ->release 回调 → 数据未刷入后端
+    ├── 并发写入后的读取返回过期数据 → page cache 未正确无效化
+    ├── daemon write() 返回成功但数据未持久化 → 缺少 fsync 语义
+    ├── 内核 fuse_conn 中 writeback_cache=1 但后端不支持原子写
+    ├── mmap 写入后数据丢失 → FUSE 不支持 shared mmap writeback cache
+    └── multi-page writeback 顺序错误 → daemon 未按 LBA 顺序处理请求
+```
+
+**典型输出**：
+```
+结论: writeback_cache 启用后，写入 100 个 4K 块后的 md5sum
+      在不同读取时间点返回不同值。
+      daemon 未实现 ->write() 回调的完整 writeback 语义。
+根因: FUSE daemon 启用 writeback_cache 模式但未正确处理
+      内核的 writeback 请求，page cache 与后端存储数据不一致。
+```
+
+#### Branch E — 多线程 FUSE Daemon 死锁
+
+**触发条件**：FUSE daemon 进程存在但操作挂起，挂载点操作无响应。
+
+```
+L2 诊断：
+├── 1. ps -eLf | grep <daemon_name>（daemon 线程列表）
+├── 2. cat /proc/<daemon_pid>/stack（主线程内核栈）
+├── 3. for tid in $(ls /proc/<daemon_pid>/task/); do echo "TID:$tid"; cat /proc/$tid/stack 2>/dev/null; done
+├── 4. strace -f -e trace=write,read,ioctl -p <daemon_pid>（多线程追踪）
+├── 5. gdb -p <daemon_pid> -batch -ex "thread apply all bt"（全线程回溯）
+├── 6. cat /sys/fs/fuse/connections/*/waiting（确认请求堆积）
+├── 7. kill -USR1 <daemon_pid>（向 daemon 发送信号检查状态）
+│
+└── L3 根因判定：
+    ├── 所有工作线程在 pthread_mutex_lock 等待 → 互斥锁死锁
+    ├── 线程 A 持有锁 L1 等待锁 L2，线程 B 持有锁 L2 等待锁 L1 → 经典死锁
+    ├── 工作线程在 write() 后端存储时阻塞 → I/O 死锁（等待自身填充）
+    ├── 线程池所有线程都在 fuse_session_process 中 → 请求循环依赖
+    ├── 主线程在 fuse_loop 中阻塞但工作线程已退出 → 线程管理 Bug
+    └── daemon 中 fuse_reply_* 调用顺序错误 → 协议级死锁
+```
+
+**典型输出**：
+```
+结论: daemon 4 个工作线程全部在 pthread_mutex_lock 等待。
+      gdb 显示 Thread 1 持有 lock A 等待 lock B，
+      Thread 2 持有 lock B 等待 lock A——经典 ABBA 死锁。
+根因: FUSE daemon 中锁获取顺序不一致，导致多线程死锁，
+      文件系统操作完全挂起。
+```
+
+#### Branch F — /dev/fuse 设备权限问题
+
+**触发条件**：容器或非 root 用户启动 FUSE daemon 时出现 Permission denied。
+
+```
+L2 诊断：
+├── 1. ls -la /dev/fuse（设备节点权限）
+├── 2. getfacl /dev/fuse（ACL 权限检查）
+├── 3. cat /proc/<daemon_pid>/status | grep Cap（daemon 能力集）
+├── 4. grep fuse /etc/group（fuse 用户组）
+├── 5. groups <daemon_user>（用户所属组）
+├── 6. cat /etc/fuse.conf（FUSE 全局配置）
+├── 7. capsh --print | grep fuse（进程能力检查）
+├── 8. container environment: cat /proc/1/cgroup（容器内 cgroup 检查）
+│
+└── L3 根因判定：
+    ├── /dev/fuse 权限 0600 root:root → 非 root 用户无法访问
+    ├── daemon 用户不在 fuse 组 → 缺少 /dev/fuse 访问权限
+    ├── 容器内未挂载 /dev/fuse → 设备节点不存在
+    ├── 容器缺少 CAP_SYS_ADMIN 或 CAP_MKNOD → 无法操作 FUSE 设备
+    ├── user_allow_other 未在 /etc/fuse.conf 启用 → 无法使用 allow_other
+    ├── AppArmor/SELinux 阻止 FUSE 操作 → 安全策略限制
+    └── daemon 进程 capabilities 被移除 → container runtime 降权
+```
+
+**典型输出**：
+```
+结论: /dev/fuse 权限 0600 root:root，daemon 以非 root 用户
+      运行且不在 fuse 用户组中。
+      daemon 启动日志显示 "Permission denied" 打开 /dev/fuse。
+根因: /dev/fuse 设备节点仅 root 可读写，FUSE daemon
+      以普通用户运行且未加入 fuse 组，无法打开设备。
+```
+
+#### Branch G — FUSE 内核模块 Bug
+
+**触发条件**：内核 Panic、Oops、soft lockup 与 FUSE 相关，或已知 FUSE 内核 Bug。
+
+```
+L2 诊断：
+├── 1. dmesg | grep -iE "fuse|libfuse"（内核 FUSE 消息）
+├── 2. dmesg | grep -iE "kernel panic|Oops|BUG|soft lockup"（内核异常）
+├── 3. cat /sys/module/fuse/version（FUSE 模块版本）
+├── 4. uname -r（内核版本）
+├── 5. cat /proc/self/mounts | grep fuse（所有 FUSE 挂载）
+├── 6. cat /sys/fs/fuse/connections/*/abort（abort 状态）
+├── 7. test -f /var/crash/vmcore* 2>/dev/null && ls -lh /var/crash/（crash dump 检查）
+├── 8. grep -i fuse /var/log/messages | tail -20（系统日志）
+│
+└── L3 根因判定：
+    ├── 已知 FUSE 内核 Bug 列表匹配（CVE-xxxx-xxxx / 内核 commit）
+    ├── 特定内核版本 + FUSE 版本组合已知不兼容
+    ├── CR2 地址在 FUSE 模块区域内 → FUSE 内核模块导致 Panic
+    ├── soft lockup 栈显示在 fuse_* 函数中 → FUSE 内核路径问题
+    ├── 大规模并发操作触发的竞态条件 → 内核 FUSE 并发 Bug
+    └── FUSE 模块参数不合理导致内核异常 → max_read 过小/过大
+```
+
+**典型输出**：
+```
+结论: dmesg 显示 "kernel BUG at fs/fuse/dev.c:1234"，
+      内核版本 5.15.0-rc3 存在已知 FUSE 并发访问 Bug。
+      CR2 地址 0xffff888123456789 在 fuse_dev_do_write 函数范围内。
+根因: 内核 FUSE 模块在特定内核版本下存在并发竞态条件，
+      多线程并发写操作触发内核 BUG。
+```
+
+#### Branch H — 混合/复杂 FUSE 故障
+
+**触发条件**：多种现象共存，或以上分支无法覆盖的复杂 FUSE 问题。
+
+```
+L2 诊断：
+├── 1. 执行所有以上分支的 L2 诊断（汇总所有证据）
+├── 2. 交叉对比各分支症状（判定主次故障）
+├── 3. 完整 strace -f -e trace=all -p <daemon_pid> -o /tmp/strace.log
+├── 4. lsof -p <daemon_pid>（daemon 打开的文件/连接）
+├── 5. tcpdump -i any host <backend_storage_ip>（后端存储网络抓包）
+├── 6. strace -e trace=all ls -la <mount_point> 2>&1（客户端操作全追踪）
+├── 7. 对比故障前后的 FUSE 配置快照（连接数、参数、daemon 版本）
+│
+└── L3 根因判定：
+    ├── 按故障链优先级排序（先解决依赖的下层问题）
+    ├── 多故障串联（daemon 崩溃 → 残留连接 → 新 daemon 无法挂载）
+    ├── 配置错误叠加（max_read 过小 + 线程池太小 + writeback 未启用）
+    ├── 环境变化触发（内核升级、cgroup 限制、SELinux 策略变更）
+    └── 复杂的 libfuse API 使用错误（回调注册、会话管理、信号处理）
+```
+
+**典型输出**：
+```
+结论: 多种故障共存：daemon 线程池过小（4 线程）导致写性能差，
+      同时 max_read=4K 进一步退化读性能，writeback cache 启用
+      但 daemon 未正确处理 ->write 回调。
+根因: 多重配置叠加导致 FUSE 极端性能退化，建议逐一修复：
+      1. 增大线程池至 16+
+      2. 设置 max_read=128K+
+      3. 检查 writeback cache 回调实现
+```
+
+---
+
+## 第四节：故障模式速查表
+
+| 故障模式 | 核心命令 | 特征日志/现象 |
+|---------|---------|-------------|
+| Daemon 崩溃 EIO | `stat <mount_point>` | `Transport endpoint is not connected` |
+| 请求队列阻塞 | `cat .../connections/*/waiting` | `waiting > 0` 且持续增长 |
+| max_read/write 不当 | `cat .../connections/*/max_read` | `max_read=4096` 性能异常低 |
+| writeback 不一致 | `mount \| grep writeback_cache` | 写入后读取数据不同 |
+| 多线程死锁 | `cat /proc/<pid>/task/*/stack` | `pthread_mutex_lock` 全部阻塞 |
+| /dev/fuse 权限 | `ls -la /dev/fuse` | `Permission denied` |
+| 内核 Bug | `dmesg \| grep -i fuse` | `kernel BUG at fs/fuse/dev.c` |
+| 混合故障 | 汇总所有诊断 | 多种现象并存 |
+
+## 第五节：参考文档
+
+- `references/fuse_commands.md` — FUSE 诊断命令速查
+- `references/fuse_params.md` — 内核 FUSE 相关参数说明
+- `references/fuse_patterns.md` — FUSE 故障模式与正则匹配
+
+MANDATORY SKILL fuse
+---
+name: fuse
+description: Build, debug, and review Linux FUSE filesystems with the official libfuse userspace library. Use when implementing a FUSE filesystem, choosing between libfuse high-level vs low-level APIs, wiring callbacks, building with fuse3/pkg-config, mounting for local testing, or troubleshooting fusermount3 and permission issues.
+---
+
+# FUSE
+
+Use the official `libfuse/libfuse` project as the baseline for Linux FUSE work.
+
+## Quick Start
+
+1. Confirm the task is Linux FUSE userspace work, not kernel module work.
+2. Prefer the official `libfuse` interfaces and examples before suggesting wrappers.
+3. Decide API style:
+- Use the high-level API for simpler path-based filesystems.
+- Use the low-level API for inode-level control, explicit replies, or advanced behavior.
+4. Build with `pkg-config fuse3 --cflags --libs` unless the project already uses another build system.
+5. For local runs, prefer foreground debug mode first: `-f -d`.
+
+## Workflow
+
+### 1. Choose the API
+
+Use the high-level API when the user needs a straightforward filesystem and path callbacks are sufficient.
+Read `include/fuse.h` semantics first.
+
+Use the low-level API when the user needs inode handling, async-style explicit replies, or finer control over request lifetime.
+Read `include/fuse_lowlevel.h` semantics first.
+
+### 2. Start from official examples
+
+Check the `example/` directory in `libfuse/libfuse` before drafting handlers from scratch.
+For passthrough, mirror, hello-world, or minimal callback wiring, adapt an official example instead of inventing a new skeleton.
+
+### 3. Build correctly
+
+Use these defaults unless the project already defines them:
+
+```bash
+pkg-config fuse3 --cflags --libs
+```
+
+Typical manual build pattern:
+
+```bash
+gcc fs.c -o fs $(pkg-config fuse3 --cflags --libs)
+```
+
+If the project vendors `libfuse`, follow its existing Meson/Ninja setup instead of replacing the build flow.
+
+### 4. Run and debug safely
+
+Use a writable, non-sticky mountpoint owned by the current user.
+Start in foreground debug mode first:
+
+```bash
+./fs -f -d <mountpoint>
+```
+
+If mounting fails, check:
+- `fusermount3` availability
+- `/etc/fuse.conf`
+- `allow_other` vs `default_permissions`
+- whether the mountpoint is writable by the mounting user
+
+### 5. Troubleshoot by symptom
+
+If callbacks are not firing, verify the mount succeeded and the process is still in foreground.
+If permission behavior is surprising, inspect `default_permissions` and `allow_other`.
+If the filesystem hangs, inspect whether a low-level handler failed to send a reply.
+If performance is poor, check whether the design needs low-level API control, cache tuning, or fewer round trips.
+
+## Read Next
+
+Read `references/official-libfuse.md` when you need the official repo, docs, build flow, and the canonical places to look for examples and headers.
+
+MANDATORY SKILL btrfs
+---
+name: btrfs
+description: >
+  Btrfs filesystem administration: subvolumes, snapshots, rollback, balance,
+  scrub, RAID profiles, compression, quotas, send/receive backups, and
+  troubleshooting.
+  MUST consult when installing, configuring, or troubleshooting btrfs.
+triggerPhrases:
+  - "btrfs"
+  - "Btrfs"
+  - "btrfs snapshot"
+  - "btrfs subvolume"
+  - "btrfs balance"
+  - "btrfs scrub"
+  - "copy-on-write filesystem"
+  - "CoW filesystem"
+  - "btrfs-progs"
+  - "mkfs.btrfs"
+  - "snapper"
+  - "btrbk"
+globs:
+  - "**/fstab"
+  - "**/etc/fstab"
+last_verified: "unverified"
+---
+
+## Identity
+
+| Property | Value |
+|----------|-------|
+| **Type** | Kernel built-in filesystem (no loadable module needed on most distros) |
+| **CLI tool** | `btrfs` (subcommands: `filesystem`, `subvolume`, `balance`, `scrub`, `device`, `quota`, `qgroup`, `check`, `defragment`, `rescue`) |
+| **Distro install** | `apt install btrfs-progs` / `dnf install btrfs-progs` |
+| **Create** | `mkfs.btrfs` |
+| **Kernel version matters** | Significant stability improvements landed between 4.x and 6.x; older kernels have known bugs with RAID-5/6 and balance |
+
+## Quick Start
+
+```bash
+sudo apt install btrfs-progs
+sudo mkfs.btrfs -L mydata /dev/sdX1
+sudo mount /dev/sdX1 /mnt/mydata
+btrfs filesystem show /mnt/mydata
+btrfs device stats /mnt/mydata
+```
+
+## Key Operations
+
+| Task | Command |
+|------|---------|
+| Show filesystems | `btrfs filesystem show` |
+| Filesystem usage (detailed) | `btrfs filesystem usage /mount` |
+| List subvolumes | `btrfs subvolume list /mount` |
+| Create subvolume | `btrfs subvolume create /mount/name` |
+| Delete subvolume | `btrfs subvolume delete /mount/name` |
+| Create read-write snapshot | `btrfs subvolume snapshot /mount/src /mount/dst` |
+| Create read-only snapshot | `btrfs subvolume snapshot -r /mount/src /mount/dst` |
+| Rollback: delete current, rename snapshot | `btrfs subvolume delete /mount/@; mv /mount/@snapshot /mount/@` |
+| Rollback: recreate subvolume from snapshot | `btrfs subvolume snapshot /mount/@snapshot /mount/@` |
+| Balance start (all chunks) | `btrfs balance start /mount` |
+| Balance start (metadata only) | `btrfs balance start -mconvert=raid1 /mount` |
+| Balance status | `btrfs balance status /mount` |
+| Balance cancel | `btrfs balance cancel /mount` |
+| Scrub start | `btrfs scrub start /mount` |
+| Scrub status | `btrfs scrub status /mount` |
+| Scrub cancel | `btrfs scrub cancel /mount` |
+| Check filesystem (read-only) | `btrfs check /dev/sdX` (unmounted) |
+| Defragment file or directory | `btrfs filesystem defragment -r /mount` |
+| Resize (grow) | `btrfs filesystem resize max /mount` |
+| Resize (shrink) | `btrfs filesystem resize -10G /mount` |
+| Add device | `btrfs device add /dev/sdY /mount` |
+| Remove device | `btrfs device remove /dev/sdY /mount` |
+| Device read/write error stats | `btrfs device stats /mount` |
+| Enable quotas | `btrfs quota enable /mount` |
+| Show qgroup usage | `btrfs qgroup show -reF /mount` |
+
+## Expected State
+
+- `btrfs device stats /mount` → all counters are `0` (any non-zero value is a read/write error)
+- `btrfs scrub status /mount` → `Status: finished` with `0 errors`
+- `btrfs balance status /mount` → `No balance found on '/mount'` when idle
+- `btrfs filesystem usage /mount` → Data and metadata ratios show reasonable allocation (metadata should not be >80% full)
+
+## Health Checks
+
+1. `btrfs device stats /mount` → all counters `0`; any non-zero value means hardware errors, act immediately
+2. `btrfs filesystem usage /mount` → check both Data and Metadata sections; metadata ENOSPC is the most common silent failure
+3. `btrfs scrub status /mount` → verify last scrub completed with no errors; schedule scrubs monthly via systemd timer or cron
+4. `btrfs subvolume list /mount` → audit snapshot count; accumulation fills disk without appearing in normal `df` output
+
+## Common Failures
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `no space left on device` but `df` shows free space | Metadata chunks exhausted while data chunks exist | `btrfs filesystem usage /mount` — run `btrfs balance start -dusage=50 /mount` to rebalance underused chunks |
+| RAID-1 on data but single on metadata | Dangerous default when adding a second disk; metadata is not redundant | `btrfs filesystem usage /mount` — check metadata profile; run `btrfs balance start -mconvert=raid1 /mount` |
+| Filesystem mounts read-only | Encountered an error it cannot self-correct | Check `dmesg | grep -i btrfs`; run `btrfs check /dev/sdX` on unmounted device to assess damage |
+| Balance fails with ENOSPC mid-run | Not enough free space to relocate all chunks | Use `-dusage=<N>` filter to relocate only partially-used chunks first; free up space before retrying |
+| Qgroup show reports inflated usage | Qgroups track snapshot references — shared data counted in each | Shared data is expected; use `btrfs qgroup show -reF` to see exclusive vs shared bytes |
+| Snapshot accumulation fills disk | Old snapshots reference deleted data, preventing space reclaim | `btrfs subvolume list /mount | grep snapshot` — delete old snapshots with `btrfs subvolume delete` |
+| `btrfs check --repair` made it worse | `--repair` is not safe for general use and can corrupt data | Never run `--repair` without consulting upstream; use `rescue` subcommands instead |
+| Filesystem errors after kernel upgrade | Older on-disk format or regression | Check `dmesg`; downgrade kernel or use `btrfs rescue` tools; check known issues for your kernel version |
+
+## Pain Points
+
+- **ENOSPC due to metadata/data imbalance**: The most common Btrfs "gotcha". Btrfs allocates space in chunks — if metadata chunks fill up, writes fail even when data chunks are available and `df` still shows free space. Fix: `btrfs balance start -dusage=50 /mount` to reclaim partially-empty chunks. This is not a bug — it is the expected behavior when chunk allocation becomes imbalanced.
+- **Mixed RAID profiles between data and metadata**: Adding a second disk does not automatically mirror metadata. A system can have `RAID1` data but `single` metadata, meaning metadata loss on one disk is fatal. Always explicitly set both with `-d` and `-m` flags.
+- **Snapshots are instant but they accumulate**: Snapshot creation is O(1) and free. Deletion requires reference counting and can be slow. Unreferenced snapshots hold on to deleted data indefinitely — disk usage only decreases after snapshot deletion completes.
+- **`btrfs check` is slow and `--repair` is risky**: Unlike `fsck.ext4`, Btrfs check does not have a safe repair mode. `--repair` can corrupt a filesystem that `check` reports as damaged. Prefer `btrfs rescue` subcommands (`zero-log`, `fix-device-size`) for targeted fixes.
+- **Btrfs RAID-5/6 has known parity issues**: As of kernels through 6.x, Btrfs RAID-5 and RAID-6 have unresolved write-hole bugs. Do not use RAID-5/6 for data you care about. Use RAID-1 or RAID-10 instead.
+- **Send/receive for backups**: `btrfs send` / `btrfs receive` is efficient for incremental backups using read-only snapshots as base references. Tools like `snapper` and `btrbk` automate the snapshot lifecycle and send/receive workflow — prefer them over manual scripting.
+- **CoW fragmentation on databases and VMs**: Copy-on-write writes new data to new locations, which fragments sequential files over time. Use `nodatacow` mount option (or `chattr +C`) for VM disk images, database files, and other large randomly-written files. `nodatacow` also disables checksums for those files.
+
+## See Also
+
+- **ext4** — Traditional Linux filesystem without CoW overhead; use when you need maximum compatibility and don't need snapshots
+- **xfs** — High-performance filesystem for large sequential I/O; use for databases and media workloads where CoW fragmentation is a concern
+- **zfs** — Full storage stack with pooling and replication; use when you need enterprise-grade checksums and send/receive without kernel version sensitivity
+- **lvm** — Logical volume manager; provides snapshot and resize capabilities at the block layer beneath btrfs
+
+## References
+
+See `references/` for:
+- `btrfs-options.md` — mkfs and mount options organized by category
+- `common-patterns.md` — filesystem setup, subvolume layouts, snapshots, rollback, backup, RAID, and compression
+- `docs.md` — official documentation and community links
+
+MANDATORY SKILL incus
+---
+name: incus
+description: >
+  Incus system containers and VMs: instance/profile YAML, disk devices,
+  native storage pools and volumes, Btrfs subvolumes, lifecycle and isolation.
+  Consult before creating or changing an Incus instance, profile, disk,
+  storage volume, root binding or provisioning helper.
+triggerPhrases:
+  - "Incus"
+  - "Incus disk"
+  - "Incus profile"
+  - "Incus storage"
+  - "container root disk"
+  - "native storage volume"
+last_verified: "2026-10-19"
+---
+
+# Incus: configuration first, storage-driver ownership
+
+Project-local skill authored from the official Incus documentation below;
+not an imported third-party skill or a container-sandbox wrapper. Documentation
+review is not proof that any example has been applied to this host. Check the
+installed client/server version and applicable API extensions before using
+version-dependent options.
+
+## Start with the actual declaration
+
+An Incus instance is configured through instance properties, `config`,
+`devices` and ordered `profiles`. The CLI exposes this as YAML; do not invent
+a separate authoritative YAML file on disk. Incus owns its configuration.
+
+Read both local and expanded instance configuration. Later profiles override
+earlier ones; instance-local configuration overrides profiles. Editing a
+shared profile affects every instance that uses it. Do not use expanded
+configuration as a blind replacement: it flattens inherited settings.
+
+Read-only infrastructure diagnostics, within the assigned maintenance scope:
+
+```sh
+incus version
+incus config show <instance>
+incus config show <instance> --expanded
+incus profile show <profile>
+incus storage show <pool>
+incus storage volume list <pool>
+incus storage volume show <pool> container/<instance>
+```
+
+Confirm the selected remote, project, instance type, native UUID and stopped
+or running state. A name alone is not an identity or authorization proof.
+Use `--force-local` only when explicitly diagnosing this host's local daemon.
+
+## Declare native disks under devices
+
+Example fragment for a NEW container's root on an existing Btrfs pool named
+`3tched` (not a migration instruction for an existing container):
+
+```yaml
+devices:
+  root:
+    type: disk
+    pool: 3tched
+    path: /
+```
+
+Incus creates the instance's root storage volume at instance creation. Its
+Btrfs driver uses a subvolume for a container filesystem volume. Do not
+manually create a per-container `.img`, GPT, `losetup` mapping or filesystem
+as an assumed prerequisite for this native root declaration.
+
+Additional managed filesystem volumes are separate objects. Create the
+custom volume through the supported control plane first; its device then
+names the pool, volume and guest mount path:
+
+```yaml
+devices:
+  data:
+    type: disk
+    pool: 3tched
+    source: identity-data
+    path: /data
+```
+
+This references an existing custom filesystem volume named `identity-data`;
+it does not create that volume. Custom volumes persist independently of the
+instance until explicitly deleted. Do not casually share identity-private
+volumes. A device with a host-path `source` and no pool is a host-backed
+mount, not an Incus-managed custom volume.
+
+For standalone Incus administration, the native commands are
+`incus storage volume create <pool> <volume>` (filesystem by default),
+`incus storage volume attach <pool> <volume> <instance> <device> <guest-path>`
+and `incus config device add <instance> <device> disk pool=<pool> source=<volume> path=<guest-path>`.
+These are reference syntax, NOT permission to bypass this repository's
+identity-bound provisioning operations. Do not replay them against an
+already provisioned identity without the authorized maintenance contract.
+
+## Do not conflate these layers
+
+| Object | Meaning |
+| --- | --- |
+| Btrfs pool backing | Existing block device, loop file or Btrfs subvolume; inspect the pool's `source`. |
+| Container filesystem volume | Managed filesystem tree; Btrfs driver represents it as a subvolume. No additional loop per volume is needed. |
+| Container `type: disk` device | Mount inside the container, not a VM-style emulated partitioned disk. A host block source is mounted, not automatically passed through as guest block hardware. |
+| Custom `block` or `iso` volume | Attachable to VMs, not containers. Do not switch instance type to work around this restriction. |
+| Btrfs VM disk | Incus uses a backing file because Btrfs does not natively provide block volumes. This is not the container-volume model. |
+| Btrfs seeding/sprouting | Separate block-device filesystem operation; a subvolume is not a writable block member for `btrfs device add`. |
+
+A loop backing an entire existing Incus pool does not imply a loop for each
+container. Never detach an existing pool backing to satisfy a statement that
+container subvolumes need no loops. Do not create new loop-backed pools or
+per-container raw images unless that distinct layout is explicitly requested.
+
+An Incus root declaration alone does NOT implement an external immutable
+seed plus writable Btrfs member, a GPT two-partition upgrade replica, or a
+read-only overlay. Name any conflict between such requirements and native
+filesystem volumes before changing the design. Do not silently replace
+seeding with copied roots, snapshots, or an OverlayFS provisioning fallback.
+Use the `btrfs` skill for actual seed, membership and send/receive mechanics;
+Incus owns its managed-volume lifecycle.
+
+## Preserve ownership, lifecycle and admission
+
+- Begin repository operations in the assigned identity's mounted 3tchedFS.
+  Discover declared operations and arguments there. Preserve principal,
+  session, grants and Cozo identity-to-storage binding. Missing admission is
+  not permission to use the local Incus socket or edit Cozo directly.
+- Inspect current native configuration and the provisioning owner before
+  changing an existing root. Changing the `pool` key is not a storage migration.
+  Preserve native UUID, session/key binding, mount ownership and receipts.
+- Keep containers unprivileged, their UID/GID mapping, storage ioctl denials
+  and existing device allowlist. Do not grant guest block administration,
+  nesting, unrestricted host paths or daemon sockets to make storage work.
+- Explicit creation may establish approved storage once. Login, boot, start,
+  stop, restart, logout and recovery must not allocate new identity leaves
+  or add/remove Btrfs members. Restore/verify existing storage instead.
+- Do not mutate Incus-owned storage directories or live overlay lower layers
+  behind the daemon. Host storage maintenance must use its supported owner,
+  exact device/FSID/mount checks and explicit authorized scope.
+- Before any receive, verify the intended mounted destination and its FSID;
+  an existing directory is insufficient. Never receive into a fallback path
+  on the host root filesystem when the intended mount is missing.
+- Distinguish source configuration, accepted operation, native state and
+  deployed readiness. Report the operation receipt and authoritative result;
+  no claim of success from writing YAML alone. Do not auto-start containers,
+  change service managers or run test suites merely to install this skill.
+
+## Official references
+
+Consult the version matching the installed daemon where behavior differs.
+These upstream pages were reviewed for this skill on 2026-10-19:
+
+- [Instance configuration](https://linuxcontainers.org/incus/docs/main/explanation/instance_config/)
+- [Profiles and inheritance](https://linuxcontainers.org/incus/docs/main/profiles/)
+- [Disk devices](https://linuxcontainers.org/incus/docs/main/reference/devices_disk/)
+- [Btrfs storage driver](https://linuxcontainers.org/incus/docs/main/reference/storage_btrfs/)
+- [Storage volume creation, attachment and content-type restrictions](https://linuxcontainers.org/incus/docs/main/howto/storage_volumes/)
+
+MANDATORY SKILL rust-memory-optimization
+---
+name: rust-memory-optimization
+description: |
+  Memory optimization and allocation reduction in Rust. Use when:
+  - User is designing memory-sensitive or low-latency systems
+  - Optimizing data structures to reduce memory footprint
+  - Replacing heap allocations with stack-allocated/bounded structures (SmallVec, ArrayVec, ThinVec)
+  - Handling small strings with optimizations (CompactString)
+  - Reusing collections via clear() in loops
+  - Implementing zero-copy decoding and references
+  - Structuring arena-allocated memory (Bumpalo)
+  - Measuring memory usage, profiling heap, or diagnosing leaks
+---
+
+
+
+## Quick Navigation
+
+- [references/stack_allocations.md](references/stack_allocations.md)
+- [references/arenas.md](references/arenas.md)
+
+# Rust Memory Optimization Guide
+
+Advanced strategies for reducing allocations, shrinking layout sizes, and boosting performance.
+
+## Core Rules & Patterns
+
+### 1. Bounded Heap-Free Collections
+For collections that are usually small, avoid standard vectors to bypass heap allocations.
+- **`SmallVec`**: Stack-allocated up to a threshold, overflows to the heap.
+- **`ArrayVec`**: Fixed-capacity array wrapper; never allocates on the heap.
+- **`ThinVec`**: Only takes a single pointer size when empty, reducing size in enum layouts.
+
+```rust
+use smallvec::{smallvec, SmallVec};
+use arrayvec::ArrayVec;
+
+// SmallVec: Allocates 4 items on the stack. Goes to heap only if count > 4.
+let mut local_tags: SmallVec<[String; 4]> = smallvec![];
+local_tags.push("Rust".to_string());
+
+// ArrayVec: Absolute limit of 8 items on the stack. No heap overflow.
+let mut coordinates: ArrayVec<f64, 8> = ArrayVec::new();
+coordinates.push(42.0);
+```
+
+### 2. Small String Optimization (SSO)
+Standard `String` consumes 24 bytes and allocates heap space immediately. Use `CompactString` for inline small strings (under 24 bytes) without allocating.
+
+```rust
+use compact_str::CompactString;
+
+// No heap allocation for strings <= 24 characters
+let username = CompactString::new("user_123");
+```
+
+### 3. Boxed Slices vs Vectors
+If a collection's size is determined once at initialization and never changes, convert it from `Vec<T>` to `Box<[T]>` to save 8 bytes of stack capacity space.
+
+```rust
+let items_vec: Vec<i32> = vec![1, 2, 3];
+
+// Save capacity field (shrinks stack representation from 24 to 16 bytes)
+let items_slice: Box<[i32]> = items_vec.into_boxed_slice();
+```
+
+### 4. Zero-Copy Patterns
+Instead of cloning or allocating strings, hold references to existing memory using slices or crates like `bytes::Bytes`.
+
+```rust
+use bytes::Bytes;
+
+pub struct Message {
+    // Zero-copy reference-counted byte buffer slice
+    pub payload: Bytes,
+}
+
+// Can be sliced and shared among threads without cloning underlying memory
+let original = Bytes::from(vec![0; 1024]);
+let slice = original.slice(0..100); 
+```
+
+### 5. Arena Allocation
+For batch allocation where structures share a lifecycle (e.g. AST parsing), use arena allocators (`bumpalo`) to allocate items sequentially in a continuous region of memory and free them all at once.
+
+```rust
+use bumpalo::Bump;
+
+let bump = Bump::new();
+
+// Allocates quickly on the bump arena
+let string_ref = bump.alloc_str("dynamic string");
+let int_ref = bump.alloc(42);
+
+// Entire arena is cleared at once on drop
+```
+
+### 6. Collection Reuse
+Reuse collection allocations in performance-critical loops with `.clear()` instead of re-instantiating.
+
+```rust
+// Bad: Allocates a new vector every iteration
+for item in feed {
+    let mut batch = Vec::new();
+    batch.push(item);
+}
+
+// Good: Reuses allocation buffer
+let mut batch = Vec::with_capacity(100);
+for item in feed {
+    batch.clear();
+    batch.push(item);
+}
+```
+
+## Layout Awareness
+
+Use `std::mem::size_of` to understand data layout.
+
+```rust
+println!("User size: {}", std::mem::size_of::<User>());
+```
+
+Reorder fields to reduce padding only when the type is numerous or hot.
+
+```rust
+// Often smaller: group large-alignment fields first
+struct Record {
+    id: u64,
+    flags: u32,
+    kind: u8,
+}
+```
+
+## String Strategy
+
+```rust
+fn label<'a>(name: &'a str, fallback: &'a str) -> std::borrow::Cow<'a, str> {
+    if name.is_empty() { fallback.into() } else { name.into() }
+}
+```
+
+Avoid `format!` in tight loops. Reuse buffers with `clear()`.
+
+## Zero-Copy Parsing
+
+Return slices into the input when the input outlives parsed data.
+
+```rust
+pub struct Header<'a> {
+    pub name: &'a str,
+    pub value: &'a str,
+}
+```
+
+Do not force zero-copy when it creates unmanageable lifetimes for little gain.
+
+## ThinVec for Enum Payloads
+
+When enums contain `Vec` variants, `ThinVec` reduces the enum size by storing only a pointer when empty:
+
+```rust
+use thin_vec::ThinVec;
+
+// Regular Vec in an enum makes the enum 24+ bytes even when empty
+enum Node {
+    Leaf(i64),
+    Children(Vec<Node>),     // 24 bytes for Vec
+}
+
+// ThinVec only stores 8 bytes (a pointer) when empty
+enum NodeOptimized {
+    Leaf(i64),
+    Children(ThinVec<Node>), // 8 bytes for ThinVec
+}
+```
+
+## Cow for Conditional Ownership
+
+```rust
+use std::borrow::Cow;
+
+pub struct Error {
+    message: Cow<'static, str>,
+}
+
+impl Error {
+    // No allocation for static messages
+    pub fn new(msg: &'static str) -> Self {
+        Self { message: Cow::Borrowed(msg) }
+    }
+
+    // Allocates only when dynamic
+    pub fn with_detail(msg: String) -> Self {
+        Self { message: Cow::Owned(msg) }
+    }
+}
+```
+
+## Arc vs Rc Trade-offs
+
+```rust
+use std::rc::Rc;
+use std::sync::Arc;
+
+// Single-threaded shared ownership — cheaper than Arc
+let shared = Rc::new(large_data);
+
+// Multi-threaded shared ownership — required across threads
+let shared = Arc::new(large_data);
+```
+
+Prefer `Rc` when data never crosses thread boundaries. `Arc` adds atomic reference counting overhead.
+
+## HashMap Memory Optimization
+
+```rust
+use hashbrown::HashMap;
+
+// hashbrown's HashMap uses less memory than std's and is faster
+let mut map: HashMap<String, i32> = HashMap::with_capacity(128);
+
+// Reserve capacity upfront to avoid rehashing
+map.reserve(expected_count);
+
+// Consider FxHashMap for non-adversarial keys
+use rustc_hash::FxHashMap;
+let mut fast_map: FxHashMap<String, i32> = FxHashMap::default();
+```
+
+## Stack vs Heap Decision Matrix
+
+| Type | Stack Size | Heap Alloc | Use When |
+|------|-----------|------------|----------|
+| `String` | 24 bytes | Yes | Owns mutable text |
+| `&str` | 16 bytes | No | Borrowed text, lifetime bound |
+| `CompactString` | 24 bytes | No (≤24 chars) | Short strings that own data |
+| `Cow<str>` | 32 bytes | Conditionally | Mostly static, rarely dynamic |
+| `Box<str>` | 16 bytes | Yes | Owned fixed string |
+| `Vec<T>` | 24 bytes | Yes | Growable collection |
+| `SmallVec<[T; N]>` | ~24+ bytes | Only if >N | Usually small, occasionally large |
+| `Box<[T]>` | 16 bytes | Yes | Fixed-size after construction |
+| `ThinVec<T>` | 8 bytes | Only if non-empty | Empty or small in enums |
+
+## Measuring Memory
+
+```rust
+use std::alloc::{GlobalAlloc, System, Layout};
+
+struct TrackingAllocator;
+
+unsafe impl GlobalAlloc for TrackingAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        System.alloc(layout)
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        System.dealloc(ptr, layout)
+    }
+}
+
+// For detailed profiling, use dhat, heaptrack, or valgrind
+```
+
+Use `dhat` crate for heap profiling in tests:
+
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn memory_test() {
+        let _profiler = dhat::Profiler::new_heap();
+        // code under test
+        // dhat prints allocation stats on drop
+    }
+}
+```
+
+## Optimization Workflow
+
+1. Measure allocations and CPU first.
+2. Identify the hot path and expected data sizes.
+3. Pick the narrowest memory change.
+4. Benchmark before/after.
+5. Keep readability unless the win is meaningful.
+
+## Allocation Decision Rules
+
+- `Vec<T>`: general purpose growable collection.
+- `SmallVec<[T; N]>`: usually-small collection with occasional heap spill.
+- `ArrayVec<T, N>`: hard maximum size, no heap allocation.
+- `Box<[T]>`: fixed-size heap slice after construction.
+- `Bytes`: shared immutable byte buffers.
+- `Bump`: many same-lifetime allocations.
+- `Cow<'a, T>`: borrow unless mutation/ownership is required.
+
+## Anti-Patterns
+
+```rust
+// Bad: cloning a large Vec just to avoid lifetime complexity
+let data = original.clone(); // expensive and unnecessary
+
+// Good: use Arc or Cow for shared ownership
+let data: Arc<[u8]> = original.into();
+```
+
+```rust
+// Bad: allocating inside a hot loop
+for item in items {
+    let s = format!("processing {}", item); // allocates every iteration
+}
+
+// Good: reuse a buffer
+let mut buf = String::with_capacity(128);
+for item in items {
+    buf.clear();
+    write!(buf, "processing {}", item).unwrap();
+}
+```
+
+- Replacing every `Vec` with `SmallVec` without measuring.
+- Keeping arena references after reset.
+- Cloning strings to satisfy ownership instead of shortening borrow scopes.
+- Using `Arc` as a default clone workaround.
+- Optimizing layout for types created a handful of times.
+- Using `Box<dyn Trait>` when generics would eliminate the allocation entirely.
+
+## Review Prompt
+
+When reviewing memory optimization, ask what was measured, which allocation is removed, what lifetime assumptions changed, and whether the new type increases stack size or API complexity.
+
+## Optimization Checklist
+
+- Measure allocations before changing data structures.
+- Preallocate collections only when capacity is known or bounded.
+- Prefer borrowing and `Cow` before cloning strings or buffers.
+- Use arenas only when lifetimes are truly batch-scoped.
+- Check stack growth when replacing heap allocations with inline storage.
+- Re-benchmark after changes and keep the simpler version if gains are noise.
+- Profile with `dhat` or `heaptrack` to find actual allocation hotspots.
+- Consider `hashbrown` or `rustc-hash` for HashMap-heavy code.
+
+## References
+
+- [Rust Performance Book: Heap Allocations](https://nnethercote.github.io/perf-book/heap-allocations.html)
+- [smallvec](https://docs.rs/smallvec)
+- [arrayvec](https://docs.rs/arrayvec)
+- [bumpalo](https://docs.rs/bumpalo)
+- [compact_str](https://docs.rs/compact_str)
+- [bytes](https://docs.rs/bytes)
+- [dhat](https://docs.rs/dhat)
+- [hashbrown](https://docs.rs/hashbrown)
+
+MANDATORY SKILL memory-safety-patterns
+---
+name: memory-safety-patterns
+description: Implement memory-safe programming with RAII, ownership, smart pointers, and resource management across Rust, C++, and C. Use when writing safe systems code, managing resources, or preventing memory bugs.
+---
+
+# Memory Safety Patterns
+
+Cross-language patterns for memory-safe programming including RAII, ownership, smart pointers, and resource management.
+
+## When to Use This Skill
+
+- Writing memory-safe systems code
+- Managing resources (files, sockets, memory)
+- Preventing use-after-free and leaks
+- Implementing RAII patterns
+- Choosing between languages for safety
+- Debugging memory issues
+
+## Core Concepts
+
+### 1. Memory Bug Categories
+
+| Bug Type             | Description                      | Prevention        |
+| -------------------- | -------------------------------- | ----------------- |
+| **Use-after-free**   | Access freed memory              | Ownership, RAII   |
+| **Double-free**      | Free same memory twice           | Smart pointers    |
+| **Memory leak**      | Never free memory                | RAII, GC          |
+| **Buffer overflow**  | Write past buffer end            | Bounds checking   |
+| **Dangling pointer** | Pointer to freed memory          | Lifetime tracking |
+| **Data race**        | Concurrent unsynchronized access | Ownership, Sync   |
+
+### 2. Safety Spectrum
+
+```
+Manual (C) → Smart Pointers (C++) → Ownership (Rust) → GC (Go, Java)
+Less safe                                              More safe
+More control                                           Less control
+```
+
+## Detailed patterns and worked examples
+
+Detailed pattern documentation lives in `references/details.md`. Read that file when the navigation tier above is insufficient.
+
+## Best Practices
+
+### Do's
+
+- **Prefer RAII** - Tie resource lifetime to scope
+- **Use smart pointers** - Avoid raw pointers in C++
+- **Understand ownership** - Know who owns what
+- **Check bounds** - Use safe access methods
+- **Use tools** - AddressSanitizer, Valgrind, Miri
+
+### Don'ts
+
+- **Don't use raw pointers** - Unless interfacing with C
+- **Don't return local references** - Dangling pointer
+- **Don't ignore compiler warnings** - They catch bugs
+- **Don't use `unsafe` carelessly** - In Rust, minimize it
+- **Don't assume thread safety** - Be explicit
+
+## Debugging Tools
+
+```bash
+# AddressSanitizer (Clang/GCC)
+clang++ -fsanitize=address -g source.cpp
+
+# Valgrind
+valgrind --leak-check=full ./program
+
+# Rust Miri (undefined behavior detector)
+cargo +nightly miri run
+
+# ThreadSanitizer
+clang++ -fsanitize=thread -g source.cpp
+```

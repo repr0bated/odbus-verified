@@ -1,0 +1,54 @@
+#!/bin/sh
+# Restore missing host schema views through the existing identity-bound owner.
+# Healthy views refresh themselves; never remount them on catalog changes.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+[ "$(id -u)" = 0 ] || { echo 'recover-3tchedfs: root required' >&2; exit 1; }
+case "${1:-}" in ''|--once) ;; *) exit 2 ;; esac
+[ "$#" -le 1 ] || exit 2
+once=${1:-}
+release_ready=/run/opdbus-release/ready
+adapter=/usr/local/libexec/op-dbus/helpers/mount-3tchedfs
+
+release_complete() {
+    state=
+    IFS= read -r state 2>/dev/null < "$release_ready" || return 1
+    case "$state" in complete\ *) return 0 ;; *) return 1 ;; esac
+}
+restore_missing() {
+    result=0
+    for name in 3tchedFS threetched; do
+        # Recheck between views: activation owns mount changes while transitioning.
+        release_complete || return 0
+        path=/run/mounts/$name
+        entry=$(findmnt -C -rn -M "$path" -o SOURCE,FSTYPE) && found=1 || found=0
+        if [ "$found" = 1 ]; then
+            if [ "$entry" != "$name fuse.3tchedFS" ]; then
+                echo "recover-3tchedfs: refusing occupied target $path ($entry)" >&2
+                result=1
+            fi
+            continue
+        fi
+        # A failed query must not be interpreted as proof the target is absent.
+        if ! findmnt -C -rn -o TARGET >/dev/null; then
+            echo 'recover-3tchedfs: cannot read mount table' >&2
+            return 1
+        fi
+        echo "recover-3tchedfs: restoring $path" >&2
+        timeout -k 5 60 "$adapter" "$name" "$path" -o rw,nosuid,nodev,noexec,noatime ||
+            result=1
+    done
+    return "$result"
+}
+while :; do
+    result=0
+    restore_missing || result=$?
+    [ "$once" != --once ] || exit "$result"
+    # Bound failed-start retries; never scan plugin data or schemas.
+    if [ "$result" != 0 ]; then sleep 10; fi
+    # Kernel mount-table events wake recovery after auto-unmount on daemon exit.
+    # The deadline closes the check/subscribe race and notices boot readiness.
+    findmnt --poll=umount --first-only --timeout 30000 -t fuse.3tchedFS \
+        -rn -o TARGET >/dev/null || sleep 1
+done

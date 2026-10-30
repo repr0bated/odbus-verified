@@ -1,0 +1,72 @@
+{
+  "request": 11,
+  "started": "2026-10-18T21:29:26.525612+00:00",
+  "finished": "2026-10-18T21:29:45.707688+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-04bea384a26c8bc9016ad53a39ed0087d08bfd0505e4792c53",
+    "created": 1792358970,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading native schema implementation\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/threetched.rs:1-245\"}",
+                "name": "read"
+              },
+              "id": "call_aNAJOj7PS5IMUJPXLgxFxgkk",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading overlap classifications\",\"path\":\"/srv/git/odbus-verified/reports/threetched-overlap-map-20261018.md:1-155\"}",
+                "name": "read"
+              },
+              "id": "call_kctzBiD2P8JbH7k1bwyNAsaR",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 696,
+      "prompt_tokens": 200176,
+      "total_tokens": 200872,
+      "completion_tokens_details": {
+        "reasoning_tokens": 117
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 157454
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:29:45.705848+00:00",
+  "stream_chunks": 8
+}

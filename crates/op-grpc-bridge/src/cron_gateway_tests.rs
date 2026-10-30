@@ -151,8 +151,8 @@ async fn real_bounded_transport_maps_all_nine_canonical_methods() {
         .await
         .unwrap();
     });
-    let gateway = TchedRouterCronGateway {
-        client: TchedRouterRuntimeClient::new(
+    let gateway = ChatRouterCronGateway {
+        client: ChatRouterRuntimeClient::new(
             format!("http://{address}"),
             "operator".into(),
             Some("fixture-token".into()),

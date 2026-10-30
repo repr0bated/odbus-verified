@@ -1,0 +1,242 @@
+locale = "en"
+schema_version = 3
+
+# Named agents read their runtime profile, not the legacy [agent] setting.
+# Keep the existing profile identifier; its configurable budget is below.
+[runtime_profiles.chatbot_500]
+max_tool_iterations = 2000
+
+[a2a.server]
+enabled = true
+
+[skill_bundles.default]
+directory = "shared/skills/default"
+
+[gateway]
+host = "127.0.0.1"
+port = 8084
+require_pairing = true
+allow_public_bind = false
+allow_remote_admin = false
+request_timeout_secs = 30
+long_running_request_timeout_secs = 600
+
+# OpenCode Go, an upstream provider like OpenRouter. The daemon injects the
+# root-owned Go API key into every profile at startup; no credential is stored
+# here. Go serves three wire formats: chat-completions and Responses models use
+# the native `opencode` provider at https://opencode.ai/zen/go/v1 (Responses
+# models set wire_api = "responses"); Messages-API models use the native
+# `anthropic` provider, which posts to {uri}/v1/messages with x-api-key.
+
+[providers.models.opencode.go_dashboard]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "chat_completions"
+native_tools = false
+
+[providers.models.opencode.go_accountability]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "chat_completions"
+native_tools = false
+
+[providers.models.opencode.go_control_plane]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "chat_completions"
+native_tools = false
+
+[providers.models.opencode.go_cp_route_grok_47]
+model = "grok-4.7"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "responses"
+native_tools = false
+
+[providers.models.opencode.go_cp_route_deepseek_v41_flash]
+model = "deepseek-v4.1-flash"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "chat_completions"
+native_tools = false
+
+[providers.models.opencode.go_cp_route_glm_53_flash]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "chat_completions"
+native_tools = false
+
+[providers.models.anthropic.go_cp_route_qwen38_flash]
+model = "qwen3.8-flash"
+uri = "https://opencode.ai/zen/go"
+
+[providers.models.opencode.go_cp_route_gpt6_luna]
+model = "gpt-6-luna"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "responses"
+native_tools = false
+
+[providers.models.anthropic.go_cp_route_claude_fable_51]
+model = "claude-fable-5-1"
+uri = "https://opencode.ai/zen/go"
+
+# Cheaper Inference, a second upstream provider beside OpenCode Go: an
+# OpenAI-compatible gateway (chat completions) serving OpenAI, Anthropic,
+# Google, DeepSeek and Z.ai models below list price. The daemon injects the
+# root-owned key from /etc/op-dbus/secrets/cheaper-inference-api-key when it
+# exists. Model ids are the gateway's (GET /v1/models, key required).
+[providers.models.custom.cheaper_inference]
+model = "gpt-5.4-mini"
+uri = "https://api.cheaperinference.com/v1"
+wire_api = "chat_completions"
+native_tools = false
+
+[agents.dashboard]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "opencode.go_dashboard"
+risk_profile = "dashboard"
+skill_bundles = ["default"]
+
+[agents.control_plane]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "opencode.go_control_plane"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.control_plane.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.control_plane.memory]
+backend = "none"
+
+[agents.accountability]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "opencode.go_accountability"
+risk_profile = "accountability"
+skill_bundles = ["default"]
+
+[agents.accountability.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.accountability.memory]
+backend = "none"
+
+[agents.dashboard.a2a]
+published = true
+exposed_skills = [
+    "plugin-schema",
+    "ovs-network-triage",
+    "qdrant-collections",
+    "mutation-dispatch",
+]
+
+[risk_profiles.dashboard]
+level = "readonly"
+workspace_only = true
+require_approval_for_medium_risk = true
+block_high_risk_commands = true
+
+[risk_profiles.control_plane]
+level = "readonly"
+workspace_only = true
+require_approval_for_medium_risk = true
+block_high_risk_commands = true
+
+[risk_profiles.accountability]
+level = "readonly"
+workspace_only = true
+require_approval_for_medium_risk = true
+block_high_risk_commands = true
+
+# Do not fold the open-skills corpus (40 SKILL.md files, ~90k tokens) into every
+# agent turn; it alone exceeded the model context budget and made each chat turn
+# take 10-300s.
+[skills]
+open_skills_enabled = false
+
+[agents.cp_route_grok_47]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "opencode.go_cp_route_grok_47"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.cp_route_grok_47.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.cp_route_grok_47.memory]
+backend = "none"
+
+[agents.cp_route_deepseek_v41_flash]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "opencode.go_cp_route_deepseek_v41_flash"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.cp_route_deepseek_v41_flash.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.cp_route_deepseek_v41_flash.memory]
+backend = "none"
+
+[agents.cp_route_glm_53_flash]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "opencode.go_cp_route_glm_53_flash"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.cp_route_glm_53_flash.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.cp_route_glm_53_flash.memory]
+backend = "none"
+
+[agents.cp_route_qwen38_flash]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "anthropic.go_cp_route_qwen38_flash"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.cp_route_qwen38_flash.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.cp_route_qwen38_flash.memory]
+backend = "none"
+
+[agents.cp_route_gpt6_luna]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "opencode.go_cp_route_gpt6_luna"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.cp_route_gpt6_luna.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.cp_route_gpt6_luna.memory]
+backend = "none"
+
+[agents.cp_route_claude_fable_51]
+runtime_profile = "chatbot_500"
+enabled = true
+model_provider = "anthropic.go_cp_route_claude_fable_51"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.cp_route_claude_fable_51.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.cp_route_claude_fable_51.memory]
+backend = "none"

@@ -4,10 +4,10 @@
 //! than opening the cognitive store directly. That matters for three reasons, each
 //! measured rather than assumed:
 //!
-//! 1. **One CozoDB writer.** `CognitiveMcpServer::new` opens a persistent CozoDB, and
-//!    every MCP client that spawns `op-cognitive-mcp --stdio` races for the file lock
-//!    — the loser dies with `Resource temporarily unavailable`. Routing through the
-//!    bridge leaves exactly one owner.
+//! 1. **One CozoDB writer.** The bridge owns the persistent `CognitiveServer`.
+//!    Historically, clients spawning the retired `op-cognitive --stdio`
+//!    raced for its file lock and lost with `Resource temporarily unavailable`.
+//!    Routing through the bridge leaves exactly one owner.
 //!
 //! 2. **Enforcement.** The direct stdio path bypasses the method gate, argument
 //!    validation, capability check and event chain. Every call made here passes all
@@ -17,11 +17,11 @@
 //!    MCP clients carry no credential material and capability can be scoped per
 //!    client without touching the sealed schema.
 //!
-//! Transport is D-Bus `org.opdbus.v1.PluginV1.Call` on the `cognitive_mcp` plugin —
+//! Transport is D-Bus `org.opdbus.v1.PluginV1.Call` on the `cognitive` plugin —
 //! the only interface and bus name in play. `list_tools` populates the registry;
 //! `invoke_tool` dispatches.
 //!
-//! OSCAL subid: exp.service.cognitive-mcp.fanin-proxy@v1
+//! OSCAL subid: exp.service.cognitive.fanin-proxy@v1
 
 use crate::server::{ToolExecutor, ToolInfo};
 use anyhow::{Context, Result, anyhow};
@@ -33,8 +33,8 @@ use tokio::sync::RwLock;
 const BRIDGE_BUS_NAME: &str = "org.opdbus.v1.plugins";
 /// The single canonical plugin interface.
 const PLUGIN_INTERFACE: &str = "org.opdbus.v1.PluginV1";
-/// Object path for the cognitive_mcp plugin.
-const COGNITIVE_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/cognitive_mcp";
+/// Object path for the cognitive plugin.
+const COGNITIVE_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/cognitive";
 
 /// Session bus address; matches the bridge's own default.
 fn session_bus_address() -> String {
@@ -66,7 +66,7 @@ impl BridgeToolExecutor {
         Ok(executor)
     }
 
-    /// Invoke one schema method on the cognitive_mcp plugin through the bridge.
+    /// Invoke one schema method on the cognitive plugin through the bridge.
     ///
     /// Returns the `result` payload, unwrapping the bridge's accountability envelope
     /// (`success`, `event_id`, `event_hash`, `result`). A missing `result` is an

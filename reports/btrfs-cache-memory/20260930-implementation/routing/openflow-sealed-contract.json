@@ -1,0 +1,1748 @@
+{
+  "plugin_id": "openflow",
+  "source_schema_hash": "423419e191fe1c6f1545e64f4560d5a60c74cda096f2157b74def02c6a8c698f",
+  "schema": {
+    "name": "openflow",
+    "version": "2.0.0",
+    "tags": [],
+    "category": "uncategorized",
+    "methods": {
+      "add_flow": {
+        "args": {
+          "$defs": {
+            "FlowAction": {
+              "description": "OpenFlow actions",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Output to port",
+                  "properties": {
+                    "port": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "output",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "port"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Load value into register",
+                  "properties": {
+                    "register": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "load_register",
+                      "type": "string"
+                    },
+                    "value": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "register",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Resubmit to another table",
+                  "properties": {
+                    "table": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "resubmit",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "table"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Set field value",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "set_field",
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "field",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Drop packet",
+                  "properties": {
+                    "type": {
+                      "const": "drop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to normal L2 switching",
+                  "properties": {
+                    "type": {
+                      "const": "normal",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to controller",
+                  "properties": {
+                    "max_len": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "const": "controller",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "ARP responder (OVS-specific action chain)",
+                  "properties": {
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "arp_responder",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "mac",
+                    "ip"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "FlowEntry": {
+              "additionalProperties": false,
+              "description": "OpenFlow flow entry",
+              "properties": {
+                "actions": {
+                  "description": "Actions to perform",
+                  "items": {
+                    "$ref": "#/$defs/FlowAction"
+                  },
+                  "type": "array",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "cookie": {
+                  "description": "Cookie for flow identification",
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "hard_timeout": {
+                  "default": 0,
+                  "description": "Hard timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_timeout": {
+                  "default": 0,
+                  "description": "Idle timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "match_fields": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Match criteria (OpenFlow match fields)",
+                  "type": "object",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "priority": {
+                  "description": "Flow priority (0-65535, higher = more specific)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "table": {
+                  "description": "Flow table number (0-254)",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "table",
+                "priority",
+                "match_fields",
+                "actions"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "bridge": {
+              "type": "string"
+            },
+            "flow": {
+              "$ref": "#/$defs/FlowEntry",
+              "description": "Exact desired member. Add succeeds only when its live identity is absent.",
+              "x-opdbus-exact-json-schema": true
+            }
+          },
+          "required": [
+            "bridge",
+            "flow"
+          ],
+          "title": "AddFlowInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "FlowAction": {
+              "description": "OpenFlow actions",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Output to port",
+                  "properties": {
+                    "port": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "output",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "port"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Load value into register",
+                  "properties": {
+                    "register": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "load_register",
+                      "type": "string"
+                    },
+                    "value": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "register",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Resubmit to another table",
+                  "properties": {
+                    "table": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "resubmit",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "table"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Set field value",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "set_field",
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "field",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Drop packet",
+                  "properties": {
+                    "type": {
+                      "const": "drop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to normal L2 switching",
+                  "properties": {
+                    "type": {
+                      "const": "normal",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to controller",
+                  "properties": {
+                    "max_len": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "const": "controller",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "ARP responder (OVS-specific action chain)",
+                  "properties": {
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "arp_responder",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "mac",
+                    "ip"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "FlowEntry": {
+              "additionalProperties": false,
+              "description": "OpenFlow flow entry",
+              "properties": {
+                "actions": {
+                  "description": "Actions to perform",
+                  "items": {
+                    "$ref": "#/$defs/FlowAction"
+                  },
+                  "type": "array",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "cookie": {
+                  "description": "Cookie for flow identification",
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "hard_timeout": {
+                  "default": 0,
+                  "description": "Hard timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_timeout": {
+                  "default": 0,
+                  "description": "Idle timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "match_fields": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Match criteria (OpenFlow match fields)",
+                  "type": "object",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "priority": {
+                  "description": "Flow priority (0-65535, higher = more specific)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "table": {
+                  "description": "Flow table number (0-254)",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "table",
+                "priority",
+                "match_fields",
+                "actions"
+              ],
+              "type": "object"
+            },
+            "FlowMutationKind": {
+              "enum": [
+                "added",
+                "deleted",
+                "modified"
+              ],
+              "type": "string"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Barrier-confirmed live observation for one flow-table member.",
+          "properties": {
+            "after": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FlowEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "x-opdbus-exact-json-schema": true
+            },
+            "before": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FlowEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "x-opdbus-exact-json-schema": true
+            },
+            "bridge": {
+              "type": "string"
+            },
+            "observed_at_unix": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "operation": {
+              "$ref": "#/$defs/FlowMutationKind"
+            },
+            "verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "bridge",
+            "operation",
+            "verified",
+            "observed_at_unix"
+          ],
+          "title": "FlowMutationOutput",
+          "type": "object"
+        },
+        "required_capability": "openflow.write",
+        "side_effect": "mutation",
+        "subid": "mut.network.openflow.flow.add@v2"
+      },
+      "delete_flow": {
+        "args": {
+          "$defs": {
+            "FlowAction": {
+              "description": "OpenFlow actions",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Output to port",
+                  "properties": {
+                    "port": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "output",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "port"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Load value into register",
+                  "properties": {
+                    "register": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "load_register",
+                      "type": "string"
+                    },
+                    "value": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "register",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Resubmit to another table",
+                  "properties": {
+                    "table": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "resubmit",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "table"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Set field value",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "set_field",
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "field",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Drop packet",
+                  "properties": {
+                    "type": {
+                      "const": "drop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to normal L2 switching",
+                  "properties": {
+                    "type": {
+                      "const": "normal",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to controller",
+                  "properties": {
+                    "max_len": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "const": "controller",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "ARP responder (OVS-specific action chain)",
+                  "properties": {
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "arp_responder",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "mac",
+                    "ip"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "FlowEntry": {
+              "additionalProperties": false,
+              "description": "OpenFlow flow entry",
+              "properties": {
+                "actions": {
+                  "description": "Actions to perform",
+                  "items": {
+                    "$ref": "#/$defs/FlowAction"
+                  },
+                  "type": "array",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "cookie": {
+                  "description": "Cookie for flow identification",
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "hard_timeout": {
+                  "default": 0,
+                  "description": "Hard timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_timeout": {
+                  "default": 0,
+                  "description": "Idle timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "match_fields": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Match criteria (OpenFlow match fields)",
+                  "type": "object",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "priority": {
+                  "description": "Flow priority (0-65535, higher = more specific)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "table": {
+                  "description": "Flow table number (0-254)",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "table",
+                "priority",
+                "match_fields",
+                "actions"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "bridge": {
+              "type": "string"
+            },
+            "expected": {
+              "$ref": "#/$defs/FlowEntry",
+              "description": "Full expected live member. Wildcard deletion is not representable.",
+              "x-opdbus-exact-json-schema": true
+            }
+          },
+          "required": [
+            "bridge",
+            "expected"
+          ],
+          "title": "DeleteFlowInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "FlowAction": {
+              "description": "OpenFlow actions",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Output to port",
+                  "properties": {
+                    "port": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "output",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "port"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Load value into register",
+                  "properties": {
+                    "register": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "load_register",
+                      "type": "string"
+                    },
+                    "value": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "register",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Resubmit to another table",
+                  "properties": {
+                    "table": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "resubmit",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "table"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Set field value",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "set_field",
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "field",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Drop packet",
+                  "properties": {
+                    "type": {
+                      "const": "drop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to normal L2 switching",
+                  "properties": {
+                    "type": {
+                      "const": "normal",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to controller",
+                  "properties": {
+                    "max_len": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "const": "controller",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "ARP responder (OVS-specific action chain)",
+                  "properties": {
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "arp_responder",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "mac",
+                    "ip"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "FlowEntry": {
+              "additionalProperties": false,
+              "description": "OpenFlow flow entry",
+              "properties": {
+                "actions": {
+                  "description": "Actions to perform",
+                  "items": {
+                    "$ref": "#/$defs/FlowAction"
+                  },
+                  "type": "array",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "cookie": {
+                  "description": "Cookie for flow identification",
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "hard_timeout": {
+                  "default": 0,
+                  "description": "Hard timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_timeout": {
+                  "default": 0,
+                  "description": "Idle timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "match_fields": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Match criteria (OpenFlow match fields)",
+                  "type": "object",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "priority": {
+                  "description": "Flow priority (0-65535, higher = more specific)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "table": {
+                  "description": "Flow table number (0-254)",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "table",
+                "priority",
+                "match_fields",
+                "actions"
+              ],
+              "type": "object"
+            },
+            "FlowMutationKind": {
+              "enum": [
+                "added",
+                "deleted",
+                "modified"
+              ],
+              "type": "string"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Barrier-confirmed live observation for one flow-table member.",
+          "properties": {
+            "after": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FlowEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "x-opdbus-exact-json-schema": true
+            },
+            "before": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FlowEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "x-opdbus-exact-json-schema": true
+            },
+            "bridge": {
+              "type": "string"
+            },
+            "observed_at_unix": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "operation": {
+              "$ref": "#/$defs/FlowMutationKind"
+            },
+            "verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "bridge",
+            "operation",
+            "verified",
+            "observed_at_unix"
+          ],
+          "title": "FlowMutationOutput",
+          "type": "object"
+        },
+        "required_capability": "openflow.write",
+        "side_effect": "mutation",
+        "subid": "mut.network.openflow.flow.delete@v2"
+      },
+      "get_datapath_health": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Input for GetDatapathHealth.",
+          "properties": {
+            "bridge": {
+              "description": "Bridge name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "bridge"
+          ],
+          "title": "GetDatapathHealthInput",
+          "type": "object"
+        },
+        "returns": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Output for GetDatapathHealth / AttachControllerSafe.",
+          "properties": {
+            "bridge": {
+              "type": "string"
+            },
+            "connection_mode": {
+              "type": "string"
+            },
+            "controllers": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "disable_in_band": {
+              "type": "boolean"
+            },
+            "fail_mode": {
+              "type": "string"
+            },
+            "fallback_cookie": {
+              "type": "string"
+            },
+            "fallback_normal": {
+              "type": "boolean"
+            },
+            "fallback_priority": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bridge",
+            "fail_mode",
+            "controllers",
+            "fallback_normal",
+            "fallback_priority",
+            "fallback_cookie",
+            "connection_mode",
+            "disable_in_band"
+          ],
+          "title": "DatapathHealthOutput",
+          "type": "object"
+        },
+        "required_capability": "openflow.read",
+        "side_effect": "read",
+        "subid": "obs.network.openflow.datapath.get-health@v1"
+      },
+      "modify_flow": {
+        "args": {
+          "$defs": {
+            "FlowAction": {
+              "description": "OpenFlow actions",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Output to port",
+                  "properties": {
+                    "port": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "output",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "port"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Load value into register",
+                  "properties": {
+                    "register": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "load_register",
+                      "type": "string"
+                    },
+                    "value": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "register",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Resubmit to another table",
+                  "properties": {
+                    "table": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "resubmit",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "table"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Set field value",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "set_field",
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "field",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Drop packet",
+                  "properties": {
+                    "type": {
+                      "const": "drop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to normal L2 switching",
+                  "properties": {
+                    "type": {
+                      "const": "normal",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to controller",
+                  "properties": {
+                    "max_len": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "const": "controller",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "ARP responder (OVS-specific action chain)",
+                  "properties": {
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "arp_responder",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "mac",
+                    "ip"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "FlowEntry": {
+              "additionalProperties": false,
+              "description": "OpenFlow flow entry",
+              "properties": {
+                "actions": {
+                  "description": "Actions to perform",
+                  "items": {
+                    "$ref": "#/$defs/FlowAction"
+                  },
+                  "type": "array",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "cookie": {
+                  "description": "Cookie for flow identification",
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "hard_timeout": {
+                  "default": 0,
+                  "description": "Hard timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_timeout": {
+                  "default": 0,
+                  "description": "Idle timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "match_fields": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Match criteria (OpenFlow match fields)",
+                  "type": "object",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "priority": {
+                  "description": "Flow priority (0-65535, higher = more specific)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "table": {
+                  "description": "Flow table number (0-254)",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "table",
+                "priority",
+                "match_fields",
+                "actions"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "bridge": {
+              "type": "string"
+            },
+            "expected": {
+              "$ref": "#/$defs/FlowEntry",
+              "description": "Full exact revision that must be live before replacement.",
+              "x-opdbus-exact-json-schema": true
+            },
+            "replacement": {
+              "$ref": "#/$defs/FlowEntry",
+              "description": "Replacement with the same table, priority and match identity.",
+              "x-opdbus-exact-json-schema": true
+            }
+          },
+          "required": [
+            "bridge",
+            "expected",
+            "replacement"
+          ],
+          "title": "ModifyFlowInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "FlowAction": {
+              "description": "OpenFlow actions",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Output to port",
+                  "properties": {
+                    "port": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "output",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "port"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Load value into register",
+                  "properties": {
+                    "register": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "load_register",
+                      "type": "string"
+                    },
+                    "value": {
+                      "format": "uint64",
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "register",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Resubmit to another table",
+                  "properties": {
+                    "table": {
+                      "format": "uint8",
+                      "maximum": 255,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "const": "resubmit",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "table"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Set field value",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "set_field",
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "field",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Drop packet",
+                  "properties": {
+                    "type": {
+                      "const": "drop",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to normal L2 switching",
+                  "properties": {
+                    "type": {
+                      "const": "normal",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "Send to controller",
+                  "properties": {
+                    "max_len": {
+                      "format": "uint16",
+                      "maximum": 65535,
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "type": {
+                      "const": "controller",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "description": "ARP responder (OVS-specific action chain)",
+                  "properties": {
+                    "ip": {
+                      "type": "string"
+                    },
+                    "mac": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "arp_responder",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "mac",
+                    "ip"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "FlowEntry": {
+              "additionalProperties": false,
+              "description": "OpenFlow flow entry",
+              "properties": {
+                "actions": {
+                  "description": "Actions to perform",
+                  "items": {
+                    "$ref": "#/$defs/FlowAction"
+                  },
+                  "type": "array",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "cookie": {
+                  "description": "Cookie for flow identification",
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "hard_timeout": {
+                  "default": 0,
+                  "description": "Hard timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "idle_timeout": {
+                  "default": 0,
+                  "description": "Idle timeout in seconds (0 = permanent)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "match_fields": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Match criteria (OpenFlow match fields)",
+                  "type": "object",
+                  "x-opdbus-exact-json-schema": true
+                },
+                "priority": {
+                  "description": "Flow priority (0-65535, higher = more specific)",
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "table": {
+                  "description": "Flow table number (0-254)",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "table",
+                "priority",
+                "match_fields",
+                "actions"
+              ],
+              "type": "object"
+            },
+            "FlowMutationKind": {
+              "enum": [
+                "added",
+                "deleted",
+                "modified"
+              ],
+              "type": "string"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Barrier-confirmed live observation for one flow-table member.",
+          "properties": {
+            "after": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FlowEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "x-opdbus-exact-json-schema": true
+            },
+            "before": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FlowEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "x-opdbus-exact-json-schema": true
+            },
+            "bridge": {
+              "type": "string"
+            },
+            "observed_at_unix": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "operation": {
+              "$ref": "#/$defs/FlowMutationKind"
+            },
+            "verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "bridge",
+            "operation",
+            "verified",
+            "observed_at_unix"
+          ],
+          "title": "FlowMutationOutput",
+          "type": "object"
+        },
+        "required_capability": "openflow.write",
+        "side_effect": "mutation",
+        "subid": "mut.network.openflow.flow.modify@v2"
+      }
+    }
+  }
+}

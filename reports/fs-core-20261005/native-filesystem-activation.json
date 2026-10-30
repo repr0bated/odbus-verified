@@ -1,0 +1,177 @@
+{
+  "task_id": "fs-core-20261005",
+  "status": "approved-source-prepared-not-activated",
+  "purpose": "Replace native OP-DBUS tool operations with identity-bound 3tchedFS calls",
+  "principal": {
+    "local_account": "jeremy",
+    "verified_local_uid": 1001,
+    "service": "tched-router"
+  },
+  "identity_scope": {
+    "session_source": "/etc/op-dbus/human-lungs-session",
+    "selection": "existing operator-selected human session; no credential copying or minting",
+    "native_admission": "canonical receiver-authored SID1 session must exactly match before filesystem access; reverify before and after operation",
+    "foreign_sessions": "denied; no alternate transport"
+  },
+  "local_permission_change": {
+    "resource": "/run/mount/3tchedFS-native",
+    "action": "create a separate host-session FUSE mount with local call owner UID 1001",
+    "backing": "same sealed catalog and canonical committed SHM; no data cache",
+    "existing_guest_mount": "retain /run/mount/3tchedFS and its call owner UID 1000000",
+    "effect": "Processes running as UID 1001 can access this mount's call files under the existing human session's backend permissions. This Unix permission is per UID, not per executable.",
+    "backend_grants_changed": false
+  },
+  "native_configuration_change": {
+    "OPDBUS_FILESYSTEM_ROOT": "/run/mount/3tchedFS-native",
+    "OPDBUS_FILESYSTEM_SESSION": "read the existing operator session file at service start; do not accept model input",
+    "OPDBUS_FILESYSTEM_READ_HELPER": "1",
+    "path_policy": "CAS test+replace only risk_profiles.control_plane.allowed_roots through the native config CLI: append /run/mount/3tchedFS-native only if absent; preserve every other root. The existing control_plane profile applies to all agents already assigned to that profile.",
+    "autonomy": "retain readonly",
+    "generic_shell": "remain denied by readonly policy",
+    "native_mutations": "remain denied by the existing Act policy",
+    "operation_transport": "fresh mounted describe/invoke only; never OP-DBUS MCP tool fallback",
+    "discovery_limit": "five activated typed operation tools per turn",
+    "authentication_transport": "existing trusted TLS SID1 verification ping, unchanged",
+    "sanitization": "Derive all three filesystem settings from the hardcoded protected marker/session source before env-i; pass them explicitly, then revalidate/rederive after sanitized exec. When disabled, explicitly unset all three; ambient variables cannot activate this integration."
+  },
+  "duration": "persistent until explicit rollback",
+  "activation": "prepare source service/configuration, build the pinned native artifact, transfer the complete release through Btrfs send/receive, then activate the new mount and deliberately restart tched-router",
+  "verification": [
+    "confirm both mounts retain their exact session, catalog and local owner",
+    "confirm native foreign-session and readonly mutation denial before dispatch",
+    "confirm a matching caller obtains a canonical operation receipt through the new mount",
+    "confirm no OP-DBUS MCP tool server is selected",
+    "leave unit/workspace test execution with the owner-assigned testing agent"
+  ],
+  "rollback": [
+    "Remove/set false only the protected native-filesystem.enabled marker; deliberately restart tched-router to unset the three environment settings and CAS-remove the exact service-added root if its ownership receipt exists.",
+    "Stop and disable only threetched-fs-native; its daemon owns --auto-unmount. finish has no explicit unmount and cannot affect a preexisting/foreign mount on refused startup.",
+    "Restore the prior received native/service selector if required.",
+    "Retain the guest mount owner1000000, identities, credentials, backend grants, all other allowed_roots and authoritative data."
+  ],
+  "limitations": [
+    "Native stateless provider generation has no native tool loop; this changes SID1-scoped native tool turns.",
+    "Permission/native route are approved and source-prepared; live activation and mounted verification remain unperformed."
+  ],
+  "authority_for_approval": "AGENTS.md: Identity, permissions, and grants requires approval for permission changes not already explicitly authorized.",
+  "optional_activation": {
+    "approval": "Owner approved scoped separate native mount and readonly route; source prepared, not activated. Root owns all live changes.",
+    "marker": {
+      "path": "/etc/op-dbus/native-filesystem.enabled",
+      "owner": "root:root",
+      "mode": "0600 (0400 also accepted)",
+      "content": "true\n",
+      "disabled": "Absent or false means disabled; malformed/unprotected/symlink marker fails closed."
+    },
+    "session_source": {
+      "path": "/etc/op-dbus/human-lungs-session",
+      "owner": "root:root",
+      "mode": "0600 (0400 also accepted)",
+      "format": "existing canonical lowercase UUID selector, optional trailing newline; no copied credential"
+    },
+    "service": {
+      "name": "threetched-fs-native",
+      "mount": "/run/mount/3tchedFS-native",
+      "call_owner_uid": 1001,
+      "store": "/dev/shm/3tchedfs-native",
+      "capture_catalog": "/opt/op-dbus/current/var/lib/opdbus/plugin-blobs",
+      "active_catalog": "/dev/shm/opdbus/plugin-blobs",
+      "state": "/dev/shm/opdbus/state",
+      "socket": "/run/opdbus/lungs/lungs.sock",
+      "enabled_by_default": false,
+      "disabled_service_behavior": "pause without creating mount/store or changing permissions; runit readiness remains false",
+      "cleanup": "The mount daemon owns --auto-unmount. finish removes only this service readiness marker and never explicitly unmounts by path; a failed occupied-target startup cannot unmount the preexisting/foreign mount."
+    },
+    "allowed_root_ownership_receipt": {
+      "path": "/etc/op-dbus/native-filesystem.allowed-root-owned",
+      "owner": "root:root",
+      "mode": "0600",
+      "content": "/run/mount/3tchedFS-native\n",
+      "ordering": "Write intent receipt before CAS append so interrupted startup can recover removal; leave receipt on failed patch. No receipt is created for a preexisting allowed root.",
+      "rollback": "Marker removal/false and deliberate tched-router restart remove only this exact root if the protected ownership receipt exists, then remove the receipt. All unrelated roots remain; preexisting permission without receipt remains."
+    },
+    "operator_order_after_approval": [
+      "Transfer the complete prepared snapshot through Btrfs send/receive, including a reviewed filesystem-only candidate derived from the exact active run-script SHA256; select the intended native binary/provenance pair without replacing unrelated live provider/bootstrap migrations.",
+      "Create the protected true marker atomically; explicitly enable only threetched-fs-native in the runit runsvdir. No enabled-services source default is added.",
+      "Deliberately start the optional mount and verify its exact session/local owner and release catalog.",
+      "Deliberately restart tched-router using the reviewed live-base filesystem-only candidate and received native manifest pair; opt-in refuses startup until the exact mount is ready.",
+      "Confirm matching-session read receipt and foreign-session/mutation denial through the mounted path. Owner-assigned agent executes tests."
+    ],
+    "current_core_only_activation": "Superseded by explicit approval: native local permission is approved. Preserve the exact active provider run base and activate only the reviewed scoped candidate after the combined release hold is lifted.",
+    "live_run_integration": {
+      "observed_live_run": "/etc/runit/sv/tched-router/run",
+      "observed_live_kind": "regular file",
+      "observed_live_sha256": "cc31914fd5db554aa145f86bcef95e3a16bc448a5035e8c31b1e38ae52a9dfdd",
+      "source_run_is_not_scoped_live_replacement": true,
+      "reason": "Active run script retains unrelated custom.opencode_control_plane provider/bootstrap migrations and legacy credential-file spelling; repository Go-routing source differs. Replacing the whole source run is outside filesystem activation scope.",
+      "minimal_option": [
+        "Capture the exact active regular run script as the immutable base for a separately prepared optional received service component; require its observed SHA256 to match before preparation.",
+        "Apply only the filesystem opt-in/session/environment block after set -eu, add the derived optional environment arguments to the existing env-i exec, and insert the exact allowed_roots ownership/CAS block after the existing readonly risk-profile initialization.",
+        "Preserve every provider/bootstrap/model/key/autonomy statement outside those three filesystem hunks byte-for-byte. Preserve the live runtime config except the one CAS-protected control_plane.allowed_roots vector adjustment.",
+        "Review the scoped candidate diff, include it in the Btrfs transferred read-only release, and activate it only after permission approval. No full repository tched-router/run replacement is implied.",
+        "Rollback selects the captured active run base; use the approved integration-disabled candidate first if removal of the service-owned root is required. Preserve the runtime provider/model configuration and unrelated roots."
+      ],
+      "source_hunk_references": [
+        "deploy/runit/tched-router/run:5-41",
+        "deploy/runit/tched-router/run:62",
+        "deploy/runit/tched-router/run:127-159"
+      ],
+      "prepared_candidate_status": "Exact digest-bound active base captured and filesystem-only candidate prepared; no live installation."
+    }
+  },
+  "source_preparation": {
+    "files": [
+      {
+        "path": "deploy/runit/threetched-fs-native/run",
+        "sha256": "0b39716c2c8323073be8142e79cf993c42137fc81ef1259da6bfde5f46c19ef4"
+      },
+      {
+        "path": "deploy/runit/threetched-fs-native/check",
+        "sha256": "829ce6e0c986ef2adddc13bf1f95020cecc1eb27dc786ee13bfcdbefc07e5cf7"
+      },
+      {
+        "path": "deploy/runit/threetched-fs-native/finish",
+        "sha256": "8133eca5eff854313ddfd832f22cb027c52f74e24bec71e7ad112d37efde441d"
+      },
+      {
+        "path": "deploy/runit/tched-router/run",
+        "sha256": "0658e053de0c77f4cb4d840ae47608be5d8f9cb56041d55a516dbf3e8c54ea8d"
+      }
+    ],
+    "configuration_interface_evidence": "Pinned upstream crates/zeroclaw-config/src/schema.rs RiskProfileConfig.allowed_roots: Vec<String>; existing run script uses native config get --json and atomic JSON Patch test/replace. No direct TOML writer is introduced.",
+    "uid_evidence": "id jeremy read-only returned uid=1001 gid=1001 on 2026-10-05",
+    "validation": "Source reviewed only; no tests, Cargo, live marker, mount, service, permission or configuration change performed."
+  },
+  "approval": {
+    "source": "Owner asynchronous approval response in this session",
+    "scope": "separate UID1001 human-session native mount and readonly filesystem route; preserve guest/default service list/providers/config",
+    "approved_answer": "Approve the scoped native mount and read-only route",
+    "received_at_utc": "2026-10-05T21:05:49Z"
+  },
+  "prepared_native_run": {
+    "before": {
+      "live_path": "/etc/runit/sv/tched-router/run",
+      "kind": "regular file",
+      "required_sha256": "cc31914fd5db554aa145f86bcef95e3a16bc448a5035e8c31b1e38ae52a9dfdd",
+      "captured_path": "reports/fs-core-20261005/native-run.before.sh",
+      "captured_sha256": "cc31914fd5db554aa145f86bcef95e3a16bc448a5035e8c31b1e38ae52a9dfdd"
+    },
+    "candidate": {
+      "path": "reports/fs-core-20261005/native-run.approved.sh",
+      "sha256": "fb8d716224515daef2a0329e173dc06ef6b8f5c45ef6b43fa348118b07a2aa9e"
+    },
+    "provenance": "reports/fs-core-20261005/native-run.provenance.json",
+    "exact_diff": "diff_unified in native-run.provenance.json",
+    "stage_after_full_golden": {
+      "candidate": "/opt/op-dbus/golden/sv/tched-router/run",
+      "optional_mount_service": "/opt/op-dbus/golden/sv/threetched-fs-native/{run,check,finish}",
+      "base_recovery_copy": "/opt/op-dbus/golden/share/op-dbus/native-filesystem/native-run.before.sh",
+      "provenance": "/opt/op-dbus/golden/share/op-dbus/native-filesystem/native-run.provenance.json"
+    },
+    "received_activation_links": {
+      "native_run": "/etc/runit/sv/tched-router/run -> /opt/op-dbus/current/sv/tched-router/run",
+      "native_mount_scripts": "/etc/runit/sv/threetched-fs-native/{run,check,finish} -> /opt/op-dbus/current/sv/threetched-fs-native/{run,check,finish}",
+      "explicit_mount_enable": "/etc/runit/runsvdir/default/threetched-fs-native -> /etc/runit/sv/threetched-fs-native"
+    }
+  }
+}

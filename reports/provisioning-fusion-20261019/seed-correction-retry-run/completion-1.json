@@ -1,0 +1,67 @@
+{
+  "request": 1,
+  "started": "2026-10-19T05:36:06.099392+00:00",
+  "finished": "2026-10-19T05:37:41.054548+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01c00bd2c0de8f80016ad5aca0d3d887d0915d7d4c6d9933e1",
+    "created": 1792388256,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading latest owner constraints\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/latest-owner-correction.json\"}",
+                "name": "read"
+              },
+              "id": "call_MxTVhSHO9aR7ZouGMBruk8Sg",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 126,
+      "prompt_tokens": 152656,
+      "total_tokens": 152782,
+      "completion_tokens_details": {
+        "reasoning_tokens": 15
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 52759
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T05:37:36.674510+00:00",
+  "stream_chunks": 4
+}

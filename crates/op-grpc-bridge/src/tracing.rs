@@ -1,6 +1,6 @@
 // 🟢 🛡️ Ghostbridge Trace Middleware
 // Stamps X-Ghostbridge-Genesis and X-Ghostbridge-Trace-ID on every HTTP/gRPC
-// response. Operates inside the tched_router Axum host (the gRPC/gRPC-Web side of
+// response. Operates inside the chat_router Axum host (the gRPC/gRPC-Web side of
 // The Shuttle). Mirrors the accountability loop enforced by the tonic
 // interceptor on the native-gRPC side.
 

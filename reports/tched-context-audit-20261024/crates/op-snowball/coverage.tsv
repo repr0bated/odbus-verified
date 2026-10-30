@@ -1,0 +1,14 @@
+path	inventory_lines	sequential_full_read_evidence	status
+crates/op-snowball/Cargo.toml	31	1-31	complete
+crates/op-snowball/DESIGN.md	92	1-92	complete
+crates/op-snowball/REQUIREMENTS.md	81	1-81	complete
+crates/op-snowball/SPEC.md	53	1-53	complete
+crates/op-snowball/compare-op-snowball.md	16	1-16	complete
+crates/op-snowball/src/btrfs_delta.rs	261	1-261	complete
+crates/op-snowball/src/btrfs_numa_integration.rs	504	1-504; supplemental raw 254-504	complete
+crates/op-snowball/src/footprint.rs	170	1-170	complete
+crates/op-snowball/src/lib.rs	39	1-39	complete
+crates/op-snowball/src/replication.rs	616	1-250,251-400,401-503,504-616; supplemental raw 251-400 and 401-503	complete
+crates/op-snowball/src/retention.rs	153	1-153	complete
+crates/op-snowball/src/snapshot.rs	158	1-158	complete
+crates/op-snowball/src/snowball.rs	3381	1-3381 contiguous selectors; supplemental raw 904-1203 and 2404-3381	complete

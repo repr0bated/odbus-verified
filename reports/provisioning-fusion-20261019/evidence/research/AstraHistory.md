@@ -1,0 +1,150 @@
+## Summary
+
+**Select the 02:58 Astra session as the primary post-Hermes source, plus the 02:28 seed/FUSE session and both 02:58 workers.** The later 04:18 session contains only `resume` followed by an aborted assistant response. No newer meaningful Astra session appeared in the target directory; the active `01a150af` Fusion-parent archive is deliberately excluded.
+
+The most important discovery is a **transcript-format trap**: almost all owner corrections in the 02:58 session are stored as **`custom_message/customType:"live-delegation"`**, with `attribution:"agent"`, **not** `message.role:"user"`. A user-role-only export would lose the no-loops, native-Incus, two-volumes, preserve-Hermes, and no-bootstrap corrections.
+
+The final Kiro brief is **04:05:08.876Z, message `e1aa9d0e`, physical JSONL line 1204**. It supersedes the earlier briefs that included bootstrap. It is a prompt/specification request, **not a revised implementation or evidence that Kiro executed anything**.
+
+## Files and attribution
+
+All paths below are under:
+
+`/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/`
+
+| Alias | Transcript path | Observed time bounds and attribution |
+|---|---|---|
+| **A** | `2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl` | Session created 02:58:21.842Z; substantive live exchanges 03:01–04:00; resumed user message 04:04:30.403Z; final answer 04:05:08.876Z. Title: **Inspect Incus pool and chatbot disk**. Line 3: `model:"openai-codex/gpt-6-astra"`, `resolvedModelIsFallback:false`; assistant fields `provider:"openai-codex"`, `model:"gpt-6-astra"`. |
+| **B** | `2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl` | Created 02:28:17.907Z; owner request 02:29:32.948Z; latest public response 02:51:45.378Z. Title: **🌱 SEED: Add seed systemd filesystem mounts**. Same Astra provider/model, fallback false. |
+| **C** | `2026-10-19T04-18-43-283Z_01a15262-19d3-7079-ad9d-7c81439e3e91.jsonl` | Created 04:18:43.283Z; `resume` message `6cc5fc52` at 04:18:57.909Z; assistant `37e2966e` at 04:18:59.731Z, `stopReason:"aborted"`, no public text. Same Astra model. **Exclude as substantive evidence; retain exclusion metadata.** |
+| **A-owner worker** | `2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905/ProvisionOwnerPaths.jsonl` | Session `01a1523f-de9d-7306-bfc9-e95229204460`, created 03:41:19.901Z; final stop report 03:49:06.705Z. Same Astra, fallback false. `parentSession` explicitly points to A. |
+| **A-shell worker** | `2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905/ProvisionShellConsumers.jsonl` | Session `01a1523f-dedb-7077-82e0-ae5317909547`, created 03:41:19.963Z; final stop report 03:49:59.168Z. Same Astra, fallback false. `parentSession` explicitly points to A. |
+
+Additional linked evidence:
+
+- A sibling directory contains `ProvisionOwnerPaths.md`, `ProvisionShellConsumers.md`, and `local/provision-cutover.md`. Prefer **JSONL worker histories** over their Markdown summaries.
+- `local/provision-cutover.md` is the **historical worker assignment**, explicitly preserving readonly-loop proof. It is superseded by the subsequent owner correction, not current architecture authority.
+- B sibling directory has only spilled logs, no worker JSONLs: `15.read.log`, `21.read.log`, `39.bash-original.log`, `49.read.log`.
+- B’s installation receipts were copied to **`/var/tmp/seed-dual-fuse-20261019/`**; source command at B:595 includes `install-fuse.sh`, `install-network.sh`, `network-readiness.sh`. These are historical action receipts, not approved replacement provisioning scripts.
+- The preceding 01:25 session is titled **“🪽 HERMES: Configure Hermes for YOLO mode”**, also Astra; it is not newer provisioning evidence.
+
+## Chronology and drift report
+
+References use **A/B physical JSONL lines or message IDs**. All runtime observations below are **historical receipts from these conversations**, not a fresh runtime inspection.
+
+| Original ask → interpretation/action | Owner correction | Propagation and classification |
+|---|---|---|
+| **B:5**, `aa31af33`, 02:29:32: put systemd services in the seed for both FUSE mounts. Astra inspected host processes and used one executable twice. Actual installation command **B:355**, `a0661b06`, runs `install-fuse.sh`. | **B:154**, `0edd995a`: **“ok then use same binary 2 mounts”**. **B:156**, `fb1895e9`: mirrors of the same blobs/SHM, not independent state. | Legitimate clarified implementation. B:607 reports two enabled seed units: `3tchedfs.service` → `/run/mount/3tchedfs`; `threetchedfs.service` → `/run/mount/threetched`. Same deployed `3tched-fs`; guest boot was not exercised. |
+| **B:224**, `0837bafe`: “networkmanager-r” with socket networking. Astra interpreted this as the unrelated **`rust-network-mgr` daemon**, downloaded it at B:342, invoked Cargo at B:374/389, installed it at **B:459**, and ran readiness work at B:465. | **B:476**, `7c9a0e86`, 02:43:24: owner supplied **nmrs / NetworkManager D-Bus** guidance. Astra admitted the mismatch in `b33ac04b`. | **Runtime correction propagated:** B:488 removes newly installed daemon binary, unit, enablement link, config; B:595 checks absence. Existing NetworkManager 1.54.3 and repository `nmrs = "3.5.5"` retained. This was agent-added work, not a genuine missing-daemon prerequisite. |
+| Astra additionally proposed a separate guest-facing Xray egress socket; installed guest egress units and started temporary host relay `127.0.0.1:39128` at **B:433**. | **B:507**, `57d74e51`: **“that is drift. theris only the need for the one soket”**; **B:509**, `ab577024`: **“8090”**. | **Removal propagated:** B:510 removes both guest egress units; B:595 checks their absence and listener closure. Final B:607 explicitly leaves guest Internet through sole 8090 **unverified**. A successful separate host proxy test did not satisfy the requested guest path. |
+| A initially traced the existing GPT/raw-image helpers and six `@agent_*` roots. It found old `host` links prescribed by `populate.sh`, but absent from the seed. | `beab2b8f`, 03:07:18: **“We don't need host”**. `afac3e26`, 03:10:52: prefer **soul** rather than memory; final intended six: soul/rules/shared/skills/plugins/user. | **Not propagated into layout.** Owner then directed sealing without folder reconciliation. Do not present renamed folders or removed `host` convention as implemented. |
+| A attempted requested seed sealing; first attempt encountered EBUSY due to another mount namespace. | Owner specified `seed`, then requested upgrade `@` readonly while its containing filesystem stays writable. | Historical tool receipt **A:409**, `cd48ab88`, shows seed FSID `8468cc14-a5e4-409c-96f6-1e157d470ab5`, generation 72, `SEEDING`, mounted ro. Upgrade filesystem remained rw; public `d4f4e33d` reports `@ ro=true`. **Real operation blocker resolved**, unrelated to native-volume design. |
+| A discussed preparing a 60-GiB GPT disk inside existing pool and initial/incremental receive. | **A:793**, `e9975743`, 03:26:50: two Btrfs partitions and updates before startup. **A:795**, `ddce0f2b`: **“it sent it to the root file system and we lost a bunch of data.”** `eb575b2f`: pins last. `8c0b80cd`: add the partition **to the seed**, not reverse. | Historical initial design, later revised to two volumes. Destination mount/FSID fail-closed checks are retained safety requirements—not permission to conduct new tests or an alternative architecture. Final enrollment/pinning must not be conflated with per-operation destination validation. |
+| Astra began reconstructing preparation manually. | `ef4bf9bd`, `a5cc8e27`, 03:32:29–38: read Hermes’s last conversation and existing helpers. `7b4dc234`, 03:35:23: Hermes had security work that might otherwise be missed. | Public `b6510552`, 03:36:36, acknowledges existing deployed host helpers and security workflow. **Do not replace this with loose commands or a new orchestrator.** |
+| Owner `0a595f26`, 03:37:18, explicitly said run existing helpers and fix what breaks. A first inspected the disk, then invoked the **installed** orchestrator at **A:956**, `18fe0330`. | Naming corrected at **A:969**, `40a37985`: chatbot remains **`3tchedCtlChatbot`**, logical ID0; ordinary names begin ID-1. | Actual helper result `e84b7ba8`, 03:38:31: **exit 32, `fsconfig() failed: File exists`**. A:970 kernel receipt identifies duplicate `/dev/loop1`, generation 72. A:974 retains `filesystem-prepare-intent`, false prepared/registered flags, seed loop1 and image loop2. **Genuine observed failure**, not an inferred permission or missing-package blocker. |
+| A dispatched source repairs retaining the raw-image/readonly-seed-loop model. Parent tool result `fe51282a` names both workers. | **A:1010**, `12f42465`: **“the bootstrap is done, so just delete the disk”**. Then **A:1040**, `ffd53e37`: **“Sub-volumes don't need loops”**; `3802d59d`: making loop devices is wrong; `3699b816`: use Incus instance/profile disk declaration. | **Deletion propagated:** A:1012 action verifies exact image, blank partitions, stopped native UUID; **A:1016**, `47e15770`, exit0 deletes only failed image and detaches loop2. **A:1093**, `54f08ba3`, exit0 shows only preexisting pool loop0 after seed-wrapper cleanup. **Architecture correction did not propagate into worker source**: both stopped with unbuilt/undeployed raw-image drafts. |
+| A suggested LVM to preserve block-based seeding without per-container loops. | **A:1189**, `ae887812`, 03:55:49: **“two disks instead of two partitions”**. **A:1191**, `8ebaceb8`, 03:57:18: **“logical volumes mixed in with this … has nothing to do with the containers.”** | A `6d0f0cd1` admits LVM was unsolicited. **No LVM provisioning action observed.** Native two-volume configuration remained an evaluation/specification request, not an implemented solution. |
+| Owner requested Kiro specification for the **whole existing Hermes workflow**. A’s 04:00 brief added bootstrap decision/new-identity branches. | **A:1199**, `71ff7726`, 04:00:16: **“I have it without the bootstrap, I'll say bootstrap already exists.”** | Corrected in A:1200 `5522648e`, then fully rewritten **A:1204 `e1aa9d0e`**. **Bootstrap is excluded**, not merely conditional. Missing records must be reported rather than creating/rebootstrapping an identity. |
+
+### Exact failed historical invocation
+
+At A:956, tool call
+`call_fc365c8838c14a2489bf985bc1f1a015|fc_041276a6423e31ed016ad590b621188191ac2fdc35df4d34ba`:
+
+```text
+sudo -n /usr/local/libexec/op-dbus/helpers/provision-workspace-subscriber
+  --prepare-filesystems 3tchedCtlChatbot
+  --seed-device /dev/disk/by-uuid/8468cc14-a5e4-409c-96f6-1e157d470ab5
+```
+
+Its result is `e84b7ba8`. This is evidence, **not a command to replay**.
+
+## Source state versus deployed claims
+
+### Independently observed in current source during this read-only assignment
+
+- `deploy/scripts/prepare-instance-disk.sh:13-16,47-50` now targets `/var/lib/incus/storage-pools/3tched-pool` **but still describes a sparse raw GPT image**.
+- `crates/op-grpc-bridge/src/identity_clean_provision.rs:17-18,143` uses that new pool and upgrade FSID `7ac6c955-4028-439c-80b4-c55a647abcb4`.
+- **`deploy/scripts/sync-instance-upgrade.sh:34-35,77` still uses old pool `/var/lib/3tched-leaf-pool` and historical FSID `5a88e7cd-9701-40a7-8301-ef076761886c`.**
+- **`identity_clean_provision/storage.rs:348-368` still requires loop-backed seed membership**, including `LOOP_GET_STATUS64`, error `"member is not a pinned loop mapping"`, and exactly seed+leaf membership.
+- `deploy/runit/incus-ct-chatbot/run:50-52` still checks old-pool pairing receipts and calls `/usr/local/libexec/3tched/sync-instance-upgrade`. Its **current installed/enabled status was not established**.
+
+Thus mixed source and native-volume incompatibility are real unresolved integration facts. Do not equate path edits with a native Incus-volume implementation.
+
+### Historical authoritative runtime receipts
+
+- **A:480**, `f4d0b907`: existing native container UUID **`137c61ff-435c-4300-b3c0-c605e461be13`**, created 02:10:32.820693301Z, Stopped, never used, unprivileged/nonnested, root pool **`identity-roots`**, inherited `lungs-socket-dir`.
+- **A:578**, `59a7a5ab`: authenticated inventory operation **`725c350b-ac53-46dd-ae38-246ac37b7851`**, terminal event113, contains one human row and no chatbot identity-sled row. Native container creation is **not** proof of completed Cozo adoption.
+- A `de4633d3`, 03:49:29: expanded Incus YAML still has root `pool: identity-roots`, `/dev/fuse`, tmpfs `/run`, readonly lungs directory.
+- A:1016/A:1093 prove failed-image deletion and temporary-loop removal then; they do not prove storage provisioning completed.
+- Worker final messages expressly say **unbuilt, undeployed, stopped**, no native-volume implementation.
+
+Worker source-scope evidence:
+- Owner worker `b21e344b` at 03:43:56: three Rust files changed; `63f76f59` at 03:49:06 stops.
+- Shell worker `8b57066e` at 03:45:23: five shell/boot files plus `shared-seed-provisioning.md`; `e7a483e7` explicitly says `.seed_loop` remains required; `415f30db` at 03:49:59 stops.
+
+## Architecture and latest Kiro handoff
+
+Existing chain, as identified in the final prompt:
+
+```text
+provision-workspace-subscriber
+  → prepare-instance-disk
+  → sync-instance-upgrade
+  → bind-instance-root
+  → prepare-chatbot-adoption
+  → identity_sled.provision_container / Rust native+storage proofs / Cozo commit
+
+Boot: identity-roots → restore-chatbot-root → established-storage restoration
+```
+
+The final Kiro prompt requires modifying these existing components, not another system. Its essential boundaries:
+
+- Already-bootstrapped identity; no bootstrap creation/repetition/redesign.
+- Existing `3tchedCtlChatbot`, logical ID0; preserve native UUID/session/creation records.
+- Evaluate **two native Incus-managed volumes** on existing Btrfs pool `3tched`.
+- No VM conversion, LVM provisioning, custom per-container loops, copied-root substitution, weakened proofs, or silent partition→volume rename.
+- Explicitly resolve native filesystem-volume versus seeded block-member compatibility.
+- Cover admission through creation, upgrade receive, root binding, authoritative adoption, startup, recovery/cancellation.
+- Distinguish proposed, source-implemented, installed, and deployed.
+
+**Exact latest prompt extraction:**
+
+```jq
+select(.id == "e1aa9d0e")
+| .message.content[]
+| select(.type == "text")
+| .text
+```
+
+Run against **A**, preserving source `A:1204`, message ID and timestamp. Earlier prompts `ea718cf1`, `a2fbbaef`, and especially `53eebdcb` are superseded.
+
+## Precise export format
+
+These are **JSONL version-3 session streams**, not a JSON array:
+
+- Metadata: `type:"title"`, `type:"session"`, `type:"model_change"`.
+- Standard events: `type:"message"` with envelope `id`, `parentId`, ISO `timestamp`, and nested `message`.
+- Assistant public text: `message.content[]` where `type=="text"`.
+- Tool requests: assistant `content[]` where `type=="toolCall"`; retain `id`, `name`, `arguments`.
+- Tool results: `message.role=="toolResult"`; retain `toolCallId`, `toolName`, `content`, `isError`.
+- Owner live speech in A: **`type:"custom_message", customType:"live-delegation"`**, top-level string `content`.
+- Worker/background evidence: custom messages `async-result` and `irc:incoming`.
+- Worker JSONL `session.parentSession` links to the exact parent archive.
+
+**Preserve physical file order plus `parentId`, not timestamp sorting alone.** Live messages can be appended after an assistant completion despite an earlier captured timestamp—for example owner `71ff7726` at A:1199.
+
+For packet records, use:
+
+```text
+source_path, source_line, id, parentId, timestamp,
+event_type, custom_type, recorded_attribution,
+role, provider, model,
+public_content[], tool_call_id, tool_name, is_error
+```
+
+`read`’s jq supports **`input_line_number`**, verified against A:409/480/578/1189/1199.
+
+**Privacy caution:** exclude assistant `thinking` blocks, reasoning signatures, credential-pin events, and system-prompt digests. Merely dropping `thinking` is **not** complete sanitization: some tool results embed other transcripts or configuration. Parent should redact credentials within tool arguments/results and embedded histories while retaining the full sequence and marking redactions. Do not blindly export complete `.message` or `.details`.
+
+No files, runtime state, or handoff were changed; no build/test/provisioning commands were executed in this investigation.

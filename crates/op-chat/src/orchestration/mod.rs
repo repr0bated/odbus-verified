@@ -46,7 +46,10 @@
 //! let result = pool.execute("session-123", "rust_pro", "check", json!({"path": "."})).await?;
 //!
 //! // Use workstack executor for multi-phase tasks
-//! let executor = WorkstackExecutor::new(pool.clone(), tool_executor);
+//! // The bridge supplies the authenticated session resolver and scoped tool dispatcher.
+//! let executor = WorkstackExecutor::new(pool.clone(), tool_executor)
+//!     .with_scope_verifier(verifier)
+//!     .with_event_sink(episode_sink);
 //! executor.register_all(builtin_workstacks()).await;
 //! let result = executor.execute("session-123", "full_stack_feature", variables, event_tx).await?;
 //! ```
@@ -57,6 +60,52 @@ pub mod proto;
 pub mod services;
 pub mod skills;
 pub mod workstack_executor;
+
+/// Identity resolved by the embedding control plane, never from request fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerifiedScope {
+    pub principal_id: String,
+    pub session_id: String,
+    pub session_genesis: String,
+}
+
+pub type ScopeFuture<'a, T> =
+    std::pin::Pin<Box<dyn std::future::Future<Output = OrchestrationResult<T>> + Send + 'a>>;
+
+/// The bridge must resolve an anchored session and enforce current grants.
+/// Its resolver must bind the requested session to the authenticated caller;
+/// looking up an arbitrary request-supplied session alone is insufficient.
+pub trait ScopeVerifier: Send + Sync {
+    fn verify<'a>(&'a self, session_id: &'a str) -> ScopeFuture<'a, VerifiedScope>;
+
+    /// Check the designated stronger capability for acting on another owner.
+    /// The implementation must consult the sealed operation contract and grants.
+    fn authorize_control<'a>(
+        &'a self,
+        _caller: &'a VerifiedScope,
+        _owner: &'a VerifiedScope,
+        _operation: ExecutionControl,
+    ) -> ScopeFuture<'a, ()> {
+        Box::pin(async {
+            Err(OrchestrationError::new(
+                ErrorCode::PermissionDenied,
+                "cross-scope execution control is not authorized",
+            ))
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecutionControl {
+    Cancel,
+    Rollback,
+}
+
+/// Event-driven bridge hook. The bridge owns durable episode commits and errors;
+/// notification alone is not evidence of an authoritative state commit.
+pub trait WorkstackEventSink: Send + Sync {
+    fn on_event(&self, scope: &VerifiedScope, execution_id: &str, event: &WorkstackEvent);
+}
 
 // Re-exports
 pub use error::{ErrorCode, OrchestrationError, OrchestrationResult, ResultExt, RetryInfo};

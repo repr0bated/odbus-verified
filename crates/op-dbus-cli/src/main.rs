@@ -281,7 +281,7 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
     }
 
     let normalized = plugin_name.replace('-', "_");
-    let service_name = format!("{}.{}", SERVICE_PREFIX, normalized);
+    let service_name = SERVICE_PREFIX.to_string();
     let object_path = format!("{}/{}", BASE_PATH, normalized);
 
     // Connect to system bus
@@ -411,6 +411,18 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
                 &args[0].as_str(),
             )
             .await
+    } else if args.len() == 2 {
+        // Two args — the body must serialize as a (ss) tuple, not an `as`
+        // array: a Vec<&str> and a 2-tuple have different D-Bus signatures.
+        connection
+            .call_method(
+                Some(service_name.as_str()),
+                object_path.as_str(),
+                Some(iface_name.as_str()),
+                method.name.as_str(),
+                &(args[0].as_str(), args[1].as_str()),
+            )
+            .await
     } else {
         // Multiple args — pass as tuple of strings
         let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
@@ -466,7 +478,7 @@ async fn cmd_get_property(plugin_name: &str, args: &[String]) -> Result<()> {
 
     let property_name = &args[0];
     let normalized = plugin_name.replace('-', "_");
-    let service_name = format!("{}.{}", SERVICE_PREFIX, normalized);
+    let service_name = SERVICE_PREFIX.to_string();
     let object_path = format!("{}/{}", BASE_PATH, normalized);
 
     // Introspect to find the correct interface

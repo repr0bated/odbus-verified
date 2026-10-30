@@ -1,0 +1,87 @@
+{
+  "request": 60,
+  "started": "2026-10-18T21:59:53.161575+00:00",
+  "finished": "2026-10-18T22:00:07.217240+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-030486384cabcaa8016ad5415c0ce487d0b7b21370acd0e4bc",
+    "created": 1792360796,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading removed method fallback behavior\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs:2380-2475\"}",
+                "name": "read"
+              },
+              "id": "call_r9FW9BLWv47sGiYWdw4puIG3",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading canonical provider dispatch path\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs:5565-5596\"}",
+                "name": "read"
+              },
+              "id": "call_IEXc60J35FmxrNyZSdbAKkBG",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating admission and response envelopes\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs\",\"pattern\":\"unknown method|Unknown method|method.*not found|methods.get|\\\"result\\\":|required_capability\"}",
+                "name": "grep"
+              },
+              "id": "call_pOCYbnVpL1lLYl12A3pSxZMK",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating observed provider masking\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_runtime.rs;/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/common/llm_projection.rs\",\"pattern\":\"Provider|into_state_and_fields|observe_config_and_state|mask|providers\"}",
+                "name": "grep"
+              },
+              "id": "call_RTnX7UbZlfJ6Rqg2TPzgS0ZM",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 385,
+      "prompt_tokens": 249014,
+      "total_tokens": 249399,
+      "completion_tokens_details": {
+        "reasoning_tokens": 58
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 160975
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:07.214035+00:00",
+  "stream_chunks": 10
+}

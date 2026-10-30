@@ -1,0 +1,21 @@
+{
+  "task": "tched-context-audit-20261024/op-jsonrpc",
+  "crate": "op-jsonrpc",
+  "status": "complete",
+  "files_reviewed": 7,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-jsonrpc/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-jsonrpc/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-jsonrpc/occurrences.tsv",
+  "jev_receipts": [
+    "reports/tched-context-audit-20261024/crates/op-jsonrpc/judgments.md"
+  ],
+  "limitations": [
+    "Static source audit only; runtime/catalog/deployment state unverified.",
+    "No Cargo, build, check, test, Clippy, formatting, smoke, runtime, deployment, or operation command was run per assignment.",
+    "Optional coordinator-followup.md was absent at the assigned path."
+  ],
+  "next_action": "Coordinator may aggregate the complete zero-occurrence receipt; no crate-source patch or further crate verification is indicated."
+}

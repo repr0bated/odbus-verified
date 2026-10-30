@@ -1,7 +1,7 @@
 //! Memory Agent with Cognitive Features
 //!
 //! Provides persistent memory storage with semantic search capabilities.
-//! Merged features from op-cognitive-mcp for vector embeddings and advanced search.
+//! Merged features from op-cognitive for vector embeddings and advanced search.
 
 use async_trait::async_trait;
 use simd_json::prelude::*;

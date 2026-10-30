@@ -1,59 +1,93 @@
 # Network Operations
 
-This page describes **how networking is supposed to work on the current Artix/runit host**, and points at the live inventory when the tree and the machine disagree.
+This is the authoritative documentation for the current network state.
 
-For a dated, command-verified snapshot of interfaces, Incus devices, listeners, xray SNI, and mesh forwarders, see:
+## Settled Design (2026-10-19)
+**Architecture:** One two-way WARP tunnel (`wgcf-ingress`) from the decoy to the host.
+- **Tunnel Characteristics:**
+  - Decoy terminates WireGuard (`wg-opdbus`, 10.0.0.1).
+  - Decoy seals peer identity (OIA1).
+  - fwmark selects `wgcf-ingress` for egress.
+  - a simple plain TCP port (8090) is the target.
+- **Addressing:**
+  - Public host addressing: `pub0`.
+  - Internal fabric: `ovsbr0` retains OpenFlow `10.200.0.1`.
+- **Decoy Routing:**
+  - Administrative SSH (TCP 22/2222) is DNAT'd from `10.0.0.1` to `188.68.58.237:22` via table `ip wgcf_admin_ssh`.
+- **SOP:** No inner tunnels (GRE, SSH TUN, MASQUE, Xray) are required or active.
 
-**[Host socket & network topology (live)](host-socket-topology-live.md)**
+## Recovery evidence and deployment state (2026-10-20)
+- **Interfaces:** `ovsbr0` is UP and holds `10.0.0.2/32` (as an alias). `pub0` is the public uplink.
+- **Routing:** Local routing for `10.0.0.0/24` looks up table `28061`.
+- **Verified recovery:** `10.0.0.2:8090` listens and CA-verified HTTPS `/mcp` returns `401` for an unauthenticated request. Private listeners `127.0.0.1:1883`, `127.0.0.1:8085`, and `127.0.0.1:9000` are present.
+- **Verified MQTT path:** CA-verified `/mqtt` WebSocket upgrade through `10.0.0.2:8090` returns `101` with MQTT subprotocol. The private ExHook `https://127.0.0.1:9000/` responds `200` using the existing verified CA and client certificate.
+- **Release state:** Slot A has complete readiness; bridge and EMQX pass their real health checks using approved, backed-up maintenance overrides under `/var/lib/opdbus-release/maintenance-8090-20261020`. Corrected GNU bridge and opblob were built and a corrected golden filesystem prepared.
+- **Canonical deployment blocker (superseded 2026-10-20 ~22:44Z):** Reusing inactive root 450 had failed the exact-generation checked-delete with `EPERM` and the journal was stuck at `quiescent-delete:450`. **Resolved via the canonical path:** root 450 and source 449 were deleted by the release controller during `provision-slots` reconciliation, candidate 452 was installed into slot B, and the journal is now `None`. Slot A (root 315) remains the untouched active release; no activation or cutover has occurred. Pending: owner decision on replacing the now-stale 452/451 before any new deploy. See `/tmp/dashboard-decoy-e2e-20261020/recovery-probe/` for receipts. Still outstanding for a future activation: restore the canonical EMQX check stub, then remove maintenance run overrides after successful canonical cutover.
 
-Re-verify that file against the host before topology-changing work (new proxies, prom/graf exposure, socket migrations).
+## Decoy HTTP forward and issuer origin (2026-10-20, `dashboard-decoy-e2e-20261020`)
 
-## Model in one paragraph
+- **New forward:** decoy `op-main-web.socket` binds `10.0.0.1:8080` only (no `BindToDevice`, so private mesh arrival is allowed) and activates `op-main-web.service`, which runs `systemd-socket-proxyd 10.0.0.2:8080`. INPUT allows `-i wg-opdbus -d 10.0.0.1/32 tcp dport 8080` before the wg-opdbus REJECT, live and persisted in `/etc/iptables/rules.v4`.
+- **Verified:** `http://10.0.0.1:8080/` from the host returns 200 with bytes identical to direct `10.0.0.2:8080` (root page and a referenced static asset, sha256-matched); listener is bound to `10.0.0.1` only. Port `8090` is not forwarded; no public binding added.
+- **Issuer:** `op-decoy-issuer` drop-in `browser-auth.conf` `OP_DECOY_ISSUER_ALLOWED_ORIGINS` gained `http://10.0.0.1:8080` (existing entries preserved); only that service was restarted. The issuer still listens bound to `wg-opdbus` (`10.0.0.1%wg-opdbus:51888`), so the host's mesh route to `10.0.0.1` cannot reach it — the Origin allowlist change is config-verified only; end-to-end proof requires a real WireGuard client arrival.
+- **Boot ordering corrected:** `op-main-web.socket` originally had `Before=sockets.target` while also `After=wg-quick@wg-opdbus.service`, which ran after `basic.target` — a dependency cycle identical to the one the SSH socket already fixes. Added `op-main-web.socket.d/boot-order.conf` (`DefaultDependencies=no`, `Before`/`Conflicts=shutdown.target`, `WantedBy=multi-user.target`) and re-enabled so the socket is wanted by `multi-user.target`, not `sockets.target`. Cycle corrected by configuration; no reboot has been performed, so boot-time behavior is not proven.
+- **Frontend source:** `/srv/git/3tched.com` `src/grpc/door.ts` `PAGE_CONNECTOR_ORIGINS` gained `http://10.0.0.1:8080`. The pinned UI source and prebuilt assets are now prepared in-repo (`vendor/3tched-json-render-ui` and `target/ui-artifacts/3tched-json-render-ui`) but are **not published or deployed** — the live `10.0.0.2:8080` page still serves the prior build.
 
-One OVS bridge (`ovsbr0`) carries the private fabric. Physical uplink (`eth0`) is enslaved and unaddressed; host L3 lives on OVS internal ports **`pub0`** (public) and **`svc0`** (`10.200.0.2/24`). The **xray** container is the only instance with a NIC on the bridge (`10.200.0.1`). WireGuard mesh interface **`3tched`** (`100.69.0.254/16`) is separate L3 and must never be routed via `ovsbr0`.
+## Router standalone configuration reconciled (2026-10-21, `router-wg-match-20261021`)
 
-**Shared socket fabric:** `op-grpc-bridge` dual-listens on host UDS `/run/opdbus/grpc.sock` and shared container UDS `/run/ghostbridge/container.sock` (same gRPC routes). NIC-less containers bind-mount `/run/ghostbridge`. Some services still use Incus TCP proxies / mesh `fwd-*` (migration is incremental).
+- Owner approved passwordless SSH inspection and backed-up correction on `root@10.0.0.9`. Live `wgdecoy` and persistent OpenWrt UCI already agreed: address `10.0.0.9/32`, endpoint `129.80.64.127:51821`, peer public key `3wRZU4Bebo78BXTBTdqQo/UJ54Hawe0iXN/BuHQ8G3k=`, AllowedIPs `10.0.0.0/24`, keepalive 25, MTU 1280. Recent authenticated handshakes and router-to-sled traffic establish this working path; the historical peer key in HANDOFF is not current.
+- Only `/etc/wireguard/router-decoy.conf` was stale. Regenerated it atomically from existing UCI settings, retaining the working router key without printing it. The formerly pasted standalone private key differs from the current UCI key. No key rotation, decoy change, UCI mutation, interface reload or service restart was performed.
+- Router-private backup: `/etc/wireguard/router-decoy-backup-20261021.OahMCo/{router-decoy.conf,network.uci}`. Directory mode 0700; replacement config mode 0600/root. The backup contains secrets and must remain private. Restoring the saved standalone file reverses this file-only change; do not activate it as a second tunnel.
+- Post-change evidence: exported private key derives the live router public key `4V4Wob4v8YxCcQ4nz95Jt3b/aQcAInLq+ABIvvS7/Qg=`; `uci export network` is byte-identical to the backup; `wg show` reports a handshake 74 seconds earlier; `ip route get 10.0.0.2` selects `wgdecoy`, source `10.0.0.9`; ping receives 3/3 replies; native wget of `http://10.0.0.2:8080/` exits 0. Authenticated application flow and router reboot were not exercised. No `oi` command exists on this router; native `ip` commands were used. `stat` is also absent, so permissions were verified using `ls -ld`.
 
-**OpenFlow** (`op-of-controller` on `127.0.0.1:6653`) is intentionally NORMAL/standalone today — reserved for **future tag routing**, not a current blocker for the socket fabric.
+## Panel-assisted auth diagnosis (2026-10-21, `panel-auth-20261021`)
 
-## Boot order (runit)
+- **Confirmed failure boundary:** a fresh OIA1 obtained through the actual router `10.0.0.9` WireGuard path, forwarded unchanged by the existing UI `DoorClient`, reached the same-origin connector at `http://10.0.0.2:8080`. The first normal bootstrap read, `project.get_context` / `chat.context`, returned `UNAUTHENTICATED` with raw detail `Assigned%20browser%20identity%20unavailable`. The UI client's automatic `register_key` fallback was deliberately not invoked. This was the real UI transport executed on the main host, not a capture of the user's browser.
+- **Issuer works for that path:** router route selects `wgdecoy`, source `10.0.0.9`; issuer returns HTTP200, `Access-Control-Allow-Origin: http://10.0.0.2:8080`, and an OIA1 document with a credential present and advertised door `https://10.0.0.2:8090`. No assertion/SID1/private key was logged or persisted.
+- **Source explanation, not an inner-error receipt:** `crates/op-grpc-bridge/src/interceptor.rs:529-536` maps every `validate_bound_oracle` failure to this exact public error. Lines50-108 check the assigned stored session, authored SID1, SID1 validity, principal/session binding, peer revocation and credential commitment. `oracle_assertion.rs:68-91` selects the control-plane chatbot target. Shipped run-script defaults bind the current router public key to session `b0c777e3-0955-cd8b-3d01-ca12998cae28`, principal `1262e982-14c1-44d4-0771-7ce74213211b`. Running environment was not readable; do not promote shipped defaults to a verified runtime selector.
+- **Exact subcause unresolved:** current bridge logger is explicitly `svlog`/0700 at `/var/log/op-dbus/op-grpc-bridge-release`, denied to this `jeremy` session; no privilege bypass attempted. Mounted `plugins/identity_sled` returned EIO. The generic error alone does not establish that the record is absent rather than its credential rejected. Next action is an authorized, credential-redacted inspection of the assigned session/SID1 validation state, preserving existing identity and grants.
+- **Corrected deployment evidence:** live asset `/assets/immutable/chunks/CYD_vHRA.js` includes connector origins `.1`, `.2`, and `.4:8080`. This supersedes the earlier frontend-not-deployed statement for that specific change; it does not establish the entire release's activation state.
+- **Browser-vantage limit:** main-host Chromium shows the identity retry gate and `ERR_ADDRESS_UNREACHABLE` for the issuer, consistent with its WG-only socket. That is separate from the router-backed admission failure. User Chrome relay was unavailable, so no user-browser trace is claimed.
+- **Fusion used once:** exit0; Astra Pro and Qwen accepted, three other members failed with explicit insufficient-paid-credit HTTP404s. Panel recommended separating issuer/CORS from downstream identity admission; the checks above followed that distinction. Redacted prompt, panel output, completion and admission receipts: `/tmp/panel-auth-20261021.gMktXg/`. HEAD `051a20d056afba074e21d797aa34f8947c543c5a`. No application/auth/network/grant/service/deployment changes or test-suite run.
 
-```text
-opdbus-rundirs
-  → uplink-dhcp
-  → ovsdb-server → ovs-vswitchd
-  → ovsbr0-uplink → ovsbr0-addr → ovsbr0-svc-addr
-  → op-of-controller
-  → wg-3tched
-  → op-grpc-bridge / op-web / op-cognitive-mcp
-```
+## Human identity and desktop RDP configuration (2026-10-22)
 
-Config: `/etc/op-dbus/network.conf`  
-Helpers: `/usr/local/libexec/3tched/*-up`
+- Owner explicitly chose restoring the existing human identity, not adopting the chatbot identity. OpenWrt `wgdecoy` now uses the saved human key, public key `0I5FNCuHAu62VctaNgOlJ7RgfejJpYe9Qd0VdPGesX8=`, alias `jeremy-wg-f036`, session `414fbc56-03fb-20ab-758a-bcc7a7cbdc0e`, principal `c9bdf32e-811d-2495-b688-277c9e5c4d36`. UCI and the live interface were updated. Decoy's old router peer was replaced with this key for `10.0.0.9/32` and persisted with `wg-quick save`.
+- Address `10.0.0.9/32`, endpoint `129.80.64.127:51821`, AllowedIPs `10.0.0.0/24`, and keepalive 25 remain unchanged. WireGuard still terminates on Decoy; none was installed on the VPS. The bridge's separate browser control-plane/chatbot binding was deliberately not changed to the human key.
+- Private rollback copies: router `/etc/config/network.before-human-identity-20261022T152114Z`; Decoy `/etc/wireguard/wg-opdbus.conf.before-human-identity-20261022T152114Z`. Keep these secret-bearing files private. No post-change handshake or authenticated browser reconnect was exercised.
+- Desktop Hypr-RDP 0.1.7 is configured in `/home/jeremy/.config/hypr-rdp/config.toml`, with PAM service `hypr-rdp` and listener `0.0.0.0:3389`. User unit `/home/jeremy/.config/systemd/user/hypr-rdp.service` is enabled for the graphical session and was started; service/listener and capture/input initialization were observed. This is a graphical-session service, not a claim that a usable desktop exists before login.
+- UFW admits TCP3389 from `10.0.0.0/24` only. OpenWrt's persistent `firewall.hypr_rdp_vpn` redirects WireGuard-zone traffic to `10.0.0.9:3389` to the desktop's wired `192.168.1.118:3389`, restricted to that source subnet, with no SNAT/reflection. Router firewall backup: `/etc/config/firewall.before-hypr-rdp-20261022T152351Z`.
+- Manual RDP check: from another WireGuard client use `10.0.0.9:3389`, username `jeremy`, the desktop Linux password, and TLS without NLA. Actual remote-desktop authentication, post-change VPN traversal, and reboot persistence have not been exercised.
 
-## Public path
+## Live release-reference recovery (2026-10-22)
 
-Client DNS (NextDNS) → Oracle decoy → WireGuard mesh → host `fwd-8444` → xray SNI on `10.200.0.1:8444` → host services on `10.200.0.2` (dashboard/registration → `:8080`, assistant gRPC → `:8090`, etc.). Live rules: `/dev/shm/xray_config.json` only.
+- Native deployment refused to retire previous release root315 with `EBUSY`, before unlink or cutover. The first incoming transfer was cleanly aborted through `op-release-launch abort`; active B/root454, previous A/root315, complete readiness and the original bridge supervisor selection were restored. The repaired bridge artifact was retained for a fresh canonical deployment.
+- The WARP daemon launched by `cf-mesh` uses a private mount namespace. It retained old release overlays and copies of the host FUSE mounts. Restarting it alone released the old overlays but copied those same old FUSE views again, so it did not resolve the remaining references.
+- Host FUSE daemons4521/4614 still executed from the old release overlay. Their executables were byte-identical to the committed active binary. Both host views were normally unmounted and remounted using their existing fstab adapter, preserving stores, human session and call-owner UID. No force/lazy unmount or daemon kill was used.
+- **Ordering matters:** refresh both host FUSE views first, then restart `cf-mesh` to release its copies of the old views. An old FUSE daemon can legitimately remain alive after the host unmount while WARP's private namespace retains another mount. After the ordered refresh, both old daemons exited naturally (`refresh-fuse-aliases.receipt`, exit0, 23:07:15Z).
+- Container FUSE devices194/195 were distinct from the old host devices52/53 and were not touched. No Incus/container restart, reboot, kernel/tool installation, filesystem-guard weakening or storage-service activation occurred. Operational receipts are under `/var/tmp/audit-durability-20261022.vPlgbW/`; browser/VPN reconnection remains a manual check.
 
-## Attachment modes (summary)
+## Registered human session repair (2026-10-23, `door-session-repair-20261022`)
 
-| Pattern | Used by (live) |
-| --- | --- |
-| Bridged NIC on `ovsbr0` | `xray` only |
-| Shared UDS `/run/ghostbridge/container.sock` | bridge + CT mounts (`assistant`, `qdrant`) |
-| Incus `proxy` TCP | `mail-3tched`, `netmaker`, `qdrant`, `cozo` |
-| Mesh `tcpfwd.py` (`fwd-*`) | side channels into xray/host |
-| Host UDS `/run/opdbus/grpc.sock` | host gRPC clients, session bus |
+- **Reproduced cause:** the real deployed UI obtained fresh OIA1 through the existing router WireGuard path and completed both bootstrap calls, then SID1 failed with `sealed identity has no matching provisioned container binding`. Mounted `identity_sled.get_own_identity` confirmed the existing human record intentionally has no native instance or Btrfs device. This is distinct from the old chatbot-assignment failure above.
+- **Repair:** `identity_session_binding_matches` in `crates/op-grpc-bridge/src/identity_sled_dispatch.rs` now applies the existing containerless-human rule to SID1 authentication, credential refresh and genesis-stamp validation. Any attached instance must still match exactly; service and unclassified identities cannot omit their instance. Registry/revocation, credential commitment, identity, transport, expiry and grants remain enforced. No identity, key, grant, container or storage membership was created or changed.
+- **Deployment:** one locked native GNU release build completed at 00:09:16Z; canonical `activate-golden.sh` completed at 00:15:07Z. The reviewed regression-only fixture correction followed the build and does not change production code. Durable build, activation and admission receipts: `/var/tmp/door-session-repair-20261022.q6JCuh/`. Before activation, both host FUSE views were refreshed normally, then `cf-mesh` restarted to release its retained old namespace; the old daemons exited naturally. No force/lazy unmount, daemon kill or container restart.
+- **Post-deploy UI evidence:** main-host Chromium running the deployed UI, with unchanged fresh issuer documents relayed in memory through the existing router WG interface, received HTTP200/CORS for the correct origin and three canonical CallMethod responses with gRPC status0. The credential rejection is gone. This is not a capture of the user's browser.
+- **Provider configuration restored:** the running bridge selected missing `/etc/op-dbus/model-providers.toml`; admitted read operation `b2a4f48b-95c4-4a17-87a9-ef7044062671` had unknown outcome. Mounted `tched_fs.get_receipt` was denied missing `cap.storage.3tchedfs.receipt.read@v1`; no alternate identity, database read or grant change bypassed that denial. Archive inspection found only a symlink to retired `/opt/op-dbus/current/etc/op-dbus/model-providers.toml`, not independent mutable settings. At 00:21:35Z the documented tracked `deploy/config/model-providers.toml` was installed only into the absent runtime path, root:root/0644, with identical SHA256 `a3d5a93ea3f5e092222900c00e2808967a1d31714826c137a16925164353f9e6`. Existing key references and disabled-provider settings were retained; no key contents or services changed. Rollback is removal of this newly created file only while it still matches that hash.
+- **Connected surface verified:** a fresh deployed-UI connection after restoring the prerequisite reaches `Connected`, shows the original human session's Personal namespace, loads the provider picker and reports `Ready`. This was a new bounded verification of the read path after repair, not an automatic replay of the unresolved operation. `connected-ui.json` and `connected-settings.webp` retain the evidence. No model was applied or inference submitted. Separate visible limits: Knowledge feed reconnects with socket code1006; `opencode_go` and `voyageai` refresh failures are reported with stored models retained. The browser navigation's network-idle wait timed out while the connected UI remained live; direct surface inspection and screenshot establish the connection result, not that timed-out wait. The owner-authorized targeted credential regression started only after deployment and remains pending.
 
-## Do / don't
+## Current network — owner correction (2026-10-20)
 
-- **Do** check `sudo incus config device show <name>` before assuming UDS-only or proxy-only.
-- **Do** keep mesh routes on `3tched`; strip accidental `100.69.0.0/16` via `ovsbr0`.
-- **Do** treat the [Netmaker ACL helper](host-socket-topology-live.md#break-glass-netmaker-acl-recovery) as break-glass recovery; it enables wildcard all-node traffic and bypasses the normal D-Bus path.
-- **Do not** put `10.200.0.1` on the host.
-- **Do not** point live xray at `/etc/xray/config.json`.
-- **Do not** expose Prometheus/Grafana from the netmaker container until the live topology doc is current and the path (mesh vs SNI vs loopback) is chosen.
+ONLY SERVICE INGRESS ENDPOINT: 10.0.0.2:8090. EMQX IS NOT ON 10.0.0.3.  
+ONLY SERVICE INGRESS ENDPOINT: 10.0.0.2:8090. EMQX IS NOT ON 10.0.0.3.  
+ONLY SERVICE INGRESS ENDPOINT: 10.0.0.2:8090. EMQX IS NOT ON 10.0.0.3.
 
-## Stale references
-
-Older address tables and dinit/ens3 socket-port writeups under `docs/network-address-table.md` and `docs/operations/ghostbridge-incus-ovs-architecture.md` describe previous hosts or intent. Prefer the live topology snapshot and this page for the 2026-07 Artix/runit host.
+- Door, EMQX and Qdrant are reached through that one service ingress endpoint.
+- EMQX private backends remain on `127.0.0.1`: MQTT `1883`, management API `18083`, wake WSS `8085`. The existing bridge relays `wss://10.0.0.2:8090/mqtt` to the private WSS backend. Port `8084` remains owned by threetched.
+- The bridge's private ExHook backend is `https://127.0.0.1:9000`; retain TLS peer verification and the existing client certificate. MQTT CONNECT authentication and owner-topic authorization remain enforced.
+- `ovsbr0` retains OpenFlow `10.200.0.1`. No `10.0.0.3` broker alias is required or authorized by this correction.
+- Latest native deployment readiness, `2026-10-23T00:15:07Z`: `complete b release-67847196-f07a-4538-a4ba-4d2ec2a59938`, active root460/source459, previous A/root458/source457, no transaction in progress. Canonical activation completed with its built-in service readiness gates; bridge PID5494 executable SHA256 `c8937c7dee5f6b2f8e87ec060f1adf07ef9d693016448c0fe6179a6b8a25580b` matches the retained build. Live and persisted catalog manifests both hash to `0badd9cd84b7868f25ff04c1567996edd39ea214d195c94074d5c908cd2ab988`; the existing catalog was retained, not resealed. No reboot. Registered human credential admission, provider enumeration and the connected surface succeed in the router-backed deployed-UI check above; the user's own browser reconnect and actual model inference remain unverified.
+- This document is the sole location for network operational notes. Append future changes here, keeping the current network as the final section; do not duplicate network history, topology, status or notices in `SIGNALS.md` or `HANDOFF.md`.
+- **Hackathon identity egress (2026-10-28, owner-requested):** Incus managed bridge `hackbr0` (`198.18.66.1/24`, NAT, IPv4 only, DHCP) with ACL `internet-only` (egress reject `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10`, `127.0.0.0/8`, `169.254.0.0/16`, `224.0.0.0/4`, host `188.68.58.237/32`, bridge `198.18.66.1/32`; default egress allow, ingress reject). NIC `eth0` added to `3tchedCtlChatbot` only. Verified from the guest: DNS and TCP 443 to `1.1.1.1`, `api.llama.com`, `sepolia.base.org` reachable; `10.0.0.2:8090`, `10.200.0.1`, `10.0.0.1`, `188.68.58.237:22`, `198.18.66.1:22` blocked; lungs call still `completed`. The identity reaches 3tched only through its 3tchedFS mount. Ingress endpoint unchanged (`10.0.0.2:8090` only). Remove with `incus config device remove 3tchedCtlChatbot eth0; incus network delete hackbr0; incus network acl delete internet-only`.
+- **Admin SSH path, verified 2026-10-28 (read-only):** the decoy has **no** `ip wgcf_admin_ssh` DNAT table, so `10.0.0.1:22` is the decoy's own sshd (user `ubuntu`), not this host. The working path to this host is `ssh -p 2222 jeremy@10.0.0.1` over WireGuard: a systemd socket proxy on the decoy listens on `10.0.0.1%wg-opdbus:2222` and hands off to `127.0.0.1:2222`, the reverse tunnel from this host's runit `decoy-admin-reverse-ssh` (`-R 127.0.0.1:2222:127.0.0.1:22`, connected to `10.0.0.1:22`). Tested from the decoy: `10.0.0.1:2222` returns this host's SSH banner. The "Settled Design" DNAT line above is superseded by this note. No decoy or host change was made.
+- **Hackathon OpenFlow bridge (2026-10-28, owner-approved):** isolated OVS bridge `etched0` (no ports, no address, no uplink, fail-mode `secure`) for the Hackathon subsidiary's OpenFlow development. `ovsbr0` untouched. The subsidiary principal `1262e982…` was granted `openflow.read` only; `openflow.write` stays withheld until the etched-in-schema enforcement layer refuses flow operations on any bridge other than `etched0` (capabilities are not resource-scoped). Verified as user `3tched` through the mount: `openflow.get_datapath_health {bridge: etched0}` completed (operation `20ba0734-8f2a-443a-9955-7444ccd23eb4`); `set_fail_mode` refused with `capability 'openflow.write' is not granted`. Remove: `ovs-vsctl del-br etched0`; grants backup `/etc/opdbus/capability-grants.json.bak-20261028-openflow`.
+- **Correction to the `etched0` entry above (2026-10-28):** `etched0` was created with `ovs-vsctl add-br` directly, against the D-Bus-only control-plane rule, so it has **no identity and no receipt**. It is isolated (no ports, no address, fail-mode `secure`) and left in place because no identity currently holds `ovsdb.write` and the CLI must not be used again to remove it. Required follow-up: once the owner's identity is provisioned (blocked on `op-storage` repair) and granted `ovsdb.write`, delete it with `ovsdb_bridge.delete_bridge {bridge: etched0}` and recreate it with `ovsdb_bridge.create_bridge`, recording both receipts here. The `openflow.read` grant for `1262e982…` was made through the grants file and stands.

@@ -1,0 +1,90 @@
+{
+  "task_id": "browser-chatbot-identity-20261003",
+  "agent": "Codex root",
+  "recorded_at": "2026-10-03T07:11:00Z",
+  "source_commit": "dd29aa624aea3badbfc55f64a4c092c969d19bee",
+  "source_workspace": "Dirty shared work preserved; unfinished native MCP/FUSE changes excluded only in isolated candidate",
+  "status": "deployed-browser-authentication-verified",
+  "release_id": "20261003T070801Z-browser-chatbot-dd29aa6",
+  "deployment": "Complete golden preparation, read-only Btrfs snapshot, send/receive, atomic current selection, deliberate application startup",
+  "manifest_sha256": "c335dcaf89995831361f682cf727fa5ec603879494e9d9b843c627eee56ab843",
+  "received_uuid": "5d2f69f3-ddcd-bf4f-a1f6-4ea0bc7fc5ac",
+  "source_snapshot_uuid": "270a4933-81df-034c-b41a-b9aac105d7c6",
+  "binary_checks": {
+    "received_manifest_entries_verified": 37,
+    "running_bridge_matches_received": true,
+    "bridge_sha256": "9eee84c977b1d35bacf78dc9f55ce0321031a779b458705b22f734fe76b71bfa",
+    "running_web_matches_received": true,
+    "web_sha256": "0befb7705cd7716b2c9d5b2249d7649d757f08ce7f343e9ce1a486809b4d6e0f"
+  },
+  "catalog": {
+    "generation": 476,
+    "plugin_count": 68,
+    "manifest_sha256": "0f57571a4d045b4976600e9bf7d53f27cdfd34fc3f2a195666a0041ba618b765",
+    "received_durable_shm_equal": true,
+    "normalized_schema_changes": [
+      "tched_router: additive 4.2.0 own route method"
+    ],
+    "plugin_removals": []
+  },
+  "validation": {
+    "gnu_workspace_release": "exit 0; 14m55s; gpt-6-luna medium effort",
+    "bridge_focused_tests": "42 passed; 0 failed",
+    "plugin_schema_tests": "1 passed",
+    "audit_transport_test": "1 passed",
+    "ui": "230 passed; 1 skipped; typecheck/lint/build passed",
+    "full_verify": "Previously blocked by 99 unrelated baseline formatting files; full workspace Clippy/tests not certified",
+    "earlier_diagnostic_exit_1": "Temporary stdout/stderr read after successful test worker cleanup; not test status"
+  },
+  "runtime": {
+    "application_services_ready": [
+      "opdbus-grants",
+      "op-grpc-bridge",
+      "op-web",
+      "emqx"
+    ],
+    "page": "http://10.0.0.4:8080/",
+    "page_http": 200,
+    "page_matches_received": true,
+    "old_conditional_request_http": 200,
+    "web_health": "healthy",
+    "trusted_tls_door_anonymous_http": 401,
+    "anonymous_same_origin_rpc": "HTTP 200; gRPC 16; Missing Oracle identity assertion"
+  },
+  "actual_browser": {
+    "transport": "Isolated browser through actual owner router 10.0.0.9; no user browser settings changed",
+    "chat_page_loaded": true,
+    "mode": "control_plane",
+    "session_id": "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+    "receiver_identity_mode": "bound-oracle",
+    "oia1_present": true,
+    "sid1_absent": true,
+    "reload_same_session_verified": true,
+    "renewed_assertions_distinct": true,
+    "credential_values_exported": false,
+    "owned_browser_and_both_tunnels_closed": true
+  },
+  "scope": {
+    "new_grants_applied": false,
+    "network_cleanup_applied": false,
+    "network_services_restarted": false,
+    "native_router_restarted": false,
+    "native_model_configuration_changed": false,
+    "identity_credentials_or_keys_changed": false
+  },
+  "limitations": [
+    "Control Plane model read remains denied because the new own-route capability is deferred and ungranted",
+    "No paid native Chat probe was sent; known Zen versus Go route mismatch remains",
+    "Projects and optional bound-lane knowledge updates are unavailable",
+    "Autonomous native filesystem self-validation and network consolidation remain deferred"
+  ],
+  "evidence_root": "/var/tmp/opdbus-browser-release-20261003",
+  "release_build_log": "/var/tmp/opdbus-browser-workspace-release-final-20261003.log",
+  "recovery": "/opt/op-dbus/recovery/activation-20261003T070801Z-browser-chatbot-dd29aa6",
+  "owner_browser_report": {
+    "recorded_at": "2026-10-03T07:47:04Z",
+    "message": "woorks!",
+    "status": "owner-reports-browser-working",
+    "capability_change_authorized": false
+  }
+}

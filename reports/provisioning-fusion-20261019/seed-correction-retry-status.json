@@ -1,0 +1,17 @@
+{
+  "task":"provisioning-fusion-20261019",
+  "owner_request":"try now",
+  "started":"2026-10-19T05:36:04.668407+00:00",
+  "pid":10703,
+  "job":"bg_4",
+  "receipt":"seed-correction-retry-run/receipt.json",
+  "prompt":"CASE-seed-correction.md",
+  "status":"Correction acknowledged by responding Astra Pro and Salad Qwen members; complete diagnostic review remains pending.",
+  "panel_acknowledged":true,
+  "response_evidence":["seed-correction-retry-run/panel-1.json","seed-correction-retry-run/panel-5.json"],
+  "successful_members":["astra-pro","qwen-3-6-35b-a3b"],
+  "failed_members":[{"model":"opus-5-5","error":"NotFoundError"},{"model":"kimi-k3","error":"NotFoundError"},{"model":"glm-5-3","error":"NotFoundError"}],
+  "rate_limit_cleared":"Prior429 did not prevent these successful responses; no claim about future quota availability.",
+  "preserve":"Existing evidence and completed semantic reviews; exact seed-backing/btrfs device add correction; JEV as judge only; no-host-loops constraint.",
+  "scope":"No source repair, provisioning or storage changes."
+}

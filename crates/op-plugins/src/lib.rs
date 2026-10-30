@@ -54,7 +54,7 @@ pub use state::{ChangeOperation, DesiredState, StateChange, ValidationResult};
 // "The plugin is the schema." The schema *type* physically lives in the lowest
 // crate (op-state-store, zero workspace deps) to avoid dependency cycles, but
 // op-plugins is the single authoritative *import surface*: every consumer
-// (cognitive-mcp, projection, web, gRPC) imports schema types from `op_plugins`.
+// (cognitive, projection, web, gRPC) imports schema types from `op_plugins`.
 // op-state-store is retired as a public schema surface — code that still (or
 // mistakenly) reaches for the old path can resolve through this alias instead.
 pub use op_state_store::plugin_schema::{
@@ -62,12 +62,12 @@ pub use op_state_store::plugin_schema::{
 };
 pub use op_state_store::{Constraint, FieldSchema, FieldType, PluginSchema, ReadOnlyCondition};
 
-/// Canonical input/contract schema for the cognitive-mcp gateway, including the
+/// Canonical input/contract schema for the cognitive gateway, including the
 /// `code_search` / `code_context` / `code_index` tool inputs (each carrying its
 /// OSCAL subid). This is the authoritative accessor; tools derive their
 /// `input_schema()` from this via `PluginSchema::field_input_schema(...)`.
-pub fn cognitive_mcp_plugin_schema() -> PluginSchema {
-    state_plugins::cognitive_mcp::cognitive_mcp_schema()
+pub fn cognitive_plugin_schema() -> PluginSchema {
+    state_plugins::cognitive::cognitive_schema()
 }
 
 /// Deterministically materialize the initial D-Bus projection state from a
@@ -93,13 +93,13 @@ pub mod prelude {
     pub use super::dynamic_loading::DynamicLoadingPlugin;
     pub use super::state_plugins::{
         AdcPlugin, AgentConfigPlugin, AntigravityChatPlugin, AntigravityPlugin, BtrfsPlugin,
-        CognitiveMcpPlugin, ConfigPlugin, CronPlugin, CtlPlaneChatbotPlugin, DnsResolverPlugin,
+        CognitivePlugin, ConfigPlugin, CronPlugin, CtlPlaneChatbotPlugin, DnsResolverPlugin,
         EndpointPlugin, ExecutionResult, Fail2banPlugin, FreeDesktopPlugin, FullSystemPlugin,
         GcloudAdcPlugin, HardwarePlugin, IncusPlugin, KeypairPlugin, KeyringPlugin, Login1Plugin,
         MailServerPlugin, McpStatePlugin, MemoryPlugin, NetStatePlugin, OpenFlowObfuscationPlugin,
         OpenFlowPlugin, OvsBridgePlugin, PackageKitPlugin, PciDeclPlugin, ProcfsPlugin,
         ProxyServerPlugin, RovsCommandsPlugin, RtnetlinkPlugin, SchemaRendererPlugin,
-        ServicePlugin, SessDeclPlugin, SoftwarePlugin, TchedRouterPlugin, ToolDefinition,
+        ServicePlugin, SessDeclPlugin, SoftwarePlugin, ChatRouterPlugin, ToolDefinition,
         UnixSocketPlugin, UsersPlugin, WebUiPlugin, WgOpdbusPlugin, WireGuardPlugin,
         WorkflowsPlugin,
     };

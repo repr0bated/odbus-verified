@@ -1,0 +1,19 @@
+{
+  "operations": [
+    {
+      "op": "test",
+      "path": "/mcp/servers/opdbus_compact/name",
+      "value": "opdbus_compact"
+    },
+    {
+      "op": "test",
+      "path": "/mcp/servers/opdbus_compact/url",
+      "value": "https://10.0.0.2:8090/mcp?opdbus_mode=compact"
+    },
+    {
+      "op": "replace",
+      "path": "/mcp/servers/opdbus_compact/url",
+      "value": "https://dashboard.ghostbridge.tech:8090/mcp?opdbus_mode=compact"
+    }
+  ]
+}

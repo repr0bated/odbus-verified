@@ -32,9 +32,13 @@ pub struct SecurityConfig {
     /// Profile category
     pub category: ProfileCategory,
 
-    /// Commands allowed for execution
+    /// Commands allowed for execution. Ignored when `allow_all_commands` is set.
     #[serde(default)]
     pub allowed_commands: HashSet<String>,
+
+    /// The shell agent may run any command. Other agents stay on `allowed_commands`.
+    #[serde(default)]
+    pub allow_all_commands: bool,
 
     /// Paths allowed for reading
     #[serde(default)]
@@ -99,6 +103,7 @@ impl Default for SecurityConfig {
         Self {
             category: ProfileCategory::ReadOnlyAnalysis,
             allowed_commands: HashSet::new(),
+            allow_all_commands: false,
             allowed_read_paths: vec![PathBuf::from("/home"), PathBuf::from("/tmp")],
             allowed_write_paths: vec![],
             forbidden_paths: vec![
@@ -184,6 +189,7 @@ impl SecurityProfile {
             config: SecurityConfig {
                 category: ProfileCategory::CodeExecution,
                 allowed_commands: commands.into_iter().map(|s| s.to_string()).collect(),
+                allow_all_commands: false,
                 allowed_read_paths: vec![
                     PathBuf::from("/home"),
                     PathBuf::from("/tmp"),
@@ -266,7 +272,7 @@ impl SecurityProfile {
 
     /// Check if a command is allowed
     pub fn is_command_allowed(&self, cmd: &str) -> bool {
-        self.config.allowed_commands.contains(cmd)
+        self.config.allow_all_commands || self.config.allowed_commands.contains(cmd)
     }
 
     /// Check if a tool is allowed

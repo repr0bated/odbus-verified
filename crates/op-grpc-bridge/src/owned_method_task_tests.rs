@@ -198,9 +198,9 @@ async fn abandoned_failure_remains_observable_without_private_diagnostics() {
 #[tokio::test]
 async fn nested_admitted_tasks_complete_without_a_global_execution_lock() {
     let result = tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        spawn(operation("large_language_model", "get_config"), async {
-            let target = spawn(operation("tched_router", "GetState"), async {
-                Ok(serde_json::json!({"selected_model":"fixture"}))
+        spawn(operation("large_language_model", "stream_generate"), async {
+            let target = spawn(operation("chat_router", "start_generation"), async {
+                Ok(serde_json::json!({"job_id":"fixture"}))
             })
             .await??;
             Ok(serde_json::json!({"result":target}))
@@ -211,5 +211,5 @@ async fn nested_admitted_tasks_complete_without_a_global_execution_lock() {
     })
     .await
     .unwrap();
-    assert_eq!(result["result"]["selected_model"], "fixture");
+    assert_eq!(result["result"]["job_id"], "fixture");
 }

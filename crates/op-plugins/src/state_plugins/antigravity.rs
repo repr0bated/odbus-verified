@@ -3,7 +3,7 @@
 //! Publishes the proven native credential, safety policy, provider route and
 //! local response-usage surface through PluginSchema. Gemini model catalog
 //! ownership lives on the delegated `llm_plugin` (default
-//! `large_language_model`) — this plugin only holds `llm_plugin` /
+//! `chat_router`) — this plugin only holds `llm_plugin` /
 //! `provider_route` / `selected_model` references.
 
 use anyhow::Result;
@@ -636,7 +636,7 @@ pub struct Endpoints {
 }
 
 fn default_llm_plugin() -> String {
-    "large_language_model".to_string()
+    "chat_router".to_string()
 }
 
 fn default_provider_route() -> String {
@@ -657,11 +657,11 @@ pub struct AntigravityState {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "mut.service.antigravity.auth@v1"))]
     pub auth: AntigravityAuthStatus,
-    /// Plugin that owns the model catalog (default large_language_model).
+    /// Plugin that owns the model catalog (default chat_router).
     #[serde(default = "default_llm_plugin")]
     #[schemars(
-        description = "Catalog plugin Antigravity delegates to for Gemini models (default large_language_model).",
-        example = &"large_language_model",
+        description = "Catalog plugin Antigravity delegates to for Gemini models (default chat_router).",
+        example = &"chat_router",
         extend("x-oscal-subid" = "mut.software.antigravity.llm-plugin@v1")
     )]
     pub llm_plugin: String,
@@ -786,7 +786,7 @@ pub(crate) fn antigravity_schema() -> PluginSchema {
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "antigravity",
         "3.0.0",
-        "Google Antigravity provider — sanitized native auth, applied safety policy, and local response usage; model catalog delegated to large_language_model",
+        "Google Antigravity provider — sanitized native auth, applied safety policy, and local response usage; model catalog delegated to chat_router",
         &root,
     );
     if let Ok(state) = simd_json::serde::to_owned_value(AntigravityPlugin::current_state()) {
@@ -809,7 +809,7 @@ pub(crate) fn antigravity_schema() -> PluginSchema {
     }
 
     // NOTE: no `chat` / `list_models` here by design — catalog and chat live on
-    // llm_plugin (default large_language_model) via provider_route.
+    // llm_plugin (default chat_router) via provider_route.
     schema.methods.insert(
         "get_auth_status".to_string(),
         method_decl_from_schemars_with_output::<

@@ -1,0 +1,116 @@
+{
+  "task": "provisioning-fusion-20261019",
+  "role": "decision judge, not router",
+  "batch_id": "jdgb-15abe9bb5bbfe19c",
+  "status": {
+    "id": "jdgb-15abe9bb5bbfe19c",
+    "intent": "Judging provisioning drift and evidence sufficiency",
+    "total": 6,
+    "done": 6,
+    "failed": 0,
+    "cost": 0.00016023000000000003,
+    "running": false,
+    "model": "typesafe/jev-1.13.0",
+    "elapsedS": 59.7
+  },
+  "inputs": "jev-evidence-inputs.json",
+  "answers": {
+    "subvolume_feasibility": {
+      "assessment": {
+        "type": "choice",
+        "choice": "not_established",
+        "confidence": 0.61,
+        "probabilities": {
+          "supported": 0,
+          "contradicted": 0.26,
+          "not_established": 0.74
+        }
+      },
+      "ready_to_assert_current_completion": {
+        "type": "bool",
+        "bool": 0.03
+      }
+    },
+    "hermes_audit_gap": {
+      "assessment": {
+        "type": "choice",
+        "choice": "supported",
+        "confidence": 0.76,
+        "probabilities": {
+          "supported": 0.84,
+          "contradicted": 0,
+          "not_established": 0.16
+        }
+      },
+      "ready_to_assert_current_completion": {
+        "type": "bool",
+        "bool": 0.02
+      }
+    },
+    "preference_not_silent_semantic_change": {
+      "assessment": {
+        "type": "choice",
+        "choice": "contradicted",
+        "confidence": 0.55,
+        "probabilities": {
+          "supported": 0,
+          "contradicted": 0.7,
+          "not_established": 0.3
+        }
+      },
+      "ready_to_assert_current_completion": {
+        "type": "bool",
+        "bool": 0.04
+      }
+    },
+    "notification_not_command_success": {
+      "assessment": {
+        "type": "choice",
+        "choice": "contradicted",
+        "confidence": 1,
+        "probabilities": {
+          "supported": 0,
+          "contradicted": 1,
+          "not_established": 0
+        }
+      },
+      "ready_to_assert_current_completion": {
+        "type": "bool",
+        "bool": 0.02
+      }
+    },
+    "native_creation_not_completion": {
+      "assessment": {
+        "type": "choice",
+        "choice": "contradicted",
+        "confidence": 0.98,
+        "probabilities": {
+          "supported": 0,
+          "contradicted": 0.99,
+          "not_established": 0.01
+        }
+      },
+      "ready_to_assert_current_completion": {
+        "type": "bool",
+        "bool": 0.02
+      }
+    },
+    "cozo_mapping_not_kernel_proof": {
+      "assessment": {
+        "type": "choice",
+        "choice": "not_established",
+        "confidence": 0.61,
+        "probabilities": {
+          "supported": 0.06,
+          "contradicted": 0.2,
+          "not_established": 0.74
+        }
+      },
+      "ready_to_assert_current_completion": {
+        "type": "bool",
+        "bool": 0.1
+      }
+    }
+  },
+  "limitations": "These judgments assess supplied historical evidence and owner-constraint fit. They do not establish current provisioning completion or a feasible replacement storage design."
+}

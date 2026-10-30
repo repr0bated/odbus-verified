@@ -9,6 +9,8 @@ use crate::{
     sealed_schema_reader::{blob_catalog_dir_from_env, read_manifest_pinned_schema_document},
 };
 use anyhow::{Context, Result};
+use op_llm::chat::ChatManager;
+use op_plugins::state_plugins::chat_router::{ChatInput, ChatMessage, ChatOutput, ChatRouterState};
 use op_cozo_store::{EpisodeEmbeddingRecord, EpisodeScope, ScopedEpisodeRecord};
 use op_plugins::state_plugins::{
     ctl_plane_chatbot::{InputType, OutputDtype, ReasoningEpisode},
@@ -500,7 +502,7 @@ async fn dispatch_owned(
             let verified_session =
                 project_dispatch::verified_session(engine, actor, session, genesis).await?;
             let target_args = serde_json::to_string(&target_input)?;
-            let origin = crate::tched_router_admission::FacadeOrigin {
+            let origin = crate::chat_router_admission::FacadeOrigin {
                 plugin: PLUGIN,
                 method: method.to_owned(),
                 target_plugin: EMBEDDING_PLUGIN,
@@ -658,7 +660,7 @@ async fn dispatch_owned(
             let verified_session =
                 project_dispatch::verified_session(engine, actor, session, genesis).await?;
             let target_args = serde_json::to_string(&target_input)?;
-            let origin = crate::tched_router_admission::FacadeOrigin {
+            let origin = crate::chat_router_admission::FacadeOrigin {
                 plugin: PLUGIN,
                 method: method.to_owned(),
                 target_plugin: EMBEDDING_PLUGIN,
@@ -736,6 +738,38 @@ async fn dispatch_owned(
             })?;
             revalidate_method_boundary(engine, method, actor, session, genesis, admitted, &pin)
                 .await?;
+            validate_output(admitted, method, &output)?;
+            Ok(output)
+        }
+        "Chat" => {
+            let args = serde_json::from_value::<ChatInput>(args.clone())
+                .context("invalid chat_router.Chat arguments")?;
+            let chat_manager = engine.chat_manager();
+            let state: ChatRouterState = engine
+                .projected_state("chat_router")
+                .await?
+                .ok_or_else(|| anyhow::anyhow!("chat_router state is empty"))?;
+            let output = crate::chat_service::dispatch_schema_chat(
+                chat_manager,
+                &state,
+                args,
+            )
+            .await?;
+            let scope_for_wake = scope.clone();
+            tokio::spawn(async move {
+                let args = serde_json::json!({
+                    "owner_key": crate::wake_doorbell::owner_key(&scope_for_wake),
+                    "seq": 1,
+                });
+                if let Err(error) =
+                    op_plugins::state_plugins::emqx::dispatch_emqx_method("publish_wake", &args).await
+                {
+                    tracing::debug!(%error, "chatbot wake not published");
+                }
+            });
+            revalidate_method_boundary(engine, method, actor, session, genesis, admitted, &pin)
+                .await?;
+            let output = serde_json::to_value(output)?;
             validate_output(admitted, method, &output)?;
             Ok(output)
         }

@@ -1,0 +1,64 @@
+{
+  "request": 237,
+  "started": "2026-10-19T04:43:28.906849+00:00",
+  "finished": "2026-10-19T04:43:48.953008+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0104b5505a9fe0b1016ad59ffa71b087d08c6828ac4357047e",
+    "created": 1792385018,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"code\":\"def finish_packet(item):\\n    meta, handle = item\\n    pid = meta['packet_id']\\n    try:\\n        raw = handle.wait()\\n        if not isinstance(raw,str): raw=json.dumps(raw,ensure_ascii=False)\\n        raw_path=outdir/f'{pid}.txt'\\n        write(str(raw_path),raw)\\n        text=raw.strip()\\n        if text.startswith('```'):\\n            text='\\\\n'.join(text.splitlines()[1:-1])\\n        try:\\n            obj=json.loads(text)\\n            write(str(outdir/f'{pid}.json'),json.dumps(obj,indent=2,ensure_ascii=False))\\n            status='success' if obj.get('fully_reviewed') is True and obj.get('packet_id')==pid else 'review_incomplete'\\n            result_path=str(outdir/f'{pid}.json')\\n            error=None if status=='success' else 'Completion did not affirm fully_reviewed with matching packet_id'\\n        except Exception as e:\\n            status='parse_failure'; error=str(e); result_path=str(raw_path)\\n        receipt={**meta,'status':status,'result_path':result_path,'raw_output_path':str(raw_path),'raw_output_bytes':len(raw.encode()),'raw_output_sha256':sha(raw.encode()),'failure':error}\\n    except Exception as e:\\n        receipt={**meta,'status':'completion_failure','failure':str(e)}\\n        write(str(outdir/f'{pid}.txt'),str(e))\\n    receipts.append(receipt)\\n    return {k:receipt.get(k) for k in ['packet_id','status','raw_output_bytes','failure']}\\nprint(finish_packet(pending.pop(0)))\\npending.append(start_packet(192))\",\"title\":\"Saving first packet review\",\"timeout\":300}",
+                "name": "eval"
+              },
+              "id": "call_GF02Gv7k4l68D83mFVBr1tbP",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1043,
+      "prompt_tokens": 94345,
+      "total_tokens": 95388,
+      "completion_tokens_details": {
+        "reasoning_tokens": 195
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 86464
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:48.951667+00:00",
+  "stream_chunks": 4
+}

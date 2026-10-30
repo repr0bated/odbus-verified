@@ -1,11 +1,11 @@
 [Unit]
 Description=WireGuard-only SSH access to the main host
-Requires=wg-quick@wg0.service
-After=wg-quick@wg0.service
+Requires=wg-quick@wg-opdbus.service
+After=wg-quick@wg-opdbus.service
 
 [Socket]
 ListenStream=10.0.0.1:2222
-BindToDevice=wg0
+BindToDevice=wg-opdbus
 NoDelay=true
 KeepAlive=true
 

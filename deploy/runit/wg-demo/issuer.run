@@ -1,0 +1,11 @@
+#!/bin/sh
+# Base-network issuer: retain the existing OIA1 signing authority and admission.
+set -eu
+exec 2>&1
+/usr/bin/sv -w 30 check /etc/sv/wg-demo
+exec /usr/local/bin/op-decoy-issuer \
+    --listen 10.0.0.1:51888 \
+    --iface wg-opdbus \
+    --key /etc/opdbus/decoy-signing-key \
+    --door https://10.0.0.1:8090 \
+    --allow-origin https://10.0.0.4,http://10.0.0.4:8080,http://10.0.0.2:8080

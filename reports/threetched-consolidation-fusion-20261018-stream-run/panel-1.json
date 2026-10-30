@@ -1,0 +1,184 @@
+{
+  "status": "ok",
+  "query": "Implement threetched consolidation in /srv/git/odbus-verified per owner brief. Mandatory skills precede source analysis. Existing source deleted tched_plugins (6) and tched_skills (12) wrappers; finish native-derived mapping, capabilities, callers and mount selection, then further proven overlaps without speculative contracts. All 43 tched_router methods need dispositions. Preserve SID1/OIA1 admission, exact capability alternatives, private Cozo state, MutationEngine commits and cancellation receipts. OD-122 persona/config and OD-123 native memory deferred. Authorized GNU workspace release build and new isolated opblob catalog only; no tests, smoke fixtures, clippy, format, activation, host install, service/network/storage/grant changes. Advise key implementation risks and evidence requirements, not invented code or endpoints. Current files and mounted declarations still need inspection; panel suggestions are advisory.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Recommendation:** complete the 18-command wrapper cutover first, then select further overlap only where native contracts and caller semantics are established. Deleting declarations without preserving admission and result handling is not a complete cutover.\n\nThis is advisory deliberation. Current source and mounted declarations have not been independently inspected here; the brief\u2019s counts and paths remain dated evidence. No implementation, JEV classification, build or seal receipt is claimed.\n\n## Direct-wrapper cutover\n\nProduce one disposition row for each native target:\n\n- `plugin.install/list/migrate/info/remove/search`\n- `skills.add/audit/edit/install/list/remove/test`\n- `skills.bundle.add/list/remove/rename/show`\n\nEach row needs:\n\n| Evidence | Required comparison |\n|---|---|\n| Declaration | Old method \u2192 actual captured canonical method key; do not infer naming from command syntax |\n| Arguments | Positional arguments, flags, defaults, optional values and working-directory assumptions |\n| Results | Old typed result versus native `{stdout, stderr, exit}`; identify changed consumer behavior |\n| Admission | Exact former capability alternatives versus canonical admission requirements |\n| Callers | Bridge, toolsets, UI, policy references and release inputs |\n| State | Any former committed-state updates or receipt obligations beyond command execution |\n| Disposition | Migrated or deliberately retired; no unresolved silent fallback |\n\n**Principal risk:** all captured CLI operations reportedly declare mutation/non-idempotent semantics. A former read operation and a hashed native CLI capability are not automatically interchangeable. Preserve operation-specific authorization without making every native command accessible to holders of an unrelated legacy capability. Any required grant change remains outside this authorization.\n\nThe existing source deletions should be preserved. Remove remaining obsolete references and align `mount-3tchedfs` selection with the resulting catalog. **Do not change live mount wiring** under this task.\n\n## Further consolidation: recommended dependency order\n\n1. **Config:** use the native-owned export for selected property/list/patch/init/migrate contracts. Preserve masking, partial-update semantics and authoritative observations.\n2. **Provider/model selection:** reconcile config-backed selection separately from caller-specific filtering and local catalog bindings.\n3. **Cron:** compare each selected operation with its verified native contract. CLI actions do not establish HTTP run/history result shapes.\n4. **Generation:** migrate only after native frame contracts and local job ownership are separated. This carries the highest state/cancellation risk.\n5. **Cognitive:** retain scoped context, Cozo ownership and admission. OD-122/123 are deferred, not justification for replacing provider-only consultations with tool-enabled agents.\n\nAn OpenAPI export must be inspected for actual coverage. Config sections are not endpoints; native CLI `agent` is not evidence for `threetched.Chat`.\n\n## Required disposition ledger for all 43 router methods\n\nThese are **recommended classifications to resolve against source**, not implemented dispositions:\n\n| Methods | Recommended treatment |\n|---|---|\n| `GetConfig`, `GetConfigSchema`, `GetMcpConfig`, `PatchConfig`; `config_get/init/list/migrate/patch/set`; `get/init/list/patch/set` \u2014 **15** | Migrate established native behavior through its exported contract. Remove duplicate declarations and aliases with caller migration. Record any unavailable masking or observation behavior explicitly. |\n| `GetState`, `GetProviderCatalog`, `GetModelRoutes`, `GetRouter`, `GetStructuredOutput`, `GetTools`, `ListModels`, `ListProviders`, `ListUiSurfaces` \u2014 **9** | Separate native inventory/config from genuine local projections. Preserve provider selectability filtering and native tool metadata. Retain only documented integration responsibilities; defer unsupported projections explicitly. |\n| `SetModel`, `SetProvider`, `SetSelection`; five role setters for Cozo retrieval, obfuscation, OVS routing, Qdrant retrieval and vectorization \u2014 **8** | Compare native selection/config semantics and exact authorization. Migrate demonstrated equivalents; defer unestablished role configuration under OD-122 where applicable. |\n| `ResolveRoute` \u2014 **1** | Require native route-resolution evidence before migrating `gemma_brain.route` or other callers. |\n| `apply_catalog_model_binding`, `resolve_catalog_model_binding`, `get_own_agent_route` \u2014 **3** | Retain proven local catalog/caller-scoping responsibilities; consume canonical native data rather than author duplicate native operations. |\n| `Chat` \u2014 **1** | Candidate for native-derived provider-only generation, not CLI-agent substitution. Requires exported input/output/error contract. |\n| `start_generation`, `cancel_generation`, `get_generation_job`, `get_generation_jobs`, `delete_generation_job`, `recover_generation_jobs` \u2014 **6** | Preserve local job lifecycle and committed-state responsibilities. Underlying inference may migrate independently; do not describe these methods as native frames. |\n\nTotal: **43**. A group-level decision does not replace the final per-method ledger.\n\n## Load-bearing risks\n\n- **Identity:** retain SID1/OIA1 admission and original caller identity through every delegated operation.\n- **Private state:** schema consolidation does not authorize moving principal/session partitions or Cozo data.\n- **Publication:** backend acceptance followed by SHM publication failure must not become generic success or an automatically retried mutation.\n- **Cancellation:** distinguish cancellation requested, worker stopped and remote provider effects unknown. Disconnect does not prove rollback.\n- **Consumers:** the eight LLM facade methods target router operations, not established native equivalents. Trace all affected UI modules, not just `door-chat-adapter.ts`.\n- **Release consistency:** native binary, manifest, capture provenance, generated views, isolated catalog and affected pinned UI input must agree.\n\n## Evidence required at the delivery boundary\n\n1. Current commit, ownership claims and exact changed files, separating inherited changes from this implementation.\n2. Completed 18-command mapping and 43-method disposition ledger.\n3. Actual JEV `judge` receipt\u2014not a fabricated classification or model override.\n4. Execution-worker receipt for:\n   ```sh\n   CXXFLAGS=\"-include cstdint\" cargo build --workspace --release --target x86_64-unknown-linux-gnu\n   ```\n   Check Cargo/rustc/Clippy occupancy before starting. If occupied, record the owner/blocker; do not launch another build.\n5. Fresh GNU-target `opblob seal-plugins <new-catalog-dir>` receipt with the current schema-shaping environment and verified native provenance.\n6. Exact added/changed/removed catalog IDs against an identified baseline, with recoverable prior inputs. Do not assume only the two wrapper IDs changed.\n7. Deployment handoff covering matching release inputs, host mount-selection changes and rollback implications.\n\nReport **implemented / built / sealed / deployed / tested** separately. Tests and smoke fixtures are not authorized; deployment and live mount changes are not authorized. Preserve the guard/storage hold. A successful build and isolated seal establish release preparation\u2014not authenticated operation success or complete consolidation."
+    },
+    {
+      "model": "opus-5-5",
+      "content": "# Advisory: threetched consolidation risks and evidence gates\n\nScope: advisory only. I ran no tools and observed no current files. Each item below states a risk to check or evidence to collect. None is a claim about current state.\n\n## 1. Preconditions before any edit\n\n- **Claim and reconcile.** Read `HANDOFF.md` *Active work*, recent `SIGNALS.md` rows, and OD-121/122/123 in `WISHLIST.md`. Claim only implementation files. The removal of `tched_plugins` and `tched_skills` is existing shared work, so do not restore or re-delete it. First find every reference left behind:\n  - module declarations in `state_plugins/mod.rs`\n  - `inventory::submit!` registrations\n  - dispatch arms in `mutation_engine.rs`\n  - the hash helpers in `threetched.rs`\n  - bridge build-time generated contracts\n- **Use mounted declarations as the contract baseline.** Read these before editing:\n  - `/run/mounts/threetched/view.json`\n  - each `plugins/<id>/schema.json`\n  - the corresponding `/run/mounts/3tchedFS` entries\n\n  If a mount is absent or denied, record it as a blocker. Do not read SHM directly or call D-Bus as a substitute. Record the generation and catalog hash you observed, because the brief's generation-74 hash may be stale.\n- **Run the JEV judge receipt before implementation.** It classifies the task. It is not a sixth panel member.\n\n## 2. Direct-wrapper slice (18 methods): main risks\n\n| Risk | Why it matters | Evidence needed |\n|---|---|---|\n| **Capability mismatch** | Old typed caps (e.g. a read-only `list`/`info`) may map to native CLI methods that all declare `mutation`, `idempotent=false`. Moving a read caller to a mutation capability broadens authority. | A table with one row per method: old method \u2192 native method \u2192 exact old capability alternatives \u2192 native capability. Flag each row where read becomes mutation. Do not change grants to compensate. If a caller loses access, record the denial as a limitation. |\n| **Result shape change** | Typed outputs become a `{stdout, stderr, exit}` envelope. Callers that parse fields break silently. | Trace each caller: bridge, toolsets, `src/chat/*.ts` and `src/grpc/door.ts` in the UI, and generated TS. Classify each as updated, retired, or not a caller. |\n| **Non-zero exit treated as success** | An envelope with `exit != 0` must surface as a gRPC status or MutationError, not as a success payload. | Point to the dispatch path that maps the native exit code to an error. If that path is missing, it is in scope for any operation you deliver. |\n| **Mount adapter disagreement** | `mount-3tchedfs:35` hardcodes four IDs. If the catalog drops two of them, the projection shows absent plugins or fails. | Make the adapter edit in the same change as the catalog removal. Diff the plugin ID set in the sealed catalog manifest against the adapter list. This is host mount wiring: it is a source change only, and deploying it is a separate step. |\n| **Hash-helper and subid residue** | Leftover subids in `oscal_subid_registry.rs`, or leftover capability strings in grant materialization, cause seal-time or admission-time failures. | Find these residues with LSP references and grep for the 18 method names and their capability IDs. Record each hit's disposition. |\n| **Private state partitions** | If the wrappers published child state under `tched_plugins`/`tched_skills` SHM paths, those subtrees become orphans or are swept. | List the existing state paths, and decide whether native operations publish anything. Never delete or migrate Cozo data. |\n\n## 3. The 43 tched_router methods: disposition discipline\n\n- **Default to keep or defer unless a native contract is already captured.** CLI capture provides config operations, `providers`/`models` listing, and the `agent` command. No native capture exists for:\n  - `/api/tools` metadata with `param_domains`\n  - cron runs/history routes\n  - the stateless `/ws/chat` generation frames\n\n  Do not invent `threetched.Chat`, `threetched.ResolveRoute` or similar names.\n- **Groups that can plausibly migrate now:**\n  - Config/schema aliases: `get/init/list/patch/set` and `config_*` duplicates map to native `config` CLI operations, but only after masking is verified. Secret redaction in `GetConfig` must not be lost when it becomes CLI stdout.\n  - `ListProviders` and `ListModels`. This is not true for `model_registry.native_list_providers`, which must keep its agent-profile/selectability filtering.\n- **Groups to keep as local integration responsibility:**\n  - All 7 generation-job methods. They carry revision checks, the SHM commit, worker signalling and recovery.\n  - Catalog model bindings and `get_own_agent_route` (caller-scoped).\n  - The five role setters, if they bind local Cozo/Qdrant/OVS roles.\n\n  State the specific responsibility for each. \"Callers exist\" is not a valid reason to keep a method.\n- **Cancellation must stay truthful.** If any generation path is touched, the receipt must distinguish:\n  - local cancellation committed\n  - stream dropped\n  - provider effect unknown\n\n  Disconnect is not undo.\n- **Facade dependents.** For `large_language_model` (8 methods), `mcp.get_config/configure_server` and `gemma_brain.route`, migrate callers only when their router target migrates. Moving router declarations into `large_language_model` is forbidden. Mark these methods deferred, with a link to the router method each depends on.\n\n## 4. Capture-extension risks (only if a selected slice needs it)\n\n- **Single authoring boundary.** Extend capture only through `threetched::prepare_schema_capture` and the `opblob` sealer, using the verified binary, manifest and digest. Do not use the sealer's ambient environment, a live fallback, or a `schemas/` directory.\n- **Provenance.** Any OpenAPI or frame contract imported from the pinned archive must record the archive digest, patch ID and member path.\n- **Native tool exposure.** Tools visible to the capture identity must not become universal grants.\n\n## 5. Build and catalog evidence gates\n\n1. Before starting Cargo, check the process table for cargo, rustc and clippy. If any is running, record its PID and owner, finish source work, and stop at that blocker.\n2. Delegate the build once, without a model override:\n\n   ```sh\n   CXXFLAGS=\"-include cstdint\" cargo build --workspace --release --target x86_64-unknown-linux-gnu\n   ```\n\n   Record the exit code, its duration, and the last error if it failed. Do not run a second Cargo process to retry.\n3. Seal the isolated catalog:\n   - Use `target/x86_64-unknown-linux-gnu/release/opblob seal-plugins <new-dir>`. Do not use `target/release/opblob`.\n   - Match the service's schema-shaping environment: read `deploy/runit/op-grpc-bridge/run`, including `COGNITIVE_*`.\n   - Use the same threetched binary and manifest that golden stages.\n4. Prepare the catalog delta:\n   - Diff plugin IDs and schema hashes against the current persisted catalog.\n   - The expected removals are exactly `tched_plugins` and `tched_skills`, plus any declared retirements. Any other removal or change needs an explanation, or it indicates environment drift.\n   - Keep the previous catalog as the recovery input.\n5. Pinned UI input: if any UI file changed, record the 3tched.com commit. `vendor/3tched-json-render-ui` stays stale until it is rebuilt with its own helper. Record that state rather than claiming the input matches.\n\n## 6. Handoff status vocabulary\n\nReport each item separately as proposed, implemented (source), built (exit 0), sealed (isolated directory and delta), deployed (no), or tested (no; not authorized). Do not claim complete consolidation. The brief's correct scope is the direct-wrapper slice plus whatever router/config subset is actually migrated, with every remaining router method listed as kept or deferred.\n\n## Key uncertainties to resolve by inspection\n\n- Whether the wrapper deletions left dangling references; check for them before treating the deletion as done.\n- Whether the native CLI capability IDs fit existing grant patterns.\n- Whether any UI caller uses `tched_plugins`/`tched_skills` directly.\n- Whether config masking survives the move to CLI stdout."
+    },
+    {
+      "model": "kimi-k3",
+      "content": "I'll start by reading the required skill files and shared context in parallel."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "# Advisory: threetched consolidation (OD-121) \u2014 risks, dispositions, evidence plan\n\n## 1. First slice: finish the wrapper removal correctly\n\nThe two wrapper modules (`tched_plugins`, `tched_skills`) are deleted in source but unbuilt/unsealed. Before anything else, verify the deletion is *complete*, not just the file removal:\n\n- **Registry/dispatch residue.** `default_registry.rs`, `mod.rs`, any `inventory::submit!` blocks, bridge dispatch tables (`plugin_method_routes.rs`, generated `plugin_methods.proto` consumers), and hash-helper references. A stale reference compiles fine in some paths (HashMap lookups) and fails at runtime with a missing-plugin denial \u2014 worse than a compile error.\n- **Caller reconciliation.** Grep for the 18 method names (`plugin.install/list/migrate/info/remove/search`, `skills.add/audit/edit/install/list/remove/test`, `skills.bundle.*`). Callers must move to the canonical `threetched` declarations with the **native** capability ids \u2014 a hashed CLI capability is not equivalent to the old typed read/write capability. Build the explicit old\u2192canonical\u2192capability table before editing; this is the highest-risk item for silent authorization drift in either direction (broken grants or broadened grants).\n- **Argument/result reconciliation.** Native envelope is `{stdout, stderr, exit}` for all 147 CLI ops. Old wrappers likely had typed outputs. Callers that parsed typed fields must now parse CLI output or the migration is a fake-success regression. If a wrapper had a typed result the native CLI can't express, that's a **defer/retain** disposition, not a silent shape change.\n- **Mount adapter.** `deploy/runit/libexec-3tched/mount-3tchedfs:35` hardcodes all four IDs. Remove `tched_plugins,tched_skills` from the list **in the same change** as the catalog removal, or the mount will fail/dangle on the next activation. This is a deploy-input edit, not a service action \u2014 authorized.\n- **Sibling UI.** Check `/srv/git/3tched.com` `src/chat/door-chat-adapter.ts` and tests for the removed plugin ids; update the pinned release input (`vendor/3tched-json-render-ui`) only if the UI actually changed.\n\n## 2. Router dispositions (43 methods) \u2014 concrete proposal\n\nDon't attempt all 43 as migrations. Defensible split:\n\n- **Migrate now (config/inventory reads):** `GetState`, `ListProviders`, `ListModels`, `GetConfig`, `config_get/list` \u2014 these map to already-captured native CLI ops with clear envelopes. Preserve masking semantics.\n- **Retain as integration responsibility:** `Chat`, `start_generation`, `cancel_generation`, `get/delete/recover_generation_jobs` \u2014 local job store, revisions, publication, cancellation receipts, and the truthful \"disconnect \u2260 provider undo\" semantics are ours. Native `/ws/chat` stateless frames are a different contract; do not conflate.\n- **Retain:** `GetTools`, `ListUiSurfaces`, `GetStructuredOutput`, catalog binding methods (`apply/resolve_catalog_model_binding`, `get_own_agent_route`) \u2014 local catalog/policy, no native counterpart in the CLI capture.\n- **Defer with explicit WISHLIST rows:** the five role setters, `PatchConfig`/`config_patch` (needs coherent state observation semantics), `GetConfigSchema` (native schema export path exists but is a separate capture).\n- **`gemma_brain.route` \u2192 `ResolveRoute`, `mcp.get_config/configure_server` \u2192 router config methods, `model_registry.native_list_providers`:** migrate only with the agent-owned-profile/selectability filtering preserved verbatim; it is not a passthrough.\n\nEach deferred/retained method needs a one-line disposition in the handoff \u2014 the brief demands all 43 have one.\n\n## 3. Capture boundary discipline\n\n- Extend `threetched::prepare_schema_capture` / `schema_from_capture` only for selected ops. No new `schemas/` directory, no runtime fallback, no `threetched.Chat` invention.\n- Cron: only `/api/cron`, `/api/cron/{id}`, `/api/cron/{id}/runs`, `/api/cron/{id}/run` are verified. The lesson's `/cron/history` names are wrong \u2014 don't use them.\n- Native tools adapter omits `param_domains`; if a migrated method needs it, extend the adapter type with provenance, don't guess.\n\n## 4. Build/catalog \u2014 exact sequence and evidence\n\n1. Check no cargo/rustc/clippy running; then one process: `CXXFLAGS=\"-include cstdint\" cargo build --workspace --release --target x86_64-unknown-linux-gnu` from repo root.\n2. Fresh `target/x86_64-unknown-linux-gnu/release/opblob seal-plugins <new-dir>` with the service's schema-shaping env (match `deploy/runit/op-grpc-bridge/run` settings, incl. `COGNITIVE_QDRANT_URL` default).\n3. Diff plugin IDs old catalog vs new: expect exactly `tched_plugins`, `tched_skills` removed, `threetched` changed (if capture extended), nothing else. Any unexpected removal = stop, the full reseal swept something.\n4. Retain a recoverable copy of the prior catalog before the seal \u2014 AGENTS explicitly warns the reseal sweeps absent IDs.\n\n## 5. Top risks (ranked)\n\n1. **Capability drift** on the 18 migrated ops \u2014 build the mapping table first; verify exact alternatives preserved.\n2. **Typed-output callers** breaking on `{stdout,stderr,exit}` envelopes \u2014 trace every caller before deleting a wrapper.\n3. **Mount adapter/catalog mismatch** at next activation \u2014 edit together.\n4. **Accidental scope creep** into persona/memory (OD-122/123) or into \"helpful\" retries/validation \u2014 explicitly out of scope.\n5. **Shared uncommitted work** at HEAD `051a20d` \u2014 claim in HANDOFF first, never reset/stash; another agent's edits may land mid-task, re-read before acting.\n\n## 6. Evidence to report (and only this)\n\nChanged files with commit; per-method disposition table; build command + actual exit receipt; isolated catalog path + provenance + exact removal delta; deployment status = **not deployed** (source/built/sealed only); unrun tests stated as unrun. Distinguish proposed vs implemented vs built vs sealed at every claim."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<read path=\"/srv/git/odbus-verified/HANDOFF.md\" />\n<read path=\"/srv/git/odbus-verified/SIGNALS.md\" />\n<read path=\"/srv/git/odbus-verified/WISHLIST.md\" />\n<read path=\"/srv/git/odbus-verified/reports/threetched-overlap-map-20261018.md\" />\n<read path=\"/srv/git/odbus-verified/reports/threetched-overlap-map-20261018.txt\" />\n<bash command=\"ls /run/mounts/threetched/plugins/ 2>/dev/null; echo '---'; ls /run/mounts/3tchedFS/plugins/ 2>/dev/null | head -20\" />\n<bash command=\"grep -r 'tched_plugins\\|tched_skills' /srv/git/odbus-verified/crates/ --include='*.rs' -l 2>/dev/null | head -20\" />\n<bash command=\"grep -r 'large_language_model\\|cron_gateway\\|mcp_methods\\|gemma_brain\\|model_registry' /srv/git/odbus-verified/crates/ --include='*.rs' -l 2>/dev/null | head -20\" />\n<bash command=\"grep -r 'tched_router' /srv/git/odbus-verified/crates/op-plugins/src/state_plugins/ --include='*.rs' -l 2>/dev/null\" />"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The substantive responses prioritize completing the 18 plugin/skill wrapper migrations before attempting additional native overlaps.",
+      "Wrapper removal requires explicit argument, result, capability and caller reconciliation; deleted source modules alone do not establish a completed cutover.",
+      "The mount adapter's source selection must agree with the resulting catalog without changing live mount wiring.",
+      "Native CLI mutation semantics and hashed capabilities are not automatically equivalent to legacy read/write capabilities; consolidation must not broaden grants.",
+      "Native generation must not be replaced with CLI agent execution, and stream disconnect must not be represented as undoing remote provider effects.",
+      "Capture extensions must remain native-derived and pass through the existing explicit authoring/sealing boundary rather than introducing another schema authority or runtime fallback.",
+      "OD-122 and OD-123 remain deferred; private Cozo state, identity admission and local committed-state responsibilities must be preserved.",
+      "Delivery evidence must distinguish source implementation, build, isolated sealing, deployment and testing. Tests and live deployment are not authorized."
+    ],
+    "contradictions": [
+      {
+        "topic": "Readiness of router config and inventory methods for migration",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats config and inventory migrations as conditional on inspecting native exports, masking, filtering and local projection responsibilities."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Suggests config aliases and provider/model listings can plausibly migrate, but defaults to retaining or deferring methods without established capture."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Labels GetState, ListProviders, ListModels, GetConfig and config_get/list as migrate-now operations with clear CLI mappings, although no current-source inspection establishes those mappings or GetState equivalence."
+          }
+        ]
+      },
+      {
+        "topic": "Classification of Chat versus generation lifecycle operations",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Separates Chat as a candidate for native-derived provider-only generation from the six local job lifecycle methods."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Groups all seven generation methods as local generation-job responsibilities, obscuring the distinction between Chat inference and job lifecycle management."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Also retains Chat with job lifecycle operations rather than separately establishing which parts are native inference and which are local integration."
+          }
+        ]
+      },
+      {
+        "topic": "Five role setters",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Requires per-method comparison, allowing migration of established native selection behavior or deferral of unestablished configuration."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Suggests retaining setters when they bind genuine local Cozo, Qdrant or OVS responsibilities."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Proposes deferring all five setters without demonstrating their individual semantics."
+          }
+        ]
+      },
+      {
+        "topic": "Expected isolated catalog delta",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Requires an identified baseline and explanation of every change; explicitly warns against assuming only the two wrapper IDs change."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Expects the two wrapper removals plus declared retirements, while requiring explanation for other changes."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Predicts exactly the two wrapper removals and possibly a changed threetched schema, which is too restrictive for shared unbuilt changes or additional selected consolidation."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Accounts for all 43 router methods by group, but correctly leaves the final evidence-backed per-method disposition ledger unresolved."
+      },
+      {
+        "models": [
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Discuss router dispositions without providing complete individual coverage; GLM's concrete proposal leaves several methods unclassified."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Identify UI, toolset and generated-surface dependencies, but provide no observed caller inventory or demonstrated migration."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5"
+        ],
+        "point": "Explicitly require the actual JEV judge receipt; GLM does not address that prerequisite."
+      },
+      {
+        "models": [
+          "kimi-k3"
+        ],
+        "point": "Provides only an intention to read prerequisites, with no substantive risk analysis or evidence."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Provides textual tool-call markup without results. It establishes neither file inspection nor execution and omits mandatory skill preloads before the proposed exploration."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Separates backend acceptance from subsequent SHM publication failure and warns that this must not become generic success or an automatically retried mutation."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Calls out the need to inspect whether native nonzero exit results are translated into the established error channel rather than silently treated as successful payloads."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Highlights potentially orphaned wrapper state subtrees and residual subid or capability references as distinct reconciliation obligations."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Explicitly distinguishes absent or denied mounted declarations from permission to substitute direct SHM or D-Bus access."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Notes that string-based dispatch residue can survive compilation and fail only during runtime lookup, so a successful build alone cannot establish caller reconciliation."
+      }
+    ],
+    "blind_spots": [
+      "No response supplies actual current-source, mounted-contract, capability, build or catalog evidence. All proposed dispositions remain advisory.",
+      "No response resolves the exact legacy capability alternatives for the 18 operations or demonstrates how canonical admission preserves those alternatives without grant changes.",
+      "No response establishes the actual positional arguments, flags, defaults, result parsing or state effects of the 18 native commands.",
+      "The substantive responses do not establish a concrete additional overlap migration beyond the wrapper slice; recommendations alone do not satisfy the requested implementation.",
+      "Retaining an integration responsibility is not sufficient justification for retaining an independently authored native operation schema. The responses do not fully specify this separation.",
+      "No response demonstrates how deferred or retired behavior affects existing callers or how those callers receive truthful unsupported outcomes.",
+      "Opus adds a blanket prohibition on a second Cargo attempt. The owner requires one concurrent Cargo process and forbids unchanged reruns, not all evidence-backed rebuilds after correcting a failure.",
+      "GLM treats GetConfigSchema as requiring a separate capture without reconciling the brief's existing native config-schema capture.",
+      "No response provides the concrete rollback relationship among catalog removals, matching application binaries, pinned UI inputs and separately deployed host mount selection.",
+      "No response performs the requested implementation or supplies durable HANDOFF, SIGNALS and WISHLIST updates; tool-looking text and proposed work must not be counted as execution."
+    ]
+  }
+}

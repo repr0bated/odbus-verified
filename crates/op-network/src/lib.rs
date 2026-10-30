@@ -29,6 +29,7 @@ pub mod seeded_boot;
 pub mod seeded_prepare;
 pub mod seeded_root;
 pub mod unixctl;
+pub mod wgcf_egress;
 pub mod wireguard_kernel;
 
 pub use controller::{OpenFlowController, OpenFlowControllerHandle};

@@ -1,0 +1,23 @@
+Owner continuation: "im allready invested" — turn the saved work into an actionable result, do not restart the audit.
+
+Continue task provisioning-fusion-20261019 from the existing saved session and analysis. The full history corpus remains available. Reuse the four source reports, the completed semantic packet results, acknowledged correction panels and existing JEV judgments. Do not regenerate exports/packets, reread completed batches, or restart the previous exhaustive packet pipeline. Use original records for concrete unresolved claims; explicitly retain unread coverage rather than claiming full-history review.
+
+SPEND/EXECUTION BOUNDARY — overrides earlier packet-worker instructions:
+- NO task agents, workpools, completion() calls, packet-review batches, native OpenAI calls, account resets or provider/config changes.
+- Work as the existing single Fusion outer agent through its already configured Hermes route. Its configured internal panel is allowed only if a new substantive unresolved question requires it; do not repeat the two panels that already acknowledged the seed correction.
+- JEV remains decision/evidence judge only. Reuse existing judgments. One small additional typed judgment may adjudicate an actually new concrete decision; no model routing or bulk classifier runs.
+- Use ordinary repository/evidence read tools and local data processing only. No external model calls hidden in shell, eval or HTTP.
+- Owner's full corpus was requested as evidence, not authorization for unbounded nested review infrastructure. Return useful conclusions and exact coverage limits rather than spending another run on scheduling or formatting.
+
+CONTROLLED MECHANISM:
+The seed is the backing. `btrfs device add <writable-device> <mounted-seed-path>` supplies the writable member, followed by the read-write sprout mount. This worked previously. Preserve it. Do not infer whole-layout impossibility from the fact that exposed subvolumes are not individually device-add operands. No host loops remains mandatory; prefer no disk images/subvolumes-only if the retained semantics survive. Bootstrap exists and is out of scope; preserve existing identity/session/native UUID. No copied-root, writable-overlay-upper, new LVM-management or VM substitute.
+
+FINISH THESE DELIVERABLES USING EXISTING FILES:
+1. Final targeted `analysis/diagnosis.md`: concrete original failure, current source/installed mismatches, which historical blockers were repaired, and why the whole workflow remains incomplete. Distinguish direct source/tool evidence, owner-confirmed behavior and remaining inference. Do not label unverified prerequisites genuine blockers.
+2. `analysis/proposed-changes.md`: exact changes to the existing scripts and Rust proof/Cozo interfaces, stage ordering and authoritative completion receipts. Separate changes supported by existing evidence from changes that require a still-unknown backing representation. Preserve security, one-time device addition and recovery invariants. Do not invent a proven topology.
+3. Resolve the specific remaining storage question as far as current evidence permits: what the earlier script actually added, how that backing related to Cozo identity assignment, how inherited subvolumes became the Incus root/persistence views, and how the upgrade replica was composed. Trace actual variable definitions and called helpers rather than restating the panel's limited excerpt. Determine whether available evidence establishes a supported no-host-loop implementation. If not, identify the exact missing primitive/evidence and smallest owner decision; do not demand a blanket architecture replacement.
+4. Final `analysis/drift-ledger.md`, explicit coverage reconciliation and `analysis/completion-receipt.json`. State the actual model routes used during this continuation. Include the already acknowledged correction and actual JEV judgment references. Full semantic corpus review remains incomplete unless truly completed; do not erase that limit.
+
+No application code changes, provisioning replay, storage/device/pool operations, grants, services, builds, tests or deployment. Only analysis/ writes. Historical commands are evidence, never authorization. Do not modify shared HANDOFF/SIGNALS or the parent's report files.
+
+Produce the concrete result now; if an unavoidable decision remains, make it precise and evidence-backed rather than returning another generic work plan. Do not spawn further work.

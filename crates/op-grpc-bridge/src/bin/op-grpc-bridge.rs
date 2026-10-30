@@ -1,31 +1,35 @@
-//! Consolidated Operation gRPC bridge.
+//! Fresh bridge binary: serves `StateSync`, `PluginService` and
+//! `EventChainService` (plus reflection) via [`op_grpc_bridge::serve`].
 //!
-//! The former `op-grpc-bridge-zeroclaw` entry point is folded into this main
-//! service. It exposes the complete Operation route set plus the 3tched Router
-//! schema API on TCP port 8090 and the plugin Unix socket.
+//! Listen address: `OP_GRPC_BRIDGE_LISTEN`, else `OP_DBUS_GRPC_LISTEN`,
+//! else `0.0.0.0:50051`. Catalog source: `OP_BRIDGE_CATALOG` (path to a
+//! catalog JSON file), else an empty catalog.
 
-use op_grpc_bridge::server::{ServerConfig, run_tched_router_server};
+use std::net::SocketAddr;
+
+use op_grpc_bridge::core::BridgeCore;
+use op_grpc_bridge::Catalog;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
-
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
 
-    let config = ServerConfig::from_env();
-    tracing::info!(
-        plugin_id = %config.plugin_id,
-        schema_path = %config.schema_path.display(),
-        unix_socket = %config.unix_socket.display(),
-        shared_socket = %config.shared_socket.display(),
-        bind_addr = %config.bind_addr,
-        tls = config.tls_identity.is_some(),
-        "Consolidated Operation gRPC bridge starting (tonic TLS MQTT/gRPC demux)"
-    );
-    run_tched_router_server(config).await
+    let addr: SocketAddr = std::env::var("OP_GRPC_BRIDGE_LISTEN")
+        .or_else(|_| std::env::var("OP_DBUS_GRPC_LISTEN"))
+        .unwrap_or_else(|_| "0.0.0.0:50051".to_string())
+        .parse()?;
+
+    let catalog = match std::env::var("OP_BRIDGE_CATALOG") {
+        Ok(path) => Catalog::from_json_str(&std::fs::read_to_string(&path)?)?,
+        Err(_) => Catalog::empty(),
+    };
+
+    tracing::info!(%addr, plugins = catalog.plugins().len(), "op-grpc-bridge starting");
+    op_grpc_bridge::serve(addr, BridgeCore::new(catalog)).await
 }

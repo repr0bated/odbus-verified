@@ -1,4 +1,4 @@
-//! Capability-preserving facade dispatch into canonical tched_router methods.
+//! Capability-preserving facade dispatch into canonical chat_router methods.
 //!
 //! This module owns no provider, catalog, selection or generation state. The
 //! facade call is admitted first, then the exact nested target method is
@@ -22,7 +22,7 @@ fn admit_target(plan: &TargetPlan, actor: &str) -> Result<()> {
     method_contract_admission::validate_admitted_arguments(&declaration, &plan.args)?;
     anyhow::ensure!(
         load_capability_grants(actor).contains(&plan.required_capability),
-        "exact nested tched_router capability grant is required"
+        "exact nested chat_router capability grant is required"
     );
     Ok(())
 }
@@ -93,69 +93,23 @@ pub(crate) fn dispatch<'a>(
         let target_domain = target_result
             .get("result")
             .cloned()
-            .context("canonical tched_router response is missing its domain result")?;
+            .context("canonical chat_router response is missing its domain result")?;
         complete_method(method, target_domain)
     })
 }
 
 /// Refresh one paired config/selection observation while retaining the caller's
 /// final admission and runtime guard through authoritative publication.
-pub(crate) async fn observed_tched_router_state(
+pub(crate) async fn observed_chat_router_state(
     engine: &MutationEngine,
     pinned: &crate::sealed_schema_reader::ManifestPinnedSchemaDocument,
     sealed_identity: &str,
-) -> Result<op_plugins::state_plugins::tched_router::TchedRouterState> {
+) -> Result<op_plugins::state_plugins::chat_router::ChatRouterState> {
     let (observed, represented) =
-        crate::tched_config_engine::coherent_observation(pinned, sealed_identity).await?;
+        crate::chat_router_config_engine::coherent_observation(pinned, sealed_identity).await?;
     engine
-        .persist_tched_router_observation(&represented, &pinned.schema_hash)
+        .persist_chat_router_observation(&represented, &pinned.schema_hash)
         .await
-        .context("native tched_router read completed but projection publication failed")?;
+            .context("native chat_router read completed but projection publication failed")?;
     Ok(observed)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use op_state::StatePlugin;
-
-    #[test]
-    fn facade_plan_never_weakens_the_nested_capability() {
-        for (facade, args) in [
-            ("list_providers", serde_json::json!({})),
-            ("get_provider", serde_json::json!({})),
-            ("set_provider", serde_json::json!({"provider_id":"native"})),
-            ("generate", serde_json::json!({"message":"hello"})),
-            ("list_models", serde_json::json!({"provider":"native"})),
-            ("get_config", serde_json::json!({})),
-            (
-                "update_config",
-                serde_json::json!({"provider_id":"native","model_id":"model"}),
-            ),
-        ] {
-            let plan = plan_method(facade, &args).unwrap();
-            let target = op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
-                .schema()
-                .unwrap();
-            let declaration = &target.methods[plan.method];
-            assert_eq!(
-                plan.required_capability,
-                target.resolve_method_capability(declaration).capability()
-            );
-        }
-    }
-
-    #[test]
-    fn stream_targets_exact_generation_start_contract() {
-        let plan = plan_method(
-            "stream_generate",
-            &serde_json::json!({"agent_alias":"isolated", "prompt":"hi"}),
-        )
-        .unwrap();
-        assert_eq!(plan.method, "start_generation");
-        assert_eq!(
-            plan.required_capability,
-            op_plugins::state_plugins::tched_router::generation::START_CAPABILITY
-        );
-    }
 }

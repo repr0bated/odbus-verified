@@ -1,0 +1,155 @@
+{
+  "plugin_id": "tched_router",
+  "source_schema_hash": "008ab7d5392413708d2e73b7090a23dbefeebbe7dad29fc62eb5d192f93802c1",
+  "schema": {
+    "name": "tched_router",
+    "version": "4.1.0",
+    "tags": [],
+    "category": "llm",
+    "methods": {
+      "ResolveRoute": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "description": "Input for resolving a model route by hint or model identifier.",
+          "properties": {
+            "hint": {
+              "description": "Route hint or model identifier.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "hint"
+          ],
+          "title": "ResolveRouteInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "ModelRoute": {
+              "description": "A model route binds a hint to a provider and model.",
+              "properties": {
+                "api_key": {
+                  "default": null,
+                  "description": "API key placeholder, null when not configured.",
+                  "x-oscal-subid": "mut.service.llm-model-route.api-key@v1"
+                },
+                "available": {
+                  "default": false,
+                  "description": "Whether the route is currently available.",
+                  "type": "boolean",
+                  "x-oscal-subid": "obs.software.llm-model-route.available@v1"
+                },
+                "hint": {
+                  "default": "",
+                  "description": "Query hint this route satisfies (code, fast, local, reasoning, vision, ...).",
+                  "type": "string",
+                  "x-oscal-subid": "exp.software.llm-model-route.hint@v1"
+                },
+                "kind": {
+                  "default": "",
+                  "description": "Route kind (chat, router, multimodal, embedding, policy, orchestrator).",
+                  "type": "string",
+                  "x-oscal-subid": "obs.software.llm-model-route.kind@v1"
+                },
+                "model": {
+                  "default": "",
+                  "description": "Target model identifier.",
+                  "type": "string",
+                  "x-oscal-subid": "exp.software.llm-model-route.model@v1"
+                },
+                "provider": {
+                  "default": "",
+                  "description": "Selected provider for this route.",
+                  "type": "string",
+                  "x-oscal-subid": "mut.service.llm-model-route.provider@v1"
+                },
+                "source": {
+                  "default": "",
+                  "description": "Canonical OSCAL subid registry source for policy-kind routes.",
+                  "type": "string",
+                  "x-oscal-subid": "src.service.llm-model-route.source@v1"
+                },
+                "status": {
+                  "default": "",
+                  "description": "Declared operational status.",
+                  "type": "string",
+                  "x-oscal-subid": "obs.software.llm-model-route.status@v1"
+                },
+                "status_reason": {
+                  "default": "",
+                  "description": "Human-readable reason for the current availability status.",
+                  "type": "string",
+                  "x-oscal-subid": "obs.software.llm-model-route.status-reason@v1"
+                },
+                "transport": {
+                  "default": "",
+                  "description": "Transport mechanism (direct, loopback, auto, dbus).",
+                  "type": "string",
+                  "x-oscal-subid": "mut.service.llm-model-route.transport@v1"
+                },
+                "upstream_provider": {
+                  "default": "",
+                  "description": "Upstream provider, when the route is proxied through an orchestrator.",
+                  "type": "string",
+                  "x-oscal-subid": "mut.service.llm-model-route.upstream-provider@v1"
+                }
+              },
+              "type": "object",
+              "x-oscal-subid": "sch.software.llm-model-route.schema@v1"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Output for a resolved model route.",
+          "properties": {
+            "route": {
+              "$ref": "#/$defs/ModelRoute",
+              "description": "Resolved route."
+            }
+          },
+          "required": [
+            "route"
+          ],
+          "title": "ResolveRouteOutput",
+          "type": "object",
+          "x-oscal-subid": "exp.service.3tched-router.route.result@v1"
+        },
+        "required_capability": "cap.software.3tched-router.route.resolve@v1",
+        "side_effect": "read",
+        "subid": "obs.service.3tched-router.route.resolve@v1"
+      },
+      "SetOvsRoutingModel": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Input for setting an ovs routing model.",
+          "properties": {
+            "model_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "model_id"
+          ],
+          "title": "SetOvsRoutingModelInput",
+          "type": "object"
+        },
+        "returns": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "ovs_routing": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ovs_routing"
+          ],
+          "title": "SetOvsRoutingModelOutput",
+          "type": "object"
+        },
+        "required_capability": "cap.software.3tched-router.model-assignments.ovs-routing.set@v1",
+        "side_effect": "mutation",
+        "subid": "mut.service.3tched-router.model-assignments.ovs-routing.set@v1"
+      }
+    }
+  }
+}

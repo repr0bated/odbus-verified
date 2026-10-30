@@ -1,0 +1,10 @@
+path	listed_lines	read_ranges	read_through_eof	initial_sha256
+crates/op-gateway/Cargo.toml	36	1-36	yes	c7fd3c7d98f8ead1e12da70042f98edead4ad4755dc46cbcf437493f37c2e479
+crates/op-gateway/SECURITY-MODEL.md	56	1-56	yes	c9eb1db98f6a52d1d9ecb021d1dcfc48851237f29f625a9234d0a9d92f10d1a2
+crates/op-gateway/SPEC.md	85	1-85	yes	731be5310702774981f3c519af3ee2573f8d912c788b24a387739081d07b3cba
+crates/op-gateway/compare-op-gateway.md	78	1-78	yes	578247ae921c2ead12f7626cbb937fb3f12701d86de70c23c09be62dbd620965
+crates/op-gateway/src/encrypted_storage.rs	616	1-150,151-300,301-616	yes	560aab6f55f86c5a29d3f2b5ad55f9751328d841525563e2bd47d8607e564c64
+crates/op-gateway/src/error.rs	35	1-35	yes	1f3b8c9c8597756cda0adfab6703571fece382c9c9d6c344299d2a0fcf040ff9
+crates/op-gateway/src/lib.rs	17	1-17	yes	50101b7ed181cdff71a21716f278303bfb290e06de0c7f235361099b190b635d
+crates/op-gateway/src/mcp_gateway.rs	331	1-160,161-331	yes	6abc69160059f3b5172b69b8cc1c229ebb9d67b21b9b75752d38cef7accf4d4b
+crates/op-gateway/src/wireguard_auth.rs	820	1-160,161-320,321-483,484-640,641-820	yes	56c3b0f1c479526affe2d39e77d29dcca0f5857a71b8a4ad832a4f9132d75aab

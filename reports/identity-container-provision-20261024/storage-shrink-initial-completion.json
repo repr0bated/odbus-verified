@@ -1,0 +1,12 @@
+{
+  "status": "failed-reconcile-required",
+  "exit_code": 32,
+  "last_phase": "verify-empty-patch-intent",
+  "at": "2026-10-25T02:48:56Z",
+  "image_loop": "/dev/loop1",
+  "automatic_retry": false,
+  "automatic_restore": false,
+  "sealed": false,
+  "guest_boot_verified": false,
+  "identity_created": false
+}

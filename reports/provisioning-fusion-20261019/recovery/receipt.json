@@ -1,0 +1,12 @@
+{
+  "task":"provisioning-fusion-20261019",
+  "supersedes_active_status_of":"../handoff-receipt.json",
+  "original_run":{"receipt":"../run/receipt.json","exit_code":1,"finished":"2026-10-19T04:45:12.968935+00:00","error":"Hermes/Astra Pro upstream stream HTTP502"},
+  "preserved_source_reports":["SourceChain.md","BackendProof.md","HistoricalScripts.md","NativeFeasibility.md"],
+  "semantic_packet_completion":"No completed packet result found at recovery checkpoint; input receipts and pending slice are not completed reviews.",
+  "resume":{"receipt":"../resume-run/receipt.json","started":"2026-10-19T04:48:31.309835+00:00","pid":23148,"same_session":true,"continuation":"continue.txt","context":"context.md"},
+  "execution_instructions":{"new_workers":0,"outstanding_explicit_completions":1,"packet_reader":"Existing native scout/smol role; record actual resolved model, do not alter routing/config.","fusion":"Outer diagnosis and panel synthesis; no recursive packet fan-out.","jev":"Decision/evidence judge only."},
+  "verification_limit":"Resume launch confirmed. Serial execution behavior, completion of remaining packet reviews and final diagnostic deliverables are not yet independently verified.",
+  "constraints":"No host loops mandatory; prefer no images/subvolumes only if retained semantics survive. No provisioning, storage, source repair, build, test or deployment.",
+  "shared_handoff_updated":true
+}

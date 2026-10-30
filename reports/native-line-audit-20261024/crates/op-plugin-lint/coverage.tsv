@@ -1,0 +1,27 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-plugin-lint/Cargo.toml	1-29 EOF	0dcd9fb8c09b18eabcec0a09901d6dd824ba68304616f74a0e6e18051d160cf3	No native occurrences	complete
+crates/op-plugin-lint/examples/README.md	1-32 EOF	d1d742522a4b5280415ab5e530a0e13059e5b21496e1a8cbabf9b1d5969a6494	Historical-capture provenance; no native occurrences	complete
+crates/op-plugin-lint/examples/zeroclaw-final-plugin-schema.json	1-1000;1001-2000;2001-3000;3001-4000;4001-5000;5001-6000;6001-7000;7001-8000;8001-8509 EOF	f88b9a5a77662763470f9ec4eb703094c0f047b5a67e2e65efb3eed295e2f47a	15 native occurrences;12 retained terminology;3 historical generator/owner mismatch F1/J5	complete
+crates/op-plugin-lint/examples/zeroclaw-final-schema.json	1-1000;1001-2000;2001-3000;3001-4000;4001-5000;5001-6000;6001-7000;7001-8000;8001-8831 EOF	f8317c44e3126b191dac0f7d5acd62b3ef8b187c1453d8e97bd1c9de139ae15c	15 native occurrences;12 retained terminology J4/J6;3 historical generator/owner mismatch F1/J5	complete
+crates/op-plugin-lint/examples/zeroclaw-full-schema.json	1-1000;1001-2000;2001-3000;3001-4000;4001-5000;5001-6000;6001-7000;7001-8000;8001-8509 EOF	ad300585bf7bb531188f59744fdd7d78926e3f79650b13dd3bf3453f66658b39	15 native occurrences;12 retained J8;3 historical generator/owner mismatch F1/J7	complete
+crates/op-plugin-lint/examples/zeroclaw-full-schema.with-compare.json	1-1000;1001-2000;2001-3000;3001-4000;4001-5000;5001-6000;6001-7000;7001-8000;8001-8837 EOF	013a00d7bb299956e208f98ad0d66a997318a9a7eee6f1358f83244056436c4c	15 native occurrences;12 retained J11;3 historical generator/owner mismatch F1/J10	complete
+crates/op-plugin-lint/examples/zeroclaw-introspect-gaps.json	1-700;701-1400;1401-2100;2101-2710 EOF	ca185588f96cbc0f2e66228e9312e31125bea142094ab581760c2ed03b4cbb82	5 native path occurrences retained; J2.identifiers	complete
+crates/op-plugin-lint/examples/zeroclaw-introspect-gaps.md	1-217 EOF	499014300b43de03f5b1e0d61d12173d4f2f495fedfde34f30ddd474f0cceda8	No native occurrences; historical gap report	complete
+crates/op-plugin-lint/examples/zeroclaw.complete.json	1-700;701-1400;1401-2100;2101-2800;2801-3500;3501-4245 EOF	4efbc942799792c8cfb99b98ea33596817ef24583a5cc97d42f37765b9930c1d	5 native occurrences retained J2/J3;unterminated final line4245 included	complete
+crates/op-plugin-lint/examples/zeroclaw.complete.md	1-300;301-650;651-971 EOF	c8af8ebeb6b9c10084aa8f6990ee9f9dc05fd72e105bdf99ff0537249117be3c	1 native description retained J3;low-confidence J2 resolved	complete
+crates/op-plugin-lint/src/audit.rs	1-253;254-500;501-691 EOF	7d326a7baf46fb34a78cdf0af9804d653614f125e88f7087a48e763dab09dbd1	No native occurrences	complete
+crates/op-plugin-lint/src/binary.rs	1-253;254-558 EOF	6a69bc852f5c6e057e0273b5d9b2ad49e2d277abdf8f7e49a875db3be26f0b7b	No native occurrences	complete
+crates/op-plugin-lint/src/emit.rs	1-300;301-636 EOF	651f02182d44f15a9f3a414219bbfcb6bd049b0c6c3cb50f872a870de7034cfe	No native occurrences	complete
+crates/op-plugin-lint/src/gadget.rs	1-327 EOF	5b95197eae898cf6f181306b660fa8088983f185d3597c6534b9aa8f67962fe4	No native occurrences	complete
+crates/op-plugin-lint/src/gaps.rs	1-345 EOF	90dcd422587cd0bf2dc8cd78b7be5f97f0b15a121715474817298dcbb6fd651c	No native occurrences; generic heuristic gap classifications not runtime routing	complete
+crates/op-plugin-lint/src/introspect.rs	1-340 EOF	8a3de9ee0cae5f34e36ce7e4d15ac9e4a0e8d8d8b33a3279fd56da721974bac0	No native occurrences; generic HTTP drift-check fallback report-only	complete
+crates/op-plugin-lint/src/lib.rs	1-38 EOF	7be3d9318bb0e740cbcb1dd6f6f400d86b0b91381a779221b77c28359913146e	No native occurrences	complete
+crates/op-plugin-lint/src/main.rs	1-294 EOF	07b4838f652f8c077530e4b6f4b31422b5ad3350839efd54abadedd240521c9f	No native occurrences	complete
+crates/op-plugin-lint/src/repomix.rs	1-350;351-700;701-1003 EOF	0489ef9b4871005a742f4b5c49b5e4b95fa07533ea13b8f268ea4379e82298ef	No native occurrences; struct/enum path extraction not dispatch	complete
+crates/op-plugin-lint/src/report.rs	1-103 EOF	d905c3ff835966e4b37cc9dff56518e7453ac08133fd6beca4fdf27788cb5b76	No native occurrences	complete
+crates/op-plugin-lint/src/rust_emit.rs	1-250;251-467 EOF	5d5e2d3928f38dad16814934ae197fc90106ad767b19221653b154281faeb79e	No native occurrences; review-only candidates not live schema authority	complete
+crates/op-plugin-lint/src/subid.rs	1-56 EOF	04a0f3fb646fffc691f126298518eeb7ea6f1c1dbf69f1da9bd7c9f890f60d7f	No native occurrences	complete
+crates/op-plugin-lint/tests/audit_tests.rs	1-104 EOF	ccbcb4f3bc9cc2a5c13acf535aca1ec5d3b77f46b31359c6bcdb0f321c71aeed	No native occurrences; tests read not run	complete
+crates/op-plugin-lint/tests/fixtures/bad_plugin.rs	1-30 EOF	028e9230a9e5607632e96a6735597800b2b988f967dd0fa9be8a92e748a90a8f	No native occurrences	complete
+crates/op-plugin-lint/tests/fixtures/demo_instance.json	1-13 EOF	0732bcbbabbf161f9f5d9f024103b37662c9863b444c8a4aa813e9a7d2c62f22	No native occurrences	complete
+crates/op-plugin-lint/tests/fixtures/good_plugin.rs	1-82 EOF	ab65b3addf2ce491a94766029be68ee9f3d495d6b370f9dc42f27f27c8598dcb	No native occurrences	complete

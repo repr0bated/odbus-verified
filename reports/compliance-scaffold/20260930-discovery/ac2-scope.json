@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-09-30T10:18:36Z",
+  "command": "../.venv/bin/python -m compliance_index scope --tag nist-sp800-53:rev5:ac-2",
+  "source_package": "/srv/git/repos-bulk/compliance-index",
+  "snapshot_kind": "read_only_command_capture",
+  "result": {
+    "generation": "38cdcec0a21a316013fcc13efe8682347fceb628a2b5be362ab21197c08f7173",
+    "collection": "compliance_context_v1",
+    "allowed_groups": [],
+    "qdrant_filter": null
+  }
+}

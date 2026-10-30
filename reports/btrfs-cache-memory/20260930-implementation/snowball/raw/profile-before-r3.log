@@ -1,0 +1,4 @@
+phase=all_history_parsed rust_live_delta=36911906 rust_peak_delta=38432513 rss_kib=58692
+phase=pending_selected rust_live_delta=2492226 rust_peak_delta=38432513 rss_kib=58692
+phase=pending_dropped rust_live_delta=1015 rust_peak_delta=38432513 rss_kib=57396
+records=10000 already_present=10000 elapsed_ns=2035911398

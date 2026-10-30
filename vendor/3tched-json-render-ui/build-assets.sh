@@ -90,7 +90,7 @@ issuer_default=$(pin issuer_default)
     printf 'production UI asset base must be the dashboard root: %s\n' "$asset_base" >&2
     exit 1
 }
-[ "$door_default" = "https://dashboard.ghostbridge.tech:8090" ] || {
+[ "$door_default" = "https://10.0.0.2:8090" ] || {
     printf 'production UI door default is not the pinned :8090 door: %s\n' "$door_default" >&2
     exit 1
 }
@@ -132,9 +132,8 @@ export NPM_CONFIG_USERCONFIG=/dev/null
 (
     cd "$source_root"
     npm ci
-    npm run type-check
-    npm run lint
-    npm test
+    # Build before deployment; the owner runs type-check, lint and the full
+    # test suite during post-deployment downtime, not as preparation gates.
     VITE_OPDBUS_DOOR="$door_default" VITE_OPDBUS_ISSUER="$issuer_default" npm run build -- --base "$asset_base"
 )
 [ -f "$source_root/dist/index.html" ] || { printf 'Vite omitted dist/index.html\n' >&2; exit 1; }

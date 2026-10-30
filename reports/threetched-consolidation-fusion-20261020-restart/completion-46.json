@@ -1,0 +1,64 @@
+{
+  "request": 46,
+  "started": "2026-10-20T17:13:41.355115+00:00",
+  "finished": "2026-10-20T17:13:54.679064+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-039466b33771d4ed016ad7a14c03c887d19c53ba9bc6c96723",
+    "created": 1792516428,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"const dir='/var/tmp/threetched-generated-example-20261020.40Ea0x'; const child=Bun.spawn(['setsid','--wait','sh',dir+'/worker.sh'],{cwd:'/srv/git/odbus-verified',stdin:'ignore',stdout:Bun.file(dir+'/execution.log'),stderr:Bun.file(dir+'/execution.stderr.log')}); print({pid:child.pid,receiptDirectory:dir,exit:await child.exited}); print(await Bun.file(dir+'/completion.receipt').text());\",\"timeout\":300,\"title\":\"Running detached generator authoring once\"}",
+                "name": "eval"
+              },
+              "id": "call_VFUU55DjlgCmVzMPFpaLOsNc",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: preserve the generation-72 catalog pin, use the existing GNU generator whose embedded naming matches current source, then capture its single detached authoring run with pre/post hashes and a terminal receipt. Only generated outputs are in scope; no compilation or mounted operations will run."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 502,
+      "prompt_tokens": 122890,
+      "total_tokens": 123392,
+      "completion_tokens_details": {
+        "reasoning_tokens": 80
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 114201
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:13:54.677153+00:00",
+  "stream_chunks": 5
+}

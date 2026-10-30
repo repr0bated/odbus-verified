@@ -1,0 +1,95 @@
+{
+  "request": 54,
+  "started": "2026-10-18T21:59:32.314785+00:00",
+  "finished": "2026-10-18T21:59:43.521894+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0dee28a739975767016ad54147228087d0a4a3e7fb4265f4b2",
+    "created": 1792360775,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading facade integration tests\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/large_language_model_dispatch.rs:1-300\"}",
+                "name": "read"
+              },
+              "id": "call_xODe78E9MBQMn0MKcHcIQ1VH",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating facade backing calls\",\"pattern\":\"invoke_llm|llm_|large_language_model\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs\"}",
+                "name": "grep"
+              },
+              "id": "call_EWE6yFxN1aqb5rtMutSCsqHI",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading owned task behavioral test\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/owned_method_task_tests.rs:180-225\"}",
+                "name": "read"
+              },
+              "id": "call_p5Feu45jNpv37cSG5XlaQzWY",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Gemma actual router use\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/gemma_brain_dispatch.rs:1-130\"}",
+                "name": "read"
+              },
+              "id": "call_vbs5cemQPDg5JLeBzIwajB71",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Tracing inference and facade consumers\",\"pattern\":\"large_language_model|tched_router|GenerationOrigin\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/ui_workspace_dispatch.rs;/srv/git/odbus-verified/crates/op-grpc-bridge/src/gemma_brain_dispatch.rs;/srv/git/odbus-verified/crates/op-web;/srv/git/odbus-verified/crates/op-tools;/srv/git/odbus-verified/crates/op-cognitive\"}",
+                "name": "grep"
+              },
+              "id": "call_fHBHT3NKc3NSldhpOWgl4ern",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 756,
+      "prompt_tokens": 188855,
+      "total_tokens": 189611,
+      "completion_tokens_details": {
+        "reasoning_tokens": 46
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 181540
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:43.519384+00:00",
+  "stream_chunks": 12
+}

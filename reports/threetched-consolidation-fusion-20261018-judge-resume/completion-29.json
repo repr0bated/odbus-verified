@@ -1,0 +1,64 @@
+{
+  "request": 29,
+  "started": "2026-10-18T21:56:59.360881+00:00",
+  "finished": "2026-10-18T21:57:11.441171+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-093eba6d65113e5a016ad540ae272087d088df535cb064e55e",
+    "created": 1792360622,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading current report dispositions\",\"path\":\"/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md:289-456\"}",
+                "name": "read"
+              },
+              "id": "call_tujmxvqdz2qocHKx4I9VrPSm",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 231,
+      "prompt_tokens": 223869,
+      "total_tokens": 224100,
+      "completion_tokens_details": {
+        "reasoning_tokens": 110
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 114139
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:57:11.438591+00:00",
+  "stream_chunks": 4
+}

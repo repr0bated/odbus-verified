@@ -13,7 +13,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use op_cognitive_mcp::context_awareness::KnowledgePush;
+use op_cognitive::context_awareness::KnowledgePush;
 use op_cozo_store::EpisodeScope;
 use tokio::sync::broadcast;
 
@@ -130,7 +130,7 @@ async fn ring(scope: &EpisodeScope, seq: u64) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use op_cognitive_mcp::context_awareness::{KnowledgeContent, PushTrigger};
+    use op_cognitive::context_awareness::{KnowledgeContent, PushTrigger};
 
     #[test]
     fn push_document_carries_only_contract_fields_the_store_does_not_add() {

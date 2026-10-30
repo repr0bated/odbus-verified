@@ -1,0 +1,11 @@
+[Unit]
+Description=Identity internet proxy on container loopback
+ConditionPathExists=/etc/op-dbus/identity-egress.env
+
+[Socket]
+ListenStream=127.0.0.1:3128
+Accept=no
+NoDelay=true
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,63 @@
+{
+  "request": 82,
+  "started": "2026-10-18T22:01:43.370505+00:00",
+  "finished": "2026-10-18T22:01:54.388269+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e82103f28867b19016ad541cb203087d090a8dbfe2ecd3cc9",
+    "created": 1792360907,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Tracing private method admission gates\",\"pattern\":\"is_private|private_method|requires_session|requires_private|generation_origin|dispatch_method_call_with_generation_origin\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs\"}",
+                "name": "grep"
+              },
+              "id": "call_D4jPVMX11LPeZTAA8VcXuvJh",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 284,
+      "prompt_tokens": 156020,
+      "total_tokens": 156304,
+      "completion_tokens_details": {
+        "reasoning_tokens": 129
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 104472
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:54.387128+00:00",
+  "stream_chunks": 4
+}

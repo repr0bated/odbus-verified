@@ -70,9 +70,16 @@ copy_one() {
 for rel in Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml clippy.toml build.rs .gitignore AGENTS.md README.md LICENSE LICENSE-APACHE LICENSE-MIT SIGNALS.md WISHLIST.md; do
     [ -e "$source_dir/$rel" ] && copy_one "$rel"
 done
-for rel in .agents/skills/grpc-expert/SKILL.md .agents/skills/grpc-protocol-expert/SKILL.md \
-           .agents/skills/json-render/SKILL.md .agents/skills/ovs-db-analysis/SKILL.md; do
-    copy_one "$rel"
+for skill in grpc-expert grpc-protocol-expert json-render ovs-db-analysis \
+             kernel-fuse-diagnosis fuse btrfs rust-memory-optimization \
+             memory-safety-patterns; do
+    copy_one ".agents/skills/$skill/SKILL.md"
+    [ -d "$source_dir/.agents/skills/$skill" ] || { echo "selected input missing: .agents/skills/$skill" >&2; exit 1; }
+    while IFS= read -r -d '' src; do
+        rel=${src#"$source_dir/"}
+        [ "$rel" = ".agents/skills/$skill/SKILL.md" ] && continue
+        copy_one "$rel"
+    done < <(find "$source_dir/.agents/skills/$skill" \( -type f -o -type l \) ! -name SKILL.md -print0)
 done
 
 declare -A seen=()
@@ -159,6 +166,8 @@ printf '%s\n' "exported source closure to $dest_dir"
 printf '%s\n' "pinned active UI source artifact: vendor/3tched-json-render-ui/source.tar.gz"
 printf '%s\n' "UI source/build verifier: vendor/3tched-json-render-ui/build-assets.sh"
 printf '%s\n' "UI build output is separate until its manifest is admitted to the golden snapshot"
-printf '%s\n' "pinned tched_router source and patch recipe: vendor/tched-router/build-native.sh"
-printf '%s\n' "native build output is separate until its manifest is admitted to the golden snapshot"
+printf '%s\n' "pinned tched_router source and patch recipe: vendor/tched-router/build-threetched.sh"
+printf '%s\n' "threetched build output is separate until its manifest is admitted to the golden snapshot"
+printf '%s\n' "threetched candidate output: target/threetched-artifacts/tched-router/{threetched,manifest.json}"
+printf '%s\n' "threetched golden provenance: /usr/share/op-dbus/threetched-manifests/tched-router.json"
 printf '%s\n' "this export is source input, not a verified build or deployment"

@@ -1,0 +1,64 @@
+{
+  "request": 4,
+  "started": "2026-10-19T05:37:55.090377+00:00",
+  "finished": "2026-10-19T05:38:04.628661+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-008114b09b27595c016ad5acb6737c87d0a15fd55427146253",
+    "created": 1792388278,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading recovery coverage state\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/recovery-semantic-coverage.json\"}",
+                "name": "read"
+              },
+              "id": "call_NSOy78n5018Uxi2gGWuFh1aC",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 214,
+      "prompt_tokens": 144237,
+      "total_tokens": 144451,
+      "completion_tokens_details": {
+        "reasoning_tokens": 100
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 96586
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T05:38:04.626871+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,111 @@
+{
+  "request": 47,
+  "started": "2026-10-20T17:13:57.364327+00:00",
+  "finished": "2026-10-20T17:14:16.089319+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-005e45df299a2171016ad7a163b53487d185f931772e5a2ac2",
+    "created": 1792516451,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading terminal authoring output\",\"path\":\"/var/tmp/threetched-generated-example-20261020.40Ea0x/execution.log:1-30\"}",
+                "name": "read"
+              },
+              "id": "call_BCwLSZSXM1XXpRqXlYTUl58k",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading pre-authoring hashes\",\"path\":\"/var/tmp/threetched-generated-example-20261020.40Ea0x/before.sha256:1-8\"}",
+                "name": "read"
+              },
+              "id": "call_jrWAm1XPzsxWXqIpZ83FNEgZ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading post-authoring hashes\",\"path\":\"/var/tmp/threetched-generated-example-20261020.40Ea0x/after.sha256:1-8\"}",
+                "name": "read"
+              },
+              "id": "call_CziiuiLfnzzfYAjyKJcIG9qe",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading post-authoring coverage receipt\",\"path\":\"/var/tmp/threetched-generated-example-20261020.40Ea0x/coverage.json:1-70\"}",
+                "name": "read"
+              },
+              "id": "call_PUpnUbPDPPvkPggMsXFWQroW",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading authoring error stream\",\"path\":\"/var/tmp/threetched-generated-example-20261020.40Ea0x/execution.stderr.log:1-20\"}",
+                "name": "read"
+              },
+              "id": "call_XDxB4qEkhXeS9Yr76MRB4eYF",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading generated example module\",\"path\":\"/srv/git/odbus-verified/crates/threetched-fs/examples/typed_use_generated.rs:25-38\"}",
+                "name": "read"
+              },
+              "id": "call_sQAvFby5VJaOaDkwAmClEmBr",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading binary provenance digest\",\"path\":\"/var/tmp/threetched-generated-example-20261020.40Ea0x/provenance.sha256:1-6\"}",
+                "name": "read"
+              },
+              "id": "call_Ji9z5YuVizz7Mi14YPUEEZnf",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 685,
+      "prompt_tokens": 123497,
+      "total_tokens": 124182,
+      "completion_tokens_details": {
+        "reasoning_tokens": 47
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 115295
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:14:16.085240+00:00",
+  "stream_chunks": 16
+}

@@ -1,0 +1,103 @@
+{
+  "request": 40,
+  "started": "2026-10-18T21:58:18.220889+00:00",
+  "finished": "2026-10-18T21:58:29.064247+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-048e885613eef5c7016ad540fcfcd887d0983c81b268c4b465",
+    "created": 1792360701,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading accessor contracts and handlers\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs:530-590,1870-1940,2310-2345,2410-2470\"}",
+                "name": "read"
+              },
+              "id": "call_a1dHccvsICe3GC84HmQlg7Zx",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading legacy method membership\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs:105-150\"}",
+                "name": "read"
+              },
+              "id": "call_AiqCq9cQ3VNsT9TOiz2F3SWf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading legacy observer dispatch\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs:190-270\"}",
+                "name": "read"
+              },
+              "id": "call_nENV9KYj74oheyvV8ls4YZ2H",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading engine publication and fallback\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs:5565-5635,5780-5820,5890-5975\"}",
+                "name": "read"
+              },
+              "id": "call_zNw784bqtdOMMINrXKeCpNJ1",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading behavioral backing caller\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs:1270-1410\"}",
+                "name": "read"
+              },
+              "id": "call_IF6QhZ9eFTONCU8Iv5RYXfor",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating accessor literal references\",\"path\":\"/srv/git/odbus-verified/crates;/srv/git/odbus-verified/scripts;/srv/git/odbus-verified/deploy;/srv/git/3tched.com/src\",\"pattern\":\"GetProviderCatalog|GetConfigSchema|config-schema\\\\.read|provider-catalog\"}",
+                "name": "grep"
+              },
+              "id": "call_cI1ei3hKhl1jmNTwjOO5JxU2",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 789,
+      "prompt_tokens": 120787,
+      "total_tokens": 121576,
+      "completion_tokens_details": {
+        "reasoning_tokens": 96
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 105662
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:58:29.060687+00:00",
+  "stream_chunks": 14
+}

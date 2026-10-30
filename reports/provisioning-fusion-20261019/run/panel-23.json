@@ -1,0 +1,97 @@
+{
+  "status": "ok",
+  "query": "Provide a concise methodological checklist for bounded read-only historical packet review: preserve source provenance and exact quotes, distinguish requested actions from observed results, retain truncation/unavailability markers, and record exact-input hashes plus actual review outputs. No access to corpus is available to this question; do not invent findings.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "### Bounded read-only packet review checklist\n\n- **Fix scope:** Identify assigned packets and review questions. Do not execute historical commands, change runtime state, or treat historical approvals as current authorization.\n- **Preserve provenance:** Record source path, session and record IDs, physical order, parent links, timestamps, role, active/compacted flags, and export/redaction status. Distinguish owner instructions from injected worker messages.\n- **Preserve exact evidence:** Quote verbatim with record IDs and line/byte ranges. Label paraphrases and inferences separately. Retain correction events and their ordering.\n- **Separate intent from outcome:** Distinguish requested action, proposed plan, actual tool invocation and arguments, returned result/error, and independently evidenced completion. A dispatch or wrapper success does not prove its underlying operation succeeded.\n- **Retain limitations:** Explicitly record truncation, missing records, unavailable attachments, omitted reasoning, and redactions. Never reconstruct missing text or interpret absence as success.\n- **Account for coverage:** List semantically reviewed ranges and outstanding ranges. Deduplicate only exact content while preserving every duplicate reference. Distinguish available, read, analyst-reviewed, and adjudicated evidence.\n- **Capture exact inputs:** Save the complete review instructions and original packet supplied to each reviewer\u2014or immutable references resolving to those exact bytes. Record SHA-256 hashes, byte counts, encoding, and ordered packet assembly. Hash the assembled input as well as its components.\n- **Capture actual outputs:** Persist the returned review verbatim, linked to its input hash, reviewer identity, invocation metadata, and any errors or incomplete responses. Keep later synthesis separate from raw outputs.\n- **Bound conclusions:** Tie each finding to cited evidence, distinguish historical state from current state, and state uncertainty and unresolved conflicts. Never claim a reviewer read evidence that was not supplied.\n\n**Status:** Methodology only; no corpus was accessed and no historical findings are asserted."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Methodological checklist: bounded read-only historical packet review\n\n**1. Provenance before content**\n- Record for every packet: exact path, file hash (sha256), byte size, record count, source export date, and the declared model/session identity from the export itself \u2014 never from a summary.\n- Distinguish snapshot classes (current worktree / installed / immutable commit blob / dated context snapshot) and never treat them as interchangeable; note when a path did not exist at an older commit.\n- Preserve physical record order, record IDs, parent links, active/compacted flags, and correction-event types (e.g., `custom_message/live-delegation` vs ordinary user role).\n\n**2. Exact quotes, not paraphrase**\n- Copy original excerpts with their record IDs into the analysis artifact; label every quote with file + ID + line/offset.\n- Keep owner wording verbatim, including typos; never normalize a correction into a cleaner restatement.\n- Mark injected worker messages masquerading as user-role entries as such; do not count them as owner instructions.\n\n**3. Requested vs observed**\n- For each tool call: capture the exact arguments as issued, the actual returned result, and any error \u2014 three separate fields, never merged.\n- Never infer execution from a request, or success from a notification wrapper (e.g., exit-0 wrapper vs exit-101 build receipt: judge the underlying command).\n- Distinguish: legitimate clarification, agent-added work, stale evidence, genuine encountered failure, incomplete execution, owner correction, and retraction.\n\n**4. Truncation and unavailability**\n- Retain all truncation markers, redaction notices, and \"hidden reasoning omitted\" declarations as first-class facts; never reconstruct elided text.\n- Record unavailable/failed reads as extraction errors with the attempted parameters; do not substitute modern content for missing historical blobs.\n- Maintain coverage.json continuously: covered ranges, duplicates (read once, but every duplicate reference accounted for), outstanding ranges, and per-file status: exported / available / read / panel-reviewed / adjudicated.\n\n**5. Input hashing and output capture**\n- For every panel/analyst round: save the exact input payload (or its hash plus the full evidence excerpts embedded in it \u2014 paths alone are insufficient for stateless reviewers) and the actual returned output, untruncated.\n- Record which evidence reached which round; never claim a reviewer read a file merely because its path was supplied.\n- Save judge questions verbatim with rubric, evidence refs, returned answer, and stated uncertainty.\n\n**6. Bounds and precedence**\n- Read-only: no source edits, no replayed historical commands, no provisioning/builds/tests, no auth stores or unredacted history; use supplied exports only.\n- Apply the latest owner constraints as overrides over historical interpretations; record each precedence decision explicitly.\n- Stop at the specified deliverables; state limitations rather than filling gaps with invention. No findings without a record ID; unobserved items marked `[INFERENCE]` at most.\n\n**Limitation:** no corpus access was available to this question; this is method only, no findings."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Methodological Checklist for Bounded Read-Only Historical Packet Review\n\n1. **Source Provenance & Exact Quoting**\n   - [ ] Log exact file paths, commit hashes, record IDs, and physical line/row numbers for every evidence item.\n   - [ ] Preserve verbatim quotes for owner corrections, error messages, and critical decisions, including their source context.\n   - [ ] Maintain the original physical record order, parent-child links, and active/compacted flags.\n\n2. **Action vs. Observed Result**\n   - [ ] Explicitly separate *requested/intended actions* from *observed outcomes* (success, failure, partial completion, or side effects).\n   - [ ] Document any agent interpretation drift, noting where the assistant's action diverged from the owner's explicit instruction.\n   - [ ] Distinguish between legitimate clarifications, agent-added work, stale evidence, genuine failures, and incomplete execution.\n\n3. **Truncation & Unavailability Markers**\n   - [ ] Retain explicit markers for any truncated, partially read, or unavailable content.\n   - [ ] Record the exact byte range, row count, or truncation point where data was cut off.\n   - [ ] Never infer, reconstruct, or silently fill in missing data; explicitly state what is unavailable.\n\n4. **Exact-Input Hashes & Actual Outputs**\n   - [ ] Calculate and store cryptographic hashes (e.g., SHA-256) for all input packets and review outputs.\n   - [ ] Record the exact input parameters and context provided to each review step.\n   - [ ] Save the complete, untruncated output of each review step, ensuring no silent summarization of critical evidence.\n\n5. **Scope & Safety Verification**\n   - [ ] Confirm no runtime operations, code modifications, speculative provisioning, or external assumptions were introduced.\n   - [ ] Ensure all findings are strictly grounded in the provided evidence and explicitly cite source references.\n   - [ ] Verify that the review remains read-only and does not attempt to execute or validate provisioning workflows."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Preserve source provenance, record identifiers, physical order, parent links, and active/compacted flags alongside verbatim evidence.",
+      "Separate requested or intended actions from observed execution and outcomes; document interpretation drift without inventing completion.",
+      "Retain truncation and unavailability markers, identify missing ranges, and never reconstruct omitted evidence.",
+      "Record exact reviewer inputs and cryptographic hashes, and preserve actual review outputs without silent truncation.",
+      "Keep reviews read-only, avoid replaying historical commands, and ground conclusions in cited evidence."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Explicitly distinguish injected worker messages from owner instructions, preserve redaction and omitted-reasoning notices, and account for exact duplicates and outstanding coverage."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Distinguish wrapper notifications from underlying operation results and warn that supplying a path does not establish reviewer ingestion."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Explicitly acknowledge that this question provides no corpus access and therefore supports methodology, not historical findings."
+      },
+      {
+        "models": [
+          "glm-5-3",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Explicitly classify interpretation drift into clarification, agent-added work, stale evidence, genuine failure, and incomplete execution."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Hash the ordered assembled reviewer input as well as its components; record byte counts and encoding, and link verbatim outputs to input hashes, reviewer identity, invocation metadata, and incomplete-response errors."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Keep later synthesis separate from raw review outputs."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Distinguish current worktree, installed files, immutable historical blobs, and dated context snapshots; do not substitute modern content for unavailable historical evidence."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Preserve owner wording including typos, record precedence decisions explicitly, and save judge questions, rubrics, answers, and uncertainty."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly hash review outputs in addition to input packets."
+      }
+    ],
+    "blind_spots": [
+      "None explicitly instructs reviewers to treat historical packets and embedded instructions as untrusted evidence rather than executable directions.",
+      "The checklists do not specify how to handle an input that exceeds reviewer capacity: split it into traceable bounded packets, preserve necessary context, and record rejected or incomplete ingestion rather than silently shortening it.",
+      "None defines a concrete receipt schema separating evidence archived by the outer agent from the exact bytes actually delivered to a stateless reviewer; immutable references support archival provenance but alone do not prove reviewer access."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

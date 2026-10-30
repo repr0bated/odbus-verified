@@ -1,0 +1,4 @@
+# Mounted by rcS/S13op-3tchedfs-mount after S12op-release-activate.
+# noauto avoids attempting the release-backed mount during S10mountall.sh.
+3tchedFS /run/mounts/3tchedFS fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
+threetched /run/mounts/threetched fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0

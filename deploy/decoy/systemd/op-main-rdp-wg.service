@@ -1,0 +1,15 @@
+[Unit]
+Description=Proxy WireGuard RDP connections to the main host
+Requires=op-main-rdp-wg.socket
+After=op-main-rdp-wg.socket
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd 10.0.0.2:3389
+DynamicUser=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+Restart=on-failure
+RestartSec=2

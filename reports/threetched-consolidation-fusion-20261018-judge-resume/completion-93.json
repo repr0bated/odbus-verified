@@ -1,0 +1,87 @@
+{
+  "request": 93,
+  "started": "2026-10-18T22:02:42.721312+00:00",
+  "finished": "2026-10-18T22:02:55.115938+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-00e6016abc39edbc016ad5420563ac87d0a6d18da8356baed6",
+    "created": 1792360965,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading legacy runtime observation dispatch\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs:170-275\"}",
+                "name": "read"
+              },
+              "id": "call_HtUpUqkuTUXfY6aonCquhCLq",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading blank hint rejection semantics\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs:130-158,218-231\"}",
+                "name": "read"
+              },
+              "id": "call_jmeGEKL8qPyCBgoCFs3VGI62",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating canonical durable publication\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs\",\"pattern\":\"persist_tched_router_observation|persist_tched_router_fields|GetState.*ListProviders\"}",
+                "name": "grep"
+              },
+              "id": "call_lmT4geVHnYQizqMPnu4bjrKy",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating shared handoff heading\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md\",\"pattern\":\"^## Handoff\"}",
+                "name": "grep"
+              },
+              "id": "call_jnmZlBX02ez8B4k3mCzTLLzc",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 521,
+      "prompt_tokens": 124213,
+      "total_tokens": 124734,
+      "completion_tokens_details": {
+        "reasoning_tokens": 188
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 105633
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:02:55.114115+00:00",
+  "stream_chunks": 10
+}

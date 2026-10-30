@@ -1,0 +1,12 @@
+Luna validation receipt, 2026-09-30; cwd /srv/git/odbus-verified; native x86_64-unknown-linux-gnu. All Cargo commands used CXXFLAGS='-include cstdint' CARGO_INCREMENTAL=0, -j 1 where applicable; serial commands only.
+
+Completed results:
+- Existing bridge retry session (started before the current model instruction): cargo test -p op-grpc-bridge --lib system_graph -j 1; exit 0, 11 passed (10 projection + 1 capture). Log: bridge-retry.log.
+- cargo test -p threetched-fs --bin threetched-fs mcp::tests -j 1; exit 0, 7 passed. Log: threetched-fs.log.
+- cargo check -p op-chat --lib -j 1; exit 0. Log: op-chat.log.
+- cargo test -p op-llm --lib graph_turn_reminder -j 1; exit 0, 3 passed. Log: llm-reminder-final.log.
+- cargo test -p op-cozo-store --bin system_graph_inventory -j 1; exit 0, 10 passed. Log: inventory-final.log.
+- cargo run -p op-cozo-store --bin system_graph_inventory -j 1 -- --source-graph /var/tmp/opdbus-system-graph-tests/source-fresh/crate-graph.json --output /var/tmp/opdbus-system-graph-tests/source-fresh/snapshot.json --namespace source:workspace --generated-at 2026-09-30T00:00:00Z; exit 0, produced 1,213 nodes / 2,867 edges / 743 uses_ext. jq assertions passed: source_worktree_dirty=true, explicit uncommitted-source limitation present, every uses_ext edge preserves req either directly or in each occurrences[].req. Input raw graph has 1,234 nodes / 2,877 edges. Log plus assertion record: source-fresh-conversion.log.
+- sh scripts/check-workspace.sh verify; exit 1 at first gate cargo fmt --all -- --check. Log: verify-final.log. This log contains 261 format diff hunks in 99 files; no hunk in system_graph*, graph_turn*, or inventory collector source. Later clippy/workspace tests were not reached.
+
+Focused checks do not establish deployment. No service, live state, grants, or repository source were changed for this validation. Detailed memory observations and raw samples: /var/tmp/opdbus-memory-check-20260930-RqOrAE/; sample 5 there is explicitly labeled as primary-reported rather than directly sampled by this agent.

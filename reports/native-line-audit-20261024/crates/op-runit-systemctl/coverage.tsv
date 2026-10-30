@@ -1,0 +1,6 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-runit-systemctl/Cargo.toml	1-26 EOF	e14ce740fc107ff280fede4e9fbc774dfd5d2ecfd27cd08aadbf9933ead476b3	No native occurrence; unchanged	complete
+crates/op-runit-systemctl/README.md	1-110 EOF	783984efcb693d8663d79bee0e32ed03f30c2ff5bf089482836a0023d0946f1e	No native occurrence; stale s6 documentation outside native scope	complete
+crates/op-runit-systemctl/src/bin/svd.rs	1-110 EOF	c035c68b4f178be5e3e05745be1a237e6fe661f00757dc64dcb580565f5f7bb0	No native occurrence; stale s6d labels outside native scope	complete
+crates/op-runit-systemctl/src/dbus.rs	1-203;204-403;404-603;604-789 EOF	6ceab5217a1fe9ee4bd5f7751ff53c5fd7c32d59f668dc5dd2432b3d3e00f3fc	No native occurrence; restart implementation supplies J1 contextual evidence; unchanged	complete
+crates/op-runit-systemctl/src/main.rs	1-94 EOF	3bfc13cd890fcb0adb4d2568a432df0ea6dfd8c2f16d2f5f2cce6e13397bc1d6	One native occurrence at line16 occurrence1; J1 wording retain_accurate_command_term confidence0.89; unchanged	complete

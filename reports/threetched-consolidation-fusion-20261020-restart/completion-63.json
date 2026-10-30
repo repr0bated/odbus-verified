@@ -1,0 +1,65 @@
+{
+  "request": 63,
+  "started": "2026-10-20T17:20:05.427193+00:00",
+  "finished": "2026-10-20T17:20:24.443467+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-04882356b269bcb9016ad7a2cb873c87d186ce74fec794d677",
+    "created": 1792516811,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating shared handoff insertion\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:1-18,590-596\"}",
+                "name": "read"
+              },
+              "id": "call_A799VES6yjIQrTdoiO6QPKjM",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The 33-method consolidation was already built and sealed; recovered receipts resolve the stale blocker. The generated example now uses `tched_fs`. A targeted build remains to establish consumer compilation. No live recovery or activation is being attempted."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 488,
+      "prompt_tokens": 268312,
+      "total_tokens": 268800,
+      "completion_tokens_details": {
+        "reasoning_tokens": 118
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 176928
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:20:24.441699+00:00",
+  "stream_chunks": 5
+}

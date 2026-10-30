@@ -1,0 +1,61 @@
+{
+  "status": "ok",
+  "query": "For a bounded document review of supplied historical packets, outline concise evidence-integrity pitfalls: preserve original quotes, corrections, action versus observed result, provenance, unavailable/truncated fields, full untruncated inputs and actual raw outputs. No code discovery or execution is needed.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Report paths: none.\n\nFailure: This worker has no exposed tools to read `mandatory-preload.txt` or `review-contract.txt`, or persist the requested review. No files were read, no packets reviewed, and no outputs saved."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The sole panel response explicitly reports no files read, packets reviewed, or outputs saved; it makes no claim of completed evidence review."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Provides an explicit non-completion disclosure, but does not answer the requested conceptual outline of evidence-integrity pitfalls."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Reports unavailable tool access as its blocker. This is the model's stated limitation, not independently verified evidence about the environment."
+      }
+    ],
+    "blind_spots": [
+      "Preserve original quotations and distinguish owner corrections from injected worker messages or later interpretations.",
+      "Separate proposed actions, issued tool calls, observed results, and claims of success; wrapper completion does not establish underlying command success.",
+      "Retain record IDs, physical order, parent links, dates, active or compacted status, duplicate references, and source-versus-installed-versus-historical provenance.",
+      "Explicitly identify unavailable, redacted, omitted, or historically truncated content without reconstructing it.",
+      "Ensure each analyst receives the full intended original input without silent truncation, and record precisely which evidence reached each call.",
+      "Persist actual raw outputs and exact input references or hashes; distinguish available, read, panel-reviewed, and adjudicated evidence.",
+      "The bounded conceptual question can be answered without inspecting files; the response does not distinguish that request from the broader operational review."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "task": "tched-context-audit-20261024/op-network",
+  "crate": "op-network",
+  "status": "complete",
+  "files_reviewed": 42,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 3,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-network/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-network/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-network/occurrences.tsv",
+  "jev_receipts": ["JEV-0", "JEV-1", "JEV-2"],
+  "preload_report": "reports/tched-context-audit-20261024/crates/op-network/preload-receipt.md",
+  "supplemental_source_reads": [
+    "crates/op-network/src/controller_native_tests.rs:1-349 (initial read metadata absent; read fully now)",
+    "crates/op-network/src/rovs_proxy_native_tests.rs:1-300 (initial read metadata absent; read fully now)"
+  ],
+  "preload_paths_reread": 28,
+  "initial_receipt_corrections": [
+    "Coordinator receipt v5 found 2 of 42 files wholly unread in the initial pass; earlier completion claim was premature and has not been backdated.",
+    "Initial mandatory skill preload lacks full receipts; all 28 paths were reread in this continuation and no initial completion is claimed."
+  ],
+  "limitations": [
+    "The two supplemental files add no case-insensitive tched occurrence; prior JEV dispositions are unaffected.",
+    "No Cargo/build/tests/runtime/deployment; per-crate assignment prohibits these activities.",
+    "Source review does not establish live deployment or runtime state."
+  ],
+  "next_action": "Coordinator may reconcile the corrected static audit reports and perform the authorized scoped build; no op-network source edit remains."
+}

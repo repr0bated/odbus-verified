@@ -1,6 +1,8 @@
-//! SSE framing for the existing committed public state subscription.
-//! Hydration always reads the pinned catalog and committed SHM; replayed RAM
-//! frames are never the source for a new or lagging connection.
+//! Leftover HTTP SSE framing (`GET /api/events`). Live schema/state belongs to
+//! tonic-web / lungs at `10.0.0.2:8090` (`Subscribe` / `CallMethod`), not here.
+//! Default: readiness frames only (no catalog dump). Opt-in hydrate is legacy.
+//! Deprecated compatibility route: its 15-second SSE keepalive is timer-driven;
+//! state refresh is event-driven. Route removal requires owner approval.
 
 use anyhow::{Context, Result, ensure};
 use axum::{
@@ -20,6 +22,34 @@ use crate::{state::AppState, state_tree::CommittedStateTree};
 
 const MAX_HYDRATION_BYTES: usize = 16 * 1024 * 1024;
 const MAX_HYDRATION_FRAMES: usize = 4096;
+
+/// Public plugins the page actually needs. Empty subscribe / full-catalog
+/// hydration was pushing ~11 MiB through `/api/events` and hanging browsers.
+const DEFAULT_SSE_PLUGINS: &[&str] = &[
+    "json_render",
+    "chat_response",
+    "chat_router",
+    "ctl_plane_chatbot",
+    "model_registry",
+    "gemma_brain",
+];
+
+/// Allowlist for SSE hydration and the gRPC→SSE bridge. Override with
+/// comma-separated `OP_WEB_SSE_PLUGINS`.
+pub fn sse_plugin_allowlist() -> Vec<String> {
+    match std::env::var("OP_WEB_SSE_PLUGINS") {
+        Ok(raw) if !raw.trim().is_empty() => raw
+            .split(',')
+            .map(str::trim)
+            .filter(|id| !id.is_empty())
+            .map(str::to_string)
+            .collect(),
+        _ => DEFAULT_SSE_PLUGINS
+            .iter()
+            .map(|id| (*id).to_string())
+            .collect(),
+    }
+}
 
 pub struct SseEventBroadcaster {
     tx: broadcast::Sender<SseEvent>,
@@ -166,6 +196,15 @@ fn hydration_from_tree(tree: CommittedStateTree) -> Result<Hydration> {
         catalog_hash: tree.catalog_hash,
         generation: tree.projection_generation,
     };
+    // Lungs (`10.0.0.2:8090`) is the one endpoint for live schema/state.
+    // This leftover HTTP SSE only announces readiness so browsers are not
+    // hung by a multi-megabyte catalog dump. Opt back into bounded hydrate
+    // with OP_WEB_SSE_HYDRATE=1 (still filtered by OP_WEB_SSE_PLUGINS).
+    let hydrate = cfg!(test)
+        || matches!(
+            std::env::var("OP_WEB_SSE_HYDRATE").as_deref(),
+            Ok("1") | Ok("true") | Ok("TRUE") | Ok("yes") | Ok("YES")
+        );
     let mut frames = vec![event(
         "state_reset",
         json!({
@@ -174,48 +213,59 @@ fn hydration_from_tree(tree: CommittedStateTree) -> Result<Hydration> {
             "frame_kind": StateFrameKind::InitialState as i32,
         }),
     )?];
-    let mut states = Vec::new();
-    let mut selected_bytes = frames[0].data.len();
-    for (plugin_id, plugin) in tree.plugins {
-        let path = format!("/org/opdbus/v1/plugins/{plugin_id}");
-        // Serialize the original sealed JSON, never a typed schema with new
-        // serde defaults inserted by the currently compiled consumer.
-        let schema: Value = serde_json::from_str(&plugin.schema_json)?;
-        frames.push(event(
-            "schema_update",
-            json!({
-                "plugin_id": &plugin_id, "object_path": &path,
-                "property_name": &plugin.schema_hash, "new_value": schema,
-                "event_id": "0", "tags": [], "change_type": ChangeType::SchemaMigration as i32,
+    if hydrate {
+        let allow = sse_plugin_allowlist();
+        let mut states = Vec::new();
+        let mut selected_bytes = frames[0].data.len();
+        for (plugin_id, plugin) in tree.plugins {
+            if !allow.is_empty() && !allow.iter().any(|id| id == &plugin_id) {
+                continue;
+            }
+            let path = format!("/org/opdbus/v1/plugins/{plugin_id}");
+            // Serialize the original sealed JSON, never a typed schema with new
+            // serde defaults inserted by the currently compiled consumer.
+            let schema: Value = serde_json::from_str(&plugin.schema_json)?;
+            frames.push(event(
+                "schema_update",
+                json!({
+                    "plugin_id": &plugin_id, "object_path": &path,
+                    "property_name": &plugin.schema_hash, "new_value": schema,
+                    "event_id": "0", "tags": [], "change_type": ChangeType::SchemaMigration as i32,
+                    "frame_kind": StateFrameKind::InitialState as i32,
+                    "schema_hash": &plugin.schema_hash, "catalog_hash": &cursor.catalog_hash,
+                    "state_generation": cursor.generation.to_string(), "removed": false,
+                }),
+            )?);
+            let absent = plugin.state.is_none();
+            states.push(event("state_update", json!({
+                "plugin_id": plugin_id, "object_path": path, "property_name": null,
+                "new_value": plugin.state, "event_id": "0", "tags": [],
+                "change_type": if absent { ChangeType::ObjectRemoved as i32 } else { ChangeType::PropertySet as i32 },
                 "frame_kind": StateFrameKind::InitialState as i32,
-                "schema_hash": &plugin.schema_hash, "catalog_hash": &cursor.catalog_hash,
-                "state_generation": cursor.generation.to_string(), "removed": false,
-            }),
-        )?);
-        let absent = plugin.state.is_none();
-        states.push(event("state_update", json!({
-            "plugin_id": plugin_id, "object_path": path, "property_name": null,
-            "new_value": plugin.state, "event_id": "0", "tags": [],
-            "change_type": if absent { ChangeType::ObjectRemoved as i32 } else { ChangeType::PropertySet as i32 },
-            "frame_kind": StateFrameKind::InitialState as i32,
-            "schema_hash": plugin.schema_hash, "catalog_hash": &cursor.catalog_hash,
-            "state_generation": cursor.generation.to_string(), "removed": absent, "replace": true,
-        }))?);
-        selected_bytes = selected_bytes
-            .checked_add(frames.last().context("schema frame missing")?.data.len())
-            .and_then(|bytes| bytes.checked_add(states.last().map_or(0, |frame| frame.data.len())))
-            .context("state hydration size overflow")?;
-        ensure!(
-            selected_bytes <= MAX_HYDRATION_BYTES,
-            "state hydration exceeds 16 MiB"
-        );
-        ensure!(
-            frames.len() + states.len() < MAX_HYDRATION_FRAMES,
-            "state hydration exceeds 4096 frames"
-        );
+                "schema_hash": plugin.schema_hash, "catalog_hash": &cursor.catalog_hash,
+                "state_generation": cursor.generation.to_string(), "removed": absent, "replace": true,
+            }))?);
+            selected_bytes = selected_bytes
+                .checked_add(frames.last().context("schema frame missing")?.data.len())
+                .and_then(|bytes| {
+                    bytes.checked_add(states.last().map_or(0, |frame| frame.data.len()))
+                })
+                .context("state hydration size overflow")?;
+            ensure!(
+                selected_bytes <= MAX_HYDRATION_BYTES,
+                "state hydration exceeds 16 MiB"
+            );
+            ensure!(
+                frames.len() + states.len() < MAX_HYDRATION_FRAMES,
+                "state hydration exceeds 4096 frames"
+            );
+        }
+        // Contracts precede every value, including absent-state tombstones.
+        frames.extend(states);
+    } else {
+        // Keep the SHM tree read for catalog/generation identity only.
+        let _ = tree.plugins;
     }
-    // Contracts precede every value, including absent-state tombstones.
-    frames.extend(states);
     frames.push(event(
         "state_ready",
         json!({
@@ -330,10 +380,8 @@ fn state_event_stream(
     }
 }
 
-/// GET /api/events. The shared endpoint carries only the selected public SHM
-/// namespace, never credential files or privileged audit history.
-/// state_reset clears prior public schema/state keys; state_ready completes a
-/// fresh bounded hydration. State generations are decimal strings.
+/// GET /api/events — leftover HTTP path. Live updates go through tonic-web on
+/// lungs (`10.0.0.2:8090`). Default stream is readiness-only (no SHM dump).
 pub async fn sse_handler(
     Extension(state): Extension<Arc<AppState>>,
 ) -> Sse<impl Stream<Item = std::result::Result<Event, Infallible>>> {

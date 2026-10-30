@@ -3,40 +3,6 @@
     "table": 0,
     "priority": 100,
     "match_fields": {
-      "tcp": "",
-      "nw_dst": "10.200.0.1",
-      "tp_dst": "8081"
-    },
-    "actions": [
-      {
-        "type": "normal"
-      }
-    ],
-    "cookie": 3694151570867355650,
-    "idle_timeout": 0,
-    "hard_timeout": 0
-  },
-  {
-    "table": 0,
-    "priority": 100,
-    "match_fields": {
-      "tcp": "",
-      "nw_src": "10.200.0.1",
-      "tp_src": "8081"
-    },
-    "actions": [
-      {
-        "type": "normal"
-      }
-    ],
-    "cookie": 3694151570867355650,
-    "idle_timeout": 0,
-    "hard_timeout": 0
-  },
-  {
-    "table": 0,
-    "priority": 100,
-    "match_fields": {
       "udp": "",
       "nw_dst": "188.68.58.237",
       "tp_dst": "443"

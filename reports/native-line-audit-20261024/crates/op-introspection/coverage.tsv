@@ -1,0 +1,11 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-introspection/Cargo.toml	1-31 EOF	9b9e8e971498dc8cae2fabc98d5e6b0b6575e14ffa8f9093bf4b5091ac7f2b83	No native occurrence; unchanged	complete
+crates/op-introspection/SPEC.md	1-109 EOF	4fdc478f744d302db0c5b0f175b6427a82ad9b9c2a626c9e9e5228707b67557b	native at88 preserved; J1 0.88 accurate Cozo FTS; generic inventory drift report-only	complete
+crates/op-introspection/compare-op-introspection.md	1-88 EOF	0273f547f714ab7a0329f5d2ae2ab072b840546721408c6a68a946db3dafdfb2	No native occurrence; generic stale inventory/dependencies	complete
+crates/op-introspection/src/cache.rs	1-44 EOF	41557031462da3800590ad88d11ff5b11c8648b996b65521670888216942dec5	No native occurrence; unchanged	complete
+crates/op-introspection/src/indexer.rs	1-223;224-423;424-531 EOF	2165d5e9bdd971bb67c287ec6e3f93eda9337cb8661502d1b01c2cb5711f470c	native at3 preserved; J1 0.88 accurate Cozo FTS; J2 no shown AI override	complete
+crates/op-introspection/src/indexer_manager.rs	1-52 EOF	4a301c480a4b4cf456b702f8aab02d1924ea8204f0307bbb5522f1aa1b2965ed	No native occurrence; unchanged	complete
+crates/op-introspection/src/lib.rs	1-110 EOF	6756cdcf9191bb69baf0ab38627e9a6f314de966618745e6d7a65a1ac8f2eae3	No native occurrence; generic stale FTS5 description	complete
+crates/op-introspection/src/parser.rs	1-26 EOF	0fa828927fb0ee567f17cbaad21069f9e18732c3e4082f54c1d84aa406632f66	No native occurrence; parser ignores XML generic issue	complete
+crates/op-introspection/src/projection.rs	1-234 EOF	68fa7cb2e2ccee526aa8d0fee76433a52a45b7d07ee7a6ac51c3bae7b3031549	No native occurrence; unchanged	complete
+crates/op-introspection/src/scanner.rs	1-223;224-479 EOF	fc7489ce0cff5b2bc241a871c7e09896b1fde9fe2d20c8a60aa749a2b36c9208	No native occurrence; unchanged	complete

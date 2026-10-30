@@ -1,0 +1,109 @@
+#!/bin/sh
+# Host storage owner: remount/receive existing GPT members, never mint/start.
+set -eu
+fail() { printf 'restore-chatbot-root: %s\n' "$*" >&2; exit 1; }
+check_only=false
+if [ "${1:-}" = --check ]; then check_only=true; shift; fi
+[ "$#" -le 1 ] || fail 'usage: restore-chatbot-root [--check] [NAME]'
+name=${1:-3tchedCtlChatbot}
+printf '%s' "$name" | grep -Eq '^(3tchedCtlChatbot|3tchedChatbot|ID-[1-9][0-9]*)$' && [ "${#name}" -le 63 ] || fail 'invalid chatbot selector'
+# The name selects the native target; the same existing UUID/session/key and
+# storage receipts below are required for both the legacy alias and ID-N.
+[ "$(id -u)" = 0 ] || fail 'host root required'
+sid=b0c777e3-0955-cd8b-3d01-ca12998cae28
+key=[REDACTED:opaque-base64]
+pool=/var/lib/incus/storage-pools/3tched-pool
+receipt=$pool/.provisioning/$name.boot.json
+binding=$pool/.provisioning/$name.incus.json
+disk=$pool/.provisioning/$name.json
+root=/var/lib/incus/storage-pools/identity-roots/containers/$name/rootfs
+view=$pool/.mounts/$name/root-view
+seed_layer=$pool/.mounts/$name/seed-layer
+upgrade_layer=$pool/.mounts/$name/upgrade-layer
+readback() { timeout --kill-after=5s 30s "$@"; }
+secure_path() (
+    path=$1
+    [ "$(realpath -e -- "$path")" = "$path" ] || fail "noncanonical path: $path"
+    while :; do
+        [ ! -L "$path" ] && [ "$(stat -c %u -- "$path")" = 0 ] &&
+            [ $((0$(stat -c %a -- "$path") & 022)) -eq 0 ] || fail "unsafe owner/mode: $path"
+        [ "$path" != / ] || break
+        path=$(dirname -- "$path")
+    done
+)
+secure_path "$pool"
+[ "$(stat -c %u:%g "$pool")" = 0:0 ] &&
+    [ "$(readback findmnt -rn -M "$pool" -o FSTYPE)" = btrfs ] &&
+    [ "$(readback findmnt -rn -M "$pool" -o FSROOT)" = / ] &&
+    [ "$(readback findmnt -rn -M "$pool" -o UUID)" = a1ab7b42-12a8-437c-8f65-d0469892c8dd ] &&
+    [ "$(readback findmnt -rn -M / -o UUID)" != a1ab7b42-12a8-437c-8f65-d0469892c8dd ] ||
+    fail 'canonical loop pool is not mounted on its pinned filesystem'
+secure_path "$pool/.provisioning"
+[ -d "$pool/.provisioning" ] && [ "$(stat -c %u:%g:%a "$pool/.provisioning")" = 0:0:700 ] ||
+    fail 'preparation receipt directory must be private'
+for file in "$receipt" "$binding" "$disk"; do
+    secure_path "$file"
+    [ -f "$file" ] && [ "$(stat -c %u:%g:%a "$file")" = 0:0:600 ] || fail "unsafe preparation receipt: $file"
+done
+jq -e --arg name "$name" --arg sid "$sid" '
+    .version==1 and .name==$name and .session_id==$sid and
+    .identity_registered==true and .restore_existing_pair==true
+' "$receipt" >/dev/null || fail 'chatbot boot attestation differs'
+# The boot opt-in is not identity authority. Match the host preparation's
+# existing native UUID/session/key and storage paths before any mount action.
+jq -e --arg name "$name" --arg sid "$sid" --arg key "$key" --arg root "$root" --arg view "$view" '
+    .version==1 and .name==$name and .session_id==$sid and .phase=="root-bound" and
+    .root_bound==true and .root_view_readonly==true and .upgrade_paired==true and
+    .threetched_root==$root and .root_view==$view and .instance.name==$name and .instance.type=="container" and
+    .instance.config["user.opdbus.session_id"]==$sid and .instance.config["user.opdbus.wireguard_public_key"]==$key and
+    (.instance.config["volatile.uuid"]|type=="string" and test("^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$"))
+' "$binding" >/dev/null || fail 'chatbot preparation pins differ'
+uuid=$(jq -er '.instance.config["volatile.uuid"]' "$binding")
+jq -e --arg uuid "$uuid" '
+    (has("instance_uuid")|not) or .instance_uuid==$uuid
+' "$receipt" >/dev/null || fail 'boot native UUID differs'
+jq -e --arg name "$name" --arg image "$pool/$name.img" --arg root "$pool/.mounts/$name/root" \
+    --arg upgrade "$pool/.mounts/$name/upgrade" '
+    .name==$name and .layout=="raw-gpt-root-upgrade-v1" and .phase=="filesystems-prepared" and
+    .filesystem_prepared==true and .image==$image and .root_mount==$root and .upgrade_mount==$upgrade
+' "$disk" >/dev/null || fail 'disk preparation pins differ'
+image=$pool/$name.img
+secure_path "$image"
+[ -f "$image" ] && [ "$(stat -c %i "$image")" = "$(jq -r .image_inode "$disk")" ] &&
+    [ "$(stat -c %s "$image")" = "$(jq -r .image_bytes "$disk")" ] || fail 'image pins differ'
+instance=$(readback incus --force-local query "/1.0/instances/$name?project=default") || fail 'native instance readback failed'
+printf '%s\n' "$instance" | jq -e --arg name "$name" --arg sid "$sid" --arg key "$key" --arg uuid "$uuid" '
+    .name==$name and .type=="container" and .config["volatile.uuid"]==$uuid and
+    .config["user.opdbus.session_id"]==$sid and .config["user.opdbus.wireguard_public_key"]==$key and
+    .config["security.privileged"]=="false" and .config["security.protection.shift"]=="true" and
+    .config["boot.autostart"]=="false" and .profiles==["3tched-lungs"] and
+    .devices.root.type=="disk" and .devices.root.path=="/" and .devices.root.pool=="identity-roots" and
+    ((.status=="Stopped" and .status_code==102) or (.status=="Running" and .status_code==103))
+' >/dev/null || fail 'native chatbot UUID/session/key/policy differs'
+state=$(printf '%s\n' "$instance" | jq -er .status)
+# Select the activated closure deliberately. When invoked from a source or
+# received release, use that helper's sibling; never fall through to base copies.
+self=$(realpath -e -- "$0") || fail 'cannot resolve restore helper'
+helper_dir=$(dirname -- "$self")
+case "$helper_dir" in
+    /usr/local/libexec/3tched)
+        helper_dir=/usr/local/libexec/op-dbus/helpers ;;
+esac
+sync_helper=$helper_dir/sync-instance-upgrade
+case "$self" in
+    */deploy/runit/libexec-3tched/restore-chatbot-root)
+        sync_helper=$helper_dir/../../scripts/sync-instance-upgrade.sh ;;
+esac
+sync_helper=$(realpath -e -- "${OP_SYNC_INSTANCE_UPGRADE_HELPER:-$sync_helper}") || fail 'selected sync helper absent'
+secure_path "$sync_helper"
+[ -f "$sync_helper" ] && [ -x "$sync_helper" ] || fail 'selected sync helper not executable'
+if [ "$state" = Running ]; then
+    # A service restart observes only; it must not replace a running guest's lowers.
+    [ "$(readback findmnt -rn -M "$root" -o FSTYPE)" = overlay ] || fail 'running root is not overlay'
+    options=$(readback findmnt -rn -M "$root" -o FS-OPTIONS) || fail 'cannot inspect running root'
+    case ",$options," in *,"lowerdir=$upgrade_layer:$seed_layer",*) ;; *) fail 'running root lower pins differ' ;; esac
+    case ",$(readback findmnt -rn -M "$root" -o VFS-OPTIONS)," in *,ro,*) ;; *) fail 'running root is not read-only' ;; esac
+    exit 0
+fi
+[ "$check_only" != true ] || exit 0
+exec "$sync_helper" boot "$name"

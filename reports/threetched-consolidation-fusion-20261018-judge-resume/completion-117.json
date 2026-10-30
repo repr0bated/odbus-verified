@@ -1,0 +1,53 @@
+{
+  "request": 117,
+  "started": "2026-10-18T22:04:25.410176+00:00",
+  "finished": "2026-10-18T22:04:40.823682+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0b5f1b4bf0b3ca48016ad5426c8b2487d0ba4d01a1559f9452",
+    "created": 1792361068,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Removed incidental method/capability counts, version/dependency/grant wiring assertions, stream target-name tests, and the now-unused `target_method_for` helper. Retained no-independent-state assertion, malformed-input/result rejection tests, and integration admission-denial tests. Production stream admission unchanged. No tests executed.\n\n**Edit receipts:**\n- `large_language_model.rs`: `BB55 \u2192 BCF1`\n- `large_language_model_methods.rs`: `0524 \u2192 A3DB`\n- bridge `large_language_model_dispatch.rs`: `2454 \u2192 59E9`\n\n**Exact nine edited paths:**\n1. `crates/op-plugins/src/state_plugins/large_language_model.rs`\n2. `crates/op-plugins/src/state_plugins/large_language_model_methods.rs`\n3. `crates/op-plugins/src/state_plugins/antigravity.rs`\n4. `crates/op-plugins/src/state_plugins/antigravity_chat.rs`\n5. `crates/op-plugins/src/state_plugins/gemma_brain.rs`\n6. `crates/op-grpc-bridge/src/large_language_model_dispatch.rs`\n7. `crates/op-grpc-bridge/src/antigravity_dispatch.rs`\n8. `crates/op-grpc-bridge/src/owned_method_task_tests.rs`\n9. `crates/op-grpc-bridge/tests/large_language_model_dispatch.rs`\n\nSeparately, the previously reported `HANDOFF.md` Active work row was added; parent owns its final integration.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 705,
+      "prompt_tokens": 200624,
+      "total_tokens": 201329,
+      "completion_tokens_details": {
+        "reasoning_tokens": 108
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 131113
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:40.822808+00:00",
+  "stream_chunks": 3
+}

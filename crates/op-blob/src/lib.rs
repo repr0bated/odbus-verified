@@ -58,7 +58,7 @@ pub use adapter::{
 };
 pub use blob::{
     BlobManifest, BlobRef, DbusIdentity, GrpcIdentity, MethodManifest, PluginObjectBlob, blobify,
-    blobify_with_identity, canonical_plugin_id,
+    blobify_with_identity, canonical_plugin_id, try_blobify, try_blobify_with_identity,
 };
 pub use catalog::{ActiveReflectionCatalog, BlobStore};
 pub use identity::{BlobIdentity, WgKeypair};
@@ -69,6 +69,8 @@ pub type BlobMethod = MethodManifest;
 pub type DbusObjectIdentity = DbusIdentity;
 pub type GrpcObjectIdentity = GrpcIdentity;
 
+/// Convenience producer for trusted schemas. Panics on invalid schemas;
+/// publication code must use `try_blobify_plugin_schema` to report errors.
 pub fn blobify_plugin_schema(
     plugin_id: &str,
     schema: op_state_store::PluginSchema,
@@ -76,24 +78,47 @@ pub fn blobify_plugin_schema(
     blobify_plugin_schema_with_identity(plugin_id, schema, None)
 }
 
+/// Seal a full workspace schema without panicking on ambiguous field aliases.
+pub fn try_blobify_plugin_schema(
+    plugin_id: &str,
+    schema: op_state_store::PluginSchema,
+) -> Result<PluginObjectBlob, String> {
+    try_blobify_plugin_schema_with_identity(plugin_id, schema, None)
+}
+
 /// Seal the FULL canonical workspace schema. The sealed SCHEMA_JSON section
 /// (and the schema hash) is the complete `op_state_store::PluginSchema` —
 /// signals, guarantees, category and all. The reduced local `PluginSchema` is
 /// derived from the same canonical value purely as the working view for
 /// descriptor/manifest synthesis; it is never what gets sealed.
+///
+/// Requires a trusted, validated schema; panics on invalid input. Publication
+/// boundaries must use `try_blobify_plugin_schema_with_identity` instead.
 pub fn blobify_plugin_schema_with_identity(
+    plugin_id: &str,
+    schema: op_state_store::PluginSchema,
+    identity: Option<BlobIdentity>,
+) -> PluginObjectBlob {
+    try_blobify_plugin_schema_with_identity(plugin_id, schema, identity)
+        .expect("trusted workspace PluginSchema is valid for blob synthesis")
+}
+
+/// Fallible full-schema producer. No catalog is opened or mutated here.
+pub fn try_blobify_plugin_schema_with_identity(
     plugin_id: &str,
     mut schema: op_state_store::PluginSchema,
     identity: Option<BlobIdentity>,
-) -> PluginObjectBlob {
+) -> Result<PluginObjectBlob, String> {
     schema.name = blob::canonical_plugin_id(plugin_id);
-    let canonical_value =
-        serde_json::to_value(&schema).expect("op-state-store PluginSchema serializes");
-    // serde_json's Map is BTreeMap-backed (no `preserve_order`), so this is
-    // deterministic key-sorted canonical JSON.
-    let canonical_json =
-        serde_json::to_string(&canonical_value).expect("canonical value serializes");
+    let canonical_value = blob::canonicalize_json_object_keys(
+        serde_json::to_value(&schema)
+            .map_err(|error| format!("plugin {plugin_id:?} schema serialization: {error}"))?,
+    );
+    // Explicitly sort object keys because serde_json's `preserve_order`
+    // feature may be enabled elsewhere in the workspace.
+    let canonical_json = serde_json::to_string(&canonical_value)
+        .map_err(|error| format!("plugin {plugin_id:?} canonical serialization: {error}"))?;
     let working: PluginSchema = serde_json::from_value(canonical_value)
-        .expect("op-blob PluginSchema view accepts op-state-store schema");
-    blob::blobify_canonical(&working, canonical_json, identity)
+        .map_err(|error| format!("plugin {plugin_id:?} descriptor working view: {error}"))?;
+    blob::try_blobify_canonical(&working, canonical_json, identity)
 }

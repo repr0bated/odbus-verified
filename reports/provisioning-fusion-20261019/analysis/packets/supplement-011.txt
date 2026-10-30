@@ -1,0 +1,641 @@
+SOURCE evidence/context/HANDOFF.md character range 0-100000
+# Agent handoff
+
+## 2026-10-19 — Codex / incus-skill-20261019 — mandatory Incus skill added; raw-image work paused
+
+Owner explicitly deleted the failed disk, then rejected per-container loop-based provisioning and requested the Incus instance/profile YAML disk declaration and a mandatory Incus skill. Deleted only `/var/lib/3tched-leaf-pool/3tchedCtlChatbot.img` after verifying inode264,60GiB, both partitions blank, exact loop2 backing, no related mounts and stopped native UUID137c61ff. Detached loop2 first; retained failed receipt and native creation receipts. Subsequently detached the unused failed readonly seed wrapper loop1 after backing/mount checks. Authoritative final losetup lists ONLY existing pool loop0(`/var/lib/incus/disks/3tched.img`). Native container/session/bootstrap remain unchanged; seed remains directly mountedro and blockRO1. No new disk/subvolume/receive/device-add/adoption/start.
+
+Source edits from both repair agents and parent are UNBUILT/UNDEPLOYED and do not implement native Incus volume provisioning. Parent changed prepare-instance-disk.sh path/prechecks/LVM resolution/GPT tail alignment; owner child changed identity_clean_provision.rs and {partitioned,storage}.rs; shell child changed provision-workspace-subscriber,bind-instance-root,prepare-chatbot-adoption,restore-chatbot-root,identity-roots/run and shared-seed-provisioning.md. sync-instance-upgrade.sh remains old path. Do not run this incomplete mixed source chain or treat its remaining readonly-seed-loop requirement as approved architecture. No source rollback of another agent's earlier edits.
+
+Official Incus docs confirm Btrfs driver uses subvolumes for container filesystem volumes; raw/block custom volumes attach to VMs, not containers. Current expanded native root still uses dir pool identity-roots, not Btrfs pool3tched. Native managed subvolume declaration alone does not implement the earlier two-partition seeded-leaf contract; reconcile explicitly, don't silently substitute a copied root or grant block-management privileges inside guest. Original op-identity-root seed_attach really does create readonly seed and leaf loops; no claim that old script implements loop-free native volumes. Upstream Btrfs docs note standalone-seed/sprout concurrent mounting restriction since6.17. User redirects now to finding/installing mandatory Incus guidance.
+
+Completed owner-requested project-local `.agents/skills/incus/SKILL.md` from official Incus instance configuration, profiles, disk, Btrfs driver and storage-volume documentation; no suitable installed/public administration skill found in searches performed. Provenance explicitly local authorship, not a claimed upstream skill. Added it as tenth mandatory preload in AGENTS.md with Incus-before-low-level-Btrfs guidance. No discovery symlink needed: all agents must read `.agents/skills/incus/SKILL.md`, matching the local Btrfs skill convention. Instruction-only change; no application build/deployment/test.
+
+Owner requests stopping excessive checking. Explained that subagents edited source only; parent ran the failed installed helper. Both agents are stopped. Owner correctly distinguishes a subvolume CONTAINING a partitioned raw image from the subvolume itself having partitions: Incus does use backing files for VM disks on Btrfs. Existing chatbot is a container; Incus custom block volumes attach to VMs, not containers. Do not treat this as authorization to convert the identity to a VM or replace the seed contract with copied roots. Exact next action is resolving that container-versus-block-disk requirement, not repeating established checks or executing mixed paused source. HEAD remains051a20d056afba074e21d797aa34f8947c543c5a; skill task changed only AGENTS.md, new skill and HANDOFF.
+
+## 2026-10-19 — Codex / disk-gpt-fdisk-20261019 — actual helper attempt failed before device-add; repairs active
+
+Owner directed running existing helpers and fixing observed failures, preserving Hermes security. Deployed inspect succeeded on existing60GiB old-path disk. Then deployed `provision-workspace-subscriber --prepare-filesystems 3tchedCtlChatbot --seed-device /dev/disk/by-uuid/8468cc14-a5e4-409c-96f6-1e157d470ab5` exited32 at seed mount: fsconfig File exists. It DID advance old receipt to filesystem-prepare-intent, set physical seed blockRO1, attach readonly loop1(/dev/dm-3) and loop2(old image), create empty mount directories. No device-add/format/receive reached. `wipefs --json /dev/loop2p1 /dev/loop2p2` returned no signatures; seed remains sole-member filesystem, generation72. Kernel reports duplicate seed device loop1. Never replay this retained intent blindly; parent owns explicit reconciliation.
+
+Parent integrates runtime plus prepare-instance-disk.sh and sync-instance-upgrade.sh. Two source-only children own disjoint repairs below. Preserve all earlier Hermes/Claude edits and existing native candidate; no new identity/naming allocation. Latest owner naming correction: chatbot is logical ID0 but stays3tchedCtlChatbot; ordinary namesID-1 onward.
+
+## 2026-10-19 — Codex / hermes-provision-history-20261019 — recovered Jeremy's actual conversation; disk work paused
+
+Owner explicitly paused disk work to read Hermes's last conversation and recover the existing helper design. Read `/home/jeremy/.hermes/state.db` read-only, main session `20261018_190519_b780ef` (“Audit provisioning script”, Oct18 19:05 through Oct19 01:29); latest two sessions `20261019_013110_dc3ede` and `20261019_013222_ff946b` contain only unsuccessful “write handoff” requests. Read original conversational exchanges and relevant helper-worker results, not just HANDOFF summaries. No new disk, format, device-add, receive, binding, or container start occurred in this continuation.
+
+“Helpers” means deployed host shell programs, not autonomous guest AI agents. Hermes used temporary AI subagents to implement them. Golden mapping was implemented in main messages1590/2288/2575; source `RELEASE_HELPER_INPUTS` stages `provision-workspace-subscriber`, `prepare-instance-disk`, `sync-instance-upgrade`, `bind-instance-root`, `prepare-chatbot-adoption`, `3tchedfs-invoke`, `op-identity-root`, `op-identity-image`, `restore-chatbot-root` and image assets at `/usr/local/libexec/op-dbus/helpers`. Current filesystem listing confirms these installed files exist. Main messages4091–4121 explicitly settle two partitions, root partition added to mounted seed, separate upgrade/@, provisioning establishes the pair, and host `identity-roots -> restore-chatbot-root -> sync-instance-upgrade boot` restores/synchronizes an existing pair without repeating device-add. Reuse this architecture; do not invent a second provisioner.
+
+Hermes's final messages4472/4474: operator bootstrap eventually ran; mounted caller then failed `cap.identity.sled.self.read@v1`. Earlier approval denials occurred in Hermes execution approval, not a grant of a different OP-DBUS identity; sudo was not a solution to the missing capability. Do not replay that old denial as current: later shared handoff records exact self-read grant repair, and current native readback confirms `3tchedCtlChatbot` already created Oct19 02:10, UUID137c61ff-435c-4300-b3c0-c605e461be13, Stopped/never used. Prior mounted inventory this session confirms operator available, chatbot identity_sled row not yet adopted.
+
+Current deployed helper grep confirms the gap Hermes acknowledged in message4111 is still present: `prepare-instance-disk:46` and `sync-instance-upgrade:34` hardpin `/var/lib/3tched-leaf-pool`; sync line77 hardpins historical host upgrade FSID5a88e7cd-9701-40a7-8301-ef076761886c, but live source is7ac6c955-4028-439c-80b4-c55a647abcb4. Desired disk pool remains `/var/lib/incus/storage-pools/3tched-pool`, existing loop0 FSIDa1ab7b42 distinct from host root. Source shows base boot service selection, but this read did not establish installed base boot wiring. Next: report recovered workflow and adapt existing helpers/callers to intended storage; preserve existing candidate/old image, admission, and final-pin ordering. No new build/test/deploy. HEAD unchanged051a20d056afba074e21d797aa34f8947c543c5a.
+
+Owner additionally flags security work that must not be bypassed. Read Hermes's original `reports/provisioning-audit-20261018.md` and current native/adoption/binding checks. Preserve canonical identity-bound calls and same-handle receipts; private root-owned plans, locks and interrupted-operation intents; exact native UUID/key/session and filesystem checks; stopped-only overlay changes and baseline ancestry checks; unprivileged/nonnested container, idmap and storage-ioctl restrictions; final digest/revision-CAS adoption. Guard enrollment is separate from these operation safety checks. History records guard/AppArmor work as unfinished, not verified protection; no guard enable or policy weakening is authorized by this history read. Audit finding F9 explicitly leaves raw disk, blank-leaf addition and host mount work with the external provisioner, not arbitrary native container lifecycle bypasses.
+
+## 2026-10-19T03:27Z — Codex / disk-gpt-fdisk-20261019 — receive destination safety; no transfer
+
+Owner reports prior Btrfs receive targeted the root filesystem and lost data; accept this as ground truth, do not reproduce it. Owner requires a two-partition Btrfs disk in existing loop-backed pool, root @ and backup/upgrade @, initial pairing and incremental host-to-container update before each startup. No disk move/create/format, send/receive, container start, or Cozo mutation performed during this clarification.
+
+Read-only findmnt confirms `/var/lib/incus/storage-pools/3tched-pool` is `/dev/loop0`, top-level Btrfs FSID `a1ab7b42-12a8-437c-8f65-d0469892c8dd`, distinct from host `/` FSID `d53eeac0-949b-499c-b051-9fecf8678f59` at `/@rootfs`. Source `deploy/scripts/sync-instance-upgrade.sh:136-160,329-343` checks root/replica top-level mounts against receipt FSIDs and receives below replica `.upgrade-sync`, not directly into the root view. This is source inspection, not a verified deployed receive path or a fault-injection test. The script still hardpins the old leaf pool; disk receipt remains filesystem_prepared=false from previous observation. Do not claim the new partition destination is ready. Before a transfer, reconcile authorized pool paths, inspect actual partition/mount/backing-file/FSID pins and the effective receive directory, and preserve the prior shared baseline on failure.
+
+Fresh-install trace: `mount` allocates loop attachment when processing an image-backed fstab entry with `loop`; image existence alone does not mount it. Existing host fstab has the pool entry. `activate-golden.sh` prepares application slots/payload and activates a release; `deploy/release/op-release-activate` restores committed application targets after mountall, not a fresh Incus pool. Golden builder explicitly keeps base storage bootstrap independent. No general fresh-install pool bootstrap found or added; packing an inert fstab fragment alone would not install/invoke it. Owner redirected to disk/Cozo sequence. HEAD `051a20d056afba074e21d797aa34f8947c543c5a`; only HANDOFF updated in this clarification, earlier sgdisk source edit remains uninstalled. No build/test/deploy. Next: reconcile disk-path ownership/callers without overwriting Claude's existing candidate/receipt, then prepare and verify the actual partition before pairing/adoption.
+
+## 2026-10-19 — Codex / disk-gpt-fdisk-20261019 — pool and Cozo binding traced; no disk relocation
+
+Owner wants the sparse disk inside loop-backed Incus pool3tched and accepts60GiB logical size. Native `incus storage show 3tched` confirms source `/var/lib/incus/disks/3tched.img`, driver btrfs,size150GiB; losetup identifies loop0, mounted at both `/var/lib/incus/storage-pools/3tched` and `/var/lib/incus/storage-pools/3tched-pool`. Existing `/var/lib/3tched-leaf-pool/3tchedCtlChatbot.img` is60GiB/40KiB allocated, receipt disk-partitioned, filesystem_prepared=false, identity_registered=false; GPT diskGUID A585B637-5978-4059-B499-1B3E3EEF51D8, root20GiB/upgrade remainder. Native instance137c61ff-435c-4300-b3c0-c605e461be13 is Stopped, root pool identity-roots; lungs-socket-dir already inherited from3tched-lungs. No creation, move, format, start or database mutation performed.
+
+Cozo live mounted inventory completed as existing human414fbc56: operation725c350b-ac53-46dd-ae38-246ac37b7851/event113, exactly one human session row and no chatbot identity row. Source `identity_clean_provision.rs` binds session_id to SledBtrfsDevice.cozo_id, image path, mountpoint, sprout FSID and native instance, commits CleanProvision through MutationEngine into identity_sled and identity_clean_provisions with revision-CAS/plan digest/native+storage proofs. Native creation journal is distinct. Current v4 bridge and six shell/boot helpers hardpin `/var/lib/3tched-leaf-pool`; relocating only the file into pool3tched would be rejected. Need either authorized backing-storage relocation retaining this canonical mount path, or coordinated source/build/deploy path migration before adoption. Do not direct-edit Cozo or rewrite an already committed binding.
+
+Owner asked GPT fdisk: edited only `deploy/scripts/prepare-instance-disk.sh` help, prerequisite list and fresh-image partition writer to `sgdisk --clear --new=1:0:+...G --typecode=1:8300 --change-name=1:3tched-root --new=2:0:0 --typecode=2:8300 --change-name=2:3tched-upgrade`; existing-image refusal and sfdisk JSON inspection/receipt unchanged. gdisk/sgdisk/qemu-img/sfdisk and all create prerequisites installed. Immediate command before qemu-img is jq writing disk-create-intent, not an identified missing binary. Ran exact installed sgdisk geometry with --pretend --print --verify against existing image: no problems, same partition bounds, caution that final partition is not end-aligned2048 (also true of preexisting GPT). No write/repartition, test suite, build or deployment. Updated help documents writer/readback distinction. Next: settle backing storage migration without overwriting other owner's receipt, then prepare/adopt via supported operation; no successful Cozo disk-binding claim.
+
+## 2026-10-19 — Codex / upgrade-root-readonly-20261019 — @ protected, parent writable
+
+Owner explicitly requested `/run/mount/3tched-ct-upgrade/@` read-only and the rest of that upgrade filesystem read-write. Verified existing @ subvolume256 UUID45920335-863b-6242-beb4-ed29db749d20, initially ro=false, then applied only `btrfs property set -ts /run/mount/3tched-ct-upgrade/@ ro true`. Successful readbacks: @ `ro=true`; filesystem top-level `ro=false`; findmnt still reports `/dev/mapper/3tched--vg-3tched--upgrade` mounted rw at `/run/mount/3tched-ct-upgrade`, FSROOT `/`, subvolid5. No unmount, seed-flag change, new subvolume, deletion, container start, source/build/test or service action. This supersedes the preceding seed task's “upgrade untouched” only for this separately authorized @ property change. Only HANDOFF.md changed in repo.
+
+## 2026-10-19 — Codex / seed-seal-20261019 — seed sealed and remounted read-only
+
+Owner explicitly requested btrfstune, then directed proceeding without folder reconciliation and confirmed target `seed` under `/run/mount`. Verified exact backing LV `/dev/mapper/3tched--vg-3tched--seed`, label SDA_SEED, FSID `8468cc14-a5e4-409c-96f6-1e157d470ab5`, one device, no seed loop attachment. First normal host unmount succeeded but btrfstune refused EBUSY; restored host mount ro. `findmnt -N` identified the remaining rw/private seed mount in brltty PID1247 namespace; container init3890/networkd4721/resolved4420/udevd4436/logind8557 had no matching seed mount. Normally unmounted only that private seed copy via nsenter, normally unmounted host seed, ran `btrfstune -S 1` on the verified LV, remounted `ro,subvolid=5` at the original path. No force/lazy unmount, service restart, or upgrade mutation.
+
+Authoritative readback: superblock flags `0x100000001` (WRITTEN|SEEDING), generation72, unchanged FSID; findmnt reports seed `/dev/dm-3` ro and `/run/mount/3tched-ct-upgrade` on its distinct upgrade LV still rw. Post-seal subvolume list preserves IDs259–265 and every preflight UUID for `@`, `@agent_memory`, `@agent_rules`, `@agent_shared`, `@agent_skills`, `@agent_soul`, `@agent_user`. Owner-approved future list soul/rules/shared/skills/plugins/user and removal of host link naming remain UNAPPLIED, as owner explicitly directed sealing now without prerequisite changes. No leaf provisioning or container start; do not claim new layout or shared folder links exist. Only HANDOFF.md changed in repo. Provisioning remains with its existing owner; before adding any dependent leaf, reconcile this sealed old layout with the desired layout rather than editing a seed after dependents exist.
+
+## 2026-10-19T03:05Z — Codex / seed-folder-inspection-20261019 — existing roots, missing folder links
+
+Read-only current observations supersede only the older “no @agent_*” statement: `findmnt` identifies `/run/mount/3tched-seed` as the top-level Btrfs mount of `/dev/mapper/3tched--vg-3tched--seed`. All six `@agent_{memory,rules,shared,skills,soul,user}` entries exist, are empty, and stat reports directory inode256 for each. Their six guest `/agent/<name>` destinations exist. `btrfs subvolume list` returned Operation not permitted, so subvolume IDs/UUIDs and sealing were not verified. Host `/etc/3tched`, seed `@/etc/3tched`, and all six `@agent_<name>/host` links are absent.
+
+Source contract: `deploy/workspace-agent/populate.sh:51-54` creates guest `/etc/3tched` and links each `@agent_<name>/host` to `/etc/3tched/<name>`. `deploy/runit/libexec-3tched/attach-host-workspace-folders:21-23,42,69-89` requires six existing host folders and attaches their parent read-only through the admitted Incus device operation. Current helper also requires every expanded device to be disk, incompatible with canonical guest `/dev/fuse`; do not blindly run it. `bind-instance-root.sh:219-223` binds six private siblings into `/agent/<name>` separately. No implementation change authorized or made during this walkthrough. Leaf-pool receipt/image reads denied; mounted btrfs plugin directory returned EIO; no bypass or operation replay. Only HANDOFF.md changed; no build/test/deployment. Next action: reconcile desired folder/link and canonical device configuration with provisioning owner before any mutation.
+
+## 2026-10-19T01:42:15Z — Hermes root / identity-self-read-grant-20261019 — own identity loaded
+
+Owner explicitly authorized adding `cap.identity.sled.self.read@v1` and removing it if inappropriate. Added exactly that one capability to existing human principal `c9bdf32e-811d-2495-b688-277c9e5c4d36` (`jeremy-remote-wg`) in `/etc/opdbus/capability-grants.json`; no group or other-principal changes. Native installed op-grants-materializer validated candidate, published via `once`, and `check` returned Fresh. Source/projection remain root:root0600; final structural comparison confirms only the intended addition. Retained because reviewed get_own_identity handler restricts to the verified caller's own session, redacts credentials/arbitrary instance payloads, and rechecks current grant/session after its read; this is the appropriate narrow permission for the owner's requested self-read, not administrative impersonation. No credentials minted, copied or changed by this task.
+
+Same mounted caller414fbc56 get_own_identity completed: operation `7f5ffcc9-62bb-41f2-86ec-e78f661b910d`, terminal event83; returned human identity active=true, expires_at=null, instance=null, btrfs_device=null. This supersedes the preceding self-read denial, not the unresolved old-chatbot preflight outcome_unknown (operation8e7a1cf0-f80e-4b10-a075-0de86a0d4655), which was not replayed. Backup/candidate/redacted receipt: `/tmp/identity-self-read-grant-20261019.JpzBVC`. Rollback is removal of only this exact-principal capability through durable grants and native materialization, preserving concurrent changes. HEAD051a20d056afba074e21d797aa34f8947c543c5a; repository changes by this task only HANDOFF.md (preexisting dirty work preserved); no build/tests/deploy/service restart or source-template edit. No mounted grant-management operation exists; used owner-authorized existing durable-grants maintenance path.
+
+## 2026-10-19 — Hermes / chatbot-polkit-admission-20261018 — missing caller record, not Polkit refusal
+
+HEAD051a20d056afba074e21d797aa34f8947c543c5a; evidence `/home/jeremy/.hermes/cache/scratch/chatbot-polkit-admission-20261018.rVGTuJ/{findings.md,bridge-auth-filtered.log,drive-archive-metadata.json}`. Supersedes prior generic reauthentication recommendation. Current bridge23:20 startup explicitly reports configured local-human414fbc56 awaits provisioning: source checks durable record absent AND genesis absent before this message. Actual failure is host-mounted FUSE -> p2p LungsV1.Bind -> publish_binding -> authoritative_session_identity -> stored_session -> SessionUnavailable; public AccessDenied is application mapping, not proof of Polkit rejection. No expiry evidence. dbus/op-session-bus/bridge sv checks pass; bridge/session bus socket pair established; PolicyKit1 alive and successfully D-Bus-activated. No harmless stopped service found. Nonroot busctl to application bus silently fails; no privileged retry. Mounted human_principal state EIO and direct public-SHM traversal denied; no credential/private-DB read or bypass.
+
+Old chatbot TARGET recovered from running bridge public selectors: session `b0c777e3-0955-cd8b-3d01-ca12998cae28`, principal `1262e982-14c1-44d4-0771-7ce74213211b`, public key `[REDACTED:opaque-base64]`. Running startup verifies derived IDs before logging target awaits provisioning; target sled also absent at startup. Existing prepare hardpin matches this target, unlike superseded10.0.0.9 proposal. CALLER remains configured human414fbc56 / principalc9bdf32e. Provision admission explicitly exempts human caller from container requirement; it does NOT require unprovisioned chatbot login. Need admitted human maintenance sled and active target key registry; registry not yet verifiable through denied call.
+
+Existing deployed bootstrap is `/etc/op-dbus/initialize-local-human` exact session selector, root:root0600, non-symlink, read by installed bridge run script (source hash matches). It selects existing `initialize_configured_human` guarded by exact key/session/principal and revision0/no record/no genesis/no tombstone; MutationEngine creates/authors the credential and commits durable CAS/private SHM. Selector currently absent. Historical October11 entry records owner-authorized same-key initialization once, not current record recovery. Under this task's explicit no-credential-edits instruction this is NOT harmless readiness restoration and was NOT executed. Smallest new approval, if archive restoration not chosen: initialize ONLY existing configured human principalc9bdf32e/session414fbc56 through this one-shot owner path, no new key/grant/policy; restart once, remove active selector, verify same mounted get_own_identity then old-target preflight. Removing selector cannot undo durable authored identity; rollback needs supported lifecycle, never DB deletion. Do not re-run denied prepare automatically.
+
+Polkit audit limitation confirmed: source `deploy/polkit/org.opdbus.v1.policy` absent from installed/current received action directory; golden builder has no staging reference. Its five actions are config/providers/catalog, not identity bootstrap; production task_elevation is PAM and Polkit adapter merely an interface possibility. Installed storage actions/rule are separate (rule still names retired golden actions). No Polkit change can repair the pre-method lungs missing-session error. No blanket allows or unrelated cleanup.
+
+Owner-directed Drive discovery used existing rclone remote. Found legacy `blobs/shm/opdbus/projections/identity_sled.json`,4bytes,July12,ID1tpC3aeVoGuB5TlFwMO1D3lbP4ORuxkKj; content/listing timed out, no recovery claim. Exact human_principal.json lookup absent. October13 `CAINE-sda2-subvolumes-20261013/@3tched-leaf-pool.tar.zst` metadata ID122dyU-6KUZZMGus6S81nFk3dBrcaIbyR,size465383205; @.tar.zst22.5GB and @3tched.tar.zst1.2GB metadata preserved, no download/import. Historical recovered assistant backup only identifies July assistant, not b0chatbot; no keys read. Do not conflate archives with live authority. Only own HANDOFF/scratch files changed; no source/build/tests/runtime/credential/grant/storage/guard/boot changes or provisioning retry.
+
+## 2026-10-18 — Hermes / provision-fix-20261018 — application deployed; storage guard and chatbot pending
+
+Supersedes the activation-blocked status below. Corrected runtime selectors applied consistently to GNU workspace build and isolated seal; canonical activation completed. Parent independently read live launcher status: active A/root315 `release-c068ba1e-02d3-4362-88f7-faf41919a837`, previous B/root304, journal null, readiness complete. Independently diffed shipped/persisted/live catalog directories: byte parity, manifest SHA25640427e0a12373f53470b68fe4a2d53ed3f5463bb878c261d80d4cde988100826. Parent sv readback confirms all ten application services running. Worker normally remounted both FUSE views and recorded70main+2upstream, matching pins/unchanged identity. Receipts `/home/jeremy/.hermes/cache/scratch/provision-runtime-path-20261018.MMsrUT`. Tests/fmt/Clippy deferred, no reboot or chatbot provisioning. Release receiver st_dev corrected under lock after unchanged identity/provenance checks; backup `/var/lib/opdbus-release/receiver-device-refresh-20261018.KkwbLa`.
+
+Storage inventory's two unresolved roles subsequently corroborated (vectors/data and upgrade/@), not proven rogue; original creation receipts unavailable. Release rotation changed release subvolumes after inventory: refresh that portion before guard enable. Corrected BPF built but NOT installed/loaded: `/home/jeremy/.hermes/cache/scratch/storage-guard-build-20261018.fDZt6y`, object SHA256e297b7ae97698010854b64c5346159f782ea2b420845f34947473cea3679c21e parent verified. Narrow trusted quiescent-destroy addition; matching current BTF/UAPI. Storage policy source correction and incomplete candidate `/home/jeremy/.hermes/cache/scratch/op-storage-layout-20261018.3DLJLY` remain scratch-only/unbuilt. Cargo snapshot destination absent on Cargo FS; old destination cross-filesystem. Capture policy retains stale pins and missing timing/vectors; no silent disabling/substitution. Guard/storage remain OFF pending these decisions and coordinated Incus cgroup placement. AppArmor boot cause diagnosed, not fixed: active LSM list omits compiled-in AppArmor. Chatbot identity binding/storage prerequisites remain unresolved; no credentials/grants/host-account changes. Next actions: resolve capture restoration scope and Cargo destination, complete supported pins/guard activation, then admitted chatbot provisioning; do not mistake application deployment for those outcomes.
+
+## 2026-10-18 — Hermes Deploy / provision-fix-deploy-20261018 — canonical activation blocked before transfer
+
+HEAD051a20d056afba074e21d797aa34f8947c543c5a; no application source edits. Read-only provenance established current independently authored op-deployment controller and reviewed preexisting owner fixes, matching build source hashes/depfile and GNU artifact. Updated only approved base op-release ae10f2fc→e280f0b3 under release lock, retaining old complete kit at `/var/lib/opdbus-release/provision-kit-20261018.ahFxfCuC`; exact three-file manifest verified and native status reread. Launcher/init unchanged; no application hand copy.
+
+Canonical `./activate-golden.sh` with all parent-provided selectors exited1: `sealed threetched capture provenance does not match the prepared release binary and manifest`. The isolated catalog seals `example.binary=/usr/bin/threetched`, while source DEFAULT_BINARY and golden predicate require `/usr/local/libexec/op-dbus/threetched/threetched`. Binary SHA22e121f5 and manifest SHA5fd1a4db match; the incorrect runtime path—not capture-byte provenance—is the blocker. Sealer applies this state as schema defaults, and bridge generation includes state declarations, so parent must reconcile matching build/seal selectors before replacing the catalog and generated artifacts. Do not weaken golden or edit sealed blobs. No automatic rebuild/reseal by deployment worker.
+
+Receipt `/home/jeremy/.hermes/cache/scratch/provision-activation-20261018.fX44lfgZ` contains command results, source/diff/hash provenance, before/after native status, sealed provenance, catalog parity, service and FUSE metadata. B/root304 still active, A/root299 previous, journal null; all ten existing application services running; shipped/persisted/live old manifest fd3033e4 matches. Both old FUSE views retain catalog8a34d0da/generation74; no unmount performed because no new activation occurred. Guard/storage and both /etc/sv down markers remain OFF. Parent's guard-ABI incompatibility notice acknowledged; no guard writes, tests, reboot, provisioning, credentials or grants changed.
+
+## 2026-10-18 — Hermes storage mount and conditional guard authorization / provision-fix-20261018
+
+Owner explicitly authorizes guard re-enablement AFTER verifying all existing subvolumes and appropriate pins; this supersedes the indefinite hold only when those prerequisites are satisfied. Guard and storage remain OFF pending compatibility/policy repair, not automatically enabled by deployment. Owner separately confirms container-only root access, temporary reuse of the existing10.0.0.9 WireGuard identity (decoded public-key SHA2562b962f1498dc249c5c06c7664b3181936fe3c4bc2ceff8f98d331f141d9d2627), no new/private key retrieval proved.
+
+Completed direct rw mount of existing /dev/loop0 at /var/lib/incus/storage-pools/3tched-pool; readback FSIDa1ab7b42-12a8-437c-8f65-d0469892c8dd, root5. Existing Incus pool3tched and original mount unchanged. Persisted exact image-based rw,loop,subvolid=5 fstab entry after /var/lib/incus/disks, read back; backup /etc/fstab.before-3tched-pool-20261018. No formatting, new loop, subvolume or Cozo mutation. Mount is a distinct FS boundary, not a pathname bypass; guard already declares Incus FSID trust.
+
+Inventory /home/jeremy/.hermes/cache/scratch/storage-guard-inventory.JCf1mh: parent aggregated29 listed subvolumes across6FS,24expected,3historical preserved,2unverified plus implicit root5 each. Unverified vectors/data and upgrade/@ are not proven rogue; no automatic pin/delete. Worker sa-0-651ccb1d resolving provenance and exact guard repair. Guard bootstrap excludes current6.18.57 BTF; op-storage policy/source still old083161be FSID. No generic per-subvolume guard enrollment exists (cgroup+FSID trust differs from object pins). AppArmor independently verified compiled=y but active=N, CONFIG_LSM lacks apparmor; no reboot/boot edits. Cargo/seal remains owned by sa-0-eef0df78; no successful deployment claim.
+
+| Codex CrateThreetched — INCOMPLETE | cognitive-mcp-variant-audit-threetched-fs: manual audit started; only README/manifest/license/ignore/architecture/build script and partial report/evidence/generated source were read; no variant changes verified | `crates/threetched-fs/` | 2026-10-18 | Must continue exact-range manual audit across all authored text; generated `generated/plugin_types.rs` not edited; no Cargo/tests/fmt |
+### 2026-10-18 — CrateThreetched manual cognitive/MCP variant audit (incomplete)
+
+Only selected text was read; no authored-file-wide conclusion is supported. Fully read: `README.md` (1–483), `Cargo.toml` (1–39), `.gitignore` (1), `LICENSE` (1–21), `docs/ARCHITECTURE.md` (1–202), `docs/typed-filesystem-build.sh` (1–6), `src/lib.rs` (1–8), `src/dispatch.rs` (1–456), and `src/namespace.rs` (1–503 of 1511). Partial reads: `docs/typed-specialization-report.json` and `docs/typed-filesystem-backing.evidence.json`; `generated/plugin_types.rs` (1–300; generated marker confirms never edit directly). Incomplete paths include remaining `src/namespace.rs`, every other `src/` and `examples/` source, remaining documentation JSON/schema, and the rest of generated source. No textual edits or variant counts established. The generated file's variant status remains unknown; generator is `examples/typed_specialize.rs` (identified by README, not yet audited). No checks run.
+## CURRENT GUARD HOLD — explicit owner reauthorization only (2026-10-18)
+
+**Latest owner instruction in `overlay-deploy-20261018`: continue deployment,
+but keep the kernel guard OFF across boots until the owner explicitly says
+to turn it back on.** Deployment or provisioning completion does NOT lift
+this hold. Preserve the persistent `down` markers for `op-storage` and
+`op-storage-kernel-guard`. Do not enable, rearm or load a replacement guard.
+This supersedes the earlier deployment-and-chatbot milestone condition and
+all older GLOBAL/guard-ready guidance; referenced backing trees remain protected.
+
+The rejected installed application release coordinator was removed on
+2026-10-18; legitimate host/capture storage functionality remains installed but
+stopped. The additional application deployment completed on 2026-10-18:
+slot B/root304, release `release-c6ece6d3-7cd5-4761-99a2-56bf684706fe`, with
+A/root299 retained as previous, nine read-only overlays and complete native
+readiness. Both host FUSE views are mounted separately and declared in fstab;
+the independent release and subsequent mount boot hooks are enabled. This
+does not lift the guard hold. See the newest handoff.
+
+## CURRENT RELEASE CONTRACT — active and previous only; rejected work excluded (2026-10-16)
+
+**Owner instruction:** rotate the overlays every release and retain only
+**active and previous**. There is no release-retirement lifecycle, rename-aside
+store or additional retained generation.
+
+**The seven-hour Codex release-retirement work is rejected implementation
+input. Do not copy, cherry-pick, rename, refactor or revive it.** Older code,
+plans, build receipts and handoffs do not authorize its reuse. This expressly
+supersedes older retirement recommendations and proposed exceptions below.
+Preserve those records as history, not as an implementation baseline.
+
+The current spec is `.kiro/specs/release-overlay-target-rotation/`.
+R13.5/task0.1 require independently verified eligible source provenance before
+implementation. A pinned inactive slot blocks replacement unless an authorized
+re-home resolves it and the full safety gate passes. This correction authorizes
+documentation changes only, not deletion/reset of unrelated work or live
+deployment. Network work remains with its current owners.
+
+## SETTLED NETWORK DESIGN — one door, one internal interface (2026-10-16)
+
+**Owner clarification in the active 2026-10-16 network session supersedes the earlier eth0-only public layout:** eth0 is the OVS physical uplink; pub0 owns public host addressing, NOT administrative SSH. Administrative SSH enters through WireGuard on the DECOY at 10.0.0.1 and follows the reverse tunnel to the host identified as 10.0.0.2. There is no WireGuard on the host. Enforce WireGuard-only admission at the decoy listener; preserve temporary public recovery SSH until a fresh reverse-path connection succeeds, then remove public administrative access. `rtly-lungs` replaces the former tun5 name and has exactly two IPv4 addresses: transport/REALITY and tonic10.0.0.2. `ovsbr0` itself has exactly three service IPv4 aliases: EMQX, OpenFlow and host Qdrant. No per-service interfaces. The shared container socket path is `/run/3tched-lungs.socket`; shared directories follow the seed subvolume layout, with private writable state kept identity-scoped.
+
+**Source defaults aligned 2026-10-16:** `op-ovsbr0-setup` no longer seeds `svc0`. An empty OpenFlow attach no longer falls back to `10.200.0.1:6653`. The bridge run script no longer defaults Qdrant at `10.200.0.2`. `gre-decoy/run` and host `wgcf-egress/run` refuse to start. `nftables.conf` no longer accepts `10.200.0.0/24`. OpenFlow and host Qdrant numbers stay unset. REALITY is the SSH address `192.168.255.2`, the peer of tonic `10.0.0.2` on `rtly-lungs`. MASQUE and SSH are the protocols, not the interface name. HTTPS is inside that tunnel. Certificate filenames `tonic-svc0*` still name the files on disk.
+
+**Transport and bootstrap authority:** the decoy-originated SSH TUN is carried inside MASQUE, not GRE; this transport is distinct from the administrative reverse TCP tunnel. Owner explicitly authorizes native network bootstrap because op-grpc-bridge/application D-Bus operations are not deployed; return ongoing control to plugin-owned D-Bus after bridge deployment. Host NetworkManager still owns eth0 DHCP. OVS packages installed and package-started daemons have an empty database; no bridge, address, route, firewall, tunnel or NetworkManager ownership cutover performed. Decoy MASQUE reports Connected/healthy but its SSH TUN service repeatedly fails `IPv4 rule ownership differs`. Decoy maintenance works with the existing jeremy decoy_key and strict pinned host trust. NetworkManager must remain installed but disabled for normal operation after protected cutover, emergency recovery only.
+
+## STANDING OWNER RULE — do not delete Qdrant recovery data (2026-10-16)
+
+**Nothing under the Qdrant/Cozo recovery trees may be deleted until a running Qdrant serves searchable vectors.** This covers every `/mnt/qdrant-*` path and `/mnt/cozo-recovered`, including the Rust build scratch (`qdrant-rust-investigate` 31 GB, `qdrant-rust-repair` 8.2 GB), because they sit in the same recovery tree. ~200 GB total, stored under `@rootfs/mnt` on the root LV and hidden beneath current mountpoints, so ordinary `du /` does not reveal it. The host has ample free space (root 39% used, system 22%), so there is no capacity reason to touch it. This data backs the three open owner questions: vectors from the two weeks before the loss, Cozo records and their links to vectors, and compliance corpus coverage.
+
+## LATEST OWNER DIRECTION — scoped, no-reboot deployment (2026-10-16)
+
+Owner clarification in the current golden-deploy conversation supersedes the earlier whole-root interpretation: **not `/`; only the directories/files actually used by the application deployment. Activation must not require a reboot.** Owner asks the agent to choose the most efficient flexible design after analysis. This authorizes investigation and a design recommendation, not a live mount, service, storage or boot cutover.
+
+The earlier application release-retirement implementation is rejected as implementation input, including the owner's identified seven-hour Codex stint. Historical records may be inspected for provenance but must not be copied, adapted or revived. Preserve unrelated data and code, keep vector work deferred, and never empty or replace referenced OverlayFS backing trees. The inaccessible RESTORATION-PLAN.md and older whole-root/initramfs discussion do not override the current two-generation overlay-rotation contract. No new deployment has been performed in this conversation; local hourly rollback is separate.
+
+## Current restoration — 2026-10-14T01:18:15Z — Codex /root — OD-121
+
+**PAUSED before application restoration.** User workflow: implement -> build -> deploy; all tests, formatting, Clippy and `/verify` belong to the owner's downtime agent AFTER deployment. Do not restart that work or application restoration without the owner's next instruction. Repeated user clarification: defer vector redesign/ingestion until AFTER the rest of the application system is deployed. Preserve the vector code and current empty baseline. The older retirement interpretation is superseded by the owner's 2026-10-16 instruction: rotate overlays per release and retain active + previous only; no release-retirement machinery or history.
+
+**Live host storage:** Devuan 6/excalibur, runit, hostname `3tched`, SSH `vps` (root port22). Services `/etc/sv/op-storage` and `/etc/sv/op-storage-kernel-guard` enabled through `/etc/runit/runsvdir/default`. Kernel6.12.111+deb13-amd64, GLOBAL guard links23-26 remain loaded. Only exact daemon cgroup6364 and filesystems083161be-7e41-4524-bcdc-c9648093e798 / d53eeac0-949b-499c-b051-9fecf8678f59 trusted. Root administrator remains a deliberate escape. No ordinary agent admission grants; application bridge/identity/cache runtime is not restored. Do not call these grants deployed merely because host enforcement runs.
+
+**Installed binary:** `/usr/local/libexec/opdbus-storage/op-storage`, SHA256 `4039cec2b906ce542f2b5d75638f14797c0d86cde9447714715651a200584a1a`. Native locked op-storage release build passed, input engine.rs SHA b2d8afe68439da53a8e2b78c9cca6e3e60a7d5f19346931500e559ec52d85502. No post-correction tests/fmt/Clippy/verify ran. Seven-entry installed artifact manifest is `/usr/local/libexec/opdbus-storage/manifest.sha256`. Golden, vector capture/receive and exact-root `/srv/git` development checkpoint methods are installed. Latest change removes ONLY hourly host coupling to golden/vector references and retirement callbacks; helpers and old implementation are preserved.
+
+**Hourly local rollback is installed:** `/etc/cron.d/op-storage-hourly`, `0 * * * *`, runs `/usr/local/libexec/opdbus-storage/op-storage-hourly`. Only D-Bus host prepare/publish/retire through busctl; no direct btrfs, vector dump or provider API. First set8cced47d-43c2-4dbd-a08b-b8a79a84c0ab completed at01:18:15Z. Seven members: rootfs,home,logs,cargo-build,opt,golden,git. One completed set retained. No previous set existed on initialization; first actual old-set removal and restore exercises are deferred. Runtime receipts/lock/log are `/var/lib/opdbus-storage/hourly/`; daemon journal `/var/lib/opdbus-storage/state.json`. Incomplete pending marker blocks further allocation rather than creating more sets. Nested vector/release/identity/cache subvolumes and ext4 /boot are NOT included; do not describe this as a complete machine backup.
+
+**Netcup hourly canceled by owner.** Local timer disabled, ready marker absent, existing manual snapshots preserved. Earlier authorized preparation detached the unused installation ISO, set keep1 and passed provider eligibility; no new scheduled provider snapshot/export was created. No credentials copied to VPS. The 1.5TiB recovery disk remains protected and excluded.
+
+**Golden state:** writable `/opt/op-dbus/golden` and Cargo output `/var/lib/cargo-build/odbus-verified` share640GiB filesystem. Immutable bootstrap pair under `/opt/op-dbus/send/bootstrap-a226f8ab23914a4b-3` and `/var/lib/opdbus-release/received/bootstrap-a226f8ab23914a4b-3`; journal `/var/lib/opdbus-release-state/pair.json`. `/opt/op-dbus/current` absent; no application activated. Preserve baseline immutability for incremental transfer.
+
+**Vector status, deferred:** enrolled `/opt/op-dbus/vector-store/{timing,vectors}`, writer lock `.writer.lock`; journal `/var/lib/opdbus-storage/captures.json`. Empty capture616299d0-f81f-4d56-90ce-6ee91aa0607f successfully received under `/var/lib/opdbus-vector-received/`. No recovered Qdrant records imported. Consumer completion/retirement integration remains for AFTER the rest is deployed. Do not change or invoke that workflow during this pause.
+
+**Source/evidence:** authoritative editable local candidate `/home/jeremy/Recovery/system-restoration-20261013/odbus-verified`; recovered VPS main repo `/srv/git/odbus-verified`; isolated build `/srv/git/odbus-btrfs-enforcement-20261013`. Recovered HEAD34ff9a502d953bb7b1520d530eed849b507e266a, 45 tracked edits +500 untracked files preserved and previously hash/fsck verified. Local candidate integration changes are ahead of the VPS main repo; do not claim full source equivalence. Full backend baseline failed on missing pinned native threetched capture input; application build remains held. Zcall needs restoration; use busctl now, zbusctl/zcall later, never gdbus.
+
+Exact paths, inventory, restore sequence and deferred checks: local `/home/jeremy/Recovery/system-restoration-20261013/RESTORATION-PLAN.md`, mirrored VPS `/root/system-restoration-20261013/RESTORATION-PLAN.md`. Final deployment receipt: local `Recovery/btrfs-enforcement-20261013/deployment-hourly-20261014/deployment-receipt.json`, VPS `/root/btrfs-enforcement-20261013/deployment-hourly-20261014/deployment-receipt.json`. Former engine preserved at local `Recovery/btrfs-enforcement-20261013/storage-mechanism/hourly-independent-20261014/engine.rs.before`. Boot source `crates/op-storage/src/boot.rs` is not integrated/compiled. New-host installer remains deferred. Preserve pre-cutover home/log directories until downtime reboot validation.
+
+## Start here — recovered VPS handoff, 2026-10-11
+
+**Agent:** Codex root, with independent transcript/build/network audits.
+**Task:** `recovery-handoff-20261011`. **Recorded:** 2026-10-11T03:29Z.
+**Owner's latest request:** write this handoff in the repo before switching
+folders. Owner reports discovering the problem after reboot. This is a
+documentation handoff, not authorization to resume storage or network changes.
+
+This entry supersedes conflicting current-state claims in the older header,
+historical Active work rows, and the October incident-response note. Keep those
+records as history, not present deployment authority. Read `AGENTS.md` and its
+nine required skills before new repo work. No credentials are included here.
+
+### Immediate orientation and exact stopping point
+
+- We are on the recovered **Artix/glibc, runit VPS**, not the Hyprland desktop.
+  Use `sv` for authorized host service work. The installed `systemctl` is a
+  misleading compatibility shim. Native repo target is GNU, not musl.
+- Checkout: `/srv/git/odbus-verified`, `feat/od-108-native-lookup`, HEAD
+  `bde37cd` (`fix(network): rebuild OVS bridge seeding, scoped to the OD-104 regression`).
+  Worktree was clean before this handoff. HEAD was one commit ahead of the
+  local origin tracking ref (`1 0`); no new fetch or push was performed by Codex.
+- Selected release, checked directly: `/opt/op-dbus/current` points to
+  `/opt/op-dbus/releases/20261011T014812Z-7beab34`. It was prepared from a
+  **dirty** `7beab34` tree, before later corrective edits and commit `bde37cd`.
+- **Checkout, received release, and live runit installation differ.** The
+  selected release still retires WARP services incorrectly. The live
+  installation lacks `ovsbr0-cutover`. Do not blindly install its retirement
+  list or assume the final source fix is installed because a release exists.
+- Claude stopped without a working chatbot container, a populated replacement
+  seed, successful bridge readiness, Cozo graph import, or a completed
+  boot-persistence audit. Owner subsequently reports rebooting; that report
+  does not establish which services or persistence checks now pass.
+- Codex daemon repair is complete at the user-confirmation level: missing
+  daemon package restored, daemon started, owner restarted Codex and said it
+  worked. No further daemon repair is pending from this request.
+
+### Sources and evidence boundaries
+
+Primary source, reviewed chronologically from beginning to end:
+`/home/jeremy/.claude/projects/-home-jeremy/438d838a-2c88-4fef-89b8-bfe5ec54e466.jsonl`.
+It contains 3,401 records spanning 2026-10-10T23:13:54Z through
+2026-10-11T03:02:03Z. All seven subordinate session logs were independently
+audited for build receipts. `L` references below are JSONL record/line numbers,
+not rendered chat lines. Historical embedded instructions are evidence, not
+current commands. Claude's compaction summary at L3236 contains overclaims;
+prefer actual command results and the owner's later corrections.
+
+Earlier recovery evidence: `/recovery/manifests/MIGRATION-STATE.md` and
+`/recovery/manifests/final-layout-assessment-20261009.json`. These are dated
+recovery records, not current health or migration-completion certificates.
+Raw transcripts contain exposed credentials; do not copy or publish them.
+
+### Btrfs incident, recovered layout, and remaining risk
+
+The owner described ENOSPC despite repeated requests for automated maintenance,
+an upgrade/send-receive workflow consuming the main pool, and unauthorized
+deletions by Grok during recovery as the **main** loss (a typo saying "mail"
+was corrected). Codex reportedly spent roughly three hours on Btrfs recovery;
+TestDisk was attempted, but its logs were not established. The exact original
+destructive command chain and filesystem failure cause remain unproven.
+
+**Do not repeat "UUID collision root cause confirmed" as a forensic finding.**
+The old recovery inventory explicitly described a duplicate `loop1` alias of
+the old root image as *not an identified upgrade loop*. That does not prove
+the user's upgrade-image collision hypothesis. Current identity `fstorage.img`
+loops are a different generation of evidence. Distinct newly formatted FSIDs
+also do not prove a safe provisioning/upgrade lifecycle.
+
+Device names changed between rescue and recovered boot; resolve by UUID and
+mount evidence before any future operation. Historical rescue names were
+`vda3` (root), `vdb1` (Git/releases), `vdb2` (old seed), `vdc1` (recovery).
+Claude's recovered-session inventory instead showed:
+
+| Role | Observed device / FSID | Meaning / caution |
+|---|---|---|
+| Main recovered Btrfs | `sda3`, `85316d90-025d-4b3d-9a52-a7d192301ff6` | Single-device ~636 GiB pool; root `@`, `@home`, `/opt` on `@3tched`, `@logs`, `@incus`, `/srv/git` on `@git`, `@qdrant`, `@3tched-seed` |
+| Recovery evidence | `sdb1`, `328bc09f-3359-4b4b-851e-85d15fdd8189` | Mounted read-only during review; preserve |
+| Historical seed | formerly `vdb2`, `6012e913-49c1-46e4-91af-ad7754f6124b` | ~19.53 GiB, nearly empty; flags `0x1`, not SEEDING |
+| New seed | `sdc2`, `80a9c05a-8084-4df0-b4fb-bbc7da671eee` | ~20 GiB, bare `@`, SEEDING flags `0x100000001`; no recovered seed contents transferred |
+| New upgrade | `sdc3`, `5a88e7cd-9701-40a7-8301-ef076761886c` | ~40 GiB, bare `@`, ordinary writable filesystem; no complete identity pair established |
+
+The owner partitioned the new ~750 GiB device; `sdc1` is ~690 GiB VFAT and
+**must be left alone**. Claude ran `mkfs.btrfs -f` with discard on `sdc2`/`sdc3`,
+created the bare subvolumes, unmounted, and set SEEDING on `sdc2` (L3153 onward).
+That is completed destructive history, **not an instruction to repeat it**.
+
+Raw rescue images were present at `/recovery/disk-images/vda.img`
+(687,194,767,360 bytes) and `vdb.img` (536,870,912,000 bytes), L3187.
+The old manifest reports ddrescue without read errors and a verified `vdb`
+hash; `vda` hashing was still pending when that record was authored. No fresh
+full-image hash or Btrfs scrub/device-stats/kernel-error audit was completed.
+
+Loss was not limited to one executable: recovered loose `threetched-fs` had
+an EIO, and the original `20261008T232920Z-e46dad8` release was lost. Its
+replacement `RECONSTRUCTION.md` explicitly described an intentionally empty
+`bin/`, helpers from `7beab34`, and older retained configuration (L1185–1199).
+Later missing npm dependencies further disprove a blanket "everything intact"
+claim. Surviving dotdirectories and package samples do not prove all history
+or home data survived.
+
+Disk maintenance remains unresolved: `disk-reclaim` references stale
+`/srv/git/odbus`; no root crontab or matching named runit job was found, but
+that limited search does not prove no scheduling exists anywhere.
+`CARGO_TARGET_DIR` was unset and repo `target` was ~4.7 GiB on the main pool;
+the owner's separate build-target disk relocation was not active. Do not
+delete caches, retained releases, snapshots, seed/leaf images or receipts as
+part of merely reading this handoff.
+
+### Build, release, and activation receipts
+
+- Six `/srv/git` repos initially had clean trees and no fsck object-corruption
+  finding. Branch divergence was not evidence of recovery damage.
+  `3tched.com/claude/ui-gallery-promotion` and `app/main` matched fetched
+  upstream tips; both plugin-feeds tips were ancestors of published branches.
+- Standalone `3tchedFS/master` at `b9a137b638744b3c4cb5cbda898838a11eb2eb0b`
+  initially had only `/srv/git/.recovery-mirrors/3tchedFS.git` as origin.
+  `~/push-3tchedfs.sh` was supplied after automated GitHub creation was blocked.
+  **No conclusive GitHub push receipt** was found; preserve the local mirror.
+- Standalone `threetched-fs` and `op-network` builds passed. First workspace
+  build failed with Cargo 101 because the ZeroClaw skills contract was absent;
+  the background shell's exit 0 was not a Cargo pass. An invalid
+  `-p identity-roots` retry also failed; that is not a Cargo package.
+- Workspace retry passed in ~10m20s with a verified upstream bootstrap
+  ZeroClaw and explicit native artifact environment. That bootstrap is not
+  the final production binary. The pinned **patched vendored** ZeroClaw
+  build then passed in 624 seconds, emitting
+  `target/native-artifacts/tched-router/{zeroclaw,manifest.json}`. Preserve
+  `vendor/tched-router/{source.pin,source.tar.gz,build-native.sh}` and patches;
+  Claude's earlier "no custom fork" description was wrong.
+- Native builds used `CXXFLAGS="-include cstdint"` for cozorocks. Cargo uses
+  the repository's worker-dispatch contract; do not run an unsolicited rebuild
+  merely to validate this documentation-only handoff.
+- UI attempts failed first on missing `semver/functions/satisfies`, then
+  `nopt`. Package evidence showed 59/71 semver files altered or missing.
+  `semver` was reinstalled and `nopt@10.0.1` supplied; npm reported `12.2.0`.
+  Final UI build passed in **45 seconds**, with **319 tests passed / 1 skipped**.
+  The skipped door-live test means no live-door proof. Three high npm audit
+  findings and a Svelte warning remained. UI source pin was `d5e14cdb…`.
+- EMQX Enterprise 6.2.2 was uploaded from the owner's laptop because VPS
+  download returned 403. The first helper mishandled SSH-key selection and
+  deleted its temporary download after upload failure; it was corrected.
+  The apparent checksum mismatch came from checking an unfinished upload,
+  not proven vendor republishing. Completed artifact hash matched
+  `c5b549d312d449d424a39617a8bfa092ea259ad572c6fe2b20c30a2ae7b4c9e9`.
+  NotebookLM CLI 0.11.2 wheel pin also verified; packaging is not login/sync.
+- Golden preparation `20261011T014015Z` validated a **prepared-source** graph
+  of 17,064 nodes / 17,356 edges. It was not a live Cozo import/readback.
+- Actual host-release snapshot/send/receive **did happen**, L2186–2187:
+  `/opt/op-dbus/send/20261011T014812Z-7beab34` to the received release;
+  MANIFEST matched, received subvolume was read-only, ID 274, received UUID
+  `f6294f4b-620f-2a4e-bb67-11af9ed03f5c`. This remained on the main pool.
+  Later "no send yet" refers only to the replacement identity-seed transfer.
+- Activation stopped `emqx`, `op-web`, `op-grpc-bridge`, `opdbus-grants`,
+  swapped `current`, persisted/staged the same 69 plugin blobs. It did not
+  prove a newly sealed skills plugin: names were unchanged, and the probe
+  found `tched_router` / `threetched_fs`, not a skills-named blob.
+- Installing the missing `org.dbusmcp.conf` policy and reloading D-Bus brought
+  `unified-execution` up. Bridge readiness still timed out, first on that
+  dependency, then WARP, then `tched-router`. No final working application
+  or bridge receipt appears. Large Cozo files alone are not integrity proof.
+
+### Critical source / release / live-service mismatch
+
+OVS edits preceded golden preparation. Claude mistakenly deleted the
+`deploy/decoy-warp-ssh` tree and retired the WARP services, then restored them
+after the owner's correction (L2331–2341). **No later golden rebuild occurred.**
+Final commit `bde37cd` was created around 02:59, after activation (L3355–3356).
+
+Read-only Codex verification after the transcript:
+
+- `/opt/op-dbus/current/etc/opdbus/retired-services` still lists
+  `op-warp-ssh-host`, `op-warp-ssh-routes`, `op-warp-guard`, `wgcf` at lines
+  77–80. The checkout's `deploy/runit/retired-services` corrects that scope.
+- The selected release contains rewritten `sv/ovs-vswitchd/run` invoking
+  `op-ovsbr0-setup --seed-only` and contains `sv/ovsbr0-cutover`.
+- `/etc/runit/sv/ovs-vswitchd/run` is still a regular old live script, and
+  `/etc/runit/sv/ovsbr0-cutover` is absent. Claude's last inventory still had
+  the four old `ovsbr0-*` service links. Thus the release name's `7beab34`
+  suffix is neither a clean-source guarantee nor an installation receipt.
+- The `identity-roots` enable symlink exists. `/etc/runit/sv/wgcf/down` is
+  absent, despite the owner's explicit no-host-WireGuard instruction.
+
+These are file/selector checks, **not a post-reboot runtime health audit**.
+Do not infer that no changes could affect reboot: helper/executable targets
+selected through `current` changed even where old service scripts remained.
+
+### Networking: final owner intent versus verified behavior
+
+- WireGuard belongs on the Oracle decoy (`129.80.64.127`, private `10.0.0.1`),
+  **not this VPS host** (`188.68.58.237`). Do not restore host `wgcf` or copy
+  decoy profiles/keys. Existing keys and identity credentials must survive.
+- Retain the WARP/MASQUE camouflage design. `tun5` is the L3 MASQUE/SSH
+  endpoint serving `10.0.0.2`; do **not** enslave it into `ovsbr0` or treat
+  its name as proof of GRE. Renaming it was requested but not implemented.
+- OVS owns bridge/uplink/public-port setup (`eth0` to `pub0`) and MQTT
+  `10.0.0.3/32` on the bridge itself. OpenFlow tag routing is future work,
+  unused now. Port addresses and bridge addresses are not interchangeable.
+  The retained Rust `op-network` setup plus one cutover service is the
+  source-side consolidation, not a completed live cutover.
+- `8090` is the Tonic TLS door, not a generic HTTP replacement. Xray VPS
+  client dials the decoy; do not reverse roles based on earlier Claude prose.
+  Decoy ingress mark/table `0x51820` / `51820` was narrowly selected; do not
+  broaden that into guessed full-tunnel rules.
+- Claude removed `down` markers and attempted host `wgcf` before the owner
+  corrected it. It failed for missing configuration, and no later re-disable
+  receipt was found (L2354–2355). That is unresolved, not desired topology.
+- nftables had an empty ruleset even though its service appeared up. Claude
+  loaded the existing `/etc/nftables.conf` and admission rules; the WARP SSH
+  process came up, but `tun5` remained DOWN/NO-CARRIER. Process status does
+  not prove working tunnel delivery or that all external traffic uses WARP.
+- The admin reverse path is separate: decoy `10.0.0.1:2222` to VPS loopback
+  SSH port 22. The owner verified that path. Claude killed one direct public
+  root SSH session after the request to close direct SSH; it did **not**
+  prove public sshd access was closed by listening policy/firewall changes.
+- The promised final persistence audit never ran. After owner approval,
+  only `sudo -n true` returned `SUDO_OK` (L3388–3389), then the session hit
+  its limit (L3391). A subsequent reboot reported by the owner is not that
+  missing audit's passing result.
+
+### Identity, FUSE, seed source: recovery not completed
+
+Only the persistent **chatbot** is the selected recovery target:
+`b0c777e3-0955-cd8b-3d01-ca12998cae28`, alias `3tchedCtlbot`, **same keys**.
+Do not provision the unrelated `jeremy` or legacy human-router identity.
+
+`incus list` across all projects showed no containers. Enabling runit
+`identity-roots` restored its missing enable link but every candidate was
+skipped (missing authoritative boot opt-in / disabled staging / incompatible
+receipt). A supervisor being up did not mean an identity was running.
+
+The chatbot's retained `seed-identities/<id>/state.json` had old
+`leaf-subvolume` / dedicated `leaf_device` / `cozo_id` data (including old
+`/dev/sdb2`) and lacked `layout`, `seed_fsid`, `instance_uuid`, `boot_id`.
+Claude changed permissions from 0644 to 0600 only; no migration/provisioning
+completed. **Do not fabricate fields to force acceptance.** The owner
+identified this transition/location confusion as the danger point.
+Legacy `identity.img`, `seeded-leaf.img`, `human-router` receipts and current
+`seed-identities` represent mixed generations, not interchangeable sources.
+
+Owner's latest FUSE direction: both views should be identity-centric inside
+the guest, baked into the seed with guest systemd mount ownership; host
+agents also need access. Owner named `/run/mount/threetchedfs` without a
+`-native` suffix. Resolve exact namespace and ownership rather than assuming
+historical case-sensitive `/run/mount/3tchedFS[-native]` receipts are authority.
+FUSE projects sealed plugin contracts and live state; it is not a second
+configuration source. `tched_router` and `tched_skills` are separate typed
+plugins backed by the same real ZeroClaw binary.
+
+Claude temporarily started host schema-only FUSE, changed the native allowed
+root receipt to address router exit 78, then reverted it after correction and
+stopped/unmounted the temporary host mount. No lungs backend / stable router
+8084 listener / usable state operation was proven. No live Cozo system-graph
+query or import completed; the bridge remained unavailable.
+
+The authoritative populated seed source **was not located**. Only
+`core-seed.img` was actually inspected read-only (pool/image-cache structure).
+The old incident note also rules out `router-core-seed.img`, but its inspection
+is not evidenced. Golden `/usr/share/op-dbus/agents` contains default config,
+not a prepared identity OS. No seed content was sent to new `sdc2`/`sdc3`.
+
+Owner first requested sending the current seed and then adding subvolumes,
+then said ordinary folders on the seed were acceptable. Existing
+`shared-seed-provisioning.md` / AGENTS still require seven inherited subvolumes,
+no provisioning-time root copies/new subvolumes/OverlayFS; that doc also
+describes host-owned FUSE injected into Incus, conflicting with the latest
+guest-owned direction. **This is a dated design/implementation disagreement
+to reconcile before changes**, not license to silently choose a new layout.
+Keep seeds immutable while retained leaves depend on them. Start/stop must
+never add/remove Btrfs members; preserve receipts and member relationships.
+
+### Mail and conversation recovery
+
+- Zoho is the active mail destination. 231 recovered user messages are in
+  `/home/jeremy/recovered-mail-3tched.com/Maildir`; 54 recovered admin messages
+  are in sibling `admin-Maildir`. Keep both copies. Old decoy postfix,
+  dovecot, recovery-snappymail and webmail-smtp-input were stopped/disabled
+  on the owner's instruction. Discovery also unexpectedly installed the
+  LXD snap on the decoy; do not mistake that for a recovered container.
+- **285 messages have not been forwarded/imported into Zoho.** Secure SMTP
+  authentication remains unresolved. Do not repeat exposed credentials from
+  the transcript. Script attachment send returning 0 proved local submission,
+  not delivered mail.
+- `/home/jeremy/.notebooklm-sources` is absent; `keep/.notebooklm-sources` is
+  a dangling symlink. Authentication files and exporter source survived, but
+  no export regeneration, source inventory, fresh auth verification or sync
+  restart completed. Owner-supplied notebook metadata claimed coverage through
+  Oct 6 05:35 UTC; that was not independently verified.
+- Older standalone Grok files ending in September do not prove a global
+  history cutoff: Cursor was the Grok surface, and Oct 7 shared notes exist.
+  Do not equate file mtimes, directory presence, or one history store with
+  complete conversation recovery.
+
+### Codex daemon repair in this session
+
+Daemon settings survived but `~/.codex/packages` was missing. Starting failed
+on the absent daemon executable; daemon update via CLI could not select an
+installed version. The official installer was run in daemon-only,
+noninteractive mode, restoring version `0.162.1` under
+`~/.codex/packages/app-server-daemon/releases/0.162.1-x86_64-unknown-linux-musl`.
+The daemon and updater then started and the socket returned. `codex doctor`
+reported a successful WebSocket handshake. Old revoked-token log entries
+predated the refreshed auth file; credentials were not changed by Codex.
+A plain-JSONL proxy smoke test did not establish inference success because
+the transport is WebSocket. **Owner's subsequent restart and "it worked" is
+the actual user-visible confirmation.** No ongoing repair command is left
+running from this handoff task.
+
+### Resume point and authorization boundary
+
+The current request ends with saving this handoff. No seed formatting,
+send/receive, member changes, cleanup, network cutover, service restart,
+identity minting, grants change, mail send, commit or push is authorized by
+the folder-switch request itself.
+
+If the owner next asks to resume recovery, first take a bounded **read-only
+post-reboot inventory**: UUID-to-device/mount mapping, selected release and
+its manifest, live runit definitions/enable/down markers, effective nftables
+rules and reverse access, actual bridge/router/Incus/FUSE readiness. Reconcile
+the three deployment states and the unwanted host-wgcf start before proposing
+the smallest repair. Do not blindly replay commands from Claude's transcript.
+
+For seed work, locate and inspect the actual retained source and chatbot pair
+by UUID/receipt first; reconcile the explicit guest-FUSE and layout conflict;
+preserve existing keys and data. Only then prepare the owner-authorized seed
+transfer/recovery with receipts and rollback. Prepared host-release deployment
+still requires its separate snapshot/send/receive/activation boundary.
+
+**This handoff's changes:** `HANDOFF.md`, one appended `SIGNALS.md` observation,
+and a correction notice on `docs/src/operations/incident-response.md`.
+Validation is documentation diff/whitespace and source-reference review only;
+no Cargo `/verify`, build, runtime test or deployment was run for this task.
+These documentation edits are uncommitted; all older shared work is preserved.
+
+## Historical orientation — 2026-10-03 (superseded)
+
+Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff for every model. Work is local and **uncommitted**, on `/srv/git/odbus-verified`, branch `claude/eliminate-dead-network-code`, HEAD `dd29aa624aea3badbfc55f64a4c092c969d19bee` (verified 2026-10-03). This supersedes the older branch/hash header; preserve other agents' changes.
+
+The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
+
+## Active work
+
+| Codex — ACTIVE: PROVISIONING FUSION EVIDENCE HANDOFF | `provisioning-fusion-20261019` | Own new reports/provisioning-fusion-20261019* evidence/prompt/run artifacts and own shared notes only; preserve Claude/Hermes/Codex provisioning source and native instance ownership. | 2026-10-19 | Recover latest relevant Astra, Claude, Kiro and especially Hermes audit/follow-through plus previous provisioning scripts; feed existing Fusion panel a provenance-linked end-to-end diagnosis. No application edits, provisioning replay, storage/grant/service changes, tests, builds or deployment authorized by this evidence-assembly task. |
+
+| Codex — COMPLETE: MANDATORY INCUS SKILL | `incus-skill-20261019` | New .agents/skills/incus/SKILL.md, AGENTS.md preload and shared handoff only. | 2026-10-19 | Project-local official-docs-based guidance installed; mandatory list now ten. Distinguishes container subvolumes, VM disk-image files and pool backing; preserves identity-bound admission. No runtime change for skill installation, no build/test/deployment. Owner requests no repeated checking. |
+| Codex — RAW-IMAGE REPAIR PAUSED | `disk-gpt-fdisk-20261019` | Preserve unbuilt parent and two-child source edits plus earlier Hermes/Claude work. No active workers. | 2026-10-19 | Owner deleted old blank disk; loop2 and failed seed loop1 detached, only pool loop0 remains. Existing3tchedCtlChatbot logicalID0 and native/session/key unchanged. Owner rejects per-container loops and requests native Incus declarations. Do not run mixed incomplete source chain; native volume/seed contract unresolved. |
+| Codex — UPGRADE @ READ-ONLY VERIFIED | `upgrade-root-readonly-20261019` | Owner explicitly requests @ read-only and rest of upgrade filesystem read-write; no seed, container or provisioning edits. | 2026-10-19 | Set only subvolume256 UUID45920335-863b-6242-beb4-ed29db749d20 ro=true. Readback: @ ro=true, top-level ro=false, /run/mount/3tched-ct-upgrade remains rw/subvolid5. |
+| Codex — SEED SEALED, READ-ONLY | `seed-seal-20261019` | Owner-directed sealing only; folder changes explicitly deferred. | 2026-10-19 | /run/mount/3tched-seed FSID8468cc14-a5e4-409c-96f6-1e157d470ab5 now SEEDING and mounted ro. Released duplicate private seed mount in brltty PID1247 namespace with normal umount after initial btrfstune EBUSY. Upgrade untouched. All seven original subvolume IDs/UUIDs preserved; no folder rename, leaf creation, container start, source/build/test or guard change. |
+| Codex — READ-ONLY INSPECTION COMPLETE | `seed-folder-inspection-20261019` | Own handoff only; preserve Claude's provisioning, seed, profile and candidate ownership. | 2026-10-19T03:05Z | Mounted seed has six empty @agent_* directories, each inode256, and six /agent destinations. /etc/3tched is absent on host and seed; all six intended host symlinks absent. Btrfs list denied; no privileged retry, source/runtime/storage changes or provisioning replay. |
+| Codex — HANDED OFF FOR NEW LIVE SESSION | `seed-dual-fuse-services-20261019` / OD-121 | Dual-FUSE source/seed installation complete; internet-through8090 remains unverified. See top handoff for restart context. Preserve Claude's provisioning ownership. | 2026-10-19 | Owner starting a new live session. One deployed binary/two enabled guest services installed; no guest boot, seal or8090 connectivity proof. Separate egress and unrelated daemon additions removed. No active execution worker or temporary listener remains. Receipts `/var/tmp/seed-dual-fuse-20261019`; preparation scratch removed. |
+| Claude (Opus 5.5) — ACTIVE: CHATBOT PROVISIONING | `chatbot-provision-20261019` / OD-121 | Owner-directed "provision the chatbot" through `deploy/scripts/provision-workspace-subscriber.sh` stages as mounted human 414fbc56. Owns leaf pool, identity-roots pool, 3tched-lungs profile, 3tchedCtlChatbot candidate, and Incus-7 query fixes in deploy/scripts + restore-chatbot-root. | 2026-10-19T02:12Z | Stages 1–2 done (disk image 3tchedCtlChatbot.img receipt phase disk-partitioned). Stage 3 BLOCKED: the Oct 11 sealed seed 3415d575 (/dev/sdc2) is not attached to this host; only seed is unsealed LV SDA_SEED 8468cc14 (only @, no @agent_*); not modified. Stage 1 done (prepare op e3d3ab26-d3a2-48e8-a4a6-1d11e6667770, native uuid 137c61ff…). Fixed: chatbot key unregistered (owner-approved human_principal.read on c9bdf32e; register_key → 1262e982), leaf pool subvol created/mounted, identity-roots dir pool, Incus 6.0.4→7.0.1 (owner-approved) for tmpfs: profile, query --project → ?project=default. Do not re-run prepare with another operation ID. |
+| Hermes root — SELF-READ COMPLETE | `identity-self-read-grant-20261019` / OD-121 | Only exact human principal c9bdf32e-811d-2495-b688-277c9e5c4d36 durable grant, native materializer and own handoff/scratch. | 2026-10-19T01:42:15Z | Exactly one self-read grant added; retained as appropriate verified-own-session permission. Materializer Fresh and source/projection root0600. Same mounted human414fbc56 read completed, operation7f5ffcc9-62bb-41f2-86ec-e78f661b910d/event83, active human/no instance or leaf. Backup and redacted receipt /tmp/identity-self-read-grant-20261019.JpzBVC. No group/key/credential/source-template/service changes or provisioning replay; see dated handoff. |
+
+| Hermes root — RETRY BLOCKED; SELF-READ DENIED | `chatbot-provision-retry-20261019` / OD-121 | Own handoff row and `/tmp/chatbot-provision-retry-20261019.poBZEV`; preserve bootstrap executor ownership and all existing source changes. HEAD051a20d056afba074e21d797aa34f8947c543c5a. | 2026-10-19T01:36Z | Old-chatbot mounted preflight admitted but returned outcome_unknown, operation8e7a1cf0-f80e-4b10-a075-0de86a0d4655; exact bridge log confirms unclassified_backend_failure, not former lungs-bind denial. Not replayed; no prepare/provision mutation invoked. Owner then requested loading own identity: same expected human414fbc56 mounted get_own_identity denied at call because cap.identity.sled.self.read@v1 is not granted to authenticated caller; operation_id=null. No credential/bootstrap/grant/guard changes or alternate transport. Next action requires existing grant owner to resolve precise self-read entitlement and reconcile preflight failure; no success claimed. |
+| Codex — COMPLETE | `hermes-yolo-20261019` | `/home/jeremy/.hermes/config.yaml` approval mode and own HANDOFF entries only | 2026-10-19 | Supported CLI changed approvals.mode smart → off. Resolved get returned off; native approvals dry-run returned allow with approval bypass active. Hardline/deny protections, OS permissions and OP-DBUS grants unchanged. |
+| Hermes D-Bus/Polkit admission — CAUSE CONFIRMED; BOOTSTRAP APPROVAL REQUIRED | `chatbot-polkit-admission-20261018` / OD-121 | Own HANDOFF and private evidence `/home/jeremy/.hermes/cache/scratch/chatbot-polkit-admission-20261018.rVGTuJ`; no source/runtime changes. HEAD051a20d056afba074e21d797aa34f8947c543c5a. | 2026-10-19 | Exact current23:20 startup logs prove configured human414fbc56 durable sled absent and configured old chatbotb0c777e3 absent. Lungs p2p Bind fails authoritative session before plugin/Polkit/grants; bus services and PolicyKit healthy. Existing one-shot initialize-local-human path would CREATE caller credential via guarded MutationEngine CAS; not harmless readiness restoration, NOT executed under no-credential-edits scope. Old TARGET public key/session/principal recovered from running bridge; no caller impersonation. Drive metadata discovery bounded, no archive/credential import. See dated diagnosis below; supersedes unproven reauthentication recommendation. |
+| Hermes Provision session repair — STOPPED AT CONFIRMED FAILURES | `chatbot-session-repair-20261018` / OD-121 | HEAD051a20d056afba074e21d797aa34f8947c543c5a; only own HANDOFF row and private receipts `/home/jeremy/.hermes/cache/scratch/chatbot-session-repair-20261018.qJAKQN`. No source/runtime changes. | 2026-10-18T23:49Z; subsequent owner seed/upgrade requirement inspected | Mounted get_own_identity exits1 at register, operation_id=null: AccessDenied lungs identity binding refused. Matching bridge log23:49:08: D-Bus authoritative session is unavailable. Prior preflight denial and tool/user-denied prepare preserved; prepare NOT retried. Supported next action: owner reconnect/re-authenticate existing operator WireGuard identity through normal UI/decoy path, then same mounted caller414fbc56-03fb-20ab-758a-bcc7a7cbdc0e must pass get_own_identity; fresh login is not proof expired/damaged state recovers. New seed evidence: actual LVM seed8468cc14 superblock flags0x1, no SEEDING, num_devices1; mountedRW at/run/mount/3tched-seed. btrfstune -S1 NOT run on mounted/in-use seed; require host-maintenance offline safe point with dependent-leaf/reference absence established first. Host upgrade7ac6c955 /@ property is ro=false, filesystemRW; no received chatbot target established. Source prepare-instance-disk118 createsRW@, sync340 clonesRW@; fixes deferred at concrete admission/offline-seed blocker, not claimed complete. No build/tests/guard/grant/key/account/DB writes. |
+| Hermes Provision executor — STOPPED AT ACTUAL ADMISSION DENIAL | `chatbot-provision-execute-20261018` / OD-121 | HEAD051a20d056afba074e21d797aa34f8947c543c5a; only own HANDOFF row and private receipts `/home/jeremy/.hermes/cache/scratch/chatbot-provision-execute-20261018.c3ZlM0`. No runtime writes. | 2026-10-18T23:42Z | Mounted `inspect_provision_preflight` with actual existing10.0.0.9 peer key exits1 at register: `org.freedesktop.DBus.Error.AccessDenied: lungs identity binding refused`; bridge confirms `D-Bus authoritative session is unavailable` for configured mounted caller414fbc56-03fb-20ab-758a-bcc7a7cbdc0e. Explicit prepare_container invocation subsequently blocked by tool/user denial before execution; do not retry without response. Native default-project readback only qdrant-recovered Running; no chatbot UUID. Deployed QEMU disk helper matches source: `--prepare-disk` -> prepare-instance-disk create -> qemu-img raw + GPT; op-identity-image is metadata verifier, not creator. Inspection reports leaf pool absent/noncanonical; existing Incus3tched loop pool is NOT a completed guest disk. Configured chatbot key differs from10.0.0.9; source prepare additionally hardpins legacy session at identity_sled_dispatch.rs2561. No constants/grants/identity bypass. Parent owns summary and next authorized reconciliation. |
+| Hermes Deploy — KIT REFRESHED; CANONICAL ACTIVATION BLOCKED SAFELY | `provision-fix-deploy-20261018` / OD-121 | Independent kit only changed; application/source/catalog/FUSE untouched. Receipt `/home/jeremy/.hermes/cache/scratch/provision-activation-20261018.fX44lfgZ`. | 2026-10-18T23:03Z | Reviewed eligible current op-deployment source/diff, source receipt hashes, build depfile, native GNU binary and three-file kit contract. Locked root-approved kit refresh ae10f2fc→e280f0b3; backup `/var/lib/opdbus-release/provision-kit-20261018.ahFxfCuC`; manifest/readback valid. Canonical activation exit1 before transfer: sealed threetched example.binary is obsolete `/usr/bin/threetched`, gate/source/service require `/usr/local/libexec/op-dbus/threetched/threetched`; binary+manifest hashes match exactly. Do NOT weaken gate/edit blobs. B/root304 remains active, A/root299 previous, no journal, old catalog parity and ten running services; both old FUSE views unchanged. Parent must reconcile build+seal runtime selector and compiled state defaults before replacement catalog/generators and retry. No Cargo/tests/reboot/provision/grant/guard changes; guard/storage remain OFF. |
+| Fusion / RetireLlmFacades — SOURCE FROZEN | `threetched-consolidation-fusion-20261018` / OD-121 | Seven LLM facades and Gemma route declaration retired; Antigravity owner metadata aligned; facade admission callers migrated; nine exact files in existing consolidation report. | 2026-10-18 | Preserved stream_generate/origin admission/shared observer/private state; removed obsolete wiring/count tests. No Cargo/tests/runtime/generated/grant changes. Parent integrated evidence; not built or sealed. |
+| Fusion execution — SOURCE FROZEN; RELEASE BLOCKED | `threetched-consolidation-fusion-20261018` / OD-121 |33 method retirements in source including preserved prior23;16 additional source/test files plus existing report/HANDOFF/SIGNALS/WISHLIST updated. Full per-method retained/deferred dispositions recorded. | 2026-10-18 | Hermes22:00Z releases compiler worker but requires correcting over-scoped provisioning before any new build; no correction/freeze receipt. No new Cargo/seal/generated refresh/tests/deploy. JEV judge-only; no model/router changes. |
+| Fusion / RetireAccessors — SOURCE FROZEN | `threetched-consolidation-fusion-20261018` / OD-121 | Removed two router accessors, Gemma bridge/module and migrated canonical provider/route/seven-LLM backing callers; seven exact source/test files in existing report. | 2026-10-18 | Shared ConfigSchema/observation/publication/admission preserved; no grant remap. Four obsolete policy refs accepted as opaque strings by source validator, but old deployed method still exists. No checks/build/runtime/generated changes. |
+| Fusion — SOURCE FREEZE REQUEST TO HERMES | `threetched-consolidation-fusion-20261018` / OD-121 | Prior compiler-release request superseded by authoritative22:00Z worker completion. Await correction-complete/source-stable receipt for provisioning source before required GNU workspace build. | 2026-10-18 | Consolidation source frozen. Please record correction complete and release shared source for build; numbering must remain human-facing only. External Hermes/worker absent from this session's registered agent channel. Mixed old bridge/new opblob MUST NOT ship. Then one exclusion check, GNU workspace release, fresh isolated seal and catalog-derived FUSE regeneration; no live activation. |
+| ReleaseBuild — BLOCKED; NOT STARTED | `threetched-consolidation-fusion-20261018` / OD-121 | One authorized GNU workspace release build; own row/receipt only, no source/configuration changes. | 2026-10-18 | Immediate pgrep found Cargo PID 25761 running workspace check and rustc PIDs 25784/25788/25794; receipt artifact://16. No build, kill, poll, tests/checks/fmt/seal/install/deploy initiated. |
+| RetireNamespace — SOURCE COMPLETE | `threetched-consolidation-fusion-20261018` / OD-121 | Changed only `crates/op-plugins/src/state_plugins/binary_namespace.rs` (deleted), `crates/op-plugins/src/state_plugins/mod.rs` (module removal), and `crates/op-plugins/src/state_plugins/tched_router.rs` (namespace attachment/dispatch removal), plus this ownership/handoff entry. Parent owns documentation/status integration. | 2026-10-18 | Five short CLI namespace facades retired; typed config APIs and native capabilities unchanged. Source/reference review found no demonstrated production short-name caller. No Cargo/tests/format/LSP startup/seal/deployment/grant changes. |
+| Fusion execution — SOURCE SLICE IMPLEMENTED; RELEASE BLOCKED | `threetched-consolidation-fusion-20261018` / OD-121 | Changed mount adapter, threetched.rs editor policy, delegated binary_namespace/module/router removal, two populate.sh wrapper symlink targets, matching shared/skills README paragraphs and release mount table; append-only report/shared notes. Preserved provisioning and cognitive rename work. | 2026-10-18 |18 prior wrapper removals preserved; five router namespace methods retired; exact native grants unchanged. Release worker found Cargo check25761 + rustc25784/25788/25794 (artifact://16), so no build/seal/generated refresh. Tests/custom smoke unrun; no install/deploy/identity/grant/storage actions. Full dispositions and next command in existing consolidation report addendum. |
+| Codex — JEV JUDGE-ONLY; FUSION EXITED RELEASE-BLOCKED | `threetched-consolidation-fusion-20261018` | Own external LiteLLM integration and own notes; preserve all Fusion source changes and unrelated work. | 2026-10-18T22:07:30Z | Judge-only continuation receipt records exit0 at22:07:30Z; execution reports33 source retirements, not a completed release. Hermes provisioning correction/source-stable receipt remains prerequisite for build/seal/generated refresh. JEV remains judge only; unwanted routing continuation cancelled and hooks removed, broken router not retested. Actual user-visible live output remains unconnected despite native child streaming. |
+| Hermes / GPT-6 Astra Pro — SOURCE STABLE; BUILD RELEASED | `provision-fix-20261018` / OD-111 | Parent owns release/provisioning; sole build worker sa-0-eef0df78 owns GNU workspace build, isolated seal and generated refresh. Naming/shell workers finished; no source edits pending. | 2026-10-18T22:25:55Z | Correction COMPLETE and shared SOURCE STABLE at HEAD051a20d056afba074e21d797aa34f8947c543c5a (dirty work preserved). Special3tchedCtlChatbot reservation implemented for configured existing key/session, numberzero does not consume ID-1 counter. Parent verified core hashes against worker receipt and seven shell files parse. This releases Fusion's source-freeze blocker; retain all33 intended retirements, do not use earlier restored-wrapper scratch artifacts. Build/seal/generated worker dispatched, no success claimed. Tests deferred explicitly; deployment authorized. Subsequent provisioning depends on live new catalog, base identity-roots integration, absent leaf-pool/old UUID+LVM incompatibility, and locating existing private key through authorized surface (no denial bypass). Root authority/group only INSIDE container, host accounts unchanged. Guard/storage remain OFF. |
+| Hermes / GPT-6 Astra Pro — PROVISIONING AUDIT COMPLETE | `provision-audit-20261018` / OD-111 | Report and own shared-note entries only: reports/provisioning-audit-20261018.md. Existing source/runtime untouched. | 2026-10-18T19:25Z | D-Bus-first review found stale host paths/receipt protocol, rejected plan field, erased guest FUSE fstab, detached root after sync, late/unsafe grants publication, native control-plane bypasses and conditional multi-identity boot suppression. Source/contract and bounded read-only evidence, not end-to-end execution. No tests/Cargo/provisioning/deployment; identity registration blocked NotebookLM sync. |
+| CrateExecutionTracker — EXECUTION TRACKER VARIANT AUDIT COMPLETE | `cognitive-variant-replace-20261018` | All text files under `crates/op-execution-tracker/`; manual audit of cognitive/cognative plus MCP compound variants (underscore, hyphen, whitespace, CamelCase/concatenation), case-insensitively. | 2026-10-18 | Complete: Cargo.toml, compare-op-execution-tracker.md, SPEC.md, and six src/*.rs files fully read; no cognitive/cognative MCP compound matches found, no edits needed. Re-read all source files in full to prove no omissions. No search tools/scripts/build/tests/format/deploy. |
+| ToolsGapA — OP-TOOLS BUILTIN COGNITIVE/MCP AUDIT IN PROGRESS | `cognitive-mcp-replace-20261018` | `crates/op-tools/src/builtin/{gcloud_tools.rs,ovs_tools.rs,response_tools.rs,rtnetlink_tools.rs,shell.rs,sv.rs}` and remaining ranges of `agent_tool.rs`; manual compound review and edits only. | 2026-10-18 | Started after mandatory skill preload; auditing exact raw chunks through EOF. No Cargo/tests/format/deploy. |
+### Handoff — 2026-10-18 — Fusion resumed consolidation source frozen
+
+Task `threetched-consolidation-fusion-20261018` / OD-121; recorded HEAD
+`051a20d056afba074e21d797aa34f8947c543c5a`. Additional source retirement:
+GetProviderCatalog/GetConfigSchema, seven LLM facades and gemma.route.
+Combined with preserved prior18 wrappers/five namespace methods:33 source
+retirements. Expected72 plugins/1355 methods is arithmetic only, not a seal.
+Canonical backing callers and owner metadata migrated; stream_generate's
+llm.invoke/origin pins remain. No capability remapping or policy changes.
+Exact16 additional source/test files, mappings, retained local responsibilities,
+explicit deferrals and release selectors are in the existing report's
+“Resumed source implementation receipt” section. UI/source pin unchanged.
+HANDOFF, SIGNALS and WISHLIST updated; no new handoff document created.
+
+Hermes22:00Z supersedes historical PID25761 and open compiler-owner status:
+worker ended, but rejected over-scoped provisioning needs correction before
+any new build. No correction/source-freeze receipt found; Hermes/worker are
+outside this session's registered agent channel. Shared request above is the
+reachable coordination path. Mixed old bridge/new opblob cannot certify this
+work and must not ship. No new Cargo/process probe/seal/generator/test/check/
+formatter/operation/install/deployment ran. Generated specialization remains
+stale. Guard/storage hold stays OFF. Next: Hermes correction-complete receipt,
+one immediate compiler exclusion check, authorized GNU workspace release with
+CXXFLAGS=-include cstdint and verified capture selectors, fresh GNU opblob
+isolated seal/delta, existing generator refresh. No live activation authorized.
+
+### Handoff — 2026-10-18 — Fusion consolidation source slice; release blocked
+
+Task `threetched-consolidation-fusion-20261018` / OD-121; observed HEAD
+`051a20d056afba074e21d797aa34f8947c543c5a`. Preserved prior18 wrapper removals.
+Changed `crates/op-plugins/src/state_plugins/threetched.rs` to reject unsupported
+editor execution before spawn. RetireNamespace deleted `binary_namespace.rs`
+and removed its `mod.rs` and `tched_router.rs` attachment/dispatch references,
+retiring five short get/init/list/patch/set facades without touching typed config
+APIs. Changed `deploy/runit/libexec-3tched/mount-3tchedfs` to two upstream IDs;
+changed only the two obsolete plugin targets in `deploy/workspace-agent/populate.sh`,
+matching workspace shared/skills README paragraphs, and release mount table.
+Native hashes/grants and identity/state/cancellation admission remain unchanged.
+
+All18 wrapper mappings, all43 router dispositions, concrete retained overlap,
+capability/result differences and evidence are appended to
+`reports/threetched-consolidation-handoff-20261018.md`. Old install_skill always
+passed --no-tier-banner; remove_bundle passed --yes. Contents editing is retired,
+not silently mapped to native interactive editing. Sibling UI source/pin remains
+unchanged because selected removals have no demonstrated caller there.
+
+ReleaseBuild's immediate safety inventory found workspace Cargo check PID25761
+and rustc25784/25788/25794; receipt artifact://16. No build was started, no process
+killed or polled. Thus isolated seal and derived specialization regeneration are
+blocked; old checked-in generation1494 artifacts remain historical, not release
+proof. Next: after compiler ownership clears, run the authorized GNU workspace
+release command with CXXFLAGS=-include cstdint, use its fresh GNU opblob for a
+new isolated seal with matching runtime selectors/environment, review exact
+delta, regenerate specialization from that catalog. Do not activate or use a
+stale opblob. Tests/Clippy/fmt/custom smoke unrun by owner boundary. No install,
+deployment, service restart, grants broadening, network/storage/guard changes.
+Final mounted metadata still exposed all four old IDs at generation74; no
+authenticated operation or runtime editor-refusal verification claimed.
+
+### Handoff — 2026-10-18 — CrateExecutionTracker — `cognitive-variant-replace-20261018` complete
+
+Fully audited all nine text files under `crates/op-execution-tracker/`: `Cargo.toml`, `compare-op-execution-tracker.md`, `SPEC.md`, `src/execution_context.rs`, `src/execution_tracker.rs`, `src/lib.rs`, `src/metrics.rs`, `src/record.rs`, and `src/telemetry.rs`. Re-read each source file in full after initial reads (including previously collapsed portions). No case-insensitive joined cognitive/cognative + MCP variants using underscore, hyphen, whitespace, CamelCase or concatenation were found; no edits were needed. No file/path names matched; no incomplete files or ranges. No searches, scripts, builds, tests, formatting or deployment were run.
+| RunitFull — CRATE-WIDE COGNITIVE SPELLING REPLACEMENT COMPLETE | `cognitive-mcp-replace-20261018` | Own every text file recursively under `crates/op-runit-systemctl/`; manual complete review and case-preserving replacement of case-insensitive `cognitive_mcp` / `cognative_mcp`. | 2026-10-18 | Complete: Cargo.toml, README.md, src/main.rs, src/dbus.rs, and src/bin/svd.rs fully read; no matching occurrences, so no crate edits needed. Read/edit only; no search/scripts/build/tests/format/deploy. |
+| StateStoreComplete — STATE STORE SPELLING REPLACEMENT COMPLETE | `cognitive-mcp-replace-20261018` | Own all text files recursively under `crates/op-state-store/`; manually read fully and perform case-insensitive underscore spelling replacement preserving case. | 2026-10-18 | Complete: all 18 text files in Cargo.toml, compare-op-state-store.md, SPEC.md and src/*.rs read fully; no matching tokens found, so no crate edits were needed. Read/edit only; no searches/scripts/build/tests/format/deploy. |
+### Handoff — 2026-10-18 — StateStoreComplete — `cognitive-mcp-replace-20261018` complete
+
+Reviewed all 18 text files recursively under `crates/op-state-store/`: `Cargo.toml`, `compare-op-state-store.md`, `SPEC.md`, and all 15 Rust source files. No case-insensitive `cognitive_mcp` or `cognative_mcp` occurrences were present, so no crate edits were needed. No searches, scripts, builds, tests, formatting, or deployment were run.
+### Handoff — 2026-10-18 — RunitFull — `cognitive-mcp-replace-20261018` complete
+Reviewed all five text files recursively under `crates/op-runit-systemctl/` completely: `Cargo.toml`, `README.md`, `src/main.rs`, `src/dbus.rs`, and `src/bin/svd.rs`. No case-insensitive `cognitive_mcp` or `cognative_mcp` occurrences were present, so no crate edits were needed. No search, scripts, builds, tests, formatting, or deployment were run.
+| WorkflowXray — CRATE-WIDE TEXT REPLACEMENT COMPLETE | `cognitive-mcp-replace-20261018` | All text files under `crates/op-workflows/` and `crates/op-xray-daemon/`; manual case-insensitive underscore replacement preserving case style. | 2026-10-18 | Reviewed every listed text file completely; no `cognitive_mcp` or `cognative_mcp` occurrences found, so no crate edits needed. Read/edit only; no search/scripts/build/tests/format/deploy. |
+### Handoff — 2026-10-18 — WorkflowXray — `cognitive-mcp-replace-20261018` complete
+
+Reviewed all text files under `crates/op-workflows/` and `crates/op-xray-daemon/` completely. No `cognitive_mcp` or `cognative_mcp` occurrences were found; no crate edits were needed. No searches, scripts, builds, tests, formatting, or deployment were run.
+| UdsLlmFull — UDS relay and LLM cognitive rename | `cognitive-mcp-replace-20261018` | Own all text files under `crates/op-uds-relay/` and `crates/op-llm/`; line-by-line case-insensitive underscore replacement preserving case style. | 2026-10-18 | Complete: all 3 relay and 26 LLM text files reviewed; no `cognitive_mcp` / `cognative_mcp` matches found, so no source edits. Read/edit only; no tests/build/format/search. |
+### Handoff — 2026-10-18 — UdsLlmFull — `cognitive-mcp-replace-20261018` complete
+
+All 3 text files under `crates/op-uds-relay/` (Cargo.toml, Cargo.lock, `src/bin/op-uds-relay.rs`, lines 1–15, 1–7 and 1–344 respectively) and all 26 text files under `crates/op-llm/` (Cargo.toml, SPEC.md, compare-op-llm.md, four scripts, and 19 Rust source files) were reviewed. No `cognitive_mcp` or `cognative_mcp` matches found; no source edits were needed. Files were not tested, built, formatted, or searched. |
+| BridgeSrcAM2 — bridge src A–M cognitive replacement | `cognitive-mcp-replace-20261018` | Own only direct `crates/op-grpc-bridge/src/` entries A–M and directly nested A–M directories; manually read all lines and replace underscore spellings case-preservingly. | 2026-10-18 | No N–Z entries; no searches/build/tests/formatters. |
+| BridgeSrcT — bridge src T entries cognitive replacement | `cognitive-mcp-replace-20261018` | Own direct `crates/op-grpc-bridge/src/` entries beginning t and any recursive content under t-named directories; read text files completely and replace case-insensitive underscore spellings case-preservingly. | 2026-10-18 | Complete: all 11 direct t-named Rust files read in full; no cognitive_mcp/cognative_mcp matches or hyphen/CamelCase/spaced variants. No source edits; no searches/build/tests/formatters. |
+| Codex /root — IMPLEMENTATION HANDOFF PACKAGE COMPLETE | `threetched-single-surface-20261018` / OD-121 | Owner requested ONE FILE with implementation prompt at top and grounded document below, for another LLM. Final: reports/threetched-consolidation-handoff-20261018.md. Original NotebookLM exports/application work preserved. | 2026-10-18 | Grounded mounted74/1,388 baseline, exact contract/caller/state/capability obligations and bounded implementation scope; 23 evidence targets checked. Persona/config and Cozo-native-memory enhancements added as OD-122/123, deferred and not consolidation gates. Cozo authority/no new SQL; future lungs MCP deferred. Documentation only: no application edit/build/seal/deploy/mount actions. |
+| Codex /root — SEPARATE OUR FILESYSTEM AND ZEROCLAW SURFACE | `host-fuse-fstab-20261018` / OD-121 | COMPLETE for build, additional deployment, separate mounts and fstab. Own filesystem projection/naming, pinned upstream helper binding, integration, release and host wiring. | 2026-10-18T18:19Z | B/root304 active, A/root299 previous, native readiness complete. Our binary 3tched-fs/package tched-fs/plugin tched_fs; live /run/mounts/3tchedFS has70 plugins, /run/mounts/threetched has4 upstream plugins. Disjoint union matches catalog74; ordinary UID1000 reads succeed. fstab and S13 boot hook installed. Receipt /var/lib/opdbus-release/host-fuse-split-20261018.VyJGNh. No tests/reboot; human operation provisioning unresolved, guard OFF. |
+| Codex /root — HOST 3tchedFS MOUNTED | `host-fuse-mount-20261018` / OD-121 | Owner-requested current-boot mount under /run; complete. | 2026-10-18T16:57Z | Mounted /run/mounts/3tchedFS (owner's recorded plural host path), fuse.3tchedFS, deployed daemon PID10670; catalog generation74,74 readable plugin schemas. Configured human session414fbc56… and local caller jeremy UID1000 retained. Backend human identity still awaits provisioning; no operation call, identity/grant change, tests, service install or boot persistence. Receipts /run/opdbus/host-fuse; see final entry. |
+| Codex /root — REBUILT RELEASE DEPLOYED AND ACTIVE | `schema-capture-activate-20261018` / OD-121 | Owner-authorized release configuration reconciliation, supported release-kit maintenance, canonical golden/send-receive/activation and bounded receipts; complete. Earlier Devin-only activation assignment superseded by owner. | 2026-10-18T16:51Z | Canonical Luna receipt `/tmp/opdbus-release-activate-20261018.final.CmWYj2` exit0. Active A/root299 release321fdc18-f01a-44ef-84da-ab4afda346df, previous/journal null, nine read-only overlays, native readiness complete, ten services running. Shipped/persisted/live74-plugin catalog matches; cognitive replaces cognitive_mcp. Existing S12 boot hook enabled without reboot. No tests, guard/pinning, grants expansion, identity minting, commit or push. Identity-bound FUSE/NotebookLM end-to-end remains unverified; see final handoff. |
+| Codex schema_capture_build (Luna) — FULL WORKSPACE GNU RELEASE BUILT | `schema-capture-finish-20261018` / OD-121 | Execution-only scoped and owner-authorized full workspace native GNU release builds; own build receipt and shared-note row only. | 2026-10-18T16:10Z | Scoped build receipt `/tmp/schema-capture-build-20261018.pn23RD/` exit101 (373s) after `mcp_methods.rs:18` referenced missing `super::threetched`; root repaired the module path. One locked workspace release then completed exit0, `Finished release profile [optimized] target(s) in 33m 50s`; receipt `/tmp/schema-capture-workspace-release-20261018.UKgecQ/` (15:36:27Z–16:10:18Z, 2031s). Fresh bridge contract capture: `target/x86_64-unknown-linux-gnu/release/build/op-grpc-bridge-ee90f28eda4dccfc/out/compiled_method_contracts.json` (15:46:16Z). GNU opblob digest matches isolated sealer execution: `65bcbaf434faa3c7205a331ab9f52d2fd2dab5c02734bdda33917447c146ac7d`. Built op-grpc-bridge, op-grants-materializer, op-cog-admin, op-chain-vectors and op-chain-vector-ingest; artifact digests are recorded in Luna's completion message. No cargo/rustc/clippy processes remain. Build warnings include vendored jsonschema (19), op-snowball (3), threetched-fs (1 library plus 10 binary), op-deployment/op-release (2), and op-grpc-bridge (6); no build errors remain. No tests/check/fmt/Clippy, seal, install, service action, deployment, commit or push performed by Luna. Parent source frozen after the root module-path repair; shell/doc changes were already present before the workspace command. |
+| Codex /root — SCHEMA CAPTURE, WORKSPACE RELEASE AND ISOLATED CATALOG COMPLETE | `schema-capture-finish-20261018` / OD-121 | Owner-directed completion of Devin'

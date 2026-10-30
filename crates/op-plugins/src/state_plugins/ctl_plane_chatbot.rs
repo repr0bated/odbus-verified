@@ -15,6 +15,7 @@ use op_state::{
     ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateAction, StateDiff, StatePlugin,
 };
 use op_state_store::PluginSchema;
+use crate::state_plugins::chat_router::{ChatInput, ChatMessage, ChatOutput};
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;
@@ -297,6 +298,7 @@ pub struct ReasoningEpisode {
         description = "High-level goal or prompt active at episode start [PII]",
         example = &"Configure VLAN isolation for tenant-3",
         extend("readOnly" = true),
+        extend("x-opdbus-private" = true),
         extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.goal-text@v1")
     )]
     pub goal_text: Option<String>,
@@ -304,6 +306,7 @@ pub struct ReasoningEpisode {
         description = "Compact natural-language summary of reasoning — primary embedding input [PII]",
         example = &"Evaluated 3 bridge configs, chose br-tenant3 for isolation",
         extend("readOnly" = true),
+        extend("x-opdbus-private" = true),
         extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.reasoning-summary@v1")
     )]
     pub reasoning_summary: Option<String>,
@@ -319,6 +322,7 @@ pub struct ReasoningEpisode {
         description = "The decision, plan, or action the episode produced [PII]",
         example = &"Create br-tenant3 with VLAN 103 tagged ports",
         extend("readOnly" = true),
+        extend("x-opdbus-private" = true),
         extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.decision-output@v1")
     )]
     pub decision_output: Option<String>,
@@ -930,6 +934,16 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
             "mut.service.ctl-plane-chatbot.vectorize@v1",
         ),
     );
+    schema.methods.insert(
+        "Chat".to_string(),
+        method_decl_from_schemars_with_output::<ChatInput, ChatOutput>(
+            "Chat",
+            SideEffect::Mutation,
+            false,
+            "chatbot.invoke",
+            "mut.service.ctl-plane-chatbot.chat@v1",
+        ),
+    );
 
     schema.dependencies.push("embedding_model".to_string());
 
@@ -945,7 +959,7 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
         "chatbot.invoke".to_string(),
         op_state_store::CapabilityDecl {
             id: "chatbot.invoke".to_string(),
-            description: "Grants: set_config, classify_significance, vectorize.".to_string(),
+            description: "Grants: set_config, classify_significance, vectorize, Chat.".to_string(),
         },
     );
 
@@ -970,6 +984,7 @@ mod tests {
             "query_context",
             "classify_significance",
             "vectorize",
+            "Chat",
         ] {
             let declaration = &schema.methods[method];
             assert!(declaration.returns.is_some());

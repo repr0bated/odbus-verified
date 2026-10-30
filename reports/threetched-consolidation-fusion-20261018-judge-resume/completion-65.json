@@ -1,0 +1,63 @@
+{
+  "request": 65,
+  "started": "2026-10-18T22:00:17.839884+00:00",
+  "finished": "2026-10-18T22:00:28.123686+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-08ed143432233110016ad54174d7b087d0a757f60e44e0fefb",
+    "created": 1792360820,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading expanded retirement evidence\",\"path\":\"agent://ScopeReview\"}",
+                "name": "read"
+              },
+              "id": "call_gCCSKBLH7YGQeCNSEKXM5b54",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 100,
+      "prompt_tokens": 261691,
+      "total_tokens": 261791,
+      "completion_tokens_details": {
+        "reasoning_tokens": 29
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 169366
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:28.122324+00:00",
+  "stream_chunks": 4
+}

@@ -25,9 +25,11 @@ use rovs_openflow::{ActionList, Flow, Match, Message, MessageType, OutputPort, V
 use rovs_transport::Reconnect;
 use std::collections::HashMap;
 use std::fs::File;
+use std::future::Future;
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -151,7 +153,97 @@ struct FlowRequest {
     verify_only: bool,
     expected: Option<String>,
     bridge: Option<String>,
+    admission: Option<FlowAdmission>,
     reply: oneshot::Sender<Result<String>>,
+}
+
+/// An authenticated owner callback, executed after queue wait and CAS readback,
+/// immediately before the first modifying OpenFlow frame.
+pub type FlowAdmission = Arc<
+    dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync,
+>;
+
+const FLOW_QUEUE_LIMIT: usize = 128;
+
+#[cfg(test)]
+mod attributed_admission_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    fn request(admission: FlowAdmission) -> (FlowRequest, oneshot::Receiver<Result<String>>) {
+        let (reply, receiver) = oneshot::channel();
+        (FlowRequest {
+            flow_json: serde_json::json!({"table":7,"priority":123,
+                "match_fields":{"ip":""},"actions":[{"type":"normal"}],
+                "idle_timeout":0,"hard_timeout":0}).to_string(),
+            delete: false, compare: true, verify_only: false, expected: None,
+            bridge: Some("fixture0".into()), admission: Some(admission), reply,
+        }, receiver)
+    }
+
+    #[tokio::test]
+    async fn stalled_partial_write_returns_fatal_transport_timeout() {
+        let (mut controller, mut switch) = tokio::io::duplex(2);
+        let bytes = build_echo_request(7);
+        let error = send_msg_with_timeout(&mut controller, &bytes, Duration::from_millis(10)).await.unwrap_err();
+        assert!(error.downcast_ref::<tokio::time::error::Elapsed>().is_some());
+        // The failed write already delivered a frame prefix: the connection
+        // owner must close, not resend or interpret timeout as no submission.
+        drop(controller);
+        let mut observed = Vec::new();
+        switch.read_to_end(&mut observed).await.unwrap();
+        assert_eq!(observed, bytes[..2]);
+    }
+
+    #[tokio::test]
+    async fn final_denial_or_cancellation_after_cas_readback_emits_no_flow_mod() {
+      for cancelled in [false, true] {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let counted = calls.clone();
+        let admission: FlowAdmission = Arc::new(move || {
+            counted.fetch_add(1, Ordering::SeqCst);
+            Box::pin(async { anyhow::bail!("policy revoked while queued") })
+        });
+        let (request, receiver) = request(admission);
+        let receiver = if cancelled { drop(receiver); None } else { Some(receiver) };
+        let (mut controller, mut switch) = tokio::io::duplex(4096);
+        let peer = async move {
+            let query = recv_msg(&mut switch).await.unwrap();
+            assert_eq!(query.msg_type, 18);
+            send_msg(&mut switch, &build_raw_msg(MessageType::MultipartReply,
+                query.xid, &[0, 1, 0, 0, 0, 0, 0, 0])).await.unwrap();
+            // The controller closes after admission denial. Any additional
+            // complete frame here would be an unauthorized effect.
+            assert!(tokio::time::timeout(Duration::from_secs(1), recv_msg(&mut switch))
+                .await.unwrap().is_err());
+        };
+        let operation = async move {
+            let result = compare_exchange_flow(&mut controller, &request,
+                &HashMap::from([("fixture0".into(), 0xffff_fffe)]),
+                &HashMap::new(), &mut 1).await;
+            assert!(result.is_err());
+            assert_eq!(calls.load(Ordering::SeqCst), if cancelled { 0 } else { 1 });
+            drop(controller);
+        };
+        tokio::join!(peer, operation);
+        drop(receiver);
+      }
+    }
+
+    #[tokio::test]
+    async fn full_queue_fails_before_admission() {
+        let (sender, mut receiver) = mpsc::channel(1);
+        let admission: FlowAdmission = Arc::new(|| Box::pin(async { anyhow::bail!("must not run") }));
+        let (queued, _reply) = request(admission);
+        assert!(sender.try_send(queued).is_ok());
+        let handle = OpenFlowControllerHandle {
+            active_conn: Arc::new(Mutex::new(Some(sender))),
+            installed_flows: Arc::new(Mutex::new(Vec::new())),
+        };
+        let result = handle.compare_exchange_flow("fixture0".into(), "{}".into(), None, false).await;
+        assert!(result.unwrap_err().to_string().contains("queue"));
+        assert!(receiver.try_recv().is_ok());
+    }
 }
 
 // ── OpenFlow constants ─────────────────────────────────────────────────────────
@@ -341,7 +433,16 @@ async fn recv_msg_after_first(stream: &mut impl OfIo, first: u8) -> Result<RawMs
 
 /// Write raw bytes to `stream`.
 async fn send_msg(stream: &mut impl OfIo, bytes: &[u8]) -> Result<()> {
-    stream.write_all(bytes).await.context("sending OF message")
+    send_msg_with_timeout(stream, bytes, Duration::from_secs(10)).await
+}
+
+async fn send_msg_with_timeout(stream: &mut impl OfIo, bytes: &[u8], timeout: Duration) -> Result<()> {
+    // A timeout can interrupt a partially written frame. Return the transport
+    // error to the connection owner: reconnect, never retry the FlowMod or
+    // continue using this stream. The peer may already have observed an effect.
+    tokio::time::timeout(timeout, stream.write_all(bytes)).await
+        .context("OpenFlow write timed out; reconnect required; outcome may be uncertain")?
+        .context("sending OF message")
 }
 
 // ── Port discovery ─────────────────────────────────────────────────────────────
@@ -432,7 +533,7 @@ async fn handle_connection(
     flows: Arc<Vec<(String, String, u16)>>,
     static_flows: Arc<Vec<String>>,
     static_fdb: Arc<Vec<StaticFdbEntry>>,
-    active_conn: Arc<Mutex<Option<mpsc::UnboundedSender<FlowRequest>>>>,
+    active_conn: Arc<Mutex<Option<mpsc::Sender<FlowRequest>>>>,
 ) -> Result<()> {
     let mut xid: u32 = 1;
 
@@ -623,7 +724,7 @@ async fn handle_connection(
     // `OpenFlowControllerHandle::send_flow` can reach the live switch, then
     // keepalive: reply to Echo requests and service schema-driven flow
     // requests for as long as this connection lasts.
-    let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel::<FlowRequest>();
+    let (cmd_tx, mut cmd_rx) = mpsc::channel::<FlowRequest>(FLOW_QUEUE_LIMIT);
     *active_conn.lock().unwrap() = Some(cmd_tx);
 
     let mut echo_tick = tokio::time::interval(Duration::from_secs(5));
@@ -673,6 +774,9 @@ async fn handle_connection(
                 }
             }
             Some(req) = cmd_rx.recv() => {
+                if req.reply.is_closed() {
+                    continue;
+                }
                 let outcome = if req.verify_only {
                     verify_owned_flow(&mut stream, &req, &port_map, &port_macs, &mut xid).await
                 } else if req.compare {
@@ -758,6 +862,11 @@ async fn compare_exchange_flow(
     }
     let entries = flow_verify::query(stream, &desired, xid).await?;
     flow_verify::verify(&entries, expected.as_ref(), &desired)?;
+    anyhow::ensure!(!request.reply.is_closed(), "OpenFlow operation was cancelled before effect");
+    if let Some(admission) = &request.admission {
+        admission().await.context("OpenFlow final admission denied before effect")?;
+    }
+    anyhow::ensure!(!request.reply.is_closed(), "OpenFlow operation was cancelled before effect");
     if request.delete {
         push_flow_delete(stream, &request.flow_json, ports, macs, xid).await?;
     } else {
@@ -809,7 +918,7 @@ pub struct OpenFlowController {
     /// Static FDB pins (`bridge:port:vlan:mac`) re-asserted on every reconnect
     /// via unixctl, sourced from `OF_STATIC_FDB`.
     static_fdb: Vec<StaticFdbEntry>,
-    active_conn: Arc<Mutex<Option<mpsc::UnboundedSender<FlowRequest>>>>,
+    active_conn: Arc<Mutex<Option<mpsc::Sender<FlowRequest>>>>,
     installed_flows: Arc<Mutex<Vec<serde_json::Value>>>,
 }
 
@@ -978,7 +1087,7 @@ impl OpenFlowController {
 /// old (broken, now-removed) `op-openvswitch-daemon` passthrough.
 #[derive(Clone)]
 pub struct OpenFlowControllerHandle {
-    active_conn: Arc<Mutex<Option<mpsc::UnboundedSender<FlowRequest>>>>,
+    active_conn: Arc<Mutex<Option<mpsc::Sender<FlowRequest>>>>,
     installed_flows: Arc<Mutex<Vec<serde_json::Value>>>,
 }
 
@@ -996,16 +1105,17 @@ impl OpenFlowControllerHandle {
                 .as_ref()
                 .context("no OVS switch currently connected to the OpenFlow controller")?;
             sender
-                .send(FlowRequest {
+                .try_send(FlowRequest {
                     flow_json,
                     delete,
                     compare: false,
                     verify_only: false,
                     expected: None,
                     bridge: None,
+                    admission: None,
                     reply: tx,
                 })
-                .map_err(|_| anyhow::anyhow!("controller connection task is no longer running"))?;
+                .map_err(|_| anyhow::anyhow!("OpenFlow command queue unavailable or full"))?;
         }
         let result: Result<String> = rx.await.context("controller dropped the reply channel")?;
         let result = result?;
@@ -1027,6 +1137,31 @@ impl OpenFlowControllerHandle {
         expected: Option<String>,
         delete: bool,
     ) -> Result<String> {
+        self.compare_exchange_flow_inner(bridge, flow_json, expected, delete, None).await
+    }
+
+    /// Authenticated bridge admission is rechecked inside the serialized sink.
+    pub async fn compare_exchange_flow_attributed(
+        &self,
+        bridge: String,
+        flow_json: String,
+        expected: Option<String>,
+        delete: bool,
+        admission: FlowAdmission,
+    ) -> Result<String> {
+        self.compare_exchange_flow_inner(bridge, flow_json, expected, delete, Some(admission)).await
+    }
+
+    async fn compare_exchange_flow_inner(
+        &self,
+        bridge: String,
+        flow_json: String,
+        expected: Option<String>,
+        delete: bool,
+        admission: Option<FlowAdmission>,
+    ) -> Result<String> {
+        anyhow::ensure!(bridge.len().saturating_add(flow_json.len()).saturating_add(expected.as_ref().map_or(0, String::len)) <= 65_536,
+            "OpenFlow CAS transcript exceeds its byte bound");
         anyhow::ensure!(
             !delete || expected.as_ref() == Some(&flow_json),
             "delete requires the exact expected flow"
@@ -1037,16 +1172,17 @@ impl OpenFlowControllerHandle {
             .unwrap()
             .as_ref()
             .context("no connected OpenFlow switch")?
-            .send(FlowRequest {
+            .try_send(FlowRequest {
                 flow_json,
                 delete,
                 compare: true,
                 verify_only: false,
                 expected,
                 bridge: Some(bridge),
+                admission,
                 reply: tx,
             })
-            .map_err(|_| anyhow::anyhow!("OpenFlow owner disconnected"))?;
+            .map_err(|_| anyhow::anyhow!("OpenFlow command queue unavailable or full"))?;
         rx.await
             .context("OpenFlow compare/exchange owner dropped result; reconcile outcome")?
     }
@@ -1059,24 +1195,30 @@ impl OpenFlowControllerHandle {
         flow_json: String,
         absent: bool,
     ) -> Result<bool> {
+        anyhow::ensure!(bridge.len().saturating_add(flow_json.len()) <= 65_536,
+            "OpenFlow verification transcript exceeds its byte bound");
         let (tx, rx) = oneshot::channel();
         self.active_conn
             .lock()
             .unwrap()
             .as_ref()
             .context("no connected OpenFlow switch")?
-            .send(FlowRequest {
+            .try_send(FlowRequest {
                 flow_json,
                 delete: absent,
                 compare: false,
                 verify_only: true,
                 expected: None,
                 bridge: Some(bridge),
+                admission: None,
                 reply: tx,
             })
-            .map_err(|_| anyhow::anyhow!("OpenFlow owner disconnected"))?;
-        let value: serde_json::Value =
-            serde_json::from_str(&rx.await.context("flow verification owner disconnected")??)?;
+            .map_err(|_| anyhow::anyhow!("OpenFlow command queue unavailable or full"))?;
+        let response = tokio::time::timeout(Duration::from_secs(45), rx)
+            .await
+            .context("OpenFlow verification timed out; readback remains unavailable")?
+            .context("flow verification owner disconnected")??;
+        let value: serde_json::Value = serde_json::from_str(&response)?;
         value
             .get("matches")
             .and_then(serde_json::Value::as_bool)

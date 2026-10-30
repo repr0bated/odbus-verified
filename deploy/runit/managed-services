@@ -3,7 +3,6 @@ mail-port-fabric
 op-grpc-bridge
 op-runit-systemctl
 emqx
-mongodb-mcp-server
 unified-execution
 opencode
 op-web

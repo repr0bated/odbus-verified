@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+base64 = { workspace = true }
+blake3 = { workspace = true }
+hex = { workspace = true }
 serde = { workspace = true }
 nix = { version = "0.28", features = ["fs", "user"] }
 anyhow = { workspace = true }
@@ -13,11 +16,30 @@ cozo = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+schemars = { workspace = true }
+sha2 = { workspace = true }
+uuid = { workspace = true }
 op-identity = { path = "../op-identity" }
 
 [[bin]]
 name = "identity-sled-bind"
 path = "src/bin/identity_sled_bind.rs"
+
+[[bin]]
+name = "list-genesis"
+path = "src/bin/list-genesis.rs"
+
+[[bin]]
+name = "update-chatbot-fsid"
+path = "src/bin/update-chatbot-fsid.rs"
+
+[[bin]]
+name = "migrate-chatbot-root"
+path = "src/bin/migrate-chatbot-root.rs"
+
+[[bin]]
+name = "validate-chatbot-state"
+path = "src/bin/validate-chatbot-state.rs"
 
 [dev-dependencies]
 tempfile = { workspace = true }

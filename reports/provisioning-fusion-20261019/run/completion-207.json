@@ -1,0 +1,64 @@
+{
+  "request": 207,
+  "started": "2026-10-19T04:43:12.299828+00:00",
+  "finished": "2026-10-19T04:43:23.981171+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0569f7f6333cc96a016ad59fe360a087d0b70d5fbbc71b21b6",
+    "created": 1792384995,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"code\":\"def save_batch(batch):\\n    for pid,h in batch:\\n        try:\\n            raw=h.wait()\\n            text=raw if isinstance(raw,str) else json.dumps(raw,ensure_ascii=False)\\n            write(str(base/'reviews'/f'{pid}.txt'),text)\\n            rec=records[pid]\\n            rec['output_path']=str(base/'reviews'/f'{pid}.txt')\\n            rec['output_bytes']=len(text.encode())\\n            rec['output_sha256']=sha(text.encode())\\n            try:\\n                clean=text.strip()\\n                if clean.startswith('```'):\\n                    clean=clean.split('\\\\n',1)[1].rsplit('```',1)[0]\\n                obj=json.loads(clean)\\n                write(str(base/'reviews'/f'{pid}.json'),json.dumps(obj,ensure_ascii=False,indent=2))\\n                rec['status']='success' if obj.get('fully_reviewed') is True else 'review_incomplete'\\n                rec['findings_count']=len(obj.get('findings',[]))\\n            except Exception as e:\\n                rec['status']='parse_error'\\n                rec['error']=repr(e)\\n        except Exception as e:\\n            records[pid]['status']='completion_error'\\n            records[pid]['error']=repr(e)\\n            write(str(base/'reviews'/f'{pid}.txt'),repr(e))\\n    print([{k:records[pid].get(k) for k in ['packet_id','status','findings_count','error']} for pid,h in batch])\\nsave_batch(batch)\\nbatch=launch_batch(ids[3:6])\",\"title\":\"Saving first packet reviews\",\"timeout\":0}",
+                "name": "eval"
+              },
+              "id": "call_AVPWWBYBYI1sNZvTlDVo2bKG",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 937,
+      "prompt_tokens": 104292,
+      "total_tokens": 105229,
+      "completion_tokens_details": {
+        "reasoning_tokens": 160
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 96421
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:23.979606+00:00",
+  "stream_chunks": 4
+}

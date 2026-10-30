@@ -1,0 +1,64 @@
+{
+  "request": 6,
+  "started": "2026-10-19T06:04:05.091033+00:00",
+  "finished": "2026-10-19T06:04:20.552310+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0d2cdce0e54c8a2b016ad5b2d8323087d08a4bde14a860d28f",
+    "created": 1792389848,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Identifying current helper differences\",\"command\":\"diff -u reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/sync-instance-upgrade.sh deploy/scripts/sync-instance-upgrade.sh\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_5vxeHU5HqO3EMhwLq5LSfIqL",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 611,
+      "prompt_tokens": 241293,
+      "total_tokens": 241904,
+      "completion_tokens_details": {
+        "reasoning_tokens": 240
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 172511
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:04:20.550941+00:00",
+  "stream_chunks": 4
+}

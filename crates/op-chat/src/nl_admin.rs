@@ -431,7 +431,7 @@ impl NLAdminOrchestrator {
 
             // Build request
             let request = ChatRequest {
-                messages: messages.clone(),
+                messages: op_llm::graph_turn_reminder::with_system_graph_reminder(messages.clone()),
                 tools: tools.clone(),
                 tool_choice: ToolChoice::Auto,
                 max_tokens: Some(2048),

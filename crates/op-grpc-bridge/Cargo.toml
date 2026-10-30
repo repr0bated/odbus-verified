@@ -4,9 +4,15 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 description = "Bidirectional D-Bus <-> gRPC bridge with event chain integration"
+# Fresh bridge: legacy bins, examples and integration tests stay on disk but
+# are not compiled (see the module docs in src/lib.rs).
+autobins = false
+autoexamples = false
+autotests = false
 
 [dependencies]
 op-core = { workspace = true }
+op-chat = { workspace = true }
 # gRPC
 tonic = { workspace = true }
 tonic-web = { workspace = true }
@@ -39,6 +45,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 simd-json = { workspace = true }
 jsonschema = { workspace = true }
+# model_registry maintains the root-owned provider list (one TOML authority
+# for the whole provider set, including its credential-gate columns).
+toml = { workspace = true }
 # HTTP client used by the tched_router runtime integration. Cognitive-tool dispatch
 # itself is in-process behind MutationEngine and does not use this dependency.
 reqwest = { workspace = true }
@@ -53,7 +62,7 @@ op-identity = { path = "../op-identity" }
 op-network = { path = "../op-network" }
 op-cozo-store = { path = "../op-cozo-store" }
 op-mcp.workspace = true
-op-cognitive-mcp = { path = "../op-cognitive-mcp" }
+op-cognitive = { path = "../op-cognitive" }
 op-agents = { path = "../op-agents" }
 op-llm = { path = "../op-llm" }
 op-xray-daemon = { path = "../op-xray-daemon" }
@@ -63,6 +72,9 @@ socket2 = "0.6"
 # Zero-copy shared memory (1:1 Direct Read)
 memmap2 = { workspace = true }
 hex = { workspace = true }
+libc = "0.2"
+libloading = "0.8"
+zeroize = "1"
 sha2 = { workspace = true }
 blake3 = { workspace = true }
 ed25519-dalek = "2.2"
@@ -81,18 +93,6 @@ base64 = "0.21"
 qdrant-client = "1.17"
 rcgen = "0.13"
 
-[[bin]]
-name = "op-grpc-bridge"
-path = "src/bin/op-grpc-bridge.rs"
-
-[[bin]]
-name = "dump-protos"
-path = "src/bin/dump-protos.rs"
-
-[[bin]]
-name = "op-grants-materializer"
-path = "src/bin/op-grants-materializer.rs"
-
 [build-dependencies]
 tonic-build = { workspace = true }
 op-blob = { path = "../op-blob" }
@@ -110,18 +110,10 @@ tempfile = { workspace = true }
 serde_json = { workspace = true }
 rustls = { version = "0.23", features = ["aws_lc_rs"] }
 
-[[test]]
-name = "tched_router_integration"
-path = "tests/tched_router_integration.rs"
+[[bin]]
+name = "op-grpc-bridge"
+path = "src/bin/op-grpc-bridge.rs"
 
 [[test]]
-name = "tonic_tls_reflection"
-path = "tests/tonic_tls_reflection.rs"
-
-[[test]]
-name = "negative_topology_gates"
-path = "tests/negative_topology_gates.rs"
-
-[[test]]
-name = "oracle_assertion_e2e"
-path = "tests/oracle_assertion_e2e.rs"
+name = "fresh_bridge_contract"
+path = "tests/fresh_bridge_contract.rs"

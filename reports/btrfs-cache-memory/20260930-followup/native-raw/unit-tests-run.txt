@@ -1,0 +1,19 @@
+
+running 13 tests
+test numa::tests::test_apply_cpu_affinity_multi_node ... ignored, requires multi-node NUMA hardware to test meaningfully
+test numa::tests::test_apply_cpu_affinity_single_node ... ok
+test numa::tests::test_apply_memory_policy_bind ... ignored, requires multi-node NUMA hardware to test meaningfully
+test numa::tests::test_apply_memory_policy_default ... ok
+test numa::tests::test_apply_memory_policy_interleave ... ignored, requires multi-node NUMA hardware to test meaningfully
+test numa::tests::test_numa_detection ... ok
+test numa::tests::test_numa_optimizer ... ok
+test numa::tests::test_numa_stats ... ok
+test numa::tests::test_numa_strategy_from_str ... ok
+test numa::tests::test_parse_cpu_range ... ok
+test snapshot_manager::tests::legacy_and_incomplete_sets_are_preserved_and_never_listed ... ok
+test snapshot_manager::tests::original_retention_and_set_naming ... ok
+test snapshot_manager::tests::zero_retention_fails_before_filesystem_work ... ok
+
+test result: ok. 10 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+guard_exit=0 peak_group_rss_kib=0 limit_kib=524288 limit_exceeded=0 timeout_seconds=120

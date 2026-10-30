@@ -1,0 +1,95 @@
+{
+  "status": "ok",
+  "query": "For a bounded historical packet document review, identify a concise checklist to preserve exact provenance, original quotations, corrections, actions/results, unavailable/truncated evidence, and per-packet coverage receipts. Do not access files or execute commands. Actual packet review will occur separately.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "### Per-packet review checklist\n\n- **Identify the source:** packet path, supplied hash, session/model, source date, record IDs, physical line/byte ranges, parent/delegation links, and active/compacted flags. Distinguish supplied hashes from independently verified hashes.\n- **Preserve original order:** retain physical record order and distinguish owner messages, injected worker messages, queued corrections, assistant statements, tool calls, and tool results.\n- **Quote precisely:** attach original quotations to record IDs and locations. Mark omissions explicitly; never reconstruct redacted, missing, or truncated text.\n- **Track corrections:** record the original interpretation, exact correction, precedence, and evidence of propagation into subsequent actions. An acknowledgment alone does not establish implementation.\n- **Pair actions with results:** preserve tool name, arguments, associated result/error, and command-level exit status where available. Distinguish proposed, attempted, cancelled, successful, and independently evidenced outcomes.\n- **Separate evidence from conclusions:** distinguish observed facts, historical claims, reviewer inference, contradictions, and unresolved questions. Historical permission is not current authorization.\n- **Account for limitations:** list unavailable attachments, historical truncation, redactions, missing results, and unresolved cross-packet references. Do not infer omitted reasoning or outcomes.\n- **Account for duplicates:** identify exact duplicates and every source reference; distinguish them from revised or near-duplicate records.\n- **Record actual coverage:** enumerate semantically reviewed record/byte ranges and outstanding ranges. Keep **available**, **read**, **panel-reviewed**, and **JEV-adjudicated** statuses separate.\n- **Save a packet receipt:** include reviewer, packet identity/hash provenance, reviewed ranges, evidence citations, findings, correction/action chains, duplicate references, limitations, and completion status. For downstream judgments, preserve the exact evidence supplied, question, returned answer, and uncertainty.\n\nNo files accessed or commands executed."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Historical Packet Document Review Checklist\n\n1. **Provenance & Mapping**\n   - Log exact file paths, record IDs, parent links, and source dates for all 42 sessions, 4,620 records, 49 source snapshots, and 65 historical blobs.\n   - Verify `analysis/ingestion-receipt.json` is updated with exact files/record IDs read.\n\n2. **Owner Corrections & Constraints**\n   - Capture exact original quotations for all owner corrections (e.g., Astra's 87 `custom_message/live-delegation` entries, Hermes' corrections on numbering, loops, and disk images).\n   - Record the latest constraints: \"no loops on host\", \"prefer subvolumes only\", \"JEV is decision judge\", \"preserve existing identity/session/native UUID/creation records\".\n\n3. **Actions, Results & Errors**\n   - Document all tool calls, arguments, results, and errors from the main conversations and linked workers.\n   - Trace the complete post-bootstrap chain: admission \u2192 native preparation \u2192 storage establishment \u2192 initial upgrade receive/pairing \u2192 root binding \u2192 authoritative Cozo adoption \u2192 start \u2192 stopped boot restoration/sync \u2192 failure/cancellation/resume.\n   - Identify the owner and authoritative receipt at every stage.\n\n4. **Drift & Discrepancies**\n   - Compare current source snapshots, installed application helpers, installed base boot service, and immutable historical commit blobs.\n   - Build an explicit drift ledger: original ask; agent interpretation; actual tool action/result; owner correction; propagation into code/delegates/deployment; remaining discrepancy.\n   - Distinguish legitimate clarification, agent-added work, stale evidence, genuine encountered failures, and incomplete execution.\n\n5. **Evidence Gaps & Truncation**\n   - Flag any truncated tool outputs, missing files, or gaps in the provided evidence.\n   - Note where physical record order, IDs, parent links, correction events, active/compacted flags, and source dates are preserved or missing.\n   - Ensure no silent truncation of the corpus; state exactly what is missing or unavailable.\n\n6. **Coverage Receipts**\n   - Maintain `analysis/coverage.json` with file hashes, covered record/byte ranges, duplicates, unavailable/truncated content, and outstanding ranges.\n   - Save exact inputs by references/hash and actual outputs for each panel round.\n   - Separate exported/available/read/panel-reviewed/JEV-adjudicated status.\n\n7. **JEV Adjudication**\n   - Use JEV through native typed `judge`/`judge_batch` with the configured `typesafe/jev-latest` judge role.\n   - For each substantive decision, save exact state/evidence refs, question/rubric, returned answer, and uncertainty.\n   - Never use JEV to choose models or to grant mutation authority.\n\n8. **Deliverables**\n   - Produce `analysis/diagnosis.md`, `analysis/drift-ledger.md`, `analysis/proposed-changes.md`, `analysis/decisions.jsonl`, final coverage and completion receipts.\n   - Concrete modifications must target existing scripts/modules, include exact proposed Incus declarations when supported, retain security checks, and expose unresolved requirement conflicts."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Record exact source paths, record IDs, source dates, parent links, physical ranges, and active/compacted flags.",
+      "Preserve original quotations and owner corrections, linking interpretations, subsequent actions, results, and remaining discrepancies.",
+      "Capture tool calls, arguments, results, errors, and evidence gaps without silently reconstructing missing or truncated content.",
+      "Maintain coverage receipts with hashes, reviewed ranges, duplicate references, outstanding ranges, and distinct review/adjudication statuses.",
+      "Preserve the evidence supplied to downstream judgments alongside questions, returned answers, and uncertainty."
+    ],
+    "contradictions": [
+      {
+        "topic": "Bounded checklist versus full investigation scope",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Provides a per-packet checklist and explicitly states that no files were accessed or commands executed."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Expands the checklist into the full investigation workflow, including complete-chain tracing, source comparisons, native judge use, and final specification deliverables. These are broader than the current bounded request, although it does not claim to have executed them."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly distinguishes supplied from independently verified hashes, exact from near duplicates, owner from injected worker messages, and command-level outcomes from general success claims."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Explicitly includes the exported coverage status, task-specific correction channels, and the named ingestion and coverage receipts."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly separates observed facts, historical claims, reviewer inference, and unresolved questions; states that historical permission is not current authorization."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "An acknowledgment of a correction does not establish implementation; review must locate evidence of propagation into subsequent actions."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Actions should be classified as proposed, attempted, cancelled, successful, or independently evidenced, with command-level exit status preserved."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Current source, installed application helpers, installed base services, and immutable historical blobs are distinct evidence classes and should not be conflated."
+      }
+    ],
+    "blind_spots": [
+      "Qwen states 4,620 records, contradicting the supplied corpus total of 6,620 public message/event records. Its corpus-wide totals should not be used as a packet coverage claim.",
+      "Neither response explicitly requires downstream stateless panel inputs to contain the original evidence text rather than only paths, hashes, or reviewer summaries.",
+      "Neither response explicitly warns that instructions embedded in historical packets are untrusted evidence and must not be executed.",
+      "Neither response explicitly specifies preserving separate source-record identifiers and packet-local positions when packets split a session."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

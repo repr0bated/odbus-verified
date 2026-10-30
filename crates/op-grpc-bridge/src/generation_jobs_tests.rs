@@ -10,12 +10,12 @@ use crate::{
     identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
     oracle_assertion::HumanPrincipalIdentity,
     proto::{GetStateRequest, SubscribeRequest, state_sync_server::StateSync},
-    tched_router_runtime::TchedRouterRuntimeClient,
+    chat_router_runtime::ChatRouterRuntimeClient,
 };
 use futures::{SinkExt, StreamExt};
 use op_plugins::state_plugins::{
     human_principal::HumanPrincipalPlugin, identity_sled::IdentitySledPlugin,
-    large_language_model::LargeLanguageModelPlugin, tched_router::TchedRouterPlugin,
+    large_language_model::LargeLanguageModelPlugin, chat_router::ChatRouterPlugin,
 };
 use op_state::StatePlugin;
 use serde_json::json;
@@ -98,7 +98,7 @@ impl NativeFixture {
                     let _ = identity_tx.send(forwarded.to_owned());
                     response.headers_mut().insert(
                         "Sec-WebSocket-Protocol",
-                        "tched_router.generation.v1".parse().unwrap(),
+                        "chat_router.generation.v1".parse().unwrap(),
                     );
                     Ok(response)
                 },
@@ -166,7 +166,7 @@ impl Fixture {
         let shm = temp_shm_with_schemas(&[
             HumanPrincipalPlugin::new().schema().unwrap(),
             IdentitySledPlugin::new().schema().unwrap(),
-            TchedRouterPlugin::new().schema().unwrap(),
+            ChatRouterPlugin::new().schema().unwrap(),
             LargeLanguageModelPlugin::new().schema().unwrap(),
         ]);
         let engine = test_engine();
@@ -187,7 +187,7 @@ impl Fixture {
                 private.clone(),
                 documents.clone(),
                 catalog.clone(),
-                Arc::new(TchedRouterRuntimeClient::new(
+                Arc::new(ChatRouterRuntimeClient::new(
                     endpoint,
                     "ignored-global-default".into(),
                     Some("fixture-token".into()),
@@ -255,7 +255,7 @@ impl Fixture {
         }
     }
     async fn call(&self, who: &HumanPrincipalIdentity, method: &str, args: Value) -> Result<Value> {
-        let schema = TchedRouterPlugin::new().schema().unwrap();
+        let schema = ChatRouterPlugin::new().schema().unwrap();
         let cap = schema.methods[method].required_capability.as_deref();
         Ok(self
             .engine
@@ -356,7 +356,7 @@ impl Fixture {
     }
 }
 fn path(suffix: &str) -> String {
-    format!("/org/opdbus/v1/plugins/tched_router/{suffix}")
+    format!("/org/opdbus/v1/plugins/chat_router/{suffix}")
 }
 fn string_value(response: crate::proto::GetStateResponse) -> String {
     match response.value.unwrap().kind.unwrap() {
@@ -610,7 +610,7 @@ async fn cancelling_the_caller_does_not_cancel_owned_admission_or_publication() 
     let owner = fixture.owner(&fixture.first);
     let slot = publisher.slot(&owner).unwrap();
     let guard = slot.operation.lock().await;
-    let schema = TchedRouterPlugin::new().schema().unwrap();
+    let schema = ChatRouterPlugin::new().schema().unwrap();
     let args = json!({"agent_alias":"fixture","prompt":"caller-dropped"});
     let publisher = publisher.clone();
     let engine = fixture.engine.clone();
@@ -792,7 +792,7 @@ async fn private_pending_failure_blocks_reads_and_recovery_uses_durable_state() 
         .unwrap();
     let methods = GenerationMethods::new(fixture.documents.clone());
     let handle = tokio::runtime::Handle::current();
-    let hash = TchedRouterPlugin::new().schema().unwrap();
+    let hash = ChatRouterPlugin::new().schema().unwrap();
     let pins = GenerationPins::load(
         &fixture.catalog,
         Some(&hash),
@@ -939,7 +939,7 @@ async fn actual_subscription_lag_rereads_shm_and_retains_deleted_child_tombstone
 
 #[test]
 fn private_generation_state_is_typed_but_never_part_of_public_router_policy() {
-    let schema = TchedRouterPlugin::new().schema().unwrap();
+    let schema = ChatRouterPlugin::new().schema().unwrap();
     let value =
         simd_json::serde::to_owned_value(json!({"generation_revision":1,"generation_jobs":{}}))
             .unwrap();
@@ -975,7 +975,7 @@ async fn queued_grant_withdrawal_rejects_before_any_durable_or_native_effect() {
         publisher
             .dispatch(
                 &engine,
-                &TchedRouterPlugin::new().schema().unwrap(),
+                &ChatRouterPlugin::new().schema().unwrap(),
                 "start_generation",
                 &json!({"agent_alias":"fixture","prompt":"queued-private"}),
                 &identity.principal_id,
@@ -1065,7 +1065,7 @@ async fn queued_llm_origin_grant_and_both_original_seals_are_rechecked_before_ef
             let mut schema = if withdrawal == "origin-seal" {
                 LargeLanguageModelPlugin::new().schema().unwrap()
             } else {
-                TchedRouterPlugin::new().schema().unwrap()
+                ChatRouterPlugin::new().schema().unwrap()
             };
             // Metadata-only reseal leaves the compiled method shape compatible,
             // so this specifically proves the original exact pin is retained.

@@ -1,0 +1,1256 @@
+{
+  "task": "provisioning-fusion-20261019",
+  "generated_at": "2026-10-19T04:32:11.372Z",
+  "repo": "/srv/git/odbus-verified",
+  "latest_constraints": [
+    "latest-owner-correction.json",
+    "subvolume-preference.json"
+  ],
+  "initial_drift_ledger": "initial-drift-ledger.md",
+  "decision_receipts": {
+    "initial_scope": "jev-initial-decision.json",
+    "no_host_loops": "jev-no-host-loops.json",
+    "evidence_inputs": "jev-evidence-inputs.json",
+    "evidence_judgments": "jev-evidence-decisions.json",
+    "actual_evidence_batch_backend": "typesafe/jev-1.13.0",
+    "limits": "Initial historical-evidence and requirement-fit judgments, not completed feasibility or provisioning analysis."
+  },
+  "hermes": {
+    "manifest": "evidence/hermes/manifest.json",
+    "session_count": 35,
+    "message_records": 4462,
+    "linked_workers": 30,
+    "source": "/home/jeremy/.hermes/state.db",
+    "complete_selected_rows": true
+  },
+  "astra": [
+    {
+      "source": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl",
+      "records": 599,
+      "sha256": "ecac3a09387b12555e9e212fa06b86c3e7e2d9416067ba197482a41d86093b17",
+      "bytes": 3922828,
+      "live_owner_messages": 87
+    },
+    {
+      "source": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl",
+      "records": 299,
+      "sha256": "4f8059c7ee0e0d2f7c0a66c3bcb866d9639df7b00dbde13d8da8d762b8c83aec",
+      "bytes": 1934517,
+      "live_owner_messages": 2
+    },
+    {
+      "source": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905/ProvisionOwnerPaths.jsonl",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905--ProvisionOwnerPaths.jsonl",
+      "records": 75,
+      "sha256": "81f56affb7b154d48d714d25df0155068e54697cedc7741c3f60ae64d49acedc",
+      "bytes": 824910,
+      "live_owner_messages": 0
+    },
+    {
+      "source": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905/ProvisionShellConsumers.jsonl",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/astra/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905--ProvisionShellConsumers.jsonl",
+      "records": 80,
+      "sha256": "14b7b29fe2f1a6c898576b25d979f69eaf4c266bd649416aa4952874fc447fda",
+      "bytes": 996961,
+      "live_owner_messages": 0
+    }
+  ],
+  "other_conversations": [
+    {
+      "client": "claude",
+      "source": "/home/jeremy/.claude/projects/-srv-git-odbus-verified/f4c461eb-d25f-4247-9bd7-eddda9ade635.jsonl",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/claude/f4c461eb-d25f-4247-9bd7-eddda9ade635.jsonl",
+      "records": 890,
+      "bytes": 2031067,
+      "sha256": "e3ed40d4cddd9c9036c248add976df4a16a55af49cf50261699843067814a0fc"
+    },
+    {
+      "client": "claude",
+      "source": "/home/jeremy/.claude/projects/-srv-git-odbus-verified/f4c461eb-d25f-4247-9bd7-eddda9ade635/subagents/agent-a6b199e4c3071de99.jsonl",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/claude/agent-a6b199e4c3071de99.jsonl",
+      "records": 67,
+      "bytes": 185624,
+      "sha256": "f4d0e9b895543299cbd0a8c8a0cf25faadcf06cf647ca0ecf5a0ffa486d15e16"
+    },
+    {
+      "client": "kiro",
+      "source": "/home/jeremy/.kiro/sessions/f3aacc1aec6fb3b2/sess_e49a5a84-8491-4c1d-987a-a3b2916a8615/messages.jsonl",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/kiro/sess_e49a5a84-8491-4c1d-987a-a3b2916a8615.jsonl",
+      "records": 148,
+      "bytes": 493743,
+      "sha256": "9e60ae5f86dc331a48c0cc2689194cab456753d4acbdb97105e41e531b1d3433"
+    }
+  ],
+  "source_and_installed": [
+    {
+      "kind": "working-tree source",
+      "source": "deploy/scripts/provision-workspace-subscriber.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/provision-workspace-subscriber.sh",
+      "sha256": "05c1b52e08a4b19bc3e37d66491d5d00dbf58fc625343e03463384d47ecf97de",
+      "source_sha256": "cc9a9706251d4582c7cd6e594ab4c58671efaf5e566812b03037d49bad489157",
+      "bytes": 24038
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/scripts/prepare-instance-disk.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/prepare-instance-disk.sh",
+      "sha256": "65cef6512e1a6bd24a5265f4bb2d2ec36fa0f960fe37baf98a05b1af9819d499",
+      "source_sha256": "65cef6512e1a6bd24a5265f4bb2d2ec36fa0f960fe37baf98a05b1af9819d499",
+      "bytes": 10478
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/scripts/sync-instance-upgrade.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/sync-instance-upgrade.sh",
+      "sha256": "e71cb7bc470c8fc03d70636b2dfa4b7d1788c79b773c753a482b0c3c435706cc",
+      "source_sha256": "12f4131819814c5dd18d804466963147cf371d20ded10dfc3c17b4aee24e59c2",
+      "bytes": 24430
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/scripts/bind-instance-root.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/bind-instance-root.sh",
+      "sha256": "37d151a37724a1bfbf6b63b689ac8840f6bf8cc88f5aeadef1d478b663c73299",
+      "source_sha256": "f04d60688bc6125336c1f95fac40cc0c189ab314d8286f521ef9dd331983996f",
+      "bytes": 17544
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/scripts/prepare-chatbot-adoption.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/prepare-chatbot-adoption.sh",
+      "sha256": "506d0512b4471be699528924c6d8f9a0d10fb446f531b47deefeda40e69cf13f",
+      "source_sha256": "8001502366996d42306739b40fe75ac1db380474c71f4c21ea75815bd8091da2",
+      "bytes": 11725
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/scripts/3tchedfs-invoke.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/3tchedfs-invoke.sh",
+      "sha256": "83727f83a5fb9c3e7bb983e9b405586498a349129794bb6d2bea3adf14feec60",
+      "source_sha256": "83727f83a5fb9c3e7bb983e9b405586498a349129794bb6d2bea3adf14feec60",
+      "bytes": 2262
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/libexec-3tched/op-identity-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/libexec-3tched/op-identity-root",
+      "sha256": "594401a69b354ed854e43e2e6b9dd006adbec765c12b39dbc8d9566c88ffb2da",
+      "source_sha256": "a096829814a9205a5b3864cd9ca35f3600707f75bdcd3cea764972163c7e2f85",
+      "bytes": 80452
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/libexec-3tched/op-identity-image",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/libexec-3tched/op-identity-image",
+      "sha256": "b57612ff588071a6085804e7cf69c1ea0844708b6fc52abb13a72877673a975c",
+      "source_sha256": "b57612ff588071a6085804e7cf69c1ea0844708b6fc52abb13a72877673a975c",
+      "bytes": 21193
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/libexec-3tched/restore-chatbot-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/libexec-3tched/restore-chatbot-root",
+      "sha256": "0747d1f4e6b40c32b23277ce31de3574a7eaca7503f0e6101b89c642ddb47d11",
+      "source_sha256": "2cc3b606e0b23f226e284181db22ac741b63cb823de5a7e618d54b85c53817f8",
+      "bytes": 6599
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "sha256": "1085bf8224e5f91b31189a3877d4463e7505f589949109d32f66d2de60154e17",
+      "source_sha256": "1085bf8224e5f91b31189a3877d4463e7505f589949109d32f66d2de60154e17",
+      "bytes": 5563
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/identity-roots/run",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/identity-roots/run",
+      "sha256": "fbfaad6dbb4a73ff0152ad2c6c6581286294083ef74387273f45e7b2a25afc68",
+      "source_sha256": "fbfaad6dbb4a73ff0152ad2c6c6581286294083ef74387273f45e7b2a25afc68",
+      "bytes": 9105
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/identity-roots/check",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/identity-roots/check",
+      "sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "source_sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "bytes": 56
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/identity-roots/finish",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/identity-roots/finish",
+      "sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "source_sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "bytes": 286
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/lib/golden/build-golden.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/lib/golden/build-golden.sh",
+      "sha256": "ea9cb02300750f2b018691900976564ce23daca7c6af033e1561034a6f1534f2",
+      "source_sha256": "f147586c828e478b9bd071f731d7ad3506b506266828b24a4fe69fb93ce9f881",
+      "bytes": 53508
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/enabled-services",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/enabled-services",
+      "sha256": "12418e10bc167b3eef1b6506e1615828eda53cf2baeff43b4e18261aa306e0cb",
+      "source_sha256": "12418e10bc167b3eef1b6506e1615828eda53cf2baeff43b4e18261aa306e0cb",
+      "bytes": 1328
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/runit/retired-services",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/runit/retired-services",
+      "sha256": "12492ddf746ed5792e7cb60e0877e7183f41749d8310972e09816e0b472fe1c0",
+      "source_sha256": "12492ddf746ed5792e7cb60e0877e7183f41749d8310972e09816e0b472fe1c0",
+      "bytes": 2758
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/prepare-lungs-client.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/prepare-lungs-client.sh",
+      "sha256": "d15a2cf21bd93977433c5417edb1d802f490ac72d08907e37413a211293647c6",
+      "source_sha256": "d15a2cf21bd93977433c5417edb1d802f490ac72d08907e37413a211293647c6",
+      "bytes": 6759
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/3tchedfs-mount-preflight",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/3tchedfs-mount-preflight",
+      "sha256": "64d3d4b1ffc687053188f1f866783e1eedc08df6789cca9fb123f3fc36a51b50",
+      "source_sha256": "64d3d4b1ffc687053188f1f866783e1eedc08df6789cca9fb123f3fc36a51b50",
+      "bytes": 1483
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/mount.fuse.3tchedFS",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/mount.fuse.3tchedFS",
+      "sha256": "e2bb947f09b0b34e5ad7cad2a107ee042b798fd7f381b732a274d7bba3ec2664",
+      "source_sha256": "e2bb947f09b0b34e5ad7cad2a107ee042b798fd7f381b732a274d7bba3ec2664",
+      "bytes": 1257
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/3tchedfs.service",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/3tchedfs.service",
+      "sha256": "8610a8f99fb932f3f00ae7ffdc63b87f35cace322eaf3d2c3c9410f2b267ed64",
+      "source_sha256": "8610a8f99fb932f3f00ae7ffdc63b87f35cace322eaf3d2c3c9410f2b267ed64",
+      "bytes": 380
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/threetchedfs.service",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/threetchedfs.service",
+      "sha256": "5a315c78d031e90fd34c8b45055a884872280c48c168bc616bca6682d898a527",
+      "source_sha256": "5a315c78d031e90fd34c8b45055a884872280c48c168bc616bca6682d898a527",
+      "bytes": 389
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/3tchedfs.fstab",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/3tchedfs.fstab",
+      "sha256": "88a900719693221e80fb8e584793340784b1092923aefefab6358496976cf8e4",
+      "source_sha256": "88a900719693221e80fb8e584793340784b1092923aefefab6358496976cf8e4",
+      "bytes": 257
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/3tched-lungs.conf",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/3tched-lungs.conf",
+      "sha256": "402870cc4f1267bd7b85c8a3bba2218de6ef5747f9553d1e34a487dcaae97133",
+      "source_sha256": "402870cc4f1267bd7b85c8a3bba2218de6ef5747f9553d1e34a487dcaae97133",
+      "bytes": 215
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-image/README.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-image/README.md",
+      "sha256": "86528039325c6ab2c9a8e614dc58d25754739ee276b3535b48653290cf178016",
+      "source_sha256": "86528039325c6ab2c9a8e614dc58d25754739ee276b3535b48653290cf178016",
+      "bytes": 8235
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-agent/populate.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-agent/populate.sh",
+      "sha256": "a08243b3f1df413b5b1c5a9f9fc2801747cd8ed85ab133991baa20a6d5ead5b1",
+      "source_sha256": "a08243b3f1df413b5b1c5a9f9fc2801747cd8ed85ab133991baa20a6d5ead5b1",
+      "bytes": 3910
+    },
+    {
+      "kind": "working-tree source",
+      "source": "deploy/workspace-agent/README.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/deploy/workspace-agent/README.md",
+      "sha256": "ed71d1379b98d4c1bb93861d9266290058f7a0994c23a7a743fc53aee4675f20",
+      "source_sha256": "ed71d1379b98d4c1bb93861d9266290058f7a0994c23a7a743fc53aee4675f20",
+      "bytes": 2426
+    },
+    {
+      "kind": "working-tree source",
+      "source": "docs/src/operations/shared-seed-provisioning.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/docs/src/operations/shared-seed-provisioning.md",
+      "sha256": "318ee31d28f534a280604e8e27dc22dec5bdb6b9f559f67755d4c92a9ca4cffe",
+      "source_sha256": "318ee31d28f534a280604e8e27dc22dec5bdb6b9f559f67755d4c92a9ca4cffe",
+      "bytes": 15711
+    },
+    {
+      "kind": "working-tree source",
+      "source": "reports/provisioning-audit-20261018.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/reports/provisioning-audit-20261018.md",
+      "sha256": "1c65adec2a99048bfcdee631a6a2ddce9be3611f81d305d7ce425d60f6611a0c",
+      "source_sha256": "1c65adec2a99048bfcdee631a6a2ddce9be3611f81d305d7ce425d60f6611a0c",
+      "bytes": 16287
+    },
+    {
+      "kind": "working-tree source",
+      "source": "reports/clean-provision-20261005.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/reports/clean-provision-20261005.md",
+      "sha256": "370d45d0a20111b3fbaa47b9d8a7e7012b459e86f8b55f88ad57add4a62c183c",
+      "source_sha256": "370d45d0a20111b3fbaa47b9d8a7e7012b459e86f8b55f88ad57add4a62c183c",
+      "bytes": 8166
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-grpc-bridge/src/native_container_creation.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-grpc-bridge/src/native_container_creation.rs",
+      "sha256": "9ab0eab86de8c3c289feacf02c1fa1edb186d5726a491ee84dfa27627edf43d2",
+      "source_sha256": "9ab0eab86de8c3c289feacf02c1fa1edb186d5726a491ee84dfa27627edf43d2",
+      "bytes": 10999
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+      "sha256": "52984d66ae3e145976171a517f2e5c2119c64d58b1df5549ebe9cdfb94756f64",
+      "source_sha256": "52984d66ae3e145976171a517f2e5c2119c64d58b1df5549ebe9cdfb94756f64",
+      "bytes": 187261
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "sha256": "c5b49bfb51f63489ee8aa291203fdbbf3ce8f5e3cb44ebe0205472c5c183250b",
+      "source_sha256": "0075667114d7734f54d55878daf772bbf958fb6076d920ad71a58cd33004e4ec",
+      "bytes": 47166
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "sha256": "69b6bd40178fba0c1164091310f3e0f06226d5f2603e4b69ad6336563bc48cbe",
+      "source_sha256": "69b6bd40178fba0c1164091310f3e0f06226d5f2603e4b69ad6336563bc48cbe",
+      "bytes": 28433
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "sha256": "59e9ee03f63c5c640bc279ad7ace28941fe96f178979da5e692703465ba80f99",
+      "source_sha256": "59e9ee03f63c5c640bc279ad7ace28941fe96f178979da5e692703465ba80f99",
+      "bytes": 17363
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "sha256": "7b1719d38f5275abffb4a9f22bbf867afbfa058e78c1e9a9077a15490ffbf345",
+      "source_sha256": "7b1719d38f5275abffb4a9f22bbf867afbfa058e78c1e9a9077a15490ffbf345",
+      "bytes": 10528
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-cozo-store/src/identity_transactions/clean_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-cozo-store/src/identity_transactions/clean_provision.rs",
+      "sha256": "ed44e531654d48c5502a65f8a0fab890faeef5f334ce88b9e23c42da05dab0d7",
+      "source_sha256": "ed44e531654d48c5502a65f8a0fab890faeef5f334ce88b9e23c42da05dab0d7",
+      "bytes": 13974
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-cozo-store/src/identity_transactions/native_creation.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-cozo-store/src/identity_transactions/native_creation.rs",
+      "sha256": "83cc35825782a7dcabc92032581383079ae7b972a005c58c5782d9c3d45a8d81",
+      "source_sha256": "83cc35825782a7dcabc92032581383079ae7b972a005c58c5782d9c3d45a8d81",
+      "bytes": 12210
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/op-grpc-bridge/src/lungs_socket.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/op-grpc-bridge/src/lungs_socket.rs",
+      "sha256": "9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26",
+      "source_sha256": "9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26",
+      "bytes": 28733
+    },
+    {
+      "kind": "working-tree source",
+      "source": "crates/threetched-fs/src/mounted.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/source/crates/threetched-fs/src/mounted.rs",
+      "sha256": "2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8",
+      "source_sha256": "2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8",
+      "bytes": 41415
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/provision-workspace-subscriber",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/provision-workspace-subscriber",
+      "sha256": "fb472e1217a90b909a44a3a73dda91027cd20d23092d96f2d0125ca70a39415d",
+      "source_sha256": "8a55a986c1d98d37d0fe1dc9760ba45fdb6ced03292dfd7478fac7cd97e4edc3",
+      "bytes": 23638
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/prepare-instance-disk",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/prepare-instance-disk",
+      "sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "source_sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "bytes": 9207
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/sync-instance-upgrade",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/sync-instance-upgrade",
+      "sha256": "e71cb7bc470c8fc03d70636b2dfa4b7d1788c79b773c753a482b0c3c435706cc",
+      "source_sha256": "12f4131819814c5dd18d804466963147cf371d20ded10dfc3c17b4aee24e59c2",
+      "bytes": 24430
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/bind-instance-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/bind-instance-root",
+      "sha256": "bd72a1f5321a875100de7d984d991dbd7d76dc3878cfc98669e12cd7cbc86db4",
+      "source_sha256": "5563c6cbc06ae5c03ac38a29908482245192c7ccddee4ea03764847fb3492a0c",
+      "bytes": 15538
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/prepare-chatbot-adoption",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/prepare-chatbot-adoption",
+      "sha256": "6362f6b9627d5ae0974c20292749266e990faa777f7eef1da65cd84bfaaa18a9",
+      "source_sha256": "8f7b0c98839db5daa17b1da78a0f9688a24b16f0d3774cfda2512dbe0aa201da",
+      "bytes": 9649
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/restore-chatbot-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/restore-chatbot-root",
+      "sha256": "783c26f27e72f38124db2e77cf5db0a361805b694b5ed535008df61b518e05fe",
+      "source_sha256": "6a90d2ce6c3b36ddcd01a30342fed502491ccb4e284e941c5d5785656f1d0dec",
+      "bytes": 6059
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/op-identity-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/op-identity-root",
+      "sha256": "594401a69b354ed854e43e2e6b9dd006adbec765c12b39dbc8d9566c88ffb2da",
+      "source_sha256": "a096829814a9205a5b3864cd9ca35f3600707f75bdcd3cea764972163c7e2f85",
+      "bytes": 80452
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/op-dbus/helpers/op-identity-image",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/op-dbus/helpers/op-identity-image",
+      "sha256": "b57612ff588071a6085804e7cf69c1ea0844708b6fc52abb13a72877673a975c",
+      "source_sha256": "b57612ff588071a6085804e7cf69c1ea0844708b6fc52abb13a72877673a975c",
+      "bytes": 21193
+    },
+    {
+      "kind": "installed base service",
+      "source": "/etc/sv/identity-roots/run",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/etc/sv/identity-roots/run",
+      "sha256": "0967daaf2c14c4fb659a55f71eb232dd8d04b8068da2a9e3c0faa49388c79e3f",
+      "source_sha256": "0967daaf2c14c4fb659a55f71eb232dd8d04b8068da2a9e3c0faa49388c79e3f",
+      "bytes": 4831
+    },
+    {
+      "kind": "installed helper",
+      "source": "/usr/local/libexec/3tched/op-identity-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/installed/usr/local/libexec/3tched/op-identity-root",
+      "sha256": "d1b16b4f01494a372a2a90b2412a50ee4853990d126d153add9688d702cd9b88",
+      "source_sha256": "d1b16b4f01494a372a2a90b2412a50ee4853990d126d153add9688d702cd9b88",
+      "bytes": 78787
+    }
+  ],
+  "historical_scripts": [
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/scripts/provision-workspace-subscriber.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/scripts/provision-workspace-subscriber.sh",
+      "sha256": "f86e6eb560b801a08e34dd860737b19829754e4f4ac6a466e57a55a6b76cf3d1",
+      "source_sha256": "f86e6eb560b801a08e34dd860737b19829754e4f4ac6a466e57a55a6b76cf3d1",
+      "bytes": 27110
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/scripts/prepare-instance-disk.sh",
+      "exit": 128,
+      "error": "fatal: path 'deploy/scripts/prepare-instance-disk.sh' exists on disk, but not in '26a4ad132fbbd4523b05724060bfdeb9ca661824'"
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/scripts/sync-instance-upgrade.sh",
+      "exit": 128,
+      "error": "fatal: path 'deploy/scripts/sync-instance-upgrade.sh' exists on disk, but not in '26a4ad132fbbd4523b05724060bfdeb9ca661824'"
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/scripts/bind-instance-root.sh",
+      "exit": 128,
+      "error": "fatal: path 'deploy/scripts/bind-instance-root.sh' exists on disk, but not in '26a4ad132fbbd4523b05724060bfdeb9ca661824'"
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/scripts/prepare-chatbot-adoption.sh",
+      "exit": 128,
+      "error": "fatal: path 'deploy/scripts/prepare-chatbot-adoption.sh' exists on disk, but not in '26a4ad132fbbd4523b05724060bfdeb9ca661824'"
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/scripts/3tchedfs-invoke.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/scripts/3tchedfs-invoke.sh",
+      "sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "source_sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "bytes": 1886
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/runit/libexec-3tched/op-identity-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/runit/libexec-3tched/op-identity-root",
+      "sha256": "8bad53fdb99833f619741d3244f8b363279b7573f8ec89103557baa9a8a1cb15",
+      "source_sha256": "8bad53fdb99833f619741d3244f8b363279b7573f8ec89103557baa9a8a1cb15",
+      "bytes": 76941
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/runit/libexec-3tched/op-identity-image",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/runit/libexec-3tched/op-identity-image",
+      "sha256": "3526ca9abddc277e2dc8852794c903e6de9fb6ebc5abc3d13a3477b159829762",
+      "source_sha256": "3526ca9abddc277e2dc8852794c903e6de9fb6ebc5abc3d13a3477b159829762",
+      "bytes": 21175
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/runit/libexec-3tched/restore-chatbot-root",
+      "exit": 128,
+      "error": "fatal: path 'deploy/runit/libexec-3tched/restore-chatbot-root' exists on disk, but not in '26a4ad132fbbd4523b05724060bfdeb9ca661824'"
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "sha256": "70ea0af7b0a5132f16c5472aaf17801512e9a07b7a4d390a4984a100e3e77b79",
+      "source_sha256": "70ea0af7b0a5132f16c5472aaf17801512e9a07b7a4d390a4984a100e3e77b79",
+      "bytes": 3356
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/runit/identity-roots/run",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/runit/identity-roots/run",
+      "sha256": "cf0b5dc2c49f57db3a37ebecea6ab68703458dfa523578532e5688461c5c16a8",
+      "source_sha256": "cf0b5dc2c49f57db3a37ebecea6ab68703458dfa523578532e5688461c5c16a8",
+      "bytes": 4563
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/runit/identity-roots/check",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/runit/identity-roots/check",
+      "sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "source_sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "bytes": 56
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "deploy/runit/identity-roots/finish",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/deploy/runit/identity-roots/finish",
+      "sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "source_sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "bytes": 286
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "docs/src/operations/shared-seed-provisioning.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/docs/src/operations/shared-seed-provisioning.md",
+      "sha256": "632e9e8246c3d9384c82b5961077c012f0740071107b510d519dd55f692eb8b1",
+      "source_sha256": "632e9e8246c3d9384c82b5961077c012f0740071107b510d519dd55f692eb8b1",
+      "bytes": 8327
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "sha256": "c5b49bfb51f63489ee8aa291203fdbbf3ce8f5e3cb44ebe0205472c5c183250b",
+      "source_sha256": "0075667114d7734f54d55878daf772bbf958fb6076d920ad71a58cd33004e4ec",
+      "bytes": 47166
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "sha256": "3f53843e466720e11eacade26f8778acfb99467c916d13fc22f5f2b817ecc528",
+      "source_sha256": "3f53843e466720e11eacade26f8778acfb99467c916d13fc22f5f2b817ecc528",
+      "bytes": 24649
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "exit": 128,
+      "error": "fatal: path 'crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs' exists on disk, but not in '26a4ad132fbbd4523b05724060bfdeb9ca661824'"
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+      "label": "oct05-admission-helper",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct05-admission-helper/crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "sha256": "fc6f38f34efe72b66c2ea835a5a53ead25a90bea65e8855e28c67f922a7cb14e",
+      "source_sha256": "fc6f38f34efe72b66c2ea835a5a53ead25a90bea65e8855e28c67f922a7cb14e",
+      "bytes": 16047
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/scripts/provision-workspace-subscriber.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/scripts/provision-workspace-subscriber.sh",
+      "sha256": "5514406e53946db0ee803f3fd575b324258b96c9e045003ebd0b68aeb8b82295",
+      "source_sha256": "e18a93e65130b73dd54f4101b23b03dd654d98b9e673fba10ef2f6a5a274daea",
+      "bytes": 36519
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/scripts/prepare-instance-disk.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/scripts/prepare-instance-disk.sh",
+      "sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "source_sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "bytes": 9207
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/scripts/sync-instance-upgrade.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/scripts/sync-instance-upgrade.sh",
+      "sha256": "d6bed89aa87b81b9010b434748b87b7814427a56c4e4112314cda224d819dce1",
+      "source_sha256": "d6bed89aa87b81b9010b434748b87b7814427a56c4e4112314cda224d819dce1",
+      "bytes": 10633
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/scripts/bind-instance-root.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/scripts/bind-instance-root.sh",
+      "sha256": "af3a33e5b5908d1665dd3708802c9ecb43eb48b88676bd6b017cea5b98cfc930",
+      "source_sha256": "af3a33e5b5908d1665dd3708802c9ecb43eb48b88676bd6b017cea5b98cfc930",
+      "bytes": 6498
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/scripts/prepare-chatbot-adoption.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/scripts/prepare-chatbot-adoption.sh",
+      "sha256": "50fae7d1e04ca320e6e16ab10a03c73b7a5cfee6885497407d3f3fd6c11b74e6",
+      "source_sha256": "09b613cac057132bbd786bd0f8506dd043118155bc74260550f723125962f308",
+      "bytes": 6693
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/scripts/3tchedfs-invoke.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/scripts/3tchedfs-invoke.sh",
+      "sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "source_sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "bytes": 1886
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/runit/libexec-3tched/op-identity-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/runit/libexec-3tched/op-identity-root",
+      "sha256": "5c614d83f30dfb427398d779cc06ee644fc0447196d444d36d0f3aafbafa6127",
+      "source_sha256": "5c614d83f30dfb427398d779cc06ee644fc0447196d444d36d0f3aafbafa6127",
+      "bytes": 77474
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/runit/libexec-3tched/op-identity-image",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/runit/libexec-3tched/op-identity-image",
+      "sha256": "bf57aa3be79e502c3f0481a51ea28826947874a0e47e6ba787c70bd174ea6dc2",
+      "source_sha256": "bf57aa3be79e502c3f0481a51ea28826947874a0e47e6ba787c70bd174ea6dc2",
+      "bytes": 21175
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/runit/libexec-3tched/restore-chatbot-root",
+      "exit": 128,
+      "error": "fatal: path 'deploy/runit/libexec-3tched/restore-chatbot-root' exists on disk, but not in 'fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6'"
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "sha256": "70ea0af7b0a5132f16c5472aaf17801512e9a07b7a4d390a4984a100e3e77b79",
+      "source_sha256": "70ea0af7b0a5132f16c5472aaf17801512e9a07b7a4d390a4984a100e3e77b79",
+      "bytes": 3356
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/runit/identity-roots/run",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/runit/identity-roots/run",
+      "sha256": "cf0b5dc2c49f57db3a37ebecea6ab68703458dfa523578532e5688461c5c16a8",
+      "source_sha256": "cf0b5dc2c49f57db3a37ebecea6ab68703458dfa523578532e5688461c5c16a8",
+      "bytes": 4563
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/runit/identity-roots/check",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/runit/identity-roots/check",
+      "sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "source_sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "bytes": 56
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "deploy/runit/identity-roots/finish",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/deploy/runit/identity-roots/finish",
+      "sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "source_sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "bytes": 286
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "docs/src/operations/shared-seed-provisioning.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/docs/src/operations/shared-seed-provisioning.md",
+      "sha256": "df8fc56bdb5f8d6653102c60c457a1a8a5108b2d26351a6f48157bd74d7ea1af",
+      "source_sha256": "df8fc56bdb5f8d6653102c60c457a1a8a5108b2d26351a6f48157bd74d7ea1af",
+      "bytes": 13507
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "sha256": "c5b49bfb51f63489ee8aa291203fdbbf3ce8f5e3cb44ebe0205472c5c183250b",
+      "source_sha256": "0075667114d7734f54d55878daf772bbf958fb6076d920ad71a58cd33004e4ec",
+      "bytes": 47166
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "sha256": "8ca67024c940955bb2193e63b7f9922ff4d284d926d3511cae6108abe31661e9",
+      "source_sha256": "8ca67024c940955bb2193e63b7f9922ff4d284d926d3511cae6108abe31661e9",
+      "bytes": 27970
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "sha256": "1c33e1f7dd5d7f103706987e86bad1b60ed2de173ed5b92f351645daf5440034",
+      "source_sha256": "1c33e1f7dd5d7f103706987e86bad1b60ed2de173ed5b92f351645daf5440034",
+      "bytes": 10505
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6",
+      "label": "oct11-start",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-start/crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "sha256": "04dc24ed73a2447c057e75fa1120828b9502633e3b1a8063d7663b9c46f931cd",
+      "source_sha256": "04dc24ed73a2447c057e75fa1120828b9502633e3b1a8063d7663b9c46f931cd",
+      "bytes": 16975
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/scripts/provision-workspace-subscriber.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/scripts/provision-workspace-subscriber.sh",
+      "sha256": "5514406e53946db0ee803f3fd575b324258b96c9e045003ebd0b68aeb8b82295",
+      "source_sha256": "e18a93e65130b73dd54f4101b23b03dd654d98b9e673fba10ef2f6a5a274daea",
+      "bytes": 36519
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/scripts/prepare-instance-disk.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/scripts/prepare-instance-disk.sh",
+      "sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "source_sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "bytes": 9207
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/scripts/sync-instance-upgrade.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/scripts/sync-instance-upgrade.sh",
+      "sha256": "d6bed89aa87b81b9010b434748b87b7814427a56c4e4112314cda224d819dce1",
+      "source_sha256": "d6bed89aa87b81b9010b434748b87b7814427a56c4e4112314cda224d819dce1",
+      "bytes": 10633
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/scripts/bind-instance-root.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/scripts/bind-instance-root.sh",
+      "sha256": "af3a33e5b5908d1665dd3708802c9ecb43eb48b88676bd6b017cea5b98cfc930",
+      "source_sha256": "af3a33e5b5908d1665dd3708802c9ecb43eb48b88676bd6b017cea5b98cfc930",
+      "bytes": 6498
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/scripts/prepare-chatbot-adoption.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/scripts/prepare-chatbot-adoption.sh",
+      "sha256": "50fae7d1e04ca320e6e16ab10a03c73b7a5cfee6885497407d3f3fd6c11b74e6",
+      "source_sha256": "09b613cac057132bbd786bd0f8506dd043118155bc74260550f723125962f308",
+      "bytes": 6693
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/scripts/3tchedfs-invoke.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/scripts/3tchedfs-invoke.sh",
+      "sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "source_sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "bytes": 1886
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/runit/libexec-3tched/op-identity-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/runit/libexec-3tched/op-identity-root",
+      "sha256": "5c614d83f30dfb427398d779cc06ee644fc0447196d444d36d0f3aafbafa6127",
+      "source_sha256": "5c614d83f30dfb427398d779cc06ee644fc0447196d444d36d0f3aafbafa6127",
+      "bytes": 77474
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/runit/libexec-3tched/op-identity-image",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/runit/libexec-3tched/op-identity-image",
+      "sha256": "bf57aa3be79e502c3f0481a51ea28826947874a0e47e6ba787c70bd174ea6dc2",
+      "source_sha256": "bf57aa3be79e502c3f0481a51ea28826947874a0e47e6ba787c70bd174ea6dc2",
+      "bytes": 21175
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/runit/libexec-3tched/restore-chatbot-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/runit/libexec-3tched/restore-chatbot-root",
+      "sha256": "42cc5a5f28c193cea7a5ec5e863ff247d46ca611b0f1f415051c17a28843d721",
+      "source_sha256": "42cc5a5f28c193cea7a5ec5e863ff247d46ca611b0f1f415051c17a28843d721",
+      "bytes": 1127
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "sha256": "70ea0af7b0a5132f16c5472aaf17801512e9a07b7a4d390a4984a100e3e77b79",
+      "source_sha256": "70ea0af7b0a5132f16c5472aaf17801512e9a07b7a4d390a4984a100e3e77b79",
+      "bytes": 3356
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/runit/identity-roots/run",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/runit/identity-roots/run",
+      "sha256": "0d9cb111090ac9b4e1332d87203f332250a594859c35c17c0a884e9e2b4255ce",
+      "source_sha256": "0d9cb111090ac9b4e1332d87203f332250a594859c35c17c0a884e9e2b4255ce",
+      "bytes": 4814
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/runit/identity-roots/check",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/runit/identity-roots/check",
+      "sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "source_sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "bytes": 56
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "deploy/runit/identity-roots/finish",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/deploy/runit/identity-roots/finish",
+      "sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "source_sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "bytes": 286
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "docs/src/operations/shared-seed-provisioning.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/docs/src/operations/shared-seed-provisioning.md",
+      "sha256": "df8fc56bdb5f8d6653102c60c457a1a8a5108b2d26351a6f48157bd74d7ea1af",
+      "source_sha256": "df8fc56bdb5f8d6653102c60c457a1a8a5108b2d26351a6f48157bd74d7ea1af",
+      "bytes": 13507
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "sha256": "c5b49bfb51f63489ee8aa291203fdbbf3ce8f5e3cb44ebe0205472c5c183250b",
+      "source_sha256": "0075667114d7734f54d55878daf772bbf958fb6076d920ad71a58cd33004e4ec",
+      "bytes": 47166
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "sha256": "8ca67024c940955bb2193e63b7f9922ff4d284d926d3511cae6108abe31661e9",
+      "source_sha256": "8ca67024c940955bb2193e63b7f9922ff4d284d926d3511cae6108abe31661e9",
+      "bytes": 27970
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "sha256": "1c33e1f7dd5d7f103706987e86bad1b60ed2de173ed5b92f351645daf5440034",
+      "source_sha256": "1c33e1f7dd5d7f103706987e86bad1b60ed2de173ed5b92f351645daf5440034",
+      "bytes": 10505
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "96a23f1596670d2f578b6d578217a05738f46cd0",
+      "label": "oct11-boot",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/oct11-boot/crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "sha256": "04dc24ed73a2447c057e75fa1120828b9502633e3b1a8063d7663b9c46f931cd",
+      "source_sha256": "04dc24ed73a2447c057e75fa1120828b9502633e3b1a8063d7663b9c46f931cd",
+      "bytes": 16975
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/scripts/provision-workspace-subscriber.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/scripts/provision-workspace-subscriber.sh",
+      "sha256": "5514406e53946db0ee803f3fd575b324258b96c9e045003ebd0b68aeb8b82295",
+      "source_sha256": "e18a93e65130b73dd54f4101b23b03dd654d98b9e673fba10ef2f6a5a274daea",
+      "bytes": 36519
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/scripts/prepare-instance-disk.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/scripts/prepare-instance-disk.sh",
+      "sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "source_sha256": "c449c4542cc1ecfd9558b21ee60e256bd336e3e9e23e73771b5d8855863852ca",
+      "bytes": 9207
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/scripts/sync-instance-upgrade.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/scripts/sync-instance-upgrade.sh",
+      "sha256": "d6bed89aa87b81b9010b434748b87b7814427a56c4e4112314cda224d819dce1",
+      "source_sha256": "d6bed89aa87b81b9010b434748b87b7814427a56c4e4112314cda224d819dce1",
+      "bytes": 10633
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/scripts/bind-instance-root.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/scripts/bind-instance-root.sh",
+      "sha256": "af3a33e5b5908d1665dd3708802c9ecb43eb48b88676bd6b017cea5b98cfc930",
+      "source_sha256": "af3a33e5b5908d1665dd3708802c9ecb43eb48b88676bd6b017cea5b98cfc930",
+      "bytes": 6498
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/scripts/prepare-chatbot-adoption.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/scripts/prepare-chatbot-adoption.sh",
+      "sha256": "50fae7d1e04ca320e6e16ab10a03c73b7a5cfee6885497407d3f3fd6c11b74e6",
+      "source_sha256": "09b613cac057132bbd786bd0f8506dd043118155bc74260550f723125962f308",
+      "bytes": 6693
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/scripts/3tchedfs-invoke.sh",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/scripts/3tchedfs-invoke.sh",
+      "sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "source_sha256": "a6d2762ca2989328149dcc9f13211e8a16bbeae5a0ae0aff7ebfb34250fc7885",
+      "bytes": 1886
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/runit/libexec-3tched/op-identity-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/runit/libexec-3tched/op-identity-root",
+      "sha256": "608d2ccd50478a3107320e329e72dcfc91730aac4d644e4bd788b1e706d6d1dc",
+      "source_sha256": "608d2ccd50478a3107320e329e72dcfc91730aac4d644e4bd788b1e706d6d1dc",
+      "bytes": 78751
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/runit/libexec-3tched/op-identity-image",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/runit/libexec-3tched/op-identity-image",
+      "sha256": "b57612ff588071a6085804e7cf69c1ea0844708b6fc52abb13a72877673a975c",
+      "source_sha256": "b57612ff588071a6085804e7cf69c1ea0844708b6fc52abb13a72877673a975c",
+      "bytes": 21193
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/runit/libexec-3tched/restore-chatbot-root",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/runit/libexec-3tched/restore-chatbot-root",
+      "sha256": "42cc5a5f28c193cea7a5ec5e863ff247d46ca611b0f1f415051c17a28843d721",
+      "source_sha256": "42cc5a5f28c193cea7a5ec5e863ff247d46ca611b0f1f415051c17a28843d721",
+      "bytes": 1127
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/runit/libexec-3tched/attach-host-workspace-folders",
+      "sha256": "23e10044835ead18c13d0dd35d3fbce9f1d46dd4beea78e8830aef810e429d31",
+      "source_sha256": "23e10044835ead18c13d0dd35d3fbce9f1d46dd4beea78e8830aef810e429d31",
+      "bytes": 3392
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/runit/identity-roots/run",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/runit/identity-roots/run",
+      "sha256": "19b1d459cdcaf7fbfa10d91ceac1dfd9e45cac9196f209216ddfd62a8f5c2067",
+      "source_sha256": "19b1d459cdcaf7fbfa10d91ceac1dfd9e45cac9196f209216ddfd62a8f5c2067",
+      "bytes": 4813
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/runit/identity-roots/check",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/runit/identity-roots/check",
+      "sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "source_sha256": "721356501311b422bdbfc60eff6b9d40d3e9abae5aefe8836a31f3af82b55d48",
+      "bytes": 56
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "deploy/runit/identity-roots/finish",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/deploy/runit/identity-roots/finish",
+      "sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "source_sha256": "f5cf87069a4c1a0fc6995f95ea7a49b48f04de5cb52c1839ec6e1b27ef18b55b",
+      "bytes": 286
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "docs/src/operations/shared-seed-provisioning.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/docs/src/operations/shared-seed-provisioning.md",
+      "sha256": "df8fc56bdb5f8d6653102c60c457a1a8a5108b2d26351a6f48157bd74d7ea1af",
+      "source_sha256": "df8fc56bdb5f8d6653102c60c457a1a8a5108b2d26351a6f48157bd74d7ea1af",
+      "bytes": 13507
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "sha256": "c5b49bfb51f63489ee8aa291203fdbbf3ce8f5e3cb44ebe0205472c5c183250b",
+      "source_sha256": "0075667114d7734f54d55878daf772bbf958fb6076d920ad71a58cd33004e4ec",
+      "bytes": 47166
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/crates/op-grpc-bridge/src/identity_clean_provision.rs",
+      "sha256": "8ca67024c940955bb2193e63b7f9922ff4d284d926d3511cae6108abe31661e9",
+      "source_sha256": "8ca67024c940955bb2193e63b7f9922ff4d284d926d3511cae6108abe31661e9",
+      "bytes": 27970
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+      "sha256": "1c33e1f7dd5d7f103706987e86bad1b60ed2de173ed5b92f351645daf5440034",
+      "source_sha256": "1c33e1f7dd5d7f103706987e86bad1b60ed2de173ed5b92f351645daf5440034",
+      "bytes": 10505
+    },
+    {
+      "kind": "historical commit blob",
+      "commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+      "label": "pre-hermes-head",
+      "source": "crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/history/pre-hermes-head/crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+      "sha256": "04dc24ed73a2447c057e75fa1120828b9502633e3b1a8063d7663b9c46f931cd",
+      "source_sha256": "04dc24ed73a2447c057e75fa1120828b9502633e3b1a8063d7663b9c46f931cd",
+      "bytes": 16975
+    }
+  ],
+  "research": [
+    {
+      "agent": "AstraHistory",
+      "source": "agent://AstraHistory",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/research/AstraHistory.md",
+      "sha256": "01dc74f126cc8d19260e650bc2f9ae359d7c2fde16345a3d76aa48c20685d12c",
+      "bytes": 16551,
+      "authority": "Secondary research index; original transcripts and current source take precedence."
+    },
+    {
+      "agent": "ClaudeKiroHistory",
+      "source": "agent://ClaudeKiroHistory",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/research/ClaudeKiroHistory.md",
+      "sha256": "889baa59c19cbdb957a2230301a455d2cb107ddae18487411b3270a366cba198",
+      "bytes": 22536,
+      "authority": "Secondary research index; original transcripts and current source take precedence."
+    },
+    {
+      "agent": "ProvisionScriptHistory",
+      "source": "agent://ProvisionScriptHistory",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/research/ProvisionScriptHistory.md",
+      "sha256": "ebd06d0a36cb17db930e3532107568bc73fa8355f189133f273109f9f489633e",
+      "bytes": 20782,
+      "authority": "Secondary research index; original transcripts and current source take precedence."
+    }
+  ],
+  "context": [
+    {
+      "source": "HANDOFF.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/context/HANDOFF.md",
+      "sha256": "4c14d520d6a3e19562a07d1e1d730b6c3f43d98cdb0c9e551326000a3391a58e",
+      "bytes": 1512407,
+      "authority": "Shared historical claims; not fresh runtime verification."
+    },
+    {
+      "source": "SIGNALS.md",
+      "export_path": "reports/provisioning-fusion-20261019/evidence/context/SIGNALS.md",
+      "sha256": "9af37379a91406ff89612e790c02b4d596d77fb5a31b96cda5ca9bf74d47aed8",
+      "bytes": 601731,
+      "authority": "Shared historical claims; not fresh runtime verification."
+    }
+  ],
+  "privacy": {
+    "excluded": "Hidden reasoning, system-prompt/config credential metadata; public tool calls/results retained.",
+    "redactions": {
+      "opaque-base64": 340,
+      "secret-assignment": 8,
+      "secret-unquoted": 2
+    },
+    "limits": "Heuristic credential redaction, not a formal DLP guarantee. Existing historical tool truncation remains; export does not claim missing underlying output bytes recovered."
+  },
+  "coverage": {
+    "state": "Export complete; Fusion model review not yet started.",
+    "must_distinguish": [
+      "exported",
+      "available to tools",
+      "read by outer agent",
+      "included in panel input",
+      "adjudicated by JEV"
+    ],
+    "instructions": "Track concrete file and record ranges. Never infer full panel ingestion from a manifest or summary read."
+  },
+  "excluded_sessions": [
+    {
+      "source": "/home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T04-18-43-283Z_01a15262-19d3-7079-ad9d-7c81439e3e91.jsonl",
+      "reason": "Only resume and aborted empty assistant; not newer substantive provisioning evidence."
+    }
+  ]
+}

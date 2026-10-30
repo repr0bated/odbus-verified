@@ -1,0 +1,1 @@
+guard_exit=143 peak_group_rss_kib=525584 limit_kib=524288 limit_exceeded=1 timeout_seconds=300

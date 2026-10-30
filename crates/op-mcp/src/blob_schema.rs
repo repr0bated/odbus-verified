@@ -50,7 +50,7 @@ impl BlobSchemaExecutor {
                     "properties": {
                         "plugin_id": {
                             "type": "string",
-                            "description": "Plugin id, e.g. tched_router or unix_socket"
+                            "description": "Plugin id, e.g. chat_router or unix_socket"
                         }
                     },
                     "required": ["plugin_id"]

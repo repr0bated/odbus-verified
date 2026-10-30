@@ -1,0 +1,107 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review cross-check. Packet history-168 contains historical source read_file/search_files results, not execution: partial leading display_order1324 mutation_engine OpenFlow readmit + native effect then SHM error context; rows62-65 ids1325-1328 clean provision CAS validation (same key fresh inactive service identity, stopped 3tchedChatbot, provenance v2/v3/v4 partitioned_overlay), identity transaction seed journal phase enum, private Cozo opening, test fixture search. Row66 id1336 issues eight reads/searches; rows67-74 ids1337-1344 return project dispatcher (verified session/exact grants/ACL lock, save Provisioning before native create and Ready after), identity publication durable private default store/genesis real digest sealed catalog, admission owned tasks bounded arguments and routing reservation/privacy redaction, Incus typed method declarations and observation comments, method receipt audit search with outcome unknown/no automatic retries, lungs SO_PEERPIDFD/held namespace handles. Row75 id1361 issues ten follow-up reads/searches; row76 id1362 cuts off at source line330 'let doc'. No owner messages, no deployment or actual provisioning calls/errors. Latest external review constraint forbids all host loops including pool; avoid images/subvolumes only if seed/sprout and other lifecycle proofs preserved. Need JSON findings with exact provenance and distinction source observations vs inference, truncations/boundary dependencies. Identify key overclaim pitfalls and relevant security/partial completion conclusions, without inventing unavailable execution or paths.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"history-168\",\n  \"fully_reviewed\": false,\n  \"review_scope\": {\n    \"available\": \"The current_question packet description and preliminary evidence index.\",\n    \"unavailable\": \"The original history-168 records and source-result bodies were not included. Exact source quotations, complete arguments, metadata and character-level coverage cannot be verified.\",\n    \"status\": \"Description-level cross-check only; not complete packet ingestion or whole-conversation review.\",\n    \"actions\": \"No tools, commands, tests, builds or mutations executed.\"\n  },\n  \"findings\": [\n    {\n      \"provenance\": {\n        \"row\": \"Leading fragment before row62\",\n        \"id\": null,\n        \"display_order\": 1324,\n        \"source\": \"Packet description: partial mutation_engine source-result context\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"OpenFlow readmit + native effect then SHM error context\",\n      \"classification\": \"Reported source observation; execution consequences are inference.\",\n      \"stage\": \"Native effect, admission/readmission and state publication\",\n      \"observation\": \"The description identifies source context in which a native effect precedes an SHM error.\",\n      \"inference\": \"This is relevant to partial-effect recovery: a later publication failure must not automatically be interpreted as proof that no native effect occurred.\",\n      \"actual_tool_result\": \"Reported historical source inspection, not an observed native operation or runtime SHM failure. The leading result is partial.\",\n      \"correction_propagation_or_discrepancy\": \"Do not promote this context into evidence that provisioning ran or failed in this way. The original branches, return handling and receipts are needed to establish the implemented recovery behavior.\"\n    },\n    {\n      \"provenance\": {\n        \"rows\": \"62-65\",\n        \"ids\": [1325, 1326, 1327, 1328],\n        \"source\": \"Packet description: provision CAS validation, identity journal, private Cozo opening and fixture-search results\",\n        \"mapping_limit\": \"Individual topics cannot reliably be assigned to individual IDs without the original records.\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"same key fresh inactive service identity, stopped 3tchedChatbot, provenance v2/v3/v4 partitioned_overlay\",\n      \"classification\": \"Reported source observation.\",\n      \"stage\": \"Identity/storage validation and final authoritative adoption\",\n      \"observation\": \"The described validation covers identity/key relationships, inactive service identity state, a stopped native target and versioned partitioned-overlay provenance.\",\n      \"inference\": \"These are relevant adoption safeguards, but validation code and fixtures do not establish that an actual target satisfied them or that a final CAS committed.\",\n      \"actual_tool_result\": \"Historical read/search results only; no successful adoption transaction or executed test is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve the identity/native/storage binding and final CAS safeguards. Acceptance of historical provenance formats would not by itself prove compliance with the later ban on every host loop device.\"\n    },\n    {\n      \"provenance\": {\n        \"rows\": \"62-65\",\n        \"ids\": [1325, 1326, 1327, 1328],\n        \"source\": \"Packet description: identity transaction seed journal phase enum and private Cozo opening\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"identity transaction seed journal phase enum, private Cozo opening, test fixture search\",\n      \"classification\": \"Reported source observation; recovery sufficiency remains uncertain.\",\n      \"stage\": \"Durable intent, identity persistence and recovery\",\n      \"observation\": \"The packet reportedly exposes transaction phases and private-store opening code.\",\n      \"inference\": \"A phase enum is not evidence that every side effect has a durable checkpoint, that crash recovery reconciles native state, or that restart/cancellation paths were exercised. A private opening path alone is not proof of effective runtime permissions.\",\n      \"actual_tool_result\": \"Source and search output, not journal contents, recovery execution or filesystem-permission evidence.\",\n      \"correction_propagation_or_discrepancy\": \"Retain existing durable identity records rather than introducing a replacement bootstrap. The original callers and transition persistence ordering are necessary to assess remaining recovery gaps.\"\n    },\n    {\n      \"provenance\": {\n        \"request\": {\n          \"row\": 66,\n          \"id\": 1336,\n          \"reported_read_search_count\": 8\n        },\n        \"results\": {\n          \"rows\": \"67-74\",\n          \"ids\": [1337, 1338, 1339, 1340, 1341, 1342, 1343, 1344]\n        },\n        \"source\": \"Packet description: project dispatcher results\",\n        \"mapping_limit\": \"Exact per-result topic mapping and source paths are unavailable.\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"verified session/exact grants/ACL lock, save Provisioning before native create and Ready after\",\n      \"classification\": \"Reported source observation.\",\n      \"stage\": \"Admission and native preparation\",\n      \"observation\": \"The dispatcher reportedly enforces verified-session, exact-grant and ACL checks, and persists Provisioning before native creation with Ready afterward.\",\n      \"inference\": \"This ordering is relevant to recoverability. However, the scope of Ready must be established from the original code: it must not be equated with completed storage establishment, upgrade pairing, root binding, identity adoption or startup.\",\n      \"actual_tool_result\": \"Dispatcher source returned by inspection; no dispatcher invocation, native create response or Ready transition receipt is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Do not bypass these checks to overcome missing admission. Do not reuse a historical admission denial as a current blocker without later evidence.\"\n    },\n    {\n      \"provenance\": {\n        \"rows\": \"67-74\",\n        \"ids\": [1337, 1338, 1339, 1340, 1341, 1342, 1343, 1344],\n        \"source\": \"Packet description: identity publication and admission results\",\n        \"mapping_limit\": \"Topic-to-ID mapping is unavailable.\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"identity publication durable private default store/genesis real digest sealed catalog\",\n      \"classification\": \"Reported source observation.\",\n      \"stage\": \"Identity publication and admission\",\n      \"observation\": \"The description also identifies owned admission tasks, bounded arguments, routing reservation and privacy redaction.\",\n      \"inference\": \"These are relevant persistence, authorization, resource-bounding and confidentiality safeguards. Source references to a real digest or sealed catalog are not proof that a deployed catalog matches the handler or that an authorized operation executed.\",\n      \"actual_tool_result\": \"Historical source results only; no live store, sealed-object validation or admission receipt is available here.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve these safeguards. The phrase routing reservation does not establish JEV model routing and supplies no authority to activate it; the current JEV role remains decision judging only.\"\n    },\n    {\n      \"provenance\": {\n        \"rows\": \"67-74\",\n        \"ids\": [1337, 1338, 1339, 1340, 1341, 1342, 1343, 1344],\n        \"source\": \"Packet description: Incus declarations and method receipt audit search\",\n        \"mapping_limit\": \"Topic-to-ID mapping is unavailable.\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"Incus typed method declarations and observation comments, method receipt audit search with outcome unknown/no automatic retries\",\n      \"classification\": \"Reported source observation.\",\n      \"stage\": \"Native method exposure, operation receipts and ambiguous outcomes\",\n      \"observation\": \"Typed declarations and receipt-audit search results reportedly distinguish unknown outcomes and prohibit automatic retries.\",\n      \"inference\": \"Declarations and comments do not prove an executable adapter, compatible deployed schema/version, exact grant or successful native operation. An unknown outcome is neither confirmed success nor confirmed absence of an effect.\",\n      \"actual_tool_result\": \"Source declarations and search output; no actual Incus provisioning call/result is described.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve same-operation receipt correlation and authoritative reconciliation before any retry proposal. This packet cannot establish a supported seed/sprout root configuration or justify guessed Incus YAML.\"\n    },\n    {\n      \"provenance\": {\n        \"rows\": \"67-74\",\n        \"ids\": [1337, 1338, 1339, 1340, 1341, 1342, 1343, 1344],\n        \"source\": \"Packet description: lungs source results\",\n        \"mapping_limit\": \"Exact result ID and source path are unavailable.\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"lungs SO_PEERPIDFD/held namespace handles\",\n      \"classification\": \"Reported source observation.\",\n      \"stage\": \"Peer identity and namespace isolation\",\n      \"observation\": \"The described code uses peer PIDFD information and retained namespace handles.\",\n      \"inference\": \"These mechanisms are relevant to stable peer/process association and avoiding identity races. Their presence does not establish deployed enforcement or prove the separate Incus unprivileged, nonnested, device-allowlist and storage-ioctl restrictions.\",\n      \"actual_tool_result\": \"Source inspection only; no runtime peer verification or isolation test is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Retain handle-based safeguards. Any assessment of fallback behavior, handle lifetime or fail-closed checks requires the original surrounding implementation.\"\n    },\n    {\n      \"provenance\": {\n        \"request\": {\n          \"row\": 75,\n          \"id\": 1361,\n          \"reported_read_search_count\": 10\n        },\n        \"partial_result\": {\n          \"row\": 76,\n          \"id\": 1362,\n          \"source_line\": 330\n        },\n        \"source\": \"Packet description: follow-up request and truncated source result\"\n      },\n      \"original_short_quote\": null,\n      \"description_quote\": \"cuts off at source line330 'let doc'\",\n      \"classification\": \"Explicit reported coverage boundary.\",\n      \"stage\": \"Further source investigation\",\n      \"observation\": \"A ten-operation follow-up request is described, but only a partial first result is identified within this packet.\",\n      \"inference\": \"Issuing reads is not equivalent to receiving or reviewing their results. No conclusion may depend on code after the cutoff or on the other requested results.\",\n      \"actual_tool_result\": \"Only the described partial result is available at the packet boundary; original bytes are absent from this review.\",\n      \"correction_propagation_or_discrepancy\": \"Carry the incomplete result and unmatched requests into subsequent coverage accounting rather than marking the follow-up investigation complete.\"\n    }\n  ],\n  \"truncations_unavailable\": [\n    \"Original packet bytes, file hashes, source paths, complete tool arguments and result bodies are unavailable.\",\n    \"The leading display_order1324 result is explicitly partial; its message ID and starting boundary are not supplied.\",\n    \"Row76/id1362 is reported to end at source line330, 'let doc'.\",\n    \"The remaining results requested by row75/id1361 are outside the described packet boundary or otherwise unavailable here.\",\n    \"Parent links, timestamps, active/compacted flags and duplicate references cannot be reconstructed from the description.\",\n    \"No owner messages, deployment receipts, actual provisioning calls or provisioning execution errors are described in this packet.\"\n  ],\n  \"boundary_dependencies\": [\n    {\n      \"dependency\": \"Original history-168 packet and adja",
+      "truncated": true
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Only one panel response is supplied, so cross-model consensus cannot be established.",
+      "The available response consistently distinguishes historical source inspection from actual provisioning, deployment, recovery or test execution."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Provides a description-level cross-check of history-168, explicitly marking fully_reviewed false because original records and source-result bodies were not supplied."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Addresses the leading display_order1324 fragment, rows62\u201365/IDs1325\u20131328, request row66/ID1336 and results rows67\u201374/IDs1337\u20131344, and follow-up row75/ID1361 with partial row76/ID1362. Exact topic-to-result mappings remain unavailable."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Covers adoption validation, durable transaction phases, admission checks, native preparation, private identity publication, ambiguous operation receipts and peer/namespace handles, but cannot verify their complete implementation or deployed enforcement."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Recognizes the current prohibition on all host loops and judge-only JEV role, but provides no original evidence establishing correction propagation or subvolume-only seed/sprout feasibility."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The supplied panel response is itself truncated during boundary_dependencies; its completed dependency list and any subsequent uncertainty section are unavailable."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "A native effect followed by an SHM publication error could require partial-effect reconciliation; source context alone does not establish that this failure occurred."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "A dispatcher Ready state must be interpreted within its actual scope rather than treated as proof of storage establishment, upgrade pairing, root binding, authoritative adoption and startup."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "A journal phase enum does not prove durable checkpoint coverage or exercised crash recovery, and private-store opening code does not prove effective runtime permissions."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "An unknown operation outcome is neither confirmed success nor proof of no side effect; reconciliation and receipt correlation matter before considering retries."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Typed Incus declarations and sealed-catalog references do not independently prove executable adapters, matching deployed contracts, authorization or successful execution."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Requested reads cannot count as reviewed results: the ten-operation follow-up remains incomplete at the reported source-line330 cutoff."
+      }
+    ],
+    "blind_spots": [
+      "No second panel response is available for independent corroboration or disagreement analysis.",
+      "Original packet text is absent, preventing verification of exact quotations, source paths, tool arguments, result contents and per-ID attribution.",
+      "Physical-order metadata beyond the supplied row summary, parent links, timestamps, active/compacted flags and duplicate provenance cannot be checked.",
+      "The packet description supplies no owner messages or correction events, so actual propagation into code, delegates or deployment cannot be established.",
+      "Current source, installed helpers, installed boot service and immutable historical versions are not compared in the available response.",
+      "Neither full seed/sprout feasibility under the no-host-loop constraint nor the complete post-bootstrap lifecycle can be determined from this description-level review.",
+      "The truncated panel response cannot be assessed as a complete JSON deliverable."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

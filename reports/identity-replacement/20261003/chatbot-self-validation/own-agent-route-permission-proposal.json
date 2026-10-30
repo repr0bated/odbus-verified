@@ -1,0 +1,53 @@
+{
+  "task_id": "browser-chatbot-identity-20261003",
+  "status": "validated-matching-live-method-approval-pending-not-granted",
+  "source_validation": {
+    "target": "x86_64-unknown-linux-gnu",
+    "plugin_schema_tests": "1 passed",
+    "bridge_focused_tests": "42 passed",
+    "hash_bound_transport_tests": "1 passed",
+    "pinned_ui_tests": "230 passed, 1 skipped; type-check, lint and build passed",
+    "deployment": "Source deployed in received release 20261003T070801Z-browser-chatbot-dd29aa6; capability remains deferred and ungranted"
+  },
+  "principal_id": "1262e982-14c1-44d4-0771-7ce74213211b",
+  "session_id": "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+  "add_capabilities": [
+    "cap.software.tched-router.agent.route.self.read@v1"
+  ],
+  "duration": "Persistent for the singleton chatbot until explicitly removed",
+  "resource_scope": "Only the dedicated native agent selected by this verified caller's persisted ControlPlane or Accountability mode; output contains exactly mode, reference, model and credential-free HTTPS uri. Empty deny-unknown input prevents choosing another agent or session. No general native config, credential, unrelated agent, model write or identity read is granted.",
+  "operation": {
+    "plugin": "tched_router",
+    "method": "get_own_agent_route",
+    "args": {}
+  },
+  "expected_effect": "The browser can verify the chatbot's actual native route against its already-readable model catalog before Chat. Existing catalog/profile/endpoint guards remain enforced; inconsistent configuration still blocks Chat.",
+  "source": [
+    "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "crates/op-grpc-bridge/src/tched_own_agent_route.rs",
+    "crates/op-grpc-bridge/src/mutation_engine.rs"
+  ],
+  "verification": [
+    "Focused GNU schema/projection/admission tests reject target arguments, unsafe endpoints, unrelated secrets, unsupported modes and concurrent context changes",
+    "Deploy the tested method and matching sealed catalog through complete golden preparation and Btrfs send/receive before enabling the grant",
+    "Preserve the complete prior policy and atomically add only this exact capability for this principal; verify materializer readiness and durable/SHM equality",
+    "Same-session projected call returns a canonical operation receipt with only the declared route fields",
+    "Fresh actual router browser uses a distinct verified OIA1 for each RPC, receives the chatbot's admitted session marker, and retains route verification before a bounded Chat"
+  ],
+  "rollback": "Atomically remove only this new capability for this principal, retaining all existing approved grants and unrelated policy; verify materializer readiness and durable/SHM equality. The browser then fails closed on its own route read. Preserve the received release and exact pre-change policy for recovery.",
+  "scope_note": "Owner now reports the capability denial; scoped change is prepared and validated, but a new grant still requires approval under AGENTS.md lines54-57.",
+  "runtime_verified": {
+    "recorded_at": "2026-10-03T07:46:17Z",
+    "release_id": "20261003T070801Z-browser-chatbot-dd29aa6",
+    "catalog_generation": 476,
+    "method": "tched_router.get_own_agent_route",
+    "version": "4.2.0",
+    "caller_principal": "1262e982-14c1-44d4-0771-7ce74213211b",
+    "capability_present": false,
+    "prior_approved_grants_preserved": true,
+    "materializer": "Fresh",
+    "proposed_policy": "Valid; exact one capability added; unrelated fields equal; live policy unchanged",
+    "error": "This identity does not hold the capability for that operation.",
+    "projection_note": "Existing host projections are generation272/408; fresh same-b0 projection required for a new-method receipt after approval"
+  }
+}

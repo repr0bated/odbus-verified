@@ -1,11 +1,7 @@
 #!/bin/sh
-# op-web readiness — the LISTENER, not the token.
-#
-# op-web had no check at all until 2026-08-13, so `sv check op-web` fell back to
-# "runsv has a live pid", which on this host is close to meaningless (a run
-# script blocked in a wait_dep loop reports exactly the same thing). The
-# readiness token is written before `exec op-web-server`, so it cannot tell you
-# the server bound its port either. Test the port.
+# Readiness requires the application endpoint and the authenticated TLS door,
+# not just a process, a pre-exec marker, or an unrelated listener on this port.
+set -eu
 [ -f /run/opdbus/runit-ready/op-web ] || exit 1
 
 set -a
@@ -13,5 +9,20 @@ set -a
 set +a
 PORT="${PORT:-8080}"
 
-pgrep -f /usr/local/bin/op-web-server >/dev/null 2>&1 || exit 1
-ss -lnt "sport = :$PORT" 2>/dev/null | grep -q LISTEN
+sv check op-grpc-bridge >/dev/null 2>&1 || exit 1
+
+# Match every configured HTTP bind, including IPv6 literals. Never consult an
+# egress proxy when checking the local application endpoint.
+set -f
+IFS=', 	
+'
+for address in ${OP_WEB_BIND_ADDR:-10.0.0.2}; do
+    case "$address" in
+        *:*) address="[$address]" ;;
+    esac
+    status=$(curl --noproxy '*' --silent --show-error \
+        --connect-timeout 1 --max-time 3 \
+        --output /dev/null --write-out '%{http_code}' \
+        "http://$address:$PORT/api/health") || exit 1
+    [ "$status" = 200 ] || exit 1
+done

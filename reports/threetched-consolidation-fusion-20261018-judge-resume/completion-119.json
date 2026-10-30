@@ -1,0 +1,80 @@
+{
+  "request": 119,
+  "started": "2026-10-18T22:04:30.417769+00:00",
+  "finished": "2026-10-18T22:04:43.519008+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e1a1019571cf492016ad542711dc887d0b76cdcfdf25da1db",
+    "created": 1792361073,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reporting raw selector overrun\",\"path\":\"xd://report_issue\",\"content\":\"read: path /srv/git/odbus-verified/HANDOFF.md:432:raw returned 300 lines through line731 rather than the documented single-line selector. Exact raw ranges should remain bounded.\"}",
+                "name": "write"
+              },
+              "id": "call_dMZYPdpcTRi8OhswDWUEtZuN",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting final Gemma owner contract\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/gemma_brain.rs:180-225\"}",
+                "name": "read"
+              },
+              "id": "call_KvKdhQULPMp1F6xZnumeCNvX",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming source freeze after cleanup\",\"path\":\"agent://RetireLlmFacades\",\"content\":\"Please finish count/wiring test cleanup and exact file list, then freeze source. New Hermes22:00 row releases worker but requires task-local scope correction before any new build; ReleaseReadiness assessing authoritative freeze. No Cargo.\"}",
+                "name": "write"
+              },
+              "id": "call_BhTMuX13OaQbbrSk1uhJPzcV",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 433,
+      "prompt_tokens": 268158,
+      "total_tokens": 268591,
+      "completion_tokens_details": {
+        "reasoning_tokens": 120
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 176601
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:43.516902+00:00",
+  "stream_chunks": 8
+}

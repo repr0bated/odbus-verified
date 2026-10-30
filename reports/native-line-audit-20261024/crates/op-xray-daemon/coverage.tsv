@@ -1,0 +1,30 @@
+path	sequential_ranges_read	initial_sha256	finding_or_action	status
+crates/op-xray-daemon/Cargo.toml	1-35	1a8dc901bfad8b2fb47b63d841a9b03651320cc54ef2be7c24375c60154fa72d	No native occurrence	complete
+crates/op-xray-daemon/README.md	1-143	9f2cd3f64f1d11abdec4c13c7b64e1c37661094d9d73d55e2037d464abc739a4	No native occurrence	complete
+crates/op-xray-daemon/build.rs	1-33	3824c44d726c98ec22d64d5481ea6eddb125c41e206a5dd71aaad41316744fc5	No native occurrence	complete
+crates/op-xray-daemon/deploy/install-op-xray-daemon.sh	1-112	9ff7422096d57b4de1f8dde9c9dbcdcc880fe2c3bcfde40397462d6ae8528527	No native occurrence	complete
+crates/op-xray-daemon/proto/VENDORED.md	1-42	b66b20cd9be0be4329e0cddaddca020f9971efd17ffb7b7004eb220de5ecb1a1	One occurrence at line 42, contextually evaluated and retained	complete
+crates/op-xray-daemon/proto/app/log/command/config.proto	1-17	cd8f6419475258ac0c200954b1dc54dd084646479b7cdd156aa4a1e5aa19546a	No native occurrence	complete
+crates/op-xray-daemon/proto/app/proxyman/command/command.proto	1-108	4b3e4e9ad1488af54429ef6a3948fc4d527033a526280d708e389883e264e7b0	No native occurrence	complete
+crates/op-xray-daemon/proto/app/proxyman/config.proto	1-71	65f95a5a1cefbd32c9b68240d3a69a1bbf61c543669e1291a49dacb4fbccfff2	No native occurrence	complete
+crates/op-xray-daemon/proto/app/router/command/command.proto	1-132	74320dfd6b6e15b9008e6370b0272d3aeaf28bff178f96f985e72fd62ef9a86c	No native occurrence	complete
+crates/op-xray-daemon/proto/app/stats/command/command.proto	1-69	0f37d863b0b13b7bdf08ced2c2e3a9007238a3d46841350baef5c555b0badda5	No native occurrence	complete
+crates/op-xray-daemon/proto/common/net/address.proto	1-19	5d91454bf2f686b51a2eb6d3c2ef7590dcd1593efd990930bf47066d6b370db8	No native occurrence	complete
+crates/op-xray-daemon/proto/common/net/network.proto	1-18	c7b4623d176f5cf63995df8fa225f72fe8ffd03725df786764e5f5a5660d299b	No native occurrence	complete
+crates/op-xray-daemon/proto/common/net/port.proto	1-20	e76c7e70f1ca2e2a0675b1e87bdb9cb75dce6527a2428567daff2445cf51aeaf	No native occurrence	complete
+crates/op-xray-daemon/proto/common/protocol/headers.proto	1-20	b1df710e1446d97bc7e83130adc5a365309d4b94dc68f4f0302bf1ffa1c306dc	No native occurrence	complete
+crates/op-xray-daemon/proto/common/protocol/server_spec.proto	1-16	527e58650b52f5a465aa08e60a164b6578bff963ac4c5701f8869ab8b8668c87	No native occurrence	complete
+crates/op-xray-daemon/proto/common/protocol/user.proto	1-19	33e5c5ea3cbf330e7c526c6b0c93bc8f07a3f8b4cad579bf50698e3c544270e5	No native occurrence	complete
+crates/op-xray-daemon/proto/common/serial/typed_message.proto	1-15	e0d8b7fdc4557eae7c628130d909ad648e89f2f7bab68f44bdf8ddae08e1c711	No native occurrence	complete
+crates/op-xray-daemon/proto/core/config.proto	1-57	312ef0a4a9add73bbc044eab8864025fd8452ede49e7687fe75cccb17a749394	No native occurrence	complete
+crates/op-xray-daemon/proto/proxy/trojan/config.proto	1-32	354d54b823026a416725e864ec19ecd338a2e306637c464c865f34a4152a335b	No native occurrence	complete
+crates/op-xray-daemon/proto/proxy/vless/account.proto	1-31	1e03384298211ee21e666cf8a80f50eba16a3c054fdc07a4da13fe67d9b71dac	No native occurrence	complete
+crates/op-xray-daemon/proto/proxy/vless/inbound/config.proto	1-29	212700d6c3fadfe32ca788a16d0a7a73f9725cbc0cee039fed715fcd35866604	No native occurrence	complete
+crates/op-xray-daemon/proto/proxy/vmess/account.proto	1-19	6db693e9234046f3f5b79175f4300354292e2f2f2832b01e893c63e92b29214b	No native occurrence	complete
+crates/op-xray-daemon/proto/proxy/vmess/inbound/config.proto	1-22	4231d319041074c3a75ceefc7aa692b3d64e08fa87a71ea74c8f54de41e3b092	No native occurrence	complete
+crates/op-xray-daemon/proto/transport/internet/config.proto	1-170	6dd79df85a60f2be5a47ada464ebca70905dbbe1bc10e166220a799661aab49c	No native occurrence	complete
+crates/op-xray-daemon/proto/transport/internet/tls/config.proto	1-89	f9c8da4cb80f4f9181a12bfc415460bff3739805dd6f0fff996af7cd5cf06d07	No native occurrence	complete
+crates/op-xray-daemon/src/commander_client.rs	1-169; exact coordinator-follow-up reread 1-8	5950cc176550d6e7becd7a96c2181db9adde252ce1a439f151536c2e3dfa1eb0	No native occurrence in complete source read or exact gap reread; no additional JEV context	complete
+crates/op-xray-daemon/src/dbus.rs	1-302	1fab93e73fe12db340a22be8453150b5dc995fc40c83f37709dde5a0838c1161	No native occurrence	complete
+crates/op-xray-daemon/src/lib.rs	1-4	3f07f0e4049aed2ae7e987fdee3e64af413fa2a8d64f880191e85313551589d3	No native occurrence	complete
+crates/op-xray-daemon/src/main.rs	1-153; exact coordinator-follow-up reread 1-39	6eee1e98e77be9a7c3a43cac3b34f4fdf77226c9fddceaceb23b7b56b3530d8f	No native occurrence in complete source read or exact gap reread; no additional JEV context	complete

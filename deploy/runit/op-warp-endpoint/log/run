@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+logdir=/var/log/op-dbus/op-warp-endpoint
+install -d -m 0755 -o svlog -g svlog "$logdir"
+exec chpst -u svlog svlogd -tt "$logdir"

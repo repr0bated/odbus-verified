@@ -1,0 +1,29 @@
+#!/bin/sh
+# Foreground helper: each guest FUSE service supervises mount(8) and this daemon.
+# Both views use the same deployed FUSE engine and canonical lungs write path.
+set -eu
+fail() { printf 'mount.fuse.3tchedFS: %s\n' "$*" >&2; exit 1; }
+[ "$#" = 4 ] && [ "$3" = -o ] || fail 'expected an /etc/fstab fuse.3tchedFS entry'
+case "$1:$2" in
+    3tchedFS:/run/mount/3tchedfs) store=/usr/share/op-dbus/lungs-view ;;
+    threetched:/run/mount/threetched) store=/usr/share/op-dbus/threetched-view ;;
+    *) fail "unsupported 3tchedFS source/mountpoint: $1 $2" ;;
+esac
+# The client enforces these fixed kernel options; never silently accept others.
+options=$4
+while [ -n "$options" ]; do
+    option=${options%%,*}
+    case "$option" in
+        rw|noauto|nosuid|nodev|noexec|noatime) ;;
+        *) fail "unsupported mount option: $option" ;;
+    esac
+    case "$options" in
+        *,*) options=${options#*,} ;;
+        *) options= ;;
+    esac
+done
+/usr/local/libexec/3tched/3tchedfs-mount-preflight "$2" "$store"
+exec /usr/local/bin/3tched-fs --store "$store" mount --fs-name "$1" \
+    --state /usr/share/op-dbus/lungs-empty-state \
+    --catalog /usr/share/op-dbus/lungs-catalog \
+    --lungs-socket /run/3tched-lungs.socket --allow-other --auto-unmount "$2"

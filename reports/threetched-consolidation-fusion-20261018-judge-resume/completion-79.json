@@ -1,0 +1,87 @@
+{
+  "request": 79,
+  "started": "2026-10-18T22:01:29.509221+00:00",
+  "finished": "2026-10-18T22:01:43.322793+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0c639d41b48a7e7d016ad541bc85d887d095691a6c8e026396",
+    "created": 1792360892,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading retired adapter baseline\",\"command\":\"git show HEAD:crates/op-plugins/src/state_plugins/large_language_model_methods.rs\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_84VybA0oHDVt12iqBu6XvZb5",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading retired schema baseline\",\"command\":\"git show HEAD:crates/op-plugins/src/state_plugins/large_language_model.rs\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_NcwlEkBo68vyjvXuCTpR0kn1",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating canonical method grants\",\"pattern\":\"\\\"ListProviders\\\"|\\\"GetState\\\"|\\\"SetProvider\\\"|\\\"Chat\\\"|\\\"ListModels\\\"|\\\"SetSelection\\\"|cap\\\\.software\\\\.3tched-router\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs\"}",
+                "name": "grep"
+              },
+              "id": "call_c0QPE0ZXQuA5Lbo73kElb0Fx",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading stream admission order\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/large_language_model_dispatch.rs:1-102\"}",
+                "name": "read"
+              },
+              "id": "call_JVDrZNfH7sNbJvnaZnw16xKK",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 689,
+      "prompt_tokens": 134702,
+      "total_tokens": 135391,
+      "completion_tokens_details": {
+        "reasoning_tokens": 331
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 92050
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:43.320964+00:00",
+  "stream_chunks": 10
+}

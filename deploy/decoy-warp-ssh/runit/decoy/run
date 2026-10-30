@@ -1,0 +1,11 @@
+#!/bin/sh
+# Stage as op-warp-ssh-decoy. MASQUE is configured/supervised separately.
+set -eu
+exec 2>&1
+umask 077
+config=${OP_WARP_SSH_CONFIG:-/etc/op-dbus/warp-ssh.json}
+jq -e '.role == "decoy"' "$config" >/dev/null
+mkdir -p /run/op-warp-ssh
+/usr/local/libexec/op-warp-ssh/endpoint.sh up
+/usr/local/libexec/op-warp-ssh/guard.sh install
+exec /usr/local/libexec/op-warp-ssh/connect.sh

@@ -1,0 +1,13 @@
+file	line	literal	context_and_intent	JEV_record	JEV_outcome	decision
+Cargo.toml	188	Native	Package description: “OP-DBUS: Native, Deterministic Control Plane for Linux Systems”; broad platform-native/Linux product description, not a TLS/model override.	jdgb-15b33278eb6f05ec/toml_188 (plus earlier direct contextual calls)	accurate .74; retain .40; probabilities: accurate .83, misleading .07, insufficient .10; retain .60, change .15, insufficient .25	Retain description; human review finds no evidence it misstates package role.
+Cargo.lock	2622	native-tls	hyper-tls 0.5.0 dependency entry; exact TLS library name.	jdgb-15b33278eb6f05ec/lock_2622	accurate .88; retain .95	Retain exact dependency name.
+Cargo.lock	2624	tokio-native-tls	hyper-tls 0.5.0 dependency entry; exact Tokio TLS adapter name.	jdgb-15b33278eb6f05ec/lock_2624	accurate .89; retain .94	Retain exact dependency name.
+Cargo.lock	3177	native-tls	lettre 0.11.22 dependency entry; exact TLS library name.	jdgb-15b33278eb6f05ec/lock_3177	accurate .80; retain .92	Retain exact dependency name.
+Cargo.lock	3183	tokio-native-tls	lettre 0.11.22 dependency entry; exact Tokio TLS adapter name.	jdgb-15b33278eb6f05ec/lock_3183	accurate .79; retain .88	Retain exact dependency name.
+Cargo.lock	3567	native-tls	Package record for native-tls 0.2.18, with OpenSSL, Schannel, and security-framework dependencies; crate identity.	jdgb-15b33278eb6f05ec/lock_3567	accurate .88; retain .95	Retain exact package identity.
+Cargo.lock	6191	native-tls	reqwest 0.11.27 dependency entry; exact TLS library name.	jdgb-15b33278eb6f05ec/lock_6191	accurate .80; retain .92	Retain exact dependency name; feature-selection ambiguity reported separately.
+Cargo.lock	6203	tokio-native-tls	reqwest 0.11.27 dependency entry; exact Tokio TLS adapter name.	jdgb-15b33278eb6f05ec/lock_6203	accurate .79; retain .88	Retain exact dependency name; feature-selection ambiguity reported separately.
+Cargo.lock	6622	rustls-native-certs	Package record for rustls-native-certs 0.8.4; library name specifies native certificate store integration for Rustls.	jdgb-15b33278eb6f05ec/lock_6622	accurate .98; retain .98	Retain exact package identity.
+Cargo.lock	7611	tokio-native-tls	Package record for tokio-native-tls 0.3.1; crate identity.	jdgb-15b33278eb6f05ec/lock_7611	accurate .79; retain .95	Retain exact package identity.
+Cargo.lock	7616	native-tls	Dependency of tokio-native-tls 0.3.1; exact crate name.	jdgb-15b33278eb6f05ec/lock_7616	accurate .83; retain .94	Retain exact dependency name.
+Cargo.lock	7782	rustls-native-certs	tonic 0.12.3 dependency; Tonic’s Rustls native-certificate source library.	jdgb-15b33278eb6f05ec/lock_7782	accurate .95; retain .97	Retain exact dependency name.

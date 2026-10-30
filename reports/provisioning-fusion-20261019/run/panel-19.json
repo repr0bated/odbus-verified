@@ -1,0 +1,68 @@
+{
+  "status": "ok",
+  "query": "Bounded document-review assignment: review full original history packets 063 through 083 using complete supplied review contract; preserve quotes, corrections, actions/results, provenance, unavailable/truncated fields, hashes, and actual analyst outputs. No execution of historical commands, source modification, auth access, nested agents, or routing changes. State a concise evidence-integrity checklist only; packet contents are not yet supplied.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "- Preload all ten mandatory skills and the complete review contract before reviewing packets.\n- Review packets **063\u2013083** in full; preserve physical order, record IDs, parent links, dates, and active/compacted flags.\n- Retain exact quotations, owner corrections, tool arguments, results, errors, and worker provenance; distinguish owner instructions from injected messages.\n- Record input references and hashes, actual analyst outputs, duplicate mappings, and unavailable/truncated content. Never reconstruct omitted evidence.\n- Distinguish available, read, panel-reviewed, and judge-adjudicated evidence; claim only demonstrated coverage.\n- Treat historical commands as evidence only. No execution, source/runtime changes, authentication access, nested agents, or routing changes.\n- Write receipts only under the authorized `analysis/` directory.\n- **Current status:** packets have not been supplied in this exchange; no packet review, hashes, or findings are claimed."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The sole response provides an evidence-integrity checklist, not substantive packet findings.",
+      "It requires complete skill and contract preloading, full review of packets 063\u2013083, preservation of provenance and corrections, input hashes, actual analyst outputs, and explicit treatment of missing or truncated evidence.",
+      "It preserves the read-only boundary and explicitly claims no packet review because packet contents were not supplied."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The coverage checklist distinguishes available, read, panel-reviewed, and judge-adjudicated evidence but omits the separately required exported status and explicit covered/outstanding record or byte ranges."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The checklist preserves analyst outputs and input references but does not explicitly require saving each stateless analyst's exact question and the complete original evidence actually delivered to that call."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly distinguishes owner instructions from injected worker messages, preventing role labels alone from establishing authority."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly prohibits reconstructing omitted evidence and separates demonstrated review coverage from mere evidence availability."
+      }
+    ],
+    "blind_spots": [
+      "Only one panel response is supplied, so cross-model agreement or disagreement cannot be assessed.",
+      "Neither packet contents nor completed receipts are supplied; completeness, hashes, provenance preservation, and actual analyst ingestion cannot yet be verified."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

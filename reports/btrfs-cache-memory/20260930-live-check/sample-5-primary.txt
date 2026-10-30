@@ -1,0 +1,15 @@
+2026-09-30T17:42:01Z
+Source: primary read-only exec; selected /proc/1123/status and stat, then free -k.
+Name: op-grpc-bridge
+Pid: 1123
+VmSize: 19070588 kB
+VmHWM: 17332276 kB
+VmRSS: 13488848 kB
+VmData: 18489680 kB
+VmSwap: 4484432 kB
+Threads: 52
+stat field22 starttime=601
+free -k:
+Mem: total=32856188 used=19746848 free=4325588 shared=44876 buff/cache=9294508 available=13109340
+Swap: total=16777212 used=8846680 free=7930532
+smaps_rollup and vmstat not sampled.

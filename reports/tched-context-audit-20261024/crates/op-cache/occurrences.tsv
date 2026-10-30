@@ -1,0 +1,2 @@
+file	line	position	exact_context	intended_meaning	authority	caller	JEV	recommendation	status
+# No case-insensitive `tched` substring occurred in any of the 28 sequentially read inventory files. Full line coverage is in coverage.tsv; zero-occurrence result is grounded in that coverage. No occurrence-level judgment applies.

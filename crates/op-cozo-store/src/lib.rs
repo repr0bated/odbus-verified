@@ -9,15 +9,37 @@ use tracing::{info, warn};
 
 type Params = BTreeMap<String, DataValue>;
 
+mod external_mcp_sessions;
+pub use external_mcp_sessions::ExternalMcpSessionRecord;
+
+mod system_graph;
+pub use system_graph::*;
+
+mod identity_inventory;
 mod identity_transactions;
+pub use identity_inventory::{
+    IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
+};
 pub use identity_transactions::{
-    IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityRecoverySnapshot,
-    IdentityRevision, RootRepairJournal, SeedProvisionJournal,
+    NativeCreationRequest, NativeCreationRecord, is_numbered_native_name,
+    CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
+    IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
+    IdentityRecoverySnapshot, IdentityRevision, PhysicalRootMigrationReceipt, RootRepairJournal,
+    SeedProvisionJournal, physical_root_instance_binding_matches,
 };
 mod runtime_document_transactions;
 pub use runtime_document_transactions::{
     RuntimeDocumentCommit, RuntimeDocumentFailure, RuntimeDocumentRecord,
     RuntimeDocumentUncertainPhase,
+};
+mod model_registry;
+pub use model_registry::{
+    RegistryModel, RegistryModelRecord, RegistryProviderRecord, RegistryRefreshCounts,
+};
+mod ui_gallery;
+pub use ui_gallery::{
+    MAX_UI_GALLERY_DOCUMENT_BYTES, UiCandidatePage, UiCandidateRecord, UiCatalogPage,
+    UiCatalogRecord,
 };
 mod chat_response_conversations;
 pub use chat_response_conversations::{
@@ -25,6 +47,8 @@ pub use chat_response_conversations::{
     MAX_CHAT_CONVERSATION_BYTES, MAX_CHAT_TURN_BYTES, MAX_CHAT_TURN_WINDOW_BYTES,
 };
 mod ctl_plane_chatbot_episodes;
+mod workflow_executions;
+pub use workflow_executions::WorkflowExecutionRecord;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,
     MAX_CHATBOT_EPISODE_BYTES, MAX_CHATBOT_SNAPSHOT_BYTES, ScopedEpisodeRecord,
@@ -91,7 +115,7 @@ pub struct WgSessionRecord {
 /// One container identity sled row (mirrors op-plugins' `ContainerIdentitySled`).
 /// `btrfs_device_json` is the sled's btrfs device record pre-serialized to JSON;
 /// `peer_ip`, `sealed_id`, and `btrfs_device_json` use `""` for absent.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IdentitySledRecord {
     pub session_id: String,
     pub wireguard_pubkey: String,
@@ -117,7 +141,7 @@ pub struct IdentitySledRecord {
 }
 
 /// The genesis inputs stored beside a session's sled row (version 3 records).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct GenesisInputsRecord {
     pub session_id: String,
     pub arrival_timestamp: i64,
@@ -187,6 +211,7 @@ pub struct CozoGraphShuttle {
     identity_transaction: Arc<std::sync::Mutex<()>>,
     runtime_document_transaction: Arc<std::sync::Mutex<()>>,
     episode_transaction: Arc<std::sync::Mutex<()>>,
+    system_graph_transaction: Arc<std::sync::Mutex<()>>,
 }
 
 impl CozoGraphShuttle {
@@ -214,6 +239,7 @@ impl CozoGraphShuttle {
             identity_transaction: Arc::new(std::sync::Mutex::new(())),
             runtime_document_transaction: Arc::new(std::sync::Mutex::new(())),
             episode_transaction: Arc::new(std::sync::Mutex::new(())),
+            system_graph_transaction: Arc::new(std::sync::Mutex::new(())),
         };
         s.seed_schema().map_err(CozoError::from)?;
         Ok(s)
@@ -252,13 +278,14 @@ impl CozoGraphShuttle {
             identity_transaction: Arc::new(std::sync::Mutex::new(())),
             runtime_document_transaction: Arc::new(std::sync::Mutex::new(())),
             episode_transaction: Arc::new(std::sync::Mutex::new(())),
+            system_graph_transaction: Arc::new(std::sync::Mutex::new(())),
         };
         s.seed_schema().map_err(CozoError::from)?;
         Ok(s)
     }
 
     pub fn from_env() -> std::result::Result<Self, CozoError> {
-        if let Ok(p) = std::env::var("COGNITIVE_MCP_COZO_DB_PATH") {
+        if let Ok(p) = std::env::var("COGNITIVE_COZO_DB_PATH") {
             Self::new_persistent(PathBuf::from(p))
         } else {
             Self::new_in_memory()
@@ -270,6 +297,8 @@ impl CozoGraphShuttle {
             // Migration markers survive empty catalogs; row count is not a
             // migration version and must never resurrect retired identities.
             r#":create schema_migrations { name: String => completed: Bool }"#,
+            r#":create native_container_sequence { key: String => next: Int, pending: String }"#,
+            r#":create native_container_creations { operation_id: String => document: String }"#,
             // Private project catalog. Document stores reside in each project's
             // own persistent mount, not in this control-plane catalog.
             r#":create project_catalog { project_id: String => document: String }"#,
@@ -517,6 +546,23 @@ impl CozoGraphShuttle {
                 committed_revision: Int default 0, committed_genesis: String default "", updated_at: Int
             }"#,
             // append-only per-session "snowball" event ledger archive
+            r#":create identity_physical_root_migrations {
+                session_id: String => plan_sha256: String, operation_id: String,
+                expected_revision: Int, committed_revision: Int,
+                btrfs_device_json: String, instance_json: String, provenance_json: String
+            }"#,
+            r#":create identity_physical_root_history {
+                session_id: String, committed_revision: Int => plan_sha256: String,
+                operation_id: String, old_btrfs_device_json: String,
+                old_instance_json: String, old_journals_json: String,
+                old_revision_operation_id: String
+            }"#,
+            r#":create identity_clean_provisions {
+                session_id: String, committed_revision: Int => plan_sha256: String,
+                operation_id: String, expected_revision: Int, provenance_json: String,
+                btrfs_device_json: String, instance_json: String,
+                old_revision_json: String, old_journals_json: String
+            }"#,
             // (the immutable event chain is the proof; this is the queryable copy)
             r#":create session_events {
                 session_id: String,
@@ -539,6 +585,13 @@ impl CozoGraphShuttle {
                 registered_at: Int default 0,
                 revoked_at: Int default 0
             }"#,
+            r#":create chain_vector_link {
+                point_id: String,
+                kind: String
+                =>
+                value: String
+            }"#,
+            r#":create external_mcp_sessions { session_id: String => principal_id: String, document: String }"#,
             // human_pubkey → principal_id lookup; the pubkey is unique across
             // ALL principals, active or revoked (tombstones keep their mapping)
             r#":create human_principal_pubkeys {
@@ -560,6 +613,8 @@ impl CozoGraphShuttle {
                 }
             }
         }
+
+        self.initialize_system_graph_schema()?;
 
         // One-way copy from the pre-v3 `identity_sleds` relation. This must not
         // `:put` over `identity_sessions` that already exist — every process
@@ -668,17 +723,33 @@ impl CozoGraphShuttle {
 
     /// Evaluate (plugin_id, operation) against all Deny rules in the compliance graph.
     pub fn evaluate_mutation(&self, plugin_id: &str, operation: &str) -> PolicyVerdict {
+        // Bind columns under aliases — `op` is awkward as a bare Datalog var.
         let query = r#"
-            deny_rule[reason] :=
-                *compliance_rule[plugin, op, action, reason, _, _],
-                action = 'Deny',
-                (plugin = $plugin || plugin = '*'),
-                (op = $op || op = '*')
-            ?[reason] := deny_rule[reason]
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = $plugin,
+                o = $operation
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = '*',
+                o = $operation
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = $plugin,
+                o = '*'
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = '*',
+                o = '*'
+            ?[r] := deny_rule[r]
         "#;
         let mut p: Params = BTreeMap::new();
         p.insert("plugin".into(), DataValue::Str(plugin_id.into()));
-        p.insert("op".into(), DataValue::Str(operation.into()));
+        p.insert("operation".into(), DataValue::Str(operation.into()));
 
         match cozo_run(&self.db, query, p) {
             Ok(rows) if rows.rows.is_empty() => PolicyVerdict {
@@ -696,9 +767,9 @@ impl CozoGraphShuttle {
                     reason,
                 }
             }
-            Err(_) => PolicyVerdict {
+            Err(error) => PolicyVerdict {
                 allow: true,
-                reason: "compliance graph not seeded".into(),
+                reason: format!("compliance query failed: {error}"),
             },
         }
     }
@@ -819,6 +890,46 @@ impl CozoGraphShuttle {
         );
         cozo_run(&self.db, query, p)
             .map_err(|e| CozoError::Other(format!("store graph edge: {e}")))?;
+        Ok(())
+    }
+
+    /// Replace every chain-vector link for one Qdrant point id (idempotent re-ingest).
+    pub fn replace_chain_vector_links(
+        &self,
+        point_id: &str,
+        links: &[(&str, &str)],
+    ) -> std::result::Result<(), CozoError> {
+        let mut p: Params = BTreeMap::new();
+        p.insert("pid".into(), DataValue::Str(point_id.into()));
+        cozo_run(
+            &self.db,
+            "?[point_id, kind] := *chain_vector_link{point_id, kind, value}, point_id = $pid \
+             :rm chain_vector_link {point_id, kind}",
+            p.clone(),
+        )
+        .map_err(|e| CozoError::Other(format!("replace chain_vector_link rm: {e}")))?;
+
+        if links.is_empty() {
+            return Ok(());
+        }
+
+        let rows: Vec<DataValue> = links
+            .iter()
+            .map(|&(kind, value)| {
+                DataValue::List(vec![
+                    DataValue::Str(point_id.into()),
+                    DataValue::Str(kind.into()),
+                    DataValue::Str(value.into()),
+                ])
+            })
+            .collect();
+        p.insert("rows".into(), DataValue::List(rows));
+        cozo_run(
+            &self.db,
+            "?[point_id, kind, value] <- $rows :put chain_vector_link { point_id, kind => value }",
+            p,
+        )
+        .map_err(|e| CozoError::Other(format!("replace chain_vector_link put: {e}")))?;
         Ok(())
     }
 
@@ -2272,6 +2383,7 @@ mod identity_sled_tests {
             identity_transaction: Arc::new(std::sync::Mutex::new(())),
             runtime_document_transaction: Arc::new(std::sync::Mutex::new(())),
             episode_transaction: Arc::new(std::sync::Mutex::new(())),
+            system_graph_transaction: Arc::new(std::sync::Mutex::new(())),
         }
     }
 
@@ -2573,6 +2685,37 @@ mod identity_sled_tests {
         let limited = store.list_session_events("s", 1).unwrap();
         assert_eq!(limited.len(), 1);
         assert_eq!(limited[0].seq, 1);
+    }
+}
+
+#[cfg(test)]
+mod compliance_mutation_tests {
+    use super::*;
+
+    #[test]
+    fn evaluate_mutation_allows_when_unseeded_or_empty() {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        let verdict = store.evaluate_mutation("openflow", "add_flow");
+        assert!(verdict.allow);
+    }
+
+    #[test]
+    fn evaluate_mutation_denies_matching_rule() {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        store
+            .store_compliance_rule(
+                "openflow",
+                "add_flow",
+                "Deny",
+                "tag routing incomplete",
+                "OD-06",
+            )
+            .expect("compliance_rule relation must accept Deny rows");
+        let denied = store.evaluate_mutation("openflow", "add_flow");
+        assert!(!denied.allow, "reason={}", denied.reason);
+        assert!(denied.reason.contains("tag routing"));
+        let other = store.evaluate_mutation("openflow", "dump_flows");
+        assert!(other.allow);
     }
 }
 

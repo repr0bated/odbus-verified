@@ -1,0 +1,3 @@
+phase=pending_selected rust_live_delta=1115 rust_peak_delta=2417 rss_kib=9812
+phase=pending_dropped rust_live_delta=864 rust_peak_delta=2417 rss_kib=10004
+records=10000 already_present=10000 elapsed_ns=26336697

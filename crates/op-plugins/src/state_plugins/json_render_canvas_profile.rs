@@ -118,7 +118,7 @@ impl PinnedCanvasValidator {
         let schema: op_state_store::PluginSchema = serde_json::from_str(&schema_json)
             .map_err(|_| anyhow::anyhow!("invalid pinned renderer schema"))?;
         ensure!(
-            schema.name == "json_render" && schema.version == "3.0.0",
+            schema.name == "json_render" && schema.version == super::PLUGIN_VERSION,
             "incompatible pinned renderer contract"
         );
         let field = schema
@@ -179,7 +179,7 @@ impl PinnedCanvasValidator {
             ensure!(
                 !matches!(
                     component.name.as_str(),
-                    "antigravityChatContainer" | "tchedRouterPicker" | "pageHeader" | "chatMessage"
+                    "antigravityChatContainer" | "chatRouterPicker" | "pageHeader" | "chatMessage"
                 ),
                 "host shell component cannot appear in generated Canvas"
             );

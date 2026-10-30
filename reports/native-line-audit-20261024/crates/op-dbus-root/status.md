@@ -1,0 +1,7 @@
+# Root package native-line audit status
+
+Task: `native-line-audit-20261024/op-dbus-root`.
+
+Status: complete. Read the assigned instructions and complete five-file inventory sequentially: `Cargo.toml` (1–284), `crates/bun.lock` (1–356; the previously column-truncated `raw:110-270` range was re-read in full without clipping), `crates/package-lock.json` (1–2094), `crates/package.json` (1–5), and `Cargo.lock` (1–9166). The exact bun.lock range contained no additional native-word occurrence, so the total remains 12: one root package description and 11 Cargo.lock dependency/package identifiers. The assigned root `src/` path does not exist. No source changes; all occurrences retained as accurate metadata or exact third-party crate names. An adjacent reqwest TLS feature-selection question is documented as unresolved rather than changed without policy evidence. No Cargo commands, tests, builds, lint, format checks, runtime operations, or deployment were run, per assignment.
+
+Reports: `coverage.tsv`, `occurrences.tsv`, `judgments.md`, and `findings.md` in this directory; final assignment receipt at `/var/tmp/native-line-audit-20261024.ILroaQ/crates/op-dbus-root/result.json`. Reads were not atomic; source hashes are those supplied by the assignment inventory, not re-computed. No report indicates deployment or build verification.

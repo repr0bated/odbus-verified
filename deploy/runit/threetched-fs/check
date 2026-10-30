@@ -1,0 +1,25 @@
+#!/bin/sh
+# Mount readiness is independent of the operation backend's availability.
+[ "$(findmnt -rn -M /run/mount/3tchedFS -o FSTYPE)" = fuse.3tchedFS ] || exit 1
+jq -e '.mount_identity.kind == "host_session" and .local_call_owner_uid == 1001 and .workspace_id == null' /run/mount/3tchedFS/.3tchedfs.json >/dev/null || exit 1
+test -f /run/mount/3tchedFS/plugins/identity_sled/operations/get_identity/call || exit 1
+schema=/run/mount/3tchedFS/plugins/threetched/schema.json
+jq -e '.name == "threetched" and (.methods | type == "object" and length > 0)' "$schema" >/dev/null || exit 1
+# Match the filesystem's component encoding, including its reserved names.
+# Check every sealed method declaration without assuming a particular CLI version.
+methods=$(jq -r '
+    def component:
+        if . == ".value.json" then "%2Evalue.json"
+        elif . == "." then "%2E"
+        elif . == ".." then "%2E2E"
+        elif . == "" then "%"
+        else @uri | gsub("~"; "%7E") end;
+    .methods | keys[] | component
+' "$schema") || exit 1
+printf '%s\n' "$methods" |
+    while IFS= read -r method; do
+        operation=/run/mount/3tchedFS/plugins/threetched/operations/$method
+        test -f "$operation/input.schema.json" &&
+            test -f "$operation/metadata.json" &&
+            test -f "$operation/call" || exit 1
+    done || exit 1

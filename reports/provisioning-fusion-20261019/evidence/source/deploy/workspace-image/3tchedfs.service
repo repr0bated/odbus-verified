@@ -1,0 +1,15 @@
+[Unit]
+Description=3tchedFS sealed plugin mount for this identity
+After=local-fs.target systemd-tmpfiles-setup.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# mount(8) reads fstab; its helper stays in the foreground under this service.
+ExecStart=/usr/bin/mount /run/mount/3tchedfs
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=20s
+
+[Install]
+WantedBy=multi-user.target

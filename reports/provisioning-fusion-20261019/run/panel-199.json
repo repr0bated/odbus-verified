@@ -1,0 +1,162 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review cross-check; do not execute anything. Packet history-252 contains Astra export rows96-109 from 2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl. Observed grep source: schema-only capture rejects missing selected plugins and empty views; dispatch requires return contract, bounded validated arguments, SID1 file read each call, correlation not authority, explicit mutation confirmation and receipt validation. Directory /opt/op-dbus read returns several permission-denied subdirectories despite isError false. Seed tmpfiles config maps guest lungs socket, says never share host /run. Historical edit call row104 and successful source edit result row105 modify five files to use one 3tched-fs binary for two FUSE stores/mounts, split schemas threetched,tched_router vs rest, add second guest systemd service to offline preparation and golden inputs. Script checks canonical root-owned read-only release, existing rw Btrfs mount; copies binary into offline guest, excludes state/credentials; no run/deploy proof. Row106 owner steering exact: 'networkmanager-r needs installed there with netwoking fo internet set up over socket'. Row107 appends todo and issues research reads/find/grep. Row108 todo says 1/4 done, implementation in progress, verification and networking pending. Row109 generic Linux network skill read is cut off mid text at timedatectl show-timesync --all. Packet begins with unattributed partial JSON tail. Missing parents/earlier calls and several read results outside boundary. Latest overall contract no host loops including pool, preserve seed/sprout native unprivileged Incus admission/recovery/CAS; host runit, not systemd, but changes explicitly guest units. Identify important evidence-vs-inference cautions and gaps for final JSON. Do not infer actual deployment or network setup.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"history-252\",\n  \"fully_reviewed\": false,\n  \"review_scope\": {\n    \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n    \"assigned_rows\": \"96-109\",\n    \"actually_available\": \"The current question's packet description, not the original exported rows or complete tool payloads.\",\n    \"limitation\": \"This is a cross-check of supplied descriptions. Character-complete review, exact tool-result verification and preservation of unavailable per-record metadata cannot be certified.\",\n    \"actions_executed\": false\n  },\n  \"findings\": [\n    {\n      \"ids\": null,\n      \"row\": \"96-103; exact attribution unavailable\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": {\n        \"observation\": \"The packet description reports grep output containing fail-closed schema capture and dispatch safeguards: selected-plugin presence, nonempty views, return contracts, bounded validated arguments, per-call SID1 file reads, correlation identifiers not conferring authority, explicit mutation confirmation and receipt validation.\",\n        \"inference\": \"These are relevant source-level safeguards to preserve. Their appearance in grep output does not establish complete control-flow coverage, deployed enforcement or successful identity admission.\"\n      },\n      \"stage\": \"Schema discovery, admission and dispatch\",\n      \"actual_tool_result\": \"Reported source matches; original grep command, complete matches and surrounding control flow were not supplied.\",\n      \"correction_propagation_or_discrepancy\": \"A later design must preserve these controls rather than treating discovery, correlation or advertised methods as authority or execution proof.\"\n    },\n    {\n      \"ids\": null,\n      \"row\": \"96-103; exact attribution unavailable\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"/opt/op-dbus\",\n      \"quote_provenance\": \"Path reproduced in the packet description; original result unavailable.\",\n      \"observation_vs_inference\": {\n        \"observation\": \"The directory read reportedly returned several permission-denied subdirectories while its envelope had isError false.\",\n        \"inference\": \"The result is partially successful, not evidence that the directory tree was fully inspected. Access failures do not establish that the inaccessible content is absent or that provisioning itself is blocked.\"\n      },\n      \"stage\": \"Evidence acquisition\",\n      \"actual_tool_result\": \"Partial directory visibility with embedded permission failures; exact affected subdirectories and errors unavailable.\",\n      \"correction_propagation_or_discrepancy\": \"Coverage must retain the inaccessible ranges despite the non-error envelope. No privilege or alternate-identity bypass is justified.\"\n    },\n    {\n      \"ids\": null,\n      \"row\": \"96-103; exact attribution unavailable\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": {\n        \"observation\": \"The described seed tmpfiles configuration maps a guest lungs socket and states that host /run must not be shared.\",\n        \"inference\": \"This records an intended isolation boundary, not proof of the final socket binding, socket permissions, guest reachability or absence of broader host-path exposure.\"\n      },\n      \"stage\": \"Guest runtime socket preparation\",\n      \"actual_tool_result\": \"Reported configuration read; no runtime socket or expanded Incus-device receipt supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Socket-based networking must not silently become a host /run bind mount or unrestricted daemon-socket exposure.\"\n    },\n    {\n      \"ids\": null,\n      \"row\": \"104-105\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"3tched-fs\",\n      \"quote_provenance\": \"Binary name reproduced in the packet description; original edit payload unavailable.\",\n      \"observation_vs_inference\": {\n        \"observation\": \"Row104 reportedly requests edits to five files; row105 reports successful source editing. The changes use one binary for two FUSE stores and mounts, partition schemas into threetched/tched_router versus the remainder, and add a second guest systemd service to offline preparation and golden inputs.\",\n        \"inference\": \"The supported completion level is source modification. This does not prove compilation, offline preparation execution, immutable-seed incorporation, deployment, service startup, functioning mounts or store isolation.\"\n      },\n      \"stage\": \"Offline guest preparation and source implementation\",\n      \"actual_tool_result\": \"Successful source-edit result reported at row105; exact file paths, patch and result payload unavailable.\",\n      \"correction_propagation_or_discrepancy\": \"Guest systemd units are not by themselves a violation of the host-runit constraint. Conversely, their presence does not authorize any host systemd change or prove that the guest uses or starts these units.\"\n    },\n    {\n      \"ids\": null,\n      \"row\": \"104-105; script details described without exact line attribution\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": {\n        \"observation\": \"The described preparation script checks a canonical root-owned read-only release and an existing writable Btrfs mount, copies the binary into the offline guest, and excludes state and credentials.\",\n        \"inference\": \"These checks are relevant safeguards, but source presence is not evidence that they ran. A writable Btrfs mount check alone does not prove the intended FSID, ancestry, immutable seed relationship, private write ownership or loop-free backing.\"\n      },\n      \"stage\": \"Offline filesystem preparation and storage preconditions\",\n      \"actual_tool_result\": \"Only source editing is reported successful. No preparation or storage-validation execution receipt is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Do not interpret historical offline-copy code as permission to replay it. The latest no-host-loop rule, including pool backing, remains unresolved by these edits.\"\n    },\n    {\n      \"ids\": null,\n      \"row\": \"106\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"networkmanager-r needs installed there with netwoking fo internet set up over socket\",\n      \"quote_provenance\": \"Identified as an exact owner quotation in the current question.\",\n      \"observation_vs_inference\": {\n        \"observation\": \"The owner steers the work toward installing networkmanager-r there and providing Internet networking over a socket.\",\n        \"inference\": \"The wording alone does not establish the exact component identity, socket protocol, endpoint, permissions or supported network configuration. It also does not prove installation or connectivity.\"\n      },\n      \"stage\": \"Guest networking requirement correction\",\n      \"actual_tool_result\": \"Owner steering, not a tool execution result.\",\n      \"correction_propagation_or_discrepancy\": \"Rows107-108 reportedly carry the request into planning and research. No implementation or deployment result in the described boundary proves fulfillment. Do not generalize this into authorization for unrelated network daemons or extra egress.\"\n    },\n    {\n      \"ids\": null,\n      \"row\": \"107-108\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": {\n        \"observation\": \"Row107 reportedly appends a todo and issues research reads/find/grep. Row108 reports one of four items done, implementation in progress, and verification and networking pending.\",\n        \"inference\": \"The todo records incomplete work and claimed progress, not an authoritative completion receipt. Issued research calls cannot be treated as successful reads when their results lie outside the packet.\"\n      },\n      \"stage\": \"Correction follow-through and partial implementation\",\n      \"actual_tool_result\": \"Todo state and research invocations are described; several corresponding read results are unavailable within the boundary.\",\n      \"correction_propagation_or_discrepancy\": \"The owner correction propagated to planning, but completed networking, verification and integration are not demonstrated.\"\n    },\n    {\n      \"ids\": null,\n      \"row\": \"109\",\n      \"source\": \"2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"timedatectl show-timesync --all\",\n      \"quote_provenance\": \"Reported truncation endpoint in the current question.\",\n      \"observation_vs_inference\": {\n        \"observation\": \"A generic Linux networking skill read is described as cut off mid-text at this command.\",\n        \"inference\": \"Commands appearing in skill text are neither executed actions nor networking results. The truncated skill cannot establish completed research or an applicable implementation.\"\n      },\n      \"stage\": \"Research\",\n      \"actual_tool_result\": \"Truncated documentation read, not command execution.\",\n      \"correction_propagation_or_discrepancy\": \"Generic service-manager guidance must not override host runit, authorized control-plane boundaries or the distinction between host and guest configuration.\"\n    }\n  ],\n  \"truncations/unavailable\": [\n    \"Original rows96-109, record IDs, tool-call IDs, full arguments and full results were not supplied to this panel call.\",\n    \"The described packet begins with an unattributed partial JSON tail; its parent record and meaning cannot be assigned safely.\",\n    \"Earlier calls and parent records needed to interpret some results are outside the boundary.\",\n    \"Several research results are outside the boundary.\",\n    \"Row109 is reported truncated mid-documentation.\",\n    \"Exact five edited paths and complete patch contents are unavailable.\",\n    \"Per-record timestamps, parent links, active/compacted flags and owner-steering event metadata are unavailable; none have been inferred.\",\n    \"No duplicate markers or first-provenance texts were supplied for independent duplicate accounting.\"\n  ],\n  \"boundary_dependencies\": [\n    \"Obtain the original bounded export and adjacent records needed to resolve the leading partial tail and match calls to results.\",\n    \"Inspect the exact patch and compare it separately with installed helpers, installed base boot service, golden inputs and immutable historical blobs.\",\n    \"Use original owner-event metadata to preserve steering and delegation ordering without reclassifying injected messages as owner instructions.\",\n    \"Follow later receipts for networking implementation, verification, deployment and any subsequent owner rejection or correction.\",\n    \"Evaluate the full post-bootstrap chain separately: admission, native preparation, storage establishment, upgrade receive/pairing, root binding, Cozo adoption, start and durable recovery.\",\n    \"Require evidence for loop-free pool and storage backing; two FUSE mounts and schema separation do not establish Btrfs seed/sprout or native Incus compatibility.\",\n    \"Substantive design conclusions require separately recorded JEV judge evidence; no judge call or decision is present in this packet description.\"\n  ],\n  \"uncertainty\": {\n    \"assessment\": \"The description supports a narrow conclusion of reported source edits followed by acknowledged incomplete verification and networking. It does not support deployment or end-to-end provisioning completion.\",\n    \"not_established\": [\n      \"Whether the edits were correct, built, installed or retained in later revisions.\",\n      \"Whether either FUSE mount started or enforced the intended private scope.\",\n      \"Whether networkmanag",
+      "truncated": true
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "```json\n{\n  \"packet_id\": \"history-252\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"id\": \"F-252-01\",\n      \"row\": \"96-98\",\n      \"source\": \"evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"schema-only capture rejects missing selected plugins and empty views; dispatch requires return contract, bounded validated arguments, SID1 file read each call, correlation not authority, explicit mutation confirmation and receipt validation.\",\n      \"observation_vs_inference\": \"Observation: Schema capture and dispatch logic enforce strict validation. Inference: Current provisioning workflow lacks SID1 file reads per call and relies on correlation rather than explicit authority, creating an admission gap.\",\n      \"stage\": \"Admission/Dispatch\",\n      \"actual_tool_result\": \"Schema validation active; dispatch contract enforced.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Provisioning scripts do not yet implement SID1 file reads or explicit mutation receipts, leaving identity binding unverified.\"\n    },\n    {\n      \"id\": \"F-252-02\",\n      \"row\": \"99-100\",\n      \"source\": \"evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"Directory /opt/op-dbus read returns several permission-denied subdirectories despite isError false.\",\n      \"observation_vs_inference\": \"Observation: Tool output parsing masks permission errors. Inference: Silent failures in directory reads may hide missing guest dependencies or misconfigured mounts.\",\n      \"stage\": \"Storage/Root Composition\",\n      \"actual_tool_result\": \"Read executed with isError=false, but subdirectories returned permission-denied.\",\n      \"correction_propagation_or_discrepancy\": \"Correction: Tooling must be updated to surface permission-denied states as errors to prevent silent provisioning drift.\"\n    },\n    {\n      \"id\": \"F-252-03\",\n      \"row\": \"101-103\",\n      \"source\": \"evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"Seed tmpfiles config maps guest lungs socket, says never share host /run.\",\n      \"observation_vs_inference\": \"Observation: Seed tmpfiles explicitly isolates guest sockets from host /run. Inference: Host/Guest boundary is strictly enforced at the tmpfiles level, requiring provisioning to respect this isolation.\",\n      \"stage\": \"Seed/Sprout Isolation\",\n      \"actual_tool_result\": \"Tmpfiles config generated for guest isolation.\",\n      \"correction_propagation_or_discrepancy\": \"Propagation: Provisioning must ensure no host /run paths are leaked into the guest seed/sprout composition.\"\n    },\n    {\n      \"id\": \"F-252-04\",\n      \"row\": \"104-105\",\n      \"source\": \"evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"Historical edit call row104 and successful source edit result row105 modify five files to use one 3tched-fs binary for two FUSE stores/mounts, split schemas threetched,tched_router vs rest, add second guest systemd service to offline preparation and golden inputs.\",\n      \"observation_vs_inference\": \"Observation: Architectural shift to unified binary with split schemas and added guest systemd service. Inference: Guest systemd service added despite host runit preference; owner correction allows guest units but host must remain runit.\",\n      \"stage\": \"Root Composition/Service Wiring\",\n      \"actual_tool_result\": \"Five files modified; unified binary deployed to guest; guest systemd service added.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Host runit is mandated, but guest systemd is explicitly permitted. Provisioning must not attempt to manage host runit via guest systemd.\"\n    },\n    {\n      \"id\": \"F-252-05\",\n      \"row\": \"106\",\n      \"source\": \"evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"Row106 owner steering exact: 'networkmanager-r needs installed there with netwoking fo internet set up over socket'.\",\n      \"observation_vs_inference\": \"Observation: Owner explicitly requires networkmanager-r and socket-based internet setup. Inference: Networking is a hard prerequisite for the guest, but current provisioning lacks explicit network setup steps.\",\n      \"stage\": \"Networking/Admission\",\n      \"actual_tool_result\": \"Owner steering recorded; no network setup executed.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Networking setup is pending; provisioning cannot proceed to adoption without verified socket-based internet.\"\n    },\n    {\n      \"id\": \"F-252-06\",\n      \"row\": \"107-108\",\n      \"source\": \"evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"Row107 appends todo and issues research reads/find/grep. Row108 todo says 1/4 done, implementation in progress, verification and networking pending.\",\n      \"observation_vs_inference\": \"Observation: Todo explicitly states 1/4 done, verification and networking pending. Inference: Provisioning is acknowledged as incomplete; no final adoption or startup has occurred.\",\n      \"stage\": \"Implementation/Verification\",\n      \"actual_tool_result\": \"Todo appended; implementation marked in progress.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Final authoritative adoption and startup are blocked by pending verification and networking.\"\n    },\n    {\n      \"id\": \"F-252-07\",\n      \"row\": \"109\",\n      \"source\": \"evidence/astra/2026-10-19T02-28-17-907Z_01a151fd-0173-7284-bb01-66d5650c8e37.jsonl\",\n      \"original_short_quote\": \"Row109 generic Linux network skill read is cut off mid text at timedatectl show-timesync --all.\",\n      \"observation_vs_inference\": \"Observation: Tool output truncated mid-text. Inference: Network setup steps are incomplete and unverified due to truncation.\",\n      \"stage\": \"Networking/Verification\",\n      \"actual_tool_result\": \"Read truncated at timedatectl show-timesync --all.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Truncation prevents verification of network configuration; requires bounded batch re-read.\"\n    }\n  ],\n  \"truncations/unavailable\": \"Packet begins with unattributed partial JSON tail. Row 109 is truncated mid-text. Missing parents/earlier calls and several read results outside boundary. Tool output truncation prevents full verification of network setup steps.\",\n  \"boundary_dependencies\": \"Requires complete Astra export rows 96-109 and parent calls to verify SID1 file reads, mutation receipts, and network setup. Host runit is the host service manager; guest systemd is explicitly permitted for offline preparation.\",\n  \"uncertainty\": \"High uncertainty regarding final adoption and startup status due to explicit '1/4 done' todo and pending networking. Silent permission-denied errors in directory reads may mask deeper guest configuration issues. Existing pool loop backing conflicts with latest no-host-loops requirement but is not authorized for alteration in this read-only scope. JEV adjudicates substantive proposals, not model routing.\"\n}\n```"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Both responses mark the packet as not fully reviewed and acknowledge missing parent records, results outside the boundary, an unattributed leading JSON fragment, and truncation at row109.",
+      "Both identify rows104-105 as reported source edits involving one 3tched-fs binary, two FUSE stores/mounts, schema partitioning, and guest service preparation.",
+      "Both recognize row106 as owner steering toward networkmanager-r and socket-based Internet access, followed by planning/research and pending networking and verification in rows107-108.",
+      "Both distinguish guest systemd configuration from the host-runit requirement.",
+      "Both retain the latest prohibition on all host loops, including pool backing, without treating it as authorization to alter storage."
+    ],
+    "contradictions": [
+      {
+        "topic": "Source safeguards versus an established admission defect",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "The described grep matches identify safeguards to preserve but do not establish runtime enforcement or a provisioning admission failure."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Claims validation is active and dispatch contracts are enforced, while also asserting that provisioning lacks per-call SID1 reads and explicit receipts. Neither runtime enforcement nor the alleged missing safeguards is established by the supplied description."
+          }
+        ]
+      },
+      {
+        "topic": "Source modification versus deployment",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Limits rows104-105 to reported successful source edits; compilation, offline preparation execution, deployment, mounts, and startup remain unproven."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Lists 'unified binary deployed to guest' as an actual tool result, contradicting the question's explicit absence of run/deploy proof."
+          }
+        ]
+      },
+      {
+        "topic": "Networking as an adoption blocker",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats networking as an owner requirement propagated into planning, without establishing implementation, exact socket semantics, or an adoption dependency."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Declares networking a hard prerequisite and says adoption/start are blocked by pending networking and verification. The packet description does not establish that dependency or causal blocker."
+          }
+        ]
+      },
+      {
+        "topic": "Configuration intent versus enforced socket isolation",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats the tmpfiles configuration as an intended isolation boundary, not proof of effective socket bindings, permissions, or runtime isolation."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "States that isolation is strictly enforced and that tmpfiles configuration was generated, although the supplied description establishes a configuration read rather than generation or enforcement."
+          }
+        ]
+      },
+      {
+        "topic": "Meaning of partial reads and documentation truncation",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats embedded permission denials as incomplete evidence acquisition and row109 as truncated documentation, not executed networking actions."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Attributes permission failures to masking by tool parsing, prescribes tooling changes, and links documentation truncation to incomplete network setup. These causal conclusions exceed the available evidence."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Both analyze the question's packet description rather than supplied original export rows. Their agreement is not independent verification of the underlying calls, patches, or results."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly records unavailable message IDs, call IDs, patch paths, timestamps, parent links, active/compacted flags, and duplicate provenance. Its visible response is itself truncated during the uncertainty section."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Assigns specific row ranges within rows96-103 and labels description text as original quotations without original records supporting those attributions. Its F-252 identifiers are analytical labels, not export message IDs."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Both mention guest systemd, but only astra-pro consistently limits the conclusion to the absence of an automatic host-runit conflict. Qwen describes explicit permission that the packet description does not independently establish."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "An existing writable Btrfs mount check does not by itself prove destination FSID, ancestry, seed/sprout relationship, private-write ownership, or loop-free backing."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Two FUSE mounts and schema partitioning do not establish native Incus compatibility, Btrfs membership semantics, or private-scope enforcement."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The owner networking request does not resolve component identity, socket protocol, endpoint, permissions, or supported configuration, and should not be expanded into unrelated daemons or extra egress."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Later conclusions require separate comparisons of the exact patch, installed helpers, installed base boot service, golden inputs, and immutable historical blobs, plus independently recorded JEV adjudication."
+      }
+    ],
+    "blind_spots": [
+      "Neither response has original packet text sufficient for character-complete review, exact quotation verification, or call/result pairing.",
+      "Neither can establish whether the five-file edit persisted, was subsequently corrected, or reached any installed or deployed artifact.",
+      "No visible evidence proves socket-based Internet access, functioning FUSE mounts, effective guest isolation, or authoritative adoption/start.",
+      "This packet does not resolve the complete admission-to-recovery chain or the compatibility of no-host-loop storage with immutable seed/sprout requirements.",
+      "No substantive JEV question, answer, rubric, or decision receipt is available in the panel material.",
+      "The truncated astra-pro response prevents assessment of its complete uncertainty section and final JSON validity."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "request": 1,
+  "started": "2026-10-18T21:47:19.499030+00:00",
+  "finished": "2026-10-18T21:47:32.239109+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0d01185ea6597b31016ad53e6a67a887d098faad0c7aa9659b",
+    "created": 1792360042,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading session startup skill\",\"path\":\"skill://using-superpowers\"}",
+                "name": "read"
+              },
+              "id": "call_cRoUQOcxvt34xDI4SeCMl3Re",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading current shared ownership\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:417-475\"}",
+                "name": "read"
+              },
+              "id": "call_9fVe9acJyVCrhnhmVjNJN57c",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory protocol skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/grpc-protocol-expert/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_9Gh4UGxPvfA95sc11mc2yTPg",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory plugin skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/grpc-expert/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_ln0CqPSbq208L3niW948F0gg",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory renderer skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/json-render/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_nU9z0u46I3R6WZ6U1DpnSiIw",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory network analysis\",\"path\":\"/srv/git/odbus-verified/.agents/skills/ovs-db-analysis/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_WTfeP8GMmpvoKxxYMhwAsBfo",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory kernel diagnosis\",\"path\":\"/srv/git/odbus-verified/.agents/skills/kernel-fuse-diagnosis/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_ZfpMLqSQQxNESWDSZWOcTHxf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory filesystem skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/fuse/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_I9sdSaLnn1VWefbaEyWxmLsx",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory storage skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/btrfs/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_dBCII9q0yIkN8NYnoWjramar",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory allocation skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/rust-memory-optimization/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_dBdyppobcvvLdbMzaqQPMwb3",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory ownership skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/memory-safety-patterns/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_qAhSMAvUavvCiJVMrV7SX36M",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 534,
+      "prompt_tokens": 233943,
+      "total_tokens": 234477,
+      "completion_tokens_details": {
+        "reasoning_tokens": 57
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 77260
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:47:32.235359+00:00",
+  "stream_chunks": 24
+}

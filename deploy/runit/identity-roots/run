@@ -1,33 +1,180 @@
 #!/bin/sh
-# runit oneshot: bring identity-centric containers up from their own devices
-# (OD-86). It runs after incusd because each identity's root is mounted into
-# Incus's private pool path. A failed identity is logged and skipped; it
-# never holds back incusd or any other container.
+# Restore only receipt-selected existing roots after Incus readiness. Numbered
+# names are selectors, never identity authority. Preflight all boot selections
+# before restoring anything; conflicting logical identities fail closed.
+# This base-owned service is not installed/enabled by application activation.
 exec 2>&1
-
+rm -f /run/opdbus/runit-ready/identity-roots
+fail() { printf 'identity-roots: %s\n' "$*" >&2; exit 1; }
+secure_path() (
+    path=$1
+    [ "$(realpath -e -- "$path")" = "$path" ] || fail "noncanonical path: $path"
+    while :; do
+        [ ! -L "$path" ] && [ "$(stat -c %u -- "$path")" = 0 ] &&
+            [ $((0$(stat -c %a -- "$path") & 022)) -eq 0 ] || fail "unsafe owner/mode: $path"
+        [ "$path" != / ] || break
+        path=$(dirname -- "$path")
+    done
+)
+private_receipt() {
+    secure_path "$1" || return 1
+    [ -f "$1" ] && [ "$(stat -c %u:%g:%a "$1")" = 0:0:600 ]
+}
 wait_dep() {
     sv start "$1" >/dev/null 2>&1 || true
     i=0
     until sv check "$1" >/dev/null 2>&1; do
         i=$((i + 1))
-        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        [ "$i" -ge 90 ] && fail "dependency $1 not ready after 90s"
         sleep 1
     done
 }
-
-wait_dep incusd
-
+wait_dep incus
 i=0
 until incus info >/dev/null 2>&1; do
     i=$((i + 1))
-    if [ "$i" -ge 60 ]; then
-        echo "incusd API not ready" >&2
-        exit 1
-    fi
+    [ "$i" -lt 60 ] || fail 'incusd API not ready'
     sleep 1
 done
-
-/usr/local/libexec/3tched/op-identity-root up
-/usr/local/libexec/3tched/op-identity-root status
-/usr/local/libexec/3tched/runit-ready-signal identity-roots
-exec pause
+# Deliberate release-owned dependency selection; a partial/broken activated
+# closure is an error, not permission to execute an older base helper.
+if [ "${OP_IDENTITY_HELPER_DIR+x}" = x ]; then
+    helper_dir=$OP_IDENTITY_HELPER_DIR
+else
+    helper_dir=/usr/local/libexec/op-dbus/helpers
+fi
+helper_dir=$(realpath -e -- "$helper_dir") || fail 'selected helper directory absent'
+secure_path "$helper_dir" || exit 1
+for dependency in op-identity-root op-identity-image restore-chatbot-root sync-instance-upgrade runit-ready-signal; do
+    secure_path "$helper_dir/$dependency" || exit 1
+    [ -f "$helper_dir/$dependency" ] && [ -x "$helper_dir/$dependency" ] || fail "selected helper unavailable: $dependency"
+done
+helper=$helper_dir/op-identity-root
+restore_helper=$helper_dir/restore-chatbot-root
+# Keep the entire root-helper chain in the selected closure.
+OP_IDENTITY_IMAGE_HELPER=$helper_dir/op-identity-image
+OP_SYNC_INSTANCE_UPGRADE_HELPER=$helper_dir/sync-instance-upgrade
+export OP_IDENTITY_IMAGE_HELPER OP_SYNC_INSTANCE_UPGRADE_HELPER
+chatbot_session=b0c777e3-0955-cd8b-3d01-ca12998cae28
+pool=/var/lib/incus/storage-pools/3tched-pool
+# An absent pool must not hide GPT receipts and select the legacy root path.
+secure_path "$pool" || exit 1
+[ "$(stat -c %u:%g "$pool")" = 0:0 ] &&
+    [ "$(findmnt -rn -M "$pool" -o FSTYPE)" = btrfs ] &&
+    [ "$(findmnt -rn -M "$pool" -o FSROOT)" = / ] &&
+    [ "$(findmnt -rn -M "$pool" -o UUID)" = a1ab7b42-12a8-437c-8f65-d0469892c8dd ] &&
+    [ "$(findmnt -rn -M / -o UUID)" != a1ab7b42-12a8-437c-8f65-d0469892c8dd ] ||
+    fail 'canonical loop pool is not mounted on its pinned filesystem'
+if [ -e "$pool/.provisioning" ] || [ -L "$pool/.provisioning" ]; then
+    secure_path "$pool/.provisioning" || exit 1
+    [ -d "$pool/.provisioning" ] && [ "$(stat -c %u:%g:%a "$pool/.provisioning")" = 0:0:700 ] ||
+        fail 'preparation receipt directory must be private'
+fi
+physical=${OP_IDENTITY_SEED_STATE:-/var/lib/opdbus-runtime/seed-identities}
+legacy=${IDENTITIES:-/var/lib/opdbus-runtime/identities}
+gpt_present=0
+gpt_name=
+physical_present=0
+physical_names=
+selected_sessions='|'
+# GPT boot receipts attest completed adoption; restore --check verifies exact
+# native UUID/session/key plus the corresponding private disk/root receipts.
+# Restoration needs no online preparation replay, regardless of native name.
+# Never execute restoration while another receipt could name the same chatbot.
+for receipt in "$pool"/.provisioning/*.boot.json; do
+    [ -e "$receipt" ] || [ -L "$receipt" ] || continue
+    gpt_present=1
+    private_receipt "$receipt" || fail "unsafe GPT boot receipt: $receipt"
+    name=$(basename "$receipt" .boot.json)
+    [ -z "$gpt_name" ] || fail 'multiple GPT chatbot boot receipts; reconcile before restoration'
+    "$restore_helper" --check "$name" || fail "invalid GPT chatbot boot receipt: $name"
+    gpt_name=$name
+    selected_sessions="$selected_sessions$chatbot_session|"
+done
+for receipt in "$physical"/*/state.json; do
+    [ -e "$receipt" ] || [ -L "$receipt" ] || continue
+    physical_present=1
+    name=$(basename "$(dirname "$receipt")")
+    marker=$physical/$name/boot-ready.json
+    if [ ! -e "$marker" ] && [ ! -L "$marker" ]; then
+        echo "physical seed $name: no authoritative-completion boot opt-in; skipped"
+        continue
+    fi
+    private_receipt "$receipt" && private_receipt "$marker" || fail "unsafe physical boot receipts: $name"
+    # Keep existing canonical UUID roots. Both chatbot name forms require the
+    # same pinned session and complete boot/storage receipt; neither grants identity.
+    jq -e --arg name "$name" --arg sid "$chatbot_session" '
+        .version==1 and .layout=="shared-partition-siblings-v2" and .name==$name and .phase=="ready" and
+        (.session|type=="string" and test("^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$")) and
+        (.instance_uuid|type=="string" and test("^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$")) and
+        (.session==$name or (.session==$sid and
+            ($name|test("^(3tchedCtlChatbot|3tchedChatbot|ID-[1-9][0-9]*)$") and length<=63)))
+    ' "$receipt" >/dev/null || fail "invalid/incomplete physical boot receipt: $name"
+    policy=$(jq -er '.start_on_boot|select(type=="boolean")|tostring' "$marker") || fail "invalid physical boot policy: $name"
+    expected=$(jq -cS --argjson start "$policy" '{version,layout,image,members,persist,name,session,instance_uuid,root,seed_fsid,seed_generation,sprout_fsid,leaf,leaf_inode,leaf_size,start_on_boot:$start}' "$receipt") || fail "invalid storage pins: $name"
+    actual=$(jq -cS . "$marker") || fail "invalid boot marker: $name"
+    [ "$expected" = "$actual" ] || fail "physical boot/storage pins differ: $name"
+    session=$(jq -er .session "$receipt") || fail "missing physical session: $name"
+    case "$selected_sessions" in
+        *"|$session|"*) fail "conflicting boot receipts for logical identity $session; no roots restored" ;;
+    esac
+    selected_sessions="$selected_sessions$session|"
+    physical_names="$physical_names $name"
+done
+failed=0
+if [ -n "$gpt_name" ]; then
+    "$restore_helper" "$gpt_name" || failed=$((failed + 1))
+fi
+seed_readonly_ready=0
+for name in $physical_names; do
+    receipt=$physical/$name/state.json
+    marker=$physical/$name/boot-ready.json
+    start_on_boot=$(jq -er '.start_on_boot|select(type=="boolean")|tostring' "$marker") || fail "invalid boot policy: $name"
+    # The helper checks the complete boot/storage marker, native UUID and
+    # session/key binding again under its lifecycle lock before touching roots.
+    if [ "$seed_readonly_ready" -eq 0 ]; then
+        "$helper" seed-readonly || fail 'physical seed read-only enforcement failed'
+        seed_readonly_ready=1
+    fi
+    state=$(incus query "/1.0/instances/$name/state" | jq -er '.status') || state=unknown
+    case "$state" in
+        Running)
+            if "$helper" seed-check "$name"; then
+                "$helper" seed-lungs "$name" || failed=$((failed + 1))
+            else failed=$((failed + 1)); fi
+            ;;
+        Stopped)
+            if "$helper" seed-up "$name" && "$helper" seed-lungs "$name"; then
+                if [ "$start_on_boot" = true ]; then incus start "$name" || failed=$((failed + 1))
+                else echo "physical seed $name: storage restored; boot start disabled"; fi
+            else failed=$((failed + 1)); fi
+            ;;
+        *) echo "physical seed $name: unsupported native status $state" >&2
+            failed=$((failed + 1)) ;;
+    esac
+done
+if [ "$physical_present" -eq 1 ] || [ "$gpt_present" -eq 1 ]; then
+    # Never select legacy `up`: directly mounting the same seed conflicts with
+    # retained sprouts even when another identity's root failed restoration.
+    for image in "$legacy"/*/identity.img; do
+        [ -f "$image" ] || continue
+        name=$(basename "$(dirname "$image")")
+        case "$selected_sessions" in
+            *"|$name|"*) echo "legacy identity $name: suppressed by selected boot receipt"; continue ;;
+        esac
+        if { [ "$name" = 3tchedChatbot ] || [ "$name" = 3tchedCtlChatbot ]; } && [ "$gpt_present" -eq 1 ]; then
+            echo "legacy identity $name: suppressed by GPT boot receipt"
+        elif [ -e "$physical/$name/state.json" ] || [ -L "$physical/$name/state.json" ]; then
+            echo "legacy identity $name: suppressed by physical seed receipt"
+        else
+            echo "legacy identity $name: migration or independent lower required; shared seed direct mount suppressed" >&2
+            failed=$((failed + 1))
+        fi
+    done
+else
+    "$helper" up || failed=$((failed + 1))
+    "$helper" status || failed=$((failed + 1))
+fi
+[ "$failed" -eq 0 ] || fail "$failed identity root startup check(s) failed"
+"$helper_dir/runit-ready-signal" identity-roots || exit 1
+exec sleep infinity

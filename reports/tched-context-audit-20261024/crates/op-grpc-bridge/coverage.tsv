@@ -1,0 +1,56 @@
+path	inventory_lines	status	read_coverage	notes
+crates/op-grpc-bridge/src/tched_catalog_binding.rs	293	read	1-293 through EOF	Fresh sequential full read
+crates/op-grpc-bridge/src/tched_config_dispatch.rs	119	read	1-119 through EOF	Fresh sequential full read
+crates/op-grpc-bridge/src/tched_config_engine.rs	443	read	1-443 through EOF	Fresh sequential full read
+crates/op-grpc-bridge/src/tched_own_agent_route.rs	343	read	1-343 through EOF	Fresh sequential full read
+crates/op-grpc-bridge/Cargo.toml	136	read	1-136 through EOF	Sequential inventory line 2
+crates/op-grpc-bridge/SPEC.md	89	read	1-89 through EOF	Sequential inventory line 3
+crates/op-grpc-bridge/build.rs	529	read	1-529 through EOF	Sequential inventory line 4
+crates/op-grpc-bridge/compare-op-grpc-bridge.md	98	read	1-98 through EOF	Sequential inventory line 5
+crates/op-grpc-bridge/examples/get_identity.rs	32	read	1-32 through EOF	Sequential inventory line 6
+crates/op-grpc-bridge/examples/list_dbs_test.rs	21	read	1-21 through EOF	Sequential inventory line 7
+crates/op-grpc-bridge/examples/provision_container.rs	41	read	1-41 through EOF	Sequential inventory line 8
+crates/op-grpc-bridge/examples/provision_identity.rs	69	read	1-69 through EOF	Sequential inventory line 9
+crates/op-grpc-bridge/examples/test_dbus_passthrough.rs	36	read	1-36 through EOF	Sequential inventory line 10
+crates/op-grpc-bridge/examples/test_registration.rs	28	read	1-28 through EOF	Sequential inventory line 11
+crates/op-grpc-bridge/examples/test_vendor_identity.rs	32	read	1-32 through EOF	Sequential inventory line 12
+crates/op-grpc-bridge/examples/test_xray_get_stats.rs	25	read	1-25 through EOF	Sequential inventory line 13
+crates/op-grpc-bridge/proto/emqx_exhook_v3.proto	539	read	1-539 through EOF	Sequential inventory line 14
+crates/op-grpc-bridge/proto/mail.proto	197	read	1-197 through EOF	Sequential inventory line 15
+crates/op-grpc-bridge/proto/operation.proto	941	read	1-941 through EOF	Sequential inventory line 16; sequential read covered all lines through final line
+crates/op-grpc-bridge/proto/privacy_network.proto	246	read	1-246 through EOF	Sequential inventory line 17
+crates/op-grpc-bridge/proto/registration.proto	177	read	1-177 through EOF	Sequential inventory line 18
+crates/op-grpc-bridge/proto/registry.proto	218	read	1-218 through EOF	Sequential inventory line 19
+crates/op-grpc-bridge/src/accountability_search.rs	66	read	1-66 through EOF	Sequential inventory line 20
+crates/op-grpc-bridge/src/agent_catalog_dispatch.rs	258	read	1-258 through EOF	Sequential inventory line 21
+crates/op-grpc-bridge/src/agent_runs.rs	847	read	1-847 through EOF	Sequential inventory line 22
+crates/op-grpc-bridge/src/agent_triggers.rs	94	read	1-94 through EOF	Sequential inventory line 23
+crates/op-grpc-bridge/src/agent_ui_proxy.rs	356	read	1-356 through EOF	Sequential inventory line 24
+crates/op-grpc-bridge/src/agent_workflow.rs	417	read	1-417 through EOF	Sequential inventory line 25
+crates/op-grpc-bridge/src/anna_scribe.rs	280	read	1-280 through EOF	Sequential inventory line 26
+crates/op-grpc-bridge/src/antigravity_canonical_tests.rs	343	read	1-343 through EOF	Sequential inventory line 27
+crates/op-grpc-bridge/src/antigravity_dispatch.rs	287	read	1-287 through EOF	Sequential inventory line 28
+crates/op-grpc-bridge/src/bin/dump-protos.rs	135	read	1-135 through EOF	Sequential inventory line 29
+crates/op-grpc-bridge/src/bin/op-decoy-network.rs	6	read	1-6 through EOF	Sequential inventory line 30
+crates/op-grpc-bridge/src/bin/op-grants-materializer.rs	305	read	1-305 through EOF	Sequential inventory line 31
+crates/op-grpc-bridge/src/bin/op-grpc-bridge.rs	31	read	1-31 through EOF	Sequential inventory line 32
+crates/op-grpc-bridge/src/bound_state_subscription.rs	118	read	1-118 through EOF	Sequential inventory line 33
+crates/op-grpc-bridge/src/catalog_ordinary_profile.rs	0	unavailable	No content; direct read returned not found	Sequential inventory line 34; deleted-in-worktree
+crates/op-grpc-bridge/src/chain_vector_projector.rs	406	read	1-406 through EOF	Sequential inventory line 35
+crates/op-grpc-bridge/src/chat_mode_routing.rs	142	read	1-142 through EOF	Sequential inventory line 36
+crates/op-grpc-bridge/src/chat_response_dispatch.rs	1076	read	1-1076 through EOF	Sequential inventory line 37
+crates/op-grpc-bridge/src/chat_response_state.rs	557	read	1-557 through EOF	Sequential inventory line 38
+crates/op-grpc-bridge/src/chat_response_tests.rs	778	read	1-778 through EOF	Sequential inventory line 39
+crates/op-grpc-bridge/src/chat_response_turns.rs	399	read	1-399 through EOF	Sequential inventory line 40
+crates/op-grpc-bridge/src/chat_service.rs	590	read	1-590 through EOF	Sequential inventory line 41
+crates/op-grpc-bridge/src/chatbot_episode_state.rs	920	read	1-920 through EOF	Sequential inventory line 42
+crates/op-grpc-bridge/src/chatbot_episode_stream.rs	712	pending	Unread	Sequential inventory line 43
+crates/op-grpc-bridge/src/context_bundle.rs	321	read	1-321 through EOF	Sequential inventory line 44
+crates/op-grpc-bridge/src/control_plane_routing.rs	250	read	1-250 through EOF	Sequential inventory line 45
+crates/op-grpc-bridge/src/cron_dispatch.rs	159	read	1-159 through EOF	Sequential inventory line 46
+crates/op-grpc-bridge/src/cron_gateway.rs	247	read	1-247 through EOF	Sequential inventory line 47
+crates/op-grpc-bridge/src/cron_gateway_tests.rs	198	read	1-198 through EOF	Sequential inventory line 48
+crates/op-grpc-bridge/src/cron_methods.rs	747	read	1-747 through EOF	Sequential inventory line 49
+crates/op-grpc-bridge/src/cron_methods_tests.rs	428	read	1-428 through EOF	Sequential inventory line 50
+crates/op-grpc-bridge/src/cron_observer.rs	321	read	1-321 through EOF	Sequential inventory line 51
+# Remaining inventory entries are pending. Inventory lines: 212 source entries; 209 listed present and 3 deleted-in-worktree. Full file-by-file dispositions not yet completed.

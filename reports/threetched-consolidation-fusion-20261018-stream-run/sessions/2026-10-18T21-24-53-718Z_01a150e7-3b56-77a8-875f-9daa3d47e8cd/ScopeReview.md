@@ -1,0 +1,20 @@
+**The four orphan grant strings are accepted and retained by the grant machinery; they do not themselves block materialization, the grant-readiness startup dependency, or sealing.** After aligned source/catalog retirement, they confer no callable `GetConfigSchema` authority. This is a source-derived conclusion, not an executed check.
+
+### Exact evidence
+
+| Boundary | Source and consequence |
+|---|---|
+| Four residual entries | `deploy/security/capability-grants.json:7,86,338,533` contains `cap.software.3tched-router.config-schema.read@v1`. Literal search across `crates`, `deploy`, and `scripts` found these four occurrences and no remaining source consumer of this capability. |
+| Grant validation | `crates/op-grpc-bridge/src/interceptor.rs:1762-1837`: `validate_grant_document` delegates to `validated_grant_entries`. Capability values are checked only for string type, nonempty trimmed content and duplicates within an entry (`:1786-1803`). Principal/group structure is also validated. **There is no capability-to-schema/catalog membership check.** “Unknown group” rejection is unrelated to unknown capability strings. |
+| Materialization | `crates/op-grpc-bridge/src/bin/op-grants-materializer.rs:27-30,95-129`: source bytes pass the above validator; `reconcile` publishes the same bytes and marks readiness. Unknown-but-well-formed capability strings are neither rejected nor pruned. File/I/O or other document errors can still fail independently. |
+| Runtime grant expansion | `interceptor.rs:1845-1906`: loader reuses the same document validation and copies the principal’s and inherited groups’ capability strings into a `HashSet`. Thus the orphan string remains in the grant set; it is not silently discarded. |
+| Startup grant dependency | `deploy/runit/op-grpc-bridge/run:36-52` waits for `opdbus-grants`; `deploy/runit/opdbus-grants/run:12` runs this materializer. Its `check:2-3` requires readiness and the materializer process. The orphan string causes no rejection in this inspected dependency chain. |
+| Seal construction | `crates/op-plugins/src/bin/opblob.rs:688-750`: `seal_plugins` loads plugins, obtains their schemas, blobifies them and updates/sweeps the catalog. It does not load or reconcile grant documents. Catalog validation at `:263-302` validates blob/manifest/schema identity and hashes, not whether every granted capability has a method. |
+| Schema loading | `crates/op-grpc-bridge/src/schema_loader.rs:60-80` loads the manifest-pinned schema from the catalog; grants are not an input. |
+| Actual call authority | `crates/op-grpc-bridge/src/method_contract_admission.rs:159-201`: admission requires the named method in the pinned seal, matching compiled-method evidence and an exactly matching exercised capability. **An orphan grant cannot recreate an absent method or substitute for another method’s required capability.** A stale seal containing the removed method still lacks matching compiled-method evidence after binary replacement. |
+
+### Precise report wording
+
+> Four versioned grants for the retired `GetConfigSchema` capability remain intentionally unchanged under the no-grant-change boundary. Current grant validation accepts opaque, nonempty, unique capability strings without catalog membership validation; materialization preserves those strings. They are residual policy cleanup, not an identified materialization/startup/seal blocker. They confer no method access once the method is absent from aligned compiled and sealed contracts. Grant removal requires separate authorization.
+
+**Caveat:** “Inert” describes the retired/aligned implementation. An unchanged old deployed binary/catalog can still implement the method, and reintroducing a method requiring the same capability would make existing grants effective again. No live binary/catalog alignment or startup success was checked.

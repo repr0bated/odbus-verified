@@ -1,0 +1,17 @@
+{
+  "task_id": "chatbot-self-validation-20261003",
+  "status": "owner-requested-runtime-applied-ping-receipt-204067-verified",
+  "principal_id": "1262e982-14c1-44d4-0771-7ce74213211b",
+  "session_id": "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+  "capability": "freedesktop.read",
+  "resource_scope": "Existing sealed freedesktop plugin: discover and read public OP-DBUS plugin objects. Calls retain this chatbot's verified identity. Every target mutation still requires its own exact declared capability.",
+  "duration": "Persistent for the singleton always-running chatbot",
+  "authorization": "Owner requested system-bus access for this identity only in current session",
+  "verification": [
+    "Atomic policy delta changes only this principal's one capability",
+    "Durable and materialized SHM grants match",
+    "Same-session declared Ping/GetMachineId or discovery operation has successful authoritative receipt",
+    "Host system bus socket is not mounted into guest; unsupported arbitrary destinations remain refused"
+  ],
+  "rollback": "Remove only newly added freedesktop.read from this principal; retain all other fields and verify grants equality."
+}

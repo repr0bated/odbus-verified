@@ -1,0 +1,13 @@
+path	listed_lines	read_lines	status	note
+crates/op-state/Cargo.toml	36	36	read_full	Through EOF
+crates/op-state/SPEC.md	104	104	read_full	Through EOF
+crates/op-state/compare-op-state.md	100	100	read_full	Through EOF
+crates/op-state/src/authority.rs	50	50	read_full	Through EOF
+crates/op-state/src/crypto.rs	363	363	read_full	Contiguous ranges through EOF; raw follow-up for final lines
+crates/op-state/src/dbus_plugin_base.rs	336	336	read_full	Contiguous ranges through EOF; raw follow-up for elided display ranges
+crates/op-state/src/dbus_server.rs	64	64	read_full	Through EOF
+crates/op-state/src/lib.rs	50	50	read_full	Through EOF
+crates/op-state/src/plugin.rs	306	306	read_full	Contiguous ranges through EOF; raw follow-up for elided display ranges
+crates/op-state/src/plugin_workflow.rs	434	434	read_full	Contiguous ranges through EOF; raw follow-up for elided display ranges
+crates/op-state/src/plugtree.rs	112	112	read_full	Through EOF
+crates/op-state/src/schema_validator.rs	319	319	read_full	Full raw read through EOF

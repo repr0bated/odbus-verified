@@ -1,0 +1,3 @@
+#!/bin/sh
+# Only this service owns the main host's wg-opdbus interface.
+exec /usr/bin/wg-quick down wg-opdbus

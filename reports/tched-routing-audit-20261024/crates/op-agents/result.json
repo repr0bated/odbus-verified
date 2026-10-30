@@ -1,0 +1,112 @@
+{
+  "task": "tched-routing-audit-20261024",
+  "crate": "op-agents",
+  "date": "2026-10-24",
+  "status": "complete_static_audit",
+  "audit_only": true,
+  "source_modified": false,
+  "scope": "crates/op-agents/",
+  "inventory": "/var/tmp/tched-routing-audit-20261024/crates/op-agents/inventory.tsv",
+  "coverage": {
+    "files_expected": 149,
+    "files_read": 149,
+    "lines_read": 21956,
+    "initial_bytes": 724257,
+    "observed_bytes": 724265,
+    "directories_read": 27,
+    "initial_hashes_matching": 148,
+    "initial_hashes_drifting": 1,
+    "missing_files": 0,
+    "sequential": true,
+    "through_eof": true,
+    "method": "Explicit inventory order; read :raw:start-end chunks of at most 160 lines; line-by-line literal substring accounting, no search tools; complete numbered source supplied to declarative Jev; exact occurrence classified contextually."
+  },
+  "counts": {
+    "occurrences": 1,
+    "ordinary_words": 1,
+    "domain_occurrences": 0,
+    "dead_ends": 0,
+    "reroutes": 0,
+    "model_reroutes": 0,
+    "fuse_cli_reroutes": 0,
+    "deletions": 0,
+    "renames": 0,
+    "leaves": 1,
+    "uncertain_occurrences": 0
+  },
+  "occurrences": [
+    {
+      "id": "O001",
+      "path": "crates/op-agents/src/bin/gen-agent-defs.rs",
+      "line": 10,
+      "column": 21,
+      "token": "matched",
+      "source_line": "//! The layout is matched deliberately so that module can be revived as a reader",
+      "context_start": 4,
+      "context_end": 16,
+      "context": "4: //! markdown under `.agents/generated/` is derived output.\n5: //!\n6: //! Output follows the frontmatter + section layout that `src/generator/`\n7: //! defines (`name`/`description`/`model`, then `## Purpose`, `## Capabilities`,\n8: //! `## Behavioral Traits`, `## Knowledge Base`). Note that `src/generator/` is\n9: //! currently orphaned — it is not declared in `lib.rs`, so it never compiles.\n10: //! The layout is matched deliberately so that module can be revived as a reader\n11: //! without reformatting anything here, but nothing verifies the round trip yet.\n12: //!\n13: //!   gen-agent-defs            write definitions\n14: //!   gen-agent-defs --check    exit 1 if on-disk output is stale (CI drift gate)\n15: \n16: use std::collections::BTreeMap;",
+      "role": "ordinary_word",
+      "integrity": "not_applicable",
+      "action": "leave_as_is",
+      "judgment_confidence": {
+        "role": 0.97,
+        "integrity": 1,
+        "action": 1
+      },
+      "judgment_reference": "judgments.md#authoritative-targeted-occurrence-judgment"
+    }
+  ],
+  "inventory_drift": [
+    {
+      "path": "crates/op-agents/src/agents/mobile/ios_developer.rs",
+      "initial_sha256": "81befc51f0c9c957bb3abf2cb847e37909cfdf5c1411184596c155e3d8bd6978",
+      "observed_sha256": "0014ff2f33f1caeec4e4a8f536344443de7755873dba90bcf855847ae7fc4a35",
+      "initial_bytes": 3303,
+      "observed_bytes": 3311,
+      "observed_lines": 89,
+      "action": "preserved; not edited by this worker; no tched substring observed"
+    }
+  ],
+  "jev": {
+    "targeted_choices": 3,
+    "targeted_min_confidence": 0.97,
+    "supplemental_batch_id": "jdgb-15b3299009447e45",
+    "supplemental_model": "typesafe/jev-1.14.0",
+    "supplemental_file_judgments": 149,
+    "supplemental_low_confidence": 123,
+    "supplemental_literal_accounting_disagreements": 92,
+    "supplemental_labels_used_for_counts": false,
+    "receipts": "judgments.md"
+  },
+  "constraints": {
+    "search_tools_used": false,
+    "cargo_run": false,
+    "tests_run": false,
+    "lint_run": false,
+    "format_run": false,
+    "custom_smoke_run": false,
+    "runtime_operations": false,
+    "deploy": false,
+    "seal": false,
+    "grants_changed": false,
+    "credentials_changed": false,
+    "git_mutations": false
+  },
+  "shared_bookkeeping": {
+    "path": "HANDOFF.md",
+    "reason": "Higher-priority session requirement; no other shared docs modified"
+  },
+  "limitations": [
+    "Static occurrence audit only; no build, test, runtime or deployment claim.",
+    "Current ios_developer.rs differs from the supplied inventory baseline and was preserved.",
+    "Full-file Jev labels are unreliable for literal extraction and retained as non-authoritative contradictory/low-confidence receipts.",
+    "Root naming guidance conflicts with assignment retirement authority; no cross-crate or live catalog verification was performed."
+  ],
+  "report_files": [
+    "status.md",
+    "coverage.tsv",
+    "judgments.md",
+    "findings.md",
+    "result.json"
+  ]
+}

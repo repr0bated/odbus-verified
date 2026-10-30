@@ -36,7 +36,7 @@ use tokio::sync::{RwLock, broadcast};
 /// gRPC service generated and frozen. This ensures stable API contracts for
 /// clients - each method is independently versioned and typed.
 pub struct PerMethodGrpcServices {
-    /// method_path -> ServiceRegistry (e.g., "tched_router.RegisterAgent")
+    /// method_path -> ServiceRegistry (e.g., "chat_router.RegisterAgent")
     services: Arc<RwLock<HashMap<String, MethodServiceRegistry>>>,
     /// Broadcast channel for service lifecycle events
     lifecycle_tx: broadcast::Sender<MethodServiceLifecycleEvent>,
@@ -51,7 +51,7 @@ pub struct PerMethodGrpcServices {
 pub struct MethodServiceRegistry {
     /// Full method path: "plugin_id.method_name"
     pub method_path: String,
-    /// Plugin ID (e.g., "tched_router")
+    /// Plugin ID (e.g., "chat_router")
     pub plugin_id: String,
     /// Method name (e.g., "RegisterAgent")
     pub method_name: String,
@@ -669,7 +669,7 @@ mod tests {
             subid: "exp.service.3tched-router.register-agent@v1".to_string(),
         };
 
-        let proto = generate_method_proto("tched_router", "RegisterAgent", &method_decl);
+        let proto = generate_method_proto("chat_router", "RegisterAgent", &method_decl);
 
         assert!(proto.contains("service RegisterAgentService {"));
         assert!(proto.contains("rpc RegisterAgent"));
@@ -682,7 +682,7 @@ mod tests {
         assert!(proto.contains("capability: register"));
 
         let descriptor =
-            generate_method_file_descriptor("tched_router", "RegisterAgent", &method_decl);
+            generate_method_file_descriptor("chat_router", "RegisterAgent", &method_decl);
         assert!(!descriptor.is_empty(), "expected encoded FileDescriptorSet");
     }
 

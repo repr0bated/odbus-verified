@@ -1,0 +1,223 @@
+{
+  "outer_changed_paths": [
+    [
+      "example",
+      "surface",
+      "config_schema"
+    ],
+    [
+      "example",
+      "surface",
+      "config_schema_relocation"
+    ],
+    [
+      "example",
+      "surface",
+      "config_schema_sha256"
+    ],
+    [
+      "example",
+      "surface",
+      "format"
+    ],
+    [
+      "fields",
+      "surface",
+      "default",
+      "config_schema"
+    ],
+    [
+      "fields",
+      "surface",
+      "default",
+      "config_schema_relocation"
+    ],
+    [
+      "fields",
+      "surface",
+      "default",
+      "config_schema_sha256"
+    ],
+    [
+      "fields",
+      "surface",
+      "default",
+      "format"
+    ]
+  ],
+  "metadata": {
+    "format": "threetched-cli/2",
+    "relocation": {
+      "pointers": [
+        "/$defs/EstopConfig/properties/state_file/default",
+        "/$defs/KnowledgeConfig/properties/db_path/default",
+        "/$defs/PluginsConfig/properties/plugins_dir/default",
+        "/$defs/ProjectIntelConfig/properties/report_output_dir/default",
+        "/$defs/SecurityConfig/properties/estop/default/state_file",
+        "/$defs/SecurityOpsConfig/properties/playbooks_dir/default",
+        "/$defs/SecurityOpsConfig/properties/report_output_dir/default",
+        "/properties/knowledge/default/db_path",
+        "/properties/plugins/default/plugins_dir",
+        "/properties/project_intel/default/report_output_dir",
+        "/properties/security/default/estop/state_file",
+        "/properties/security_ops/default/playbooks_dir",
+        "/properties/security_ops/default/report_output_dir"
+      ],
+      "rule": "config-root-defaults-v1",
+      "source": "ZEROCLAW_CONFIG_DIR",
+      "target_root": "/var/lib/tched-router"
+    },
+    "runtime_config_dir": "/var/lib/tched-router",
+    "binary_sha256": "454ff4c18822535e782b0f9010d348302d4555709872b9f0e3830239c07ddf65",
+    "manifest_sha256": "a08341900e3fc3bb7a1f4f263bbbfe23c2e73a2eced66724bc3359e01e48bfad",
+    "methods": 147,
+    "command_bindings": 147,
+    "capabilities": 147,
+    "methods_unchanged": true,
+    "capabilities_unchanged": true,
+    "commands_unchanged": true,
+    "duplicated_surface_equal": true,
+    "disposable_prefix_absent": true
+  },
+  "config_schema_changes": [
+    {
+      "path": [
+        "$defs",
+        "EstopConfig",
+        "properties",
+        "state_file",
+        "default"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/estop-state.json",
+      "new": "/var/lib/tched-router/estop-state.json"
+    },
+    {
+      "path": [
+        "$defs",
+        "KnowledgeConfig",
+        "properties",
+        "db_path",
+        "default"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/knowledge.db",
+      "new": "/var/lib/tched-router/knowledge.db"
+    },
+    {
+      "path": [
+        "$defs",
+        "PluginsConfig",
+        "properties",
+        "plugins_dir",
+        "default"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/plugins",
+      "new": "/var/lib/tched-router/plugins"
+    },
+    {
+      "path": [
+        "$defs",
+        "ProjectIntelConfig",
+        "properties",
+        "report_output_dir",
+        "default"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/project-reports",
+      "new": "/var/lib/tched-router/project-reports"
+    },
+    {
+      "path": [
+        "$defs",
+        "SecurityConfig",
+        "properties",
+        "estop",
+        "default",
+        "state_file"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/estop-state.json",
+      "new": "/var/lib/tched-router/estop-state.json"
+    },
+    {
+      "path": [
+        "$defs",
+        "SecurityOpsConfig",
+        "properties",
+        "playbooks_dir",
+        "default"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/playbooks",
+      "new": "/var/lib/tched-router/playbooks"
+    },
+    {
+      "path": [
+        "$defs",
+        "SecurityOpsConfig",
+        "properties",
+        "report_output_dir",
+        "default"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/security-reports",
+      "new": "/var/lib/tched-router/security-reports"
+    },
+    {
+      "path": [
+        "properties",
+        "knowledge",
+        "default",
+        "db_path"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/knowledge.db",
+      "new": "/var/lib/tched-router/knowledge.db"
+    },
+    {
+      "path": [
+        "properties",
+        "plugins",
+        "default",
+        "plugins_dir"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/plugins",
+      "new": "/var/lib/tched-router/plugins"
+    },
+    {
+      "path": [
+        "properties",
+        "project_intel",
+        "default",
+        "report_output_dir"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/project-reports",
+      "new": "/var/lib/tched-router/project-reports"
+    },
+    {
+      "path": [
+        "properties",
+        "security",
+        "default",
+        "estop",
+        "state_file"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/estop-state.json",
+      "new": "/var/lib/tched-router/estop-state.json"
+    },
+    {
+      "path": [
+        "properties",
+        "security_ops",
+        "default",
+        "playbooks_dir"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/playbooks",
+      "new": "/var/lib/tched-router/playbooks"
+    },
+    {
+      "path": [
+        "properties",
+        "security_ops",
+        "default",
+        "report_output_dir"
+      ],
+      "old": "/tmp/opdbus-threetched-capture-o0kkOY/config/security-reports",
+      "new": "/var/lib/tched-router/security-reports"
+    }
+  ]
+}

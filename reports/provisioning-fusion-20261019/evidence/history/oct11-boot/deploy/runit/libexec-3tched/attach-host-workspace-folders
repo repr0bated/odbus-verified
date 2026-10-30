@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Host maintenance: attach existing shared empty/default folders. No content,
+# credentials, storage membership, or container start is changed here.
+set -euo pipefail
+die() { printf 'workspace folders: %s\n' "$*" >&2; exit 1; }
+[[ $# == 1 && $1 =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$ ]] || die 'usage: CONTAINER'
+container=$1
+[[ $(id -u) == 0 ]] || die 'requires host root'
+safe_host_directory() {
+    local path=$1 mode
+    [[ -d $path && $(realpath -e -- "$path") == "$path" ]] || die 'host directory must exist at its canonical path'
+    while :; do
+        [[ ! -L $path && $(stat -c %u -- "$path") == 0 ]] || die 'host path must be root-owned without symlinks'
+        mode=$(stat -c %a -- "$path")
+        (( (8#$mode & 022) == 0 )) || die 'host path must not be writable by group or others'
+        [[ $path == / ]] && break
+        path=$(dirname -- "$path")
+    done
+}
+for directory in /etc/3tched /etc/3tched/skills /etc/3tched/rules /etc/3tched/user /etc/3tched/shared; do
+    safe_host_directory "$directory"
+done
+expected='{"type":"disk","source":"/etc/3tched","path":"/etc/3tched","readonly":"true","shift":"true"}'
+observe() {
+    native=$(incus query "/1.0/instances/$container")
+    printf '%s\n' "$native" | jq -e --arg name "$container" --argjson expected "$expected" '
+        .name==$name and .type=="container" and .status=="Stopped" and
+        (.expanded_config["security.privileged"] // "false")=="false" and
+        (.expanded_devices | type)=="object" and
+        .devices.root.type=="disk" and .devices.root.path=="/" and
+        .devices.root==.expanded_devices.root and
+        all(.expanded_devices[]; .path | type=="string" and (explode | all(.>=32 and .!=127))) and
+        ((.devices["3tched-config"]==null and .expanded_devices["3tched-config"]==null) or
+         (.devices["3tched-config"]==$expected and .expanded_devices["3tched-config"]==$expected)) and
+        all(.expanded_devices | to_entries[];
+            .value.type=="disk" and
+            (.key=="root" or .key=="3tched-config" or
+             (.value.path | type=="string" and .!="/" and .!="/etc" and
+              .!="/etc/3tched" and (startswith("/etc/3tched/") | not))))
+    ' >/dev/null || die 'container must be stopped/unprivileged with no conflicting or inherited config mount'
+    # Reject lexical aliases that could bypass overlap checks (e.g. /etc/./).
+    while IFS= read -r target; do
+        [[ $target == /* && $(realpath -ms -- "$target") == "$target" ]] || die 'native disk target is not canonical'
+    done < <(printf '%s\n' "$native" | jq -r '.expanded_devices[] | .path')
+}
+observe
+native_uuid=$(printf '%s\n' "$native" | jq -er '.config["volatile.uuid"] | select(type=="string" and length>0)')
+if printf '%s\n' "$native" | jq -e '.devices["3tched-config"]==null' >/dev/null; then
+    incus config device add "$container" 3tched-config disk \
+        source=/etc/3tched path=/etc/3tched readonly=true shift=true
+fi
+observe
+printf '%s\n' "$native" | jq -e --arg uuid "$native_uuid" --argjson expected "$expected" '
+    .config["volatile.uuid"]==$uuid and .devices["3tched-config"]==$expected and
+    .expanded_devices["3tched-config"]==$expected
+' >/dev/null || die 'native config attachment readback changed or failed'
+printf 'Verified read-only host workspace folders for %s; container remains stopped.\n' "$container"

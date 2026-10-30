@@ -10,7 +10,7 @@ use std::time::Instant;
 use tokio::sync::broadcast;
 use tracing::{info, warn};
 
-const TCHED_ROUTER_PLUGIN_ID: &str = "tched_router";
+const CHAT_ROUTER_PLUGIN_ID: &str = "chat_router";
 
 /// Event emitted to `WatchSchema` subscribers after a successful reload.
 #[derive(Clone, Debug)]
@@ -18,7 +18,7 @@ pub struct SchemaReloadEvent {
     pub event_type: String,
 }
 
-/// Shared loader state for the tched_router Axum host.
+/// Shared loader state for the chat_router Axum host.
 #[derive(Clone)]
 pub struct SchemaLoader {
     path: Arc<RwLock<PathBuf>>,
@@ -34,7 +34,7 @@ impl SchemaLoader {
     /// Panics with a descriptive message if the sealed schema catalog is absent.
     /// This is intentional: the sealed catalog must start first.
     pub fn new(path: impl Into<PathBuf>) -> anyhow::Result<Self> {
-        Self::new_for_plugin(path, TCHED_ROUTER_PLUGIN_ID)
+        Self::new_for_plugin(path, CHAT_ROUTER_PLUGIN_ID)
     }
 
     /// Create a loader for a specific plugin id and perform the initial read.
@@ -233,7 +233,7 @@ mod tests {
     use super::*;
 
     fn seal(dir: &Path, schema: op_state_store::PluginSchema) {
-        let blob = op_blob::blobify_plugin_schema("tched_router", schema);
+        let blob = op_blob::blobify_plugin_schema("chat_router", schema);
         op_blob::catalog::BlobStore::open(dir)
             .unwrap()
             .write(&blob)
@@ -243,7 +243,7 @@ mod tests {
     #[tokio::test]
     async fn should_load_schema_from_live_catalog() {
         let dir = tempfile::tempdir().unwrap();
-        let value = op_state_store::PluginSchema::builder("tched_router")
+        let value = op_state_store::PluginSchema::builder("chat_router")
             .version("1.0.0")
             .description("test schema")
             .build();
@@ -251,7 +251,7 @@ mod tests {
         seal(path, value);
         let loader = SchemaLoader::new(path).unwrap();
         let loaded = loader.get().await;
-        assert_eq!(loaded["name"], "tched_router");
+        assert_eq!(loaded["name"], "chat_router");
         assert_eq!(loaded["version"], "1.0.0");
         assert_eq!(loader.health_status().await, "ok");
     }
@@ -259,7 +259,7 @@ mod tests {
     #[tokio::test]
     async fn should_reject_direct_plugin_schema_file() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("tched_router.json");
+        let path = dir.path().join("chat_router.json");
         std::fs::write(&path, "{}").unwrap();
         let error = SchemaLoader::new(&path)
             .err()
@@ -270,8 +270,8 @@ mod tests {
     #[tokio::test]
     async fn should_reject_blob_without_catalog_manifest() {
         let dir = tempfile::tempdir().unwrap();
-        let schema = op_state_store::PluginSchema::builder("tched_router").build();
-        op_blob::blobify_plugin_schema("tched_router", schema)
+        let schema = op_state_store::PluginSchema::builder("chat_router").build();
+        op_blob::blobify_plugin_schema("chat_router", schema)
             .write_to_dir(dir.path())
             .unwrap();
         assert!(SchemaLoader::new(dir.path()).is_err());
@@ -281,7 +281,7 @@ mod tests {
     async fn should_reload_schema_on_sighup() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path();
-        let initial = op_state_store::PluginSchema::builder("tched_router")
+        let initial = op_state_store::PluginSchema::builder("chat_router")
             .version("1.0.0")
             .description("initial")
             .build();
@@ -301,13 +301,13 @@ mod tests {
         assert_eq!(loader.get().await["version"], "1.0.0");
 
         // Update the file and reload again.
-        let updated = op_state_store::PluginSchema::builder("tched_router")
+        let updated = op_state_store::PluginSchema::builder("chat_router")
             .version("2.0.0")
             .description("updated")
             .build();
         seal(path, updated);
         // A stale file is not an authority: only the manifest-pinned blob is.
-        op_blob::blobify_plugin_schema("tched_router", initial)
+        op_blob::blobify_plugin_schema("chat_router", initial)
             .write_to_dir(path)
             .unwrap();
         loader.load().unwrap();

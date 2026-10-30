@@ -1,0 +1,44 @@
+{
+  "task_id": "human-leaf-registration-20261003",
+  "status": "completed-temporary-grant-removed-20261003T1832Z",
+  "test_order": "Owner explicitly requested build and live registration first, tests afterward",
+  "owner_approval": "2026-10-03: Approve temporary grant (reply to exact proposal)",
+  "principal_id": "c9bdf32e-811d-2495-b688-277c9e5c4d36",
+  "session_id": "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e",
+  "add_capabilities": ["cap.identity.sled.physical_root_migrate@v1"],
+  "resource_scope": {
+    "methods": ["inspect_own_physical_root_migration_preflight", "migrate_own_physical_root"],
+    "identity": "Only the cryptographically verified caller's existing human session; no target argument",
+    "device": "/dev/sdb2",
+    "filesystem_uuid": "bc95536f-1d38-46ad-b87e-2637c5c548ec",
+    "subvolume_id": 264,
+    "subvolume_uuid": "455b0102-4a91-bd40-8940-12c04e38d3a0",
+    "shared_runtime_session_id": "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+    "binding_path": "/var/lib/opdbus-runtime/seed-identities/b0c777e3-0955-cd8b-3d01-ca12998cae28/volume/@identity/414fbc56-03fb-20ab-758a-bcc7a7cbdc0e",
+    "observed_path": "/run/opdbus-leaf/@identity/b0c777e3-0955-cd8b-3d01-ca12998cae28/@identity/414fbc56-03fb-20ab-758a-bcc7a7cbdc0e"
+  },
+  "duration": "Temporary for this migration and receipt verification; remove this exact capability when finished or abandoned",
+  "expected_effect": "Allow own-session preflight and a single digest-pinned shared-runtime leaf migration through MutationEngine/Cozo; retire the obsolete human container binding and retain existing key, authored SID1, principal, Cozo owner, active policy and historical journals",
+  "preconditions": [
+    "Owner approval of this exact single-capability delta",
+    "Matching built backend/catalog supports v2 shared-leaf adoption; live operation verifies native storage/runtime proof",
+    "Prepared root-private plan binds current revision, complete journal hashes and native shared-runtime UUID",
+    "Kernel verification of device membership, filesystem and subvolume identity"
+  ],
+  "verification": [
+    "Validate exact policy delta and preserve every other principal/capability",
+    "Materializer ready and durable policy equals SHM projection",
+    "Same assigned-human namespace produces preflight and migration operation receipts",
+    "Authoritative get_identity and inventory confirm the new binding and retained history",
+    "Compare key, credential fingerprint, genesis, principal, Cozo owner and active policy before/after",
+    "Remove the temporary capability and verify materializer equality/readiness"
+  ],
+  "rollback": "Before commit, withdraw the plan and remove only the added capability. After commit, preserve the immutable migration/history receipt; do not edit Cozo or clear journals. Any reverse storage migration requires a separately reviewed supported operation. Preserve old storage throughout.",
+  "policy_candidate": "/var/tmp/opdbus-human-leaf-20261003/policy-proposal.json",
+  "policy_validation": "Received op-grants-materializer validate: Valid; live source SHA256 unchanged; materializer check: Fresh",
+  "denied_operation": {
+    "namespace": "/run/mount/3tchedFS",
+    "method": "identity_sled.inspect_own_physical_root_migration_preflight",
+    "error": "org.freedesktop.DBus.Error.AccessDenied: capability 'cap.identity.sled.physical_root_migrate@v1' is not granted to the authenticated caller of method 'inspect_own_physical_root_migration_preflight'"
+  }
+}

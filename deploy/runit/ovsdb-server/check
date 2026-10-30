@@ -1,2 +1,3 @@
 #!/bin/sh
-[ -S /run/openvswitch/db.sock ]
+databases=$(timeout 5 ovsdb-client list-dbs unix:/run/openvswitch/db.sock) || exit 1
+printf '%s\n' "$databases" | grep -Fxq Open_vSwitch

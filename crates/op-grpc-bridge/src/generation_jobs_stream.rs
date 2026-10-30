@@ -4,7 +4,7 @@
 //! Owner notifications contain metadata only and serve solely as wakeups. No
 //! private value enters MutationEngine's public state cache or change channel.
 use crate::generation_admission::GenerationCaller;
-use op_plugins::state_plugins::tched_router::generation::READ_CAPABILITY;
+use op_plugins::state_plugins::chat_router::generation::READ_CAPABILITY;
 use std::{collections::BTreeMap, pin::Pin, sync::Arc, time::Duration};
 
 use futures::Stream;
@@ -26,7 +26,7 @@ use crate::{
     state_stream::{PluginSnapshot, StateSnapshot},
 };
 
-const PLUGIN: &str = "tched_router";
+const PLUGIN: &str = "chat_router";
 const HEARTBEAT: Duration = Duration::from_secs(30);
 pub(crate) type GenerationStream = Pin<Box<dyn Stream<Item = Result<StateChange, Status>> + Send>>;
 

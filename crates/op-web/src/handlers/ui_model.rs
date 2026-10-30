@@ -100,7 +100,7 @@ async fn call_workspace(
     capability: &str,
     args: Value,
 ) -> Result<Value, Response> {
-    let identity = super::tched_router::sid1_metadata(headers)?;
+    let identity = super::chat_router::sid1_metadata(headers)?;
     let mut bytes = serde_json::to_vec(&args)
         .map_err(|_| json_response(StatusCode::BAD_REQUEST, json!({"error":"Invalid request"})))?;
     let arguments = simd_json::to_owned_value(&mut bytes)

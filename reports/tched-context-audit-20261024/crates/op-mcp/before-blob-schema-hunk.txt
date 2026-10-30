@@ -1,0 +1,3 @@
+Source: crates/op-mcp/src/blob_schema.rs, original line 53
+Context, read immediately before edit:
+                            "description": "Plugin id, e.g. tched_router or unix_socket"

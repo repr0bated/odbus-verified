@@ -1,0 +1,2 @@
+path	line	column_position	exact_text_context	intended_meaning	source_authority_caller_context	jev_reference	answer_confidence	human_disposition	change_status
+# Zero case-insensitive tched occurrences after all15 assigned inventory files were read sequentially through EOF; see coverage.tsv and J1. No occurrence-level judgment invented.

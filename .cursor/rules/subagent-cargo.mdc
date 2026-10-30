@@ -1,14 +1,18 @@
 ---
-description: Every cargo command runs on a cheap subagent, never in the parent session
+description: Cargo execution safety; JEV owns model selection and routing
 alwaysApply: true
 ---
 
-# Cargo runs on a Composer 2.5 subagent
+# Cargo execution
 
-Do not run cargo in the parent shell, watch its log, or poll it.
+JEV owns model selection and routing. Do not allocate a Cargo-specific model,
+map caller families to models, or add a separate shell/CLI model dispatcher.
+An execution worker runs the assigned command once without recursively
+delegating it. Keep the primary agent available; use completion receipts
+instead of polling build processes or watching their logs.
 
-`~/.bashrc` defines a `cargo` function. For `check`, `build`, `test`, `run`, `bench`, `fmt`, `clippy`, `fix`, `doc`, `rustc`, and `clean` (including `c`, `b`, `t`, `r`, and a leading `+toolchain`), it starts one background `agent --model composer-2.5` and returns the pid and log path under `~/.cache/cargo-dispatch/`. The agent runs that same command via `/usr/bin/cargo`. A `--release` command exports `CXXFLAGS="-include cstdint"`. `install` and `publish` are refused. Other subcommands, such as `metadata` and `tree`, call `/usr/bin/cargo` directly.
-
-Shells that do not source `~/.bashrc` use the same split: one background Composer 2.5 agent, the exact command, no second cargo process.
+Run Cargo from the repository root. Release commands retain
+`CXXFLAGS="-include cstdint"`. Do not run `cargo install` or `cargo publish`
+as part of this workflow.
 
 One cargo process at a time. If cargo, rustc, or clippy is already running, do not start another. A workspace-wide check, test, or build only when the user explicitly says workspace. Native target is `x86_64-unknown-linux-gnu`. Do not install binaries or restart services from a cargo run.

@@ -1,0 +1,23 @@
+{
+  "task": "tched-context-audit-20261024/op-state",
+  "crate": "op-state",
+  "status": "complete",
+  "files_reviewed": 12,
+  "files_pending": [],
+  "lines_reviewed": 2274,
+  "occurrence_count": 3,
+  "changed_files": [],
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-state/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-state/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-state/occurrences.tsv",
+  "jev_receipts": [
+    "reports/tched-context-audit-20261024/crates/op-state/judgments.md#J1",
+    "reports/tched-context-audit-20261024/crates/op-state/judgments.md#J2"
+  ],
+  "limitations": [
+    "Static source audit only; assignment prohibits Cargo/build/check/tests/Clippy/fmt/custom smoke and runtime/deployment actions.",
+    "No cross-crate source search performed, per assignment.",
+    "Runtime catalog and deployment state are not asserted."
+  ],
+  "next_action": "Coordinator may reconcile the static audit receipt; no op-state source patch is warranted."
+}

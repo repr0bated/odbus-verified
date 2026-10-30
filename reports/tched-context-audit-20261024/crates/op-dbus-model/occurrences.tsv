@@ -1,0 +1,2 @@
+result	files_reviewed	lines_reviewed	case_insensitive_tched_occurrences	basis
+zero occurrences	5/5	390	0	Full direct sequential reads through each inventory EOF; no source searches or prior tched coverage used. No occurrence-level judgment applies.

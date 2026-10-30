@@ -1,0 +1,218 @@
+## Summary
+
+**There are three materially different versions to export: historical working stages, installed helpers/base boot wiring, and today’s partially edited source. They are not interchangeable.**
+
+Most important current findings:
+
+1. **The source chain is internally inconsistent.** Most edited GPT helpers now require `/var/lib/incus/storage-pools/3tched-pool` and upgrade FSID `7ac6c955-4028-439c-80b4-c55a647abcb4`; `sync-instance-upgrade.sh` still requires `/var/lib/3tched-leaf-pool` and `5a88e7cd-9701-40a7-8301-ef076761886c`.
+2. **Installed base boot wiring is older than the installed application helper closure.** I directly read `/etc/sv/identity-roots/run`: it still selects only `3tchedChatbot.boot.json` under the old pool, invokes `/usr/local/libexec/3tched/*`, then exits into `sleep infinity`, suppressing subsequent identity restoration. This independently confirms a remaining installed form of audit F10—not merely a stale handoff.
+3. **Neither original `op-identity-root` nor current GPT helpers implement loop-free native Incus container volumes.** Both installed versions of `op-identity-root` explicitly allocate seed and leaf loops. Current adoption proof explicitly requires GPT loop partitions.
+4. **Oct5 “working” needs qualification:** native container/root writes were reported working, but the scripted candidate receipt and manually assembled leaf were different and unreconciled. **Oct11 has stronger historical evidence:** successful canonical start and guest identity receipt, followed by deployed boot wiring; actual cold reboot remained unexercised.
+5. **Hermes explicitly acknowledged drift**, including unnecessary naming-related boot restrictions, presenting unfinished checks as blockers, conflating persistent storage with an overlay upper, and auditing pieces rather than the requested complete provisioning chain. Exact message references below.
+
+All work here was read-only. No scripts, tests, builds, native operations, or privileged bypass were executed.
+
+## Files: exact current snapshot set
+
+### Core scripts and documentation
+
+Snapshot these complete files, not just matching excerpts:
+
+```text
+deploy/scripts/provision-workspace-subscriber.sh
+deploy/scripts/prepare-instance-disk.sh
+deploy/scripts/sync-instance-upgrade.sh
+deploy/scripts/bind-instance-root.sh
+deploy/scripts/prepare-chatbot-adoption.sh
+deploy/scripts/3tchedfs-invoke.sh
+deploy/runit/libexec-3tched/op-identity-root
+deploy/runit/libexec-3tched/op-identity-image
+deploy/runit/libexec-3tched/restore-chatbot-root
+deploy/runit/libexec-3tched/attach-host-workspace-folders
+deploy/runit/identity-roots/run
+deploy/runit/identity-roots/check
+deploy/runit/identity-roots/finish
+deploy/lib/golden/build-golden.sh
+deploy/runit/enabled-services
+deploy/runit/retired-services
+deploy/workspace-image/prepare-lungs-client.sh
+deploy/workspace-image/3tchedfs-mount-preflight
+deploy/workspace-image/mount.fuse.3tchedFS
+deploy/workspace-image/3tchedfs.service
+deploy/workspace-image/threetchedfs.service
+deploy/workspace-image/3tchedfs.fstab
+deploy/workspace-image/3tched-lungs.conf
+deploy/workspace-image/README.md
+deploy/workspace-agent/populate.sh
+deploy/workspace-agent/README.md
+docs/src/operations/shared-seed-provisioning.md
+reports/provisioning-audit-20261018.md
+reports/clean-provision-20261005.md
+AGENTS.md
+.agents/skills/incus/SKILL.md
+HANDOFF.md
+SIGNALS.md
+```
+
+Relevant authored fixtures, **not executed here**:
+
+```text
+deploy/scripts/tests/test-provision-identity-mode.sh
+deploy/scripts/tests/test-provision-system-mode.sh
+deploy/scripts/tests/test-seed-owner-boundaries.sh
+deploy/scripts/tests/test-shared-seed-siblings.sh
+deploy/scripts/tests/test-seed-lungs-disk.sh
+deploy/scripts/tests/test-seed-profile.sh
+```
+
+### Backend authority/proof sources
+
+```text
+crates/op-grpc-bridge/src/native_container_creation.rs
+crates/op-grpc-bridge/src/identity_sled_dispatch.rs
+crates/op-grpc-bridge/src/identity_seed_provision.rs
+crates/op-grpc-bridge/src/identity_clean_provision.rs
+crates/op-grpc-bridge/src/identity_clean_provision/storage.rs
+crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs
+crates/op-cozo-store/src/identity_transactions/clean_provision.rs
+crates/op-cozo-store/src/identity_transactions/native_creation.rs
+crates/op-grpc-bridge/src/lungs_socket.rs
+crates/threetched-fs/src/mounted.rs
+```
+
+### Separately snapshot installed artifacts
+
+The installed helper names omit `.sh`:
+
+```text
+/usr/local/libexec/op-dbus/helpers/provision-workspace-subscriber
+/usr/local/libexec/op-dbus/helpers/prepare-instance-disk
+/usr/local/libexec/op-dbus/helpers/sync-instance-upgrade
+/usr/local/libexec/op-dbus/helpers/bind-instance-root
+/usr/local/libexec/op-dbus/helpers/prepare-chatbot-adoption
+/usr/local/libexec/op-dbus/helpers/restore-chatbot-root
+/usr/local/libexec/op-dbus/helpers/op-identity-root
+/usr/local/libexec/op-dbus/helpers/op-identity-image
+/etc/sv/identity-roots/run
+/usr/local/libexec/3tched/op-identity-root
+```
+
+Record original path, resolved target, extraction timestamp and SHA-256 for each. **Do not label installed helper bytes as current source or assume the base and application helper directories are identical.**
+
+## Architecture: stage/dependency map
+
+| Stage | Owner/source | Input → result; critical boundary |
+|---|---|---|
+| Native preparation | `provision-workspace-subscriber.sh:39-145`; `identity_sled_dispatch.rs:2546-2594`; `native_container_creation.rs:17-140` | Mounted `identity_sled.prepare_container`, explicit operation UUID → durable reservation, single native POST, stopped native UUID and `.incus.json`. No disk/adoption/start. Names are server-assigned selectors, not identity authority. |
+| Disk preparation | `prepare-instance-disk.sh:25-78,160-188` | New sparse raw image, GPT root+upgrade partitions, private intent/receipt. Current writer is `sgdisk`; existing files/intents are refused. |
+| Filesystem preparation | `prepare-instance-disk.sh:79-159` | Physical sealed seed → read-only seed loop; image → partitioned loop; **one creation-only device-add** of root partition; only upgrade partition formatted; seven inherited siblings; ordinary private persist directory. |
+| Initial upgrade pairing | `sync-instance-upgrade.sh:34-177,329-343` | Host upgrade `@` → immutable source snapshot → partition2 received baseline → writable published `@`. No user/agent replication. **Current pool/FSID pins disagree with other edited helpers.** |
+| Root binding | `bind-instance-root.sh:38-284` | Verify stopped exact candidate, pair and filesystem receipts; preserve guest FUSE fstab; map Btrfs lowers; read-only upgrade-over-seed OverlayFS; bind six agent siblings/persist into Incus `identity-roots` rootfs. No start/adoption. |
+| Adoption preparation | `prepare-chatbot-adoption.sh:42-171` | Mounted owner preflight + native ETag + seed/GPT/member/inode proofs → exclusive private V4 plan and `{wireguard_pubkey,plan_sha256}` arguments. Does **not** execute adoption. |
+| Authoritative adoption | `identity_clean_provision.rs:573-675` | Digest-pinned plan → native/storage proof → revision recheck → caller readmission → **final proof** → `IdentityIntent::CleanProvision` durable CAS and paired publication. |
+| Start | `identity_sled_dispatch.rs:2085+` | Existing canonical `touch_session` owner; not raw script start for the identity. |
+| Subsequent stopped restore/sync | `restore-chatbot-root:44-109`; `sync-instance-upgrade.sh:189-407` | Existing boot/native/storage pins → remount existing members → incremental transfer → reconstruct and verify views → publish `paired` only at the end. No new identity/leaf/member creation. |
+| Host boot | current `identity-roots/run:40-150`; **installed** `/etc/sv/identity-roots/run:33-39` | Current source preflights all selected receipts; installed script still has old single-chatbot early-exit branch. Application helper staging does not install this base service. |
+
+`deploy/lib/golden/build-golden.sh:96-120` explicitly maps release `libexec/3tched` into **`/usr/local/libexec/op-dbus/helpers`**, not the base-owned directory.
+
+The current wrapper ends at line375 by refusing legacy unpartitioned provisioning. Consequently, the “Earlier unpartitioned-leaf integration” documentation is historical description, **not an executable current wrapper path**.
+
+## Installed versus source differences directly observed
+
+| Component | Installed evidence | Current source |
+|---|---|---|
+| Disk helper | Old pool line46; `sfdisk` writer line152; seed alias passed directly to loop line95 | New pinned pool/FSID; `sgdisk`; independent physical partition/LVM resolution; standalone seed mount refusal |
+| Upgrade sync | Old pool line34, old host FSID line77, physical seed `type=="part"`, requires `volatile.idmap.current` line212 | These same obsolete requirements remain in source |
+| Root binding | Old pool line17, old upgrade FSID line56, requires current idmap line102 | New pool/FSID; accepts exact `idmap.next` for never-started candidate, requires agreement when both maps exist |
+| Adoption preparation | Old pool line19, old host upgrade FSID line116 | New pool/FSID; partition-or-LVM physical seed selection and full retained read-only-loop backing proof |
+| Base boot service | Old `3tchedChatbot` receipt and base helper directory; early exit after GPT restore | New pool, selected application helper closure, duplicate logical-identity rejection, multiple-root handling |
+| Legacy root helper | Base version `seed_attach:1022`; application version `seed_attach:1046` | Both explicitly create read-only seed loops and writable leaf loops; no native-volume implementation |
+
+**Implication:** even if the Oct19 raw-image architecture were still authorized, the mixed source cannot form a coherent executable chain. The latest owner correction instead pauses that design; this is evidence for reconciliation, not permission to complete or run it.
+
+## Immutable historical candidates and evidence limits
+
+Full commit IDs below were recovered from `.git/logs/HEAD`, except the Oct5 full ID also appears in historical HANDOFF evidence. **No shell/git-execution tool was available to this read-only worker**, so I did not run `git log/show` or claim to have extracted historical blobs. These are precise parent export candidates.
+
+| Historical checkpoint | Commit | Paths worth extracting |
+|---|---|---|
+| Oct5 corrected admission/helper release | `26a4ad132fbbd4523b05724060bfdeb9ca661824` | Provisioner; `op-identity-root`; `identity-roots/run`; `identity_seed_provision.rs`; clean-provision modules; shared-seed docs |
+| Oct11 disk stage | `ab730c5100bc7d563ee357262e467205639f91fe` | `deploy/scripts/prepare-instance-disk.sh`, provisioner, shared-seed docs |
+| Oct11 filesystem stage | `fd0504dd87e69f4c3299e3a5516ef2bb4f19349f` | Same disk/provisioner/docs paths |
+| Oct11 pair/sync/boot stage | `9778c32f25d47913b6d207189c86a5fc424edfcd` | `sync-instance-upgrade.sh`, provisioner, boot hook, docs |
+| Oct11 root binding | `5a074720f5b7a35a7150c457fc0ca0b8df43cb0f` | `bind-instance-root.sh`, provisioner |
+| Empty-upgrade overlay correction | `d43211e78ab0b9a3387110ed86f8808cbcf454bc` | Binding/sync/docs |
+| V4 adoption implementation | `1686cd923fba08d95c553547ff8f0f0131dd2566` | Clean-provision and configured-human initialization |
+| Actual managed-root proof correction | `343ebc4502f980dc24dfcfd7b7f49b0d7915baa3` | Clean-provision storage paths |
+| Adoption plan helper | `1f128d41c92a501675ce5fd6d65f08717765492b` | `prepare-chatbot-adoption.sh`, provisioner |
+| Physical seed/read-only ABI correction | `ac68e7a01508364463571b0736be29e89e00aeca` | Adoption helper and clean-provision verification |
+| Cold physical-seed resolution | `f1364b81c2cc791e47a40129ce4a542cc8776f7d` | `sync-instance-upgrade.sh` |
+| Historically successful start | `fc8675a9f18ae0b59fc90f402d8e9bd5f15906e6` | Complete provisioning closure |
+| Historically deployed boot persistence | `96a23f1596670d2f578b6d578217a05738f46cd0` | Complete closure, `identity-roots/run`, `restore-chatbot-root`, bridge run and guest preflight |
+| Pre-Hermes repository checkpoint | `051a20d056afba074e21d797aa34f8947c543c5a` | Same closure; **not** a snapshot of subsequent dirty Hermes/Oct19 edits |
+
+Export historical bytes with bounded `git show COMMIT:PATH`, retaining failures for paths not yet introduced. Golden builder’s historical location may differ; use bounded commit path inventory rather than assuming its current location.
+
+Historical runtime evidence:
+
+- **Oct5:** `HANDOFF.md:813-815` distinguishes running manual sprout from incomplete scripted leaf receipt. Do not claim complete scripted success.
+- **Oct11:** `HANDOFF.md:5940-5944` records canonical start and guest identity success in release `20261011T135651Z-fc8675a`; receipt paths:
+  `/var/lib/3tched-leaf-pool/.provisioning/3tchedChatbot.adoption.fBIcLM/{start-lifecycle-receipt,guest-kernel-binding-receipt}.json`.
+- **Oct11 boot:** `HANDOFF.md:5954-5962`, release `20261011T141959Z-96a23f1`; boot wiring deployed, **cold reboot not exercised**, host guest-FUSE mirror still denied/absent.
+- **Sept30 bounded native proof:** `reports/identity-replacement/20260930/physical-seed-validation/README.md` plus `shared-seed-views/{block-backed,file-backed}.sh`. Prior concurrent/private-write/remount proof is not proof of today’s seed/kernel/layout.
+
+## Explicit drift report with original Hermes message references
+
+Source: `/home/jeremy/.hermes/state.db`, session **`20261018_190519_b780ef`**. IDs below are database message IDs; original content/user-facing assistant text was read directly, excluding reasoning fields.
+
+| Drift chain | Exact references | Propagation/status |
+|---|---|---|
+| **Naming request expanded into lifecycle restrictions** | Owner `1123/1125/1171`, then `1435/1437`; complaint `2122` at21:31:28: “why so long for sequetial nubering of hinsg that dont exist?” Owner `2655` at21:52:49: “thats what i thought the nubering is just for incus display for humans”. Assistant `2658`: “I overcomplicated it”; `2663`: “I added unnecessary provisioning and boot restrictions that need removing.” | Tool-call/response pairs `2656/2657`, `2660/2661–2662`; patch `2683/2684`; corrective delegation `2693/2694`. `2685` explicitly says source still needs correction; `2703` says removing numbering-specific boot blocks. Current native creator correctly separates name and identity; Oct19 reserves `3tchedCtlChatbot`, ordinary `ID-1` onward. Export worker histories to establish exact patch propagation—not the acknowledgments alone. |
+| **Requested provisioning presented as blocked by unspecified prerequisites** | Owner `4012`23:39:07 “did you provision?” Assistant `4013`: code deployed, chatbot not created; “Storage prerequisites and the binding to your existing 10.0.0.9 identity remain unresolved.” Owner `4014`: “i asked you to ande made sure you were not blocked”. Assistant `4032`: “I haven’t established a genuine blocker; I should not have presented those unfinished checks as one.” | Delegation `4015/4016`; existing-path correction `4054/4055`; assistant `4061` says disk preparation was part of the audit and should not have become a new storage problem afterward. This is acknowledged invented-prerequisite framing; distinguish later actual admission/storage failures. |
+| **Persistent leaf conflated with writable overlay upper** | Owner `4074`; assistant `4091` speculates extra writable overlay subvolume may be missing. Owner `4095`: “no the persistent cozo iws addedwith btrfs add disk”. Assistant `4099`: “It is not a writable OverlayFS upper layer… I conflated those two roles.” | Searches/reads `4075–4089`; correction delegation `4097/4098`; source reads `4101–4110`. Current code retains a read-only two-lower overlay, no upper/work layer. |
+| **Audit narrowed to components instead of complete chain** | Assistant `4111` admits old pool path remains wrong despite implemented layout. Owner `4112`: “btrfs send to upgrade evgery boot from upgrade partiton”; `4120`: “on provisoion it defines the pair”. Assistant `4121` confirms boot syncs existing pair without re-add. Owner `4122/4124` says this was why the audit was requested. Assistant `4123`: “I audited pieces, missed integration gaps, and deployed before completing the provisioning you requested.” `4125` lists missed layout/attachment/pairing/boot/path/identity integration. | Actual source still reproduces the acknowledged pool integration gap in sync. Installed helpers preserve the old pool throughout. Audit report is useful evidence, not end-to-end completion. |
+| **Post-Hermes native-storage correction not implemented** | Latest `HANDOFF.md:3-19` records owner rejecting per-container loops and requesting native Incus declaration/skill after failed installed execution. This is secondary evidence; parent should attach original Oct19 conversation. | AGENTS/Incus guidance changed; helper and verifier code still requires images/loops/GPT. Failed image/extra loops reportedly removed, original pool loop preserved. No native-volume implementation or authorization to convert to VM. |
+| **Separate egress invented during seed work** | `SIGNALS.md:869-870`: owner rejects separate egress as drift and names only8090. | Notes report newly added egress units removed and relay stopped; single8090 internet transport still unverified. Do not reintroduce this as provisioning prerequisite. |
+
+### Genuine blockers versus stale/invented ones
+
+- **Genuine source mismatch:** pool paths/host upgrade FSIDs and current-versus-next idmap handling.
+- **Genuine historical execution failure:** Oct19 installed seed mount failed `fsconfig: File exists` after recording intent/attaching loops, before device-add/format/receive (`HANDOFF.md:15-19`).
+- **Genuine historical admission failures:** missing human authoritative session, subsequently self-read capability; later corrections supersede older denials. Do not present Hermes’s final self-read denial as current.
+- **Not established blockers:** the unspecified prerequisites disclaimed in message4032; guard enablement is not permission to bypass identity/storage checks; historical raw layout is not current authorization.
+
+## Security invariants that must survive any reconciliation
+
+- Mounted caller identity, declared methods, current exact-principal grant and sealed contract; supported same-handle receipt consumption. No sibling `result/error` fallback.
+- Names/display labels never authorize identity; preserve key-derived session/principal, native UUID, Cozo binding and operation ownership.
+- Durable native-create intent before the **sole POST**; uncertain outcome reconciles the same operation, never allocates a fresh identity/name.
+- Private root-owned plans/receipts, trusted ancestry, exclusive publication and locks; interrupted intent must not appear complete.
+- Verify actual filesystem mount/FSID before receive; never accept an unmounted directory on host root.
+- Creation-only member addition; boot/start/stop/recovery must not add/remove members or format.
+- Immutable seed, exact inherited member identities; persist remains an ordinary protected directory.
+- Unprivileged, nonnested guest; preserved idmap and storage-ioctl denies; no arbitrary host bus/device or guest block-administration privilege.
+- No mounted/live overlay-lower mutation; stop requirement, baseline ancestry and post-restoration proof precede final `paired`.
+- Final digest/native/storage proof and revision CAS before adoption publication; existing grants remain separate.
+- Guard/AppArmor claims need their own runtime evidence. Historical source work is not proof those protections are active.
+
+## Export format guidance
+
+Keep full selected Hermes history, including compaction copies and worker evidence; **do not replace it with this report**. Suggested explicit message columns:
+
+```text
+id, session_id, timestamp, role, content,
+tool_call_id, tool_name, tool_calls,
+message_uid, active, compacted, _compressed_summary,
+display_kind, display_order
+```
+
+Exclude `reasoning`, `reasoning_content`, `reasoning_details`, and `codex_reasoning_items`; redact credentials from content/tool arguments/results. Preserve IDs and mark redactions. Duplicate/compaction copies must retain provenance rather than silently becoming separate owner instructions.
+
+For every script snapshot, distinguish:
+
+```text
+working-tree source | immutable commit blob | installed helper | installed base service
+```
+
+Attach source path, commit when applicable, timestamp, digest, and status. The historical Oct5/Oct11 authorizations and names must remain explicitly historical; **the latest native Incus correction is not yet propagated into a coherent implementation.**

@@ -1,0 +1,51 @@
+{
+  "status": "ok",
+  "query": "Provide a 3-6 word imperative title for this coding session goal: diagnose why identity-container provisioning remains unfinished using complete conversation/audit history, drift, and evidence-backed decisions; deliver diagnostic/specification only, no implementation. Output a concise title suggestion.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "<title>Diagnose unfinished identity-container provisioning</title>"
+    },
+    {
+      "model": "kimi-k3",
+      "content": "<title>Diagnose unfinished identity-container provisioning</title>"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<title>Diagnose unfinished identity container provisioning</title>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "All three responses propose an imperative title focused on diagnosing unfinished identity-container provisioning.",
+      "All titles satisfy the requested 3\u20136 word length."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "kimi-k3",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "The titles capture the diagnostic goal but omit complete-history review, drift analysis, evidence-backed decisions, and specification-only scope."
+      }
+    ],
+    "unique_insights": [],
+    "blind_spots": [
+      "None explicitly signals that implementation and provisioning are out of scope; this omission is consistent with the requested title brevity."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

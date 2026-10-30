@@ -1,0 +1,85 @@
+{
+  "slice": 10,
+  "assigned_ids": [
+    "history-210",
+    "history-211",
+    "history-212",
+    "history-213",
+    "history-214",
+    "history-215",
+    "history-216",
+    "history-217",
+    "history-218",
+    "history-219",
+    "history-220",
+    "history-221",
+    "history-222",
+    "history-223",
+    "history-224",
+    "history-225",
+    "history-226",
+    "history-227",
+    "history-228",
+    "history-229",
+    "history-230"
+  ],
+  "method": "Stateless completion, full original packet and full review-contract as system; no source/history commands executed",
+  "contract": {
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+    "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+    "bytes": 97062
+  },
+  "mandatory_preload": {
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt",
+    "sha256": "822af580a928598c0b5f1354a4ac160ca8e96092d2fdf38ee5a2f4ea7684a981",
+    "bytes": 95493,
+    "read_fully_by_worker": true
+  },
+  "packets": [
+    {
+      "packet_id": "history-210",
+      "input": {
+        "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-210.txt",
+        "bytes": 100384,
+        "sha256": "5127426e6ac3d7426d5760d1306de65be33adf0054cfb291b2f437fe66b7689b"
+      },
+      "system": {
+        "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+        "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+        "bytes": 97062
+      },
+      "input_complete": true,
+      "status": "pending"
+    },
+    {
+      "packet_id": "history-211",
+      "input": {
+        "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-211.txt",
+        "bytes": 101257,
+        "sha256": "e81a89e972933efed5c790b5389dcaa7b70e23c5aa1fbbf1a82c68f6bced2000"
+      },
+      "system": {
+        "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+        "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+        "bytes": 97062
+      },
+      "input_complete": true,
+      "status": "pending"
+    },
+    {
+      "packet_id": "history-212",
+      "input": {
+        "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-212.txt",
+        "bytes": 100958,
+        "sha256": "3ce119a69eda8b2efa10bd4c56fe209833d570e8822e5d4c2b909065fcb7214f"
+      },
+      "system": {
+        "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+        "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+        "bytes": 97062
+      },
+      "input_complete": true,
+      "status": "pending"
+    }
+  ]
+}

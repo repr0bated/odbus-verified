@@ -103,10 +103,10 @@ nothing to recompile: edit the `run` script, then restart the service.
 
 | Path | Meaning |
 |---|---|
-| `/etc/runit/sv/<name>/run` | The service definition |
+| `/etc/sv/<name>/run` | The fixed host service entrypoint |
 | `/etc/runit/runsvdir/default/<name>` | Symlink that enables it at boot |
 | `/run/runit/service` | The tree `runsvdir -P` supervises |
-| `/etc/runit/sv/<name>/down` | Marker: do not auto-start |
+| `/etc/sv/<name>/down` | Marker: do not auto-start |
 
 ### Adding a new service (exact pattern)
 
@@ -134,7 +134,7 @@ set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 set +a
 
-exec chpst -u jeremy /usr/local/bin/<binary>
+exec chpst -u jeremy /usr/local/libexec/op-dbus/bin/<binary>
 ```
 
 `log/run` is `#!/bin/sh` + `exec svlogd -tt /var/log/sv/<name>`.
@@ -147,14 +147,15 @@ no-fork flag when it has one.
 already built artifacts and a persisted sealed catalog. It does not deploy,
 activate, install into the running host, or restart services:
 ```bash
-sudo deploy/runit/build-golden.sh
+sudo deploy/lib/golden/build-golden.sh
 ```
-Create a read-only release snapshot from the prepared golden filesystem,
-transfer it with **btrfs send/receive**, then activate the received release
-through the atomic `/opt/op-dbus/current` selection. Follow
-`docs/src/getting-started/local-release-activation.md` for the activation and
-rollback contract. Any target service action is a separate, deliberate
-operator step using `sudo sv <command> <service>`.
+`./activate-golden.sh` transfers the prepared read-only snapshot with
+**btrfs send/receive** and rotates read-only overlays directly at the
+release-owned target directories. There is no `/opt/op-dbus/current` shim.
+The release controller preserves wanted service state and restarts affected
+consumers; `op-release-launch rollback` restores the previous generation.
+Host-owned configuration, credentials and mutable state remain outside the
+release overlays.
 
 **DO NOT:**
 - edit `/run/runit/service/` directly — that is the supervisor's runtime view
@@ -163,7 +164,7 @@ operator step using `sudo sv <command> <service>`.
 
 **Third-party installers that require systemd**: a `systemctl` shim exists at
 `/usr/local/bin/systemctl` for installers only. It maps systemd verbs onto `sv`
-and converts `.service` units into `/etc/runit/sv/<name>/run` via
+and converts `.service` units into `/etc/sv/<name>/run` via
 `/usr/local/sbin/systemd-unit-to-runit`. Never call it yourself — using the shim
 masks the deprecation; use `sv`.
 
@@ -237,18 +238,13 @@ ovsbr0     system     standalone   Switching fabric
 - Uplink: `eth0` enslaved via `op-ovsbr0-setup` (migrates management IP to/from bridge)
 - Managed via rovs suite — no ovs-vsctl
 
-### Port Naming Convention
-```
-PREFIX   VLAN   SUBNET            PURPOSE
-──────────────────────────────────────────────────────────────
-gb-      100    10.100.0.128/25   GhostBridge — privacy/encrypted traffic
-ai-      200    10.200.0.128/25   AI/ML workloads
-web-     200    10.200.1.128/25   Web service containers
-db-      200    10.200.2.128/25   Database containers
-mgr-     300    10.30.0.128/25    Management plane
-ctl-     300    10.30.1.128/25    Control plane
-mon-     300    10.30.2.128/25    Monitoring/observability
-```
+### Address ownership
+`eth0` is the OVS uplink and carries no host address. `pub0` owns public addressing.
+`rtly-lungs` is point-to-point tonic `10.0.0.2` peer `192.168.255.2`. `192.168.255.2` is the SSH address, and that address is REALITY. MASQUE and SSH are the protocols, not the name. HTTPS is inside that tunnel. It is not an OVS port.
+`ovsbr0` has service aliases only. EMQX is `10.0.0.3/32`. The OpenFlow and host Qdrant alias numbers are unset.
+There is no `svc0` port, no per-service interface, and no `10.200.0.0/24` fabric.
+Administrative SSH enters through decoy WireGuard at `10.0.0.1`. There is no WireGuard on the host.
+The shared container socket is `/run/3tched-lungs.socket`, backed by `/run/opdbus/lungs/lungs.sock`.
 
 ### Incus Containers
 ```

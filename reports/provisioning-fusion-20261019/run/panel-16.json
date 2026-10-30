@@ -1,0 +1,153 @@
+{
+  "status": "ok",
+  "query": "For a bounded read-only review of historical packet documents, identify pitfalls in preserving original quotes, corrections, action/results, provenance, truncated/unavailable fields, and exact input/output hash receipts. Do not access files or execute historical commands. Give brief methodological guidance only.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "- **Preserve quotes verbatim.** Keep spelling, punctuation and context. Mark excerpts and omissions explicitly; never present paraphrases as quotations.\n- **Preserve correction provenance.** Distinguish owner instructions from injected worker messages, queued messages and historical approvals. Record which interpretation each correction supersedes; retain the original.\n- **Separate intent from execution.** Link proposed action \u2192 actual tool arguments \u2192 returned result \u2192 subsequent interpretation. A wrapper\u2019s success notification does not override an underlying failure receipt.\n- **Retain source structure.** Preserve physical record order, original IDs, parent links, timestamps, active/compacted flags and source identity. Duplicate content may share a review, but every occurrence needs attribution.\n- **Expose evidence gaps.** Distinguish redacted, truncated, unavailable, omitted and unread content. Never reconstruct missing text or treat absence as proof that an action did not occur.\n- **Make hash receipts reproducible.** Hash the exact original bytes with a named algorithm, recording byte length and source reference. Hash assembled analyst inputs and actual outputs separately; document normalization, extraction boundaries and ordering.\n- **Track review depth honestly.** \u201cAvailable,\u201d \u201cread,\u201d \u201cprovided to an analyst\u201d and \u201cadjudicated\u201d are different states. A supplied path or matching hash does not establish semantic review."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "# Methodological guidance: bounded read-only packet review\n\n## 1. Provenance and record identity\n- Anchor every claim to **exact record IDs and physical line/row numbers** (e.g., `hermes/20261018_190519_b780ef.jsonl#4012`), never to paraphrase or to a path alone. A path is a location, not evidence.\n- Preserve **physical record order** and parent/child links. Do not reorder by topic; reordering silently destroys correction sequences (owner correction \u2192 agent acknowledgment \u2192 actual patch).\n- Distinguish **record roles**: `role=user` entries that are injected worker messages or `custom_message/live-delegation` corrections (as in Astra's 87 corrections) are not owner instructions. Misclassifying them inverts authority.\n- Keep **source dates, model identity, active/compacted flags** with each excerpt. Compacted/inactive copies must be labeled as such, not merged with live records.\n\n## 2. Quotes and corrections\n- Quote **verbatim, with original typos** (e.g., \"woould prfer no disk image if possibgle\"). Normalizing spelling can erase evidence of which constraint version an agent actually saw.\n- When a later owner correction supersedes earlier wording (Kiro's narrower loop wording vs. the current no-host-loops rule), record **both versions and the precedence order**; never silently replace the historical text.\n- Separate: legitimate clarification, agent-added work, stale evidence, genuine encountered failure, incomplete execution. An apology (2658/2663) is not a fix \u2014 verify the actual patch/delegation that followed.\n- Never manufacture a public statement from hidden/omitted reasoning (Kiro's hidden Reasoning).\n\n## 3. Actions vs. results\n- Record **tool call, arguments, and result as a triple**. A wrapper's exit-0 notification is not the command's result (Claude's exit0-vs-exit101 case): judge the underlying receipt.\n- Distinguish **intent from completion**: a retained prepare-intent, a stopped-before-execution write, or an unbuilt/undeployed edit is not a done action. Mark each action with its terminal state.\n- Never replay historical commands to \"confirm\" results; the stored result is the evidence, and user-reported outcomes are ground truth.\n\n## 4. Truncated / unavailable fields\n- Declare truncation explicitly per record (\"historical tool-output truncation\"), never backfill with plausible text or modern file contents. Historical commit blobs, current worktree, and installed snapshots are **not interchangeable** \u2014 tag which version each excerpt came from.\n- Record extraction errors as errors (seven paths absent at older commits), not as gaps filled from HEAD.\n- Maintain `coverage.json` continuously: hashes, covered byte/record ranges, duplicates read-once-but-accounted, outstanding ranges. Never claim a file was \"read\" because its path was supplied; separate exported / available / read / panel-reviewed / JEV-adjudicated.\n\n## 5. Input/output hash receipts\n- For every analyst/JEV round, save the **exact inputs by reference plus content hash** and the **actual returned output, untruncated**. If a packet is too large for one call, split by record range and record the split boundaries \u2014 do not summarize in place of passing originals.\n- Hash the corpus files at ingestion; re-verify before adjudication so a mid-review file change cannot pass unnoticed.\n- Keep question, rubric, evidence refs, answer, and uncertainty together per decision; a JEV answer without its exact question/evidence is unauditable.\n\n## 6. Scope discipline\n- Read-only: analysis receipts only under the assigned directory; no source edits, no runtime operations, no auth stores, no replay. Historical approvals are not current authorization.\n- Stop when deliverables and their limitations are explicit; do not let a partial component audit substitute for the complete chain review."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Methodological Guidance for Bounded Read-Only Review\n\nFor a read-only review of historical packet documents, the primary risk is **interpretive drift**: assuming that a recorded state reflects the actual system state or that a truncated record implies a specific outcome. The following pitfalls must be guarded against to preserve fidelity:\n\n1.  **Original Quotes & Sanitization**\n    *   **Pitfall**: Over-sanitization removes technical context (e.g., device paths, UUIDs, or specific error strings) that is critical for tracing the provisioning chain.\n    *   **Guidance**: Preserve all technical identifiers and error codes. Redact only secrets (passwords, tokens) and PII. If a quote is redacted, note the redaction type but do not guess the original content.\n\n2.  **Corrections & Temporal Ordering**\n    *   **Pitfall**: Treating a correction as a new instruction rather than a modification of an existing one, or failing to link the correction to the specific message ID it supersedes.\n    *   **Guidance**: Map every correction to its parent message ID. Corrections are **non-destructive**; they annotate the original record. Do not overwrite the original text. Flag the original as `superseded` and the correction as `active` with a clear timestamp.\n\n3.  **Action/Result Integrity & Truncation**\n    *   **Pitfall**: Assuming `exit 0` or a successful tool call implies the intended side effect occurred, especially when tool output is truncated.\n    *   **Guidance**: Explicitly mark truncated outputs (e.g., `[OUTPUT TRUNCATED]`). Do not infer success from exit codes alone. If a tool result is truncated, note the uncertainty in the drift ledger. Distinguish between \"no output\" (empty) and \"truncated output\" (incomplete).\n\n4.  **Provenance & Agent Relationships**\n    *   **Pitfall**: Losing the parent-child relationship between agents, especially during compaction or delegation chains.\n    *   **Guidance**: Maintain the full agent tree, not just the linear conversation. Record compaction events explicitly. Ensure every worker message includes its `parent_id` and `delegation_id` to reconstruct the chain of custody.\n\n5.  **Truncated/Unavailable Fields**\n    *   **Pitfall**: Silently filling gaps with plausible content or ignoring missing fields.\n    *   **Guidance**: Use explicit markers for missing data (e.g., `[FIELD MISSING]`). Never infer content. If a field is unavailable, state the unavailability and its impact on the diagnosis (e.g., \"Cannot verify storage proof due to missing tool output\").\n\n6.  **Hash Receipts**\n    *   **Pitfall**: Hashing formatted/pretty-printed JSON instead of the raw byte stream, leading to non-deterministic hashes.\n    *   **Guidance**: Hash the **raw JSONL lines** exactly as stored. Include the model ID, timestamp, and message ID in the hash input to prevent replay confusion. Verify that the hash matches the stored content to detect any silent modifications.\n\n**Summary**: The review must be **non-inferential**. If the evidence is missing or truncated, the diagnosis must explicitly state the gap. Do not assume the provisioning workflow succeeded based on incomplete records. Use JEV to adjudicate any ambiguities where the evidence is insufficient for a definitive conclusion."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Preserve original evidence and explicitly label paraphrases, redactions, omissions and truncation rather than reconstructing missing content.",
+      "Retain correction chronology and provenance; later corrections must not erase the historical instructions or interpretations they supersede.",
+      "Distinguish proposed actions, tool execution and demonstrated outcomes. Wrapper success, retained intents and incomplete outputs do not establish completion.",
+      "Preserve record identities and delegation relationships so evidence remains attributable across workers and compacted histories.",
+      "Maintain reproducible hash receipts tied to the evidence actually supplied and the output actually returned."
+    ],
+    "contradictions": [
+      {
+        "topic": "Authority of Astra correction records",
+        "stances": [
+          {
+            "model": "glm-5-3",
+            "stance": "Groups custom_message/live-delegation corrections with injected worker messages as not owner instructions, contradicting the supplied evidence that 87 such records contain owner corrections."
+          },
+          {
+            "model": "astra-pro",
+            "stance": "Requires distinguishing owner instructions from injected worker messages without assigning authority solely from the record role."
+          }
+        ]
+      },
+      {
+        "topic": "Exact-byte hashing versus augmented hash inputs",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Hashes exact original bytes, records algorithm and byte length, and separately hashes assembled analyst inputs and outputs."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Requests raw-byte hashing but also adding model ID, timestamp and message ID to the hash input. Unless already present in the original bytes, this produces a different artifact rather than the original-file digest."
+          }
+        ]
+      },
+      {
+        "topic": "Inference from incomplete evidence",
+        "stances": [
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Calls for a wholly non-inferential review and says never to infer content."
+          },
+          {
+            "model": "astra-pro",
+            "stance": "Prohibits reconstructing missing text or treating absence as proof, without prohibiting evidence-supported analytical inference."
+          },
+          {
+            "model": "glm-5-3",
+            "stance": "Allows diagnostic classification and adjudication while requiring explicit uncertainty and prohibiting plausible backfilling."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Explicitly distinguish availability, semantic reading, panel exposure and adjudication; qwen does not adequately separate these coverage states."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Require receipts for both exact analyst inputs and actual outputs; qwen focuses primarily on source-record hashing."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "glm-5-3"
+        ],
+        "point": "Account for duplicate occurrences and active/compacted provenance rather than merely preserving an agent tree."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Explicitly distinguishes historical commit blobs, installed snapshots and current worktree evidence, and preserves extraction failures instead of substituting modern contents."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Explicitly prohibits replaying historical commands and treating historical approvals as current authorization."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "A matching hash or supplied path establishes neither semantic review nor adjudication."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Record normalization, extraction boundaries and assembly order so transformed analyst inputs remain reproducible."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "An acknowledgment or apology is not evidence that a correction propagated into patches, delegation or deployment."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Hidden or omitted reasoning must not be converted into an invented public statement."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Distinguish an actually empty result from an incomplete or truncated result."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Over-sanitizing technical identifiers and error strings can destroy evidence needed to trace the workflow."
+      }
+    ],
+    "blind_spots": [
+      "None consistently distinguishes original metadata from reviewer-added annotations. Supersession flags, inferred correction targets and unavailable parent/delegation IDs should be stored separately, not inserted into original records or invented.",
+      "The glm response presents an altered, shortened owner statement in quotation marks while recommending verbatim quotation; omissions and whitespace changes need explicit treatment.",
+      "JEV can assess evidence sufficiency but cannot recover missing evidence, establish unobserved runtime facts or authorize mutations.",
+      "Hash receipts need distinct identities for source files, extracted packets, assembled requests and returned outputs; one digest cannot establish fidelity across all four.",
+      "Advice about redaction should explicitly preserve the supplied sanitized exports and avoid seeking unredacted originals or introducing unauthorized transformations.",
+      "The responses do not clearly distinguish a correction's conversational parent from the earlier claim or requirement it semantically supersedes; these links may differ."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

@@ -1,15 +1,15 @@
 //! s6d — D-Bus wrapper for the canonical runit control-plane service.
 
-use anyhow::{Context, Result, bail};
-use zbus::{Connection, proxy};
+use anyhow::{bail, Context, Result};
+use zbus::{proxy, Connection};
 
-const RUNIT_BUS_NAME: &str = "org.opdbus.v1.Runit.Systemctl";
-const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit/systemctl";
+const RUNIT_BUS_NAME: &str = "org.opdbus.v1.plugins.runit";
+const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit";
 
 #[proxy(
-    default_service = "org.opdbus.v1.Runit.Systemctl",
-    default_path = "/org/opdbus/v1/plugins/runit/systemctl",
-    interface = "org.opdbus.v1.Runit.Systemctl"
+    default_service = "org.opdbus.v1.plugins.runit",
+    default_path = "/org/opdbus/v1/plugins/runit",
+    interface = "org.opdbus.v1.plugins.runit"
 )]
 trait RunitSystemctl {
     async fn start(&self, unit: &str) -> zbus::Result<(bool, String)>;
@@ -94,7 +94,11 @@ fn required_unit(mut args: impl Iterator<Item = String>) -> Result<String> {
 
 fn print_result((ok, message): (bool, String)) -> Result<()> {
     println!("{message}");
-    if ok { Ok(()) } else { bail!("{message}") }
+    if ok {
+        Ok(())
+    } else {
+        bail!("{message}")
+    }
 }
 
 fn usage() {

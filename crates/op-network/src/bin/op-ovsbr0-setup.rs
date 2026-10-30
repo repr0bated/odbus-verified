@@ -4,6 +4,9 @@
 //! unixctl socket to stop the daemon cleanly.  No ovs-vsctl/ovsdb-client shell
 //! commands are used.  `ovs-dpctl del-dp` is used only while vswitchd is down
 //! to clear stale kernel datapath state.
+//! The bridge carries no tunnel/tun ports of any kind — SSH/WARP-style access
+//! to the host is handled entirely outside OVS (reverse SSH to the decoy),
+//! and must never be seeded onto this bridge.
 //!
 //! Environment variables:
 //!   BRIDGE         OVS bridge name          (default: ovsbr0)
@@ -16,8 +19,9 @@
 //!                  (default: pub0) — the uplink's MAC is pinned on THIS
 //!                  port's Interface row, never on the bridge itself
 //!   INTERNAL_PORTS Space-separated extra internal ports seeded with the
-//!                  bridge (default: "svc0 grpc"; svc0 = grpc endpoint,
-//!                  grpc = named spare for the container/grpc link)
+//!                  bridge (default: none). There is no svc0 port and no
+//!                  per-service interface. Service addresses are aliases on
+//!                  ovsbr0 itself.
 //!   SHARED_MAC     PUBLIC_PORT MAC override (default: UPLINK's own MAC when
 //!                  UPLINK is set, so the public port presents the same
 //!                  address upstream as the NIC always did; fa:16:3e:f1:71:d2
@@ -55,7 +59,7 @@ struct Config {
     /// blackholes inbound traffic (the provider filters on this MAC).
     public_port: String,
     /// `INTERNAL_PORTS` env var: space-separated extra internal ports seeded
-    /// alongside the bridge (e.g. "svc0 grpc").
+    /// alongside the bridge. Default is none.
     internal_ports: Vec<String>,
     /// `SHARED_MAC` env var, if explicitly set. When unset and `uplink` is
     /// configured, the public port's MAC is taken from the uplink NIC's real
@@ -76,7 +80,7 @@ impl Config {
             fail_mode: std::env::var("FAIL_MODE").unwrap_or_else(|_| "standalone".into()),
             public_port: std::env::var("PUBLIC_PORT").unwrap_or_else(|_| "pub0".into()),
             internal_ports: std::env::var("INTERNAL_PORTS")
-                .unwrap_or_else(|_| "svc0 grpc".into())
+                .unwrap_or_default()
                 .split_whitespace()
                 .map(|s| s.to_string())
                 .collect(),
@@ -484,7 +488,8 @@ async fn purge_by_name(client: &mut Client, name: &str) -> Result<()> {
 /// never a second transaction on the create path.
 ///
 /// `mac` (the uplink's real MAC) is pinned on `public_port`'s Interface row
-/// via other_config.hwaddr.  The Bridge row NEVER carries hwaddr: the bridge
+/// via Interface.mac. Interface.other_config.hwaddr is ignored by OVS.
+/// The Bridge row NEVER carries hwaddr: the bridge
 /// device must keep a random MAC, because the public IP lives on
 /// `public_port`, and the provider filters on the uplink MAC — if the bridge
 /// device held that MAC and the IP later moved, inbound would blackhole.
@@ -524,7 +529,7 @@ async fn create_bridge_system(
         json!({
             "name": public_port,
             "type": "internal",
-            "other_config": ["map", [["hwaddr", mac]]]
+            "mac": mac
         }),
     );
     port_refs.push(txn.insert(
@@ -649,8 +654,9 @@ async fn main() -> Result<()> {
         None => info!("bridge {} not found in OVSDB", cfg.bridge),
     }
 
-    // The physical uplink (when configured) rides in the same create
-    // transact — see create_bridge_system.
+    // The optional physical uplink rides in the same create transact as the
+    // bridge — see create_bridge_system. No tunnel ports are ever seeded here;
+    // SSH/WARP-style access to the host lives entirely outside OVS.
     let mut seed_ports: Vec<&str> = Vec::new();
     if !cfg.uplink.is_empty() {
         seed_ports.push(cfg.uplink.as_str());
@@ -758,8 +764,8 @@ async fn main() -> Result<()> {
     // ── 4. Idempotent port adds for a pre-existing bridge ────────────────────
     // (On the create path these are no-ops: the ports were enslaved inside
     // the create transact.)
-    if !cfg.uplink.is_empty() {
-        add_port(&mut client, &cfg.bridge, &cfg.uplink).await?;
+    for port in &seed_ports {
+        add_port(&mut client, &cfg.bridge, port).await?;
     }
 
     // ── 5. Bring ports up (ip link is a network utility, not an OVS tool) ────
@@ -787,7 +793,7 @@ fn print_help() {
             FAIL_MODE    bridge fail mode (default: standalone)\n\
             PUBLIC_PORT  internal port for the public IP (default: pub0; the\n\
                          uplink MAC is pinned here, never on the bridge)\n\
-            INTERNAL_PORTS extra internal ports (default: \"svc0 grpc\")\n\
+            INTERNAL_PORTS extra internal ports (default: none)\n\
             SHARED_MAC   PUBLIC_PORT MAC override (default: UPLINK's own MAC)\n\
             OVSDB_SOCKET OVSDB socket path\n\
             VSWITCHD_SVC runit service name for sv (default: ovs-vswitchd)"

@@ -1,0 +1,21 @@
+{
+  "task": "tched-context-audit-20261024/op-tools",
+  "crate": "op-tools",
+  "status": "complete",
+  "files_reviewed": 31,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-tools/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-tools/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-tools/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-tools/judgments.md"],
+  "limitations": [
+    "Fresh static source reread only; runtime, catalog, deployment, and behavior remain unverified.",
+    "Assignment inventory records security.rs as 783 lines / 26484 bytes; current source has 762 lines and raw read 763-783 is beyond EOF. Cause and inventory/source snapshot equivalence are unknown.",
+    "No search, Cargo/build/check/test/Clippy/fmt/custom smoke/runtime/deploy/seal/grant/credential action or delegation was used, per assignment/user instruction.",
+    "Earlier JEV/report conclusions were not reused; prior judgment history is explicitly marked non-authoritative in judgments.md.",
+    "Fresh final JEV classifies the static audit complete (0.73 confidence) and no current unread range (1.00); exact probabilities/questions are in judgments.md."
+  ],
+  "next_action": "Coordinator may aggregate this fresh receipt and reconcile the security.rs inventory discrepancy; no current source range remains unread."
+}

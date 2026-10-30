@@ -2,15 +2,15 @@
 //!
 //! Implements the `op_chat.chat.ChatService` trait from `chat.proto`.
 //! Served on the op-grpc-bridge alongside StateSync, PluginService, etc.
-//! so zeroclaw-gui discovers it via a single reflection endpoint.
+//! for discovery through a single reflection endpoint.
 #![allow(dead_code)] // many items are infrastructure for upcoming chat features
 //!
 //! Architecture:
-//! - zeroclaw owns provider/model routing (OD-28) — SendRequest carries them.
+//! - threetched owns provider/model routing (OD-28) — SendRequest carries them.
 //! - gemma_brain routes to the selected model and applies compliance tags.
 //! - The chatbot is a DELEGATOR — forced tool calling is mandatory; even user
 //!   responses are emitted as tool calls (respond_to_user).
-//! - Chat persistence flows through the memory loop → cognitive-mcp.
+//! - Chat persistence flows through the memory loop → cognitive.
 //! - The agent loop is bounded (≥50 steps) and cancellable.
 
 use std::pin::Pin;
@@ -20,8 +20,8 @@ use std::sync::Arc;
 use anyhow::{Context, anyhow};
 use op_llm::ProviderType;
 use op_llm::chat::ChatManager;
-use op_plugins::state_plugins::tched_router::{
-    ChatInput, ChatOutput, TchedChatMessage, TchedRouterState,
+use op_plugins::state_plugins::chat_router::{
+    ChatInput, ChatOutput, ChatMessage, ChatRouterState,
 };
 use tokio::sync::Mutex;
 use tokio_stream::Stream;
@@ -141,11 +141,11 @@ async fn dispatch_chat_method(
     let payload = result
         .get("result")
         .cloned()
-        .ok_or_else(|| anyhow!("tched_router.Chat returned no result payload"))?;
-    serde_json::from_value::<ChatOutput>(payload).context("invalid tched_router.Chat result")
+        .ok_or_else(|| anyhow!("chat_router.Chat returned no result payload"))?;
+    serde_json::from_value::<ChatOutput>(payload).context("invalid chat_router.Chat result")
 }
 
-fn provider_names(state: &TchedRouterState, requested: &str) -> Option<Vec<String>> {
+fn provider_names(state: &op_plugins::state_plugins::chat_router::ChatRouterState, requested: &str) -> Option<Vec<String>> {
     let requested = requested.trim();
     state
         .catalog
@@ -172,9 +172,9 @@ fn names_contain(names: &[String], candidate: &str) -> bool {
         .any(|name| name.eq_ignore_ascii_case(candidate))
 }
 
-fn provider_type_for(state: &TchedRouterState, provider_id: &str) -> anyhow::Result<ProviderType> {
+fn provider_type_for(state: &ChatRouterState, provider_id: &str) -> anyhow::Result<ProviderType> {
     let names = provider_names(state, provider_id)
-        .ok_or_else(|| anyhow!("provider '{provider_id}' is not declared by ZeroClaw"))?;
+        .ok_or_else(|| anyhow!("provider '{provider_id}' is not declared by threetched"))?;
     names
         .iter()
         .find_map(|name| ProviderType::from_str(name).ok())
@@ -187,7 +187,7 @@ fn provider_type_for(state: &TchedRouterState, provider_id: &str) -> anyhow::Res
 }
 
 fn resolve_declared_route(
-    state: &TchedRouterState,
+    state: &ChatRouterState,
     requested_provider: &str,
     requested_model: &str,
 ) -> anyhow::Result<ResolvedExecutionRoute> {
@@ -203,7 +203,7 @@ fn resolve_declared_route(
     };
 
     let provider_aliases = provider_names(state, provider_request)
-        .ok_or_else(|| anyhow!("provider '{provider_request}' is not declared by ZeroClaw"))?;
+        .ok_or_else(|| anyhow!("provider '{provider_request}' is not declared by threetched"))?;
 
     let provider_matches =
         |route: &&op_plugins::state_plugins::common::llm_projection::ModelRoute| {
@@ -262,7 +262,7 @@ fn resolve_declared_route(
 
 async fn execute_chat(
     chat_manager: &ChatManager,
-    state: &TchedRouterState,
+    state: &ChatRouterState,
     requested_provider: &str,
     requested_model: &str,
     messages: Vec<op_llm::ChatMessage>,
@@ -306,18 +306,18 @@ async fn execute_chat(
     Ok((route, response))
 }
 
-/// Execute the schema-declared `tched_router.Chat` method after the mutation
+/// Execute the schema-declared `chat_router.Chat` method after the mutation
 /// engine has recorded the call. Provider/model selection remains owned by
-/// the projected ZeroClaw schema; `ChatManager` only performs the resolved
+/// the projected threetched schema; `ChatManager` only performs the resolved
 /// upstream call.
 pub(crate) async fn dispatch_schema_chat(
     chat_manager: &ChatManager,
-    state: &TchedRouterState,
+    state: &ChatRouterState,
     input: ChatInput,
 ) -> anyhow::Result<ChatOutput> {
     let messages = if input.messages.is_empty() {
         if input.message.trim().is_empty() {
-            return Err(anyhow!("tched_router.Chat requires message or messages"));
+            return Err(anyhow!("chat_router.Chat requires message or messages"));
         }
         vec![op_llm::ChatMessage {
             role: "user".to_string(),
@@ -398,7 +398,7 @@ impl ChatService for ChatServiceImpl {
             message: String::new(),
             messages: ui_messages
                 .iter()
-                .map(|message| TchedChatMessage {
+                .map(|message| ChatMessage {
                     role: message
                         .get("role")
                         .and_then(serde_json::Value::as_str)
@@ -603,7 +603,7 @@ impl ChatService for ChatServiceImpl {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use op_plugins::state_plugins::tched_router::TchedRouterPlugin;
+    use op_plugins::state_plugins::chat_router::ChatRouterPlugin;
 
     fn identity(principal_id: &str, session_id: &str) -> GhostbridgeIdentity {
         GhostbridgeIdentity {
@@ -623,7 +623,7 @@ mod tests {
 
     #[test]
     fn chat_service_binding_matches_router_schema() {
-        let schema = op_plugins::state_plugins::tched_router::tched_router_plugin_schema();
+        let schema = op_plugins::state_plugins::chat_router::chat_router_plugin_schema();
         let chat = schema.methods.get("Chat").expect("Chat method");
 
         assert_eq!(schema.name, ROUTER_PLUGIN_ID);
@@ -737,7 +737,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn chat_dispatch_reaches_the_tched_router_backend() {
+    async fn chat_dispatch_reaches_the_chat_router_backend() {
         use crate::human_principal_dispatch::tests::{pk, register, temp_cozo};
         use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
         use op_plugins::state_plugins::{
@@ -746,7 +746,7 @@ mod tests {
         use op_state::StatePlugin;
 
         let _cozo = temp_cozo();
-        let router_schema = TchedRouterPlugin::new().schema().unwrap();
+        let router_schema = ChatRouterPlugin::new().schema().unwrap();
         let _catalog = crate::human_principal_dispatch::tests::temp_shm_with_schemas(&[
             HumanPrincipalPlugin::new().schema().unwrap(),
             IdentitySledPlugin::new().schema().unwrap(),
@@ -858,14 +858,14 @@ mod tests {
 
         let message = error.to_string();
         assert!(
-            message.contains("tched_router health status is 'fixture-offline', expected 'ok'"),
+            message.contains("chat_router health status is 'fixture-offline', expected 'ok'"),
             "{error}"
         );
     }
 
     #[test]
     fn explicit_provider_and_model_resolve_through_schema_catalog() {
-        let mut state = TchedRouterPlugin::current_state();
+        let mut state = ChatRouterPlugin::current_state();
         let route = state
             .catalog
             .model_routes
@@ -884,7 +884,7 @@ mod tests {
 
     #[test]
     fn provider_alias_and_route_hint_resolve() {
-        let state = TchedRouterPlugin::current_state();
+        let state = ChatRouterPlugin::current_state();
         let resolved =
             resolve_declared_route(&state, "salad-ai", "fast").expect("alias and hint resolve");
         assert_eq!(resolved.provider, ProviderType::Salad);
@@ -893,7 +893,7 @@ mod tests {
 
     #[test]
     fn selected_provider_and_model_are_the_default_route() {
-        let mut state = TchedRouterPlugin::current_state();
+        let mut state = ChatRouterPlugin::current_state();
         state.selected_provider = "salad".to_string();
         state.selected_model = "qwen3.6-35b-a3b".to_string();
 
@@ -904,14 +904,14 @@ mod tests {
 
     #[test]
     fn undeclared_model_fails_closed() {
-        let state = TchedRouterPlugin::current_state();
+        let state = ChatRouterPlugin::current_state();
         let error = resolve_declared_route(&state, "salad", "not-a-model").unwrap_err();
         assert!(error.to_string().contains("not declared"));
     }
 
     #[test]
     fn non_chat_routes_fail_closed() {
-        let state = TchedRouterPlugin::current_state();
+        let state = ChatRouterPlugin::current_state();
         let error = resolve_declared_route(&state, "oscal", "compliance").unwrap_err();
         assert!(error.to_string().contains("cannot serve chat"));
     }

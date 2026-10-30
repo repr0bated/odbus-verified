@@ -1,0 +1,14 @@
+# JEV evidence — op-web tched audit
+
+Tool instructions read from `xd://eval/judge`. Used one declarative `judge_batch` call, job `jdgb-15b33b70757c9360`, model `typesafe/jev-1.14.0`, intent `op-web tched source context audit`. It completed 6/6; cost reported $0.000145446. Question was choice classification among `fix`, `retain-compat`, `unrelated`, `historical-only`, and `insufficient`, explicitly considering active obsolete plugin ID/method/schema dependency, URL compatibility, unrelated helpers, historical prose, and missing evidence. The inputs were summarized grouped source/caller states, not exact per-occurrence contexts; results do NOT meet the assignment's exhaustive per-occurrence evidence bar.
+
+| State key | Supplied contextual input | Answer | Confidence | Probability detail |
+|---|---|---:|---:|---|
+| handler | `handlers/tched_router.rs` active `call_tched_router_method` dispatches through `tched_router_routes::ROUTER_PLUGIN_ID`; Chat/ListModels old methods and capabilities; model/schema read from old projection. Current task context says registry source retires this ID and threetched registers binary-captured schema. | fix | 0.76 | fix .81; retain-compat .01; insufficient .17 |
+| models | `routes/llm.rs` actively builds `/api/llm/models` from old helper/ID; helper defines old ID and model route/state lookups; new schema identity is threetched. | fix | 0.75 | fix .80; retain-compat .04; insufficient .16 |
+| routes | `routes/mod.rs` has old schema/model routes alongside canonical chat handler routes; no user direction removing compatibility URLs. | insufficient | 0.31 | fix .11; retain-compat .45; insufficient .44 |
+| sse | SSE default hydration allowlist includes `tched_router`; source context identifies compatibility path; live use/replacement not established. | insufficient | 0.69 | fix .16; retain-compat .07; insufficient .75 |
+| agents | agents handler references `tched_router_routes::read_workflows_summaries` and identity metadata helper; helper reads workflows plugin. | insufficient | 0.41 | fix .04; unrelated .42; insufficient .53 |
+| historical | legacy comments/names may preserve URL/UI compatibility; current old ID differs from current task context; no mechanical rename assumption. | insufficient | 0.60 | retain-compat .21; historical-only .10; insufficient .68 |
+
+The JEV input text was exactly the contextual state material summarized above, with explicit alternative outcomes and criteria. No result is treated as permission to mutate or proof of current runtime/deployment state. The full raw result receipt was retrieved at `artifact://3:raw:1-20`; concise result extract is recorded above. Weak/conflicting answers were not reframed to force a decision. Main safe disposition: no source edit without the canonical method/capability/schema contract; complete the requested exhaustive occurrence ledger before claiming task completion.

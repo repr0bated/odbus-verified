@@ -1,0 +1,63 @@
+{
+  "request": 37,
+  "started": "2026-10-18T21:37:32.451983+00:00",
+  "finished": "2026-10-18T21:37:42.151282+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-030ef9f439f2f14a016ad53c1f378887d08c94df082d9a9b9f",
+    "created": 1792359455,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Removing obsolete namespace facade\",\"input\":\"[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/binary_namespace.rs#B1E6]\\nREM\\n[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/mod.rs#7CFC]\\nCUT 20.=20\\n[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs#9F91]\\nCUT 2171.=2172\\nCUT 2430.=2432\"}",
+                "name": "edit"
+              },
+              "id": "call_AbXbcTU1CHPP9vmEINw20mmj",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 463,
+      "prompt_tokens": 188151,
+      "total_tokens": 188614,
+      "completion_tokens_details": {
+        "reasoning_tokens": 195
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 157210
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:37:42.149604+00:00",
+  "stream_chunks": 4
+}

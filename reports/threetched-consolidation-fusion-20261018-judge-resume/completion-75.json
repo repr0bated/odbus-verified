@@ -1,0 +1,63 @@
+{
+  "request": 75,
+  "started": "2026-10-18T22:01:13.172050+00:00",
+  "finished": "2026-10-18T22:01:29.475096+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0f33e06dc3aa1c20016ad541abf98487d0b9175e0991f32868",
+    "created": 1792360876,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading original source evidence\",\"path\":\"history://RetireLlmFacades\"}",
+                "name": "read"
+              },
+              "id": "call_9dx9gZmQ1whGti8KnvR5oqPG",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 692,
+      "prompt_tokens": 131409,
+      "total_tokens": 132101,
+      "completion_tokens_details": {
+        "reasoning_tokens": 585
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 53421
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:29.473767+00:00",
+  "stream_chunks": 4
+}

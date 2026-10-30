@@ -1,18 +1,10 @@
+use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 use anyhow::Result;
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema};
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::os::unix::fs::OpenOptionsExt;
-use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
-
-use super::plugin_scaffold_helpers::{
-    method_decl_from_schemars, method_decl_from_schemars_with_output,
-};
 
 /// Runtime state of the workflow automation plugin.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -38,13 +30,29 @@ pub struct WorkflowsState {
 pub struct StartWorkflowInput {
     /// Workflow ID to start
     pub workflow_id: String,
-    /// Optional parameters
+    /// Execution parameters require 1..=32 string steps in params.steps.
+    /// Each step is agent.operation or agent.operation|{JSON object arguments};
+    /// binding is at most 256 bytes and argument JSON at most 16384 bytes.
+    /// The serialized execution parameters must fit 131072 bytes in total.
+    #[schemars(extend("x-opdbus-private" = true))]
+    #[schemars(with = "Option<WorkflowExecutionParameters>")]
     pub params: Option<serde_json::Value>,
+}
+
+/// Schema view of the existing JSON parameters; wire deserialization stays JSON.
+/// Byte limits and operation binding validation remain execution-owner checks.
+#[derive(schemars::JsonSchema)]
+#[allow(dead_code)] // Used only to derive the sealed schema, never instantiated.
+struct WorkflowExecutionParameters {
+    #[schemars(length(min = 1, max = 32))]
+    steps: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct QueryWorkflowsInput {
     pub workflow_id: Option<String>,
+    /// Retrieve one exact session-owned execution, including interrupted runs.
+    pub execution_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -60,6 +68,55 @@ pub struct WorkflowSummary {
 pub struct QueryWorkflowsOutput {
     pub workflows: Vec<WorkflowSummary>,
     pub count: usize,
+    /// Bounded execution history of the exact verified caller session. Progress
+    /// is query-only; no workflow state watch is provided by this contract.
+    pub executions: Vec<WorkflowExecutionSummary>,
+    /// History is bounded; a full page may omit older executions.
+    pub executions_truncated: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkflowExecutionStatus {
+    Queued,
+    Running,
+    PauseRequested,
+    Paused,
+    CancelRequested,
+    Cancelled,
+    Succeeded,
+    Failed,
+    OutcomeUnknown,
+    Interrupted,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct WorkflowExecutionSummary {
+    pub execution_id: String,
+    pub workflow_id: String,
+    pub status: WorkflowExecutionStatus,
+    pub revision: u64,
+    pub accepted_at: String,
+    pub completed_steps: usize,
+    /// The current backend request may already have caused effects.
+    pub in_flight: bool,
+    pub reason: Option<String>,
+    /// Terminal episode is committed through the existing private SHM owner.
+    /// False with no error means publication is pending or was not attempted.
+    pub episode_committed: bool,
+    /// Publication failed; execution status still describes backend effects.
+    pub episode_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct WorkflowTransitionOutput {
+    pub execution_id: String,
+    pub workflow_id: String,
+    pub status: WorkflowExecutionStatus,
+    pub revision: u64,
+    /// Pause/cancel takes effect after the dispatched step settles. It never
+    /// undoes backend effects; a timeout leaves its outcome unknown.
+    pub in_flight: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -67,7 +124,7 @@ pub struct StartWorkflowOutput {
     pub accepted: bool,
     pub execution_id: String,
     pub workflow_id: String,
-    pub status: String,
+    pub status: WorkflowExecutionStatus,
     pub accepted_at: String,
 }
 
@@ -76,6 +133,8 @@ pub struct StartWorkflowOutput {
 pub struct PauseWorkflowInput {
     /// Workflow ID to pause
     pub workflow_id: String,
+    /// Required when this session has multiple active runs of the workflow.
+    pub execution_id: Option<String>,
 }
 
 /// Input struct for ResumeWorkflow method.
@@ -83,6 +142,7 @@ pub struct PauseWorkflowInput {
 pub struct ResumeWorkflowInput {
     /// Workflow ID to resume
     pub workflow_id: String,
+    pub execution_id: Option<String>,
 }
 
 /// Input struct for CancelWorkflow method.
@@ -90,6 +150,7 @@ pub struct ResumeWorkflowInput {
 pub struct CancelWorkflowInput {
     /// Workflow ID to cancel
     pub workflow_id: String,
+    pub execution_id: Option<String>,
     /// Force cancel even if running
     #[serde(default)]
     pub force: bool,
@@ -100,7 +161,7 @@ impl Default for WorkflowsState {
         Self {
             status: "active".to_string(),
             workflows: serde_json::json!([{"id": "deploy", "name": "Deploy Pipeline", "steps": ["build", "test", "deploy"], "triggers": ["push", "manual"], "status": "idle"}, {"id": "backup", "name": "System Backup", "steps": ["snapshot", "archive", "verify"], "triggers": ["cron"], "status": "idle"}, {"id": "embedding-sync", "name": "Embedding Pipeline Sync", "steps": ["ingest", "chunk", "embed", "store"], "triggers": ["webhook"], "status": "idle"}]),
-            config: serde_json::json!({"max_concurrent": 4, "timeout_secs": 3600, "retry_count": 2, "notification_channel": "telegram"}),
+            config: serde_json::json!({"max_concurrent": 2, "step_timeout_secs": 120, "execution_capacity": 64, "max_steps": 32, "retry_count": 0}),
         }
     }
 }
@@ -119,7 +180,7 @@ impl WorkflowsPlugin {
         WorkflowsState {
             status: "active".to_string(),
             workflows: serde_json::json!([{"id": "deploy", "name": "Deploy Pipeline", "steps": ["build", "test", "deploy"], "triggers": ["push", "manual"], "status": "idle"}, {"id": "backup", "name": "System Backup", "steps": ["snapshot", "archive", "verify"], "triggers": ["cron"], "status": "idle"}, {"id": "embedding-sync", "name": "Embedding Pipeline Sync", "steps": ["ingest", "chunk", "embed", "store"], "triggers": ["webhook"], "status": "idle"}]),
-            config: serde_json::json!({"max_concurrent": 4, "timeout_secs": 3600, "retry_count": 2, "notification_channel": "telegram"}),
+            config: serde_json::json!({"max_concurrent": 2, "step_timeout_secs": 120, "execution_capacity": 64, "max_steps": 32, "retry_count": 0}),
         }
     }
 }
@@ -129,7 +190,7 @@ impl StatePlugin for WorkflowsPlugin {
         "workflows"
     }
     fn version(&self) -> &str {
-        "1.0.0"
+        "2.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
         Some(workflows_schema())
@@ -184,7 +245,7 @@ pub(crate) fn workflows_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "workflows",
-        "1.0.0",
+        "2.0.0",
         "Workflow automation — pipelines, triggers, execution",
         &root,
     );
@@ -218,10 +279,7 @@ pub(crate) fn workflows_schema() -> PluginSchema {
     // PauseWorkflow method
     schema.methods.insert(
         "pause_workflow".to_string(),
-        method_decl_from_schemars_with_output::<
-            PauseWorkflowInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
+        method_decl_from_schemars_with_output::<PauseWorkflowInput, WorkflowTransitionOutput>(
             "PauseWorkflow",
             op_state_store::SideEffect::Mutation,
             false,
@@ -233,10 +291,7 @@ pub(crate) fn workflows_schema() -> PluginSchema {
     // ResumeWorkflow method
     schema.methods.insert(
         "resume_workflow".to_string(),
-        method_decl_from_schemars_with_output::<
-            ResumeWorkflowInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
+        method_decl_from_schemars_with_output::<ResumeWorkflowInput, WorkflowTransitionOutput>(
             "ResumeWorkflow",
             op_state_store::SideEffect::Mutation,
             false,
@@ -248,10 +303,7 @@ pub(crate) fn workflows_schema() -> PluginSchema {
     // CancelWorkflow method
     schema.methods.insert(
         "cancel_workflow".to_string(),
-        method_decl_from_schemars_with_output::<
-            CancelWorkflowInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
+        method_decl_from_schemars_with_output::<CancelWorkflowInput, WorkflowTransitionOutput>(
             "CancelWorkflow",
             op_state_store::SideEffect::Mutation,
             false,
@@ -280,10 +332,11 @@ pub(crate) fn workflows_schema() -> PluginSchema {
     schema
 }
 
-const DEFAULT_WORKFLOW_JOURNAL: &str = "/var/lib/op-dbus/workflows/run-queue.jsonl";
-static JOURNAL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+/// Historical receipt journal. New executions use the bridge's private Cozo
+/// episode owner; old unscoped receipts are never replayed or adopted.
+pub const DEFAULT_WORKFLOW_JOURNAL: &str = "/var/lib/op-dbus/workflows/run-queue.jsonl";
 
-fn workflow_summaries() -> Vec<WorkflowSummary> {
+pub fn workflow_summaries() -> Vec<WorkflowSummary> {
     WorkflowsPlugin::current_state()
         .workflows
         .as_array()
@@ -293,34 +346,8 @@ fn workflow_summaries() -> Vec<WorkflowSummary> {
         .collect()
 }
 
-fn journal_path() -> PathBuf {
-    std::env::var_os("OP_WORKFLOW_JOURNAL_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_WORKFLOW_JOURNAL))
-}
-
-fn append_workflow_request(path: &Path, record: &serde_json::Value) -> Result<()> {
-    let _guard = JOURNAL_LOCK
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .map_err(|_| anyhow::anyhow!("workflow journal lock poisoned"))?;
-    let parent = path
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("workflow journal has no parent"))?;
-    fs::create_dir_all(parent)?;
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .open(path)?;
-    serde_json::to_writer(&mut file, record)?;
-    file.write_all(b"\n")?;
-    file.sync_data()?;
-    Ok(())
-}
-
-/// Runtime dispatcher for the workflow PluginSchema. Enqueue is durable and
-/// local; it performs no broker/provider hop on the HOT admission path.
+/// Descriptor-only helper. Runtime execution requires the bridge owner and
+/// verified identity; no context-free helper may issue an accepted receipt.
 pub async fn dispatch_workflows_method(
     method: &str,
     args: &serde_json::Value,
@@ -336,34 +363,12 @@ pub async fn dispatch_workflows_method(
             Ok(serde_json::to_value(QueryWorkflowsOutput {
                 workflows,
                 count,
+                executions: vec![],
+                executions_truncated: false,
             })?)
         }
         "start_workflow" => {
-            let input: StartWorkflowInput = serde_json::from_value(args.clone())?;
-            if !workflow_summaries()
-                .iter()
-                .any(|workflow| workflow.id == input.workflow_id)
-            {
-                anyhow::bail!("unknown workflow '{}'", input.workflow_id);
-            }
-            let output = StartWorkflowOutput {
-                accepted: true,
-                execution_id: uuid::Uuid::new_v4().to_string(),
-                workflow_id: input.workflow_id,
-                status: "queued".to_string(),
-                accepted_at: chrono::Utc::now().to_rfc3339(),
-            };
-            let record = serde_json::json!({
-                "schema_version": 1,
-                "execution_id": output.execution_id,
-                "workflow_id": output.workflow_id,
-                "status": output.status,
-                "accepted_at": output.accepted_at,
-                "params": input.params
-            });
-            let path = journal_path();
-            tokio::task::spawn_blocking(move || append_workflow_request(&path, &record)).await??;
-            Ok(serde_json::to_value(output)?)
+            anyhow::bail!("workflow start requires the verified bridge execution owner")
         }
         "pause_workflow" | "resume_workflow" | "cancel_workflow" => {
             anyhow::bail!(
@@ -378,7 +383,6 @@ pub async fn dispatch_workflows_method(
 mod tests {
     use super::*;
     use crate::state_plugins::common::oscal::validate_subid;
-    use crate::state_plugins::schemars_adapter::schema_diffs;
     use serde_json::Value as JVal;
 
     fn collect_subids(value: &JVal, out: &mut Vec<String>) {

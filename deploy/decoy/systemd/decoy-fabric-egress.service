@@ -1,0 +1,10 @@
+[Unit]
+Description=Mark router fabric egress through WARP
+After=network-online.target wg-quick@wg-opdbus.service wg-quick@wgcf-ingress.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/decoy-fabric-egress
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

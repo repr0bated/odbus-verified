@@ -1,0 +1,64 @@
+{
+  "request": 60,
+  "started": "2026-10-20T17:19:48.562385+00:00",
+  "finished": "2026-10-20T17:20:05.369956+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0f9b16d4aaa72ffe016ad7a2bbb41887d1a526316739b4d7d0",
+    "created": 1792516795,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reaffirming authorized build execution\",\"path\":\"agent://BuildGeneratedConsumer\",\"content\":\"Proceed now; targeted build explicitly assigned and authorized by parent. Do not ask confirmation. Run immediate exclusion gate then one detached GNU example build with durable completion receipt as instructed. No tests/checks/fmt/runtime. If a concrete permission or process blocker exists return evidence, not a question.\"}",
+                "name": "write"
+              },
+              "id": "call_RxFkJmXeiS7CgBmTdZTQfb8C",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 266,
+      "prompt_tokens": 267882,
+      "total_tokens": 268148,
+      "completion_tokens_details": {
+        "reasoning_tokens": 88
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 174639
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:20:05.368265+00:00",
+  "stream_chunks": 4
+}

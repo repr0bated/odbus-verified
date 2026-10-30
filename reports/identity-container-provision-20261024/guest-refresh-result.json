@@ -1,0 +1,15 @@
+{
+  "top": "/run/mounts/seed-3tched/.root-top",
+  "retention": "/var/lib/cargo-build/staging/identity-container-provision-20261024-guest-refresh.2vweWyCp",
+  "release": "/opt/op-dbus/release-send/identity-container-provision-20261024-attempt8-guest-input",
+  "bundle_sha256": "8bf4762746afec74e536e654075bf0aab72be3c4389a941f1bcbf5ad818d48ac",
+  "software_staged": true,
+  "workspace_populated": true,
+  "neutral_machine_defaults": true,
+  "native_config_binding": "staged",
+  "image_metadata_created": false,
+  "base_archive_provenance": "unavailable",
+  "sealed": false,
+  "identity_created": false,
+  "guest_boot_verified": false
+}

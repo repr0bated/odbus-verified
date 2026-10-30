@@ -1,0 +1,93 @@
+{
+  "repository": "https://github.com/vercel/components.build",
+  "commit": "ba727450437385af662810329fa19896215f76d5",
+  "source_path": "skills/building-components",
+  "license_status": "Upstream root LICENSE retained unchanged.",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "source_path": "skills/building-components/SKILL.md",
+      "sha256": "c26a17c53e59d119df99eade77bd608f864f888ac877979bfc4ffbba25792eb8"
+    },
+    {
+      "path": "references/accessibility.mdx",
+      "source_path": "skills/building-components/references/accessibility.mdx",
+      "sha256": "01a111e6c5eff293daf32a29ed89b3e11bb3b13c88fd45de4b2ea7a9abaa0539"
+    },
+    {
+      "path": "references/as-child.mdx",
+      "source_path": "skills/building-components/references/as-child.mdx",
+      "sha256": "09d87f52cb38c250ed271bc88bf8daa2b146a846e319a677cdb6f961097fcb9d"
+    },
+    {
+      "path": "references/composition.mdx",
+      "source_path": "skills/building-components/references/composition.mdx",
+      "sha256": "07e237d59ff8fc72b5baf0e9cacaee4038533b904c57c2c9b70563c704fa55ec"
+    },
+    {
+      "path": "references/data-attributes.mdx",
+      "source_path": "skills/building-components/references/data-attributes.mdx",
+      "sha256": "f2e7b0e69c2db592d6b088ecbb67954cc9ce8011743ec585f53b8d7dd247a143"
+    },
+    {
+      "path": "references/definitions.mdx",
+      "source_path": "skills/building-components/references/definitions.mdx",
+      "sha256": "cc7b25e9aaea45df79c208ea0375ae5b96421d88d513cb2686006078044e6105"
+    },
+    {
+      "path": "references/design-tokens.mdx",
+      "source_path": "skills/building-components/references/design-tokens.mdx",
+      "sha256": "2598df725cf20c15863ff5ca4586f658d78fe41869d3e2926eb6f221603f6703"
+    },
+    {
+      "path": "references/docs.mdx",
+      "source_path": "skills/building-components/references/docs.mdx",
+      "sha256": "029746da509cf940c3723f7f01b0d0b93d19168858e8b9d906fa959b6da5b320"
+    },
+    {
+      "path": "references/marketplaces.mdx",
+      "source_path": "skills/building-components/references/marketplaces.mdx",
+      "sha256": "53a58aa384cc6805e244b9421077894e617fb045e0feb1758a40934b98d112ae"
+    },
+    {
+      "path": "references/npm.mdx",
+      "source_path": "skills/building-components/references/npm.mdx",
+      "sha256": "8514e9abe1faff281df2f609292564b7d074120aee2487aa65c12997092d2d2b"
+    },
+    {
+      "path": "references/polymorphism.mdx",
+      "source_path": "skills/building-components/references/polymorphism.mdx",
+      "sha256": "b58b860582b05ba9e0e571ce1889871b08687368b116ddeaea0215d22cbdc0f6"
+    },
+    {
+      "path": "references/principles.mdx",
+      "source_path": "skills/building-components/references/principles.mdx",
+      "sha256": "b3fa13ab6e063b3335f48b0a9764b77cd4bf6ad219834eb9d3ff200a8c872c81"
+    },
+    {
+      "path": "references/registry.mdx",
+      "source_path": "skills/building-components/references/registry.mdx",
+      "sha256": "1dac3f3c343bf54e2637832d713f9b4db4a1e9332d1aebc053030ea4bd30de2b"
+    },
+    {
+      "path": "references/state.mdx",
+      "source_path": "skills/building-components/references/state.mdx",
+      "sha256": "1b9520368e59830dfc4506f9992242b93dafbb86de670dab9ecbb59539c4cc34"
+    },
+    {
+      "path": "references/styling.mdx",
+      "source_path": "skills/building-components/references/styling.mdx",
+      "sha256": "46d087b9b4f03cfebc2f24593f072a37a3f97ed3ed8756b4fc840a095caf0e30"
+    },
+    {
+      "path": "references/types.mdx",
+      "source_path": "skills/building-components/references/types.mdx",
+      "sha256": "3bc4cb52ad26c27a6ba11003e6fe832b63efbced1bf2908e318f667d4a71f515"
+    },
+    {
+      "path": "LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "b4f9adb7c568904834d0dd6cc98d16c390d21ca32fc17ae7a267715269bd5529"
+    }
+  ]
+}

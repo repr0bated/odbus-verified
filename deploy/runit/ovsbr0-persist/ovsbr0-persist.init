@@ -1,0 +1,28 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          ovsbr0-persist
+# Required-Start:    openvswitch-switch
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Restore pub0 and ovsbr0 addresses
+### END INIT INFO
+
+set -eu
+HELPER=/usr/local/sbin/ovsbr0-persist
+
+case "${1:-}" in
+    start|restart|force-reload)
+        "$HELPER"
+        ;;
+    stop)
+        ;;
+    status)
+        ip -4 addr show dev pub0 | grep -q "${PUB_ADDR:-188.68.58.237}"
+        ip -4 route show default | grep -q 'dev pub0'
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}" >&2
+        exit 1
+        ;;
+esac

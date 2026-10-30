@@ -7,13 +7,13 @@
 use anyhow::Result;
 use op_plugins::state_plugins::{
     project::{ChatMode, ResolvedChatContext},
-    tched_router::ChatInput,
+    chat_router::ChatInput,
 };
 use std::collections::BTreeSet;
 
 use crate::{
     mutation_engine::MutationEngine, project_dispatch, specialist::CognitiveCaller,
-    tched_router_runtime::TchedRouterRuntimeClient,
+    chat_router_runtime::ChatRouterRuntimeClient,
 };
 
 pub(crate) const CONTROL_PLANE_AGENT: &str = "control_plane";
@@ -22,7 +22,7 @@ pub(crate) const ACCOUNTABILITY_AGENT: &str = "accountability";
 pub(crate) struct ResolvedChatRoute {
     pub(crate) mode: ChatMode,
     pub(crate) context: ResolvedChatContext,
-    pub(crate) client: TchedRouterRuntimeClient,
+    pub(crate) client: ChatRouterRuntimeClient,
     pub(crate) input: ChatInput,
 }
 
@@ -69,9 +69,9 @@ pub(crate) async fn resolve(
     let (mode, client) = match alias {
         Some(alias) => (
             context.mode,
-            TchedRouterRuntimeClient::for_agent_alias(alias),
+            ChatRouterRuntimeClient::for_agent_alias(alias),
         ),
-        None => (context.mode, TchedRouterRuntimeClient::from_env()),
+        None => (context.mode, ChatRouterRuntimeClient::from_env()),
     };
     let sealed_identity = crate::native_sled_identity::credential_for(
         caller.actor_id,

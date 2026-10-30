@@ -1,0 +1,19 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-state-store/Cargo.toml	1-30 EOF	17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49	No native occurrence; unchanged	complete
+crates/op-state-store/SPEC.md	1-98 EOF	f6b0197ba558762d8fcb58abd9054e380eec79c6fb795710d07e441a1874557e	No native occurrence; generic stale inventory separate	complete
+crates/op-state-store/compare-op-state-store.md	1-91 EOF	63105a710a1751f0431f2c61044f715c86eb91ff525456044a3b8158ed8dd767	No native occurrence; generic stale inventory separate	complete
+crates/op-state-store/src/disaster_recovery.rs	1-250;251-500;501-647 EOF	d89a099882bd8951e7188e18dd10a36c986f48aa21ed0734581df8c82a9ceab6	No native occurrence; generic PackageKit receipt concern separate	complete
+crates/op-state-store/src/error.rs	1-11 EOF	25b7ce2701bc024ed17312ada7d955736177679d754fd0c502f58b79b0664115	No native occurrence; unchanged	complete
+crates/op-state-store/src/event_chain.rs	1-250;251-500;501-750;751-1000;1001-1250;1251-1511 EOF	bf2d56db5650f0152072bbec056215c0dc1ec1c4be20ddb6bbba66afafc40f34	No native occurrence; unchanged	complete
+crates/op-state-store/src/exact_schema.rs	1-250;251-500;501-763 EOF	b21dfffd8543e2957c4d5ac1feebf62550582054c64bb2b0df736cf0e69e7823	17 native occurrences retained; J1.diagnostics 0.94 and J1.fixtures 0.92	complete
+crates/op-state-store/src/execution_job.rs	1-31 EOF	c27e6d18f35aa9ab791ffdeaf38e500380ee4d3ef0618b639fb0b32824aeca26	No native occurrence; unchanged	complete
+crates/op-state-store/src/lib.rs	1-69 EOF	9cbfb0f08683362e1031a8ce1c9d6d6756814f7dcc000b1a098e5644b12977be	No native occurrence; unchanged	complete
+crates/op-state-store/src/memory_store.rs	1-128 EOF	9e4562154de37913df7990470545c014c193c3fa4ce698a03de56677059b3dcb	No native occurrence; unchanged	complete
+crates/op-state-store/src/method_receipt.rs	1-280 EOF	b6bd7c1b51577e770b0070ff4c812bcdbd253438c9840c8475427f267fa6798e	No native occurrence; unchanged	complete
+crates/op-state-store/src/metrics.rs	1-258 EOF	dbf05d7aed0f22b1f232dd3f7bbd30d742e9d613ce7e2cbb634c5915f293f7ea	No native occurrence; unchanged	complete
+crates/op-state-store/src/plugin_schema.rs	1-250;251-500;501-750;751-1000;1001-1250;1251-1500;1501-1750;1751-2000;2001-2250;2251-2476 EOF	7c5bd6c0ef4f7de860aca6c2b002d015e42e62a4558ca58aca5b184d90ed766a	No native occurrence; unchanged	complete
+crates/op-state-store/src/public_state.rs	1-250;251-500;501-750;751-870 EOF	c649f87cc0c979713261d738de708a0175dec601c23897e40c358d1370ac2362	No native occurrence; unchanged	complete
+crates/op-state-store/src/schema_projection.rs	1-250;251-460 EOF	04d54c20208a5dd6986103ac283186c371af3808c98429c7c748ec1666f9b657	Lexical substring in alternatives retained; J2.lexical_alternatives 0.92	complete
+crates/op-state-store/src/schema_validator.rs	1-240;241-421 EOF	848a1664ca61f11aa5a11189a7e286ba3b793d9377179f884240ac1139eace7f	natively keyword-support wording retained; J2.natively 0.95	complete
+crates/op-state-store/src/state_schema_shape.rs	1-250;251-500;501-538 EOF	0ea12472c17dfb115c942a017cbc54b05751035a1e9a57ac960c4ad6a66ecceb	native tagged device fixture annotation retained; J2.tagged_fixture 0.98	complete
+crates/op-state-store/src/state_store.rs	1-41 EOF	b3753a45f66059285d9250407985e434b839c72717640a3c2707b537150e7985	No native occurrence; unchanged	complete

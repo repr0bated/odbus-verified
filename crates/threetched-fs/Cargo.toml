@@ -1,9 +1,16 @@
 [package]
-name = "threetched-fs"
+name = "tched-fs"
 version = "0.1.0"
 edition.workspace = true
 description = "Schema-driven FUSE projection over authoritative typed OP-DBUS blobs"
 license = "MIT"
+
+[lib]
+name = "tched_fs"
+
+[[bin]]
+name = "3tched-fs"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
@@ -20,10 +27,13 @@ serde_json = "1"
 sha2 = "0.10"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "time"] }
+rmcp = { version = "3.5", features = ["server", "transport-io"] }
 uuid = { version = "1", features = ["v4"] }
 zbus = { version = "5", features = ["p2p", "tokio"] }
 # The sealed schema's authority: it decodes every blob this crate projects.
 op-state-store = { workspace = true }
+op-core = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+rmcp = { version = "3.5", features = ["client", "server", "transport-io"] }

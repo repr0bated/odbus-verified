@@ -1,0 +1,138 @@
+{
+  "10": {
+    "sha": "fa2147b3a17f0fce4dfa7098fab15de644ae03b2",
+    "branch": "restore/devuan-storage-20261013"
+  },
+  "11": {
+    "sha": "955edd223d8c767cd480776f5ef494e36c72cb91",
+    "branch": "review/devuan-01-blob-canonical"
+  },
+  "12": {
+    "sha": "b1a88b570b0877b3591e0910ad29b2a6e6c4e5d7",
+    "branch": "review/devuan-02-state-cache"
+  },
+  "13": {
+    "sha": "3c2e3cf834b71d85deac2dc2d3978de7bd875600",
+    "branch": "review/devuan-03-cozo"
+  },
+  "14": {
+    "sha": "a720c1f55ada6fd441664c63d965b031cd1f76ee",
+    "branch": "review/devuan-04-plugins"
+  },
+  "15": {
+    "sha": "f5a47b795447b8a6dc7c963101e1f7054a05fc47",
+    "branch": "review/devuan-05-plugins"
+  },
+  "16": {
+    "sha": "6305a5d2a746c53d8fbe9113f496612e69c34b24",
+    "branch": "review/devuan-06-plugins"
+  },
+  "17": {
+    "sha": "fec87ccc8bbbe67127dd340875fdc2bf5ebf661f",
+    "branch": "review/devuan-07-plugins"
+  },
+  "18": {
+    "sha": "a662608713beb7df1cae366bacf75f6f430e2845",
+    "branch": "review/devuan-08-bridge"
+  },
+  "19": {
+    "sha": "3c810eb1c145e35c005afb3d1043cfb0249f5639",
+    "branch": "review/devuan-09-bridge"
+  },
+  "20": {
+    "sha": "5f8f27f34c71ca6cd9c35e34905378adc2006dec",
+    "branch": "review/devuan-10-bridge"
+  },
+  "21": {
+    "sha": "418e20b10d454983ed57a7bd71b42a7ce960d20a",
+    "branch": "review/devuan-11-bridge"
+  },
+  "22": {
+    "sha": "900d5ab1ff6fe7336766a9467c1dece6b77b9f6d",
+    "branch": "review/devuan-12-filesystem"
+  },
+  "23": {
+    "sha": "cc48abd6e39969d51d915c4e49652afaafb7b901",
+    "branch": "review/devuan-13-cognitive-chat"
+  },
+  "24": {
+    "sha": "cdd44aefe7d1c1f45fd1a137d04023c1d7906639",
+    "branch": "review/devuan-14-cognitive-chat"
+  },
+  "25": {
+    "sha": "25e5aaef45753df4062842260917ebd666916e07",
+    "branch": "review/devuan-15-cognitive-chat"
+  },
+  "26": {
+    "sha": "482dbf10ffb2ebb4f977cd07dce84999b5aba1e5",
+    "branch": "review/devuan-16-cognitive-chat"
+  },
+  "27": {
+    "sha": "0f17f7fd1761234801d889337c53cfda5fcb3bae",
+    "branch": "review/devuan-17-other-crates"
+  },
+  "28": {
+    "sha": "9dcd65f4afb0da9fc18edbea486d6550f45d7af6",
+    "branch": "review/devuan-18-other-crates"
+  },
+  "29": {
+    "sha": "6a10924541233b528a4f1400b6bee4d808cd0746",
+    "branch": "review/devuan-19-other-crates"
+  },
+  "30": {
+    "sha": "90bb5af9b6bcefdbf69d229258d5786bb1c7ed2c",
+    "branch": "review/devuan-20-service-config"
+  },
+  "31": {
+    "sha": "eb1ce2267a53d9bdc3f980e02bfc5247351c16bc",
+    "branch": "review/devuan-21-host-services"
+  },
+  "32": {
+    "sha": "8bba65c17343d1f24c7902f7b86f1117b3825be3",
+    "branch": "review/devuan-22-host-services"
+  },
+  "33": {
+    "sha": "b860986e9149438f1de614e60cc65cd9062ec1a3",
+    "branch": "review/devuan-23-host-services"
+  },
+  "34": {
+    "sha": "97d61508fd613fffbc1d54482993522f0b4e383d",
+    "branch": "review/devuan-24-host-services"
+  },
+  "35": {
+    "sha": "7ce6a54f96c6bf9eabb532827585c1c4d95a467e",
+    "branch": "review/devuan-25-network"
+  },
+  "36": {
+    "sha": "29fa5bd4c86274408bcc1554408efde07606963f",
+    "branch": "review/devuan-26-network"
+  },
+  "37": {
+    "sha": "6b1ad14e7b262f678e278ce33a6a1edec18f22ce",
+    "branch": "review/devuan-27-release"
+  },
+  "38": {
+    "sha": "0984dcf2f7d7a761207c72a6f57585b64376409c",
+    "branch": "review/devuan-28-native-vendor"
+  },
+  "39": {
+    "sha": "8503c66daade103d7bc5b7565aa9d2fb60b55fa7",
+    "branch": "review/devuan-29-jsonschema"
+  },
+  "40": {
+    "sha": "2cead8014a14ddbe4909806047215badba30c618",
+    "branch": "review/devuan-30-jsonschema"
+  },
+  "41": {
+    "sha": "2ca54c0964f9167b821c666d518f8ebb7b0d7f45",
+    "branch": "review/devuan-31-jsonschema"
+  },
+  "42": {
+    "sha": "ed0b4b33996c87bb016f6c50df21234fdb780b30",
+    "branch": "review/devuan-32-tooling"
+  },
+  "43": {
+    "sha": "b3d156215930bd5000a458c6b2c155704c98bcca",
+    "branch": "review/devuan-33-tooling"
+  }
+}

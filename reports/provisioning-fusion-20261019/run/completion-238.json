@@ -1,0 +1,64 @@
+{
+  "request": 238,
+  "started": "2026-10-19T04:43:29.311070+00:00",
+  "finished": "2026-10-19T04:43:45.808113+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0917ab91e098d4c3016ad59ffa50a887d089f892d1f8c94ca4",
+    "created": 1792385018,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading workpool completion mechanics\",\"path\":\"xd://eval/agents\"}",
+                "name": "read"
+              },
+              "id": "call_RyeLMpRK6y12z89Q8iFQsz5Y",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 144,
+      "prompt_tokens": 103549,
+      "total_tokens": 103693,
+      "completion_tokens_details": {
+        "reasoning_tokens": 65
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 91491
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:45.806891+00:00",
+  "stream_chunks": 4
+}

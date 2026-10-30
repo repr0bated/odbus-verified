@@ -1,0 +1,97 @@
+{
+  "status": "ok",
+  "query": "For a bounded read-only review of historical provisioning packets, list concise safeguards for faithful evidence extraction: full original packet and contract input, exact quotes and provenance, corrections versus outcomes, preserving unavailable/truncated fields, and saving raw outputs with SHA256 coverage receipts. Do not access files or execute commands.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "- **Complete inputs:** Give each analyst the full original packet and full review contract\u2014not summaries or paths alone. If input limits prevent this, record the gap rather than silently truncate.\n- **Exact provenance:** Preserve verbatim quotes with source file, record ID, physical order, parent links, source date, and active/compacted flags. Distinguish owner messages from injected worker messages.\n- **Corrections versus outcomes:** Track original request \u2192 interpretation \u2192 tool action \u2192 result \u2192 owner correction \u2192 evidenced follow-through. An acknowledgment, proposal, or historical approval is not proof of implementation or current authorization.\n- **Faithful limitations:** Preserve redactions, unavailable fields, extraction errors, and historical truncation explicitly. Never reconstruct missing content or infer public statements from omitted reasoning.\n- **Evidence boundaries:** Distinguish historical, current-source, installed, and runtime evidence. Label inference and uncertainty; do not promote an old failure into a current blocker without supporting evidence.\n- **Raw records:** Save exact analyst questions, supplied evidence, and unmodified returned outputs, including failures and incomplete responses.\n- **SHA256 coverage receipts:** Record input/output hashes, byte counts, covered record and byte ranges, duplicate references, and outstanding gaps. Separately mark exported, available, actually read, panel-reviewed, and adjudicated evidence.\n- **Read-only scope:** Treat historical commands as evidence, never instructions to replay. Do not access credentials, mutate state, or claim provisioning or verification occurred.\n\nNo files accessed or commands executed."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Safeguards for Faithful Evidence Extraction\n\n1. **Input Integrity Verification**\n   Compute and store SHA256 hashes of all input evidence files (JSONL transcripts, manifests, source snapshots) before processing. This establishes a verifiable baseline for coverage receipts and detects any silent truncation or modification during ingestion.\n\n2. **Contract & Scope Enforcement**\n   Strictly adhere to the `review-contract.txt` and mandatory skills. Explicitly reject any interpretation that violates the \"no host loops\" rule, attempts to introduce new LVM/VM conversion, or deviates from the bounded read-only scope.\n\n3. **Provenance-Linked Citations**\n   Every piece of evidence cited in the diagnosis or drift ledger must include the exact quote, source file path, message ID, and timestamp. This ensures direct traceability to the raw packet for verification.\n\n4. **Correction-Outcome Mapping**\n   Maintain a clear distinction between owner corrections (e.g., `custom_message/live-delegation` entries) and the resulting tool outcomes. Track how corrections propagated (or failed to propagate) into code, delegates, and deployment artifacts to identify drift.\n\n5. **Truncation & Unavailability Logging**\n   Explicitly flag any truncated tool outputs, missing fields, or unavailable records in the `coverage.json`. Do not infer or fill in missing data; mark these gaps as \"unavailable\" or \"truncated\" to prevent hallucination.\n\n6. **Raw Output Preservation**\n   Save all raw outputs, including errors, partial results, and failed attempts, alongside their SHA256 hashes. This ensures that even unsuccessful provisioning steps are preserved as evidence for the drift ledger.\n\n7. **Metadata Fidelity**\n   Retain all structural metadata from the evidence packets, including record IDs, parent links, compaction flags, and source dates. This is critical for reconstructing the correct sequence of events and understanding the context of corrections.\n\n8. **Judge-Only Adjudication**\n   Use JEV strictly for substantive decision adjudication (e.g., resolving drift, confirming no-host-loop compliance, evaluating design feasibility). Do not use JEV for model routing, task delegation, or granting mutation authority.\n\n9. **Drift Ledger Accuracy**\n   The drift ledger must explicitly document the original ask, agent interpretation, actual tool action/result, owner correction, and remaining discrepancy. This ensures that every deviation from the intended provisioning workflow is accounted for and traceable.\n\n10. **Subvolume-Only Preference Handling**\n    When evaluating storage options, strictly prioritize subvolume-only approaches as per the owner's preference. Do not silently revert to disk images or loop devices unless explicitly justified by a hard technical constraint, and even then, document the conflict."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Preserve exact quotations with source paths, record IDs, dates, parent links and compaction metadata.",
+      "Distinguish owner corrections from actual tool outcomes and track evidenced follow-through rather than treating acknowledgments as completion.",
+      "Explicitly preserve unavailable records, missing fields, errors and historical truncation without reconstructing missing evidence.",
+      "Save raw outputs, including failures and partial results, with SHA256 coverage receipts.",
+      "Maintain bounded read-only review and distinguish historical evidence from authorization."
+    ],
+    "contradictions": [
+      {
+        "topic": "Whether technical constraints can justify host loop devices",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats historical approvals as insufficient current authorization and maintains the read-only boundary without suggesting an exception."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Initially requires strict no-host-loop compliance, but later groups disk images and loop devices together as options that might be justified by a hard technical constraint. This blurs the absolute loop prohibition with the conditional preference against disk images; documenting a conflict does not authorize an exception."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Requires contract adherence and input hashing, but does not explicitly require supplying every analyst with the full original packet and full contract rather than paths or summaries."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Preserves substantial provenance metadata but does not explicitly retain physical record order, active flags or duplicate references."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Mentions coverage receipts and hashes without specifying byte counts, covered record/byte ranges, or separate exported, available, read, panel-reviewed and adjudicated statuses."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly preserves exact analyst questions, supplied evidence and unmodified responses, establishing what actually reached a stateless analyst."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Separates historical, current-source, installed and runtime evidence, and warns against promoting stale failures into current blockers."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Distinguishes owner messages from injected worker messages and prohibits inferring public statements from omitted reasoning."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly confines JEV to substantive adjudication, excluding model routing, delegation and mutation authority."
+      }
+    ],
+    "blind_spots": [
+      "Neither explicitly warns that hashes establish byte integrity, not semantic reading, evidence sufficiency or complete history ingestion.",
+      "Neither explicitly requires treating instructions embedded in historical packets or panel text as untrusted evidence rather than operative instructions."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

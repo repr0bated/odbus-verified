@@ -1,13 +1,13 @@
 //! Canonical Cron method integration.
 //!
-//! The admitted OP-DBUS method and verified session authorize the call. The
-//! tched-router bearer authenticates only this bridge to the loopback daemon.
+//! The admitted OP-DBUS method and verified session authorize the call; the
+//! chat-router bearer authenticates only this bridge to the loopback daemon.
 //! Cron records are install-global: scheduled execution remains autonomous
 //! under the configured native agent's risk/tool policy and does not retain or
 //! re-check the caller's OP-DBUS grant.
 
 use crate::{
-    cron_gateway::TchedRouterCronGateway,
+    cron_gateway::ChatRouterCronGateway,
     cron_methods::{CronMethods, mark_publication_unverified},
     method_contract_admission,
     mutation_engine::MutationEngine,
@@ -104,13 +104,13 @@ pub(crate) async fn dispatch(
 ) -> Result<serde_json::Value> {
     let mutation = is_mutation(method);
     let _operation = CRON_OPERATION.lock().await;
-    let caller = crate::tched_router_admission::RouterCaller {
+    let caller = crate::chat_router_admission::RouterCaller {
         actor: actor.to_owned(),
         capability: capability.map(str::to_owned),
         session: session.map(str::to_owned),
         genesis: genesis.map(str::to_owned),
     };
-    let pinned = crate::tched_router_admission::readmit_call(
+    let pinned = crate::chat_router_admission::readmit_call(
         engine,
         admitted_schema,
         PLUGIN,
@@ -122,7 +122,7 @@ pub(crate) async fn dispatch(
         schema_hash: pinned.schema_hash,
         schema_json: pinned.blob.schema_json,
     };
-    let service = CronMethods::new(Arc::new(TchedRouterCronGateway::production()));
+    let service = CronMethods::new(Arc::new(ChatRouterCronGateway::production()));
     let mut receipt = service.dispatch_observed(method, args).await?;
 
     let expected_hash = pin.schema_hash.clone();

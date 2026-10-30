@@ -1,0 +1,10 @@
+emergency_overlay_utc=2026-10-01T18:02:21Z
+reason=schema_content_hash_drift_blocks_tonic_after_4.3.0_activation
+confirmed_error=identity schema content hash drift for 414fbc56-03fb-20ab-758a-bcc7a7cbdc0e
+previous_usr_local_link=/opt/op-dbus/current/bin/op-grpc-bridge
+hotfix_bin=/srv/git/odbus-verified/target/release/op-grpc-bridge
+hotfix_sha256=be1957d114ca4a18c4efa2de26c9b0a58857b6efeed550ce95692e62f257f5a2
+rollback=sudo ln -sfn /opt/op-dbus/current/bin/op-grpc-bridge /usr/local/bin/op-grpc-bridge && sudo sv restart op-grpc-bridge
+disk_avail=183G
+note=temporary court overlay; release tree stays RO; genesis hash rewrite still owed
+hotfix2_sha=5df9f312241656c6510e7e8d24e434cb2ec804b0ad3b73349230d913c7fe6b09

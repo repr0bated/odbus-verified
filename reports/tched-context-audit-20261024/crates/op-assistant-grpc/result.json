@@ -1,0 +1,22 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-assistant-grpc",
+  "status": "complete",
+  "files_reviewed": 31,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-assistant-grpc/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-assistant-grpc/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-assistant-grpc/occurrences.tsv",
+  "jev_receipts": [
+    "reports/tched-context-audit-20261024/crates/op-assistant-grpc/judgments.md"
+  ],
+  "limitations": [
+    "Static source review only; no build, tests, runtime, external receiver, service availability, or deployment verification.",
+    "The initial report omitted two mandatory-preload receipts: json-render/SKILL.md lines 301-377 and using-superpowers/SKILL.md. Both were read in the follow-up; the first report did not claim those reads had occurred.",
+    "Coordinator source-read reconciliation reports 31 files with metadata and no missing-line or column-limited files.",
+    "Generic lib.rs authentication and HTTP fallback documentation drift was judged separate from the tched-specific task and left unchanged."
+  ],
+  "next_action": "Coordinator reconciles this corrected per-crate receipt with the remaining crate reports."
+}

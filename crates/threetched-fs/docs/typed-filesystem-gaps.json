@@ -1,0 +1,204 @@
+{
+  "format": "3tchedfs-gap-inventory/2",
+  "task_id": "fs-core-20261005",
+  "scope": "Current core filesystem repair; implemented source is not tested/deployed proof.",
+  "ranking": "Remaining unresolved and verification work precedes intentional unsupported surfaces.",
+  "deployment": {
+    "status": "Prior baseline 20261005T194135Z-26a4ad1-fs activated on 2026-10-05T19:45:16Z; this source revision is not deployed. Evidence: reports/fs-core-20261005/deployment.json. Follow-up catalog1425 is preparation only: reports/fs-core-20261005/followup-preparation.json.",
+    "tests": "Current repaired source/release workflow remains unverified here; separate owner-assigned agent owns tests. Earlier dated source/build claims do not prove the new mounted-MCP/workflow revision."
+  },
+  "gaps": [
+    {
+      "rank": 1,
+      "id": "deployed-workflow-verification",
+      "status": "verification-pending",
+      "finding": "Source changes require native GNU release build, snapshot/send-receive activation and postdeployment complete workflow/failure/cancellation checks.",
+      "source_refs": [
+        "AGENTS.md:88-123"
+      ]
+    },
+    {
+      "rank": 2,
+      "id": "existing-cache-policy-conflict",
+      "status": "implemented-source-unverified",
+      "finding": "Reusable filesystem payload/live/outcome caches replaced by declared locators and charged active descriptor ownership; TTLzero/directIO.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:25-38",
+        "crates/threetched-fs/src/fuse_fs.rs:24-130",
+        "crates/threetched-fs/src/fuse_buffers.rs:4-109"
+      ]
+    },
+    {
+      "rank": 3,
+      "id": "committed-state-and-exposure",
+      "status": "implemented-source-unverified",
+      "finding": "Canonical bounded locked read validates complete committed state and derives only exact sealed public projection; pending/invalid/absent state and catalog/policy drift fail closed. Schema-only boot capture explicitly has unavailable state.",
+      "source_refs": [
+        "crates/threetched-fs/src/source.rs:42-149",
+        "crates/threetched-fs/src/source.rs:184-267",
+        "crates/threetched-fs/src/model.rs:10-144"
+      ]
+    },
+    {
+      "rank": 4,
+      "id": "canonical-mutations-are-not-blob-writes",
+      "status": "intentional-separation",
+      "finding": "Workspace staging remains captured public-state artifact editing; backend mutations only canonical identity/capability-admitted CallFile. Direct SHM route is read-only; no direct state mutation/write pointer bypass exists.",
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:198-249",
+        "crates/threetched-fs/src/dispatch.rs:174-456"
+      ]
+    },
+    {
+      "rank": 5,
+      "id": "audit-attempt-versus-completion",
+      "status": "implemented-source-unverified",
+      "finding": "Durable reservation and confirmed attempt precede effect; validated result+committed publication+durable linked terminal precede completed receipt. Post-effect/cross-store failure remains unknown; cancellation-owned task continues.",
+      "source_refs": [
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736",
+        "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
+      ]
+    },
+    {
+      "rank": 6,
+      "id": "topology-staleness",
+      "status": "implemented-source-unverified",
+      "finding": "Addressed data discovery rebuilds only its current committed public subtree; absent/deleted keys disappear, unrelated locators remain intact, and target errors propagate. Static factories/traversal avoid unrelated live values. Existing FD/listing snapshots stay versioned and bounded.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472",
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+      ]
+    },
+    {
+      "rank": 7,
+      "id": "workspace-mount-refresh",
+      "status": "implemented-source-unverified",
+      "finding": "Per-object local guard plus expected-object CAS reject cross-process stale writers; successful stage updates descriptor hash and fresh inventory; failed FD cannot retry on release.",
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:198-249",
+        "crates/threetched-fs/src/fuse_fs.rs:351-554"
+      ]
+    },
+    {
+      "rank": 8,
+      "id": "outcome-locators",
+      "status": "implemented-source-unverified",
+      "finding": "Result/error files and Outcome nodes removed. Same original call descriptor carries transient terminal payload; declared get_receipt recovers permanent caller-private status/proofs, never a private result.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:844-873",
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:644-736"
+      ]
+    },
+    {
+      "rank": 9,
+      "id": "absolute-symlinks",
+      "status": "implemented-source-unverified",
+      "finding": "Operation/capability/dependency links are parent-relative and stay inside the mount.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "rank": 10,
+      "id": "nested-receipt-contract",
+      "status": "implemented-source-unverified",
+      "finding": "Shared closed envelope validates target/operation/proof order and exact MethodDecl.returns. Missing result declaration blocks before effects rather than inferring null.",
+      "source_refs": [
+        "crates/op-state-store/src/method_receipt.rs:40-141",
+        "crates/threetched-fs/src/dispatch.rs:408-456",
+        "crates/threetched-fs/src/mounted.rs:184-497"
+      ]
+    },
+    {
+      "rank": 11,
+      "id": "mount-modes-and-cancellation",
+      "status": "implemented-source-unverified",
+      "finding": "Exact typed host/guest/credential identity mode+UUID pin; local UID/access enforcement; bounded async jobs with single execution and durable owned attempt/backend/terminal across caller cancellation. No backend cancellation/rollback API fabricated.",
+      "source_refs": [
+        "crates/threetched-fs/src/mounted.rs:39-181",
+        "crates/threetched-fs/src/fuse_fs.rs:202-581",
+        "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
+      ]
+    },
+    {
+      "rank": 12,
+      "id": "dynamic-schema-specialization",
+      "status": "authored-source-unverified",
+      "finding": "Source-authored schema-only sealed specialization emits exact supported object presence/null/maps/arrays/enums/OneOf shapes. Context-dependent source OneOf, general intersections/unions, recursive/external references, custom validation and partial public map/array shapes report unsupported; dynamic slots stay explicit. Prior generation and generated-use GNU compilation completed before the Grok mounted-MCP changes; current-source regeneration/rebuild remains pending. Dated preparation evidence: reports/fs-core-20261005/release-preparation.json and HANDOFF.md final2 build entries.",
+      "source_refs": [
+        "crates/threetched-fs/examples/typed_specialize.rs:120-476",
+        "crates/threetched-fs/examples/typed_specialize.rs:507-602",
+        "crates/threetched-fs/examples/typed_specialize.rs:666-1050",
+        "crates/threetched-fs/src/typed_runtime.rs:454-510"
+      ]
+    },
+    {
+      "rank": 13,
+      "id": "no-posix-segment-or-zero-copy-layout",
+      "status": "intentional-unsupported",
+      "finding": "Read-only direct SHM is a fresh owned decoded canonical committed snapshot. No raw address, fixed ABI segment, mmap, pointer layout or zero-copy guarantee is claimed.",
+      "source_refs": [
+        "crates/threetched-fs/src/source.rs:24-149",
+        "crates/threetched-fs/src/typed_runtime.rs:173-191"
+      ]
+    },
+    {
+      "rank": 14,
+      "id": "watch-and-arbitrary-posix-mutation",
+      "status": "intentional-unsupported",
+      "finding": "No watch/stream/mmap node or arbitrary create/delete/rename/xattr/locking API is authored. fuser default errors remain explicit. These are not implemented features or hidden repair failures.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:582-1031",
+        "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
+      ]
+    },
+    {
+      "rank": 15,
+      "id": "global-audit-memory-retention",
+      "status": "existing-system-limitation",
+      "finding": "Existing EventChain.events lifetime Vec grows with events and is independent of filesystem's bounded descriptor ownership; permanent journal recovery/dedup does not depend on bounded startup replay. Global audit retention is outside this repair.",
+      "source_refs": [
+        "crates/op-state-store/src/event_chain.rs:552-560",
+        "crates/op-state-store/src/event_chain.rs:607-623"
+      ]
+    },
+    {
+      "rank": 16,
+      "id": "pre-spawn-elevation-consumption",
+      "status": "implemented-source-unverified",
+      "finding": "Exact original admitted argument elevation consumption is inside the cancellation-owned method task, before durable reservation/attempt/backend, after cancellable attribution/compliance and owner capacity admission; extra private argument copy dropped before audit.",
+      "source_refs": [
+        "crates/op-grpc-bridge/src/mutation_engine.rs:3421-3732"
+      ]
+    },
+    {
+      "rank": 17,
+      "id": "reserved-aggregate-key",
+      "status": "implemented-source-unverified",
+      "finding": "Real JSON key .value.json is encoded %2Evalue.json, distinct from synthetic aggregate marker; empty key remains canonical %.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:1041-1067"
+      ]
+    },
+    {
+      "rank": 18,
+      "id": "direct-shm-read-only",
+      "status": "implemented-source-unverified",
+      "finding": "Mandatory captured store/view plus active catalog and committed state provenance; five readonly classes only. Artifact hash identifies capture, not hash of current state.",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:525-561",
+        "crates/threetched-fs/src/typed_runtime.rs:1100-1182"
+      ]
+    },
+    {
+      "rank": 19,
+      "id": "named-custom-validator",
+      "status": "intentional-unsupported",
+      "finding": "No invented execution authority for Constraint::Custom names. Explicit unavailable/report replaces silent validation success. Backend-owned custom implementation is outside this filesystem's authored surface.",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:475-514",
+        "crates/threetched-fs/examples/typed_specialize.rs:120-602"
+      ]
+    }
+  ]
+}

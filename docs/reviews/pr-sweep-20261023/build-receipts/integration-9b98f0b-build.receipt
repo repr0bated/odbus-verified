@@ -1,0 +1,12 @@
+started=2026-10-23T21:51:13Z
+pid=9391
+uid=1000
+source_head=9b98f0bf629fe1bb8a80e44d0a76b683911b1071
+command=cargo build --locked --offline --target x86_64-unknown-linux-gnu -p op-cognitive -p threetched-fs -p op-web -p op-llm -p op-mcp -p op-deployment -p op-network
+RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu
+RUSTC=/home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc
+RUSTDOC=/home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustdoc
+CARGO_TARGET_DIR=/var/lib/cargo-build/odbus-verified
+finished=2026-10-23T22:07:47Z
+status=completed
+exit_code=0

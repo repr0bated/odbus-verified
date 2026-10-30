@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-http",
+  "status": "complete",
+  "files_reviewed": 8,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-http/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-http/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-http/occurrences.tsv",
+  "jev_receipts": "reports/tched-context-audit-20261024/crates/op-http/judgments.md",
+  "limitations": ["Static source audit only; runtime/deployment state unverified.", "Cargo/build/tests/Clippy/fmt/custom smoke/runtime/deployment were prohibited and not run."],
+  "next_action": "Coordinator may aggregate this complete zero-occurrence crate result."
+}

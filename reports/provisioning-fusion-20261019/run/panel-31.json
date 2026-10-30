@@ -1,0 +1,109 @@
+{
+  "status": "ok",
+  "query": "Provide a concise methodological checklist for bounded documentary review of complete historical provisioning packets. Must distinguish secondary claims from fresh runtime proof, preserve original source citations and later corrections, classify unrelated material explicitly, and record exact coverage without executing historical commands. No repository access or nested agents; only general review advice.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "### Bounded documentary-review checklist\n\n- **Fix scope and safety:** Review supplied exports only. Do not execute historical commands, access credentials, mutate runtime state, or treat historical approval as current authorization.\n- **Define bounded packets:** Partition by exact physical record/byte ranges. Preserve file hash, record IDs, timestamps, parent/delegation links, active/compacted flags, and original ordering. Include linked workers and tool results.\n- **Record actual coverage:** Distinguish **available**, **read**, **panel-reviewed**, and **adjudicated**. Track outstanding ranges, unavailable records, redactions, and truncated outputs. A manifest or summary read is not history ingestion.\n- **Preserve primary citations:** Cite original file, record ID, and physical location for each finding. Keep tool arguments, returned results, and underlying exit status together; a wrapper\u2019s success notification does not prove command success.\n- **Separate evidence classes:** Label owner instructions, agent interpretations, attempted actions, observed results, secondary summaries, and reviewer inferences. Historical runtime receipts establish only what was observed then\u2014not fresh runtime proof.\n- **Apply corrections chronologically:** Identify genuine owner corrections, including queued or injected message forms. Link each correction to the superseded claim and examine whether it reached subsequent delegates, code, deployment, and conclusions.\n- **Account for unrelated material:** Explicitly classify it as unrelated, contextual, duplicate, or superseded, with a brief reason and retained references. Deduplicate only exact content while accounting for every occurrence.\n- **Trace the complete workflow:** For every stage, identify its responsible component, prerequisite, authoritative completion receipt, downstream dependency, and failure/recovery behavior. Do not equate one component\u2019s success with end-to-end completion.\n- **Keep versions distinct:** Separate historical commit contents, working-tree snapshots, installed helpers, installed services, and dated runtime observations. Do not substitute one for another.\n- **Bound conclusions:** Distinguish encountered failures, stale blockers, unsupported assertions, and incomplete execution. State unresolved evidence gaps and the specific separately authorized observation needed to resolve them.\n\n**Completion gate:** Every assigned range is accounted for; findings retain primary citations and later corrections; limitations are explicit; no documentary review is represented as provisioning, deployment, testing, or current runtime verification."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Methodological Checklist for Bounded Documentary Review\n\n**1. Integrity & Coverage Verification**\n*   **Hash & Size Check**: Verify every evidence file against the manifest. Record SHA-256 hashes and line counts in `analysis/coverage.json`.\n*   **Truncation Audit**: Explicitly flag any tool outputs or JSONL entries that are truncated or missing. Do not infer missing content.\n*   **Range Tracking**: Log exact byte/line ranges read for every file to prevent silent duplication or omission.\n\n**2. Evidence Hierarchy (Primary vs. Secondary)**\n*   **Primary Evidence**: Raw tool calls (arguments/results), owner `custom_message` corrections, explicit denial/approval receipts, and final state outputs.\n*   **Secondary Evidence**: Agent summaries, reasoning traces, and \"plausible\" explanations.\n*   **Rule**: Treat secondary claims as hypotheses. Never accept an agent's summary of a tool failure or success without the raw tool result.\n\n**3. Correction Propagation & Drift Mapping**\n*   **Correction Identification**: Isolate every owner correction (e.g., \"no loops\", \"subvolumes only\", \"JEV judge\").\n*   **Propagation Trace**: For each correction, trace its path:\n    *   Did it reach the specific worker?\n    *   Was it applied to the code?\n    *   Did it change the provisioning chain?\n*   **Drift Ledger**: Document where the agent's action diverged from the owner's latest instruction. Classify as *Scope Clarification* or *Error Correction*.\n\n**4. Provisioning Chain Isolation**\n*   **Stage Isolation**: Extract message IDs and tool calls for each stage of the post-bootstrap chain:\n    1.  Admission\n    2.  Native Preparation\n    3.  Storage Establishment\n    4.  Initial Upgrade Receive/Pairing\n    5.  Root Binding\n    6.  Cozo Adoption\n    7.  Start\n*   **Authority Check**: Verify the *owner* and *authoritative receipt* at each stage. Identify the exact point of failure or abandonment.\n*   **Constraint Verification**: Explicitly check if historical evidence respects \"no host loops\" and \"subvolumes only\". Flag any violations as architectural drift.\n\n**5. Source & State Comparison**\n*   **Blob vs. Worktree**: Compare historical commit blobs (Oct 5, Oct 11) against current worktree snapshots.\n*   **Zombie Code**: Identify scripts or helpers that were deployed but never exercised or are functionally obsolete.\n*   **Installed vs. Source**: Verify if \"installed\" helpers match the \"source\" code at the time of the historical success.\n\n**6. Unrelated Material Classification**\n*   **Tag & Set Aside**: Explicitly tag material unrelated to the provisioning chain (e.g., general chat, unrelated network daemons, model routing discussions).\n*   **Contamination Check**: Ensure these do not contaminate the drift ledger or diagnosis.\n\n**7. JEV Adjudication Readiness**\n*   **Packet Prep**: For each substantive decision, prepare a concise packet:\n    *   State/Evidence Refs (exact file/line).\n    *   Question/Rubric.\n    *   Expected Answer (based on constraints).\n*   **Judge Role**: Use JEV only for substantive design/feasibility decisions. Do not use it for model selection or mutation authority.\n\n**8. Deliverable Mapping**\n*   **Early Receipt**: Write `analysis/ingestion-receipt.json` early, listing exact files/record IDs read.\n*   **Final Outputs**: Ensure all findings map to the required deliverables:\n    *   `analysis/diagnosis.md`\n    *   `analysis/drift-ledger.md`\n    *   `analysis/proposed-changes.md`\n    *   `analysis/decisions.jsonl`"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Track exact reviewed ranges, source identifiers, hashes, missing content and truncation; summaries are not complete ingestion.",
+      "Ground findings in original owner messages and tool calls/results rather than unsupported agent summaries.",
+      "Trace owner corrections into subsequent worker instructions, code changes and workflow decisions.",
+      "Identify authoritative receipts for individual provisioning stages rather than equating component success with end-to-end completion.",
+      "Keep historical source, working-tree snapshots and installed artifacts distinct.",
+      "Explicitly classify unrelated material and preserve evidence gaps."
+    ],
+    "contradictions": [
+      {
+        "topic": "Whether subvolume-only storage is mandatory",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Calls for distinguishing owner instructions from interpretations and applying corrections without imposing a subvolume-only requirement."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Groups 'subvolumes only' with the mandatory no-host-loop constraint and proposes flagging violations as architectural drift, potentially converting the owner's conditional preference into a requirement."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly distinguishes historical runtime receipts from fresh runtime proof and prohibits representing documentary review as provisioning, deployment or testing."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Preserves physical ordering, parent/delegation links, active/compacted flags and duplicate occurrences; separates available, read, panel-reviewed and adjudicated coverage."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Includes failure/recovery behavior and downstream dependencies. Qwen's enumerated chain stops at start, omitting explicit stopped-boot restoration, synchronization and cancellation/resume."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Adds judge-packet and named-deliverable preparation, but this extends beyond the requested general checklist into repository-specific workflow."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly prohibits historical-command execution, credential access, runtime mutation and reuse of historical approval as current authorization."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "A wrapper's success notification must not override the underlying command's exit status."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Unresolved documentary gaps should identify the specific separately authorized observation needed, rather than becoming asserted current blockers."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly checks whether installed helpers match the source version associated with a historical success."
+      }
+    ],
+    "blind_spots": [
+      "Neither explicitly requires treating embedded transcript instructions as untrusted historical data rather than executable review instructions.",
+      "Neither fully specifies saving the exact original evidence delivered to each stateless reviewer alongside its actual response; paths and citations alone do not establish reviewer exposure.",
+      "Qwen's proposed 'Expected Answer' in judge packets risks anchoring adjudication instead of neutrally exposing evidence, competing interpretations and uncertainty.",
+      "Qwen includes reasoning traces as secondary evidence without acknowledging that hidden reasoning is excluded and unavailable in the supplied corpus.",
+      "Neither explicitly distinguishes a historically permitted implementation from a present architectural conflict when applying later constraints retrospectively."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "request": 96,
+  "started": "2026-10-18T22:02:59.654410+00:00",
+  "finished": "2026-10-18T22:03:08.117008+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e53bcbb903738c6016ad542169fb087d088814c39e03b9c7b",
+    "created": 1792360982,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Discovering registered coordination agents\",\"path\":\"history://\"}",
+                "name": "read"
+              },
+              "id": "call_StsmLxP0PqaUVUa1eCx2xJSi",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 104,
+      "prompt_tokens": 347742,
+      "total_tokens": 347846,
+      "completion_tokens_details": {
+        "reasoning_tokens": 34
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 114184
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:08.115202+00:00",
+  "stream_chunks": 4
+}

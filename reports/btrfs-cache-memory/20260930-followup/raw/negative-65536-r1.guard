@@ -1,0 +1,2 @@
+pid=32539 case=negative size=65536 repeat=1
+exit=0 duration_s=0 sampled_peak_rss_kib=9008

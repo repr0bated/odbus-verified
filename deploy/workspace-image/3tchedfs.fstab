@@ -1,0 +1,3 @@
+# Each view's systemd service owns startup; noauto prevents competing boot mounts.
+3tchedFS /run/mount/3tchedfs fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
+threetched /run/mount/threetched fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0

@@ -59,6 +59,17 @@ impl Default for BinaryIntrospectOpts {
 }
 
 pub fn introspect_binary(binary: &Path, opts: &BinaryIntrospectOpts) -> Result<BinarySurface> {
+    introspect_binary_subtree(binary, &[], opts)
+}
+
+/// Inspect one command namespace without walking unrelated binary commands.
+/// The returned node paths retain `prefix`, so a sealed plugin can pin the
+/// exact upstream command provenance (for example `skills.bundle.add`).
+pub fn introspect_binary_subtree(
+    binary: &Path,
+    prefix: &[String],
+    opts: &BinaryIntrospectOpts,
+) -> Result<BinarySurface> {
     if opts.ssh.is_none() && !binary.exists() {
         bail!("binary not found: {}", binary.display());
     }
@@ -67,7 +78,7 @@ pub fn introspect_binary(binary: &Path, opts: &BinaryIntrospectOpts) -> Result<B
     let mut visited = HashSet::new();
     walk(
         binary,
-        &[],
+        prefix,
         opts.max_depth,
         opts.ssh.as_deref(),
         &mut nodes,

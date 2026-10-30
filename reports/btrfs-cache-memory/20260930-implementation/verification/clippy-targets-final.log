@@ -1,0 +1,39 @@
+    Blocking waiting for file lock on build directory
+   Compiling op-cache v0.1.0 (/srv/git/odbus-verified/crates/op-cache)
+    Checking op-core v0.1.0 (/srv/git/odbus-verified/crates/op-core)
+    Checking cozorocks v0.1.7
+    Checking cozo v0.7.6
+    Checking op-identity v0.1.0 (/srv/git/odbus-verified/crates/op-identity)
+    Checking op-cozo-store v1.0.0 (/srv/git/odbus-verified/crates/op-cozo-store)
+error: redundant closure
+   --> crates/op-cozo-store/src/model_registry.rs:635:34
+    |
+635 |         self.model_registry_read(|tx| profiles(tx))
+    |                                  ^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `profiles`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#redundant_closure
+    = note: `-D clippy::redundant-closure` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+
+error: this `if` statement can be collapsed
+   --> crates/op-cozo-store/src/model_registry.rs:650:9
+    |
+650 | /         if let Some(profile) = profile {
+651 | |             if !bounded(profile, MAX_ID_BYTES) {
+652 | |                 return Err(error("invalid model registry profile"));
+653 | |             }
+654 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+650 ~         if let Some(profile) = profile
+651 ~             && !bounded(profile, MAX_ID_BYTES) {
+652 |                 return Err(error("invalid model registry profile"));
+653 ~             }
+    |
+
+error: could not compile `op-cozo-store` (lib) due to 2 previous errors

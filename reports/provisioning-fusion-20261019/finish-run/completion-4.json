@@ -1,0 +1,88 @@
+{
+  "request": 4,
+  "started": "2026-10-19T06:00:49.698903+00:00",
+  "finished": "2026-10-19T06:01:01.069815+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0a26be667746ba62016ad5b214eab087d0a2902462f2dcc088",
+    "created": 1792389653,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading backend proof conclusions\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/BackendProof.md:1-250\"}",
+                "name": "read"
+              },
+              "id": "call_i2hdErMK5oHX2I0pMUeEVuHU",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading native feasibility conclusions\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/NativeFeasibility.md:1-240\"}",
+                "name": "read"
+              },
+              "id": "call_IwvSZdyFfpHHV0RQfLCYTExw",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading saved change specification\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/proposed-changes.md:1-240\"}",
+                "name": "read"
+              },
+              "id": "call_NRvcuDsXT0zNrZTbcPigA3Xn",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading saved decision answers\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/jev-recovery-answer.json\"}",
+                "name": "read"
+              },
+              "id": "call_HISb8j85SRcXz9Z96MjjW3CG",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 577,
+      "prompt_tokens": 234953,
+      "total_tokens": 235530,
+      "completion_tokens_details": {
+        "reasoning_tokens": 129
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 155767
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:01:01.067665+00:00",
+  "stream_chunks": 10
+}

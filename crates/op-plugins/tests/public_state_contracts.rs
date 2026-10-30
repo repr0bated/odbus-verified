@@ -8,7 +8,7 @@ use op_plugins::state_plugins::{
     net::NetworkConfig,
     procfs::ProcfsState,
     schema_renderer::SchemaRendererState,
-    tched_router::{TchedRouterPlugin, TchedRouterState},
+    chat_router::{ChatRouterPlugin, ChatRouterState},
 };
 use op_plugins::{DefaultPluginRegistry, PluginSchema};
 use op_state_store::MemoryStore;
@@ -80,7 +80,7 @@ async fn typed_seed_and_default_states_project_for_each_annotated_plugin() {
             }),
         ),
         ("json_render", owned(&JsonRenderState::default())),
-        ("tched_router", owned(&TchedRouterPlugin::current_state())),
+        ("chat_router", owned(&ChatRouterPlugin::current_state())),
     ];
 
     for (plugin_id, state) in fixtures {
@@ -157,8 +157,8 @@ async fn net_and_incus_public_views_exclude_private_topology_fields() {
 #[tokio::test]
 async fn router_and_json_render_views_exclude_private_catalog_surfaces() {
     let schemas = registered_schemas().await;
-    let router: TchedRouterState = TchedRouterPlugin::current_state();
-    let projected = schemas["tched_router"]
+    let router: ChatRouterState = ChatRouterPlugin::current_state();
+    let projected = schemas["chat_router"]
         .project_public_state(&owned(&router))
         .expect("valid router policy")
         .expect("router public view");

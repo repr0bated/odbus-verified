@@ -1,0 +1,151 @@
+{
+  "at": "2026-10-19T04:47:23.201Z",
+  "failed_run": "reports/provisioning-fusion-20261019/run",
+  "receipt": {
+    "started": "2026-10-19T04:34:44.359013+00:00",
+    "repo": "/srv/git/odbus-verified",
+    "handoff": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/CASE.md",
+    "source_sha256": "435cd0e957d2cae1e3548d122db82d29917b72ea6640630e8e1c6425550a4312",
+    "extension": "/home/jeremy/litellm-fusion/omp_fusion.ts",
+    "config": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/fusion-omp.yml",
+    "context": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/context.md",
+    "resume": null,
+    "continuation": null,
+    "transport": "authenticated loopback, native asynchronous SSE; OMP executes tools",
+    "invocation": "first required; subsequent tool steps auto",
+    "pid": 4737,
+    "exit_code": 1,
+    "finished": "2026-10-19T04:45:12.968935+00:00"
+  },
+  "failure": "Upstream Astra Pro Hermes stream HTTP502, terminal exit1; no fallback. Not a provisioning failure.",
+  "additional_observation": "17 CorpusReview worker files and many parallel Fusion requests were created. One substantive evidence panel reported Salad RateLimitError. These observations do not prove the causal source of the 502.",
+  "preserved_workers": [
+    {
+      "name": "SourceChain",
+      "source": "reports/provisioning-fusion-20261019/run/sessions/2026-10-19T04-34-44-731Z_01a15270-c57b-741c-9016-c6725374bd6a/SourceChain.md",
+      "copy": "reports/provisioning-fusion-20261019/recovery/SourceChain.md",
+      "bytes": 39411,
+      "status": "Persisted worker report; claims require provenance-aware integration."
+    },
+    {
+      "name": "BackendProof",
+      "source": "reports/provisioning-fusion-20261019/run/sessions/2026-10-19T04-34-44-731Z_01a15270-c57b-741c-9016-c6725374bd6a/BackendProof.md",
+      "copy": "reports/provisioning-fusion-20261019/recovery/BackendProof.md",
+      "bytes": 34321,
+      "status": "Persisted worker report; claims require provenance-aware integration."
+    },
+    {
+      "name": "HistoricalScripts",
+      "source": "reports/provisioning-fusion-20261019/run/sessions/2026-10-19T04-34-44-731Z_01a15270-c57b-741c-9016-c6725374bd6a/HistoricalScripts.md",
+      "copy": "reports/provisioning-fusion-20261019/recovery/HistoricalScripts.md",
+      "bytes": 7612,
+      "status": "Persisted worker report; claims require provenance-aware integration."
+    },
+    {
+      "name": "NativeFeasibility",
+      "source": "reports/provisioning-fusion-20261019/run/sessions/2026-10-19T04-34-44-731Z_01a15270-c57b-741c-9016-c6725374bd6a/NativeFeasibility.md",
+      "copy": "reports/provisioning-fusion-20261019/recovery/NativeFeasibility.md",
+      "bytes": 27882,
+      "status": "Persisted worker report; claims require provenance-aware integration."
+    }
+  ],
+  "packet_review_outputs": [
+    {
+      "file": "slice-10.json",
+      "content": {
+        "slice": 10,
+        "assigned_ids": [
+          "history-210",
+          "history-211",
+          "history-212",
+          "history-213",
+          "history-214",
+          "history-215",
+          "history-216",
+          "history-217",
+          "history-218",
+          "history-219",
+          "history-220",
+          "history-221",
+          "history-222",
+          "history-223",
+          "history-224",
+          "history-225",
+          "history-226",
+          "history-227",
+          "history-228",
+          "history-229",
+          "history-230"
+        ],
+        "method": "Stateless completion, full original packet and full review-contract as system; no source/history commands executed",
+        "contract": {
+          "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+          "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+          "bytes": 97062
+        },
+        "mandatory_preload": {
+          "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt",
+          "sha256": "822af580a928598c0b5f1354a4ac160ca8e96092d2fdf38ee5a2f4ea7684a981",
+          "bytes": 95493,
+          "read_fully_by_worker": true
+        },
+        "packets": [
+          {
+            "packet_id": "history-210",
+            "input": {
+              "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-210.txt",
+              "bytes": 100384,
+              "sha256": "5127426e6ac3d7426d5760d1306de65be33adf0054cfb291b2f437fe66b7689b"
+            },
+            "system": {
+              "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+              "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+              "bytes": 97062
+            },
+            "input_complete": true,
+            "status": "pending"
+          },
+          {
+            "packet_id": "history-211",
+            "input": {
+              "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-211.txt",
+              "bytes": 101257,
+              "sha256": "e81a89e972933efed5c790b5389dcaa7b70e23c5aa1fbbf1a82c68f6bced2000"
+            },
+            "system": {
+              "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+              "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+              "bytes": 97062
+            },
+            "input_complete": true,
+            "status": "pending"
+          },
+          {
+            "packet_id": "history-212",
+            "input": {
+              "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-212.txt",
+              "bytes": 100958,
+              "sha256": "3ce119a69eda8b2efa10bd4c56fe209833d570e8822e5d4c2b909065fcb7214f"
+            },
+            "system": {
+              "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+              "sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+              "bytes": 97062
+            },
+            "input_complete": true,
+            "status": "pending"
+          }
+        ]
+      }
+    }
+  ],
+  "review_input_receipts": 39,
+  "coverage": "Mechanical complete-file parsing is not semantic review. Do not count input files or zero-byte worker summaries as completed review.",
+  "resume_constraints": [
+    "Do not recreate exports or duplicate successful source research.",
+    "No new agents, workpools or parallel completion fan-out. At most one outstanding explicit completion globally.",
+    "Keep full corpus available, checkpoint completed packet reviews, and preserve explicit coverage gaps.",
+    "Do not directly invoke internal litellm_fusion tool after its router prohibits repeated invocation.",
+    "No implementation, provisioning, storage, grants, service, build, test or deployment."
+  ]
+}

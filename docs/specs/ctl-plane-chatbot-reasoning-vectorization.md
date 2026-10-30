@@ -2,7 +2,7 @@
 
 **Status:** Requirements / pre-design
 **Scope:** Production
-**Related:** `op-cognitive-mcp`, `op-snowball`, `op-plugins`, Qdrant, Voyage AI
+**Related:** `op-cognitive`, `op-snowball`, `op-plugins`, Qdrant, Voyage AI
 **Open decision:** Voyage model selection (POC to validate voyage-4-lite vs voyage-4)
 
 ---

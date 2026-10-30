@@ -1,0 +1,64 @@
+{
+  "request": 9,
+  "started": "2026-10-19T04:51:06.777592+00:00",
+  "finished": "2026-10-19T04:51:24.190858+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0ede165dc919fb0a016ad5a1bdadfc87d096ae5f767b7e2ea5",
+    "created": 1792385469,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Saving provisional diagnostic findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/diagnosis.md\",\"content\":\"# Provisioning diagnosis \u2014 provisional\\n\\nFull semantic corpus review remains incomplete. This report integrates saved source investigations; it does not establish present runtime state. No implementation, build, test, deployment or provisioning was performed.\\n\\n## Finding\\n\\nThe existing workflow contains disconnected completion boundaries and incompatible storage contracts. Native creation is not storage establishment, authoritative adoption or startup. Replacing the image-creation command alone cannot satisfy the latest no-host-loop requirement: the Rust adoption/start proofs explicitly require loop mappings and regular-file leaf identity.\\n\\nEvidence: `recovery/BackendProof.md`, original snapshots `identity_clean_provision/storage.rs:259\u2013369`, `partitioned.rs:54\u201365`; `recovery/SourceChain.md`, source/installed coverage tables.\\n\\nCurrent preparation/binding drafts select the newer pool and upgrade FSID while synchronization retains the older pool and FSID. Installed application helpers and the installed base boot service also differ from source. Application golden staging does not update the base-owned boot service. These are concrete integration defects, not proof that every historical blocker was genuine or remains current.\\n\\nEvidence: source `deploy/scripts/bind-instance-root.sh:27\u201330,79\u201381`, `sync-instance-upgrade.sh:34\u201380`; installed `etc/sv/identity-roots/run:33\u201339`; source `deploy/lib/golden/build-golden.sh:95\u201399,123\u2013127`, as cited in saved source reports.\\n\\n## Storage decision boundary\\n\\nNo host loop devices is unconditional, including pool backing and seed views. Existing loops are conflicts, not exemptions or permission to detach them. Native Incus Btrfs filesystem volumes are subvolumes, not writable block members for Btrfs sprouting. Subvolume-only storage cannot be called equivalent merely because it preserves files. Retain actual immutable-seed ancestry, persistent private writes, upgrade replication and root composition unless the owner explicitly changes those semantics.\\n\\nThe saved feasibility investigation quotes the upstream Linux 6.17+ restriction on mounting the same seed device both independently and through sprouts. An authorized non-loop writable allocation alone does not resolve the permanent standalone-seed mount requirement. No approved, proven alternative topology is established by the supplied source investigations. This is an unresolved prerequisite, not proof that all possible native Incus integrations are impossible.\\n\\nEvidence: `recovery/NativeFeasibility.md` \u00a7\u00a75\u20139; https://btrfs.readthedocs.io/en/latest/Seeding-device.html .\\n\\n## Evidence limits\\n\\nThe preceding runner's HTTP502 was a provider failure, not a provisioning result. Mechanical parsing of 42 histories is not semantic review. Packet reviews and additional JEV judgments remain outstanding. Historical start reports do not prove cold restoration or current completion. Saved `HistoricalScripts.md` ends mid-citation; its claim of complete reading is not a complete preserved detailed report.\\n\"}",
+                "name": "write"
+              },
+              "id": "call_3Gr0FqzCQpshRHdOAhR3apFV",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 991,
+      "prompt_tokens": 176513,
+      "total_tokens": 177504,
+      "completion_tokens_details": {
+        "reasoning_tokens": 133
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 115856
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:51:24.189247+00:00",
+  "stream_chunks": 4
+}

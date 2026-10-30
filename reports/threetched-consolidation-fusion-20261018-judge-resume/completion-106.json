@@ -1,0 +1,63 @@
+{
+  "request": 106,
+  "started": "2026-10-18T22:03:35.072910+00:00",
+  "finished": "2026-10-18T22:03:44.787750+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-06c093cd618c4301016ad5423aab5087d0bc726f78140add3f",
+    "created": 1792361018,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Tracing wiring helper consumers\",\"pattern\":\"target_method_for\",\"path\":\"/srv/git/odbus-verified/crates\"}",
+                "name": "grep"
+              },
+              "id": "call_LZDNTRgbj5YQcPV0WQAU7nrp",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 225,
+      "prompt_tokens": 197738,
+      "total_tokens": 197963,
+      "completion_tokens_details": {
+        "reasoning_tokens": 122
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 128705
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:44.786726+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,70 @@
+{
+  "repository": "https://github.com/vercel/streamdown",
+  "commit": "8edc64857a175720ad549e4d8c3cb1b9b4fca1ca",
+  "source_path": "skills/streamdown",
+  "license_status": "Upstream root LICENSE retained unchanged.",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "source_path": "skills/streamdown/SKILL.md",
+      "sha256": "1465e100885588a3c27bd63f7a43283ff14835b091d38a6fd3453f94a738c9d8"
+    },
+    {
+      "path": "assets/examples/basic-streaming.tsx",
+      "source_path": "skills/streamdown/assets/examples/basic-streaming.tsx",
+      "sha256": "a75f5b65b434d37d6643cb5568df366f16fd4d6e221c03d10e06658573fce583"
+    },
+    {
+      "path": "assets/examples/custom-security.tsx",
+      "source_path": "skills/streamdown/assets/examples/custom-security.tsx",
+      "sha256": "6a35f76b4f47ed38be3d5040a76d69780f435870491fe30c5975ac120a339537"
+    },
+    {
+      "path": "assets/examples/full-featured.tsx",
+      "source_path": "skills/streamdown/assets/examples/full-featured.tsx",
+      "sha256": "8f4ba2b424cd6f44ed4438b42f0e5a8484e31ec366aa84e2164c654b278b0b60"
+    },
+    {
+      "path": "assets/examples/static-mode.tsx",
+      "source_path": "skills/streamdown/assets/examples/static-mode.tsx",
+      "sha256": "240de593ed0709b4fc9d8a1b9ee4e624b3309cfd8984e5209f68117ac680d22f"
+    },
+    {
+      "path": "assets/examples/with-caret.tsx",
+      "source_path": "skills/streamdown/assets/examples/with-caret.tsx",
+      "sha256": "e6f3c9432d81bf07d053c7120b49abda5d2fed74c30c5bff0613be5bea832dc6"
+    },
+    {
+      "path": "references/api.md",
+      "source_path": "skills/streamdown/references/api.md",
+      "sha256": "4efff4c301873307a014f659c29462cfed4175148dae63605fd4497e5888a741"
+    },
+    {
+      "path": "references/features.md",
+      "source_path": "skills/streamdown/references/features.md",
+      "sha256": "983af84de6f9651f990c70b829cee2f9614ed44e35378f1f300a7dc515ec22ab",
+      "upstream_sha256": "bff9f64bef39b760e1b0207dafd9291d7427cd1cb9bf8702c0a74b15730f201d",
+      "adaptation": "Packaging adaptation: describe the streaming incomplete-link placeholder as literal text without a Markdown link target; preserve the placeholder URI and completion meaning."
+    },
+    {
+      "path": "references/plugins.md",
+      "source_path": "skills/streamdown/references/plugins.md",
+      "sha256": "c171e8b612b49001c5a9218f241c789e7512af25d9766295d2ffe254e34a8ef2"
+    },
+    {
+      "path": "references/security.md",
+      "source_path": "skills/streamdown/references/security.md",
+      "sha256": "a2256d7b65ffa898d9c846c9096d3137c33b34efc15fc14856fb7c8b1bd3706e"
+    },
+    {
+      "path": "references/styling.md",
+      "source_path": "skills/streamdown/references/styling.md",
+      "sha256": "5f0a4f8580fdee24e24a988f3ae12b0dcb8eeb39cb66e55a3d552b08d3d87445"
+    },
+    {
+      "path": "LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "b4f9adb7c568904834d0dd6cc98d16c390d21ca32fc17ae7a267715269bd5529"
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+[
+  {
+    "id": "supplement-000",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 0,
+    "end": 100000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-000.txt",
+    "sha256": "ff1f1ce27ec92f9599bceb006dbb0947012ac389ed5435caad5b052f23556edc"
+  },
+  {
+    "id": "supplement-001",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 100000,
+    "end": 200000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-001.txt",
+    "sha256": "4d91dc3014475f96a4813899444a88f15b4daa9a6bc8cd3f7bd07cd5dbfbb1f8"
+  },
+  {
+    "id": "supplement-002",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 200000,
+    "end": 300000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-002.txt",
+    "sha256": "de97357024f784f274ec8d245cdd320c6f330e7a1e4fdbd5aa0782cb6da0932e"
+  },
+  {
+    "id": "supplement-003",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 300000,
+    "end": 400000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-003.txt",
+    "sha256": "50796b1a24f340b916ad99850a03ce87be81c914b78bc94e593726a98503056b"
+  },
+  {
+    "id": "supplement-004",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 400000,
+    "end": 500000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-004.txt",
+    "sha256": "0bf36cdb407a9e861c4a396585df603f6f38ae6316e74109a040a5d056c1d538"
+  },
+  {
+    "id": "supplement-005",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 500000,
+    "end": 600000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-005.txt",
+    "sha256": "ac091990f5725046029653953cbdbf16ac35c36ac9f5cc1b3893e4b6a0da73bf"
+  },
+  {
+    "id": "supplement-006",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 600000,
+    "end": 700000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-006.txt",
+    "sha256": "3c6de439a1a12b7c5e4f31b527214d56453d1850c20bfa5e568ec326e2f2808a"
+  },
+  {
+    "id": "supplement-007",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 700000,
+    "end": 800000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-007.txt",
+    "sha256": "9f5d62ebbeb2b252e88f3c39efe6001969112f72d8a78529e0fd673b40a8fe41"
+  },
+  {
+    "id": "supplement-008",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 800000,
+    "end": 900000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-008.txt",
+    "sha256": "e0cba64b6dd96c84266bb007c8b770e7e140fd7b8c17b24c539b931c0921c911"
+  },
+  {
+    "id": "supplement-009",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 900000,
+    "end": 1000000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-009.txt",
+    "sha256": "1623023b2ed36028f1571b37dc48d349649b49ac5cbe662d01064532a54514a0"
+  },
+  {
+    "id": "supplement-010",
+    "file": "evidence/hermes/delegations.jsonl",
+    "start": 1000000,
+    "end": 1052547,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-010.txt",
+    "sha256": "089d413270cf6946b207b975300f7d1ea984156c226ffa02f2c3f42da7fd5e1c"
+  },
+  {
+    "id": "supplement-011",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 0,
+    "end": 100000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-011.txt",
+    "sha256": "99f1b5a40d0cb7101616ca4ef67531a93537f00e2d1dbd281f6205084ccdb392"
+  },
+  {
+    "id": "supplement-012",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 100000,
+    "end": 200000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-012.txt",
+    "sha256": "db9a670c4b625f51e10d7779495ec801e71b7310a535f6111e85e8c3a5f3b59d"
+  },
+  {
+    "id": "supplement-013",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 200000,
+    "end": 300000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-013.txt",
+    "sha256": "a880da14919f3fe810f69cf76f9a8d587c654a41cbf928e117f4f5df9f53695d"
+  },
+  {
+    "id": "supplement-014",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 300000,
+    "end": 400000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-014.txt",
+    "sha256": "7c65663d5c97f5408ccd8df412d45f92e741f8f1e194fee7b0ff5e74282e8d49"
+  },
+  {
+    "id": "supplement-015",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 400000,
+    "end": 500000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-015.txt",
+    "sha256": "8b5fab285fd8c40c6a43faf27bc2a710234afbe33ae02443c7a0e332c534fee8"
+  },
+  {
+    "id": "supplement-016",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 500000,
+    "end": 600000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-016.txt",
+    "sha256": "1ed37d817573d20ce966f3ce1cf09757188794fb4c778f7a19498dfc08381822"
+  },
+  {
+    "id": "supplement-017",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 600000,
+    "end": 700000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-017.txt",
+    "sha256": "94c4b0dda2f5c17b50763d9e9ad59fbea9b59822e55473a23fab30c6236ab2d9"
+  },
+  {
+    "id": "supplement-018",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 700000,
+    "end": 800000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-018.txt",
+    "sha256": "74ace724a50b728975781ebef7be699ca938ab77d299e50f35841aac8c01a0ae"
+  },
+  {
+    "id": "supplement-019",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 800000,
+    "end": 900000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-019.txt",
+    "sha256": "811098a12d63d1912a4458097ab61df3fa235b878a2d2c1980b7e5c0d7627f2a"
+  },
+  {
+    "id": "supplement-020",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 900000,
+    "end": 1000000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-020.txt",
+    "sha256": "d23920520b6ad550cc782c606971e108ac5bd1660f820e4c0a9b9f04425d98a8"
+  },
+  {
+    "id": "supplement-021",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 1000000,
+    "end": 1100000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-021.txt",
+    "sha256": "55614100e70c185783417a581ffc03d77c168760a8df569567dc9ceb1283b675"
+  },
+  {
+    "id": "supplement-022",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 1100000,
+    "end": 1200000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-022.txt",
+    "sha256": "2d951661fbf63811dbd2b32016e954915133f923ab993d9a489b2615accdd088"
+  },
+  {
+    "id": "supplement-023",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 1200000,
+    "end": 1300000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-023.txt",
+    "sha256": "cc1e5fa61e637e10f12003575b7715548eea8df762625b05c6b122873fd67151"
+  },
+  {
+    "id": "supplement-024",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 1300000,
+    "end": 1400000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-024.txt",
+    "sha256": "db039114b5b66dbee08d78ef097c0aa784c5cc95530fcfa118b5d6b0de13e93a"
+  },
+  {
+    "id": "supplement-025",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 1400000,
+    "end": 1500000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-025.txt",
+    "sha256": "34f24b0da198fbd62a38afedbd63695526d6f932f012cf0de2433bb840a1734d"
+  },
+  {
+    "id": "supplement-026",
+    "file": "evidence/context/HANDOFF.md",
+    "start": 1500000,
+    "end": 1508839,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-026.txt",
+    "sha256": "c47a4f5d8d412a1d3b7bce4d5a02bad0abd1df59fa0c8a6b12a2f331051eb21c"
+  },
+  {
+    "id": "supplement-027",
+    "file": "evidence/context/SIGNALS.md",
+    "start": 0,
+    "end": 100000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-027.txt",
+    "sha256": "81f39fda0b3f4f3ab61af1b055d4e1412d4fa92e11c5e5be3df0945d6d154d6f"
+  },
+  {
+    "id": "supplement-028",
+    "file": "evidence/context/SIGNALS.md",
+    "start": 100000,
+    "end": 200000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-028.txt",
+    "sha256": "02d1bc158a7290fc52b0d28b2392367228ff2cff552e5a70ab02324f6837e70b"
+  },
+  {
+    "id": "supplement-029",
+    "file": "evidence/context/SIGNALS.md",
+    "start": 200000,
+    "end": 300000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-029.txt",
+    "sha256": "88da153be74fc9b3e27b3799333a7f6574a406f776efba85ad4f99f0d5c07a9f"
+  },
+  {
+    "id": "supplement-030",
+    "file": "evidence/context/SIGNALS.md",
+    "start": 300000,
+    "end": 400000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-030.txt",
+    "sha256": "64037c6cdb3e06372d02bdd605f1018cc46adfe82eca2112f81b9e83646d7d01"
+  },
+  {
+    "id": "supplement-031",
+    "file": "evidence/context/SIGNALS.md",
+    "start": 400000,
+    "end": 500000,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-031.txt",
+    "sha256": "35fa391d9d2ebd94687fe497eb5507040561f431538878e81af71b854690f7e7"
+  },
+  {
+    "id": "supplement-032",
+    "file": "evidence/context/SIGNALS.md",
+    "start": 500000,
+    "end": 596747,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-032.txt",
+    "sha256": "ea7338e57cc4c86f3ec5bb8ec31e1aad392884a374d64712ccdde9d13a2c97c7"
+  },
+  {
+    "id": "supplement-033",
+    "file": "initial-drift-ledger.md",
+    "start": 0,
+    "end": 5927,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-033.txt",
+    "sha256": "f6b10792d3ca76cc929624c0524ded0ee3d8708fc52ee6ded9b7c2cac05a9b25"
+  },
+  {
+    "id": "supplement-034",
+    "file": "jev-evidence-inputs.json",
+    "start": 0,
+    "end": 5542,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-034.txt",
+    "sha256": "c310b1d0109a7de73e4cafd207160a1ba44f5caf6709136c771ab226a5c001c3"
+  },
+  {
+    "id": "supplement-035",
+    "file": "jev-evidence-decisions.json",
+    "start": 0,
+    "end": 3005,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-035.txt",
+    "sha256": "bbe0fd68424e9d9b7c00cebddef1bc0380e4c8fb2d851046a2dc7418859f0fc8"
+  },
+  {
+    "id": "supplement-036",
+    "file": "evidence/astra/latest-kiro-brief.txt",
+    "start": 0,
+    "end": 6652,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-036.txt",
+    "sha256": "1b87cfe5ae137591fffe93865951ae8ec5f5ebc7e0d2540e525ce22d32881a6b"
+  },
+  {
+    "id": "supplement-037",
+    "file": "evidence/research/AstraHistory.md",
+    "start": 0,
+    "end": 16459,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-037.txt",
+    "sha256": "149b1a03d8624f271927a03104d0ae85472416b1e56b08e192c53e25a420fbe3"
+  },
+  {
+    "id": "supplement-038",
+    "file": "evidence/research/ClaudeKiroHistory.md",
+    "start": 0,
+    "end": 22274,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-038.txt",
+    "sha256": "0d985155db7fe775cb0ea3ae89756b03e17ec5c276f8a316cf74526ef81cc622"
+  },
+  {
+    "id": "supplement-039",
+    "file": "evidence/research/ProvisionScriptHistory.md",
+    "start": 0,
+    "end": 20666,
+    "path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/supplement-039.txt",
+    "sha256": "9d850d45bf94ae337f59ca73b490d35b267a13befeb660a61e41850ffcdd2267"
+  }
+]

@@ -1,0 +1,2 @@
+pid=1804 case=clear size=65536 repeat=2
+exit=0 duration_s=3 sampled_peak_rss_kib=37156

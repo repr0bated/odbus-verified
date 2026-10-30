@@ -20,9 +20,9 @@ use tokio::sync::OnceCell;
 use tokio_rustls::{TlsConnector, rustls};
 use tokio_tungstenite::{WebSocketStream, tungstenite, tungstenite::protocol::WebSocketConfig};
 
-pub(crate) const PUBLIC_LISTENER: &str = "wss://dashboard.ghostbridge.tech:8090/mqtt";
-const BROKER_HOST: &str = op_plugins::state_plugins::emqx::FABRIC_SVC0_IP;
-const BROKER_PORT: u16 = 8084;
+pub(crate) const PUBLIC_LISTENER: &str = "wss://10.0.0.2:8090/mqtt";
+const BROKER_HOST: &str = op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_HOST;
+const BROKER_PORT: u16 = op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_PORT;
 const BROKER_CA: &str = "/etc/op-dbus/tls/tonic-svc0-ca.crt";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const FIRST_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -213,6 +213,11 @@ mod tests {
     use super::*;
     use axum::{Router, routing::get};
     use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+
+    #[test]
+    fn public_listener_uses_the_canonical_browser_tls_door() {
+        assert_eq!(PUBLIC_LISTENER, "wss://10.0.0.2:8090/mqtt");
+    }
 
     #[test]
     fn only_dashboard_origins_and_mqtt_subprotocol_are_admitted() {

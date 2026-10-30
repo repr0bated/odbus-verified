@@ -1,0 +1,2 @@
+path	line_position	exact_token_context	intended_meaning	judgment_reference	jev_outcome_confidence	decision	change_status
+crates/op-mcp-aggregator/	ALL: complete coverage.tsv (14 files;5660 lines)	NO CASE-INSENSITIVE NATIVE SUBSTRING OCCURRENCES OBSERVED	Not applicable	coverage.tsv full-file reads; judgments.md J1-J3 contextual distinctions only	Not applicable: absence is full-read observation, not excerpt-based JEV certification	No native-specific change	Resolved; zero source edits

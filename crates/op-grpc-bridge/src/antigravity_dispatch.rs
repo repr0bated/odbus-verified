@@ -33,7 +33,7 @@ async fn observe_antigravity(
     Ok(AntigravityState {
         status: "configured".to_string(),
         auth,
-        llm_plugin: "large_language_model".to_string(),
+        llm_plugin: "chat_router".to_string(),
         provider_route: runtime.provider.clone(),
         selected_model: runtime.selected_model.clone(),
         provider: runtime.provider,
@@ -71,7 +71,7 @@ async fn observe_antigravity_chat(
         status: status.to_string(),
         bridge,
         auth,
-        llm_plugin: "large_language_model".to_string(),
+        llm_plugin: "chat_router".to_string(),
         provider_route: runtime.provider.clone(),
         selected_model: runtime.selected_model,
         config: ChatConfig {

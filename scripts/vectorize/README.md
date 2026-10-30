@@ -3,7 +3,7 @@
 One-off Python scripts (not part of the Rust workspace) that seed Qdrant
 collections + a Cozo compliance graph, written this session because the
 real Rust MCP tools (`refresh_blob_vectors`/`search_blob_vectors` in
-`crates/op-cognitive-mcp`) couldn't be compiled/deployed here yet (see
+`crates/op-cognitive`) couldn't be compiled/deployed here yet (see
 `.kiro/specs/unified-blob-catalog-mcp/`).
 
 ## Setup

@@ -1,0 +1,1418 @@
+{
+  "format": "3tchedfs-backing-evidence/2",
+  "task_id": "fs-core-20261005",
+  "authority": "Current plugin-owned contract, exported mechanically; no second schema authority",
+  "scope": "Source-backed physical locators, typed payload relationships and admission/recovery owner boundaries",
+  "storage": {
+    "sealed_catalog": {
+      "directory": "/dev/shm/opdbus/plugin-blobs",
+      "manifest": ".manifest.json",
+      "blob": "{plugin}.{schema_hash16}.blob",
+      "format": "OPBLOB01",
+      "schema_section": 1,
+      "schema_authority": "op_state_store::PluginSchema from manifest-pinned sealed blob",
+      "source_refs": [
+        "crates/threetched-fs/src/source.rs:14-22",
+        "crates/threetched-fs/src/source.rs:290-400"
+      ]
+    },
+    "committed_state": {
+      "directory": "/dev/shm/opdbus/state",
+      "document": "{plugin}.json",
+      "format": "UTF-8 JSON under canonical lock + committed manifest generation; pending publication rejects",
+      "public_policy": "Complete value validates before exact sealed public projection; current catalog/policy pin checked before and after",
+      "layout": "No POSIX segment ABI, fixed offset or raw mapped address; owned decoded snapshot",
+      "source_refs": [
+        "crates/op-core/src/projection_transactions.rs:451-510",
+        "crates/threetched-fs/src/source.rs:42-149"
+      ]
+    },
+    "captured_store": {
+      "directory": "/dev/shm/3tchedfs by default",
+      "object": "objects/{object_hash}.blob",
+      "view": "views/{view_id}.json",
+      "workspace": "workspaces/{workspace_id}.json",
+      "snapshot": "snapshots/{snapshot_name}.ref",
+      "format": "Captured TypedObject/ViewManifest/Workspace UTF-8 JSON with BLAKE3 content addresses; not OPBLOB01 plugin authority",
+      "writer": "Existing .lock + file sync/atomic rename/parent sync; workspace expected-object CAS",
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:16-54",
+        "crates/threetched-fs/src/store.rs:198-249",
+        "crates/threetched-fs/src/store.rs:453-543",
+        "crates/threetched-fs/src/store.rs:498-528",
+        "crates/threetched-fs/src/store.rs:531-626"
+      ]
+    },
+    "method_journal": {
+      "owner": "existing RuntimeDocuments durable private Cozo plugin_runtime_documents relation",
+      "default_directory": "/var/lib/op-dbus/plugin-runtime-cozo",
+      "key": "__method_operation_v1:blake3(JSON(namespace,receiver_actor,Option<receiver_session>)):canonical_UUID",
+      "retention": "Permanent authoritative reservation/tombstone; never a domain result cache; no automatic reuse after restart/retention",
+      "payload": "Bounded sanitized scope/schema provenance/status/attempt+terminal proof only; no raw private arguments or results; result_digest null",
+      "mutation_order": "CAS absent revision0 reserve -> confirmed durable attempt -> attempt journal CAS -> backend commit -> result validation -> terminal durable audit -> terminal journal CAS",
+      "recovery": "One receiver-scoped durable point read with persistence barrier; missing/foreign IDs do not reveal another caller's operation",
+      "source_refs": [
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-736",
+        "crates/op-plugins/src/state_plugins/runtime_documents.rs:154-252",
+        "crates/op-cozo-store/src/runtime_document_transactions.rs:113-213"
+      ]
+    }
+  },
+  "surface_backing": [
+    {
+      "node_id": "root:Directory",
+      "class": "Directory",
+      "path_template": "/",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:669-697"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:669-697"
+      ]
+    },
+    {
+      "node_id": "mount_metadata:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/.3tchedfs.json",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "MountMetadata",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "MountMetadata",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ]
+    },
+    {
+      "node_id": "view_manifest:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/view.json",
+      "params": [],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/views/{view_id:ViewId}.json",
+        "payload_type": "ViewManifest",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/views/{view_id:ViewId}.json",
+          "payload_type": "ViewManifest",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ]
+    },
+    {
+      "node_id": "workspace_manifest:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/workspace.json",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Workspace",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Workspace",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:699-712"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:699-712"
+      ]
+    },
+    {
+      "node_id": "plugins:Directory",
+      "class": "Directory",
+      "path_template": "/plugins",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "operations:Directory",
+      "class": "Directory",
+      "path_template": "/operations",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "relationships:Directory",
+      "class": "Directory",
+      "path_template": "/relationships",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "relationships/dependencies:Directory",
+      "class": "Directory",
+      "path_template": "/relationships/dependencies",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "capabilities:Directory",
+      "class": "Directory",
+      "path_template": "/capabilities",
+      "params": [],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_directory:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "typed_object:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/object.blob.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "TypedObject",
+        "source_descriptor": {
+          "kind": "sanitized_typed_object_projection",
+          "locator_template": "ObjectStore.objects[view.objects[plugin]] + optional locked current public state",
+          "payload_type": "TypedObject",
+          "description": "Frozen object state is sanitized by its sealed policy. Live mounts render fresh committed public state; unavailable live state yields explicit schema_only envelope, never stale private values."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_schema:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+        "payload_type": "PluginSchema",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+          "payload_type": "PluginSchema",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_value:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "plugin_value:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "required_capabilities:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/capabilities.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+        "payload_type": "Capabilities",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob",
+          "payload_type": "Capabilities",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "object_hash:ObjectHashFile",
+      "class": "ObjectHashFile",
+      "path_template": "/plugins/{plugin}/object.hash",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "ObjectHash",
+        "source_descriptor": {
+          "kind": "captured_object_hash",
+          "locator_template": "view.objects[plugin] or workspace.staged_objects[plugin] fallback base_view.objects[plugin]",
+          "payload_type": "ObjectHash",
+          "description": "Real captured artifact identity, never a hash of live rendered state. User data field named object.hash remains its declared value class."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "data_root:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/data",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "object_container:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more encoded object keys / padded array indices",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "object_scalar:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "object_scalar:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "object_scalar:WorkspaceField",
+      "class": "WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/{key}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "zero or more container path components",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "key",
+          "type": "FieldKey",
+          "description": "encode_component(JSON object key)",
+          "source_path_encoding": "EncodedJsonObjectKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "container_value:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "container_value:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "container_value:WorkspaceField",
+      "class": "WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/.value.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "one or more encoded keys / padded indices leading to container",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842",
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842",
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_container:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "format!(\"{index:08}\"); minimum 8 decimal digits, no fixed upper width",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_scalar:LiveValue",
+      "class": "LiveValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "shm",
+        "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "committed_public_projection",
+          "locator_template": "state_dir/{plugin}.json selected under canonical projection lock + committed generation",
+          "payload_type": "JsonValue",
+          "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_scalar:FrozenValue",
+      "class": "FrozenValue",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "array_scalar:WorkspaceField",
+      "class": "WorkspaceField",
+      "path_template": "/plugins/{plugin}/data/{segments}/{index}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "segments",
+          "type": "Vec<PathSegment>",
+          "description": "container path to JSON array",
+          "source_path_encoding": "Vec<EncodedJsonKeyOrPaddedArrayIndex>"
+        },
+        {
+          "name": "index",
+          "type": "ArrayIndex",
+          "description": "usize zero-based array position formatted to minimum 8 digits",
+          "source_path_encoding": "ArrayIndex(usize), minimum-eight-digit decimal"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+        "payload_type": "JsonValue",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/value{pointer:JsonPointer}",
+          "payload_type": "JsonValue",
+          "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:714-842"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:714-842"
+      ]
+    },
+    {
+      "node_id": "plugin_operations:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/operations",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "method_directory:Directory",
+      "class": "Directory",
+      "path_template": "/plugins/{plugin}/operations/{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "input_schema:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/input.schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/args",
+        "payload_type": "JsonSchema",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/args",
+          "payload_type": "JsonSchema",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "output_schema:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/output.schema.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/returns",
+        "payload_type": "JsonSchema",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}/returns",
+          "payload_type": "JsonSchema",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "method_metadata:StaticJson",
+      "class": "StaticJson",
+      "path_template": "/plugins/{plugin}/operations/{method}/metadata.json",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "blob",
+        "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}",
+        "payload_type": "MethodDecl",
+        "source_descriptor": {
+          "kind": "blob",
+          "locator_template": "{store:StoreRoot}/objects/{object_hash:ObjectHash}.blob#/schema/methods/{method}",
+          "payload_type": "MethodDecl",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "resolved from pinned manifest and node declaration; never guessed"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "method_call:CallFile",
+      "class": "CallFile",
+      "path_template": "/plugins/{plugin}/operations/{method}/call",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "CallReceipt",
+        "source_descriptor": {
+          "kind": "canonical_method_call",
+          "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
+          "payload_type": "CallReceipt",
+          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:844-873"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:844-873"
+      ]
+    },
+    {
+      "node_id": "root_plugin_operations:Directory",
+      "class": "Directory",
+      "path_template": "/operations/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "operation_alias:Symlink",
+      "class": "Symlink",
+      "path_template": "/operations/{plugin}/{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "SemanticLocator",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": "../../plugins/{plugin}/operations/{method}",
+          "payload_type": "SemanticLocator",
+          "description": "Relative target remains inside the mounted namespace."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "capability_directory:Directory",
+      "class": "Directory",
+      "path_template": "/capabilities/{capability}",
+      "params": [
+        {
+          "name": "capability",
+          "type": "CapabilityId",
+          "description": "encode_component(required_capability string)",
+          "source_path_encoding": "EncodedCapabilityId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "capability_method_alias:Symlink",
+      "class": "Symlink",
+      "path_template": "/capabilities/{capability}/{plugin}.{method}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "method",
+          "type": "MethodId",
+          "description": "encode_component(schema.methods map key); not necessarily MethodDecl.name",
+          "source_path_encoding": "EncodedMethodKey"
+        },
+        {
+          "name": "capability",
+          "type": "CapabilityId",
+          "description": "encode_component(required_capability)",
+          "source_path_encoding": "EncodedCapabilityId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "SemanticLocator",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": "../../plugins/{plugin}/operations/{method}",
+          "payload_type": "SemanticLocator",
+          "description": "Relative target remains inside the mounted namespace."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "dependency_directory:Directory",
+      "class": "Directory",
+      "path_template": "/relationships/dependencies/{plugin}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "Vec<DirectoryEntry>",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": null,
+          "payload_type": "Vec<DirectoryEntry>",
+          "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "node_id": "dependency_alias:Symlink",
+      "class": "Symlink",
+      "path_template": "/relationships/dependencies/{plugin}/{dependency}",
+      "params": [
+        {
+          "name": "plugin",
+          "type": "PluginId",
+          "description": "encode_component(plugin_id), keys of pinned ViewManifest.objects",
+          "source_path_encoding": "EncodedPluginId"
+        },
+        {
+          "name": "dependency",
+          "type": "DependencyId",
+          "description": "encode_component(schema.dependencies element)",
+          "source_path_encoding": "EncodedPluginId"
+        }
+      ],
+      "backing": {
+        "kind": "synthetic",
+        "locator_template": null,
+        "payload_type": "SemanticLocator",
+        "source_descriptor": {
+          "kind": "synthetic",
+          "locator_template": "../../../plugins/{dependency}",
+          "payload_type": "SemanticLocator",
+          "description": "Relative target remains inside the mounted namespace; missing dependency target remains unresolved."
+        },
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:108-472"
+        ],
+        "locator_status": "no independent persistent locator"
+      },
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    }
+  ],
+  "workflow": "Live backend effects use sealed PluginV1.CallWithOperationId with exact existing identity/grants; workspace staging does not mutate backend. SHM commits precede change notifications; receipts link durable attempt/terminal. Recovery never replays or exposes private domain payload.",
+  "unverified": [
+    "Current build/deployment/tests pending; backend-specific domain invariants require their own authoritative evidence."
+  ]
+}

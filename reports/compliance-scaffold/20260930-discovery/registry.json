@@ -1,0 +1,37 @@
+{
+  "captured_at": "2026-09-30T10:18:35Z",
+  "command": "../.venv/bin/python -m compliance_index mappings",
+  "source_package": "/srv/git/repos-bulk/compliance-index",
+  "snapshot_kind": "read_only_command_capture",
+  "redactions": "Source list reduced to two examples; no credentials read.",
+  "result": {
+    "generation": "38cdcec0a21a316013fcc13efe8682347fceb628a2b5be362ab21197c08f7173",
+    "changed": true,
+    "assertions": 3047,
+    "contract": "Consult declared corpus mappings before semantic search. Preserve direction, source versions and unresolved endpoint status. A mapping does not establish equivalence or compliance.",
+    "historical_assertions": 557,
+    "kinds": {
+      "covered_by": 33,
+      "maps_to": 2437,
+      "merged_into": 31,
+      "renumbered_to": 501,
+      "split_into": 45
+    },
+    "retrieval_policy": "explicit_mappings_first",
+    "schema_version": 1,
+    "sources": [
+      {
+        "assertions": 1,
+        "sha256": "00b7214c2ae420dff5b14b4dccc53d0474f2e1ba644ee04fe358ccbea0a00f4a",
+        "source": "qdrant://compliance_general/ba6cfd8e-5b63-5a73-a3f1-3328fab6be5f"
+      },
+      {
+        "assertions": 1,
+        "sha256": "2fd637a76df0fa7aab26bb1db541c7e377798edc8ff335a3db7cd811434fb7a7",
+        "source": "qdrant://compliance_general/072cd874-22e0-57ea-9207-322ea143c2d0"
+      }
+    ],
+    "unresolved_targets": 1738,
+    "source_count": 138
+  }
+}

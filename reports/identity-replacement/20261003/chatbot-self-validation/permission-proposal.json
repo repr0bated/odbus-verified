@@ -1,0 +1,29 @@
+{
+  "task_id": "chatbot-self-validation-20261003",
+  "status": "owner-approved-runtime-applied-own-read-and-native-inference-verified",
+  "principal_id": "1262e982-14c1-44d4-0771-7ce74213211b",
+  "session_id": "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+  "add_capabilities": [
+    "cap.identity.sled.self.read@v1",
+    "cap.software.3tched-router.chat@v1"
+  ],
+  "resource_scope": {
+    "cap.identity.sled.self.read@v1": "get_own_identity only: caller's verified session, no caller-selected identity, no credentials",
+    "cap.software.3tched-router.chat@v1": "existing native Chat dispatcher, with verified principal/session attribution; permits configured native inference"
+  },
+  "duration": "Persistent for the singleton always-running chatbot; owner approved both exact grants in the current session",
+  "preconditions": [
+    "Self-read implementation tested and received through the full golden/btrfs release procedure",
+    "Fresh authoritative mounted declaration matches the self-read capability and input/output contract",
+    "Owner approval of this exact two-capability delta"
+  ],
+  "verification": [
+    "Atomic durable grant update preserves every unrelated principal and capability",
+    "Materializer publishes identical durable and SHM grants and is ready",
+    "Same chatbot-bound namespace returns a self-read receipt for the correct session with credentials absent",
+    "Same chatbot-bound namespace returns actual native Chat output and attribution",
+    "Use authoritative kernel membership to corroborate storage; never force-add the existing Btrfs member",
+    "Report guest execution and boot readiness separately; no broad Incus exec grant is included"
+  ],
+  "rollback": "Remove only these two added capabilities from this principal atomically, preserve all other grants, and verify materializer equality/readiness and exact calls denied again. Retain the previous release for source rollback."
+}

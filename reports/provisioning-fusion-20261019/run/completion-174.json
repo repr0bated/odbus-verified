@@ -1,0 +1,64 @@
+{
+  "request": 174,
+  "started": "2026-10-19T04:42:53.505727+00:00",
+  "finished": "2026-10-19T04:43:06.712974+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-00ee4d6b178f69f8016ad59fd110e087d0a28e3c4efbe65bec",
+    "created": 1792384977,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"title\":\"Preparing bounded packet reviews\",\"code\":\"import pathlib, hashlib, json\\nbase=pathlib.Path('/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis')\\ncontract=(base/'review-contract.txt').read_bytes()\\npreload=(base/'mandatory-preload.txt').read_bytes()\\nassert contract.split(b'\\\\n',1)[1] == preload\\noutdir=base/'reviews'\\noutdir.mkdir(exist_ok=True)\\nassigned=[f'history-{i}' for i in range(210,231)]\\nreceipt={'slice':10,'assigned_ids':assigned,'method':'Stateless completion, full original packet and full review-contract as system; no source/history commands executed','contract':{'path':str(base/'review-contract.txt'),'sha256':hashlib.sha256(contract).hexdigest(),'bytes':len(contract)},'mandatory_preload':{'path':str(base/'mandatory-preload.txt'),'sha256':hashlib.sha256(preload).hexdigest(),'bytes':len(preload),'read_fully_by_worker':True},'packets':[]}\\nprint([(p,len((base/'packets'/f'{p}.txt').read_bytes())) for p in assigned])\"}",
+                "name": "eval"
+              },
+              "id": "call_WSV0cqcv5d81I5Zo4f5qIrvj",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 824,
+      "prompt_tokens": 90799,
+      "total_tokens": 91623,
+      "completion_tokens_details": {
+        "reasoning_tokens": 237
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 83251
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:06.711414+00:00",
+  "stream_chunks": 4
+}

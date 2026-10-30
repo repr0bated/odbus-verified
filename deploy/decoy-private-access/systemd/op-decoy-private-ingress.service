@@ -1,0 +1,15 @@
+[Unit]
+Description=Restrict decoy SSH and REALITY ingress to private interfaces
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target ssh.socket ssh.service xray-egress.service
+Wants=network-pre.target
+RequiresMountsFor=/opt/op-dbus/releases
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/op-dbus/private-access-current/private-ingress.sh install
+
+[Install]
+WantedBy=multi-user.target

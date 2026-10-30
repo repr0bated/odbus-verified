@@ -1,0 +1,13 @@
+--- reports/btrfs-cache-memory/20260930-followup/source/btrfs_cache.rs	2026-09-30 08:56:09.944000000 +0000
++++ reports/btrfs-cache-memory/20260930-followup/source-mitigated/btrfs_cache.rs	2026-09-30 08:59:30.512941364 +0000
+@@ -1193,6 +1193,10 @@
+                     Some(serde_json::json!({"cutoff": cutoff})),
+                 )
+                 .map_err(|e| anyhow::anyhow!("CozoDB cleanup delete failed: {e}"))?;
++            // Isolated experiment: invalidate fast-path entries for expired hashes.
++            for (hash, _) in &old_entries {
++                self.memory_cache.remove(&format!("emb:{}", hash));
++            }
+         }
+ 
+         info!(

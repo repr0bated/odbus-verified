@@ -1,0 +1,198 @@
+{
+  "repository": "https://github.com/vercel-labs/json-render",
+  "commit": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+  "source_path": "skills/remotion-best-practices",
+  "license_status": "Upstream root LICENSE retained unchanged.",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "source_path": "skills/remotion-best-practices/SKILL.md",
+      "sha256": "a76a94cc9ad73ace3811da97f91961ad1a08ba78f9ca1a45d83dc2b2dd764e2e"
+    },
+    {
+      "path": "rules/3d.md",
+      "source_path": "skills/remotion-best-practices/rules/3d.md",
+      "sha256": "2a5b1a72de35168bba08c7e78153fccd408ec7882fdd1778f2751162e1661378"
+    },
+    {
+      "path": "rules/animations.md",
+      "source_path": "skills/remotion-best-practices/rules/animations.md",
+      "sha256": "99a6377d64061af5f7fcd1a179c0c8f6d7bcd0a515060a46db117a757ac3387a"
+    },
+    {
+      "path": "rules/assets.md",
+      "source_path": "skills/remotion-best-practices/rules/assets.md",
+      "sha256": "664160a48fe6ef76c9b25ea51b3796d39d371cb3632f380b014492412902ad42"
+    },
+    {
+      "path": "rules/assets/charts-bar-chart.tsx",
+      "source_path": "skills/remotion-best-practices/rules/assets/charts-bar-chart.tsx",
+      "sha256": "b1adc9628ca8f820910bce699942c0dce77c26edb5295bf19d9b7c356531c548"
+    },
+    {
+      "path": "rules/assets/text-animations-typewriter.tsx",
+      "source_path": "skills/remotion-best-practices/rules/assets/text-animations-typewriter.tsx",
+      "sha256": "224d64579436d7fa8ef2b586a541583b165e9f9b152f553219000d994cc9c504"
+    },
+    {
+      "path": "rules/assets/text-animations-word-highlight.tsx",
+      "source_path": "skills/remotion-best-practices/rules/assets/text-animations-word-highlight.tsx",
+      "sha256": "c60ba4561f0c1376f08aed0b6e204f0db4485950d09c081ea0aac13191127023"
+    },
+    {
+      "path": "rules/audio.md",
+      "source_path": "skills/remotion-best-practices/rules/audio.md",
+      "sha256": "e931664ac23bc4acfa137d8b415702bb4860b4fbabd6caed0042c0902d3bec90"
+    },
+    {
+      "path": "rules/calculate-metadata.md",
+      "source_path": "skills/remotion-best-practices/rules/calculate-metadata.md",
+      "sha256": "b258c788fb3337187245c814f2fd4ddf10f7330ec97cb8117202a0145d4d27a6"
+    },
+    {
+      "path": "rules/can-decode.md",
+      "source_path": "skills/remotion-best-practices/rules/can-decode.md",
+      "sha256": "fb3f9933e45103d72530915b72a844b3454c6acc03289db5efe8f4541b088fad"
+    },
+    {
+      "path": "rules/charts.md",
+      "source_path": "skills/remotion-best-practices/rules/charts.md",
+      "sha256": "2430705a627c468e0922e2f78ca1a2379537d378b5fe76292b69f44659a5d66e"
+    },
+    {
+      "path": "rules/compositions.md",
+      "source_path": "skills/remotion-best-practices/rules/compositions.md",
+      "sha256": "82965d19cca323a0455f02080b9743b0f3a074783b9363b0425d8ffc415b1fe6"
+    },
+    {
+      "path": "rules/display-captions.md",
+      "source_path": "skills/remotion-best-practices/rules/display-captions.md",
+      "sha256": "20b8898a90536fa427a5a39571fc7deac7bde96c4c7bfdf413eee1ef4ef85530"
+    },
+    {
+      "path": "rules/extract-frames.md",
+      "source_path": "skills/remotion-best-practices/rules/extract-frames.md",
+      "sha256": "b7a63f6509a1a33d624f36d3f6772abbc364b0c883520803f3701c26541e7cd7"
+    },
+    {
+      "path": "rules/fonts.md",
+      "source_path": "skills/remotion-best-practices/rules/fonts.md",
+      "sha256": "1749e4cf82e8b157d4b0a26f46721152d3ef9e5e9a1686753b8bb6a1be83ddbc"
+    },
+    {
+      "path": "rules/get-audio-duration.md",
+      "source_path": "skills/remotion-best-practices/rules/get-audio-duration.md",
+      "sha256": "d5098e8d20b227464e3519c761cba1e03396c77da636d1893c7be3061a0a8e40"
+    },
+    {
+      "path": "rules/get-video-dimensions.md",
+      "source_path": "skills/remotion-best-practices/rules/get-video-dimensions.md",
+      "sha256": "839867aa115e09a719096a902a6ad5e304135f2053cce9928776fb4fcb5bf3e1"
+    },
+    {
+      "path": "rules/get-video-duration.md",
+      "source_path": "skills/remotion-best-practices/rules/get-video-duration.md",
+      "sha256": "7b31fab3cbf9b0771bae41e2c41c9abed2b59d495ffac7160e562fdf86848726"
+    },
+    {
+      "path": "rules/gifs.md",
+      "source_path": "skills/remotion-best-practices/rules/gifs.md",
+      "sha256": "db5d84bb8da4c52c133cdc9820a5b6995db94a548df5f9838efb8d1224065787"
+    },
+    {
+      "path": "rules/images.md",
+      "source_path": "skills/remotion-best-practices/rules/images.md",
+      "sha256": "91d32f6e528b1f1cddc9a0cf70d0faa74491e3a2fe4a32933da0e21010e9aa74"
+    },
+    {
+      "path": "rules/import-srt-captions.md",
+      "source_path": "skills/remotion-best-practices/rules/import-srt-captions.md",
+      "sha256": "ad89cc1834dcd63ff225593f699611a1a20b57eff4ed8e587f429b36516ec82c"
+    },
+    {
+      "path": "rules/light-leaks.md",
+      "source_path": "skills/remotion-best-practices/rules/light-leaks.md",
+      "sha256": "17d2f136f7bf2f438274a0ade43df017c360ae31175d8367ce476415c222dfca"
+    },
+    {
+      "path": "rules/lottie.md",
+      "source_path": "skills/remotion-best-practices/rules/lottie.md",
+      "sha256": "6c0cb4babcff94e35ecc22ac63a44d2131db26e7e30b53bbae0a1eb0828c74a0"
+    },
+    {
+      "path": "rules/maps.md",
+      "source_path": "skills/remotion-best-practices/rules/maps.md",
+      "sha256": "80556e5d37e2192d0329754ef213966821c20774d99cca52e78e4705b2ff3102"
+    },
+    {
+      "path": "rules/measuring-dom-nodes.md",
+      "source_path": "skills/remotion-best-practices/rules/measuring-dom-nodes.md",
+      "sha256": "5270db465cb9eed1942b9970de101211f954b7802dfd92e957bdc7e3eebe6c5c"
+    },
+    {
+      "path": "rules/measuring-text.md",
+      "source_path": "skills/remotion-best-practices/rules/measuring-text.md",
+      "sha256": "88905cbd701e247306645c19f18e01aebe27c4eb0178a4e5d0377687f5ac1478"
+    },
+    {
+      "path": "rules/parameters.md",
+      "source_path": "skills/remotion-best-practices/rules/parameters.md",
+      "sha256": "fd90561233d7c3612ea8ae20885095d434ea8e9f370fed963792f13af54c67f8"
+    },
+    {
+      "path": "rules/sequencing.md",
+      "source_path": "skills/remotion-best-practices/rules/sequencing.md",
+      "sha256": "10930df6d2a1baa2ac2ffc4598137e0e25e3924d17ce1bbb86a4321e5be897b6"
+    },
+    {
+      "path": "rules/subtitles.md",
+      "source_path": "skills/remotion-best-practices/rules/subtitles.md",
+      "sha256": "9f18ec4a9c88adf35d51b44aaf344442443fd687a4dc948366ebb683fc3ecd30"
+    },
+    {
+      "path": "rules/tailwind.md",
+      "source_path": "skills/remotion-best-practices/rules/tailwind.md",
+      "sha256": "bdd5162400cd20c6faebdc9d6d2ff9380f4f213f791b38eeb536c5231be34586"
+    },
+    {
+      "path": "rules/text-animations.md",
+      "source_path": "skills/remotion-best-practices/rules/text-animations.md",
+      "sha256": "40ac6b1bccf1c57d9edd46c74e847ec6e86fe775d3ef4fd14e1338f4a2606171"
+    },
+    {
+      "path": "rules/timing.md",
+      "source_path": "skills/remotion-best-practices/rules/timing.md",
+      "sha256": "f639ed8452767a7458a480c7d33b7126b57c70c3b5e061aeaaba382420fd8ad2"
+    },
+    {
+      "path": "rules/transcribe-captions.md",
+      "source_path": "skills/remotion-best-practices/rules/transcribe-captions.md",
+      "sha256": "ad1a62af35fe176b37ac4d98f796451ca66bcc9983207a9710ec3eca6e847738"
+    },
+    {
+      "path": "rules/transitions.md",
+      "source_path": "skills/remotion-best-practices/rules/transitions.md",
+      "sha256": "f6b0ca21322d68ab516345e8d57a2039c48654c98604b673913382c854e79d86"
+    },
+    {
+      "path": "rules/transparent-videos.md",
+      "source_path": "skills/remotion-best-practices/rules/transparent-videos.md",
+      "sha256": "394ccda476e084522d544471fee92d7c65672e2cbaf2201a785c3dd5c74f31a4"
+    },
+    {
+      "path": "rules/trimming.md",
+      "source_path": "skills/remotion-best-practices/rules/trimming.md",
+      "sha256": "40727aefd5939a42925f1ee1fcdfaf733f7fc098c26d7676f7fb69b418913375"
+    },
+    {
+      "path": "rules/videos.md",
+      "source_path": "skills/remotion-best-practices/rules/videos.md",
+      "sha256": "d9d3032a57f92c759daf0bd60b3282f6810ecc9958e9093a6b828de623b05328"
+    },
+    {
+      "path": "LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff"
+    }
+  ]
+}

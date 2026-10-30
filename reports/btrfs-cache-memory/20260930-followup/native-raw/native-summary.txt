@@ -1,0 +1,15 @@
+native
+phase=explicit_cleanup_drained cycle=1 ms=609 rust_live=313614 rust_peak=316961 rss_kib=35548 pss_kib=31849 anonymous_kib=5480 swap_kib=0 fds=10 threads=18 children=0
+phase=explicit_cleanup_drained cycle=2 ms=1081 rust_live=313614 rust_peak=316961 rss_kib=35552 pss_kib=31853 anonymous_kib=5484 swap_kib=0 fds=10 threads=18 children=0
+phase=explicit_cleanup_drained cycle=3 ms=1534 rust_live=313614 rust_peak=316961 rss_kib=35560 pss_kib=31861 anonymous_kib=5492 swap_kib=0 fds=10 threads=18 children=0
+fixture_removed=true
+native-2
+phase=explicit_cleanup_drained cycle=1 ms=560 rust_live=313614 rust_peak=316941 rss_kib=35848 pss_kib=32055 anonymous_kib=5476 swap_kib=0 fds=10 threads=18 children=0
+phase=explicit_cleanup_drained cycle=2 ms=998 rust_live=313614 rust_peak=316941 rss_kib=35860 pss_kib=32067 anonymous_kib=5488 swap_kib=0 fds=10 threads=18 children=0
+phase=explicit_cleanup_drained cycle=3 ms=1451 rust_live=313614 rust_peak=316941 rss_kib=35868 pss_kib=32074 anonymous_kib=5496 swap_kib=0 fds=10 threads=18 children=0
+fixture_removed=true
+native-3
+phase=explicit_cleanup_drained cycle=1 ms=538 rust_live=313614 rust_peak=316941 rss_kib=36140 pss_kib=32343 anonymous_kib=5476 swap_kib=0 fds=10 threads=18 children=0
+phase=explicit_cleanup_drained cycle=2 ms=963 rust_live=313614 rust_peak=316941 rss_kib=36144 pss_kib=32347 anonymous_kib=5480 swap_kib=0 fds=10 threads=18 children=0
+phase=explicit_cleanup_drained cycle=3 ms=1401 rust_live=313614 rust_peak=316941 rss_kib=36156 pss_kib=32359 anonymous_kib=5492 swap_kib=0 fds=10 threads=18 children=0
+fixture_removed=true

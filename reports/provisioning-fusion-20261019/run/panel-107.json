@@ -1,0 +1,175 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review second perspective. Do not execute anything. Assess these packet facts for important distinctions: Hermes session 20261018_214617_03a9ee rows13-33 IDs2606-2629. HANDOFF search id2608 reports source consolidation complete but release blocked by earlier Cargo check, provisioning audit flaws (stale paths/receipts,rejected plan,erased guest FUSE fstab,detached root after sync,unsafe grants,bypasses,conditional boot suppression), host mount deployed yet human backend identity awaits provisioning. It also reports historical JEV worker routing, contrary to current owner judge-only. id2611 historical log extraction fails JSONDecodeError; id2616 re-extract succeeds but prints older patch requests, not their results, and repr slices outputs to1500 chars. id2618 actual git diff shows sealed schema runtime vs explicit authoring capture, removed namespace/modules, denied interactive skills.edit and skills.add --edit. id2619/2620 archive HEAD+dirty diff+8 untracked files into private scratch source succeeds whitespace warning. id2621/2622 restores three modules with exact hash checks then reverse patch fails empty hunk assertion on mod.rs after earlier threetched.rs changes. id2625/2626 manually completes recovery in scratch, restores retired namespace/plugins/skills & dispatch, retains tched_fs rename, removes noninteractive editor guard, expands host mount selection from2 to4 upstream plugins; success only scratch prep no build/deploy. id2624 diff routes incus create_instance/reconcile_creation into native_container_creation with actor/session/genesis, marks incus/identity_sled args private; mount script validates root session files, UID, exact mount/view/hash/generation, denies mismatch and retains grants but does not provision. id2628 pgrep no output snapshot and btrfs statfs ids differ build vs scratch; id2629 file-not-found cargo config result cut mid record. Initial packet is cut tail git status, untracked native_creation files, artifact hashes exit0; id unknown. Duplicate skill id2607 references outside packet original628 row293. Need JSON packet review conclusions; highlight overclaim risks, dependencies and discrepancies, not whole corpus completeness.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"20261018_214617_03a9ee:rows13-33:IDs2606-2629:second-perspective\",\n  \"fully_reviewed\": false,\n  \"review_scope\": {\n    \"reviewed\": \"All supplied current_question packet facts and accompanying evidence-index context.\",\n    \"not_reviewed\": \"The original packet records, exact command arguments, full outputs and independently referenced duplicate text were not included.\",\n    \"physical_order\": \"Findings follow the supplied packet sequence; interleaved call/result IDs are retained.\",\n    \"metadata\": {\n      \"session\": \"20261018_214617_03a9ee\",\n      \"row_range\": \"13-33\",\n      \"individual_row_mapping\": \"Unavailable\",\n      \"parent_links\": \"Unavailable\",\n      \"active_compacted_flags\": \"Unavailable\"\n    },\n    \"actions\": \"No commands, tools, builds, tests, mutations or deployments executed.\"\n  },\n  \"findings\": [\n    {\n      \"ids\": [],\n      \"row\": \"Initial packet fragment; exact row unavailable\",\n      \"source\": \"current_question description of unidentified opening fragment\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"cut tail git status, untracked native_creation files, artifact hashes exit0\",\n      \"classification\": \"Reported observation; interpretation is inference\",\n      \"stage\": \"Source and artifact inventory\",\n      \"observation\": \"The fragment reportedly contains untracked native-creation files and artifact hashes with exit0.\",\n      \"actual_tool_result\": \"Reported exit0; command boundaries and original output unavailable.\",\n      \"inference\": \"A successful inventory or hashing command does not establish compilation, installation, authoritative adoption or container startup. Untracked files also complicate attribution to a committed revision.\",\n      \"correction_propagation_or_discrepancy\": \"Do not attach this fragment to a known message ID or treat artifact hashes as deployment receipts.\"\n    },\n    {\n      \"ids\": [2607],\n      \"row\": \"Within rows13-33; exact mapping unavailable\",\n      \"source\": \"Duplicate reference to original ID628, row293, outside this packet\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"Duplicate skill id2607 references outside packet original628 row293\",\n      \"classification\": \"Reported provenance observation\",\n      \"stage\": \"Coverage accounting\",\n      \"observation\": \"A duplicate marker points outside the assigned packet.\",\n      \"actual_tool_result\": null,\n      \"correction_propagation_or_discrepancy\": \"Preserve both occurrences. This review cannot certify exact-string equality or first-provenance review because ID628's original text was not supplied.\"\n    },\n    {\n      \"ids\": [2608],\n      \"row\": \"Within rows13-33; exact mapping unavailable\",\n      \"source\": \"Reported HANDOFF search result\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"source consolidation complete but release blocked by earlier Cargo check\",\n      \"classification\": \"Reported observation of historical document claims, not direct runtime verification\",\n      \"stage\": \"Audit, release and provisioning readiness\",\n      \"observation\": \"HANDOFF reportedly lists stale paths and receipts, a rejected plan, erased guest FUSE fstab, root detachment after sync, unsafe grants, bypasses and conditional boot suppression. It separately claims a deployed host mount while the human backend identity still awaits provisioning.\",\n      \"actual_tool_result\": \"A search surfaced these claims; neither the underlying Cargo failure nor deployment receipts are supplied here.\",\n      \"inference\": \"Source consolidation, host-mount deployment and completed identity provisioning are distinct milestones. This record cannot establish that every listed defect remained present or was repaired.\",\n      \"correction_propagation_or_discrepancy\": \"Historical JEV worker routing conflicts with the current judge-only requirement. Record it as historical drift, not an instruction to activate routing. The earlier Cargo check must not be promoted to a current blocker without its underlying receipt and later history.\"\n    },\n    {\n      \"ids\": [2611, 2616],\n      \"row\": \"Within rows13-33; exact mappings unavailable\",\n      \"source\": \"Reported historical-log extraction calls/results\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"re-extract succeeds but prints older patch requests, not their results\",\n      \"classification\": \"Reported tool observations\",\n      \"stage\": \"Evidence ingestion\",\n      \"observation\": \"The first extraction failed with JSONDecodeError. The subsequent extraction reportedly succeeded but exposed patch requests rather than corresponding outcomes and limited repr output to 1500 characters.\",\n      \"actual_tool_result\": \"ID2611: JSONDecodeError. ID2616: extraction success with request-only and sliced output limitations.\",\n      \"inference\": \"Successful extraction is not successful historical patch application. These excerpts cannot prove fixes landed or establish complete ingestion.\",\n      \"correction_propagation_or_discrepancy\": \"Record the parsing recovery separately from unresolved content coverage. Recover request/result pairings and omitted output from supplied originals rather than reconstructing them.\"\n    },\n    {\n      \"ids\": [2618],\n      \"row\": \"Within rows13-33; exact mapping unavailable\",\n      \"source\": \"Reported actual git diff\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"sealed schema runtime vs explicit authoring capture\",\n      \"classification\": \"Reported source observation\",\n      \"stage\": \"Schema authority and editing controls\",\n      \"observation\": \"The diff reportedly distinguishes sealed runtime schema from explicit authoring capture, removes namespace/modules and denies interactive skills.edit and skills.add --edit.\",\n      \"actual_tool_result\": \"Git diff displayed source changes; no execution result for the changed behavior is supplied.\",\n      \"inference\": \"This is evidence of implementation intent and source-level controls, not proof of runtime enforcement or authorization correctness.\",\n      \"correction_propagation_or_discrepancy\": \"Later scratch recovery restores removed surfaces and removes an editor guard. The exact security and architectural consequences require comparing both diffs; neither direction should be assumed correct merely because it is later.\"\n    },\n    {\n      \"ids\": [2619, 2620],\n      \"row\": \"Within rows13-33; exact mappings unavailable\",\n      \"source\": \"Reported scratch-source archive call/result\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"archive HEAD+dirty diff+8 untracked files into private scratch source succeeds whitespace warning\",\n      \"classification\": \"Reported tool observation\",\n      \"stage\": \"Scratch source preparation\",\n      \"observation\": \"The scratch source combines HEAD, working-tree modifications and eight untracked files.\",\n      \"actual_tool_result\": \"Reported success with a whitespace warning.\",\n      \"inference\": \"The resulting scratch tree is not identical to HEAD. Archive success does not establish buildability or deployment.\",\n      \"correction_propagation_or_discrepancy\": \"Any later build or artifact claim needs provenance for all three source inputs, not only a commit hash.\"\n    },\n    {\n      \"ids\": [2621, 2622],\n      \"row\": \"Within rows13-33; exact mappings unavailable\",\n      \"source\": \"Reported scratch restoration and reverse-patch call/result\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"reverse patch fails empty hunk assertion on mod.rs after earlier threetched.rs changes\",\n      \"classification\": \"Reported tool observation\",\n      \"stage\": \"Scratch recovery\",\n      \"observation\": \"Three modules reportedly passed exact hash checks before reverse patching failed after earlier file changes.\",\n      \"actual_tool_result\": \"Module hash checks succeeded; reverse patch failed with an empty-hunk assertion on mod.rs.\",\n      \"inference\": \"The operation was partially applied, not an atomic rollback. Hash checks for three modules do not certify the whole scratch tree.\",\n      \"correction_propagation_or_discrepancy\": \"The intermediate tree must be treated as mixed state until the later manual recovery is assessed. This is a genuine encountered scratch failure, not evidence of a provisioning runtime failure.\"\n    },\n    {\n      \"ids\": [2624],\n      \"row\": \"Within rows13-33; exact mapping unavailable\",\n      \"source\": \"Reported native-creation and host-mount diff\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"retains grants but does not provision\",\n      \"classification\": \"Reported source observation\",\n      \"stage\": \"Admission, native preparation and host-mount validation\",\n      \"observation\": \"Incus create_instance/reconcile_creation reportedly route through native_container_creation with actor/session/genesis context. Incus and identity_sled arguments are marked private. The mount script checks root session files, UID, exact mount/view/hash/generation and denies mismatches while retaining grants.\",\n      \"actual_tool_result\": \"Source diff only; no native creation, mount execution or provisioning receipt supplied.\",\n      \"inference\": \"These changes may preserve important identity-binding and confidentiality safeguards, but passing context or marking arguments private does not alone prove authorization or secrecy enforcement. A validated host mount is not storage establishment or final adoption.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve these checks in any modification specification. Resolve the HANDOFF unsafe-grants/bypasses claim against the exact grant operations and subsequent fixes; grant retention alone neither proves nor disproves that defect.\"\n    },\n    {\n      \"ids\": [2625, 2626],\n      \"row\": \"Within rows13-33; exact mappings unavailable\",\n      \"source\": \"Reported manual scratch-recovery call/result\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"success only scratch prep no build/deploy\",\n      \"classification\": \"Reported tool observation\",\n      \"stage\": \"Scratch recovery and source integration\",\n      \"observation\": \"Recovery reportedly restores retired namespace/plugins/skills and dispatch, retains the tched_fs rename, removes the noninteractive editor guard and expands host-mount selection from two to four upstream plugins.\",\n      \"actual_tool_result\": \"Manual scratch preparation reportedly succeeded; no build or deployment followed within this evidence.\",\n      \"inference\": \"Restoring dispatch and expanding mount selection warrant review for obsolete surfaces and widened exposure. Removing an editor guard is a source-level discrepancy, but this packet does not establish an exploitable bypass.\",\n      \"correction_propagation_or_discrepancy\": \"Recovery addresses the failed scratch patch, not demonstrated provisioning completion. No propagation into installed helpers or runtime is established.\"\n    },\n    {\n      \"ids\": [2628],\n      \"row\": \"Within rows13-33; exact mapping unavailable\",\n      \"source\": \"Reported pgrep and Btrfs statfs results\",\n      \"original_short_quote\": null,\n      \"supplied_summary_quote\": \"pgrep no output snapshot and btrfs statfs ids differ build vs scratch\",\n      \"classification\": \"Reported tool observations\",\n      \"stage\": \"Process and filesystem context\",\n      \"observation\": \"A pgrep snapshot produced no output; build and scratch locations reportedly have different statfs identifiers.\",\n      \"actual_tool_result\": \"No pgrep output and differing identifiers; exact arguments, statuses and values unavailable.\",\n      \"inference\": \"A single process-name query cannot prove no relevant process existed throughout the operation. Different statfs identifiers do not by themselves establish backing devices, loop freedom, seed ancestry or supported cross-filesystem operations.\",\n      \"correction_propagation_or_discrepancy\": \"Do not use this record as storage-proof completion or evidence that the latest no-host-loop constraint is satisfie",
+      "truncated": true
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "{\n  \"packet_id\": \"20261018_214617_03a9ee\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"id\": \"2608\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"source consolidation complete but release blocked by earlier Cargo check, provisioning audit flaws (stale paths/receipts,rejected plan,erased guest FUSE fstab,detached root after sync,unsafe grants,bypasses,conditional boot suppression), host mount deployed yet human backend identity awaits provisioning.\",\n      \"observation_vs_inference\": \"Observation: Source consolidation finished but release blocked. Audit identified critical flaws including erased FUSE fstab, detached root, unsafe grants, and bypasses. Inference: The provisioning workflow is structurally broken due to these audit failures, not merely missing a step. The host mount is deployed but backend identity adoption is stalled.\",\n      \"stage\": \"Audit/Review\",\n      \"actual_tool_result\": \"HANDOFF search completed.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: The HANDOFF search reports historical JEV worker routing, which directly contradicts the latest owner constraint that JEV is the decision judge only, not a model router. This indicates a drift in control-plane delegation.\"\n    },\n    {\n      \"id\": \"2611\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"historical log extraction fails JSONDecodeError\",\n      \"observation_vs_inference\": \"Observation: Log extraction tool failed with a JSON parsing error. Inference: Corrupted or malformed log data prevents automated historical traceability, creating a blind spot in the audit chain.\",\n      \"stage\": \"Data Extraction\",\n      \"actual_tool_result\": \"JSONDecodeError.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Unavailable log data limits the ability to verify prior tool actions and owner corrections.\"\n    },\n    {\n      \"id\": \"2616\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"re-extract succeeds but prints older patch requests, not their results, and repr slices outputs to1500 chars.\",\n      \"observation_vs_inference\": \"Observation: Re-extraction succeeded but only captured older patch requests, omitting results. Output was truncated to 1500 characters. Inference: The tool is capturing the wrong execution phase (requests vs results), and truncation hides critical error details or success confirmations.\",\n      \"stage\": \"Data Extraction\",\n      \"actual_tool_result\": \"Partial extraction, truncated repr.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Missing results and truncation obscure actual tool outcomes, making it impossible to verify if patch requests succeeded.\"\n    },\n    {\n      \"id\": \"2618\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"actual git diff shows sealed schema runtime vs explicit authoring capture, removed namespace/modules, denied interactive skills.edit and skills.add --edit.\",\n      \"observation_vs_inference\": \"Observation: Git diff reveals a mismatch between sealed schema runtime and explicit authoring. Modules/namespaces were removed. Interactive skill editing was denied. Inference: The codebase has drifted from its intended schema, and tool access restrictions prevent manual reconciliation.\",\n      \"stage\": \"Source Inspection\",\n      \"actual_tool_result\": \"Git diff executed.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Removed modules and denied edits indicate an incomplete or broken refactoring state that hinders provisioning fixes.\"\n    },\n    {\n      \"id\": \"2621/2622\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"restores three modules with exact hash checks then reverse patch fails empty hunk assertion on mod.rs after earlier threetched.rs changes.\",\n      \"observation_vs_inference\": \"Observation: Module restoration succeeded, but a reverse patch failed due to an empty hunk assertion on `mod.rs`. Inference: The patching mechanism is fragile; changes in `threetched.rs` invalidated the expected patch context in `mod.rs`.\",\n      \"stage\": \"Patch Application\",\n      \"actual_tool_result\": \"Empty hunk assertion failure.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Automated patching failed, requiring manual intervention and breaking the automated repair flow.\"\n    },\n    {\n      \"id\": \"2625/2626\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"manually completes recovery in scratch, restores retired namespace/plugins/skills & dispatch, retains tched_fs rename, removes noninteractive editor guard, expands host mount selection from2 to4 upstream plugins; success only scratch prep no build/deploy.\",\n      \"observation_vs_inference\": \"Observation: Manual recovery in scratch succeeded, restoring namespaces, dispatch, and expanding mount selection. Inference: Manual scratch preparation is viable, but it remains isolated and has not been built or deployed.\",\n      \"stage\": \"Scratch Preparation\",\n      \"actual_tool_result\": \"Manual recovery successful in scratch.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: State is limited to scratch prep. No build or deployment occurred, leaving the provisioning workflow unfinished.\"\n    },\n    {\n      \"id\": \"2624\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"diff routes incus create_instance/reconcile_creation into native_container_creation with actor/session/genesis, marks incus/identity_sled args private; mount script validates root session files, UID, exact mount/view/hash/generation, denies mismatch and retains grants but does not provision.\",\n      \"observation_vs_inference\": \"Observation: Diff shows routing Incus creation to native container creation with security validations (UID, mount/hash). Inference: Security and validation logic is being integrated, but provisioning is explicitly deferred by this script.\",\n      \"stage\": \"Code Diff/Review\",\n      \"actual_tool_result\": \"Diff generated.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Validation is present, but actual provisioning is not triggered, indicating a deliberate or accidental stall in the workflow.\"\n    },\n    {\n      \"id\": \"2628\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"pgrep no output snapshot and btrfs statfs ids differ build vs scratch\",\n      \"observation_vs_inference\": \"Observation: `pgrep` returned no output. `btrfs statfs` IDs differ between build and scratch environments. Inference: The target process is not running, and the filesystem state is inconsistent between environments.\",\n      \"stage\": \"Runtime/State Check\",\n      \"actual_tool_result\": \"No process found, differing statfs IDs.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Environment inconsistency and missing process indicate a non-functional or isolated state.\"\n    },\n    {\n      \"id\": \"2629\",\n      \"row\": \"13-33\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"file-not-found cargo config result cut mid record.\",\n      \"observation_vs_inference\": \"Observation: `cargo config` failed with file-not-found, and the output was cut off. Inference: Configuration is missing or misconfigured, and the error report is incomplete.\",\n      \"stage\": \"Build Configuration\",\n      \"actual_tool_result\": \"File-not-found, truncated output.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Incomplete error reporting hinders diagnosis of the build failure.\"\n    },\n    {\n      \"id\": \"2607\",\n      \"row\": \"293\",\n      \"source\": \"evidence/hermes/20261018_214617_03a9ee.jsonl\",\n      \"original_short_quote\": \"Duplicate skill id2607 references outside packet original628 row293.\",\n      \"observation_vs_inference\": \"Observation: Duplicate skill reference found outside the packet's original row range. Inference: Cross-referencing or state leakage between sessions/rows may be occurring.\",\n      \"stage\": \"Data Integrity\",\n      \"actual_tool_result\": \"Duplicate reference detected.\",\n      \"correction_propagation_or_discrepancy\": \"Discrepancy: Duplicate references complicate provenance tracking and may indicate session state bleed.\"\n    }\n  ],\n  \"truncations/unavailable\": [\n    \"ID 2611: JSONDecodeError prevents log data access.\",\n    \"ID 2616: Output truncated to 1500 characters, hiding results.\",\n    \"ID 2629: `cargo config` result cut mid-record.\",\n    \"Packet tail: 'cut tail git status, untracked native_creation files, artifact hashes exit0; id unknown.' \u2014 final state and artifact hashes are unavailable.\"\n  ],\n  \"boundary_dependencies\": [\n    \"Requires full Hermes session `20261018_214617_03a9ee` to verify context of rows 13-33.\",\n    \"Requires `manifest.json` and `latest-owner-correction.json` to validate the judge-only constraint and no-host-loop rule.\",\n    \"Requires source snapshots to verify the `mod.rs` and `threetched.rs` changes causing patch failures.\",\n    \"Requires audit report details to fully assess the 'erased guest FUSE fstab' and 'detached root after sync' flaws.\"\n  ],\n  \"uncertainty\": [\n    \"Whether the manual scratch prep (IDs 2625/2626) can be successfully built and deployed without further drift.\",\n    \"The exact nature of the 'erased guest FUSE fstab' and 'detached root after sync' mentioned in ID 2608, as the full audit report isn't fully available in this packet.\",\n    \"Whether the `JSONDecodeError` in ID 2611 is a transient corruption or a systemic issue with the log export format.\",\n    \"If the 'file-not-found' in ID 2629 refers to a missing `Cargo.toml` dependency or a misconfigured path, limiting build reproduction.\"\n  ]\n}"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Both responses mark the packet as not fully reviewed and do not claim complete corpus ingestion.",
+      "Both distinguish source or scratch preparation from build, deployment and completed identity provisioning.",
+      "Both identify historical JEV worker routing as inconsistent with the current judge-only constraint.",
+      "Both recognize the JSONDecodeError, subsequent request-only extraction and 1500-character slicing as limitations on historical outcome verification.",
+      "Both identify successful module restoration followed by a reverse-patch failure and later manual scratch recovery.",
+      "Both recognize that ID2624 contains identity-related validation and native-creation routing changes, not a completed provisioning receipt."
+    ],
+    "contradictions": [
+      {
+        "topic": "Authority of HANDOFF claims",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats ID2608 as a search result containing historical document claims; neither current defect persistence nor the underlying build and deployment outcomes is established."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Presents consolidation completion and release blockage as observations, then concludes the provisioning workflow is structurally broken. This exceeds what the summarized HANDOFF search establishes."
+          }
+        ]
+      },
+      {
+        "topic": "Meaning of the failed extraction",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Separates the initial parsing failure from the successful re-extraction and remaining request/result coverage gaps."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Infers corrupted or malformed log data and unavailable traceability from JSONDecodeError, although the subsequent extraction succeeded and the underlying cause is not supplied."
+          }
+        ]
+      },
+      {
+        "topic": "Interpretation of schema and editor changes",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats sealed runtime versus authoring capture as a source-level distinction and requires comparison before judging removals or restored surfaces."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Calls the distinction a schema mismatch and interprets editing restrictions as obstacles to reconciliation and evidence of broken refactoring without supporting execution evidence."
+          }
+        ]
+      },
+      {
+        "topic": "Process and filesystem observations",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Limits empty pgrep output to a single query snapshot and says differing statfs identifiers do not prove backing devices, loop freedom or storage semantics."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Infers the target process is not running and differing identifiers mean filesystem inconsistency and a nonfunctional or isolated state."
+          }
+        ]
+      },
+      {
+        "topic": "Duplicate provenance",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats ID2607 as an accounted duplicate reference whose original ID628, row293, is outside the packet and not independently available here."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Suggests session-state leakage or bleed and assigns row293 to the ID2607 finding, conflating the referenced original's row with the duplicate occurrence."
+          }
+        ]
+      },
+      {
+        "topic": "Quotation fidelity",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Leaves original_short_quote null and explicitly labels quotations as supplied summary text because original records were not included."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Places packet-summary wording in original_short_quote fields, making paraphrased evidence appear to be original transcript quotations."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Covers IDs2619/2620 and the unidentified opening fragment explicitly; Qwen omits the archive operation as a finding and addresses the opening fragment only under unavailable content."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Provides a visible ID2629 finding and concluding dependency and uncertainty lists. Astra's supplied response is truncated during ID2628, so its treatment of later material cannot be assessed."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Neither establishes original per-record row mappings, parent links or active/compacted metadata. Astra explicitly acknowledges these gaps; Qwen generally substitutes the packet-wide row range."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Recognizes ID2624 does not provision, but interprets that boundary as a deliberate or accidental stall without establishing that this mount script was responsible for provisioning."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "HEAD plus dirty changes plus eight untracked files is a composite source tree, not immutable HEAD; later artifact attribution must account for all inputs."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The failed reverse patch left a partially changed scratch tree rather than an atomic rollback, and three matching module hashes do not certify the entire tree."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Removing the editor guard and expanding mount selection warrant security review, but neither alone proves an exploitable bypass; retained grants likewise do not resolve the historical unsafe-grants allegation."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Artifact hashes and exit0 from inventory operations are not deployment, adoption or startup receipts."
+      }
+    ],
+    "blind_spots": [
+      "Original packet records were not supplied to either response, preventing exact command, quote, output and metadata verification.",
+      "Neither response can establish propagation from scratch recovery into installed helpers, deployment or authoritative provisioning state.",
+      "The packet does not establish feasibility of preserving immutable seed/sprout semantics under the latest no-host-loop and subvolume preference constraints.",
+      "No complete admission-to-adoption/start/recovery chain or substantive JEV adjudication is demonstrated by these responses.",
+      "Qwen's explanations for the empty-hunk failure and missing Cargo configuration introduce causal possibilities not established by the supplied facts.",
+      "Astra's response is externally truncated; its unseen conclusions and boundary accounting must not be inferred."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

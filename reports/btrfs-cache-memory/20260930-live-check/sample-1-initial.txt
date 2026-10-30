@@ -1,0 +1,8 @@
+2026-09-30T17:30:57Z
+status: Name=op-grpc-bridge Pid=1123 VmSize=19070588kB VmHWM=17332276kB VmRSS=13242664kB VmData=18489680kB VmSwap=4730852kB Threads=52
+smaps_rollup: extraction failed (sed: Unmatched ( or \(); not captured
+stat field22 starttime=601
+free -k:
+Mem: total=32856188 used=22583000 free=1028100 shared=46952 buff/cache=9757912 available=10273188
+Swap: total=16777212 used=9436304 free=7340908
+vmstat: pswpin=278278 pswpout=841430

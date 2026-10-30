@@ -1,0 +1,55 @@
+path	sequential_ranges_read	supplied_initial_sha256	finding_action	status
+crates/op-chat/build.rs	1-41	a8c4556c20c8054fa43acc5958fc2b6c2d983458006441373c112f2b0326b0c2	No tched occurrence	complete
+crates/op-chat/Cargo.toml	1-52	829b39158cf5ce51471b456c6b74086a1ba79fdd2b0f80a5c4a417c3394f11e0	No tched occurrence	complete
+crates/op-chat/compare-op-chat.md	1-141	b1f352be790c57d85d148c656e9ea9db7f44e30d3c9a50a54101ef5c13d5affe	No tched occurrence	complete
+crates/op-chat/DESIGN.md	1-300;301-600;601-1000;1001-1500;1501-2100;2101-2740	68bda67af2d9208edd4905be812e93855b7cbe4f6d2b495df58139d520ecdf1d	No tched occurrence	complete
+crates/op-chat/proto/agents.proto	1-250;251-459	d336329390b863470c1d0ca1010b8fa60ef449f9b3e03bb273955c2cd14086ba	No tched occurrence	complete
+crates/op-chat/proto/chat.proto	1-119	31fed328d10ec5306a4040a02825e681385a8b9102117c22336fb4c2f4b4e70f	Four qualified threetched occurrences; JEV leave_as_is confidence0.95	complete
+crates/op-chat/proto/orchestration.proto	1-300;301-650;651-954	427856db523a36d186259851e0134462f04778c489299d1d896880a46c1efff5	No tched occurrence	complete
+crates/op-chat/SPEC.md	1-300;301-700;701-1200;1201-1800;1801-2297	d04539b7ba8c0d058f7c4cc7af8a22ce210ca689c1d87526450e762c2ea1e56f	No tched occurrence	complete
+crates/op-chat/src/actor.rs	1-400;401-730	5ff31ee3d7a570403f36e949db623ac20772e26f1bc0d011f8839a1bc48107af	No tched occurrence	complete
+crates/op-chat/src/agent_tools.rs	1-400;401-713	196927291dc3e3f3380e1658a4dfda243e99343d42350c48da616dd9b608dbf1	Three matched variable occurrences183/184/192; leave_as_is ordinary vocabulary; JEV0.53 reviewed manually	complete
+crates/op-chat/src/bin/list_tools_client.rs	1-48	791b4ea49a2727e3028401d8e769f1148d7a62f5f89e9ea1381c4492f2e34c9d	No tched occurrence	complete
+crates/op-chat/src/chat_service.rs	1-238	a09a9b2a40034f937fddfb1272148a01d66d51511ba51fc78f6e318696573d8c	One qualified threetched occurrence6; leave_as_is; JEV0.39 supplemented supports0.79	complete
+crates/op-chat/src/forced_execution.rs	1-300;301-488	de363ea230c2f817cfb6a2a38d9031247958ce773bcfed991014a1c5a7d2f1e9	No tched occurrence	complete
+crates/op-chat/src/forced_tool_pipeline.rs	1-301	f66c2dac1651315cd31827808b56a96d574ba2e253a5c3df8ce3f0376fc0b4c7	No tched occurrence	complete
+crates/op-chat/src/lib.rs	1-40	08e17a854dad172be56115626399c9de7cfba21519b1641282f3ab82bea8d048	No tched occurrence	complete
+crates/op-chat/src/memory_loop.rs	1-523	c6216ea250bafc81e8e8ace37fabe199e7fc9fc184228e1582a51369379757e7	matched204 and unmatched227 comments; leave_as_is ordinary vocabulary; JEV0.71	complete
+crates/op-chat/src/nl_admin.rs	1-400;401-757	2b56829060803c9587b38bcd88450b442dda6fb4d17a715eb2f270e8bb0ed2d1	No tched occurrence	complete
+crates/op-chat/src/orchestration/error.rs	1-490	f86eb152017793628e00711e11840a8e5eb4df7a4135a7a749def160462da11b	No tched occurrence	complete
+crates/op-chat/src/orchestration/grpc_pool.rs	1-450;451-950;951-1403	e9916b59d79c73fcc91687ee05e898447e82a9285890a5b33726ee53edab2853	Batched8 comment; leave_as_is ordinary vocabulary; JEV0.87	complete
+crates/op-chat/src/orchestration/mod.rs	1-357	1f254facf796012cd70ffbce60b9787d6c4ae157135357b1157d8af035ca76b4	No tched occurrence	complete
+crates/op-chat/src/orchestration/proto/.gitkeep	empty file read	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855	Empty marker; no text to rename	complete
+crates/op-chat/src/orchestration/proto/mod.rs	1-16	4ac63a060bc5a1347fbd3ce4be5d4b6830d74d7ef193efa710ee31ad55c8b08a	No tched occurrence	complete
+crates/op-chat/src/orchestration/proto/op_chat.chat.rs	1-605	1e353fede15fc4836d5701ca5ec70dd7ae48aabb365fad3e74e6e7e5c88e9068	Two qualified threetched comments13/16 derived from chat.proto; leave_as_is; JEV0.76	complete
+crates/op-chat/src/orchestration/proto/op_chat.orchestration.rs	1-500;501-1100;1101-1800;1801-2500;2501-3200;3201-3900;3901-4600;4601-5300;5301-6000;6001-6700;6701-7300;7301-7634	b4c456ef8e8276411f9e933d560642e4b908eca63467c2fec76c42b047c9ba98	No tched occurrence; generated source fully read	complete
+crates/op-chat/src/orchestration/services/agent_execution.rs	1-428	c95e4881cc5ea0ff89621f229fed1197b562dbdce3d23f41fffde1de31868873	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/agent_lifecycle.rs	1-330	c2b2a9a813112e4817b8a333d1e029181b05a9fb79b306a139badff0b2dddc65	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/backend_architect.rs	1-381	7024883fcc9da4217c7e1a1e403e5a50a096040d73d578fe9480faed20b5b818	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/context_manager.rs	1-539	4bf366b175b538ff124774035ef1ba227031dd1c5fa48ccd4d0b09bc4c126b0b	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/memory_service.rs	1-490	13e8df9633d92ab35d16bb7a5cd2f9a4f2ea8bced1b6c4ea6faf4ba3f2c93c3e	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/mod.rs	1-300	9cf87fb59efee07c7fc97fed9b73e446e67b7501788501f2380884b9feb9440f	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/rust_pro.rs	1-483	7fc752dd982764bb2547d09ab40f899c54af81d43da77f8582ad53d9d3ee5a25	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/sequential_thinking.rs	1-426	5e379743c89c8b52cd8fd2ebe9ea4f96bb969da43b5957cea1f95763d80385ea	No tched occurrence	complete
+crates/op-chat/src/orchestration/services/workstack.rs	1-465	903bf3bc5623016c8dd64652524773b5d5c279f5d1c3775d2294130a70680451	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/architecture_patterns.md	1-35	aee429a0fff901243fadc6fe0afdaf7221d22b5bf2c2412184340114650ac954	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/auth_implementation_patterns.md	1-65	f384b3a41a0b004f440b33a2bfcb53804869f4f78106b0129bbab4e3358b8dbe	No tched occurrence; textual markdown despite Python MIME	complete
+crates/op-chat/src/orchestration/skills_builtin/btrfs_deployment.md	1-87	c91a7a6bb56bfbb547dca15ac777f4d0fbab99e28984f7ce596dfab6abaaf156	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/code_review_excellence.md	1-61	de7cbfa7b60936dc3844039121d7ed3c75a0d281b207c6b1eff511d5d663d280	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/debugging_strategies.md	1-85	113edcb8090db9fbd60c2c1579b17ebf7f6ddcc83e56e5d40da256acd8f04f0b	No tched occurrence; textual markdown despite Python MIME	complete
+crates/op-chat/src/orchestration/skills_builtin/distributed_tracing.md	1-65	5dd2612e5944d95da677e90a2ded916b5b1ec0156cb7619ae82fffa719eb8336	No tched occurrence; textual markdown despite Python MIME	complete
+crates/op-chat/src/orchestration/skills_builtin/e2e_testing_patterns.md	1-58	86333218d0c734590129601c72973c83d8465fe9fab6fd074e238f70fc509632	No tched occurrence; textual markdown despite JavaScript MIME	complete
+crates/op-chat/src/orchestration/skills_builtin/error_handling_patterns.md	1-96	2ec9fd6d422fce41e9dbdbce10b0f87fd6598694915846c5feec943c60797368	No tched occurrence; textual markdown despite Python MIME	complete
+crates/op-chat/src/orchestration/skills_builtin/gitops_workflow.md	1-71	d205190010759743fd16ba1e64ad5ada8b523b8e1ce57b8b8ca2f5b83df1a399	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/k8s_manifest_generator.md	1-106	44c363c068e214b82ea414abeadea3a3491ba2a75cf81dcc9f0abf02f766c4a4	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/microservices_patterns.md	1-41	a59c9bd0d82073bd9133c9362c5c39e962a4e5e421beeeb61f3717bbcc4d6f0f	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/prometheus_configuration.md	1-79	79337e40dc0d2ab5d3aa881486f4165ea557fd60e0485a47596077aa62471a6a	No tched occurrence; textual markdown despite Python MIME	complete
+crates/op-chat/src/orchestration/skills_builtin/python_testing_patterns.md	1-72	ff900ec71a83248ce90f16e9caea14dec760f351f40fd04c9bc510cea14259dc	test_patched50; leave_as_is ordinary vocabulary; JEV0.93; textual markdown despite Python MIME	complete
+crates/op-chat/src/orchestration/skills_builtin/secrets_management.md	1-69	48100755b73f0347fb4fd2b7ed58b1c2b988339e096565613c48ff9174ad99bd	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills_builtin/sql_optimization_patterns.md	1-70	655214e80952434b071ae16f878ee32a824271c9374dbcc54685fee8b6a5521c	No tched occurrence	complete
+crates/op-chat/src/orchestration/skills.rs	1-479	91d53771633e6f0ab735106463a9e57a102557aba397e1463b57bb9c37293c69	No tched occurrence	complete
+crates/op-chat/src/orchestration/workstack_executor.rs	1-550;551-1100;1101-1570	8c08c944c49aa72a1410a64d6fd2f29b72c04c57a149e868a9aa9ae805f0e269	No tched occurrence	complete
+crates/op-chat/src/session.rs	1-292	49f2321798ceb6996dba9685968832a4f9186ac7e19b90e142c59bdf5fa87c90	No tched occurrence	complete
+crates/op-chat/src/system_prompt.rs	1-558	e031f62b7d440954cb6c8413dc42b08aad5f249664e774a0421c7b8330968cbf	Four qualified3tched forms31/35/249/256; leave_as_is; JEV0.36 reviewed manually	complete
+crates/op-chat/src/tool_executor.rs	1-504	65b5a59124a562e904e83887fdc969e52a9f2e36b0830146bd01e32944d5cc5f	No tched occurrence	complete
+crates/op-chat/tests/e2e_memory_loop_voyage_qdrant.rs	1-144	2701f41a7895efbcebbe645b6b10a663930f8b5e01178ac57c1d7653449ac950	unmatched137 diagnostic; leave_as_is ordinary vocabulary; JEV0.89	complete

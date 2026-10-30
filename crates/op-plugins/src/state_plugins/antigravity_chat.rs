@@ -70,7 +70,7 @@ pub struct ConfigureOutput {
 }
 
 fn default_llm_plugin() -> String {
-    "large_language_model".to_string()
+    "chat_router".to_string()
 }
 
 fn default_provider_route() -> String {
@@ -80,7 +80,7 @@ fn default_provider_route() -> String {
 /// Top-level Antigravity Chat state.
 ///
 /// Gemini model catalog is **not** owned here — resolve via `llm_plugin` +
-/// `provider_route` (default `large_language_model` / `gemini`). This plugin
+/// `provider_route` (default `chat_router` / `gemini`). This plugin
 /// holds the native bridge observation, sanitized auth, and selected model id.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "sch.software.plugin.antigravity-chat.schema@v1"))]
@@ -95,11 +95,11 @@ pub struct AntigravityChatState {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "mut.software.antigravity-chat.auth@v1"))]
     pub auth: super::antigravity::AntigravityAuthStatus,
-    /// Plugin that owns the model catalog (default large_language_model).
+    /// Plugin that owns the model catalog (default chat_router).
     #[serde(default = "default_llm_plugin")]
     #[schemars(
-        description = "Generation/catalog plugin Antigravity delegates to for models (default large_language_model). Catalog lives there; this plugin holds no Gemini model list.",
-        example = &"large_language_model",
+        description = "Generation/catalog plugin Antigravity delegates to for models (default chat_router). Catalog lives there; this plugin holds no Gemini model list.",
+        example = &"chat_router",
         extend("x-oscal-subid" = "mut.software.antigravity-chat.llm-plugin@v1")
     )]
     pub llm_plugin: String,
@@ -196,7 +196,7 @@ pub(crate) fn antigravity_chat_schema() -> PluginSchema {
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "antigravity_chat",
         "2.0.0",
-        "Antigravity Chat — native Google credential and OpenAI-compatible bridge control; model catalog delegated to large_language_model",
+        "Antigravity Chat — native Google credential and OpenAI-compatible bridge control; model catalog delegated to chat_router",
         &root,
     );
 

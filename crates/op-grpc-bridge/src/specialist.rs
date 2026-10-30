@@ -1,4 +1,4 @@
-//! `cognitive_mcp.specialist` — a persona assembled per call from the shared
+//! `cognitive.specialist` — a persona assembled per call from the shared
 //! piece pool and answered by the selected router model.
 //!
 //! Owner direction (2026-09-19): static agents are recreated dynamically from
@@ -6,7 +6,7 @@
 //! [`op_agents::dynamic::PieceLibrary`]; this module scopes it to the verified
 //! caller, adds what the session already knows (namespace memory, activity
 //! signals, pending knowledge pushes), composes the persona, and completes it
-//! through `tched_router.Chat`'s guarded native path. The assembled persona
+//! through `chat_router.Chat`'s guarded native path. The assembled persona
 //! (piece ids and sources) is returned with the answer so the decision is
 //! auditable, and the call is recorded as session activity so the context
 //! engine can follow up.
@@ -15,13 +15,13 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use anyhow::Context as _;
 use op_agents::dynamic::{AssembledPersona, PieceLibrary, TaskContext, assemble};
-use op_cognitive_mcp::CognitiveMcpServer;
-use op_cognitive_mcp::context_awareness::ActivityType;
-use op_cognitive_mcp::memory_store::EntryQuery;
-use op_plugins::state_plugins::cognitive_mcp::{
+use op_cognitive::CognitiveServer;
+use op_cognitive::context_awareness::ActivityType;
+use op_cognitive::memory_store::EntryQuery;
+use op_plugins::state_plugins::cognitive::{
     SpecialistInput, SpecialistOutput, SpecialistPersona,
 };
-use op_plugins::state_plugins::tched_router::{ChatInput, TchedChatMessage};
+use op_plugins::state_plugins::chat_router::{ChatInput, ChatMessage};
 use op_state_store::PluginSchema;
 use tokio::sync::RwLock;
 
@@ -49,7 +49,7 @@ pub const PIECES_NAMESPACE: &str = "agent_pieces";
 
 /// Prompt budget for the assembled persona (chars, before the question).
 const PERSONA_BUDGET_CHARS: usize = 12_000;
-/// Hot executors a specialist may direct. These are HOT `cognitive_mcp`
+/// Hot executors a specialist may direct. These are HOT `cognitive`
 /// methods the caller can invoke next; the persona is told they exist.
 const EXECUTORS: [&str; 3] = ["rust_pro", "python_pro", "typescript_pro"];
 
@@ -62,11 +62,11 @@ struct SpecialistGenerationAdmission {
     authority_plugin: &'static str,
     authority_method: String,
     capability: String,
-    facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+    facade_origin: Option<crate::chat_router_admission::FacadeOrigin>,
     sealed_identity: String,
 }
 
-impl crate::tched_router_generation_native::NativeGenerationAdmission
+impl crate::chat_router_generation::NativeGenerationAdmission
     for SpecialistGenerationAdmission
 {
     fn sealed_identity(&self) -> Option<&str> {
@@ -80,21 +80,21 @@ impl crate::tched_router_generation_native::NativeGenerationAdmission
             dyn Future<
                     Output = Result<
                         (),
-                        crate::tched_router_generation_native::NativeGenerationError,
+                        crate::chat_router_generation::NativeGenerationError,
                     >,
                 > + Send
                 + '_,
         >,
     > {
         Box::pin(async move {
-            let caller = crate::tched_router_admission::RouterCaller {
+            let caller = crate::chat_router_admission::RouterCaller {
                 actor: self.actor.clone(),
                 capability: Some(self.capability.clone()),
                 session: Some(self.session.clone()),
                 genesis: Some(self.genesis.clone()),
             };
             let check = async {
-                crate::tched_router_admission::readmit_call(
+                crate::chat_router_admission::readmit_call(
                     &self.engine,
                     &self.schema,
                     self.authority_plugin,
@@ -108,8 +108,8 @@ impl crate::tched_router_generation_native::NativeGenerationAdmission
                 anyhow::Ok(())
             };
             check.await.map_err(|_| {
-                crate::tched_router_generation_native::NativeGenerationError::Terminal(
-                    crate::tched_router_generation_native::NativeErrorCode::Auth,
+                crate::chat_router_generation::NativeGenerationError::Terminal(
+                    crate::chat_router_generation::NativeErrorCode::Auth,
                 )
             })
         })
@@ -122,7 +122,7 @@ pub(crate) fn generation_admission(
     caller: CognitiveCaller<'_>,
     authority_plugin: &'static str,
     authority_method: &str,
-) -> anyhow::Result<Arc<dyn crate::tched_router_generation_native::NativeGenerationAdmission>> {
+) -> anyhow::Result<Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>> {
     generation_admission_with_origin(
         engine,
         schema,
@@ -139,8 +139,8 @@ pub(crate) fn generation_admission_with_origin(
     caller: CognitiveCaller<'_>,
     authority_plugin: &'static str,
     authority_method: &str,
-    facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
-) -> anyhow::Result<Arc<dyn crate::tched_router_generation_native::NativeGenerationAdmission>> {
+    facade_origin: Option<crate::chat_router_admission::FacadeOrigin>,
+) -> anyhow::Result<Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>> {
     let capability = schema
         .methods
         .get(authority_method)
@@ -229,7 +229,7 @@ pub async fn consult_catalog_agent(
         agent.operations().contains(&operation),
         "specialist: Persona agent '{agent_type}' does not support operation '{operation}'"
     );
-    let advisor_operation: op_plugins::state_plugins::cognitive_mcp::AdvisorOperation =
+    let advisor_operation: op_plugins::state_plugins::cognitive::AdvisorOperation =
         serde_json::from_value(serde_json::Value::String(operation.to_string()))
             .with_context(|| format!("specialist: invalid advisor operation '{operation}'"))?;
     let question = question.trim();
@@ -286,13 +286,13 @@ async fn consult_input(
         .and_then(|method| method.required_capability.as_deref())
         .context("specialist authority method has no exact capability")?;
     let _selection_guard =
-        crate::tched_router_runtime::TchedRouterRuntimeClient::selection_guard().await;
-    crate::tched_router_admission::readmit_call(
+        crate::chat_router_runtime::ChatRouterRuntimeClient::selection_guard().await;
+    crate::chat_router_admission::readmit_call(
         engine,
         admitted_schema,
-        "cognitive_mcp",
+        "cognitive",
         authority_method,
-        &crate::tched_router_admission::RouterCaller {
+        &crate::chat_router_admission::RouterCaller {
             actor: caller.actor_id.to_owned(),
             capability: Some(capability.to_owned()),
             session: caller.session_id.map(str::to_owned),
@@ -312,7 +312,7 @@ async fn consult_input(
         },
     )
     .await?;
-    let runtime = engine.cognitive_mcp().await?;
+    let runtime = engine.cognitive().await?;
     let scope = caller.scope().to_string();
     // The memory the specialist may draw on is the caller's selected mode.
     let context = route.context.clone();
@@ -397,11 +397,11 @@ async fn consult_input(
         persona.name.clone()
     };
     route.input.messages = vec![
-        TchedChatMessage {
+        ChatMessage {
             role: "system".into(),
             content: system_prompt,
         },
-        TchedChatMessage {
+        ChatMessage {
             role: "user".into(),
             content: format!("[{}] {question}", operation_name(&input)),
         },
@@ -410,7 +410,7 @@ async fn consult_input(
         engine,
         admitted_schema,
         caller,
-        "cognitive_mcp",
+        "cognitive",
         authority_method,
     )?;
     let output = if route.mode == op_plugins::state_plugins::project::ChatMode::ControlPlane {
@@ -436,7 +436,7 @@ async fn consult_input(
         sources.push(format!("catalog_agent:{agent_type}"));
     }
     if let Some(routing) = output.usage.get("routing") {
-        sources.push(format!("tched_router.routing:{routing}"));
+        sources.push(format!("chat_router.routing:{routing}"));
     }
     let result = SpecialistOutput {
         answer: output.content,
@@ -460,7 +460,7 @@ pub(crate) async fn assemble_for_task(
     engine: &MutationEngine,
     task: &TaskContext,
 ) -> AssembledPersona {
-    if let Ok(runtime) = engine.cognitive_mcp().await {
+    if let Ok(runtime) = engine.cognitive().await {
         refresh_memory_pieces(runtime).await;
     }
     let library = LIBRARY.read().await;
@@ -475,7 +475,7 @@ fn operation_name(input: &SpecialistInput) -> String {
 }
 
 /// Recent session signals from the context engine, as short lines.
-pub(crate) async fn activity_lines(runtime: &CognitiveMcpServer, scope: &str) -> Vec<String> {
+pub(crate) async fn activity_lines(runtime: &CognitiveServer, scope: &str) -> Vec<String> {
     let Some(signals) = runtime.context_engine().get_session_signals(scope).await else {
         return Vec::new();
     };
@@ -511,7 +511,7 @@ pub(crate) async fn activity_lines(runtime: &CognitiveMcpServer, scope: &str) ->
 /// namespace(s) of the selected mode and the shared pieces namespace,
 /// filtered by task terms.
 pub(crate) async fn memory_snippets(
-    runtime: &CognitiveMcpServer,
+    runtime: &CognitiveServer,
     namespaces: &[String],
     task: &TaskContext,
 ) -> Vec<String> {
@@ -561,7 +561,7 @@ pub(crate) async fn memory_snippets(
 }
 
 /// Merge the `agent_pieces` namespace into the shared pool.
-async fn refresh_memory_pieces(runtime: &CognitiveMcpServer) {
+async fn refresh_memory_pieces(runtime: &CognitiveServer) {
     let store = runtime.memory_store();
     let Ok(Some(_)) = store.get_namespace_by_name(PIECES_NAMESPACE).await else {
         return;

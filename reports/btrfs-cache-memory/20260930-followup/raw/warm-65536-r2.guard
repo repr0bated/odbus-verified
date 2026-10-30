@@ -1,0 +1,2 @@
+pid=721 case=warm size=65536 repeat=2
+exit=0 duration_s=7 sampled_peak_rss_kib=36860

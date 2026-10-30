@@ -1,0 +1,43 @@
+path	initial_lines	read_ranges	status	disposition
+Cargo.toml	76	1-76	complete	manifest
+SPEC.md	95	1-95	complete	crate specification
+compare-op-network.md	88	1-88	complete	crate comparison note
+examples/ensure_seeded_root.rs	35	1-35	complete	example
+src/bin/op-identity-storage.rs	53	1-53	complete	binary
+src/bin/op-identity-storage/lungs_attach.rs	458	1-253,254-458	complete	binary module
+src/bin/op-of-controller.rs	300	1-300	complete	binary
+src/bin/op-ovsbr0-setup.rs	801	1-253,254-550,551-553,554-801	complete	binary
+src/bin/op-rtnetlink-init.rs	155	1-155	complete	binary
+src/btrfs.rs	483	1-483	complete	module
+src/controller.rs	1415	1-303,304-603,604-900,901-1200,1201-1415	complete	module
+src/controller_flow_verify.rs	321	1-321	complete	module
+src/controller_native_tests.rs	349	supplemental full read 1-349	complete after coordinator gap correction; initial read receipt absent; no case-insensitive tched occurrence
+src/datapath_safe.rs	351	1-351	complete	module
+src/dbus_tls.rs	299	1-299	complete	module
+src/door/mod.rs	27	1-27	complete	module; one product-name occurrence
+src/door/proxy.rs	193	1-193	complete	module
+src/error.rs	70	1-70	complete	module
+src/identity/mod.rs	113	1-113	complete	module
+src/identity/sealed_id.rs	147	1-147	complete	module
+src/incus_root_subvolume.rs	526	1-303,304-526	complete	module
+src/lib.rs	57	1-57	complete	module
+src/openflow.rs	222	1-222	complete	module
+src/openflow_translate.rs	677	1-343,344-677	complete	module
+src/ovs_capabilities.rs	345	1-345	complete	module
+src/ovs_error.rs	236	1-236	complete	module
+src/ovs_netlink.rs	1064	1-323,324-640,641-900,901-1064	complete	module
+src/ovsdb.rs	702	1-353,354-702	complete	module
+src/ovsdb_monitor.rs	1069	1-353,354-700,701-1069	complete	module
+src/ovsdb_monitor_tests.rs	317	1-317	complete	test module
+src/plugin.rs	501	1-501	complete	module and unit tests
+src/proxmox.rs	645	1-343,344-645	complete	module and unit tests
+src/rovs_proxy.rs	1129	1-353,354-700,701-1000,1001-1129	complete	module
+src/rovs_proxy_native_tests.rs	300	supplemental full read 1-300	complete after coordinator gap correction; initial read receipt absent; no case-insensitive tched occurrence
+src/rtnetlink.rs	1143	1-363,364-720,721-1003,1004-1143	complete	module and unit tests
+src/seeded_boot.rs	406	1-406	complete	module and unit tests
+src/seeded_prepare.rs	308	1-308	complete	module and unit tests
+src/seeded_root.rs	2102	1-403,404-800,801-1200,1201-1600,1601-2102	complete	module and unit tests
+src/transport/mod.rs	69	1-69	complete	module
+src/unixctl.rs	289	1-289	complete	module and unit tests
+src/wgcf_egress.rs	135	1-135	complete	module
+src/wireguard_kernel.rs	349	1-349	complete	module and opt-in fixture

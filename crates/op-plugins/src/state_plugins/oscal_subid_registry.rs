@@ -14,6 +14,7 @@ use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 
+use super::oscal_field_classification::{ASSESS_CAPABILITY, AssessFieldsInput, FieldAssessment};
 use super::oscal_subid_registry_methods::{
     ExportInput, ExportOutput, ListByCategoryInput, ListByCategoryOutput, LookupInput,
     LookupOutput, RegisterInput, RegisterOutput, ResolveInput, ResolveOutput,
@@ -399,8 +400,8 @@ pub(crate) fn oscal_subid_registry_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "oscal_subid_registry",
-        "2.0.0",
-        "Manifest-pinned OSCAL subid discovery with durable review annotations for existing sealed identifiers.",
+        "2.1.0",
+        "Manifest-pinned OSCAL discovery and bounded field-classification assessment. Missing reviewed field authority is unavailable; assessments never grant disclosure or replace public-state policy.",
         &root,
     );
 
@@ -459,6 +460,24 @@ pub(crate) fn oscal_subid_registry_schema() -> PluginSchema {
         ),
     );
 
+    schema.methods.insert(
+        "assess_fields".to_string(),
+        method_decl_from_schemars_with_output::<AssessFieldsInput, FieldAssessment>(
+            "assess_fields",
+            SideEffect::Read,
+            true,
+            ASSESS_CAPABILITY,
+            "obs.standard.oscal.fields.assess@v1",
+        ),
+    );
+    schema.capabilities.insert(
+        ASSESS_CAPABILITY.to_string(),
+        op_state_store::CapabilityDecl {
+            id: ASSESS_CAPABILITY.to_string(),
+            description: "Assess exact sealed field roots using the current reviewed OSCAL authority. Returns schema selectors and protection evidence, never runtime values or a disclosure permit.".to_string(),
+        },
+    );
+
     schema.capabilities.insert(
         "oscal.invoke".to_string(),
         op_state_store::CapabilityDecl {
@@ -498,7 +517,7 @@ impl StatePlugin for OscalSubidRegistryPlugin {
     }
 
     fn version(&self) -> &str {
-        "2.0.0"
+        "2.1.0"
     }
 
     fn is_available(&self) -> bool {
@@ -552,8 +571,8 @@ mod method_contract_tests {
     #[test]
     fn retained_methods_have_typed_v2_contracts() {
         let schema = oscal_subid_registry_schema();
-        assert_eq!(schema.version, "2.0.0");
-        assert_eq!(schema.methods.len(), 5);
+        assert_eq!(schema.version, "2.1.0");
+        assert_eq!(schema.methods.len(), 6);
         for (name, capability) in [
             ("register", "oscal.invoke"),
             ("lookup", "oscal.read"),
@@ -570,6 +589,14 @@ mod method_contract_tests {
             assert_ne!(args["properties"], serde_json::json!({}));
             assert!(method.returns.is_some());
         }
+        let assessment = &schema.methods["assess_fields"];
+        assert_eq!(
+            assessment.required_capability.as_deref(),
+            Some(ASSESS_CAPABILITY)
+        );
+        assert_eq!(assessment.side_effect, op_state_store::SideEffect::Read);
+        assert!(assessment.returns.is_some());
+        assert!(schema.validate_capability_closure().ok());
         let guarantees = OscalSubidRegistryPlugin.capabilities();
         assert!(!guarantees.supports_checkpoints);
         assert!(!guarantees.supports_rollback);

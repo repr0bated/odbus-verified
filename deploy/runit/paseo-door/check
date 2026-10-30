@@ -1,0 +1,14 @@
+#!/bin/sh
+exec /usr/bin/node <<'NODE'
+const fs = require('fs');
+const password = fs.readFileSync('/home/jeremy/.config/opdbus-agents/paseo-credentials/password', 'utf8').trim();
+const root = 'http://127.0.0.1:6767';
+(async () => {
+  const health = await fetch(root + '/api/health', { signal: AbortSignal.timeout(3000) });
+  if (!health.ok) throw new Error('Paseo health failed');
+  const denied = await fetch(root + '/api/status', { signal: AbortSignal.timeout(3000) });
+  if (denied.status !== 401) throw new Error('Paseo anonymous access was not denied');
+  const response = await fetch(root + '/api/status', { headers: { Authorization: 'Bearer ' + password }, signal: AbortSignal.timeout(3000) });
+  if (!response.ok) throw new Error('Paseo authenticated readiness failed');
+})().catch(error => { console.error(error.message); process.exitCode = 1; });
+NODE

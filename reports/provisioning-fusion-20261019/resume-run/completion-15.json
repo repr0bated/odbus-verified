@@ -1,0 +1,64 @@
+{
+  "request": 15,
+  "started": "2026-10-19T04:53:16.452568+00:00",
+  "finished": "2026-10-19T04:53:31.197098+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-02d3fec791ad72b0016ad5a23f45f887d0a1e47d0a2ecf1b82",
+    "created": 1792385599,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var cov=JSON.parse(await fs.readFile(a+'coverage.json','utf8'));console.log(Object.keys(cov));console.log(Object.keys(JSON.parse(await fs.readFile(a+'duplicate-index.json','utf8'))));console.log('incus present',contract.includes('MANDATORY SKILL incus'));console.log('contract chars',contract.length);console.log(pi.slice(0,3).map(x=>({id:x.id,bytes:x.bytes,spans:x.spans.length})));console.log(si.map(x=>({id:x.id,file:x.file})));\",\"title\":\"Inspecting coverage bookkeeping\"}",
+                "name": "eval"
+              },
+              "id": "call_VeD1P4ihwVt3tEhGpZITHwJe",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 620,
+      "prompt_tokens": 206626,
+      "total_tokens": 207246,
+      "completion_tokens_details": {
+        "reasoning_tokens": 338
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 148380
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:53:31.195947+00:00",
+  "stream_chunks": 4
+}

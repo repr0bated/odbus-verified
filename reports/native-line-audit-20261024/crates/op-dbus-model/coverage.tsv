@@ -1,0 +1,6 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-dbus-model/Cargo.toml	1-15 EOF	1de5411790f490d32e93728512d673ac9f216255c2fc3500ac8517c7310ffab5	No native occurrence; ordinary model/serialization dependencies; unchanged	reviewed
+crates/op-dbus-model/SPEC.md	1-199 EOF	1956b98572bfa2e2f000ed21f4859b38989acfdd319ed868d8c002622d85dc7f	No native occurrence; historical SQLite/sqlx/create_schema description contradicts current source; generic stale documentation outside native repair scope; unchanged	reviewed
+crates/op-dbus-model/compare-op-dbus-model.md	1-63 EOF	7d0336db73f7f6e20b49956a7559a15ea57b22189966adb2fc0fe45e33aa58a5	No native occurrence; historical op-core/sqlx dependency inventory contradicts current manifest; generic documentation drift; unchanged	reviewed
+crates/op-dbus-model/src/lib.rs	1-66 EOF	28659411e0099bed31cbdc3cacea1f29b1ba70f4187aca143a6ca130f7b3b7e3	No native occurrence; supplied documents mirrored/read via in-memory map; no model/provider/config override; unchanged	reviewed
+crates/op-dbus-model/src/models.rs	1-47 EOF	98366d0644a6629dbd1bc141919c612a01481cfcc5b2628f04e2fd4310a83aa9	No native occurrence; data structs import PluginSchema directly; path/service/source fields contain no executing config logic; unchanged	reviewed

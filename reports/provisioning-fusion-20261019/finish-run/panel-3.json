@@ -1,0 +1,50 @@
+{
+  "status": "ok",
+  "query": "Suggest a 3-6 word imperative session title for this goal: investigate and preserve the previously working Btrfs seed/sprout provisioning arrangement where immutable seed supplies backing and btrfs device add adds writable storage; trace Cozo identity association and subsequent sprout mount/remount, and produce a concrete specification. Return only a title.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "<title>Investigate and preserve Btrfs seed/sprout provisioning</title>"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<title>Preserve Btrfs seed sprout provisioning</title>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Use an imperative title centered on preserving Btrfs seed/sprout provisioning.",
+      "Both titles meet the requested 3\u20136 word length."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly includes investigation alongside preservation."
+      }
+    ],
+    "unique_insights": [],
+    "blind_spots": [
+      "Neither title explicitly names btrfs device add, Cozo identity association, sprout mount/remount, or the concrete specification deliverable."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

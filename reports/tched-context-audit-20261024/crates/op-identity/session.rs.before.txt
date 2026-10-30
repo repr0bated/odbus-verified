@@ -1,0 +1,19 @@
+    pub fn with_vault_and_interface<P: AsRef<std::path::Path>>(
+        path: P,
+        interface: &str,
+    ) -> anyhow::Result<Self> {
+        // SQL is obsolete in the 3tched architecture.
+        // We use in-memory DashMaps to prevent Btrfs mutation loops; the vault
+        // is the only persistent record and is stored under /etc/ghostbridge.
+        let path = path.as_ref().to_path_buf();
+        // An unreadable or corrupt identity authority must fail closed. Treating
+        // it as an empty vault can silently discard account mappings and allow
+        // later writes to replace the only durable identity record.
+        let vault = IdentityVault::load_from(&path)
+            .with_context(|| format!("load identity vault from {}", path.display()))?;
+        Ok(Self {
+            sessions: Arc::new(DashMap::new()),
+            identity_vault: Arc::new(Mutex::new(vault)),
+            gcloud_auth: GCloudAuth::new(),
+            wireguard: WireGuardIdentity::with_interface(interface),
+            current_session_id: Arc::new(Mutex::new(None)),

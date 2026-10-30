@@ -1,0 +1,31 @@
+
+running 26 tests
+test btrfs_cache::tests::btrfs_cache_reopens_children_and_snapshot_contains_child_data ... ignored, native Btrfs send/receive requires root; isolated fixture deletes only its own subvolumes
+test btrfs_cache::tests::clear_preserves_category_roots_and_releases_all_derived_owners ... ok
+test btrfs_cache::tests::compute_does_not_hold_lock_or_overwrite_a_concurrent_put ... ok
+test btrfs_cache::tests::concurrent_memory_inserts_never_publish_over_budget ... ok
+test btrfs_cache::tests::embedding_put_get ... ok
+test btrfs_cache::tests::expiry_invalidates_memory_evicted_metadata_and_recomputed_values ... ok
+test btrfs_cache::tests::expiry_reports_backing_failure_without_pretending_success ... ok
+test btrfs_cache::tests::failed_backing_file_delete_is_reported_and_retains_index ... ok
+test btrfs_cache::tests::index_is_compact_bounded_and_disk_fallback_survives_reopen ... ok
+test btrfs_cache::tests::kv_get_or_compute ... ok
+test btrfs_cache::tests::kv_memory_cache_serves_fast_path ... ok
+test btrfs_cache::tests::kv_overwrite_replaces_value ... ok
+test btrfs_cache::tests::kv_put_get_delete_round_trip ... ok
+test btrfs_cache::tests::malformed_embedding_and_oversized_payloads_are_rejected ... ok
+test btrfs_cache::tests::memory_budget_counts_keys_capacity_and_container_nodes ... ok
+test btrfs_cache::tests::memory_cache_clear ... ok
+test btrfs_cache::tests::memory_cache_evicts_lru_on_entry_limit ... ok
+test btrfs_cache::tests::memory_cache_evicts_on_memory_limit ... ok
+test btrfs_cache::tests::memory_cache_put_and_get ... ok
+test btrfs_cache::tests::memory_cache_remove ... ok
+test btrfs_cache::tests::numa_placement_is_stable_allowed_and_uses_free_memory ... ok
+test btrfs_cache::tests::ordinary_filesystem_creates_cache_directory_without_btrfs_command ... ok
+test btrfs_cache::tests::owning_user_can_delete_complete_readonly_cache_set ... ok
+test btrfs_cache::tests::remote_stream_arguments_reject_shell_syntax_and_traversal ... ok
+test btrfs_cache::tests::separate_handles_detect_replacement_and_deletion ... ok
+test btrfs_cache::tests::test_text_hashing ... ok
+
+test result: ok. 25 passed; 0 failed; 1 ignored; 0 measured; 29 filtered out; finished in 0.80s
+

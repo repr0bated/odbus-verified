@@ -1,0 +1,15 @@
+{
+  "task":"provisioning-fusion-20261019",
+  "owner_mechanism":"Seed is backing; btrfs device add adds the writable member enabling read-write sprout operation, as previously worked.",
+  "exact_command_syntax":"btrfs device add <writable-device> <mounted-seed-path>",
+  "historical_source_verified":"commit26a4ad132fbbd4523b05724060bfdeb9ca661824 deploy/runit/libexec-3tched/op-identity-root:1172-1196; command1188 and rw mount1194",
+  "correction_file":"owner-seed-device-add-correction.md",
+  "submitted_prompt":"seed-correction-run/prompt.txt",
+  "jev_completed":"jev-seed-mechanism-correction.json",
+  "fusion_panel_acknowledged":false,
+  "delivery_failure":{"model_group":"astra-pro","provider":"Hermes","http_status":429,"error_type":"RateLimitError","observed_failed_requests":12,"observed_interval":"2026-10-19T05:05:01Z–05:05:38Z","fallback":"none configured"},
+  "actions":"Cancelled stale review bg_2 to submit latest correction; cancelled repeated failing correction bg_3. No active review job remains. No automatic blind retry scheduled.",
+  "corrected_reports":["analysis/diagnosis.md","analysis/proposed-changes.md","analysis/drift-ledger.md"],
+  "status":"Exact correction preserved and JEV evaluated; configured panel delivery remains blocked by outer-provider rate limit.",
+  "limits":"No panel acceptance or response claimed. No claim about quota-reset time or whether429 is burst versus longer quota exhaustion. No source repair, storage mutation or provisioning command executed."
+}

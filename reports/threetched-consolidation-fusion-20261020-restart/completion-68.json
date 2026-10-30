@@ -1,0 +1,53 @@
+{
+  "request": 68,
+  "started": "2026-10-20T17:20:27.682087+00:00",
+  "finished": "2026-10-20T17:20:38.467708+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-02533f135e7bb78d016ad7a2e19f0487d1a4ce5a5457a6c3a7",
+    "created": 1792516833,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Scout concurs; no additional evidence or investigation.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 73,
+      "prompt_tokens": 205370,
+      "total_tokens": 205443,
+      "completion_tokens_details": {
+        "reasoning_tokens": 32
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 134915
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:20:38.466750+00:00",
+  "stream_chunks": 3
+}

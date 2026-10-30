@@ -1,0 +1,680 @@
+# Implementation prompt
+
+Implement threetched consolidation in `/srv/git/odbus-verified`, using the grounded implementation brief included below this prompt in this same file. Read that brief in full before editing.
+
+Read `AGENTS.md` and all its mandatory skill preloads first, then current `HANDOFF.md`, relevant `SIGNALS.md`, `WISHLIST.md`, the brief, and:
+
+- `reports/threetched-overlap-map-20261018.md`
+- `reports/threetched-overlap-map-20261018.txt` — JSON method inventory with a sharing-friendly extension.
+
+The original NotebookLM report is a synthesis of supplied sources, not live verification. The grounded brief supersedes its unsupported endpoint names, equivalence claims and automatic test gates. Verify present code and mounted declarations before relying on dated counts or source locations.
+
+## Objective
+
+Collapse handwritten operations already owned by the native threetched runtime into its one native-derived plugin schema. Keep our code under the 3tched distinction and the external ZeroClaw-derived runtime under threetched. Do not relocate duplicate declarations into `large_language_model`, another plugin, a separate schema directory or a new transport shim.
+
+Deliver working implementation and required build/catalog preparation, not another plan. Make the largest coherent, evidence-backed consolidation you can complete without speculative feature expansion. Begin with the direct plugin/skill wrappers, then continue into other established overlaps in dependency order. Explicitly record remaining work and blockers; do not describe a partial slice as complete consolidation.
+
+Full feature parity is not required. Missing persona/configuration features are **OD-122**, and native memory integration is **OD-123**. Those are wishlist work, not prerequisites for unrelated consolidation. Keep **Cozo** as the storage authority. Introduce no SQL/SQLite backend, automatic data migration or silent memory substitution. Existing unrelated migration debt is not this task.
+
+Current access is filesystem I/O, and the current name is **cognitive**. Lungs becomes an MCP interface after consolidation settles; do not implement that future interface here.
+
+## Implementation requirements
+
+1. Claim ownership in HANDOFF before editing. Preserve shared changes. The two direct wrapper modules were already deleted in source, with associated module/dispatch/hash-helper edits, but that removal was not built, sealed or deployed. Reconcile and finish it; do not reset or blindly repeat it.
+
+2. Begin with the mounted namespaces `/run/mounts/threetched` and `/run/mounts/3tchedFS`. Discover supported contracts there. Use pinned native source/export code to diagnose missing capture through the repository's supported maintenance/authoring path. Preserve caller identity and capability checks; do not bypass an absent or denied operation with another identity or transport.
+
+3. Complete the direct-wrapper slice: map all six `tched_plugins` and twelve `tched_skills` operations to the already captured native commands; reconcile arguments/results, callers, exact capabilities, registry/module/dispatch references, generated artifacts and mount selection. The mount adapter currently lists all four upstream IDs. Catalog removal and the adapter must agree.
+
+4. For additional config/provider/cron/router/LLM/cognitive overlap, assign every affected method a concrete disposition: migrate now, retain a genuine local integration responsibility, defer, or retire. Existing caller dependencies identify migration work; they do not justify a second native schema authority. Reconcile callers for removed or deferred behavior and expose truthful unsupported/unavailable outcomes instead of fake success.
+
+5. Add only the native capture required for the selected operations. Extend the existing verified native export/capture and explicit `opblob` authoring boundary. Runtime continues to consume sealed blobs. Do not invent `threetched.Chat`, HTTP endpoints, WebSocket frames or native memory support. The brief contains the observed real names and source references. Missing capture does not mean a feature is absent, and a configuration section is not an HTTP endpoint.
+
+6. Keep identity admission, private state partitions, exact grants, committed SHM publication, receipt/error semantics and cancellation outcomes intact for delivered operations. Do not globally rename state ownership or rewrite grants without tracing the affected contracts. Native stream disconnect does not prove a provider request was undone. No wildcard grants, new identity, blanket capability expansion or security-policy weakening.
+
+7. Update demonstrated consumers across the bridge, generated surfaces, toolsets, the sibling `/srv/git/3tched.com` UI and its pinned release input where affected. A compatibility name may temporarily resolve to the canonical declaration and admission path; it must not establish a separately authored schema. Do not retain wrappers indefinitely merely to avoid migrating callers.
+
+## Build, catalog and deployment boundary
+
+This prompt requests a native GNU release workspace build for the resulting cross-crate change:
+
+```sh
+CXXFLAGS="-include cstdint" cargo build --workspace --release --target x86_64-unknown-linux-gnu
+```
+
+Use the repository's existing JEV execution routing without model overrides. Run one Cargo process at a time; respect an existing build. Keep the primary agent available for source review and communication. Every delegated agent must perform its own mandatory preload and share task/file ownership.
+
+Use the freshly built `target/x86_64-unknown-linux-gnu/release/opblob` to prepare a **new isolated catalog** through `seal-plugins <new-catalog-dir>`, with the service's current schema-shaping environment. Review exact added/changed/removed plugin IDs, retain recoverable inputs and ensure matching binaries, generated views, configuration and any affected pinned UI input. Golden consumes the presealed catalog via `OP_PERSISTED_CATALOG_SOURCE`; it does not reseal it.
+
+The default deliverable for this prompt is implemented source, required build results, isolated release inputs and a precise deployment handoff. If the owner separately includes live activation in the receiving task, use only the canonical `./activate-golden.sh` snapshot/send-receive path and its receipts. Never hand-copy application binaries into the live installation. Keep host mount wiring and rollback implications explicit.
+
+Tests, Clippy, formatting checks and custom smoke fixtures run only on explicit owner request. Do not treat the NotebookLM report as permission to run them, and do not make full feature parity or a new test suite a prerequisite for the requested implementation. Use bounded authoring/readiness/operation receipts appropriately and report what was actually checked. Preserve the existing guard/storage hold and deferred subvolume pinning.
+
+## Required handoff
+
+Update HANDOFF, SIGNALS and the existing WISHLIST entries with:
+
+- Current commit and exact changed files, preserving other agents' work.
+- Methods/plugins consolidated, retired, retained for a specific local responsibility, or deferred.
+- Canonical native targets and important argument/result/capability/state differences resolved.
+- Build command and actual result; isolated catalog location, provenance and removal delta.
+- Deployment status, unresolved blockers and the exact next action.
+
+Distinguish **proposed, implemented, built, sealed, deployed and tested**. Stop at the authorized delivery boundary. Do not claim complete consolidation, persona equivalence, successful authenticated operation or zero downtime without the corresponding evidence.
+
+
+<evidence>
+
+# Mastering System Consolidation — grounded implementation brief
+
+**Prepared:** 2026-10-18 by Codex `/root`, task `threetched-single-surface-20261018` / OD-121. **Purpose:** a corrected, actionable version of the NotebookLM synthesis for another LLM to implement. This document is an implementation handoff, not a claim that consolidation has been implemented.
+
+**Owner decisions:** collapse handwritten functionality already owned by threetched into its native schema authority. Useful consolidation does not require full feature parity. Missing persona/configuration and memory integration features are deferred to **OD-122 and OD-123** in [WISHLIST.md](../WISHLIST.md). Keep **Cozo** as the storage authority; introduce no SQL/SQLite backend. Current access is filesystem I/O through `cognitive`; lungs becoming an MCP interface is later work, after consolidation settles.
+
+The original [NotebookLM webpage](<Gemini Notebook - Mastering System Consolidation_ Evidence-Backed Integration of 3tched and threetched.html>) and its supporting assets are preserved. NotebookLM synthesized supplied sources; it did not perform a live audit. This revision grounds its useful proposed sequence in mounted declarations and repository code, and labels remaining assumptions.
+
+## 1. Outcome and implementation scope
+
+The outcome is **one native contract owner for threetched functionality**, projected through our existing filesystem and admission path. A native operation should not have separately authored schemas under `threetched`, `tched_router`, `large_language_model` or another name.
+
+Start with a coherent, useful slice: finish the direct plugin/skill-wrapper consolidation, then migrate additional proven overlaps as their required contracts and callers are understood. Capture only the native contracts needed for the selected slice. Complete the affected source, callers, generated artifacts, mount selections and release catalog together. Do not turn the first slice into a prerequisite to implement every native tool, persona, workflow or memory feature.
+
+For each existing behavior, explicitly select one disposition:
+
+- **Migrate now:** native counterpart established; implement its canonical contract and update callers.
+- **Keep as an integration responsibility:** identity admission, scoped context, committed-state publication or receipts still belong to our system. This does not justify independently redefining the native operation.
+- **Defer:** record the missing feature and caller impact on the existing task board. Do not expose a fake-success operation or claim parity for deferred behavior.
+- **Retire:** remove the declaration and reconcile its callers/policy references; document the resulting feature change.
+
+Removing duplicate declarations is not itself a reason to move or delete authoritative data. Preserve existing principal/session partitions and Cozo data. A compatibility name, if temporarily necessary for a demonstrated caller, must resolve to the one canonical declaration and admission path; it must not become another independently authored plugin schema or permanent wrapper layer.
+
+## 2. Evidence baseline
+
+Evidence labels used below:
+
+- **Mounted:** observed in the identity-bound filesystem declarations during this work.
+- **Source:** implementation exists in the inspected checkout or pinned upstream input; this alone does not prove a successful live operation.
+- **Proposed:** an implementation choice or sequence, not completed behavior.
+- **Deferred/unresolved:** not established or not included in the initial delivery.
+
+| Baseline | Evidence |
+|---|---|
+| Source HEAD | `051a20d056afba074e21d797aa34f8947c543c5a`, with substantial shared uncommitted work. Do not reset, stash or overwrite it. |
+| Our mounted view | `/run/mounts/3tchedFS`: **70 plugins / 1,180 methods**. |
+| Upstream mounted view | `/run/mounts/threetched`: **4 plugins / 208 methods**: `threetched` 147, `tched_router` 43, `tched_plugins` 6, `tched_skills` 12. |
+| Combined inventory | **74 plugins / 1,388 method declarations**, re-counted from mounted schemas for this revision. |
+| Catalog pin | Generation 74, hash `8a34d0da9517b137063314e07f5fa9a24fe3a3fe33920b1de2df941380041fd6`. |
+| Native capture | Binary version **threetched 0.8.4**, plugin schema version **1.0.0**, format `threetched-cli/1`, **147 CLI operations / 83 top-level Config sections**. Binary version and plugin schema version are different fields. |
+| Native method limits | All 147 CLI methods declare `mutation` and `idempotent=false`; their result envelope is `{stdout, stderr, exit}`. `agent` exists; **`threetched.Chat` does not**. |
+| Existing deployment | The earlier deployment receipt records B/root304 as active, release `release-c6ece6d3-7cd5-4761-99a2-56bf684706fe`, with A/root299 previous. This report revision did not activate or independently re-certify the release. |
+
+Primary evidence: [mounted native schema][E1], [mounted catalog view][E2], [full overlap report][E3], [complete method inventory][E4]. The inventory is JSON content saved with a `.txt` extension for sharing; older notes referring to its `.json` filename are stale.
+
+The original map inventories every method; it does not establish end-to-end equivalence for all methods. It explicitly identifies missing native contracts. The NotebookLM sentence saying the map treated CLI help as proof of complete equivalence is removed by this revision.
+
+## 3. What to consolidate
+
+### Confirmed delegation and shared native implementations
+
+| Surface | Established relationship | Implementation implication |
+|---|---|---|
+| `tched_plugins` — 6 | Native `plugin.install/list/migrate/info/remove/search`. | Strong first removal candidate. Confirm arguments, output handling, exact admission and callers against the canonical native operations. |
+| `tched_skills` — 12 | Native `skills.add/audit/edit/install/list/remove/test` and `skills.bundle.add/list/remove/rename/show`. | Same first-slice treatment. The 12 native commands are already captured. |
+| `large_language_model` — 8 | A facade targeting **tched_router**, not eight already available native CLI replacements. Exact targets below. | Migrate callers to the derived threetched contract when the needed selection/generation operations exist. Moving router declarations into this plugin would preserve duplication. |
+| `cron` — 9 | Uses native cron storage. Seven methods relate to CLI actions; history/run use native HTTP routes. | Capture only missing contracts needed for the chosen cron slice. Preserve scope and distinguish accepted backend effects from publication/receipt failure. |
+| `mcp` — 3 | `get_config` and `configure_server` delegate to native config through router methods. `configure_tool_groups` is local bridge policy. | Consolidate the two config facades. Assess the remaining policy separately; its name is not an instruction to implement lungs MCP now. |
+| `gemma_brain.route` | Delegates to router `ResolveRoute`. | Migrate this operation after native route resolution is mapped. This does not establish equivalence for the other 16 methods. |
+| `model_registry.native_list_providers` | Reads native configuration/provider inventory and applies agent-owned-profile/selectability filtering. | Preserve the filtering when migrating. It is not a bare `providers.list` passthrough. |
+| Cognitive persona consultations + `specialist` | **568** exposed methods share native provider-only completion. | Shared inference establishes a consolidation opportunity; it does not prove native agent execution reproduces the surrounding context, tools, memory and result behavior. Persona enhancements can be deferred. |
+
+Exact LLM facade targets from [large_language_model_methods.rs][E5]: `list_providers→ListProviders`; `get_provider/get_config→GetState`; `set_provider→SetProvider`; `generate→Chat`; `stream_generate→start_generation`; `list_models→ListModels`; `update_config→SetSelection`. Every target in this sentence currently belongs to **tched_router**. Do not rename it to `threetched.<same-name>` without creating a native-derived contract and implementation.
+
+Other evidence: [cron gateway][E6], [MCP config facade][E7], [provider inventory and filtering][E8], [specialist completion][E9].
+
+### All 43 router methods must have a disposition
+
+| Group | Count | Methods / mapping obligation |
+|---|---:|---|
+| Config/schema | 15 | `GetConfig`, `GetConfigSchema`, `GetMcpConfig`, `PatchConfig`; `config_get/init/list/migrate/patch/set`; aliases `get/init/list/patch/set`. Compare with native Config and typed config operations, including masking and coherent state observation. |
+| Inventory/projection | 9 | `GetState`, `GetProviderCatalog`, `GetModelRoutes`, `GetRouter`, `GetStructuredOutput`, `GetTools`, `ListModels`, `ListProviders`, `ListUiSurfaces`. Native providers/models/config overlap; tool metadata and UI/state projections are not all represented by CLI envelopes. |
+| Selection/routing/bindings | 12 | `SetModel`, `SetProvider`, `SetSelection`, five role setters (`CozoRetrieval`, `Obfuscation`, `OvsRouting`, `QdrantRetrieval`, `Vectorization`), `ResolveRoute`, `apply_catalog_model_binding`, `resolve_catalog_model_binding`, `get_own_agent_route`. Map native configuration/routing separately from local catalog bindings and caller-specific selection. |
+| Generation | 7 | `Chat`, `start_generation`, `cancel_generation`, `get_generation_job`, `get_generation_jobs`, `delete_generation_job`, `recover_generation_jobs`. Native inference exists. Local jobs, revisions, publication, cancellation and recovery have separate implementation obligations. |
+
+Evidence: [mounted router schema][E10], [router declaration source][E11], [generation job dispatcher][E12]. No requirement is imposed to reproduce every router feature in the first release. Every removed or deferred feature must nevertheless have an explicit disposition and reconciled callers.
+
+### Coverage of the rest of the catalog
+
+The complete 74-plugin disposition table and method names remain in [the overlap map][E3] and [machine inventory][E4]. Its classification totals are:
+
+| Classification | Plugins | Methods | Meaning |
+|---|---:|---:|---|
+| Reference | 1 | 147 | The current captured native surface. |
+| Wrapper | 3 | 26 | Confirmed delegation; not automatically identical typed contracts. |
+| Mixed | 6 | 748 | Shared native behavior plus local obligations or capture gaps. |
+| Candidate | 12 | 73 | Functional overlap requiring a narrower comparison or deliberate deferral. |
+| Different scope | 35 | 236 | Current evidence distinguishes the responsibilities. This is not a permanent exemption from future consolidation. |
+| Unestablished | 17 | 158 | No equivalent established by this capture. It does not mean the plugin is broken or native threetched cannot implement the feature. |
+| **Total** | **74** | **1,388** | Audit categories, not runtime routing rules. |
+
+Candidates include `agent_config`, `persona`, `memory`, `embedding_model`, `workflows`, `project` and related application behavior. The NotebookLM blanket statement that all of `project` is proven unique and must remain is too strong: memberships/ACLs/documents and native workspace/context behavior need separate dispositions. Likewise, config sections named `storage`, `backup`, `tunnel` or `security_ops` do not prove equivalence to our Btrfs, database or host-administration operations.
+
+In the prior map, notation such as `/agents`, `/memory`, `/shell_tool` and `/project_intel` denotes **configuration sections**, unless explicitly identified as an HTTP route. Do not invent endpoints from those names.
+
+## 4. Native capture and the schema-to-blob boundary
+
+The present implementation is:
+
+1. Explicit `opblob` sealing calls `threetched::prepare_schema_capture`.
+2. The selected binary/manifest are checked; the capture reads native `config schema`, recursive command `--help`, version and binary digest.
+3. `schema_from_capture` derives the threetched PluginSchema. Separately registered handwritten plugins still produce their own PluginSchemas.
+4. `opblob` seals each full PluginSchema into the blob catalog. Full reseal removes plugin IDs absent from the build.
+5. Golden preparation stages the already sealed catalog; snapshot send/receive and activation transport it. FUSE projects the resulting declarations and committed state.
+
+Evidence: [explicit sealer][E13], [capture owner][E14], [CLI capture implementation][E15], [full-schema blob serialization][E16]. Duplicate authoring enters **before sealing**; a shared catalog alone does not remove it.
+
+### Capture gaps and concrete evidence
+
+| Area | Grounded evidence | Work needed for a selected implementation slice |
+|---|---|---|
+| Native HTTP config | Pinned gateway `openapi.rs::build_spec` derives schemas from native Rust types; gateway declares `/api/openapi.json`. `api_config.rs` defines property/list/patch/init/migrate types and errors. | Import the relevant native-owned contract with provenance. Do not assume the current CLI capture already includes HTTP results/errors. |
+| OpenAPI coverage | The inspected source includes config/version paths, `/api/skills/slash-option-kinds`, additional schema components, and a feature-gated A2A addition. It is not an export of every gateway or WebSocket operation. | Inventory actual exported coverage. Earlier shorthand “config/version only” was incomplete; neither that shorthand nor the generated lesson is sufficient authority for coverage. |
+| Native tools | Current adapter reads `/api/tools`: name, description, parameters and optional output. Its local type deliberately omits native `param_domains`. | Preserve needed native metadata when deriving the chosen methods. Agent/config-dependent tool visibility must not turn a capture identity's tools into universal grants. |
+| Cron | Source declares `/api/cron`, `/api/cron/{id}`, `/api/cron/{id}/runs` and `/api/cron/{id}/run`. | Use these verified paths. The lesson's `/cron/history` and `/cron/run` are not the inspected routes. |
+| Provider-only generation | Pinned patch exposes `/ws/chat?stateless_generation=1`, protocol `tched_router.generation.v1`, strict connect/message inputs and session_start/connected/chunk/done/error outputs. | Export/derive the native frame contract for the generation slice. No existing `threetched.Chat` method should be assumed. |
+| Cancellation and receipts | Native stateless code drops the provider stream on disconnect and notes that the remote provider may already have accepted input. Local `cancel_generation` checks job revision, commits state and signals a worker. | Preserve truthful cancellation/state outcomes. Do not describe the local job method as an already exported native cancellation frame, or assume disconnect undoes provider effects. |
+
+Sources: [pinned source archive and recipe][E17], archive members `crates/zeroclaw-gateway/src/openapi.rs` (build_spec at line 58, routes at 204 onward), `api_config.rs`, `lib.rs` (config/tool/cron registrations at 1658–1980); [native tools adapter][E18]; [generation patch][E19]; [generation jobs][E12]. These are source observations, not live endpoint calls.
+
+**Proposed implementation rule:** extend the existing explicit authoring/capture boundary and, where necessary, the pinned native export. Derive selected operations from native types/exports; retain binary, patch, version and schema provenance. Runtime consumers continue to use the sealed catalog. Do not add another repository `schemas/` authority, live schema fallback, generic parallel API client or second control plane. Unsupported capture remains an explicit gap or deferred feature.
+
+Do not require complete HTTP/tool/WebSocket capture before removing the already captured plugin/skill wrappers. Capture becomes necessary when a selected migration depends on the missing contract.
+
+## 5. Cognitive: complete counts and a bounded proposal
+
+| Group | Methods | Current evidence / disposition |
+|---|---:|---|
+| Persona consultations | 567 | 81 personas × seven verbs. Shared native inference; persona/config improvements deferred under OD-122. |
+| Execution catalog | 59 | 12 aliases backed by five executors. Existing dispatch uses identity-bearing `UnifiedExecution` D-Bus calls. Native shell/runtime overlap is a candidate, not proven language-operation equivalence. |
+| Orchestration catalog | 18 | Six agents × three operations. Each child goes through canonical admission with the original caller. Native SOP/pipeline comparison may be deferred. |
+| Memory operations | 7 | `memory_store/retrieve/query/recall/delete/list_namespaces/semantic_query`. Existing scoped Cozo owner, optional Qdrant semantics. OD-123 covers future native integration. |
+| Code retrieval/indexing | 3 | `code_search`, `code_context`, `code_index`: Voyage/Qdrant and session-aware context. Generic native project/memory sections do not establish equivalent retrieval. |
+| Compatibility agent facades | 6 | `rust_pro`, `python_pro`, `typescript_pro`, `sequential_thinking`, `context_manager`, `code_review_orchestrator`. |
+| Workflow facades | 2 | `workflow_query/run`, sharing the local workstack owner. |
+| Specialist/provider calls | 2 | `specialist` plus `gemini_query`; the latter has separate provider/research behavior. |
+| Discovery/admission/policy | 6 | `get_health`, `list_tools`, `invoke_tool`, `schema_read`, `oscal_subids`, `toolsets`. |
+| **Total** | **670** | **644 agent methods + 26 other methods.** |
+
+The lesson's abbreviated list totaled 660. Persona consultations alone are **84.6%** of 670, not “over 85%.” These are generated declarations from [agent descriptors][E20], not 567 independently handwritten function implementations. The opportunity is reducing duplicate exposed contracts and local behavior that native facilities can own.
+
+### What a persona migration actually needs to map
+
+[specialist.rs][E9] shows that current consultations do more than append a static role: they validate the persona/verb, resolve the caller's route and mode, select a memory namespace, assemble dynamic persona pieces and scoped context, add role/knowledge, preserve the operation in the prompt, recheck admission, invoke provider-only completion and construct typed persona/source metadata.
+
+The mounted Config's `AliasedAgentConfig` supports `identity`, `knowledge_bundles`, `skill_bundles`, `model_provider`, `risk_profile`, `runtime_profile`, `workspace`, `memory` and related fields. It has **no direct `system_prompt` field**. `IdentityConfig` supports OpenClaw/AIEOS documents and AIEOS inline/file sources. These establish native configuration mechanisms, not a completed translation of our prompt assembly.
+
+**OD-122 proposal:** move static role/knowledge into appropriate native identity/bundle facilities where useful; map verbs, dynamic context and result metadata separately. Do not make exact reproduction of all 567 legacy method names a prerequisite for the first consolidation slice. Do not silently change provider-only consultation into tool-enabled agent execution.
+
+**OD-123 proposal:** retain Cozo ownership and scope. The mounted `AgentMemoryConfig.backend` defaults to `sqlite`; `MemoryBackendKind` declares none/sqlite/postgres/qdrant/markdown/lucid, with no Cozo option. That is a concrete future integration gap. It is not authorization to add SQL/SQLite, switch stores, migrate data or silently disable memory. Other consolidation can proceed while this work stays on the wishlist.
+
+Evidence: [mounted Config inside the native schema][E1], [specialist context/completion][E9], [execution dispatch][E21], [workflow admission][E22]. No agent configuration or memory backend was changed while preparing this brief.
+
+## 6. Dependencies the implementing LLM must reconcile
+
+| Dependency | Required treatment |
+|---|---|
+| Callers | Trace exact plugin/method references through bridge dispatch, UI, schema loaders, toolsets and generated outputs. Inspect the sibling UI's `src/chat/{door-chat-adapter,native-routing,control-plane-model,router-committed-route}.ts` and `src/grpc/door.ts`; do not assume one file handles every caller. Update the pinned UI input when the changed UI is part of a release. |
+| Schema ownership | Make native operation shapes derive from the one native contract. Local policy/receipt integration must not independently reauthor native arguments/results. Never invent the target method name because the old owner used it. |
+| State | Identify existing public/private state and child objects before changing owner paths. Preserve principal/session scope, unrelated children and authoritative Cozo data. Commit actual backend results to canonical SHM before notifications. Do not assume a global rename to `threetched` preserves state isolation. |
+| Capability mapping | Build explicit old-method → canonical-operation → exact-capability mappings. Read/write distinctions, actor/session admission and current grants must survive. A hashed CLI capability is not automatically equivalent to an old typed read capability. No wildcard grants or direct policy rewrites to hide denials. |
+| Receipts/errors | Distinguish execution failure, backend acceptance, state-publication failure, cancellation and recovery. A successful filesystem write or CLI exit alone is not proof of the full operation. |
+| Mount selection | The host adapter currently hardcodes `threetched,tched_router,tched_plugins,tched_skills`. Update it consistently with actual catalog removals. Preserve our/upstream naming and separation. [Adapter source][E23]. |
+| Generated/release inputs | Remove obsolete module/registry/dispatch references, regenerate affected derived views through existing mechanisms, prepare an isolated catalog, review exact added/changed/removed plugin IDs and stage the matching binaries/config/UI. Do not hand-edit generated output as a second authority. |
+
+For capability changes, preserving existing authorization is not permission to broaden it. Follow the repository's smallest-concrete-change procedure if a genuinely new grant is required. An operation denial is evidence to diagnose, not a reason to switch identities or transports.
+
+## 7. Implementation sequence and completion evidence
+
+This is a proposed sequence for the receiving agent. The owner asked this author to produce a prompt/document, not execute the application changes.
+
+1. **Reconcile the shared work first.** Read current AGENTS/HANDOFF/SIGNALS and the mounted catalog. Two direct wrapper modules were already deleted in source before the mapping hold, with related edits in `mod.rs`, `threetched.rs` and `mutation_engine.rs`; those removals remain unbuilt/unsealed/undeployed. Preserve unrelated work and finish this slice coherently rather than restarting it.
+2. **Finish the directly captured wrapper slice.** Resolve plugin/skill command inputs, outputs, capabilities and callers against the 18 native commands. Reconcile mount selections and generated inputs. Record any feature deliberately retired/deferred instead of introducing replacement duplicate schemas.
+3. **Migrate further proven overlaps in dependency order.** Select the next useful config/provider/cron/router subset. Add only the native capture needed by that subset; retain required local admission/state/receipt integration. Do not hold the first slice for full persona, memory or workflow parity.
+4. **Build and prepare the release inputs.** Follow JEV's Cargo routing, one Cargo process, native `x86_64-unknown-linux-gnu`, release `CXXFLAGS="-include cstdint"`. Use the freshly built `opblob` for an isolated `seal-plugins <new-catalog-dir>` catalog with matching schema-shaping environment. Review removals and preserve recovery inputs. Golden consumes the already sealed catalog via `OP_PERSISTED_CATALOG_SOURCE`; it does not reseal it.
+5. **Hand off with exact status.** Report changed files, implemented/retired/deferred methods, build result, catalog delta, remaining blockers and next action. Live deployment, when explicitly included in the receiving task, uses `./activate-golden.sh` and snapshot send/receive; never hand-copy application binaries into the running host. Track host mount wiring separately from the application snapshot.
+
+Evidence for a completed implementation slice includes resolved callers, one schema owner, exact catalog delta, successful required build and consistent release inputs. If deployed, add native activation/readiness receipts, mount/catalog agreement and resulting authoritative state where an admitted operation is available. Missing identity provisioning or an unavailable operation remains an explicit limitation.
+
+**Tests, Clippy, formatting checks and custom smoke fixtures remain owner-request-only.** The NotebookLM `cargo check --workspace` and persona-test gates are not automatic authority to run checks. Workspace scope and build execution follow the receiving prompt and current AGENTS. Report unrun tests as unrun. There is no claim of zero risk, guaranteed zero downtime or complete semantic parity.
+
+Existing guard/storage holds and later subvolume pinning remain outside this scope. Future lungs MCP is neither a dependency of the first consolidation slice nor an interface to implement now.
+
+## 8. What is ready to hand off
+
+- **Grounded baseline:** mounted counts, real method names, native Config fields, current source ownership and the actual cron/generation/tool contract evidence.
+- **First implementation slice:** finish the existing plugin/skill-wrapper removal and reconcile callers, mount selection, generated inputs and release catalog.
+- **Subsequent slices:** migrate proven native overlap as needed contracts become available; track selected behavior and dependencies explicitly.
+- **Deferred enhancements:** OD-122 native persona/configuration mapping; OD-123 Cozo-backed native memory integration. These do not block unrelated consolidation.
+- **Current authoring status:** documentation and task-board changes only; no new application implementation, build, seal, deployment, grants, mounts or storage changes.
+
+The implementation prompt is at the top of this file. The receiving LLM must reread present sources and shared ownership; this evidence is dated, not a substitute for current state.
+
+## Evidence references
+
+The original audit and fresh reads are complementary. Mounted declarations establish exposed contracts; code establishes implementation relationships; the NotebookLM artifact supplies synthesis and proposed structure. None alone proves a successful authenticated end-to-end operation.
+
+[E1]: /run/mounts/threetched/plugins/threetched/schema.json
+[E2]: /run/mounts/threetched/view.json
+[E3]: /srv/git/odbus-verified/reports/threetched-overlap-map-20261018.md
+[E4]: /srv/git/odbus-verified/reports/threetched-overlap-map-20261018.txt
+[E5]: /srv/git/odbus-verified/crates/op-plugins/src/state_plugins/large_language_model_methods.rs:44
+[E6]: /srv/git/odbus-verified/crates/op-grpc-bridge/src/cron_gateway.rs:123
+[E7]: /srv/git/odbus-verified/crates/op-plugins/src/state_plugins/mcp_methods.rs:62
+[E8]: /srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_router_runtime.rs:1288
+[E9]: /srv/git/odbus-verified/crates/op-grpc-bridge/src/specialist.rs:195
+[E10]: /run/mounts/threetched/plugins/tched_router/schema.json
+[E11]: /srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs:1863
+[E12]: /srv/git/odbus-verified/crates/op-grpc-bridge/src/generation_jobs_dispatch.rs:422
+[E13]: /srv/git/odbus-verified/crates/op-plugins/src/bin/opblob.rs:688
+[E14]: /srv/git/odbus-verified/crates/op-plugins/src/state_plugins/threetched.rs:54
+[E15]: /srv/git/odbus-verified/crates/threetched-fs/src/threetched-surface.rs:180
+[E16]: /srv/git/odbus-verified/crates/op-blob/src/lib.rs:72
+[E17]: /srv/git/odbus-verified/vendor/tched-router/source.pin
+[E18]: /srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs:89
+[E19]: /srv/git/odbus-verified/vendor/tched-router/patches/0002-stateless-provider-generation.patch:1065
+[E20]: /srv/git/odbus-verified/crates/op-plugins/src/state_plugins/cognitive_agents.rs:331
+[E21]: /srv/git/odbus-verified/crates/op-grpc-bridge/src/agent_catalog_dispatch.rs:136
+[E22]: /srv/git/odbus-verified/crates/op-grpc-bridge/src/agent_workflow.rs:31
+[E23]: /srv/git/odbus-verified/deploy/runit/libexec-3tched/mount-3tchedfs:35
+
+## Execution addendum — Fusion, 2026-10-18
+
+Task `threetched-consolidation-fusion-20261018` / OD-121; source HEAD observed
+`051a20d056afba074e21d797aa34f8947c543c5a`. This addendum does not rewrite the
+original prompt or turn its historical deployment evidence into a new receipt.
+
+### Implemented source slice
+
+- Preserved the existing removal of `tched_plugins` and `tched_skills`, their
+  module/registry and bridge dispatch integration. No compatibility aliases.
+- Deleted `state_plugins/binary_namespace.rs`, its module declaration, router
+  schema attachment and early dispatch. Retired router `get`, `init`, `list`,
+  `patch`, `set`; retained the distinct typed `config_*` operations.
+- `state_plugins/threetched.rs::prepare_command` now refuses `skills.edit` and
+  editor-requesting `skills.add` before spawning. The executor has neither an
+  interactive terminal nor a captured content-input contract. Native capture
+  remains unchanged; refusal is an execution limitation, not successful editing.
+- Host mount adapter selects `threetched,tched_router`. Workspace population
+  points both extension/skill links at guest `plugins/threetched`; guest mount
+  root remains `/run/mount/3tchedfs`. Matching workspace and release guidance
+  describes dotted operations, changed result envelopes and exact grants.
+- No UI source/pinned-input change: scouts found no wrapper or short router-name
+  production caller in sibling UI. Typed configuration, Chat, route binding and
+  committed-state consumers remain unchanged. No native HTTP/WS contract was
+  invented to replace them.
+
+### All 18 wrapper dispositions
+
+Notation: `A(x,y)` means `"arguments":[x,y]`; `F(k,x)` means `"--k":[x]`.
+Absent/null optional old fields become omitted flags. Switches are booleans.
+Every native target below belongs to `threetched`; these are argument mappings,
+not automatic caller/grant migrations.
+
+| Retired wrapper | Native target / disposition | Argument correspondence |
+|---|---|---|
+| `tched_plugins.install_plugin` | `plugin.install` | `A(source)`, optional `F(registry,registry)` |
+| `tched_plugins.list_plugins` | `plugin.list` | `{}` |
+| `tched_plugins.migrate_plugins` | `plugin.migrate` | `{}` |
+| `tched_plugins.plugin_info` | `plugin.info` | `A(name)` |
+| `tched_plugins.remove_plugin` | `plugin.remove` | `A(name)` |
+| `tched_plugins.search_plugins` | `plugin.search` | `A(query)`, optional `F(registry,registry)` |
+| `tched_skills.add_bundle` | `skills.bundle.add` | `A(alias)`, optional `F(directory,directory)` |
+| `tched_skills.add_skill` | `skills.add` | `A(name)`, required `F(description,description)`; optional author/bundle/category/license/version flags; `--no-scaffold` boolean; no `--edit` |
+| `tched_skills.audit_skill` | `skills.audit` | `A(source)` |
+| `tched_skills.edit_skill` | Retired contents API; no equivalent captured operation | Do not drop contents or map to interactive `skills.edit` |
+| `tched_skills.install_skill` | `skills.install` | `A(source)`; optional agent/bundle/skill flags; `"--no-tier-banner":true` preserves old fixed option |
+| `tched_skills.list_bundles` | `skills.bundle.list` | `{}` |
+| `tched_skills.list_skills` | `skills.list` | Optional agent/bundle flags |
+| `tched_skills.remove_bundle` | `skills.bundle.remove` | `A(name)`, `"--yes":true` |
+| `tched_skills.remove_skill` | `skills.remove` | `A(name)`, optional agent/bundle flags |
+| `tched_skills.rename_bundle` | `skills.bundle.rename` | `A(from,to)` |
+| `tched_skills.show_bundle` | `skills.bundle.show` | `A(name)` |
+| `tched_skills.test_skills` | `skills.test` | Optional `A(name)`, `--verbose` boolean |
+
+Historical source was read with `git show HEAD:crates/op-plugins/src/state_plugins/{tched_skills,tched_plugins}.rs`, without restoring either file.
+It proves `install_skill` always supplied `--no-tier-banner` and `remove_bundle`
+always supplied `--yes`. This supersedes the scout's earlier default-output
+recommendation. Old editing piped bounded contents through `EDITOR=/usr/bin/tee`;
+that is absent from the canonical native contract and is not reintroduced.
+Old wrappers imposed narrower name/path/text validation; the native CLI accepts
+its own declared token schema and options. Native results are
+`{stdout,stderr,exit}`, not `{text}`. Nonzero exit follows the error path;
+preserve stderr warnings and uncertain/cancelled outcome receipts. Native bundle
+removal without `--yes` can exit zero without removing anything.
+
+Old capability groups were `cap.software.tched-plugins.{read,write,install,search}@v1`
+and `cap.software.tched-skills.{read,write,install,execute}@v1`.
+The exact new requirement for each native target `m` is the existing declaration
+`cap.software.threetched.call.c<lowercase SHA256 of exact UTF-8 m>@v1`.
+This formula is the current `command_policy`, not a new policy or grant writer;
+callers discover the actual sealed capability. There are no old-capability OR
+alternatives. Old read/idempotent methods become native mutation/non-idempotent
+declarations; broader CLI options also prevent authority-equivalence claims.
+No grant or identity was changed to mask this breaking cutover.
+
+### All 43 router dispositions
+
+Each named method below has an explicit disposition. Retained methods are not
+claimed consolidated merely because they call the same binary.
+
+| Methods | Disposition / dependency |
+|---|---|
+| `get`, `init`, `list`, `set`, `patch` | Retired in this slice. Native `config.get/init` use `A("model_routes")`; `config.list` uses `F(filter,"model_routes")`; `config.set` uses `A("model_routes",serialized_value)`. Native `config.patch` takes a file; old inline-operations convenience is retired, not losslessly mapped to stdin. |
+| `GetConfig`, `GetMcpConfig` | Retain masked/coherently published typed observations; defer native HTTP contract cutover. MCP's narrow grant must not become whole-config access. |
+| `GetConfigSchema` | Retired in resumed source pass: declaration, exclusive output, capability declaration and fallback removed. Exact sealed `native_config` remains schema authority; shared ConfigSchema state descriptor is preserved. |
+| `PatchConfig` | Defer until MCP nested admission, narrow path restrictions and distinct capability reconcile with `config_patch`. |
+| `config_get`, `config_list` | Retain typed path/prefix reads and masking, including UI consumers; CLI stdout is not their result contract. |
+| `config_init`, `config_migrate` | Retain typed native configuration receipts/readback and SHM publication; no data/Cozo migration implied. |
+| `config_patch`, `config_set` | Retain atomic UI patch and catalog-model resolution/readback; defer native typed contract capture. |
+| `GetState` | Keep local committed whole-state projection, durable assignments and caller-filtered jobs. |
+| `GetProviderCatalog` | Retired in resumed source pass; backing caller migrated to `ListProviders`, preserving provider content and publication assertions. Canonical observation has no extra legacy post-durable-read recheck; no canonical behavior changed. |
+| `GetModelRoutes` | Retain observed native model routes plus local integration until native typed capture. |
+| `GetRouter`, `GetStructuredOutput`, `ListUiSurfaces` | Keep local committed descriptors; production producers are not proven by fixture-seeded tests. |
+| `GetTools` | Defer typed native `/api/tools` capture, including param_domains and caller visibility/publication. |
+| `ListModels`, `ListProviders` | Retain typed filtering/observation consumers; defer native contract cutover. Preserve local assignments during publication. |
+| `SetModel`, `SetProvider`, `SetSelection` | Retain coherent selection validation/readback/SHM commits; atomic selection is not two CLI writes. |
+| `SetCozoRetrievalModel`, `SetObfuscationModel`, `SetOvsRoutingModel`, `SetQdrantRetrievalModel`, `SetVectorizationModel` | Keep durable local role assignments/CAS and catalog validation. No native-memory substitution or global chat selection. |
+| `ResolveRoute` | Keep local observed route resolver/ambiguity rejection; duplicate `gemma_brain.route` declaration/bridge retired in resumed source pass, with callers migrated to canonical exact-grant admission. |
+| `apply_catalog_model_binding`, `resolve_catalog_model_binding` | Keep catalog revision/availability, ordinary-profile, endpoint and caller-bound validation/readback required by UI. |
+| `get_own_agent_route` | Keep verified persisted caller-mode integration; no caller-selected identity/config. |
+| `Chat` | Keep local conversation/mode/context/episode orchestration; defer underlying native frame-contract derivation. Native agent CLI is not a stateless substitute. |
+| `start_generation`, `cancel_generation`, `get_generation_job`, `get_generation_jobs`, `delete_generation_job`, `recover_generation_jobs` | Keep private durable jobs, revision checks, queued-before-launch commit, cancellation ownership, terminal deletion and explicit recovery. |
+
+Source evidence: `tched_config_dispatch.rs`, `tched_config_engine.rs`,
+`tched_router_legacy_dispatch.rs`, `generation_jobs_dispatch.rs`,
+`generation_admission.rs`, `tched_router_generation.rs` and existing
+`mutation_engine.rs` admission/publication paths. Sibling consumers remain in
+`src/chat/{door-chat-adapter,native-routing,control-plane-model,router-committed-route}.ts`.
+
+### Remaining overlap and release obligations
+
+- Seven `large_language_model` facades are retired in the resumed source pass;
+  `stream_generate` remains for its durable generation-origin admission. Shared
+  observed-state helper remains. No redundant router methods moved there.
+- MCP get_config/configure_server need outer+nested grant and path-policy
+  reconciliation. configure_tool_groups remains local projection policy.
+- Nine cron operations retain typed native readback and publication receipts
+  pending derived HTTP contracts; cron is currently install-global, not a
+  caller-private scheduler with ongoing initiator-grant rechecks.
+- Application `config` is a durable arbitrary-key owner, not native Config.
+  model_registry filtering and cognitive local integrations remain distinct.
+  OD-122 persona/config and OD-123 Cozo-native-memory work stay deferred.
+- Bridge generated contracts regenerate through its existing build script.
+  Checked-in FUSE specialization is historical generation1494 evidence; it
+  must be regenerated from the new isolated catalog through typed_specialize,
+  never mechanically renamed while retaining old hashes.
+- Expected delta against observed generation74 is two plugin removals,
+  `tched_plugins` and `tched_skills`, seven fewer router methods (43→36), seven
+  fewer LLM methods (8→1), and one fewer Gemma method (17→16). With no unrelated
+  schema changes, arithmetic is 74→72 plugins and 1,388→1,355 methods. This is
+  not an actual catalog receipt.
+
+Mounted metadata/schema reads succeeded at generation74, catalog hash
+`8a34d0da9517b137063314e07f5fa9a24fe3a3fe33920b1de2df941380041fd6`.
+Directory enumeration of the native plugin returned EIO; direct declared schema
+reads remained usable. No alternate identity/transport was used. JEV's actual
+classification was complex (confidence1), prove_equivalence (confidence1);
+its deployment probability0.14 was not treated as authorization.
+Build/catalog status is recorded below when completion receipts are available.
+Tests, Clippy, formatting checks, custom smoke fixtures and deployment were not
+authorized. No live activation, host install, service restart, network/storage
+change or grant broadening belongs to this execution.
+
+### Actual release receipt and remaining blocker
+
+ReleaseBuild's immediate pre-start `pgrep -a -x 'cargo|rustc|clippy-driver'`
+returned exit0: Cargo PID25761 running
+`cargo check --workspace --message-format=json --manifest-path /srv/git/odbus-verified/Cargo.toml --keep-going --all-targets`,
+with rustc25784/25788/25794 compiling op_cozo_store. Receipt: `artifact://16`.
+The owner/session of that check was not established; it was not started by this
+execution. Earlier11312/11474 observations are not the current blocker receipt.
+No process was killed or polled. The requested command
+`CXXFLAGS="-include cstdint" cargo build --workspace --release --target x86_64-unknown-linux-gnu`
+was **not started**; no build exit status or fresh artifact exists from this task.
+
+Consequently no isolated catalog was sealed and no actual catalog delta is
+claimed. Historical generated FUSE bindings/report remain unchanged: regenerating
+against the old live catalog would restore removed wrappers. Next authorized
+action after compiler ownership is clear is the GNU release build, then freshly
+built GNU opblob `seal-plugins <new-catalog-dir>` with runtime-matched selectors
+and `COGNITIVE_QDRANT_URL=http://127.0.0.1:6334`, followed by exact catalog-delta
+review and existing typed_specialize generation against that isolated catalog.
+Do not use an older opblob or activate the source-only cutover as a substitute.
+
+Final status of this execution: source slice implemented; build blocked;
+catalog/generated refresh blocked; tests/Clippy/format/custom smoke unrun by
+authorization; installed/deployed **no**. Live mounted view still showed all
+four old IDs at generation74 in the final bounded metadata read. No authenticated
+operation success or editor-refusal runtime verification is claimed.
+
+### Resumed scope reconciliation — 2026-10-18
+
+The prior source slice is preserved, not repeated or described as complete
+consolidation. Compiler ownership is now explicitly recorded for Hermes's
+provisioning worker `sa-0-32370f11` (21:45Z dispatch). The earlier PID25761
+observation above is historical, not a current process receipt. ReleaseReadiness
+found no authoritative terminal receipt releasing that ownership; this resumed
+pass has not probed or polled compiler processes. Its scratch build excludes
+consolidation and cannot certify these source changes.
+
+The following decisions supersede the non-specific “removal candidate” and
+“remain distinct” wording above. Source-only inspections do not prove execution.
+
+#### MCP and cron
+
+- **Defer native-contract migration:** `mcp.get_config` and
+  `mcp.configure_server`. Preserve both outer and nested exact grants and the
+  server-descendant-only patch restriction, currently delegating to
+  `tched_router.GetMcpConfig` / `PatchConfig`. Neither whole-config access nor
+  CLI stdout is an equivalent replacement. `mcp_methods.rs:36-109` owns these
+  restrictions; no caller, policy or method is removed by this deferral.
+- **Retain local projection policy:** `mcp.configure_tool_groups`; this is not
+  permission to implement the future lungs MCP interface.
+- **Defer native-contract migration, retain existing receipt/publication
+  integration:** cron `create_job`, `delete_job`, `disable_job`, `enable_job`,
+  `get_history`, `get_job`, `list_jobs`, `run_job`, `update_job`. Existing callers
+  and typed results remain unchanged. The original inventory records incomplete
+  native history/run capture; install-global scheduling is not re-described as
+  private scheduling or continuous initiator-grant enforcement.
+
+#### Gemma local responsibilities
+
+Retain these sixteen methods, rather than treating the whole plugin as native
+inference duplication:
+
+| Methods | Retained responsibility |
+|---|---|
+| `register_tag` | Revision-checked private taxonomy mutation. |
+| `list_tags`, `list_perspectives` | Validated taxonomy enumeration/counts. |
+| `classify`, `analyze_intent` | Deterministic keyword matching/ranking against registered taxonomy, not provider completion. |
+| `get_ui_workspace`, `get_ui_spec`, `get_ui_job`, `list_ui_specs` | Principal/session-owned committed workspace/spec/job reads. |
+| `create_ui_spec`, `update_ui_spec`, `handle_ui_event`, `delete_ui_spec`, `delete_ui_job` | Private durable json-render mutations, revisions, admission, publication and owned task lifetime. |
+| `rebind_ui_renderer`, `recover_ui_workspace` | Renderer/catalog-pin reconciliation and durable-to-private-SHM recovery. |
+
+Evidence: `gemma_brain_methods.rs:179-299`,
+`ui_workspace_dispatch.rs:51-78,370-545`, `ui_workspace_contract.rs`.
+Canonical `tched_router.ResolveRoute` is separate from these responsibilities.
+
+#### Model registry
+
+| Method | Disposition and caller impact |
+|---|---|
+| `list_providers` | Retain local governed-provider/Cozo catalog projection: discovery status/revision, credential class, availability counts and control-plane profiles. UI `model-catalog.ts:89-95` remains unchanged. |
+| `list_models` | Retain local Cozo catalog query, credential/enabled gates, availability, pagination, search and recorded profiles. UI `model-catalog.ts:118-124` remains unchanged. |
+| `refresh` | Retain credential-gated discovery ingestion and folding into Cozo, including discovery history and removed providers. |
+| `set_model_profile` | Retain validated per-provider/model control-plane profile assignment and catalog revision/readback; not global native selection. |
+| `maintain_credentials` | Retain governed provider classification/reference policy (`key`/`oauth`/`off`/`remove`), not credential values or replacement native authentication. |
+| `native_list_providers` | Defer native inventory contract migration; retain agent-owned-profile unselectability and door-policy filtering. CLI `providers.list` is not an equivalent filtered result. |
+
+Evidence: `model_registry_dispatch.rs:364-736,858-1078` and
+`tched_router_runtime.rs:1288-1326`. No methods or callers removed here.
+
+#### Cognitive: exhaustive nine-group disposition
+
+The original 670-method partition is retained: 567+59+18+7+3+6+2+2+6.
+These are source decisions, not a claim that native functionality is absent.
+
+| Group / names | Disposition and dependency |
+|---|---|
+| 567 persona consultations: 81 personas × `advise`, `analyze`, `consult`, `explain`, `help`, `recommend`, `review` | Defer native persona/config translation under OD-122; retain current caller mode/route, scoped memory, dynamic persona/context, role/knowledge and guarded provider-only completion. No caller contract changes. |
+| 59 execution catalog methods | Retain exact-grant/project-restricted identity-bearing `UnifiedExecution.ExecuteCatalog` integration and process result semantics; defer unproven native-tools replacement. |
+| 18 orchestration methods: six agents × `list_steps`, `run_workflow`, `validate` | Retain authenticated canonical child calls with original actor/session/genesis and each child's exact capability; defer native SOP/pipeline substitution. |
+| `memory_store`, `memory_retrieve`, `memory_query`, `memory_recall`, `memory_delete`, `memory_list_namespaces`, `memory_semantic_query` | Retain scoped Cozo ownership and explicit semantic-mirror errors; defer native memory under OD-123. `memory_recall` remains a local query alias, not independent native integration. |
+| `code_search`, `code_context`, `code_index` | Retain Voyage/Qdrant retrieval/indexing, collection/filter/context semantics and server-bound session context; defer native replacement until equivalent results are established. |
+| `rust_pro`, `python_pro`, `typescript_pro`, `sequential_thinking`, `context_manager`, `code_review_orchestrator` | Defer local alias retirement with demonstrated HOT-policy dependency. These normalize to catalog methods; migrate exact HOT entries/consumers together, not under OD-122/123. |
+| `workflow_query`, `workflow_run` | Defer outer-alias retirement with HOT-policy reconciliation; retain workstack owner and identity-bearing `query_workflows` / `start_workflow` calls. Not a missing-native-capture justification. |
+| `specialist`, `gemini_query` | Retain dynamic scoped consultation for `specialist`, native persona translation deferred under OD-122. Separately defer `gemini_query` migration pending a concrete equivalent for research answers/citations and incomplete-research errors. |
+| `get_health`, `list_tools`, `invoke_tool`, `schema_read`, `oscal_subids`, `toolsets` | Retain runtime health, admitted discovery/target-grant enforcement, sealed-schema/OSCAL reads and audience/toolset policy. Generic invocation never grants the target capability. |
+
+Evidence: `agent_catalog_dispatch.rs:19-169,204-236`,
+`agent_workflow.rs:28-111`, `specialist.rs:195-210,305-424`,
+`mutation_engine.rs:7109-7331,7495-7516`,
+`op-cognitive/src/{cognitive_tools,code_tools,gemini_fallback}.rs`,
+`mcp_policy.rs:293-307`. Versioned `deploy/config/mcp-toolsets.json` has no router,
+LLM, Gemma or removed wrapper entries; its HOT cognitive alias entries are real
+remaining dependencies. This does not certify separately installed policy.
+
+#### Verified release inputs, not release success
+
+ReleaseReadiness inspected the pinned capture inputs:
+
+- `THREETCHED_CAPTURE_BIN=/srv/git/odbus-verified/target/threetched-artifacts/tched-router/threetched`
+- `THREETCHED_CAPTURE_MANIFEST=/srv/git/odbus-verified/target/threetched-artifacts/tched-router/manifest.json`
+- `TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router`
+- Binary SHA256 `22e121f5eb1b66352138b714cc3d40d9eb977ed0c13bd6316f693a11a875a75e` matches manifest.
+- Manifest SHA256 `5fd1a4db784f20a788d16722d86dde01ee0d9ba574598b007d5f1c3e4585b5b7`; GNU v0.8.4 / upstream `a56c345d51dd8ab562e9351e0d4ab83f6a741db9`, provenance agrees with `source.pin`.
+
+Installed bridge launcher defaults agree with repository inputs:
+Qdrant HTTP6333/gRPC6334 on127.0.0.1, `COGNITIVE_QDRANT_URL` on6334,
+and all three cognitive collection defaults `opdbus_baseline_code_v1`.
+Optional launcher environment files were absent. Inherited live-process
+overrides were not inspected. No fresh compiler, catalog or operation success
+is inferred from these input observations.
+
+#### Policy residue and retained generation admission
+
+Four versioned `cap.software.3tched-router.config-schema.read@v1` grants at
+`deploy/security/capability-grants.json:7,86,338,533` remain unchanged under the
+no-grant-change boundary. `interceptor.rs::validated_grant_entries` validates
+opaque nonempty unique strings, not catalog membership. The materializer
+publishes the validated bytes; sealing does not read grants. This residue is
+therefore not an identified materialization/startup/seal blocker. This is a
+source conclusion, not an executed startup check.
+
+`method_contract_admission.rs:164-192` requires the method in the pinned catalog,
+matching compiled declaration/version and exact exercised capability. An orphan
+grant cannot recreate a retired method or authorize a different target. The old
+deployed catalog/binary can still expose that method, and reintroducing its
+capability could make retained grants effective again. Cleanup needs separate
+authorization; no policy was rewritten or broadened here.
+
+`large_language_model.stream_generate` is specifically retained rather than
+silently dropping its outer authority: `generation_admission.rs:28-46,146-161`
+pins that exact facade and `llm.invoke` at initial admission and worker execution.
+Its durable job origin is a real migration dependency; it does not justify
+retaining the seven unrelated duplicate facades. Canonical router generation
+admission/private state/cancellation remain unchanged.
+
+### Resumed source implementation receipt — 2026-10-18
+
+Two scoped implementation workers completed the additional source retirement:
+`tched_router.GetProviderCatalog`, `tched_router.GetConfigSchema`, seven LLM
+facades, and `gemma_brain.route`. This adds ten removals to the preserved
+eighteen wrapper and five short-namespace removals: **33 method retirements in
+source**, not a sealed or deployed method count.
+
+| Retired LLM method | Existing canonical target | Old result projection / important difference | Exact old and target capability |
+|---|---|---|---|
+| `list_providers` | `tched_router.ListProviders` | `{providers}` | `cap.software.3tched-router.providers.read@v1` |
+| `get_provider` | `tched_router.GetState` | `{selected_provider,provider}` from state, absent/duplicate selection rejected | `cap.software.3tched-router.state.read@v1` |
+| `get_config` | `tched_router.GetState` | `{config:{selected_provider,selected_model}}` from state | `cap.software.3tched-router.state.read@v1` |
+| `set_provider` | `tched_router.SetProvider` | `{provider_id}` input, `{selected_provider}` result | `cap.software.3tched-router.provider.set@v1` |
+| `generate` | `tched_router.Chat` | message/messages/provider/model input; content/provider/model/finish_reason/usage output. Old facade rejected conversation_id accepted by canonical Chat. | `cap.software.3tched-router.chat@v1` |
+| `list_models` | `tched_router.ListModels` | optional provider, `{model_routes}` | `cap.software.3tched-router.models.read@v1` |
+| `update_config` | `tched_router.SetSelection` | provider_id/model_id, selected_provider/selected_model | `cap.software.tched-router.selection.set@v1` |
+
+These are existing delegation destinations, not universal lossless caller
+renames. Old facades rejected extra keys, decoded/re-encoded typed values and
+unwrapped the canonical `result` envelope. Backing callers now use canonical
+names and explicit GetState projections. No demonstrated production caller was
+found in inspected source/deploy/scripts/UI; external clients are not proven
+absent. UI source and pinned archive are intentionally unchanged; the LLM
+plugin still exists for stream_generate.
+
+Gemma route's outer `gemma.invoke` grant is not remapped into canonical
+`cap.software.3tched-router.route.resolve@v1`. Its dedicated bridge module and
+dispatch were removed; canonical route content, missing-route, exact-grant,
+session, unknown-field and blank-hint assertions remain in backing test source.
+The other sixteen local methods remain. Antigravity metadata now names the
+actual tched_router catalog/inference owner rather than removed LLM methods.
+
+Provider backing assertions now use ListProviders. Both old and canonical
+paths publish masked native config and durable assignments and preserve
+configured-family grouping, alias/door filtering and selected-family ordering.
+The retired accessor had an extra post-durable-read runtime-unchanged check;
+canonical ListProviders retains its existing coherent before/after observation,
+not a newly promised stronger atomicity. Shared ConfigSchema state remains.
+
+Exact additional files changed (relative to repository root):
+
+- `crates/op-plugins/src/state_plugins/tched_router.rs`
+- `crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs`
+- `crates/op-plugins/src/state_plugins/large_language_model.rs`
+- `crates/op-plugins/src/state_plugins/large_language_model_methods.rs`
+- `crates/op-plugins/src/state_plugins/antigravity.rs`
+- `crates/op-plugins/src/state_plugins/antigravity_chat.rs`
+- `crates/op-plugins/src/state_plugins/gemma_brain.rs`
+- `crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs`
+- `crates/op-grpc-bridge/src/mutation_engine.rs`
+- `crates/op-grpc-bridge/src/lib.rs`
+- `crates/op-grpc-bridge/src/gemma_brain_dispatch.rs` (deleted)
+- `crates/op-grpc-bridge/src/large_language_model_dispatch.rs`
+- `crates/op-grpc-bridge/src/antigravity_dispatch.rs`
+- `crates/op-grpc-bridge/src/owned_method_task_tests.rs`
+- `crates/op-grpc-bridge/tests/large_language_model_dispatch.rs`
+- `crates/op-grpc-bridge/tests/tched_router_backing.rs`
+
+Obsolete facade-only DTOs/plans/completion arms and wiring/count assertions
+were removed, not repinned. Existing admission/malformed-result assertions
+were retained or migrated; **no tests ran**. Shared observer, generation-origin
+pins, private partitions, recovery, owned task lifetime and cancellation were
+not changed. No grant document, identity, native capability hash, live catalog,
+generated artifact, installed binary or service was changed by this pass.
+
+### Current release blocker — supersedes earlier compiler-ownership status
+
+Hermes's 22:00Z Active work update records provisioning worker completion and
+no active child. Its first isolated build failed on a missing uuid dependency;
+the second timed out. Parent recorded no Cargo/rustc and warned that the old
+18:11 bridge plus newer opblob are mixed artifacts that **must not ship**.
+This is external evidence, not a successful consolidation build.
+
+The same authoritative update requires correction of over-scoped provisioning
+source **before any new build/activation**: ID-1 numbering is human-facing
+Incus naming only, not identity/storage/lifecycle authority. No completed
+correction/source-freeze receipt was found. That supersedes compiler ownership
+as the current blocker. Those files remain Hermes-owned; this task must not
+undo or incorporate rejected work silently. Hermes/worker are not registered
+in this session's agent channel; the shared HANDOFF request is the reachable
+coordination path.
+
+Consolidation source is frozen after the above edits. Next: Hermes records its
+correction complete/source stable; then one immediate Cargo exclusion check,
+the authorized GNU workspace release command, freshly built GNU opblob
+`seal-plugins <new-catalog-dir>` with the verified selectors above, exact
+catalog delta review and existing catalog-pinned FUSE specialization generator.
+No build or fresh seal was run by this resumed pass. Generated specialization
+is still stale and must not be presented as release input. No tests, checks,
+Clippy, formatting, custom fixtures, deployment or live operation ran.
+
+</evidence>

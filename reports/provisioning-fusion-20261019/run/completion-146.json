@@ -1,0 +1,64 @@
+{
+  "request": 146,
+  "started": "2026-10-19T04:42:39.792261+00:00",
+  "finished": "2026-10-19T04:42:47.405314+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-07a66919a53bcc3b016ad59fc324b887d09923a0e5b5350d0f",
+    "created": 1792384963,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading packet review contract\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt:1-100\"}",
+                "name": "read"
+              },
+              "id": "call_gFEXBAfgswkcsVbRTGOkiwZX",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 156,
+      "prompt_tokens": 85372,
+      "total_tokens": 85528,
+      "completion_tokens_details": {
+        "reasoning_tokens": 35
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 75496
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:42:47.403471+00:00",
+  "stream_chunks": 4
+}

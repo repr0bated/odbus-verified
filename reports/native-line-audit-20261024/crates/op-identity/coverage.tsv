@@ -1,0 +1,21 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-identity/Cargo.toml	1-38 EOF	52769221fc32398a9b4c2aa58c468c92d678a27fd21a3395128612126d18e718	No native occurrence; manifest supports generic documentation drift G1	complete
+crates/op-identity/SPEC.md	1-86 EOF	56edcc43b4521200a375cd90c06a11415a5bb9b46f08b815afc29eed6a905269	No native; G1 stale generic inventory; J3 report-only	complete
+crates/op-identity/compare-op-identity.md	1-79 EOF	ea59280af8d3e88b49fc1bdb9c2343a431d0debd936e6ed5f3bc36c3d501384c	No native; G1 stale generic inventory; J3 report-only	complete
+crates/op-identity/src/bin/op-decoy-issuer.rs	1-220;221-420;421-548 EOF	027fe16a420dd229aa273728456e0633d753113a477a1901c7e9993249049086	No literal native; to_ne_bytes is ABI conversion; no edit	complete
+crates/op-identity/src/bin/op-identity-headers.rs	1-109 EOF	e19e90c1a99fc7beb4497ea224d3cc8e33431ed5beb5b5353997c609030a6a45	One native occurrence now L4; J4 corrects unsupported timing wording while preserving documented client-helper vocabulary; source doc edited	complete
+crates/op-identity/src/depreciated-wg.rs	1-92 EOF	187de9f0c53469db8da26f7c9007ede54545fbb7b3083548eeef1e375437cabf	No native; included by wg.rs; no edit	complete
+crates/op-identity/src/gcloud_auth.rs	1-244 EOF	fd59e09e8baa13e138c1de658e93ec8a84be9681654ea23f2326eeaaa72e5c53	No native; OAuth-source fallback not model selection; no native edit	complete
+crates/op-identity/src/identity_projection_reads_tests.rs	1-112 EOF	656d8894970927e6a0bb26e5c37a9ed9bd5bb79e8fddf61ddeb6f114b4ef2265	No native; read fixtures not executed	complete
+crates/op-identity/src/identity_vault.rs	1-157 EOF	eae00eb853de5b7dd55d083c950f473638295aaf4fe7428743542e4f2cf11c7e	No native; no edit	complete
+crates/op-identity/src/lib.rs	1-41 EOF	0fb3df6f199eaeb0fb556415334d593a69cae5cc1b9a8eb8444c0eb2f9407393	No native; module declarations reconciled	complete
+crates/op-identity/src/oracle_assertion.rs	1-230;231-460;461-680;681-865 EOF	474e25cb677ef616abf6a05ea384200c3398d93545af71b335110d0a721fda55	No native; codec/issuer/verification fixtures read not executed	complete
+crates/op-identity/src/recovery.rs	1-154 EOF	e608a8eca9c4c081c0d2cb84163778430049355b56dd81e79cecad1d07a29a29	No native; no edit	complete
+crates/op-identity/src/registration.rs	1-55 EOF	3f72f7ad41abf0a64206ce24efe66ded916a90296fd7ab185456859b3fd819f2	No native; no edit	complete
+crates/op-identity/src/schema_bridge.rs	1-219 EOF	621f0d430d6fcb01007d2e3546aa3bab32813b637df9cc7dc600b891d6352c71	No native; sealed catalog and projected genesis resolution; no edit	complete
+crates/op-identity/src/sealed_id.rs	1-230;231-442 EOF	7725c1fb7a64822a1acf1dde7e9dc7a2c86882114c5308d7d851f982a0cdda7b	No native; fixture literal L327 fully displayed; no edit	complete
+crates/op-identity/src/session.rs	1-240;241-469 EOF	1766bcdb4a5ba6498064304945db1405b5691184f5f8122b448cb88b7adc599a	No native; session and OAuth logic; no native edit	complete
+crates/op-identity/src/session_genesis.rs	1-132 EOF	ba7f9517e83df810fa1295d87035c065c980ef8cf3ca2785628b7f9c205cc4fd	Seven native occurrences L23/25/62/66/69/70/73; J2 preserve exact digest vocabulary	complete
+crates/op-identity/src/session_projection.rs	1-230;231-440;441-593 EOF	adc665ae15ddcf330653d3c9468e9e0c94900ad4dd68e76729f927bcaaa695e1	No native; explicit private credential path and exact claim forwarding; no edit	complete
+crates/op-identity/src/wg.rs	1-1 EOF	47b5e8515bfad394be544ca41cb0d66c5939693c8240441c5b05e0df0ac0fb75	No native; included file separately fully read	complete
+crates/op-identity/src/wireguard.rs	1-113 EOF	f7f701bd7ab13c4fa10f9c854f1321bbb7a06a825d1dda47ee49112a1a5f103c	No native; explicit injected key; no edit	complete

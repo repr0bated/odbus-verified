@@ -1,0 +1,6 @@
+Methods for model_registry (/org/opdbus/v1/plugins/model_registry org.opdbus.v1.PluginV1):
+METHOD             EFFECT    CAPABILITY               SUBID
+list_models        read      model_registry.read      obs.service.model-registry.models.list@v1
+list_providers     read      model_registry.read      obs.service.model-registry.providers.list@v1
+refresh            mutation  model_registry.refresh   mut.service.model-registry.catalog.refresh@v1
+set_model_profile  mutation  model_registry.maintain  mut.service.model-registry.model-profile.set@v1

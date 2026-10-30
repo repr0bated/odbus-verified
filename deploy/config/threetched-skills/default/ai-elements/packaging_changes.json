@@ -1,0 +1,123 @@
+{
+  "format": "3tched-skill-packaging-changes/1",
+  "skill": "ai-elements",
+  "changes": [
+    {
+      "repository": "https://github.com/vercel/ai-elements",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/references/inline-citation.md",
+      "packaged_path": "references/inline-citation.md",
+      "upstream_sha256": "c652d69f0bac69c6e7c07884aaefd1e8e737793152833141cf44762d5dcbe049",
+      "sha256": "e8357c5eb1cb22ff636b8cf78e4e81fe94cfe4bca8b3d149ccab3185b8baf266",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/docs/reference/ai-sdk-ui/use-object",
+          "to": "https://ai-sdk.dev/docs/reference/ai-sdk-ui/use-object",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vercel/ai-elements",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/references/task.md",
+      "packaged_path": "references/task.md",
+      "upstream_sha256": "cd1589d64dfa12553b9fd376969aebb91d02c57c036fb808e239c982d9ad7f23",
+      "sha256": "aa63bbc744721c7965d39eac6a693e59a4ef062a5c10a8fb0ff6888cee935da1",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/docs/reference/ai-sdk-ui/use-object",
+          "to": "https://ai-sdk.dev/docs/reference/ai-sdk-ui/use-object",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vercel/ai-elements",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/references/tool.md",
+      "packaged_path": "references/tool.md",
+      "upstream_sha256": "4ae349c84b2cdbdf6e136457a6ea0783dca4e20f918e4159568d4ce559818c2e",
+      "sha256": "ae1ace3abe1c922e6b9a493e5bd2f80f1d31c4c9cc2e3df5d68a1a9728873b6a",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/docs/reference/ai-sdk-ui/use-chat",
+          "to": "https://ai-sdk.dev/docs/reference/ai-sdk-ui/use-chat",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vercel/ai-elements",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/references/image.md",
+      "packaged_path": "references/image.md",
+      "upstream_sha256": "9f8174e57c40af7810869d59908d98af1aceb023e83a0a5e65cd944f8d939944",
+      "sha256": "fb10c214fa64e86b23f61d9d90f53b536536f9d7727d2fba573b90c5dcab2ce4",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/docs/reference/ai-sdk-core/generate-image",
+          "to": "https://ai-sdk.dev/docs/reference/ai-sdk-core/generate-image",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vercel/ai-elements",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/references/conversation.md",
+      "packaged_path": "references/conversation.md",
+      "upstream_sha256": "72d382261109347fec1ce6a3f7d3b044098c2cab15080abd823e4d75295c1ef3",
+      "sha256": "09d677c339fae2a1b5ccf8d347c1d9e079f26bfd26460eebe63d905b144826ca",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/components/prompt-input",
+          "to": "https://elements.ai-sdk.dev/components/prompt-input",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vercel/ai-elements",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/references/reasoning.md",
+      "packaged_path": "references/reasoning.md",
+      "upstream_sha256": "0535f191e51124dca48238128e9b792ad69053fd372208aafa617a2392ef18a6",
+      "sha256": "19846d1e42f8abd0a175f44b537bc6b1d3e3d1499d96528f49bf587bfe0cf618",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/components/chain-of-thought",
+          "to": "https://elements.ai-sdk.dev/components/chain-of-thought",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vercel/ai-elements",
+      "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+      "source_path": "skills/ai-elements/references/prompt-input.md",
+      "packaged_path": "references/prompt-input.md",
+      "upstream_sha256": "a4c6ab9b8d5e63162db77cccc5361a03442e06fd9d8eb1ada79a4fd9e598ce76",
+      "sha256": "c3a200215f63d203f22f9cce960febab5600a17d60dd998ae9c871e3cf0ad515",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging; correct the upstream singular attachment link to the published attachments page.",
+      "replacements": [
+        {
+          "from": "/components/conversation",
+          "to": "https://elements.ai-sdk.dev/components/conversation",
+          "occurrences": 1
+        },
+        {
+          "from": "/components/attachment",
+          "to": "https://elements.ai-sdk.dev/components/attachments",
+          "occurrences": 1
+        }
+      ]
+    }
+  ]
+}

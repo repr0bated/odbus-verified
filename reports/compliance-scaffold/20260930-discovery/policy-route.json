@@ -1,0 +1,107 @@
+{
+  "captured_at": "2026-09-30T10:18:35Z",
+  "command": "../.venv/bin/python -m compliance_index route corpus:controls-mapping.json --depth 3 --limit 200",
+  "source_package": "/srv/git/repos-bulk/compliance-index",
+  "snapshot_kind": "read_only_command_capture_subset",
+  "selection": "First three maps_to paths in maintained route output; endpoints only. Original full route not imported.",
+  "original": {
+    "node_count": 200,
+    "path_count": 199,
+    "truncated": true
+  },
+  "result": {
+    "generation": "38cdcec0a21a316013fcc13efe8682347fceb628a2b5be362ab21197c08f7173",
+    "tag": "corpus:controls-mapping.json",
+    "retrieval_policy": "explicit_mappings_first",
+    "nodes": [
+      {
+        "data": {
+          "description": "",
+          "framework": "controls-mapping.json",
+          "id": "cp-access-aws",
+          "qdrant_point_id": "6c19442c-4606-5528-9d2c-b979dd07544d",
+          "severity": "",
+          "source_file": "[redacted original absolute corpus path]",
+          "title": "cp-access-aws"
+        },
+        "id": "urn:compliance:corpus%2Fsecurity-policy-templates:source-8efb43194f43254a01bb:procedure:cp-access-aws",
+        "kind": "procedure",
+        "local_id": "cp-access-aws",
+        "namespace": "corpus/security-policy-templates",
+        "status": "source_verified",
+        "title": "cp-access-aws",
+        "version": "source-8efb43194f43254a01bb"
+      },
+      {
+        "data": {},
+        "id": "urn:compliance:external%2FCIS%20Controls%20v8:8:control_reference:CIS%20Safeguard%206.5",
+        "kind": "control_reference",
+        "local_id": "CIS Safeguard 6.5",
+        "namespace": "external/CIS Controls v8",
+        "status": "unresolved_reference",
+        "title": "CIS Safeguard 6.5",
+        "version": "8"
+      },
+      {
+        "data": {},
+        "id": "urn:compliance:external%2FCSA%20CCM:unversioned:control_reference:BCR-04",
+        "kind": "control_reference",
+        "local_id": "BCR-04",
+        "namespace": "external/CSA CCM",
+        "status": "unresolved_reference",
+        "title": "BCR-04",
+        "version": "unversioned"
+      },
+      {
+        "data": {},
+        "id": "urn:compliance:external%2FCSA%20CCM:unversioned:control_reference:IAM-02",
+        "kind": "control_reference",
+        "local_id": "IAM-02",
+        "namespace": "external/CSA CCM",
+        "status": "unresolved_reference",
+        "title": "IAM-02",
+        "version": "unversioned"
+      }
+    ],
+    "paths": [
+      {
+        "src": "urn:compliance:corpus%2Fsecurity-policy-templates:source-8efb43194f43254a01bb:procedure:cp-access-aws",
+        "dst": "urn:compliance:external%2FCIS%20Controls%20v8:8:control_reference:CIS%20Safeguard%206.5",
+        "kind": "maps_to",
+        "status": "source_asserted",
+        "evidence": {
+          "original_source_path": "[redacted original absolute corpus path]",
+          "pointer": "/implements/5/controls",
+          "sha256": "d355d9b0238593e6d6743170100e3c7a9a414d2b2a03d7e284a9804fe90b29b5",
+          "source": "qdrant://compliance_general/6c19442c-4606-5528-9d2c-b979dd07544d"
+        }
+      },
+      {
+        "src": "urn:compliance:corpus%2Fsecurity-policy-templates:source-8efb43194f43254a01bb:procedure:cp-access-aws",
+        "dst": "urn:compliance:external%2FCSA%20CCM:unversioned:control_reference:BCR-04",
+        "kind": "maps_to",
+        "status": "source_asserted",
+        "evidence": {
+          "original_source_path": "[redacted original absolute corpus path]",
+          "pointer": "/implements/1/requirements",
+          "sha256": "d355d9b0238593e6d6743170100e3c7a9a414d2b2a03d7e284a9804fe90b29b5",
+          "source": "qdrant://compliance_general/6c19442c-4606-5528-9d2c-b979dd07544d"
+        }
+      },
+      {
+        "src": "urn:compliance:corpus%2Fsecurity-policy-templates:source-8efb43194f43254a01bb:procedure:cp-access-aws",
+        "dst": "urn:compliance:external%2FCSA%20CCM:unversioned:control_reference:IAM-02",
+        "kind": "maps_to",
+        "status": "source_asserted",
+        "evidence": {
+          "original_source_path": "[redacted original absolute corpus path]",
+          "pointer": "/implements/1/requirements",
+          "sha256": "d355d9b0238593e6d6743170100e3c7a9a414d2b2a03d7e284a9804fe90b29b5",
+          "source": "qdrant://compliance_general/6c19442c-4606-5528-9d2c-b979dd07544d"
+        }
+      }
+    ],
+    "truncated": true
+  },
+  "redactions": "Absolute original corpus paths redacted in node data and path evidence; source point URIs, pointers and hashes preserved."
+}

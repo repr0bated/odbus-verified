@@ -1,0 +1,7 @@
+#!/bin/sh
+# Best-effort cleanup of session helpers if Hyprland exits.
+pkill -u jeremy -x hypr-rdp 2>/dev/null || true
+pkill -u jeremy -x waybar 2>/dev/null || true
+pkill -u jeremy -x hyprpaper 2>/dev/null || true
+pkill -u jeremy -x hypridle 2>/dev/null || true
+exit 0

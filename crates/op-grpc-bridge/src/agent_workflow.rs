@@ -14,7 +14,7 @@ use crate::specialist::CognitiveCaller;
 use op_agents::unified::GLOBAL_REGISTRY;
 use op_plugins::state_plugins::cognitive_agents;
 
-const COGNITIVE_PLUGIN: &str = "cognitive_mcp";
+const COGNITIVE_PLUGIN: &str = "cognitive";
 
 #[derive(Debug, Clone, Serialize)]
 struct StepResult {
@@ -281,7 +281,7 @@ fn validate_arguments(schema: &impl serde::Serialize, arguments: &Value) -> Resu
         .map_err(|error| anyhow!("workflow child arguments violate schema: {error}"))
 }
 
-fn child_success(category: &str, result: &Value) -> Result<bool> {
+pub(crate) fn child_success(category: &str, result: &Value) -> Result<bool> {
     let exit_code = result.get("exit_code").and_then(Value::as_i64);
     if category == "execution" {
         return Ok(exit_code.context("execution workflow result omitted exit_code")? == 0);

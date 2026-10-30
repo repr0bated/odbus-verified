@@ -1,0 +1,64 @@
+{
+  "request": 150,
+  "started": "2026-10-19T04:42:41.516109+00:00",
+  "finished": "2026-10-19T04:42:51.953051+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0135d39398e48810016ad59fc4654c87d0885b18746808adf5",
+    "created": 1792384964,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"code\":\"import pathlib, hashlib, json, asyncio\\nbase = pathlib.Path('/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis')\\ncontract = (base/'review-contract.txt').read_text()\\npreload = (base/'mandatory-preload.txt').read_text()\\nassert contract.endswith(preload)\\npacket_ids = [f'history-{i}' for i in range(231,252)]\\npackets = {pid:(base/'packets'/f'{pid}.txt').read_text() for pid in packet_ids}\\nprint({'contract_bytes':len(contract.encode()),'preload_skills':preload.count('MANDATORY SKILL '),'packets':{k:len(v.encode()) for k,v in packets.items()}})\",\"title\":\"Loading complete bounded review inputs\"}",
+                "name": "eval"
+              },
+              "id": "call_2Tb4UDLP4D680A4hUAH9Npen",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 585,
+      "prompt_tokens": 88863,
+      "total_tokens": 89448,
+      "completion_tokens_details": {
+        "reasoning_tokens": 224
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 81536
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:42:51.951446+00:00",
+  "stream_chunks": 4
+}

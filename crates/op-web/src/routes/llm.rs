@@ -77,7 +77,7 @@ pub async fn get_llm_status(Extension(state): Extension<Arc<AppState>>) -> impl 
 /// is projected verbatim at `/org/opdbus/v1/plugins/tched_router`. We read it from
 /// the SHM state tree and surface each route as a selectable model.
 async fn models_from_tched_router(_state: &AppState) -> anyhow::Result<Option<Vec<ModelInfo>>> {
-    let Some(routes) = crate::tched_router_routes::routes().await? else {
+    let Some(routes) = crate::chat_router_routes::routes().await? else {
         return Ok(None);
     };
 
@@ -125,7 +125,7 @@ pub async fn get_models(
         // The tched_router plugin projection is the default source of truth for the combined model list.
         if let Ok(Some(models)) = models_from_tched_router(&state).await {
             return Json(ModelsResponse {
-                provider: crate::tched_router_routes::ROUTER_PLUGIN_ID.to_string(),
+                provider: crate::chat_router_routes::ROUTER_PLUGIN_ID.to_string(),
                 models,
             })
             .into_response();
@@ -135,17 +135,17 @@ pub async fn get_models(
             StatusCode::SERVICE_UNAVAILABLE,
             Json(simd_json::json!({
                 "error": "tched_router model route catalog is unavailable",
-                "provider": crate::tched_router_routes::ROUTER_PLUGIN_ID,
+                "provider": crate::chat_router_routes::ROUTER_PLUGIN_ID,
                 "models": []
             })),
         )
             .into_response();
     };
 
-    if provider_str == crate::tched_router_routes::ROUTER_PLUGIN_ID {
+    if provider_str == crate::chat_router_routes::ROUTER_PLUGIN_ID {
         if let Ok(Some(models)) = models_from_tched_router(&state).await {
             return Json(ModelsResponse {
-                provider: crate::tched_router_routes::ROUTER_PLUGIN_ID.to_string(),
+                provider: crate::chat_router_routes::ROUTER_PLUGIN_ID.to_string(),
                 models,
             })
             .into_response();
@@ -154,7 +154,7 @@ pub async fn get_models(
             StatusCode::SERVICE_UNAVAILABLE,
             Json(simd_json::json!({
                 "error": "tched_router model route catalog is unavailable",
-                "provider": crate::tched_router_routes::ROUTER_PLUGIN_ID,
+                "provider": crate::chat_router_routes::ROUTER_PLUGIN_ID,
                 "models": []
             })),
         )

@@ -1,0 +1,2 @@
+path	line_position	exact_token_context	intended_meaning	judgment_reference	jev_outcome_confidence	decision	change_status
+crates/op-mcp/	ALL 27 files;7973 lines;coverage.tsv complete ranges	NO native occurrence (case/compound substrings included)	Not applicable	coverage.tsv;judgments.md J1-J3 evaluate actual contextual candidates, not absence proof	No occurrence to judge; absence is reader full-coverage observation	No native-specific change	complete;zero crate source edits

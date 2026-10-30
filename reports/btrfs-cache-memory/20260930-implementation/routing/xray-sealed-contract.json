@@ -1,0 +1,534 @@
+{
+  "plugin_id": "xray",
+  "source_schema_hash": "9b8a170c450ec01c65c0be06e436ef597147eeef038021a2b07dfdd167df21fc",
+  "schema": {
+    "name": "xray",
+    "version": "4.0.0",
+    "tags": [],
+    "category": "uncategorized",
+    "methods": {
+      "add_inbound": {
+        "args": {
+          "$defs": {
+            "XrayHandlerAccount": {
+              "description": "Credentials are transient method arguments, never projection/config state.\nThis type deliberately has no Debug implementation exposing credentials.",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "flow": {
+                      "$ref": "#/$defs/XrayVlessFlow",
+                      "default": ""
+                    },
+                    "id": {
+                      "description": "Account UUID, validated and normalized before the native RPC.",
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "const": "vless",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "const": "vmess",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "password": {
+                      "maxLength": 4096,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "const": "trojan",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "password"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "XrayHandlerProtocol": {
+              "description": "Supported native Xray account and inbound protocols. Other protocol/config\nvariants are not accepted by these methods and must not be silently ignored.",
+              "enum": [
+                "vless",
+                "vmess",
+                "trojan"
+              ],
+              "type": "string"
+            },
+            "XrayHandlerUser": {
+              "additionalProperties": false,
+              "properties": {
+                "account": {
+                  "$ref": "#/$defs/XrayHandlerAccount"
+                },
+                "email": {
+                  "description": "Exact Xray email/user key, unique within the target inbound.",
+                  "maxLength": 320,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "level": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "email",
+                "account"
+              ],
+              "type": "object"
+            },
+            "XrayInboundTransport": {
+              "description": "TCP transport only. TLS material is supplied inline for the running handler;\ncertificate/key file paths, REALITY and other transport settings are absent\nfrom this contract, so they cannot become an unchecked raw-config bypass.",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "description": "Explicit plaintext is restricted to a literal loopback IP address.",
+                  "properties": {
+                    "security": {
+                      "const": "loopback_plaintext",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "security"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "alpn": {
+                      "default": [],
+                      "description": "ALPN identifiers, each between 1 and 255 UTF-8 bytes.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 16,
+                      "type": "array"
+                    },
+                    "certificate_pem": {
+                      "maxLength": 262144,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "private_key_pem": {
+                      "maxLength": 65536,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "security": {
+                      "const": "tls",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "security",
+                    "certificate_pem",
+                    "private_key_pem"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "XrayVlessFlow": {
+              "enum": [
+                "",
+                "xtls-rprx-vision"
+              ],
+              "type": "string"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "listen_ip": {
+              "description": "Literal IPv4/IPv6 listener address; no DNS lookup or filesystem target.",
+              "maxLength": 45,
+              "minLength": 1,
+              "type": "string"
+            },
+            "port": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "protocol": {
+              "$ref": "#/$defs/XrayHandlerProtocol"
+            },
+            "tag": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "transport": {
+              "$ref": "#/$defs/XrayInboundTransport"
+            },
+            "users": {
+              "items": {
+                "$ref": "#/$defs/XrayHandlerUser"
+              },
+              "maxItems": 1024,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "tag",
+            "listen_ip",
+            "port",
+            "protocol",
+            "users",
+            "transport"
+          ],
+          "title": "AddInboundInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "XrayHandlerProtocol": {
+              "description": "Supported native Xray account and inbound protocols. Other protocol/config\nvariants are not accepted by these methods and must not be silently ignored.",
+              "enum": [
+                "vless",
+                "vmess",
+                "trojan"
+              ],
+              "type": "string"
+            },
+            "XrayInboundSecurity": {
+              "enum": [
+                "loopback_plaintext",
+                "tls"
+              ],
+              "type": "string"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "description": "Completed runtime AddInbound operation. No credentials are returned and no\npersistent configuration or independent network probe is implied.",
+          "properties": {
+            "listen_ip": {
+              "type": "string"
+            },
+            "port": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "protocol": {
+              "$ref": "#/$defs/XrayHandlerProtocol"
+            },
+            "security": {
+              "$ref": "#/$defs/XrayInboundSecurity"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "user_count": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "tag",
+            "listen_ip",
+            "port",
+            "protocol",
+            "user_count",
+            "security"
+          ],
+          "title": "AddInboundOutput",
+          "type": "object"
+        },
+        "required_capability": "xray.write",
+        "side_effect": "mutation",
+        "subid": "mut.software.plugin.xray.inbound.add@v1"
+      },
+      "add_user": {
+        "args": {
+          "$defs": {
+            "XrayHandlerAccount": {
+              "description": "Credentials are transient method arguments, never projection/config state.\nThis type deliberately has no Debug implementation exposing credentials.",
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "flow": {
+                      "$ref": "#/$defs/XrayVlessFlow",
+                      "default": ""
+                    },
+                    "id": {
+                      "description": "Account UUID, validated and normalized before the native RPC.",
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "const": "vless",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "const": "vmess",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "password": {
+                      "maxLength": 4096,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "const": "trojan",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "password"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "XrayHandlerUser": {
+              "additionalProperties": false,
+              "properties": {
+                "account": {
+                  "$ref": "#/$defs/XrayHandlerAccount"
+                },
+                "email": {
+                  "description": "Exact Xray email/user key, unique within the target inbound.",
+                  "maxLength": 320,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "level": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "email",
+                "account"
+              ],
+              "type": "object"
+            },
+            "XrayVlessFlow": {
+              "enum": [
+                "",
+                "xtls-rprx-vision"
+              ],
+              "type": "string"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "inbound_tag": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "user": {
+              "$ref": "#/$defs/XrayHandlerUser"
+            }
+          },
+          "required": [
+            "inbound_tag",
+            "user"
+          ],
+          "title": "AddUserInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "XrayHandlerProtocol": {
+              "description": "Supported native Xray account and inbound protocols. Other protocol/config\nvariants are not accepted by these methods and must not be silently ignored.",
+              "enum": [
+                "vless",
+                "vmess",
+                "trojan"
+              ],
+              "type": "string"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "description": "Operation receipt returned after HandlerService accepts the native mutation.\nIt identifies what was applied; it does not claim disk persistence or readback.",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "inbound_tag": {
+              "type": "string"
+            },
+            "level": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "protocol": {
+              "$ref": "#/$defs/XrayHandlerProtocol"
+            }
+          },
+          "required": [
+            "inbound_tag",
+            "email",
+            "protocol",
+            "level"
+          ],
+          "title": "AddUserOutput",
+          "type": "object"
+        },
+        "required_capability": "xray.write",
+        "side_effect": "mutation",
+        "subid": "mut.software.plugin.xray.user.add@v1"
+      },
+      "get_stats": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "title": "StatsInput",
+          "type": "object"
+        },
+        "returns": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Output for `get_stats`: a single xray-core StatsService counter.",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "value": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "value"
+          ],
+          "title": "GetStatsOutput",
+          "type": "object"
+        },
+        "required_capability": "xray.read",
+        "side_effect": "read",
+        "subid": "obs.software.plugin.xray.stats.get@v1"
+      },
+      "remove_user": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "maxLength": 320,
+              "minLength": 1,
+              "type": "string"
+            },
+            "inbound_tag": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "inbound_tag",
+            "email"
+          ],
+          "title": "RemoveUserInput",
+          "type": "object"
+        },
+        "returns": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "description": "Exact target of a completed native RemoveUserOperation.",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "inbound_tag": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "inbound_tag",
+            "email"
+          ],
+          "title": "RemoveUserOutput",
+          "type": "object"
+        },
+        "required_capability": "xray.write",
+        "side_effect": "mutation",
+        "subid": "mut.software.plugin.xray.user.remove@v1"
+      }
+    }
+  }
+}

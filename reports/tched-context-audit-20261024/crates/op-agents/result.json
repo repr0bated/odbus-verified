@@ -1,0 +1,54 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-agents",
+  "status": "complete",
+  "files_reviewed": 149,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 1,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-agents/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-agents/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-agents/occurrences.tsv",
+  "supplemental_reads_report": "reports/tched-context-audit-20261024/crates/op-agents/supplemental-reads.md",
+  "initial_receipts": {
+    "source_read_metadata_files": 148,
+    "unread_inventory_paths": ["crates/op-agents/src/agents/infrastructure/mod.rs"],
+    "omitted_source_intervals": 3,
+    "mandatory_skill_paths_without_full_receipts": 28,
+    "initial_completion_wording_corrected": true
+  },
+  "supplemental_reads": {
+    "previously_omitted_source_intervals_closed": [
+      "crates/op-agents/src/agent_registry.rs:1-6",
+      "crates/op-agents/src/agent_schema.rs:1-20",
+      "crates/op-agents/src/agents/aiml/ai_engineer.rs:1-15"
+    ],
+    "previously_unread_source_file_read_fully": "crates/op-agents/src/agents/infrastructure/mod.rs",
+    "newly_read_file_has_tched_occurrences": 0,
+    "mandatory_skill_paths_read_fully": 28,
+    "ovs_db_analysis_full_file_reread_including_lines_301_309": true,
+    "jev_reassessment": "Newly read source intervals and infrastructure/mod.rs contain no tched occurrence and do not affect the original matched-context judgment; no redundant JEV call made."
+  },
+  "coverage_provenance": {
+    "initial_eval_read_inventory_to_generate_coverage_rows": true,
+    "assignment_jev_only_eval_restriction_violation": true,
+    "generated_inventory_rows_are_source_read_evidence": false,
+    "source_search_in_those_eval_calls": false,
+    "current_completion_based_on_direct_source_reads": true
+  },
+  "jev_receipts": [
+    {
+      "path": "crates/op-agents/src/bin/gen-agent-defs.rs",
+      "line": 10,
+      "meaning": "ordinary_incidental",
+      "meaning_confidence": 1.0,
+      "disposition": "retain",
+      "disposition_confidence": 1.0
+    }
+  ],
+  "limitations": [
+    "Static source/context audit only; no Cargo build, tests, runtime, or deployment was run.",
+    "Conclusions apply only to the supplied op-agents crate inventory."
+  ],
+  "next_action": "Coordinator may aggregate the corrected complete crate report; no op-agents source fix is required."
+}

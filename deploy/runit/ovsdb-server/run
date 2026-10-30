@@ -1,21 +1,15 @@
 #!/bin/sh
 exec 2>&1
-wait_dep() {
-    sv start "$1" >/dev/null 2>&1 || true
-    i=0
-    until sv check "$1" >/dev/null 2>&1; do
-        i=$((i+1))
-        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
-        sleep 1
-    done
-}
-wait_dep uplink-dhcp
-# OVSDB — the native JSON-RPC control surface for OVS (no ovs-vsctl anywhere).
-DB=/etc/openvswitch/conf.db
-SCHEMA=/usr/share/openvswitch/vswitch.ovsschema
-install -d /etc/openvswitch /run/openvswitch
-[ -f "$DB" ] || ovsdb-tool create "$DB" "$SCHEMA"
-/usr/local/libexec/3tched/runit-ready-signal ovsdb-server
-exec ovsdb-server "$DB" \
-    --remote=punix:/run/openvswitch/db.sock \
-    --remote=db:Open_vSwitch,Open_vSwitch,manager_options
+# The Devuan openvswitch-switch package owns and monitors both OVS daemons.
+# This runit dependency observes that owner; stopping it must not stop OVS,
+# change its database, or rerun the retired uplink/topology bootstrap chain.
+set -eu
+pidfile=/run/openvswitch/ovsdb-server.pid
+[ -f "$pidfile" ] && [ ! -L "$pidfile" ] || exit 1
+pid=$(cat "$pidfile")
+case "$pid" in ''|*[!0-9]*) exit 1 ;; esac
+[ "$(readlink -f "/proc/$pid/exe")" = /usr/sbin/ovsdb-server ] || exit 1
+[ -S /run/openvswitch/db.sock ] || exit 1
+# pidwait uses pidfd notification rather than polling. If the package monitor
+# replaces the daemon, runit starts a new observer for its new PID.
+exec /usr/bin/pidwait -F "$pidfile"

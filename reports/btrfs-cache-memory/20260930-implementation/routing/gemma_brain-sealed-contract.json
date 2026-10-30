@@ -1,0 +1,483 @@
+{
+  "plugin_id": "gemma_brain",
+  "source_schema_hash": "def76727673dc9afd34bdc6427b04886b9b764e822d605eceb630ee15dfe9c3f",
+  "schema": {
+    "name": "gemma_brain",
+    "version": "4.0.0",
+    "tags": [],
+    "category": "uncategorized",
+    "methods": {
+      "analyze_intent": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 8,
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "title": "AnalyzeIntentInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "TagMatch": {
+              "additionalProperties": false,
+              "properties": {
+                "matched_keywords": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "score": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "tag_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tag_id",
+                "score",
+                "matched_keywords"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "intent": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "matches": {
+              "items": {
+                "$ref": "#/$defs/TagMatch"
+              },
+              "type": "array"
+            },
+            "perspectives": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "taxonomy_revision": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "taxonomy_revision",
+            "matches",
+            "perspectives"
+          ],
+          "title": "AnalyzeIntentOutput",
+          "type": "object"
+        },
+        "required_capability": "gemma.invoke",
+        "side_effect": "read",
+        "subid": "mut.service.gemma.intent.analyze@v1"
+      },
+      "classify": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 8,
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "title": "ClassifyInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "TagMatch": {
+              "additionalProperties": false,
+              "properties": {
+                "matched_keywords": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "score": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "tag_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tag_id",
+                "score",
+                "matched_keywords"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "classification": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "matches": {
+              "items": {
+                "$ref": "#/$defs/TagMatch"
+              },
+              "type": "array"
+            },
+            "taxonomy_revision": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "taxonomy_revision",
+            "matches"
+          ],
+          "title": "ClassifyOutput",
+          "type": "object"
+        },
+        "required_capability": "gemma.invoke",
+        "side_effect": "read",
+        "subid": "mut.service.gemma.classify@v1"
+      },
+      "list_tags": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "title": "ListTaxonomyInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "GemmaTag": {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "default": "",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "keywords": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "perspectives": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "keywords"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "tags": {
+              "items": {
+                "$ref": "#/$defs/GemmaTag"
+              },
+              "type": "array"
+            },
+            "taxonomy_revision": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "taxonomy_revision",
+            "tags"
+          ],
+          "title": "ListTagsOutput",
+          "type": "object"
+        },
+        "required_capability": "gemma.read",
+        "side_effect": "read",
+        "subid": "obs.service.gemma.tag.list@v1"
+      },
+      "register_tag": {
+        "args": {
+          "$defs": {
+            "GemmaTag": {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "default": "",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "keywords": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "perspectives": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "keywords"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "expected_taxonomy_revision": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "tag": {
+              "$ref": "#/$defs/GemmaTag"
+            }
+          },
+          "required": [
+            "expected_taxonomy_revision",
+            "tag"
+          ],
+          "title": "RegisterTagInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "GemmaTag": {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "default": "",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "keywords": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "perspectives": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "keywords"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "properties": {
+            "created": {
+              "type": "boolean"
+            },
+            "tag": {
+              "$ref": "#/$defs/GemmaTag"
+            },
+            "taxonomy_revision": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "taxonomy_revision",
+            "created",
+            "tag"
+          ],
+          "title": "RegisterTagOutput",
+          "type": "object"
+        },
+        "required_capability": "gemma.invoke",
+        "side_effect": "mutation",
+        "subid": "mut.service.gemma.tag.register@v1"
+      },
+      "route": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": false,
+          "description": "Input for resolving a model route by hint or model identifier.",
+          "properties": {
+            "hint": {
+              "description": "Route hint or model identifier.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "hint"
+          ],
+          "title": "ResolveRouteInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "ModelRoute": {
+              "description": "A model route binds a hint to a provider and model.",
+              "properties": {
+                "api_key": {
+                  "default": null,
+                  "description": "API key placeholder, null when not configured.",
+                  "x-oscal-subid": "mut.service.llm-model-route.api-key@v1"
+                },
+                "available": {
+                  "default": false,
+                  "description": "Whether the route is currently available.",
+                  "type": "boolean",
+                  "x-oscal-subid": "obs.software.llm-model-route.available@v1"
+                },
+                "hint": {
+                  "default": "",
+                  "description": "Query hint this route satisfies (code, fast, local, reasoning, vision, ...).",
+                  "type": "string",
+                  "x-oscal-subid": "exp.software.llm-model-route.hint@v1"
+                },
+                "kind": {
+                  "default": "",
+                  "description": "Route kind (chat, router, multimodal, embedding, policy, orchestrator).",
+                  "type": "string",
+                  "x-oscal-subid": "obs.software.llm-model-route.kind@v1"
+                },
+                "model": {
+                  "default": "",
+                  "description": "Target model identifier.",
+                  "type": "string",
+                  "x-oscal-subid": "exp.software.llm-model-route.model@v1"
+                },
+                "provider": {
+                  "default": "",
+                  "description": "Selected provider for this route.",
+                  "type": "string",
+                  "x-oscal-subid": "mut.service.llm-model-route.provider@v1"
+                },
+                "source": {
+                  "default": "",
+                  "description": "Canonical OSCAL subid registry source for policy-kind routes.",
+                  "type": "string",
+                  "x-oscal-subid": "src.service.llm-model-route.source@v1"
+                },
+                "status": {
+                  "default": "",
+                  "description": "Declared operational status.",
+                  "type": "string",
+                  "x-oscal-subid": "obs.software.llm-model-route.status@v1"
+                },
+                "status_reason": {
+                  "default": "",
+                  "description": "Human-readable reason for the current availability status.",
+                  "type": "string",
+                  "x-oscal-subid": "obs.software.llm-model-route.status-reason@v1"
+                },
+                "transport": {
+                  "default": "",
+                  "description": "Transport mechanism (direct, loopback, auto, dbus).",
+                  "type": "string",
+                  "x-oscal-subid": "mut.service.llm-model-route.transport@v1"
+                },
+                "upstream_provider": {
+                  "default": "",
+                  "description": "Upstream provider, when the route is proxied through an orchestrator.",
+                  "type": "string",
+                  "x-oscal-subid": "mut.service.llm-model-route.upstream-provider@v1"
+                }
+              },
+              "type": "object",
+              "x-oscal-subid": "sch.software.llm-model-route.schema@v1"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Output for a resolved model route.",
+          "properties": {
+            "route": {
+              "$ref": "#/$defs/ModelRoute",
+              "description": "Resolved route."
+            }
+          },
+          "required": [
+            "route"
+          ],
+          "title": "ResolveRouteOutput",
+          "type": "object",
+          "x-oscal-subid": "exp.service.3tched-router.route.result@v1"
+        },
+        "required_capability": "gemma.invoke",
+        "side_effect": "read",
+        "subid": "obs.service.gemma.route@v2"
+      }
+    }
+  }
+}

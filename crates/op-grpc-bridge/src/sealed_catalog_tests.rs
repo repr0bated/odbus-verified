@@ -48,7 +48,7 @@ fn fingerprint(dir: &Path) -> BTreeMap<String, (u64, u64, i64, i64, Vec<u8>)> {
 #[test]
 fn pinned_reader_ignores_orphans_and_preserves_original_sections_without_writes() {
     let dir = tempfile::tempdir().unwrap();
-    let pinned = seal(dir.path(), &schema("tched_router", "1.0.0"));
+    let pinned = seal(dir.path(), &schema("chat_router", "1.0.0"));
     let orphan = op_blob::blobify_plugin_schema("cozo", schema("cozo", "1.0.0"));
     orphan.write_to_dir(dir.path()).unwrap(); // producer fixture without manifest commit
     let before = fingerprint(dir.path());
@@ -56,9 +56,9 @@ fn pinned_reader_ignores_orphans_and_preserves_original_sections_without_writes(
     let loaded = read_manifest_pinned_catalog(dir.path()).unwrap();
     assert_eq!(
         loaded.plugins.keys().cloned().collect::<Vec<_>>(),
-        vec!["tched_router"]
+        vec!["chat_router"]
     );
-    let loaded = &loaded.plugins["tched_router"];
+    let loaded = &loaded.plugins["chat_router"];
     assert_eq!(loaded.schema_hash, pinned.manifest.schema_hash);
     assert_eq!(
         loaded.blob.schema_json.as_bytes(),
@@ -68,7 +68,7 @@ fn pinned_reader_ignores_orphans_and_preserves_original_sections_without_writes(
     assert_eq!(loaded.blob.meta_json, pinned.meta_json);
     assert!(op_blob::catalog::read_plugin_state_store_schema(dir.path(), "cozo").is_none());
     assert_eq!(
-        op_blob::catalog::read_plugin_state_store_schema(dir.path(), "tched_router")
+        op_blob::catalog::read_plugin_state_store_schema(dir.path(), "chat_router")
             .unwrap()
             .version,
         "1.0.0"
@@ -83,11 +83,11 @@ fn absent_manifest_and_directory_do_not_create_existence_or_paths() {
     let absent = dir.path().join("not-created");
     assert!(read_manifest_pinned_catalog(&absent).is_err());
     assert!(!absent.exists());
-    let orphan = op_blob::blobify_plugin_schema("tched_router", schema("tched_router", "1.0.0"));
+    let orphan = op_blob::blobify_plugin_schema("chat_router", schema("chat_router", "1.0.0"));
     orphan.write_to_dir(dir.path()).unwrap();
     let before = fingerprint(dir.path());
-    assert!(read_manifest_pinned_schema_document(dir.path(), "tched_router").is_err());
-    assert!(op_blob::catalog::read_plugin_state_store_schema(dir.path(), "tched_router").is_none());
+    assert!(read_manifest_pinned_schema_document(dir.path(), "chat_router").is_err());
+    assert!(op_blob::catalog::read_plugin_state_store_schema(dir.path(), "chat_router").is_none());
     assert!(read_manifest_pinned_catalog(dir.path()).is_err());
     assert_eq!(fingerprint(dir.path()), before);
 }
@@ -96,7 +96,7 @@ fn absent_manifest_and_directory_do_not_create_existence_or_paths() {
 fn malformed_headers_hashes_identity_and_descriptors_fail_closed() {
     for defect in ["header", "hash", "identity", "descriptor", "missing"] {
         let dir = tempfile::tempdir().unwrap();
-        let mut blob = seal(dir.path(), &schema("tched_router", "1.0.0"));
+        let mut blob = seal(dir.path(), &schema("chat_router", "1.0.0"));
         let path = dir.path().join(blob.file_name());
         match defect {
             "header" => {
@@ -126,7 +126,7 @@ fn malformed_headers_hashes_identity_and_descriptors_fail_closed() {
         );
         if defect != "descriptor" {
             assert!(
-                op_blob::catalog::read_plugin_state_store_schema(dir.path(), "tched_router")
+                op_blob::catalog::read_plugin_state_store_schema(dir.path(), "chat_router")
                     .is_none(),
                 "schema helper accepted {defect}"
             );
@@ -136,7 +136,7 @@ fn malformed_headers_hashes_identity_and_descriptors_fail_closed() {
 
 #[test]
 fn structural_parser_rejects_overflow_overlap_and_wrong_pin() {
-    let blob = op_blob::blobify_plugin_schema("tched_router", schema("tched_router", "1.0.0"));
+    let blob = op_blob::blobify_plugin_schema("chat_router", schema("chat_router", "1.0.0"));
     let bytes = blob.seal();
     assert!(op_blob::BlobRef::from_manifest_pinned(&bytes, &"f".repeat(64)).is_err());
     let mut overflow = bytes.clone();
@@ -159,20 +159,20 @@ fn structural_parser_rejects_overflow_overlap_and_wrong_pin() {
 async fn reflection_reseal_missing_manifest_and_corrupt_pin_replace_advertisements() {
     let dir = tempfile::tempdir().unwrap();
     let catalog = crate::dynamic_reflection::ActiveReflectionCatalog::with_dir(dir.path().into());
-    let first = seal(dir.path(), &schema("tched_router", "1.0.0"));
+    let first = seal(dir.path(), &schema("chat_router", "1.0.0"));
     assert_eq!(catalog.sync_from_shm().await, 1);
     assert!(
         catalog
             .list_services()
             .await
             .iter()
-            .any(|name| name == "operation.plugin.v1.TchedRouterPluginMethods")
+            .any(|name| name == "operation.plugin.v1.ChatRouterPluginMethods")
     );
-    let second = seal(dir.path(), &schema("tched_router", "2.0.0"));
+    let second = seal(dir.path(), &schema("chat_router", "2.0.0"));
     assert_ne!(first.manifest.schema_hash, second.manifest.schema_hash);
     assert_eq!(catalog.sync_from_shm().await, 1);
     assert_eq!(
-        read_manifest_pinned_catalog(dir.path()).unwrap().plugins["tched_router"]
+        read_manifest_pinned_catalog(dir.path()).unwrap().plugins["chat_router"]
             .schema
             .version,
         "2.0.0"
@@ -198,12 +198,12 @@ async fn reflection_reseal_missing_manifest_and_corrupt_pin_replace_advertisemen
 #[tokio::test]
 async fn sealed_method_metadata_keeps_exact_descriptor_bytes_and_replaces_old_methods() {
     let dir = tempfile::tempdir().unwrap();
-    let original = seal(dir.path(), &schema("tched_router", "1.0.0"));
-    let loaded = read_manifest_pinned_schema_document(dir.path(), "tched_router").unwrap();
+    let original = seal(dir.path(), &schema("chat_router", "1.0.0"));
+    let loaded = read_manifest_pinned_schema_document(dir.path(), "chat_router").unwrap();
     let registry = crate::plugin_grpc_gen::PerMethodGrpcServices::new();
     registry
         .register_sealed_services(
-            "tched_router".into(),
+            "chat_router".into(),
             &loaded.schema,
             &loaded.blob.descriptor_set,
         )
@@ -213,13 +213,13 @@ async fn sealed_method_metadata_keeps_exact_descriptor_bytes_and_replaces_old_me
         registry.frozen_descriptor_set_bytes(),
         original.descriptor_set
     );
-    let mut replacement = schema("tched_router", "2.0.0");
+    let mut replacement = schema("chat_router", "2.0.0");
     replacement.methods.clear();
     let replacement = seal(dir.path(), &replacement);
-    let loaded = read_manifest_pinned_schema_document(dir.path(), "tched_router").unwrap();
+    let loaded = read_manifest_pinned_schema_document(dir.path(), "chat_router").unwrap();
     registry
         .register_sealed_services(
-            "tched_router".into(),
+            "chat_router".into(),
             &loaded.schema,
             &loaded.blob.descriptor_set,
         )
@@ -227,7 +227,7 @@ async fn sealed_method_metadata_keeps_exact_descriptor_bytes_and_replaces_old_me
         .unwrap();
     assert!(
         registry
-            .get_services_for_plugin("tched_router")
+            .get_services_for_plugin("chat_router")
             .await
             .is_empty()
     );
@@ -240,14 +240,14 @@ async fn sealed_method_metadata_keeps_exact_descriptor_bytes_and_replaces_old_me
 #[test]
 fn registration_requires_pinned_existence_and_exact_schema_without_writing() {
     let dir = tempfile::tempdir().unwrap();
-    let supplied = schema("tched_router", "1.0.0");
-    assert!(read_registration_document(dir.path(), "tched_router", &supplied).is_err());
+    let supplied = schema("chat_router", "1.0.0");
+    assert!(read_registration_document(dir.path(), "chat_router", &supplied).is_err());
     assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
     seal(dir.path(), &supplied);
     let before = fingerprint(dir.path());
-    assert!(read_registration_document(dir.path(), "tched_router", &supplied).is_ok());
-    let changed = schema("tched_router", "2.0.0");
-    assert!(read_registration_document(dir.path(), "tched_router", &changed).is_err());
+    assert!(read_registration_document(dir.path(), "chat_router", &supplied).is_ok());
+    let changed = schema("chat_router", "2.0.0");
+    assert!(read_registration_document(dir.path(), "chat_router", &changed).is_err());
     assert!(read_registration_document(dir.path(), "cozo", &schema("cozo", "1.0.0")).is_err());
     assert_eq!(fingerprint(dir.path()), before);
 }

@@ -1,0 +1,23 @@
+2026-09-30T17:32:19Z
+Name=op-grpc-bridge
+Pid=1123
+VmSize=19070588 kB
+VmHWM=17332276 kB
+VmRSS=13443008 kB
+VmData=18489680 kB
+VmSwap=4530612 kB
+Threads=52
+Rss:            13443008 kB
+Pss:            13436558 kB
+Pss_Anon:       13423644 kB
+Pss_File:          12914 kB
+Private_Dirty:  13408616 kB
+Anonymous:      13423644 kB
+Swap:            4530612 kB
+SwapPss:         4530612 kB
+601
+               total        used        free      shared  buff/cache   available
+Mem:        32856188    24715120      909736       47084     7752492     8141068
+Swap:       16777212     9233796     7543416
+pswpin 278695
+pswpout 841430

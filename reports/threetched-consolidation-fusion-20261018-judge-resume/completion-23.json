@@ -1,0 +1,88 @@
+{
+  "request": 23,
+  "started": "2026-10-18T21:54:11.412071+00:00",
+  "finished": "2026-10-18T21:54:25.161287+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-081017a08ec448a2016ad540073e3c87d0ba180ba2fdad5894",
+    "created": 1792360455,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading complete scope findings\",\"path\":\"agent://ScopeReview\"}",
+                "name": "read"
+              },
+              "id": "call_DwkK5Jlsdtn6haR5ntOmQ3HP",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording authoritative compiler blocker\",\"op\":\"block\",\"task\":\"Obtain authoritative provisioning build completion before authorized GNU release execution\",\"reason\":\"ReleaseReadiness found no terminal receipt for provisioning worker sa-0-32370f11; compiler ownership remains with Hermes. No pgrep or competing Cargo performed.\"}",
+                "name": "todo"
+              },
+              "id": "call_Wm2s2ApWXIu1ODjcpYfgxeAP",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting method removal anchors\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs:535-585,1870-1940,2320-2342,2425-2460\"}",
+                "name": "read"
+              },
+              "id": "call_eO1YEdUi2zTlTCA23C5KUXXZ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting retired method dispatch\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_config_engine.rs:305-325\"}",
+                "name": "read"
+              },
+              "id": "call_KwxfATekJddWUFPQpvWTjJv0",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 345,
+      "prompt_tokens": 262492,
+      "total_tokens": 262837,
+      "completion_tokens_details": {
+        "reasoning_tokens": 81
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 170442
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:54:25.158562+00:00",
+  "stream_chunks": 10
+}

@@ -37,8 +37,8 @@ fn facade() -> PluginSchema {
         .unwrap()
 }
 
-fn tched() -> PluginSchema {
-    op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
+fn chat_router_schema() -> PluginSchema {
+    op_plugins::state_plugins::chat_router::ChatRouterPlugin::new()
         .schema()
         .unwrap()
 }
@@ -52,24 +52,15 @@ fn engine() -> MutationEngine {
     )
 }
 
-async fn invoke(engine: &MutationEngine, capability: &str) -> anyhow::Result<serde_json::Value> {
-    invoke_method(engine, "large_language_model", "list_providers", capability).await
-}
-
-async fn invoke_method(
-    engine: &MutationEngine,
-    plugin: &str,
-    method: &str,
-    capability: &str,
-) -> anyhow::Result<serde_json::Value> {
+async fn invoke(engine: &MutationEngine) -> anyhow::Result<serde_json::Value> {
     let genesis = "ab".repeat(32);
     tokio::time::timeout(
         std::time::Duration::from_secs(5),
         engine.dispatch_method_call_with_identity(
-            plugin,
-            method,
-            "{}",
-            Some(capability),
+            "large_language_model",
+            "stream_generate",
+            r#"{"agent_alias":"fixture","prompt":"hello"}"#,
+            Some("llm.invoke"),
             "fixture-principal",
             Some("00000000-0000-4000-8000-000000000001"),
             Some(&genesis),
@@ -101,16 +92,12 @@ fn assert_no_http(listener: &TcpListener) {
 
 #[tokio::test]
 async fn nested_target_absence_or_drift_stops_before_http() {
-    let target_capability = tched().methods["ListProviders"]
-        .required_capability
-        .clone()
-        .unwrap();
     {
         let _catalog = support::CatalogScope::new(&[facade()]);
         let _environment = Environment::new();
         let listener = endpoint_without_server();
-        let error = invoke(&engine(), &target_capability).await.unwrap_err();
-        assert!(error.to_string().contains("tched_router"));
+        let error = invoke(&engine()).await.unwrap_err();
+        assert!(error.to_string().contains("chat_router"));
         assert_no_http(&listener);
     }
     {
@@ -119,7 +106,7 @@ async fn nested_target_absence_or_drift_stops_before_http() {
         let _catalog = support::CatalogScope::new(&[facade(), stale]);
         let _environment = Environment::new();
         let listener = endpoint_without_server();
-        let error = invoke(&engine(), &target_capability).await.unwrap_err();
+        let error = invoke(&engine()).await.unwrap_err();
         assert!(error.to_string().contains("compiled/sealed"));
         assert_no_http(&listener);
     }
@@ -129,7 +116,7 @@ async fn nested_target_absence_or_drift_stops_before_http() {
 async fn missing_grant_or_invalid_session_stops_before_http() {
     let _catalog = support::CatalogScope::new(&[facade(), tched()]);
     let _environment = Environment::new();
-    let capability = tched().methods["ListProviders"]
+    let capability = tched().methods["start_generation"]
         .required_capability
         .clone()
         .unwrap();
@@ -138,19 +125,19 @@ async fn missing_grant_or_invalid_session_stops_before_http() {
     // FIXME: Audit that the environment access only happens in single-threaded code.
     unsafe { std::env::set_var("OP_GRANTS_PATH", grants.path()) };
     let listener = endpoint_without_server();
-    let error = invoke(&engine(), &capability).await.unwrap_err();
+    let error = invoke(&engine()).await.unwrap_err();
     assert!(error.to_string().contains("exact nested"));
     assert_no_http(&listener);
 
     std::fs::write(
         grants.path(),
         serde_json::to_vec(&serde_json::json!({
-            "fixture-principal": {"capabilities": [capability.clone()]}
+            "fixture-principal": {"capabilities": [capability, "llm.invoke"]}
         }))
         .unwrap(),
     )
     .unwrap();
-    let error = invoke(&engine(), &capability).await.unwrap_err();
+    let error = invoke(&engine()).await.unwrap_err();
     let error_chain = format!("{error:#}");
     assert!(
         error_chain.contains("identity credential projection is unavailable"),

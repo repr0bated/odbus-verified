@@ -1,0 +1,28 @@
+# op-grpc-bridge native contextual audit
+
+Task: native-line-audit-20261024/op-grpc-bridge
+Owner: Codex crate worker; fixed model; declarative JEV only.
+Status: **partial**, not complete.
+
+- Mandatory preload complete.
+- 212 inventory entries:173 readable files fully read; three deleted entries dispositioned;36 readable files pending.
+- Every inventory path listed in coverage.tsv. Original hashes/row references are pre-audit inventory receipts, not current-state hashes. Inventory: /var/tmp/native-line-audit-20261024.ILroaQ/crates/op-grpc-bridge/inventory.tsv.
+- Completed sequential prefix through src/tched_router_legacy_dispatch.rs; next deleted object_blob176 already dispositioned. Native generation and legacy dispatch full-read coverage is not completed token accounting.
+- Exact next unread: crates/op-grpc-bridge/src/tched_router_runtime.rs:1 through EOF, then inventory order. Generation_native per-position ledger pending after J52; legacy dispatch JEV/ledger pending.
+- Actual JEV receipts in judgments.md; observed native tokens individually mapped in occurrences.tsv, including fixtures/docs. Pending native-containing filenames explicitly unjudged. No crate-wide occurrence count or complete finding claim.
+- N1 unresolved tched overlap: chat_mode_routing clears role-mode provider/model; control_plane_routing overwrites selection from dedicated agent config. Requires actual caller/admission/config-authority trace; no independent patch applied. Decoy startup and autonomous scheduler context also await remaining source.
+- Continued cron/embedding/decoy groups judged in J12-J14. Two upstream cron behavior comments remain context-pending; decoy run_decoy source read but absence of calls from server/lib still untraced. No call to N1 helpers appears in fully read ctl_plane_chatbot_dispatch production.
+- J15-J20 cover audit status/SID1 task scope, explicit mutation contract and generation WS/fixture vocabulary. Adapter upstream ACK/stateless claims pending. J19/J19b are low-confidence (.59/.55), retained without elevation; actual private loopback fixture context manually supports local naming.
+- J21/J22 low-confidence (.41/.36): built-in balance_list naming directly supported; native chat size and N2 TLS trust-priority/pinning documentation require caller/dependency authority. No transport or documentation source patch made.
+- J23 complete grpc_server preserves native tonic wording and leaves MutationEngine observation-start authority pending; no N1/run_decoy calls there. Legacy ChatService route fails closed before compatibility handler. J24/J25 preserve Incus/host ABI/adoption/retirement terms and fixtures; root/preflight/runtime-config helper authority still pending.
+- J26-J28 preserve physical proof/publication/repair native terms and fixtures. Root runtime-config/start helper definitions now fully read: exact retained config plus proven runtime-key deltas/status/idmap pin; local helper vocabulary supported. Shared-root module integration and Incus version-specific behavior claims remain pending. Root repair occurrence mapping completed after J28's historical ledger-pending checkpoint.
+- J29-J32 preserve accurate Incus backend, lifecycle binding, isolated fixture and observer vocabulary. All observed native occurrences through incus_observer.rs individually recorded. Own coordinator follow-up read: N2 documentation correction should describe additive platform and configured CA trust; independent dependency/version authority still pending.
+- Independent documentation-only N2 fix applied in grpc_client.rs101-105: additive native roots plus optional PEM, not priority/exclusive pinning. Actual J37 .97 and compatible tonic source support; no locked version or runtime claim. J33 .95 records stale generation test parent-API tched overlap. All native contexts through memory_binding mapped.
+- J38-J44 persisted. Full MutationEngine proves N1 actual Chat caller5748/5864, but input-versus-dedicated-config authority remains tched overlap. Additional overlap3844 invokes missing json_render_generation_dispatch::dispatch. Independent mutation_engine3186-3187 documentation now states logical attachment/verification-only external storage, not native Btrfs attach ownership. Both changes comment-only. Complete OVS/project contexts preserve backend terminology; project context does not choose provider/model.
+- J46/J47 persisted: complete server startup does not call run_decoy; only bounded source absence claimed. Specialist306/417 is another real role helper caller but passes default input without explicit provider/model. Native backend/admission/Unix accept terms preserved; upstream generation contract remains pending.
+- J48-J50 persisted. New exact tched catalog overlap: select141 rejects mismatched family immediately while mixed-family fixture205-213 expects success. OAuth trust provenance remains producer-pending. Config/readback/secret/own-agent native names locally preserved; no global config CAS claim.
+- J51/J52 persisted. Concrete tched generation documentation overlap139 claims Drop aborts task; actual187-190 only calls cooperative cancel180-183. Proposed wording recorded, no shared tched hunk changed. Conditional stateless/SID1/provider/model ACK checks before prompt locally supported; upstream execution still unverified.
+- No searches/extraction/shell/process/network operations, arbitrary eval, recursive delegation, Cargo/build/tests/lint/format/smoke/runtime/deploy/seal/grant/credential actions. No built/tested/deployed claim.
+
+Reports: coverage.tsv, occurrences.tsv, judgments.md, findings.md.
+Resume this same scoped worker; do not interpret process exit as completeness.

@@ -1,0 +1,19 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-web",
+  "status": "partial",
+  "files_reviewed": 65,
+  "files_pending": [],
+  "changed_files": ["crates/op-web/src/tched_router_routes.rs"],
+  "occurrence_count": null,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-web/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-web/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-web/occurrences.tsv",
+  "jev_receipts": ["jdgb-15b33b70757c9360"],
+  "limitations": [
+    "All 65 assigned inventory files were read sequentially through EOF, but every individual case-insensitive tched substring was not enumerated and judged; occurrence_count is unknown.",
+    "Current canonical threetched method, capability, argument/result, and model-selection contracts are not present in assigned evidence; no safe behavioral migration can be inferred.",
+    "Only an evidence-backed misleading comment was corrected. No tests/build/lint/format/smoke/runtime/deployment checks were run, as prohibited by the assignment."
+  ],
+  "next_action": "Obtain authoritative threetched method/capability/schema and model-selection contract plus compatibility-path disposition; then complete per-occurrence reread/JEV ledger before behavioral migration."
+}

@@ -1,0 +1,18 @@
+@3tched/op-dbus/releases/20261001T112324Z-ae33304
+	Name: 			20261001T112324Z-ae33304
+	UUID: 			b7823b3d-3988-ed47-9a17-2d8a9218174e
+	Parent UUID: 		-
+	Received UUID: 		c91c91a1-9003-284c-a802-f86e6a5865e6
+	Creation time: 		2026-10-01 16:31:29 +0000
+	Subvolume ID: 		9794
+	Generation: 		426448
+	Gen at creation: 	426427
+	Parent ID: 		259
+	Top level ID: 		259
+	Flags: 			readonly
+	Send transid: 		426270
+	Send time: 		2026-10-01 16:31:29 +0000
+	Receive transid: 	426448
+	Receive time: 		2026-10-01 16:31:40 +0000
+	Snapshot(s):
+	Quota group:		n/a

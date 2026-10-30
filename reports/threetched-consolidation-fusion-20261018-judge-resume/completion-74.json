@@ -1,0 +1,64 @@
+{
+  "request": 74,
+  "started": "2026-10-18T22:01:04.990173+00:00",
+  "finished": "2026-10-18T22:01:16.528989+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0f80bb8ef75595b1016ad541a3d68887d0aa11b3ce15cb0521",
+    "created": 1792360867,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating consolidation task row\",\"path\":\"/srv/git/odbus-verified/WISHLIST.md\",\"pattern\":\"OD-121\"}",
+                "name": "grep"
+              },
+              "id": "call_4gbPYDEVJJVVk36UUYnWpAfq",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 254,
+      "prompt_tokens": 276103,
+      "total_tokens": 276357,
+      "completion_tokens_details": {
+        "reasoning_tokens": 144
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 186329
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:01:16.527284+00:00",
+  "stream_chunks": 4
+}

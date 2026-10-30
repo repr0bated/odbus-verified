@@ -1,0 +1,2 @@
+path	line_position	exact_token_context	intended_meaning	judgment_reference	JEV_outcome_confidence	decision	change_status
+# Zero case-insensitive native/native-compound occurrences observed in the complete sequential reads listed in coverage.tsv. No fabricated occurrence rows or JEV calls.

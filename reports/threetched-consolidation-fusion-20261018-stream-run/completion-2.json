@@ -1,0 +1,136 @@
+{
+  "request": 2,
+  "started": "2026-10-18T21:26:45.900278+00:00",
+  "finished": "2026-10-18T21:26:57.345044+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01722be7b67ab82f016ad53999035c87d0aa277c1eb70db426",
+    "created": 1792358809,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing mandatory render preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/json-render/SKILL.md:301-377\"}",
+                "name": "read"
+              },
+              "id": "call_76GcXysjzEw5xLWQGEzJaCYG",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing mandatory ovs preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/ovs-db-analysis/SKILL.md:301-309\"}",
+                "name": "read"
+              },
+              "id": "call_C6HMssn0pB0Z5MfA6LhkdjQh",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing mandatory kernel preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/kernel-fuse-diagnosis/SKILL.md:301-423\"}",
+                "name": "read"
+              },
+              "id": "call_zPjn4VVJimFt3USTm5wrWLwW",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing mandatory allocation preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/rust-memory-optimization/SKILL.md:301-352\"}",
+                "name": "read"
+              },
+              "id": "call_mptuTUz6kUEjvGvJZg9n1jw0",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading requested routing skill\",\"path\":\"skill://jev-router\"}",
+                "name": "read"
+              },
+              "id": "call_wOKewcIMGPkVVMfeJxd3XM5c",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading Rust skill\",\"path\":\"skill://rust\"}",
+                "name": "read"
+              },
+              "id": "call_Kfg7zmayvR6xD1wIf6iuWqe0",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading security skill\",\"path\":\"skill://application-security\"}",
+                "name": "read"
+              },
+              "id": "call_j1LLusDv9NqvoIJ4aSGFs7gB",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading shared handoff\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:1-180\"}",
+                "name": "read"
+              },
+              "id": "call_4KsbqJkga7FbQQffCHzeJTCC",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mounted upstream namespace\",\"path\":\"/run/mounts/threetched\"}",
+                "name": "read"
+              },
+              "id": "call_3Npeael6XdC9UF4uccqRUubU",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mounted local namespace\",\"path\":\"/run/mounts/3tchedFS\"}",
+                "name": "read"
+              },
+              "id": "call_AoQvs0N7dMLavvIdZmCgkeoJ",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 786,
+      "prompt_tokens": 191227,
+      "total_tokens": 192013,
+      "completion_tokens_details": {
+        "reasoning_tokens": 45
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 119250
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:26:57.341267+00:00",
+  "stream_chunks": 22
+}

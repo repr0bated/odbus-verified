@@ -34,11 +34,11 @@ install -d -m 0755 -o svlog -g svlog /var/log/op-dbus
 # last deliberate `opblob seal-shm && opblob persist` (a build-time act).
 # Fail closed when the prepared catalog is unavailable: a historical state
 # snapshot is not an alternate plugin or private-state authority.
-[ -x /usr/local/bin/opblob ] || {
+[ -x /usr/local/libexec/op-dbus/bin/opblob ] || {
     echo "opblob is missing; activate a prepared release before starting services" >&2
     exit 1
 }
-/usr/local/bin/opblob stage-shm
+/usr/local/libexec/op-dbus/bin/opblob stage-shm
 find /dev/shm/opdbus/plugin-blobs -maxdepth 1 -type f \
     \( -name '*.blob' -o -name '.manifest.json' \) \
     -exec chmod 0644 {} +

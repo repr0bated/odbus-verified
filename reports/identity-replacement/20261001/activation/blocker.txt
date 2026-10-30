@@ -1,0 +1,23 @@
+blocker_utc=2026-10-01T16:35:14Z
+release_activated=20261001T112324Z-ae33304
+current=/opt/op-dbus/releases/20261001T112324Z-ae33304
+version_mismatch=cleared
+new_blocker=identity_pending_startup-6c41b115efe64d13bc76ae8d703706ea
+pending_manifest={"generation":0,"publishing":false,"credential_pending":{"plugin_id":"identity_sled","operation_id":"startup-6c41b115efe64d13bc76ae8d703706ea"}}
+composer25=building_diag_display_into_op-grpc-bridge
+disk_avail=184G
+rollback_current=releases/20260930T212601Z-identity-46c8a19
+schema_content_hash_release=70a19e924c225a36c49af743b7e3a40ad52c3185b2023cbc8d2fe0cb48bb7275
+hypothesis=genesis schema_content_hash drift vs 4.3.0 SCHEMA_CONTENT_HASH
+hotfix_utc=2026-10-01T17:24:21Z
+hotfix=accept SCHEMA_CONTENT_HASH drift on recovery_to_state for court door
+expected_hash=70a19e924c225a36c49af743b7e3a40ad52c3185b2023cbc8d2fe0cb48bb7275
+after_diag_confirm=rebuild incremental + temp point /usr/local/bin/op-grpc-bridge at target/release with rollback to current
+disk_avail=183G
+cargo_pid=13930 rustc_pid=8281 etime=      28:57
+next_blocker_utc=2026-10-01T18:04:23Z
+identity_pending=cleared generation=11
+hash_drift=accepted stored=6949bf... expected=70a19e...
+chatbot_start_error=leaf.img has no loop device (Cozo still leaf.img; owner model is /dev/sdb2)
+hotfix2=soft-fail start_service_identity_containers so tonic binds
+disk=182G

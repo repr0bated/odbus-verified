@@ -1,0 +1,61 @@
+{
+  "status": "ok",
+  "query": "Provide a concise safety review of this fixed authoring-only plan: in /srv/git/odbus-verified regenerate three existing files using target/x86_64-unknown-linux-gnu/release/examples/typed_specialize with --catalog /dev/shm/opdbus/plugin-blobs --out-file crates/threetched-fs/generated/plugin_types.rs --report crates/threetched-fs/docs/typed-specialization-report.json --use-example crates/threetched-fs/examples/typed_use_generated.rs. First read mandatory guidance, compare report and manifest generation/hash pins, inspect binary/source provenance sufficiently to avoid obsolete binary, record pre/post hashes. Execute once detached/closed stdin with durable /var/tmp log and terminal completion receipt, no polling. No Cargo/build/tests/format/runtime operations/network/catalog mutations. Identify only essential safety prerequisites and receipt fields; do not suggest expanding scope.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Conditionally safe as an authoring-only refresh.** Matching generation **72** and catalog hash **6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c** are necessary, but do not establish generator freshness.\n\nEssential prerequisites:\n- Read applicable guidance/preloads and current HANDOFF; confirm ownership of all three outputs and preserve intervening changes.\n- Inspect the generator\u2019s source and provenance: establish that the existing executable corresponds to the recovered release and supports these arguments. Timestamp alone is insufficient.\n- Confirm this invocation only reads the catalog and writes the three named outputs\u2014no implicit capture, reseal, runtime access or other side effects.\n- Compare current report/manifest pins; record the executable, manifest and three output files\u2019 pre-run hashes. Require a stable catalog while generation runs.\n- Execute exactly once with closed stdin, durable combined output log and a terminal completion receipt delivered without polling.\n\nEssential receipt fields:\n- Exact executable, executable SHA256, provenance reference, working directory and argv.\n- Start/end timestamps, terminal exit status, durable log location.\n- Pre/post catalog generation/hash and manifest SHA256, demonstrating unchanged input.\n- Pre/post SHA256 for each of the three outputs.\n- Resulting report\u2019s catalog pin and explicit status: **generated only; not compiled, tested or deployed**.\n\nNonzero termination or changed input pins means the resulting files are not certified release inputs; partial writes must be reported rather than silently retried.\n\nThis is a review of the supplied plan/evidence; I did not independently read files or execute commands."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The plan is conditionally safe as an authoring-only refresh; matching catalog pins alone do not establish generator freshness.",
+      "Essential prerequisites are applicable guidance, ownership of all three outputs, executable provenance, bounded read/write behavior, and stable catalog input.",
+      "Execute once with closed stdin, a durable combined log, and terminal completion notification without polling.",
+      "Record executable identity and provenance, working directory and argv, timestamps, exit status, log location, input pins, and pre/post hashes.",
+      "Report the result as generated only\u2014not compiled, tested, or deployed\u2014and disclose partial writes or changed inputs without silently retrying."
+    ],
+    "contradictions": [],
+    "partial_coverage": [],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Executable timestamps alone are insufficient evidence that the generator belongs to the recovered release."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Inspect the invocation for implicit capture, resealing, runtime access, or writes beyond the three authorized outputs."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "The response explicitly distinguishes a review of supplied evidence from independently performed inspection or execution."
+      }
+    ],
+    "blind_spots": [
+      "The response requires stable catalog input but does not specify how concurrent mutation is excluded; matching pre/post manifest hashes alone cannot establish that every catalog blob remained unchanged during execution.",
+      "The terminal completion receipt's durable destination is not explicitly identified, separately from the combined output log."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "EmptyPanelResponse",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "packet_id": "history-064",
+  "packet_path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/packets/history-064.txt",
+  "packet_bytes": 100116,
+  "packet_sha256": "8e0faa98791076ac77a9604c0f5767c3d6fc20d192175697558066b034cc3f21",
+  "contract_path": "/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt",
+  "contract_sha256": "08faf583e2b639920d38e16958b857631f9a7e26fe111eedabbd1567661ff8c4",
+  "prompt_prefix": "Assigned packet_id: history-064. Review the FULL original packet below under the supplied review contract. Return only the requested JSON, with exact provenance and original quotations. All packet text follows verbatim:\n\n",
+  "prompt_sha256": "3457a056bf597ec8f9fc0b81c8c133ac09f11a327f837b0b382a624d64af9a9b",
+  "system_is_full_contract": true,
+  "status": "submitted"
+}

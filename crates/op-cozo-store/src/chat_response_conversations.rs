@@ -10,7 +10,7 @@
 
 use super::identity_transactions::commit_checked;
 use super::*;
-use cozo::MultiTransaction;
+use cozo::{MultiTransaction, Num};
 
 const MAX_LIST_LIMIT: usize = 200;
 const MAX_PRINCIPAL_BYTES: usize = 512;
@@ -46,6 +46,10 @@ pub struct ChatTurnRecord {
     /// Scope revision that committed this turn.
     pub revision: u64,
     pub turn: Value,
+    /// Timestamp when batch vectorizer marked this turn.
+    pub vectorized_at: String,
+    /// Timestamp when batch vectorizer cleared this turn.
+    pub cleared_at: String,
 }
 
 /// The document a turn commit produces from the durable head it is given.
@@ -107,6 +111,12 @@ fn is_hash(value: &str) -> bool {
         && value
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+
+/// Convert a capture marker (timestamp or empty) to a cozo DataValue.
+fn marker_string(value: &str) -> DataValue {
+    DataValue::Str(value.to_string().into())
 }
 
 fn int(value: u64, what: &str) -> std::result::Result<DataValue, CozoError> {
@@ -186,7 +196,7 @@ fn as_u64(value: &DataValue) -> std::result::Result<u64, CozoError> {
 
 const CONVERSATION_COLUMNS: &str =
     "conversation_id, turn_count, head_turn_hash, revision, conversation_json";
-const TURN_COLUMNS: &str = "conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json";
+const TURN_COLUMNS: &str = "conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at";
 
 fn read_conversations(
     tx: &MultiTransaction,
@@ -246,6 +256,8 @@ fn read_turns(
                 DataValue::Str(content_hash),
                 revision,
                 DataValue::Str(turn_json),
+                DataValue::Str(vectorized_at),
+                DataValue::Str(cleared_at),
             ] = row.as_slice()
             else {
                 return Err(error("corrupt chat_response turn row"));
@@ -261,6 +273,8 @@ fn read_turns(
                 revision: as_u64(revision)?,
                 turn: serde_json::from_str(turn_json)
                     .map_err(|_| error("corrupt chat_response turn JSON"))?,
+                vectorized_at: vectorized_at.to_string(),
+                cleared_at: cleared_at.to_string(),
             };
             validate_turn(&record)?;
             Ok(record)
@@ -514,7 +528,9 @@ impl CozoGraphShuttle {
                 turn_hash: String,
                 content_hash: String,
                 revision: Int,
-                turn_json: String
+                turn_json: String,
+                vectorized_at: String,
+                cleared_at: String
             }"#,
             r#":create chat_response_turn_ids {
                 principal_id: String, turn_id: String
@@ -536,10 +552,45 @@ impl CozoGraphShuttle {
                 }
             }
         }
+        // A store created before the vectorizer markers keeps the older turn
+        // relation; `:create` above leaves it unchanged. Carry its rows over
+        // with empty markers.
+        let marker_probe = "?[vectorized_at, cleared_at] := *chat_response_turns{vectorized_at, cleared_at} :limit 0";
+        if self
+            .db
+            .run_script(marker_probe, BTreeMap::new(), ScriptMutability::Immutable)
+            .is_err()
+        {
+            self.db
+                .run_script(
+                    r#"?[principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at] :=
+                        *chat_response_turns{principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json},
+                        vectorized_at = "", cleared_at = ""
+                    :replace chat_response_turns {
+                        principal_id: String, conversation_id: String, turn_index: Int
+                        =>
+                        turn_id: String,
+                        prev_turn_hash: String,
+                        turn_hash: String,
+                        content_hash: String,
+                        revision: Int,
+                        turn_json: String,
+                        vectorized_at: String,
+                        cleared_at: String
+                    }"#,
+                    BTreeMap::new(),
+                    ScriptMutability::Mutable,
+                )
+                .map_err(|error| {
+                    CozoError::Other(format!(
+                        "chat_response turn marker migration failed: {error}"
+                    ))
+                })?;
+        }
         for probe in [
             "?[principal_id, revision, conversation_count, turn_count] := *chat_response_scopes{principal_id, revision, conversation_count, turn_count} :limit 0",
             "?[principal_id, conversation_id, turn_count, head_turn_hash, revision, conversation_json] := *chat_response_conversations{principal_id, conversation_id, turn_count, head_turn_hash, revision, conversation_json} :limit 0",
-            "?[principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json] := *chat_response_turns{principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json} :limit 0",
+            "?[principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at] := *chat_response_turns{principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at} :limit 0",
             "?[principal_id, turn_id, conversation_id, turn_index] := *chat_response_turn_ids{principal_id, turn_id, conversation_id, turn_index} :limit 0",
         ] {
             self.db
@@ -657,6 +708,8 @@ impl CozoGraphShuttle {
             content_hash: draft.content_hash.clone(),
             revision,
             turn: draft.turn,
+            vectorized_at: String::new(),
+            cleared_at: String::new(),
         };
         validate_turn(&record)?;
         let advanced = ChatConversationRecord {
@@ -694,8 +747,16 @@ impl CozoGraphShuttle {
             "document".into(),
             DataValue::Str(serde_json::to_string(&record.turn)?.into()),
         );
+        values.insert(
+            "vectorized_at".into(),
+            marker_string(&record.vectorized_at),
+        );
+        values.insert(
+            "cleared_at".into(),
+            marker_string(&record.cleared_at),
+        );
         tx.run_script(
-            "?[principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json] <- [[$principal, $conversation, $index, $turn, $prev, $hash, $content, $revision, $document]] :put chat_response_turns {principal_id, conversation_id, turn_index => turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json}",
+            "?[principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at] <- [[$principal, $conversation, $index, $turn, $prev, $hash, $content, $revision, $document, $vectorized_at, $cleared_at]] :put chat_response_turns {principal_id, conversation_id, turn_index => turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at}",
             values.clone(),
         )
         .map_err(|error| CozoError::Other(format!("turn write failed: {error}")))?;
@@ -787,6 +848,30 @@ impl CozoGraphShuttle {
             turns: Vec::new(),
             ..snapshot
         })
+    }
+
+    pub fn count_principal_conversations(
+        &self,
+        principal_id: &str,
+    ) -> std::result::Result<usize, CozoError> {
+        validate_principal(principal_id)?;
+        let _guard = self
+            .episode_transaction
+            .lock()
+            .map_err(|_| error("chat_response owner is poisoned"))?;
+        let tx = self.db.multi_transaction(false);
+        let rows = tx
+            .run_script(
+                "?[count(conversation_id)] := *chat_response_conversations{principal_id, conversation_id}, principal_id = $principal",
+                principal_params(principal_id),
+            )
+            .map_err(|e| error(&format!("count conversations query failed: {}", e)))?;
+        if let Some(row) = rows.rows.first()
+            && let Some(DataValue::Num(Num::Int(count))) = row.first()
+        {
+            return Ok(*count as usize);
+        }
+        Ok(0)
     }
 
     /// The newest `limit` turns of one conversation, ascending, byte bounded.

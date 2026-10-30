@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -l /etc/runit/sv/tched-router /etc/runit/runsvdir/default/tched-router /usr/local/bin/zeroclaw /usr/bin/zeroclaw 2>/dev/null; readlink -f /etc/runit/sv/tched-router/run 2>/dev/null; readlink -f /usr/local/bin/zeroclaw 2>/dev/null; readlink -f /usr/bin/zeroclaw 2>/dev/null)",
+      "Read(//etc/runit/sv/tched-router/**)",
+      "Bash(tar:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

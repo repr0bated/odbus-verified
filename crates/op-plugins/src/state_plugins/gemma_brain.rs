@@ -3,10 +3,9 @@
 //! Gemma does multiple things, so this is a "brain", not a "router": it owns the
 //! tag-routing / subid-classification configuration, the four reasoning
 //! perspectives, and the UI-spec gallery surface. It is the WHAT-to-decide
-//! surface; it **consumes** the generic [`super::large_language_model`] plugin
-//! for inference and embeds no model of its own ("gemma" here is a brand for the
-//! brain, not a model binding — swap the underlying model via the
-//! `large_language_model` plugin).
+//! surface; its retained taxonomy and private UI workspace methods are local,
+//! not inference wrappers. Model selection and inference belong to
+//! [`super::chat_router`]; "gemma" is a brain brand, not a model binding.
 //!
 //! The MutationEngine owns the canonical private workspace methods and commits
 //! their full state to owner-scoped SHM before streaming wakeups. The retained
@@ -176,7 +175,7 @@ pub(crate) fn gemma_brain_schema() -> PluginSchema {
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "gemma_brain",
         "4.0.0",
-        "Gemma cognitive brain: tag routing, subid classification, reasoning perspectives, and UI-spec gallery; consumes the large_language_model plugin for inference",
+        "Gemma cognitive brain: local tag taxonomy, subid classification, reasoning perspectives, and private JSON-render UI workspace",
         &root,
     );
 
@@ -194,12 +193,6 @@ pub(crate) fn gemma_brain_schema() -> PluginSchema {
             "mut.service.gemma.classify@v1",
         ),
     );
-    let router = super::tched_router::tched_router_schema();
-    let mut route = router.methods["ResolveRoute"].clone();
-    route.name = "route".into();
-    route.required_capability = Some("gemma.invoke".into());
-    route.subid = "obs.service.gemma.route@v2".into();
-    schema.methods.insert("route".into(), route);
     schema.methods.insert(
         "list_perspectives".to_string(),
         method_decl_from_schemars_with_output::<
@@ -251,13 +244,13 @@ pub(crate) fn gemma_brain_schema() -> PluginSchema {
     );
 
     workspace::declare_methods(&mut schema);
-    schema.dependencies = vec!["large_language_model".into(), "json_render".into()];
+    schema.dependencies = vec!["json_render".into()];
 
     schema.capabilities.insert(
         "gemma.invoke".to_string(),
         op_state_store::CapabilityDecl {
             id: "gemma.invoke".to_string(),
-            description: "Grants: classify, route, register_tag, analyze_intent and canonical private UI workspace mutations/recovery.".to_string(),
+            description: "Grants: classify, register_tag, analyze_intent and canonical private UI workspace mutations/recovery.".to_string(),
         },
     );
     schema.capabilities.insert(

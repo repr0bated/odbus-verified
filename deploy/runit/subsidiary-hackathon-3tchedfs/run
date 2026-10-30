@@ -1,0 +1,19 @@
+#!/bin/sh
+# Hackathon subsidiary: project identity b0c777e3's 3tchedFS into the
+# subsidiary's home. Only the subsidiary's Linux user may write call files.
+exec 2>&1
+MOUNT=/home/3tched/Hackathon/3tchedfs
+SESSION=b0c777e3-0955-cd8b-3d01-ca12998cae28
+STATE=/var/lib/opdbus-subsidiary/hackathon/empty-state
+OWNER=$(id -u 3tched) || { echo 'subsidiary user 3tched missing' >&2; exit 78; }
+i=0
+until [ -S /run/opdbus/lungs/lungs.sock ] && [ -d /dev/shm/opdbus/plugin-blobs ]; do
+    i=$((i + 1)); [ "$i" -lt 120 ] || { echo 'lungs socket or catalog not ready' >&2; exit 1; }
+    sleep 1
+done
+install -d -m 0755 "$STATE"
+mountpoint -q "$MOUNT" && fusermount3 -u "$MOUNT" 2>/dev/null || true
+exec /usr/local/libexec/op-dbus/bin/3tched-fs --store /dev/shm/3tchedfs mount \
+    --fs-name 3tchedFS --state "$STATE" --catalog /dev/shm/opdbus/plugin-blobs \
+    --lungs-socket /run/opdbus/lungs/lungs.sock --lungs-session "$SESSION" \
+    --call-owner-uid "$OWNER" --allow-other --auto-unmount "$MOUNT"

@@ -1,0 +1,32 @@
+file	inventory_lines	inventory_sha256	read_coverage	pre_edit_native_occurrences
+Cargo.toml	62	14ba2fa6a95c55db1541bf72798f0e1e2c6ecae2b81383941903105a711e79d8	1-62 (EOF)	0
+SPEC.md	113	496828fc35b8151cac1531baba8f3ae159326aa6faad9437c70b880bfe877dc6	1-113 (EOF)	0
+compare-op-tools.md	114	b108f809956931b85ff3c1de2ee287986b01c63205cc35f39b16af1123f6c837	1-114 (EOF)	0
+src/bin/op-packagekit-install.rs	138	287512c3a4336e3a7472715b731bcf1af2bc95447f48f81505b70a205a29c19a	1-138 (EOF)	0
+src/builtin/agent_tool.rs	914	258c157b1846d96fe85ec37c01ed56b5943d61713c8b6ab02946189615c5453f	1-914 (EOF)	0
+src/builtin/anydesk.rs	147	d195569524b2c67cedd1abc04728f30bb5a3217c30b1ba1a1d040d27868e8cc1	1-147 (EOF)	0
+src/builtin/code_search.rs	262	a5189d9cfe628bebd0ce8e99f45f14560cfcb993b0d5c2e4a255dc1adc979f37	1-262 (EOF)	0
+src/builtin/dbus_introspection.rs	1485	92807cc283d5dd4f6207091a6310497a694e0826f8865af68403428c12040077	1-1485 (EOF)	0
+src/builtin/file.rs	449	6dbf512b6fae8a45a2e0b00b6e0ac44623cf03921634a106deeae1bc86f85b58	1-449 (EOF)	0
+src/builtin/gcloud_tools.rs	499	c87ff5b3a99d4c13f8b21f981a7587ea3813103810ad40b8a613efb19136a435	1-499 (EOF)	0
+src/builtin/mod.rs	109	7283afe4c80234e5e68a52b4d8e93f63d8e938936a173494cb1392a571769fec	1-109 (EOF)	0
+src/builtin/ovs_tools.rs	1305	fbe72efe109ae82df74e4241f0954bd5260a20c885e095e3e5911b119e01e990	1-1305 (EOF)	3
+src/builtin/response_tools.rs	574	f530a7bff86bdac902a9aca8a99082970cebca88879a25fff6b46cf9c76f3d9f	1-574 (EOF)	0
+src/builtin/rtnetlink_tools.rs	604	3df5a8861e8550dafc05e66bb422929f11385d10a7d900b324575c43f88afdbf	1-604 (EOF)	10
+src/builtin/shell.rs	581	81480fb073de41b73f6b194f44f1d688fd8048ee328016d8c1b3622688431ec9	1-581 (EOF; file later edited)	9
+src/builtin/sv.rs	244	3fc87d185cb4b9b324cc6f2ddac19dacdf5f43c7429cc59cfe7310c6c37b2c29	1-244 (EOF; file later edited)	2
+src/discovery/mod.rs	440	606543c0435186fc820389cbba81f29986b009534ff4831f1f907d0e2564fbf2	1-440 (EOF)	0
+src/discovery/projection_engine.rs	228	dfa0cd83bfde55d8487540e546890779d82ec0d62f977211b49d78cd3f3a2f12	1-228 (EOF)	0
+src/discovery/sources/agent.rs	196	ceca371cd4a10fe8b879a03c9018570b7236460db7c9d3d767c38c30a9b65aaf	1-196 (EOF)	0
+src/discovery/sources/dbus.rs	320	c88b4c73a4be3c1238747780024c49b8ed1aa59dcba1b8167b7c7112f00098f8	1-320 (EOF)	0
+src/discovery/sources/mod.rs	14	49a5c0a072c6beb66608088511275f8a2b424e5f7935a4fb1ad3107c23a30db7	1-14 (EOF)	0
+src/discovery/sources/plugin.rs	140	0ad5e1a2c6db80fd18e4dcba8b49c1deda41e9d29417a915c100acfbeb5b02a9	1-140 (EOF)	0
+src/dynamic_tool.rs	129	0114465c695b4c9eb2a538c2323109d4e5d5a61370d860c0a8d3bb472729e897	1-129 (EOF)	0
+src/lib.rs	83	d2eb21eb986d8d047b6e775d60991226600ab42c5356483cf78915d4757a7e4d	1-83 (EOF)	0
+src/mcptools.rs	453	b1d60263e01b0484153a7e1ec830304eb816e17a6eeb2772b29467d9654187d3	1-453 (EOF)	0
+src/orchestration_plugin.rs	483	158d61750b63a801f4c15a4d487aa954c8bf5efeac148ffb7992fe8918dfb663	1-483 (EOF)	0
+src/registry.rs	270	d34a4d97ca5ad0846c1464689f28b223127eef32622137a1c79be2f8d7b50679	1-270 (EOF)	0
+src/router.rs	140	e2edb82a5108ff9c50ab3e2bda9956e31d241462745fd3c8f9abf8858b7f7eb4	1-140 (EOF)	0
+src/security.rs	783	a17dd2b5519bffcef7bcbcf9611c14dcb40b9509c7c5af2bfa810431ae5448d7	1-783 (EOF; later edited in audit and both coordinator follow-ups)	15 original occurrences; 2 current warning occurrences logged
+src/tool.rs	139	402ec3c6cba82d5d43c33ef52631de1ec8946c54c7e1513a25d81313731bbf43	1-139 (EOF)	0
+src/validation.rs	741	186f1c2d8d30b7f7598ba484438803ea17faa1e65198f69404aafc2e9f9a1f5b	1-741 (EOF)	0

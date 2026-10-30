@@ -23,6 +23,48 @@ pub(crate) struct PreparedIncusObservation {
     pub expected_schema_hash: String,
 }
 
+
+/// Host-side, read-only, metadata-only enrichment of disk device sources.
+/// Bounded: existing absolute paths only; mode/size are not recorded, only
+/// the identity token. Fails only on malformed paths, never on missing files.
+fn attach_mount_identities(state: &mut op_plugins::state_plugins::incus::IncusState) -> Result<()> {
+    use op_plugins::state_plugins::incus_device::{Device, NamedDevice};
+    for instance in &mut state.instances {
+        for field in [&mut instance.devices, &mut instance.expanded_devices] {
+            for NamedDevice { device, .. } in field.iter_mut() {
+                let Device::Disk(disk) = device else { continue };
+                let Some(source) = disk.source.as_deref() else { continue };
+                disk.source_identity = Some(mount_identity_token(source));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `sha256("dev:ino")` truncated to 16 hex chars, or `"-"` when the source is
+/// unstatable. Never returns raw numbers.
+fn mount_identity_token(source: &str) -> String {
+    use sha2::{Digest, Sha256};
+    use std::os::unix::fs::MetadataExt;
+    let metadata = || -> Option<std::fs::Metadata> {
+        if source.len() > 4096
+            || !source.starts_with('/')
+            || source.chars().any(|c| c.is_control())
+        {
+            return None;
+        }
+        std::fs::metadata(source).ok()
+    }();
+    match metadata {
+        Some(metadata) => {
+            let token = format!("{}:{}", metadata.dev(), metadata.ino());
+            let digest = Sha256::digest(token.as_bytes());
+            format!("{digest:x}")[..16].to_string()
+        }
+        None => "-".to_string(),
+    }
+}
+
 fn compatible_seal(catalog: &Path) -> Result<()> {
     let pinned = read_manifest_pinned_schema_document(catalog, PLUGIN)?;
     admit_compiled_state_contract(&pinned, PLUGIN)
@@ -61,7 +103,8 @@ async fn readback_and_publish(
     // from native effect through readback and commit. It prevents an older
     // observer read from overwriting a newer method observation.
     let _observation = engine.lock_host_observation().await;
-    let snapshot = observer.default_project_state().await?;
+    let mut snapshot = observer.default_project_state().await?;
+    attach_mount_identities(&mut snapshot)?;
     let prepared = prepare_observation(&blob_catalog_dir_from_env(), &snapshot)?;
     engine
         .process_observed_state(PLUGIN, prepared.full_state, prepared.expected_schema_hash)
@@ -77,7 +120,9 @@ pub(crate) async fn publish_repair_readback_locked(
     engine: &MutationEngine,
     snapshot: &IncusState,
 ) -> Result<()> {
-    let prepared = prepare_observation(&blob_catalog_dir_from_env(), snapshot)?;
+    let mut snapshot = snapshot.clone();
+    attach_mount_identities(&mut snapshot)?;
+    let prepared = prepare_observation(&blob_catalog_dir_from_env(), &snapshot)?;
     engine
         .process_observed_state(PLUGIN, prepared.full_state, prepared.expected_schema_hash)
         .await
@@ -135,17 +180,21 @@ async fn dispatch_method_owned(
         | "snapshot_instance" | "exec_instance" => args.get("name"),
         _ => None,
     };
-    let _identity_target = if let Some(target) = target {
-        let target = target.as_str().context("Incus target name is invalid")?;
-        if uuid::Uuid::parse_str(target).is_ok_and(|uuid| uuid.to_string() == target) {
-            Some(crate::identity_sled_dispatch::guard_identity_incus_target(engine, target).await?)
-        } else {
-            None
-        }
+    let resolved_session = if let Some(target) = target {
+        crate::identity_sled_dispatch::identity_session_for_native(engine,
+            target.as_str().context("Incus target name is invalid")?).await?
+    } else { None };
+    let _identity_target = if let Some(session) = &resolved_session {
+        Some(crate::identity_sled_dispatch::guard_identity_incus_target(engine, session).await?)
     } else {
         None
     };
     let _observation = engine.lock_host_observation().await;
+    if let Some(target) = target {
+        ensure!(crate::identity_sled_dispatch::identity_session_for_native(engine,
+            target.as_str().context("Incus target name invalid")?).await? == resolved_session,
+            "native ownership changed while queued; retry with the same target");
+    }
     let _seeded_root = if let Some(target) = &_identity_target {
         target.verify_under_host_lock(method).await?
     } else {

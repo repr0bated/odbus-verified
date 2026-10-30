@@ -1,0 +1,11 @@
+{
+  "task":"provisioning-fusion-20261019",
+  "status":"Background Fusion review paused; bg_4 cancelled after owner reported unexpected credit burn.",
+  "billing_separation":"Owner reports14 dollars Hermes spend separately from OpenAI weekly allowance and20000-credit depletion.",
+  "confirmed_native_work":"Native openai-codex/gpt-6-astra scouts were used within the Fusion workflow, in addition to Hermes outer/panel calls.",
+  "accounting":"credit-usage-audit.json",
+  "limits":"Local token records do not establish exact account credit debits. No dollar-estimate-to-credit conversion made. Packet-reader resolved-model metadata is missing.",
+  "continuation":"Do not restart broad review or new background batches without an agreed spend bound. Reuse completed evidence and target unresolved questions.",
+  "reset_or_billing_settings_changed":false,
+  "provisioning_or_storage_changed":false
+}

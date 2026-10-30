@@ -1,0 +1,132 @@
+{
+  "status": "ok",
+  "query": "Task provisioning-fusion-20261019. REQUIRED FIRST PANEL: read-only diagnosis; no commands to execute, source changes, storage changes, tests, deployment or new workflows. Please preserve each responding member's actual identity and failure status in returned public output; do not claim unanimous consensus if any member fails. Owner correction VERBATIM: \u201cthe seed is the lbacking . by adding the btrfs as a device to acieve the rw\u201d; \u201cthat is haow it worked before\u201d; \u201cenphasooze that to the panel\u201d; \u201cspecy the command btrfs device add\u201d. Mechanism: `btrfs device add <writable-device> <mounted-seed-path>` (explanatory only). The immutable seed supplies existing backing; adding writable member achieves RW sprout. Parent withdraws inference that each exposed Incus subvolume must itself be a block-device operand. Separate seed backing, writable member, identity/Cozo association, exposed subvolumes, upgrade replica. NO HOST LOOP DEVICES, including pool backing and seed wrappers. Prefer no images/subvolumes only IF all retained semantics survive. Preserve shared immutable seed, isolated persistent writes, separate upgrade replica/send-receive, root composition, unprivileged native Incus declarations, admission/proofs/durable recovery/final adoption/start. No LVM management or VM conversion or copied-root/OverlayFS-upper substitution. JEV judges decisions/evidence only, never routing.\nORIGINAL evidence provided by owner, commit 26a4ad132fbbd4523b05724060bfdeb9ca661824 deploy/runit/libexec-3tched/op-identity-root:\n1172: mount -t btrfs -o \"ro,subvolid=5,device=$seed_view\" \"$seed_view\" \"$seed_dir/volume\"\n1173-1174: # Validate inherited siblings before sprout. Nothing copied/snapshotted; all writes after ADD_DEV go to new leaf.\n1175: initial_members=$(seed_layout_pins) || seed_fail \"seed lacks seven distinct sibling subvolumes\"\n1176: initial_image=$(seed_image_metadata verify) || seed_fail \"seed image verification failed before device add\"\n1177: seed_write --argjson image \"$initial_image\" '.image=$image'\n1178: [ \"$(btrfs property get -ts \"$seed_dir/volume/@\" ro)\" = ro=false ] || seed_fail \"seed @ must be a normal writable subvolume\"\n1179: [ -d \"$seed_dir/volume/@/etc\" ] && [ ! -L \"$seed_dir/volume/@/etc\" ] || seed_fail \"seed root lacks safe etc directory\"\n1180: seed_write --argjson members \"$initial_members\" '.members=$members'\n1181: current_seed_super=$(btrfs inspect-internal dump-super \"$seed_device\")\n1182: [ \"$(blockdev --getro \"$seed_device\")\" = 1 ] || seed_fail \"physical seed lost block read-only enforcement\"\n1183-1185: checks SEEDING, source_fsid and source_generation unchanged\n1186: seed_no_direct_mount\n1187: seed_write '.phase=\"device-add-intent\"'\n1188: btrfs device add \"$leaf_loop\" \"$seed_dir/volume\"\n1189: sync -f \"$seed_dir/volume\"\n1190: umount \"$seed_dir/volume\"\n1191: sprout_fsid=$(seed_super \"$leaf\")\n1192: valid_session \"$sprout_fsid\" && [ \"$sprout_fsid\" != \"$source_fsid\" ] || seed_fail \"invalid new sprout FSID\"\n1193: seed_write --arg fsid \"$sprout_fsid\" '.sprout_fsid=$fsid | .phase=\"layout-intent\"'\n1194: mount -t btrfs -o \"rw,subvolid=5,device=$seed_view,device=$leaf_loop\" \"$leaf_loop\" \"$seed_dir/volume\"\n1195: seed_verify_volume\n1196: verifies inherited sibling identities unchanged.\nORIGINAL Hermes main evidence source evidence/hermes/20261018_190519_b780ef.jsonl:\nuser id4095: \"no the persistent cozo iws addedwith btrfs add disk\"\nassistant id4099: \"Right\u2014the persistent writable storage is added to the seed with btrfs device add, and Cozo tracks the identity\u2019s leaf assignment. It is not a writable OverlayFS upper layer.\\n\\nThe separate upgrade partition supplies upgrade/@ for the read-only overlay. I conflated those two roles.\"\nassistant id4111: \"Yes\u2014the script uses btrfs device add to attach the persistent root partition to the seed, then mounts that pair read-write.\\n\\n  prepare-instance-disk.sh:111 \u2014 adds the root partition.\\n  prepare-instance-disk.sh:116\u2013118 \u2014 formats the separate upgrade partition and creates @.\\n  bind-instance-root.sh:216 \u2014 combines upgrade and seed layers into a read-only overlay.\\n\\nBut the storage path is still wrong: the script requires /var/lib/3tched-leaf-pool, rather than your selected /var/lib/incus/storage-pools/3tched-pool. The layout is implemented; that integration is not finished.\"\nQuestions: Explicitly acknowledge btrfs device add; identify what demonstrated old script added and at what mount; distinguish proof from missing variable-definition evidence; separate earlier leaf-loop helper from later GPT-root statement. Retract any whole-layout impossibility inference based only on operand typing. State specific remaining no-loop feasibility questions, not a fabricated proven replacement topology. Explain how Cozo ownership, exposed native subvolume integration and upgrade replica remain separate. This round sees ONLY these excerpts, not full corpus; record that coverage limitation. Return public conclusions/evidence, never hidden reasoning.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "## Panel response \u2014 seed/sprout correction accepted\n\n**Response status:** completed advisory response. This interface does not expose an independently verifiable panel-member model identifier or other members\u2019 results. No panel-wide consensus or failure status is claimed.\n\n**Coverage:** only the original excerpts supplied in this question. No complete corpus, variable definitions, current source, installed helpers or live storage state was inspected. No commands executed or changes made.\n\n### 1. Demonstrated mechanism\n\nThe owner\u2019s mechanism is explicitly:\n\n```text\nbtrfs device add <writable-device> <mounted-seed-path>\n```\n\nThis is explanatory syntax, not an execution instruction.\n\nThe supplied historical implementation supports that mechanism:\n\n| Evidence | What it establishes |\n|---|---|\n| Commit `26a4ad132fbbd4523b05724060bfdeb9ca661824`, `op-identity-root:1172` | The helper mounts `$seed_view` read-only at `$seed_dir/volume`, selecting the filesystem top level with `subvolid=5`. |\n| Lines 1175\u20131185 | The helper checks seven inherited sibling subvolumes, seed-image metadata, physical seed read-only enforcement, `SEEDING`, and unchanged source FSID/generation. |\n| Lines 1187\u20131188 | It records `device-add-intent`, then adds **`$leaf_loop` to the filesystem mounted at `$seed_dir/volume`** using `btrfs device add`. |\n| Lines 1189\u20131194 | It syncs and unmounts, obtains a sprout FSID from `$leaf`, requires that FSID to differ from the seed FSID, then mounts read-write using `$leaf_loop`, with both `$seed_view` and `$leaf_loop` supplied as devices. |\n| Lines 1195\u20131196 | It invokes volume verification and checks that the inherited sibling identities remain unchanged. |\n\nThis is a **seed-plus-writable-member sprout**, not an OverlayFS writable upper and not a copied root.\n\nThe `ro=false` check on `@` at line 1178 does not contradict seed immutability: a subvolume\u2019s read-only property is distinct from the seed\u2019s block-device read-only enforcement and the read-only seed mount.\n\nThese lines establish implemented operations and safeguards. They are not themselves an execution receipt proving that a particular provisioning attempt completed.\n\n### 2. Exact historical distinction\n\nFor the quoted `op-identity-root` helper, the actual operand is **`$leaf_loop`**, and the destination mount is **`$seed_dir/volume`**.\n\nThe excerpt does **not** include definitions proving:\n\n- the concrete device path represented by `$leaf_loop`;\n- its backing object or any partition offset;\n- the construction of `$seed_view`;\n- the exact relationship between `$leaf` and `$leaf_loop`.\n\nThose definitions must be traced before specifying a replacement.\n\nHermes message **4111** separately describes `prepare-instance-disk.sh:111` as adding a **persistent root partition**, with a separate upgrade partition created at lines 116\u2013118. That is a historical assistant statement about another script, not the script body supplied here. It must not be silently merged with `$leaf_loop` or treated as proof that the earlier helper added that same GPT partition.\n\n### 3. Whole-layout rejection is unsupported\n\nI reject the inference:\n\n> \u201cA subvolume is not a block-device operand, therefore the requested complete Incus/subvolume arrangement is impossible.\u201d\n\nThe operand-type constraint applies to the writable member supplied to `btrfs device add`. It does not determine how the resulting filesystem\u2019s subvolumes are exposed to an Incus container.\n\nThe supplied evidence establishes neither a complete no-loop implementation nor its impossibility. **No replacement topology is proven by this round.**\n\n### 4. Keep these responsibilities separate\n\n- **Immutable seed backing:** supplies retained filesystem contents; its immutability must survive provisioning and recovery.\n- **Writable member:** supplies isolated persistent writes through the sprout mechanism.\n- **Cozo association:** records authoritative identity-to-storage ownership. Hermes **4099** acknowledges that role; the supplied code excerpt does not show its transaction or recovery implementation. Metadata does not create a kernel device.\n- **Exposed subvolumes / Incus declarations:** determine which filesystem trees become container root and data mounts. They need not individually be device-add operands. Whether Incus owns those volumes or receives externally managed mounts requires actual declarations and lifecycle evidence.\n- **Upgrade replica:** remains separate from the persistent member. Hermes **4099/4111** describe `upgrade/@` and read-only root composition; this does not authorize replacing persistent storage with an OverlayFS upper.\n\n### 5. Remaining no-loop feasibility questions\n\n1. **What backs each historical device?** Trace `$seed_device`, `$seed_view`, `$leaf`, `$leaf_loop`, and the later GPT root/upgrade partitions independently.\n2. **What supported non-loop writable member is available?** Identify an actual existing provisioning primitive that preserves per-identity isolation and one-time membership establishment. Do not assume Cozo or an Incus disk declaration supplies it.\n3. **How is the immutable seed exposed without loop wrappers?** Preserve seed identity, read-only enforcement and independent sprout restoration.\n4. **How do native Incus declarations integrate the resulting subvolumes?** Establish storage ownership, stopped root binding, unprivileged access and authoritative identity/native-UUID correspondence.\n5. **How does the separate upgrade replica survive without images, if possible?** Preserve send/receive destination proof, ancestry, stopped composition updates and persistence.\n6. **How does recovery restore established storage without member churn?** Trace durable intents, mount verification, final Cozo adoption and startup independently.\n7. **How is any existing pool loop addressed?** It is a conflict with **NO HOST LOOP DEVICES**, not an exemption and not permission to detach it.\n\n**Decision:** preserve `btrfs device add` seed/sprout semantics as the investigation baseline; reopen conclusions derived solely from layer conflation. Evaluate no-images/subvolume-only integration against the complete retained semantics. This response is advisory, **not a JEV judgment**, provisioning receipt or authorization."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "# Panel Member Analysis \u2014 provisioning-fusion-20261019\n\n## 1. Acknowledgment of Owner Correction\nThe mechanism to be preserved and investigated is explicitly:\n```sh\nbtrfs device add <writable-device> <mounted-seed-path>\n```\nThis command attaches a writable block source to an already-mounted Btrfs seed filesystem, converting the combined layout to read-write. The immutable seed supplies the original backing; the added device supplies the new leaf/metadata space. This is a filesystem-level membership operation, not a per-subvolume block assignment.\n\n## 2. Historical Implementation Analysis (Commit 26a4ad132fbb)\nLines 1172\u20131196 demonstrate the exact sequence:\n- **1172**: Mounts the seed backing read-only (`ro,subvolid=5,device=$seed_view`) at `$seed_dir/volume`.\n- **1178\u20131185**: Validates internal state (`@` is writable, `etc` exists, physical seed is read-only, superblock matches source FSID/generation, `SEEDING` flag is set).\n- **1188**: Executes `btrfs device add \"$leaf_loop\" \"$seed_dir/volume\"`. The historical implementation used a host loop device (`$leaf_loop`) as the writable operand.\n- **1189\u20131190**: Syncs and unmounts the seed mount.\n- **1194**: Remounts the seed read-write (`rw,subvolid=5,device=$seed_view,device=$leaf_loop`), now containing both the original seed backing and the newly added leaf.\n- **1195\u20131196**: Verifies the volume and confirms inherited sibling subvolumes are intact.\n\n**Key distinction**: The old script used a loop device (`$leaf_loop`) as the *historical implementation* of the writable device. The *mechanism* (`btrfs device add` to a mounted seed) is what the owner requires preserving. The parent's inference that every exposed subvolume or Incus disk must itself be a block-device operand passed to `device add` is a layer conflation and is explicitly withdrawn.\n\n## 3. Layer Separation\n- **Seed Backing**: Immutable, read-only physical backing. Mounted first to verify integrity and `SEEDING` state. Never modified after `device add`.\n- **Writable Member**: Added via `btrfs device add`. Becomes a new leaf in the seed's Btrfs allocation tree. All writes post-addition target this new member.\n- **Cozo Identity Association**: Tracks identity-to-leaf assignment, isolation boundaries, and native UUID binding. Cozo metadata does not supply a kernel block device; it records the logical attachment and sprout FSID (`$sprout_fsid` in line 1191) after the Btrfs membership is established.\n- **Incus Native Subvolume Integration**: Incus manages its own storage pools and subvolumes via profiles/devices. These are projected into the container via 3tchedFS. They are separate from the seed's Btrfs membership operation. Incus subvolumes are not operands to `btrfs device add`; they are managed through Incus's control plane and mounted into the guest.\n- **Upgrade Replica**: A separate filesystem (`upgrade/@`) mounted as a read-only overlay layer. It supplies versioned root content and is combined with the seed layer at boot (`bind-instance-root.sh:216`). It does not participate in the seed's `device add` membership.\n\n## 4. No-Loop Feasibility Questions\nReplacing `$leaf_loop` with a non-loop writable device while preserving semantics requires resolving:\n1. **Writable Device Source**: If host loops are prohibited, what block source replaces `$leaf_loop`? (e.g., a native Incus managed volume, a pre-provisioned block device, or a loop-free disk image). How is this source provisioned before `device add`?\n2. **Sprout FSID Generation**: Line 1191 reads `sprout_fsid=$(seed_super \"$leaf\")`. Adding a device to a Btrfs filesystem generates a new leaf and updates the filesystem's internal allocation state. Does the replacement device source guarantee the same sprout FSID derivation and `valid_session` check?\n3. **Incus Subvolume Mapping**: If Incus native subvolumes are preferred, how does the `btrfs device add` operand map to an Incus-managed volume? Incus volumes are typically mounted via `mount -o subvol=...`, not passed directly to `device add`. A bridge or explicit block export may be required.\n4. **Immutable Seed Constraint**: The seed must remain permanently mounted and read-only after `device add`. How does the replacement design ensure the seed backing is never exposed as a writable mount point, and how are the `blockdev --getro` and superblock checks preserved?\n\n## 5. Coverage Limitation\nThis panel round received only the provided excerpts (owner correction, commit 26a4ad132fbb lines 1172\u20131196, and Hermes IDs 4095/4099/4111). It did not ingest the full Hermes main conversation, Astra/Claude/Kiro transcripts, or the complete source tree. Conclusions are bounded to the demonstrated mechanism and explicit constraints. Full corpus review is pending in subsequent rounds.\n\n**Status**: Panel member active. Evidence reviewed. No commands executed. No source/runtime changes proposed. Awaiting JEV adjudication and next round."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The demonstrated mechanism is `btrfs device add <writable-device> <mounted-seed-path>`: preserve immutable seed backing while adding a writable member, rather than substituting a copied root or an OverlayFS writable upper.",
+      "The historical excerpt invokes `btrfs device add \"$leaf_loop\" \"$seed_dir/volume\"` at line 1188, then syncs, unmounts and remounts read-write with both seed and leaf device references.",
+      "Seed backing, writable membership, Cozo ownership, exposed subvolumes and the separate upgrade replica are distinct responsibilities. Exposed subvolumes need not individually be device-add operands.",
+      "A block-device operand requirement does not establish that the complete requested Incus/subvolume arrangement is impossible.",
+      "No-host-loop feasibility remains unresolved. Neither response establishes a complete replacement topology preserving the retained semantics.",
+      "Both responses explicitly limit their review to the supplied excerpts and report no command execution or runtime/source changes."
+    ],
+    "contradictions": [
+      {
+        "topic": "Whether the excerpt proves the concrete writable-device backing",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Identifies `$leaf_loop` as the literal operand but states that missing variable definitions prevent proving its concrete device path, backing object, partition offset or relationship to `$leaf`."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Treats `$leaf_loop` as demonstrated use of a host loop device. That interpretation exceeds what the provided variable-use excerpt alone establishes."
+          }
+        ]
+      },
+      {
+        "topic": "Evidence for Cozo persistence and Incus integration",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Separates Hermes's ownership acknowledgment from missing Cozo transaction evidence and leaves Incus-managed volumes versus externally managed mounts unresolved."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Asserts that Cozo records the sprout FSID after membership establishment and that Incus subvolumes are projected into the container through 3tchedFS. Neither implementation claim is demonstrated by the supplied excerpts."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly distinguishes the earlier `$leaf_loop` helper from Hermes message 4111's later persistent GPT-root-partition description; the latter is an assistant statement, not the quoted script body."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Distinguishes implemented operations and safeguards from an execution receipt proving successful provisioning."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explicitly includes existing pool loops and seed wrappers in the no-host-loops constraint, without authorizing their detachment."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Explains why `@` having `ro=false` does not contradict block-level seed immutability or the initial read-only mount."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Raises candidate writable-device sources, including native Incus volumes and loop-free disk images, but supplies no supported primitive or evidence that those candidates satisfy container-volume and seed-membership requirements."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Neither provides independently verified resolved model identities or a complete successful/failed panel-member roster. The supplied response labels identify these two entries, not verified panel-wide participation."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Makes recovery without membership churn a separate feasibility requirement, alongside durable intents, mount verification, final Cozo adoption and startup."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Separates upgrade-replica feasibility from persistent-member feasibility, retaining send/receive destination proof, ancestry and stopped root-composition updates."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Highlights that replacing the historical writable-device representation must also preserve the helper's ability to obtain and validate the new sprout FSID; the device-add operand is not the only affected interface."
+      }
+    ],
+    "blind_spots": [
+      "Neither response has the variable definitions or execution receipts needed to establish actual historical device paths, backing objects and successful completion.",
+      "Neither traces the later GPT-root implementation directly; Hermes message 4111 remains a historical assistant claim requiring source corroboration.",
+      "No supported no-loop backing arrangement, exact Incus declaration or complete no-image topology is established.",
+      "Qwen's description of a writable member as a new leaf in the allocation tree risks conflating project terminology with Btrfs internals. Its remount description should distinguish the writable sprout from the immutable seed backing.",
+      "Qwen's possible bridge or block-export suggestion is speculative and does not establish compatibility with the prohibition on new workflows or the restrictions on container block volumes.",
+      "Neither response supplies an actual JEV judgment; advisory agreement must not be recorded as JEV adjudication.",
+      "Complete corpus review, correction propagation, current-versus-installed drift, authoritative adoption and startup remain outside this excerpt-only round.",
+      "The available responses cannot establish unanimous configured-panel consensus or account for members whose results were not supplied."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-plugin-lint",
+  "status": "partial",
+  "files_reviewed": [
+    "crates/op-plugin-lint/Cargo.toml",
+    "crates/op-plugin-lint/examples/README.md",
+    "crates/op-plugin-lint/examples/zeroclaw-final-plugin-schema.json",
+    "crates/op-plugin-lint/examples/zeroclaw-final-schema.json",
+    "crates/op-plugin-lint/examples/zeroclaw-full-schema.json",
+    "crates/op-plugin-lint/src/audit.rs"
+  ],
+  "files_pending": [
+    "crates/op-plugin-lint/examples/zeroclaw-full-schema.with-compare.json (lines 2436-8837)",
+    "crates/op-plugin-lint/examples/zeroclaw-introspect-gaps.json",
+    "crates/op-plugin-lint/examples/zeroclaw-introspect-gaps.md",
+    "crates/op-plugin-lint/examples/zeroclaw.complete.json",
+    "crates/op-plugin-lint/examples/zeroclaw.complete.md",
+    "crates/op-plugin-lint/src/binary.rs",
+    "crates/op-plugin-lint/src/emit.rs",
+    "crates/op-plugin-lint/src/gadget.rs",
+    "crates/op-plugin-lint/src/gaps.rs",
+    "crates/op-plugin-lint/src/introspect.rs",
+    "crates/op-plugin-lint/src/lib.rs",
+    "crates/op-plugin-lint/src/main.rs",
+    "crates/op-plugin-lint/src/repomix.rs",
+    "crates/op-plugin-lint/src/report.rs",
+    "crates/op-plugin-lint/src/rust_emit.rs",
+    "crates/op-plugin-lint/src/subid.rs",
+    "crates/op-plugin-lint/tests/audit_tests.rs",
+    "crates/op-plugin-lint/tests/fixtures/bad_plugin.rs",
+    "crates/op-plugin-lint/tests/fixtures/demo_instance.json",
+    "crates/op-plugin-lint/tests/fixtures/good_plugin.rs"
+  ],
+  "changed_files": [],
+  "occurrence_count": "at least 1 confirmed; total undetermined because file review is incomplete",
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-plugin-lint/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-plugin-lint/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-plugin-lint/occurrences.tsv",
+  "jev_receipts": ["judgments.md: README historical-capture wording; fresh declarative judge, confidence 0.85"],
+  "limitations": ["All-file sequential review incomplete", "Not all tched substrings recorded or judged", "No source edits; no build/tests/runtime/deploy per assignment"],
+  "next_action": "Continue with-compare JSON from line 2436; then read every remaining inventory file sequentially through EOF, judge all substrings, resolve evidence-backed changes, and finalize both result.json files."
+}

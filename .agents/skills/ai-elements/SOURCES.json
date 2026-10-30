@@ -1,0 +1,658 @@
+{
+  "repository": "https://github.com/vercel/ai-elements",
+  "commit": "6a9d5b1822ffb10bba4bd97175f01edd7d8651cd",
+  "source_path": "skills/ai-elements",
+  "license_status": "Upstream root LICENSE retained unchanged.",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "source_path": "skills/ai-elements/SKILL.md",
+      "sha256": "6e1697f6728f131cfbbb6b53543438921ce11faafcc4d5e0cc361b1643324e71"
+    },
+    {
+      "path": "references/agent.md",
+      "source_path": "skills/ai-elements/references/agent.md",
+      "sha256": "8de46c28ccc5ebd5fac21d80b92842b001138342225c22aaf7b06bd563f362f3"
+    },
+    {
+      "path": "references/artifact.md",
+      "source_path": "skills/ai-elements/references/artifact.md",
+      "sha256": "e29139db9c32ad75145959f7236ac3bbfb221a02e8ab8d154099894a7b0e39bc"
+    },
+    {
+      "path": "references/attachments.md",
+      "source_path": "skills/ai-elements/references/attachments.md",
+      "sha256": "807014b23a7a9f539e8de0b04e04dd09ff34720a1aa2d65188501ed4ea21d681"
+    },
+    {
+      "path": "references/audio-player.md",
+      "source_path": "skills/ai-elements/references/audio-player.md",
+      "sha256": "c153e68d60d9dc995c16cce4a86be20c29e4d04200091f4d530fab916543ac94"
+    },
+    {
+      "path": "references/canvas.md",
+      "source_path": "skills/ai-elements/references/canvas.md",
+      "sha256": "a81e79d1ea06a912237641bbe5941a1bf9f49064d368d15849284e08e8fd9079"
+    },
+    {
+      "path": "references/chain-of-thought.md",
+      "source_path": "skills/ai-elements/references/chain-of-thought.md",
+      "sha256": "2f3b911ac35e30fac4b51757b39569355670547e5d062752cac2021b2641421b"
+    },
+    {
+      "path": "references/checkpoint.md",
+      "source_path": "skills/ai-elements/references/checkpoint.md",
+      "sha256": "c5c9e23244f612342c25b74d012197184b9f3ad01e4a26a313aebe2d0b010265"
+    },
+    {
+      "path": "references/code-block.md",
+      "source_path": "skills/ai-elements/references/code-block.md",
+      "sha256": "3bc8fb276c7d633dd3f3cfe6741bc29f20ea9057626ab47df32c5c7800afbbdf"
+    },
+    {
+      "path": "references/commit.md",
+      "source_path": "skills/ai-elements/references/commit.md",
+      "sha256": "88a39198d4ecd38ee3810c6374f5a1063a5dcb9511b16751bd71088e30c727d6"
+    },
+    {
+      "path": "references/confirmation.md",
+      "source_path": "skills/ai-elements/references/confirmation.md",
+      "sha256": "a92f042b15cff43be7a946d68cf08a76acfe731c9320b43086766b4bd99de0ca"
+    },
+    {
+      "path": "references/connection.md",
+      "source_path": "skills/ai-elements/references/connection.md",
+      "sha256": "35dc82bf09c58c1a864fc58b36a61ccb46efc9dac291452b545a90f483beca62"
+    },
+    {
+      "path": "references/context.md",
+      "source_path": "skills/ai-elements/references/context.md",
+      "sha256": "edacdb850ee629f7f83109dbe2ad1d25bb0d925d8a840a6be92ca75a47ae7367"
+    },
+    {
+      "path": "references/controls.md",
+      "source_path": "skills/ai-elements/references/controls.md",
+      "sha256": "d0bd92e0cb14efd1e2171c0b241005194a65207e873626c64159b30f8e4f87c9"
+    },
+    {
+      "path": "references/conversation.md",
+      "source_path": "skills/ai-elements/references/conversation.md",
+      "sha256": "72d382261109347fec1ce6a3f7d3b044098c2cab15080abd823e4d75295c1ef3"
+    },
+    {
+      "path": "references/edge.md",
+      "source_path": "skills/ai-elements/references/edge.md",
+      "sha256": "ab468ad6c3dcf873bb0629ae900bfa98169040ac0e947b2a5cd03e070eb6b47a"
+    },
+    {
+      "path": "references/environment-variables.md",
+      "source_path": "skills/ai-elements/references/environment-variables.md",
+      "sha256": "071788690b1a35182d5abb43dd164e3b2925d7698d4486b3bce3372a513f8a76"
+    },
+    {
+      "path": "references/file-tree.md",
+      "source_path": "skills/ai-elements/references/file-tree.md",
+      "sha256": "0aba8bbe6d2c34790af3be82524ed3d721bea3097410dd0771d73c4482a78e1b"
+    },
+    {
+      "path": "references/image.md",
+      "source_path": "skills/ai-elements/references/image.md",
+      "sha256": "9f8174e57c40af7810869d59908d98af1aceb023e83a0a5e65cd944f8d939944"
+    },
+    {
+      "path": "references/inline-citation.md",
+      "source_path": "skills/ai-elements/references/inline-citation.md",
+      "sha256": "c652d69f0bac69c6e7c07884aaefd1e8e737793152833141cf44762d5dcbe049"
+    },
+    {
+      "path": "references/jsx-preview.md",
+      "source_path": "skills/ai-elements/references/jsx-preview.md",
+      "sha256": "c31d05f2b5929faf833a2b0a4290857233d561475ddd29a34ee8eba244daef7e"
+    },
+    {
+      "path": "references/message.md",
+      "source_path": "skills/ai-elements/references/message.md",
+      "sha256": "4b0e069960830546711fc6334db9a06839dad8d096688ced032e3cf63b602c79"
+    },
+    {
+      "path": "references/mic-selector.md",
+      "source_path": "skills/ai-elements/references/mic-selector.md",
+      "sha256": "3dc56d762357de3b91fa3283ee488e68ae53dea2681fbfe61c71b39cdf021f8e"
+    },
+    {
+      "path": "references/model-selector.md",
+      "source_path": "skills/ai-elements/references/model-selector.md",
+      "sha256": "b483b684512abf2dea82e5867f0a575f7124531925c83a9eefe99e12ceaf1e1b"
+    },
+    {
+      "path": "references/node.md",
+      "source_path": "skills/ai-elements/references/node.md",
+      "sha256": "5a399f56e4fa53c5e5056e84bfa65f3d172983ec95fd80d1ab9337f82c0db84c"
+    },
+    {
+      "path": "references/open-in-chat.md",
+      "source_path": "skills/ai-elements/references/open-in-chat.md",
+      "sha256": "75aa3c4de5aa7b6e49d5a8234a3dfbb7ec4f8cd8bef1ab322fd0e42c4deb8b8c"
+    },
+    {
+      "path": "references/package-info.md",
+      "source_path": "skills/ai-elements/references/package-info.md",
+      "sha256": "2d19cff156c93bec027afb34fdc21144582faced243b86c629fba8c283be1c59"
+    },
+    {
+      "path": "references/panel.md",
+      "source_path": "skills/ai-elements/references/panel.md",
+      "sha256": "b5502294a33861fb68f21b77e7b4b0230ffa8cc21ce65b1b7e6b241e1818d73b"
+    },
+    {
+      "path": "references/persona.md",
+      "source_path": "skills/ai-elements/references/persona.md",
+      "sha256": "6d7b55c59c28e9319a43c455fe809312796d51a1909ad2037faafa8e6b7cec87"
+    },
+    {
+      "path": "references/plan.md",
+      "source_path": "skills/ai-elements/references/plan.md",
+      "sha256": "4f651bbbd55528cdaf52f09bbf12187c73c40dc4efdd13adeb26b5e6d40d8e9b"
+    },
+    {
+      "path": "references/prompt-input.md",
+      "source_path": "skills/ai-elements/references/prompt-input.md",
+      "sha256": "a4c6ab9b8d5e63162db77cccc5361a03442e06fd9d8eb1ada79a4fd9e598ce76"
+    },
+    {
+      "path": "references/queue.md",
+      "source_path": "skills/ai-elements/references/queue.md",
+      "sha256": "a3ad234669d3c6437b1985cd5ed3b730a6fde1ad16fb8f612efa1c03e1bc27ec"
+    },
+    {
+      "path": "references/reasoning.md",
+      "source_path": "skills/ai-elements/references/reasoning.md",
+      "sha256": "0535f191e51124dca48238128e9b792ad69053fd372208aafa617a2392ef18a6"
+    },
+    {
+      "path": "references/sandbox.md",
+      "source_path": "skills/ai-elements/references/sandbox.md",
+      "sha256": "e1acf2a182e097578f127e97d8f2a77b7a72951d8bec03cfe67765ca5887bd71"
+    },
+    {
+      "path": "references/schema-display.md",
+      "source_path": "skills/ai-elements/references/schema-display.md",
+      "sha256": "50f121d0e21327b12daa3f541ad95f97b1a5ca72207f5f1b12fdfd8bc184ce00"
+    },
+    {
+      "path": "references/shimmer.md",
+      "source_path": "skills/ai-elements/references/shimmer.md",
+      "sha256": "9bbf4e1aa2b1cc357645c4abfe5a319ae29fc05e7f13fa34b5e54a5e16967ee2"
+    },
+    {
+      "path": "references/snippet.md",
+      "source_path": "skills/ai-elements/references/snippet.md",
+      "sha256": "d672e32d5476b3b0104b009143f3d0b4360db62d06f13d67a5ac103882269630"
+    },
+    {
+      "path": "references/sources.md",
+      "source_path": "skills/ai-elements/references/sources.md",
+      "sha256": "9334fcee47adc916cdfd0481a9214befe3de69dedaec3cdf1ae1cb877ac84c17"
+    },
+    {
+      "path": "references/speech-input.md",
+      "source_path": "skills/ai-elements/references/speech-input.md",
+      "sha256": "1dadfe4a59ce2b27b1922f40af13f8d847e0abe638ba7fa1a0a061ea9c47a168"
+    },
+    {
+      "path": "references/stack-trace.md",
+      "source_path": "skills/ai-elements/references/stack-trace.md",
+      "sha256": "7a90b467b8128bae6435e45e3898ffd6bd779b6884313c6b07cb8e8e4fc7529c"
+    },
+    {
+      "path": "references/suggestion.md",
+      "source_path": "skills/ai-elements/references/suggestion.md",
+      "sha256": "38cfbefe93ff85b6863645ff8df01975dc4f9bda9758e2178166a17fe668f2e5"
+    },
+    {
+      "path": "references/task.md",
+      "source_path": "skills/ai-elements/references/task.md",
+      "sha256": "cd1589d64dfa12553b9fd376969aebb91d02c57c036fb808e239c982d9ad7f23"
+    },
+    {
+      "path": "references/terminal.md",
+      "source_path": "skills/ai-elements/references/terminal.md",
+      "sha256": "6ce21837bc369e785242211cab38025eed5a7043b15e7379f05e5fe94c13ce9c"
+    },
+    {
+      "path": "references/test-results.md",
+      "source_path": "skills/ai-elements/references/test-results.md",
+      "sha256": "baed0c4137553638cd11c6355bca06a426c42ddefdd05fc44bd784a83b5d6e11"
+    },
+    {
+      "path": "references/tool.md",
+      "source_path": "skills/ai-elements/references/tool.md",
+      "sha256": "4ae349c84b2cdbdf6e136457a6ea0783dca4e20f918e4159568d4ce559818c2e"
+    },
+    {
+      "path": "references/toolbar.md",
+      "source_path": "skills/ai-elements/references/toolbar.md",
+      "sha256": "30e4352c411dc8391a17ad7b014108a0b5c98b5d063f79e845dcda6301375848"
+    },
+    {
+      "path": "references/transcription.md",
+      "source_path": "skills/ai-elements/references/transcription.md",
+      "sha256": "0621911f7b0bd7e1dff106389dd257e4460e462a2f84f15a2d4c8b607d939b90"
+    },
+    {
+      "path": "references/voice-selector.md",
+      "source_path": "skills/ai-elements/references/voice-selector.md",
+      "sha256": "b2269f9690d976e0f166be38551d86f317c86df4a0ed7a550e0bb68c71183c81"
+    },
+    {
+      "path": "references/web-preview.md",
+      "source_path": "skills/ai-elements/references/web-preview.md",
+      "sha256": "6fcaf57fe8bd90b957bf1c1d67c2399b64c4af1023238e7fb189db2715bd55a8"
+    },
+    {
+      "path": "scripts/agent.tsx",
+      "source_path": "skills/ai-elements/scripts/agent.tsx",
+      "sha256": "e36d23a848a44a12313ad7f088656620502a38d6db122e9f365e66ca9e11d807"
+    },
+    {
+      "path": "scripts/artifact.tsx",
+      "source_path": "skills/ai-elements/scripts/artifact.tsx",
+      "sha256": "bc34d822ce48c94a6bfbd5221931db0c6312a2068852ec38d3d6ec189630f6ab"
+    },
+    {
+      "path": "scripts/attachments-inline.tsx",
+      "source_path": "skills/ai-elements/scripts/attachments-inline.tsx",
+      "sha256": "105497bd01b357320e93e31b6dcde996a22416d46c1354cdbdb31dbbc28278ec"
+    },
+    {
+      "path": "scripts/attachments-list.tsx",
+      "source_path": "skills/ai-elements/scripts/attachments-list.tsx",
+      "sha256": "2513a333704b87b9ac81bb26099a89b1be89727dd1ac8805fdb4599f6e66934a"
+    },
+    {
+      "path": "scripts/attachments.tsx",
+      "source_path": "skills/ai-elements/scripts/attachments.tsx",
+      "sha256": "a71b1b097636cda4ab1dcaa44d70aea05facf6a028545ad20a9576982e85b521"
+    },
+    {
+      "path": "scripts/audio-player-remote.tsx",
+      "source_path": "skills/ai-elements/scripts/audio-player-remote.tsx",
+      "sha256": "59040a9e79898a8de0fe88813bca035d7f2abed684465826f4bc322d4c52a2bb"
+    },
+    {
+      "path": "scripts/audio-player.tsx",
+      "source_path": "skills/ai-elements/scripts/audio-player.tsx",
+      "sha256": "055483272f09f8bc38e7787783f682284fb3d4f1532c3131b95a1d315130438f"
+    },
+    {
+      "path": "scripts/chain-of-thought.tsx",
+      "source_path": "skills/ai-elements/scripts/chain-of-thought.tsx",
+      "sha256": "d9149b88f4d30a499bcf2e88d5608111e43d0b6e15d70cac577d48617f6feb90"
+    },
+    {
+      "path": "scripts/checkpoint.tsx",
+      "source_path": "skills/ai-elements/scripts/checkpoint.tsx",
+      "sha256": "c7a6eec6bd09b7e854eeec2726b2a04998dcb749ea531d2401471d8c35a2b254"
+    },
+    {
+      "path": "scripts/code-block-dark.tsx",
+      "source_path": "skills/ai-elements/scripts/code-block-dark.tsx",
+      "sha256": "6f3b11047fa9d2cab32fe650c3067f2f37a40d5e8cac101fa2fc6699283b836a"
+    },
+    {
+      "path": "scripts/code-block.tsx",
+      "source_path": "skills/ai-elements/scripts/code-block.tsx",
+      "sha256": "d32a0212fc90fa7fe0c41cbccbe46de8566da92c109fc24283737add02d8617b"
+    },
+    {
+      "path": "scripts/commit.tsx",
+      "source_path": "skills/ai-elements/scripts/commit.tsx",
+      "sha256": "4efda612212b526704286c7771478628365b1c58fb3a54a5ad46400c83b092a4"
+    },
+    {
+      "path": "scripts/confirmation-accepted.tsx",
+      "source_path": "skills/ai-elements/scripts/confirmation-accepted.tsx",
+      "sha256": "3e8ec0eafd61e92ccdd78e6c645c863d2df87f7f1f7c069c2428e2aad6377e70"
+    },
+    {
+      "path": "scripts/confirmation-rejected.tsx",
+      "source_path": "skills/ai-elements/scripts/confirmation-rejected.tsx",
+      "sha256": "46a85175e83767a788f4148b6c9ae222bf232a5cbd922972d9b4a589aa098734"
+    },
+    {
+      "path": "scripts/confirmation-request.tsx",
+      "source_path": "skills/ai-elements/scripts/confirmation-request.tsx",
+      "sha256": "d3c74a6d4ea699d33054d7e56d6d8ff71678b329c83cba832ea97f6a5aa44df2"
+    },
+    {
+      "path": "scripts/confirmation.tsx",
+      "source_path": "skills/ai-elements/scripts/confirmation.tsx",
+      "sha256": "e6c3305727959f1d90e0e88ad9b5d4ccd4eba23bf93a65eae2bb67e71bc562de"
+    },
+    {
+      "path": "scripts/context.tsx",
+      "source_path": "skills/ai-elements/scripts/context.tsx",
+      "sha256": "c6e8c87e38a44c5d794f31c60e3a52381f215018fb85b80e55a45dd10502ad1f"
+    },
+    {
+      "path": "scripts/conversation.tsx",
+      "source_path": "skills/ai-elements/scripts/conversation.tsx",
+      "sha256": "8bcb200c95ab09e7c63de63a31d66b6251fcf6a03ffb730a3c191b2afa7d71cc"
+    },
+    {
+      "path": "scripts/environment-variables.tsx",
+      "source_path": "skills/ai-elements/scripts/environment-variables.tsx",
+      "sha256": "c29ee611181434400023a56e29ce28f51cae5eb9c2863e3d304a57db2abc120d"
+    },
+    {
+      "path": "scripts/file-tree-basic.tsx",
+      "source_path": "skills/ai-elements/scripts/file-tree-basic.tsx",
+      "sha256": "9fd221b3986079f0612ffe774ad34f194e3d25d74de9580925673b7c345d7656"
+    },
+    {
+      "path": "scripts/file-tree-expanded.tsx",
+      "source_path": "skills/ai-elements/scripts/file-tree-expanded.tsx",
+      "sha256": "1f6d23373f9f3a6b6e768cd611b9cc4ca07e30ca013f9881b25ba991ef2f7141"
+    },
+    {
+      "path": "scripts/file-tree-selection.tsx",
+      "source_path": "skills/ai-elements/scripts/file-tree-selection.tsx",
+      "sha256": "933209ec0e895b3059b3d91cb4dbf531625b5a9143f1a6fcb98c176510709d06"
+    },
+    {
+      "path": "scripts/file-tree.tsx",
+      "source_path": "skills/ai-elements/scripts/file-tree.tsx",
+      "sha256": "24f3616388f92da7476d3784b2f03ffbe7e45844f836de11bfb1d7aafe30af30"
+    },
+    {
+      "path": "scripts/image.tsx",
+      "source_path": "skills/ai-elements/scripts/image.tsx",
+      "sha256": "ad20593bd14c3027e11822843ddbd9a19ccc8e7bb8cd8c0a82cfc8ed1786a8b4"
+    },
+    {
+      "path": "scripts/inline-citation.tsx",
+      "source_path": "skills/ai-elements/scripts/inline-citation.tsx",
+      "sha256": "06ac4d2650228d976065b76b25b3d9b4ce6504d5f9702199879da54987d6276a"
+    },
+    {
+      "path": "scripts/jsx-preview.tsx",
+      "source_path": "skills/ai-elements/scripts/jsx-preview.tsx",
+      "sha256": "7e2abd317b5f2a9f74828edefe039e1d6cff8c60b48cd9377f25e2a2c775ee9f"
+    },
+    {
+      "path": "scripts/message.tsx",
+      "source_path": "skills/ai-elements/scripts/message.tsx",
+      "sha256": "0493016d96ea193f489a7927f540712086a6d856daf687b22ddbff196e621c4f"
+    },
+    {
+      "path": "scripts/mic-selector.tsx",
+      "source_path": "skills/ai-elements/scripts/mic-selector.tsx",
+      "sha256": "f1b07e49dcc05402e2a349aed06e4b0e57b8bceecd9819ce613a46cd52d92c3d"
+    },
+    {
+      "path": "scripts/model-selector.tsx",
+      "source_path": "skills/ai-elements/scripts/model-selector.tsx",
+      "sha256": "75be06438bcda5234d873ac24c484ce8a5cee51c47d3a4e3c3161e18fbf7a75e"
+    },
+    {
+      "path": "scripts/open-in-chat.tsx",
+      "source_path": "skills/ai-elements/scripts/open-in-chat.tsx",
+      "sha256": "7ce522e30d9c031c378452ae93c788a208b962a7168bdfc55041aa0a414649b4"
+    },
+    {
+      "path": "scripts/package-info.tsx",
+      "source_path": "skills/ai-elements/scripts/package-info.tsx",
+      "sha256": "901c2767b40d33b1f91aa51388d13085a3195ab056231fcbd9a74e735aeadad8"
+    },
+    {
+      "path": "scripts/persona-command.tsx",
+      "source_path": "skills/ai-elements/scripts/persona-command.tsx",
+      "sha256": "6fba3f1a042e545aa210e308ae00c273545cd4b7b75068c04f4525662ab0d47a"
+    },
+    {
+      "path": "scripts/persona-glint.tsx",
+      "source_path": "skills/ai-elements/scripts/persona-glint.tsx",
+      "sha256": "71a529de3d5a276ff83bedcab8fd1d8c6f5bc98089ba9528cd94ca24eae3346b"
+    },
+    {
+      "path": "scripts/persona-halo.tsx",
+      "source_path": "skills/ai-elements/scripts/persona-halo.tsx",
+      "sha256": "0f49dd45535fded8e43f5874256aca1dd5d62b72e8d55411493d651ba613fed4"
+    },
+    {
+      "path": "scripts/persona-mana.tsx",
+      "source_path": "skills/ai-elements/scripts/persona-mana.tsx",
+      "sha256": "ef504f2d5b6352ef2fac06ebb4dae40aedaf68d14fdd666f5c221694fe4f85ae"
+    },
+    {
+      "path": "scripts/persona-obsidian.tsx",
+      "source_path": "skills/ai-elements/scripts/persona-obsidian.tsx",
+      "sha256": "972f665a4a897a221db2072e06ee1cd8584c7d54e722d2f0ce300a8636dd6507"
+    },
+    {
+      "path": "scripts/persona-opal.tsx",
+      "source_path": "skills/ai-elements/scripts/persona-opal.tsx",
+      "sha256": "7f5f141b46802e69d23a020e5fc14b74f245e0ee4143bdab5acc7daf98c4810d"
+    },
+    {
+      "path": "scripts/plan.tsx",
+      "source_path": "skills/ai-elements/scripts/plan.tsx",
+      "sha256": "aedfbc69821f60fe755304614d7104a5f88561004ee69761b339d5b3841c055a"
+    },
+    {
+      "path": "scripts/prompt-input-cursor.tsx",
+      "source_path": "skills/ai-elements/scripts/prompt-input-cursor.tsx",
+      "sha256": "a92a14f6cf8be9ff3c56d9afaa6dffc5a571227ba3f5812ef0de6ff9a5125da1"
+    },
+    {
+      "path": "scripts/prompt-input-tooltip.tsx",
+      "source_path": "skills/ai-elements/scripts/prompt-input-tooltip.tsx",
+      "sha256": "f03ff6342b4137b347a5e993c87d10eb5951ed99176049ea6465b81d880c83ac"
+    },
+    {
+      "path": "scripts/prompt-input.tsx",
+      "source_path": "skills/ai-elements/scripts/prompt-input.tsx",
+      "sha256": "ed8a95dadc20c18bf33ddd3cd9059436251f4e60a023f893705703717a5369b8"
+    },
+    {
+      "path": "scripts/queue-prompt-input.tsx",
+      "source_path": "skills/ai-elements/scripts/queue-prompt-input.tsx",
+      "sha256": "fd060453229d735c27af79d7a43e2559d33e53be013dfb23125c6faf93f25ea5"
+    },
+    {
+      "path": "scripts/queue.tsx",
+      "source_path": "skills/ai-elements/scripts/queue.tsx",
+      "sha256": "568615b6565b72049da5e8acdd65c3e6ec0a46d1e1829f5c58a393a36df8be7b"
+    },
+    {
+      "path": "scripts/reasoning.tsx",
+      "source_path": "skills/ai-elements/scripts/reasoning.tsx",
+      "sha256": "0ac5d03694c56c59f4dd676c63b4ace86b0e3ca79c27c46dc511f412478aa519"
+    },
+    {
+      "path": "scripts/sandbox.tsx",
+      "source_path": "skills/ai-elements/scripts/sandbox.tsx",
+      "sha256": "79a5f79b324840dccd7b7b732afe3aadda34efc5ae708d8f82a49136bb48edad"
+    },
+    {
+      "path": "scripts/schema-display-basic.tsx",
+      "source_path": "skills/ai-elements/scripts/schema-display-basic.tsx",
+      "sha256": "388b0d6d31247bbb56b9de3324e66a001702f4964de8c60a16b9039b32783d7e"
+    },
+    {
+      "path": "scripts/schema-display-body.tsx",
+      "source_path": "skills/ai-elements/scripts/schema-display-body.tsx",
+      "sha256": "941dd26ed94847bb792bb8b1f5459e344e0d820dcdc51804254d2385dd683751"
+    },
+    {
+      "path": "scripts/schema-display-nested.tsx",
+      "source_path": "skills/ai-elements/scripts/schema-display-nested.tsx",
+      "sha256": "03d519460a04c9ab9d67176e8161efa5db97c786f4c53a3121eda672f31ac30c"
+    },
+    {
+      "path": "scripts/schema-display-params.tsx",
+      "source_path": "skills/ai-elements/scripts/schema-display-params.tsx",
+      "sha256": "84883f2a17f783edb9c22993da407f2e731073eddc431a15980fdcf030d64590"
+    },
+    {
+      "path": "scripts/schema-display.tsx",
+      "source_path": "skills/ai-elements/scripts/schema-display.tsx",
+      "sha256": "721570b85a7c425f003f1adfac4fe00356bc2e4fead6d9c16283fe3f4c85a64b"
+    },
+    {
+      "path": "scripts/shimmer-duration.tsx",
+      "source_path": "skills/ai-elements/scripts/shimmer-duration.tsx",
+      "sha256": "c7d86732c5ebfaef1c496759a2e2919ed9dea7fef337e2d621990be28e16cc20"
+    },
+    {
+      "path": "scripts/shimmer-elements.tsx",
+      "source_path": "skills/ai-elements/scripts/shimmer-elements.tsx",
+      "sha256": "26bc817bfab244e9b0b12e4adaf3fc87a95f54213435053499cb89ea91a0c77d"
+    },
+    {
+      "path": "scripts/shimmer.tsx",
+      "source_path": "skills/ai-elements/scripts/shimmer.tsx",
+      "sha256": "5b1c83ba49bdaffecc58b8eb5fc2d1f730ea6f6872688fd6dead9d7bd53f8a4b"
+    },
+    {
+      "path": "scripts/snippet-plain.tsx",
+      "source_path": "skills/ai-elements/scripts/snippet-plain.tsx",
+      "sha256": "2b6f48a76914cd1db3ca6bfbf159d0f83f45311f4e0d0cdf1b34a235ae2db8d6"
+    },
+    {
+      "path": "scripts/snippet.tsx",
+      "source_path": "skills/ai-elements/scripts/snippet.tsx",
+      "sha256": "d078c8d7b61479ea70ae078ba56839df5b455aa571b2de76e347ae428509ebe4"
+    },
+    {
+      "path": "scripts/sources-custom.tsx",
+      "source_path": "skills/ai-elements/scripts/sources-custom.tsx",
+      "sha256": "8ceb02178c14c53381cf7f25a3375be2a573580a112303be483148c23738b4e2"
+    },
+    {
+      "path": "scripts/sources.tsx",
+      "source_path": "skills/ai-elements/scripts/sources.tsx",
+      "sha256": "4fd8ddec394197405e686c1d632b380ce0c7a302626fb7e4a372a16d9dd4b347"
+    },
+    {
+      "path": "scripts/speech-input.tsx",
+      "source_path": "skills/ai-elements/scripts/speech-input.tsx",
+      "sha256": "5cc185e24cdfef088d7d2c76a31a18c48fd3db90049bbb8ba3275ad98a6ae1ba"
+    },
+    {
+      "path": "scripts/stack-trace-collapsed.tsx",
+      "source_path": "skills/ai-elements/scripts/stack-trace-collapsed.tsx",
+      "sha256": "ec57c9bda182cde7a1e1b120d4fb54b6f35c94b0ec238e792dcd694fa1d4f443"
+    },
+    {
+      "path": "scripts/stack-trace-no-internal.tsx",
+      "source_path": "skills/ai-elements/scripts/stack-trace-no-internal.tsx",
+      "sha256": "2a57c6a862b5e933b0888d3f049a61391d19951274e9d9357ae09007c08cf0e4"
+    },
+    {
+      "path": "scripts/stack-trace.tsx",
+      "source_path": "skills/ai-elements/scripts/stack-trace.tsx",
+      "sha256": "ba021501ded4935f716f710284c1c1db8ebaa16bc1bf96cb4f959b466e4d2b48"
+    },
+    {
+      "path": "scripts/suggestion-input.tsx",
+      "source_path": "skills/ai-elements/scripts/suggestion-input.tsx",
+      "sha256": "877e7256555f1c9c7c1c32808c9f43bb204d747b78491684d34f49468c8305a4"
+    },
+    {
+      "path": "scripts/suggestion.tsx",
+      "source_path": "skills/ai-elements/scripts/suggestion.tsx",
+      "sha256": "f99cbfd7e0c4ce7bd92fd0bce925af37a316b6408f84489294feb95cc05eea8d"
+    },
+    {
+      "path": "scripts/task.tsx",
+      "source_path": "skills/ai-elements/scripts/task.tsx",
+      "sha256": "07b6f65581068b0afcd5df23973f2fc72880c0f224b8817730a145fc7b175e34"
+    },
+    {
+      "path": "scripts/terminal-basic.tsx",
+      "source_path": "skills/ai-elements/scripts/terminal-basic.tsx",
+      "sha256": "573e2adf152d193e5a0b932ac185fb31d76dceec4407bfef5bf1e786c4abf92d"
+    },
+    {
+      "path": "scripts/terminal-clear.tsx",
+      "source_path": "skills/ai-elements/scripts/terminal-clear.tsx",
+      "sha256": "8e9e7724453269168c1e3c32a858b42be7dda5d3a7eaaf9c7d142240ce7f54eb"
+    },
+    {
+      "path": "scripts/terminal-streaming.tsx",
+      "source_path": "skills/ai-elements/scripts/terminal-streaming.tsx",
+      "sha256": "6add64118a77cf615522b713d39c657007fb9a9b8b26eda5d3c524a5c7b13944"
+    },
+    {
+      "path": "scripts/terminal.tsx",
+      "source_path": "skills/ai-elements/scripts/terminal.tsx",
+      "sha256": "3c5f1b259d0c828561aa1287494f27e8559c5de0a1f592bc358b0374bc21e4f9"
+    },
+    {
+      "path": "scripts/test-results-basic.tsx",
+      "source_path": "skills/ai-elements/scripts/test-results-basic.tsx",
+      "sha256": "d31b0c4922897dd092a1317dce9d73010d8780db554ede29065e8683a8d9809c"
+    },
+    {
+      "path": "scripts/test-results-errors.tsx",
+      "source_path": "skills/ai-elements/scripts/test-results-errors.tsx",
+      "sha256": "d88841b9ec3226a27c9a630ec749e292dbff4db89b8885b409b1bd681f18541b"
+    },
+    {
+      "path": "scripts/test-results-suites.tsx",
+      "source_path": "skills/ai-elements/scripts/test-results-suites.tsx",
+      "sha256": "7659130e2cb9ec20d70bdaceb30a1b020619b5bdbc4850afc16a024615c63f11"
+    },
+    {
+      "path": "scripts/test-results.tsx",
+      "source_path": "skills/ai-elements/scripts/test-results.tsx",
+      "sha256": "a8e5c1fe967c8349e4bea0de0361bccbaba871ef9346e6f7374f97081ea6ff80"
+    },
+    {
+      "path": "scripts/tool-input-available.tsx",
+      "source_path": "skills/ai-elements/scripts/tool-input-available.tsx",
+      "sha256": "28496f812bc4706c28d11fd9abd0baca199585f98334488db3b9f6bea815fd68"
+    },
+    {
+      "path": "scripts/tool-input-streaming.tsx",
+      "source_path": "skills/ai-elements/scripts/tool-input-streaming.tsx",
+      "sha256": "2a6d469911ddaef5eebbec445574c2a81d1c9e77b2264acd8f1fb1f34b732ffb"
+    },
+    {
+      "path": "scripts/tool-output-available.tsx",
+      "source_path": "skills/ai-elements/scripts/tool-output-available.tsx",
+      "sha256": "054ff725738e6e42cb6b72113326c711d8f8a6d7906779b3896816670705aba7"
+    },
+    {
+      "path": "scripts/tool-output-error.tsx",
+      "source_path": "skills/ai-elements/scripts/tool-output-error.tsx",
+      "sha256": "d8856b6365349f6936491845991c8840b2dc1278d655c381fd2b085192995e54"
+    },
+    {
+      "path": "scripts/tool.tsx",
+      "source_path": "skills/ai-elements/scripts/tool.tsx",
+      "sha256": "64053575e475d0caf17100f883f63f4296b45444d7865e543b37ec990dd97137"
+    },
+    {
+      "path": "scripts/transcription.tsx",
+      "source_path": "skills/ai-elements/scripts/transcription.tsx",
+      "sha256": "4211577988bea98fd7b6e060f1bec48886ca5ecf2fc72c6489c8c5534dc37b29"
+    },
+    {
+      "path": "scripts/voice-selector.tsx",
+      "source_path": "skills/ai-elements/scripts/voice-selector.tsx",
+      "sha256": "34f71bcd6267068ee8f233b0fc75a93c514ea1f7eed5d8a9437f47f1e85d4e17"
+    },
+    {
+      "path": "scripts/web-preview.tsx",
+      "source_path": "skills/ai-elements/scripts/web-preview.tsx",
+      "sha256": "161c86cb08d1bfa7a51079c43b7d42c28a551cc0651ef35650cc8e450072f936"
+    },
+    {
+      "path": "LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "b4f9adb7c568904834d0dd6cc98d16c390d21ca32fc17ae7a267715269bd5529"
+    }
+  ]
+}

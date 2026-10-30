@@ -1,0 +1,108 @@
+{
+  "status": "ok",
+  "query": "Provide a concise risk checklist for a strictly source-only Rust cleanup: remove an obsolete binary_namespace module and its exported mod declaration, remove tched_router attach_model_routes registration and early namespace dispatch, preserving native typed config_* APIs and native capabilities. No builds, tests, diagnostics, service or grant actions permitted. Main agent owns documentation; worker must confirm callers with source evidence and shared ownership before editing.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "**Source-only cleanup risk checklist**\n\n- **Ownership:** Read current `HANDOFF.md` before edits; claim only the obsolete module and agreed call-site changes. Coordinate changes to shared files with Main. Do not touch Main-owned `threetched.rs`, mount wiring or documentation.\n- **Module consumers:** Locate `binary_namespace` imports, qualified references, re-exports and registration calls throughout source, including conditional compilation and macro-generated references. Record exact file/line evidence before deleting its file and exported `mod` declaration.\n- **Registration dependencies:** Trace `attach_model_routes` and every route it registers. Confirm removing the registration does not remove a still-required native typed `config_*` operation or leave a caller targeting the retired namespace.\n- **Dispatch fallthrough:** Identify exactly which methods the early namespace dispatch intercepts. Confirm retained methods reach their existing canonical handler afterward; retired names must fail truthfully, not fall through to an unrelated handler.\n- **Authorization:** Preserve native capability IDs and admission checks unchanged. Removal must not create an alternate dispatch path that bypasses identity or capability enforcement. No aliases or grant rewrites.\n- **State and results:** Confirm the removed code has no remaining responsibility for scoped state, committed publication, argument conversion or error propagation needed by retained operations.\n- **Minimal deletion:** Remove only the obsolete module, export, registration, dispatch branch and imports/helpers made exclusively unused by those deletions. Preserve shared modifications and native typed config APIs.\n- **Handoff:** Give Main exact changed files, source-backed caller findings and unresolved dependencies. Label the result **source-only; not built, tested, sealed or deployed**. Run no builds, tests, diagnostics, service or grant actions.\n\n**Evidence limitation:** The supplied brief does not contain the definitions or callers of `binary_namespace` or `attach_model_routes`. Their removal safety and current shared ownership are therefore **not confirmed** here; no edits or commands were performed."
+    },
+    {
+      "model": "opus-5-5",
+      "content": "# Risk checklist: source-only removal of `binary_namespace` and `attach_model_routes`\n\nThis is advisory. I ran no tools for this answer. Every item is something the worker should establish from source before or while editing. Nothing here claims an observed result.\n\n## A. Ownership gate (before any edit)\n- [ ] Read `HANDOFF.md` and add or claim a row naming the exact files. Main/parent owns `threetched.rs` and `mount-3tchedfs`. If either touches the namespace or route code, message `Main` first. Do not edit those files yourself.\n- [ ] Check for uncommitted shared edits in each target file, especially `mod.rs`, `mutation_engine.rs` and `tched_router.rs`. Use `edit` for surgical hunks only. Do not overwrite whole files, and do not reset, stash or check out.\n- [ ] Do not repeat deletions already made in source, such as the wrapper modules and their hash-helper edits. Reconcile with them instead.\n\n## B. Caller evidence for `binary_namespace`\n- [ ] Grep the whole repo, not one crate, for:\n  - `binary_namespace`\n  - `mod binary_namespace`\n  - `pub use .*binary_namespace`\n  - `crate::\u2026::binary_namespace`\n  - `super::binary_namespace`\n  - the module's exported symbol names, individually\n- [ ] Look for indirection that a plain identifier grep misses:\n  - `#[path = \u2026]`\n  - `cfg(feature/test)` gates\n  - `build.rs`, benches, examples and `tests/`\n  - macro-built identifiers (`paste!`, `concat!`)\n  - registry or self-registration patterns (`inventory`, `linkme`, `ctor`, `distributed_slice`)\n- [ ] Find string-keyed references (`\"binary_namespace\"`, namespace prefixes) in:\n  - dispatch tables and toolset or schema JSON\n  - `deploy/` scripts\n  - the 3tched.com UI (`door-chat-adapter.ts`, `native-routing.ts`, `router-committed-route.ts`)\n- [ ] Check whether any symbol is re-exported through a crate `lib.rs` and consumed by another workspace crate. Removing the `pub mod` would break that consumer silently, because no build will run.\n- [ ] Stop condition: if any live caller remains that is not itself being removed, do not delete. Report the caller with file:line.\n\n## C. `attach_model_routes` and early namespace dispatch\n- [ ] Find every registration site, including builder chains and conditional or feature-gated registration. Confirm that ordering-dependent route tables don't shift behavior for neighbouring entries.\n- [ ] List exactly which method names the early dispatch intercepted. For each one, decide its post-removal path:\n  - Handled by a native typed `config_*` handler, unchanged.\n  - Explicitly retired, returning a truthful unsupported or unknown-method status.\n- [ ] Watch for a silent fall-through to a different handler, such as a generic CLI or hashed-capability path. That would change capabilities and could produce fake success.\n- [ ] Verify that aliases (`get/init/list/patch/set` mapped to `config_*`) are **not** resolved inside the code being deleted. If they are, the alias resolution must move or be preserved rather than lost.\n- [ ] Check whether `attach_model_routes` backs `GetModelRoutes` or another declared router method. If it does, that method needs an explicit disposition (retire or defer) and a record. Otherwise the sealed schema will still declare a method with no handler, which is a schema/dispatch mismatch.\n- [ ] Confirm that masking, coherent state observation and SHM commit-before-notify for `config_*` don't depend on hooks inside the removed dispatch.\n\n## D. Capabilities and grants\n- [ ] Make sure native `config_*` method names, argument shapes and capability ids remain textually identical. That includes any capability derived or hashed from a method name or namespace string. Don't touch shared hash helpers.\n- [ ] Do not rewrite grants. Grants that reference retired methods become dangling. List them for Main and leave them unchanged.\n- [ ] Preserve admission order: identity check, then capability check, then dispatch. Early dispatch sometimes runs *before* admission, so confirm whether removing it changes admission for any method.\n\n## E. Compile risks you cannot build to catch\n- [ ] Remove `use` items that only served the deleted code. Check for `#![deny(warnings)]`, `deny(unused_*)`, `dead_code` and workspace `[lints]` in `Cargo.toml`. With a deny in place, a leftover import breaks the release build.\n- [ ] Remove helpers that are used **only** by the deleted code, after grepping each one. Keep anything with another caller.\n- [ ] Check that enum variants and match arms used only by the removed dispatch don't leave exhaustive matches broken or variants unreachable.\n- [ ] Check that trait impls and `impl` blocks in the module aren't required by generic bounds elsewhere.\n\n## F. Out of scope and boundary\n- [ ] No Cargo, fmt, Clippy, tests, seal, service, grant or storage actions.\n- [ ] No `sed`, `perl` or `python` edits.\n- [ ] No docs edits (Main owns them). Don't touch `proto/` or generated output by hand.\n- [ ] Hand-off status must read \"implemented (source), unbuilt, unsealed, untested\". Include:\n  - the exact files and hunks changed\n  - the removed symbols and method dispositions\n  - any dangling grants or schema entries found\n- [ ] Name the checks Main should run: the GNU release workspace build, the isolated `opblob seal-plugins` catalog delta, and a grep confirming the UI has no references."
+    },
+    {
+      "model": "kimi-k3",
+      "content": "I'll investigate the actual source state before writing the checklist: locate `binary_namespace`, `attach_model_routes`, the early namespace dispatch, their callers, and current HANDOFF ownership. tool=\"grep\" index=\"1\" key=\"pattern\" type=\"string\"binary_namespace key=\"path\" type=\"string\"/srv/git/odbus-verified key=\"output_mode\" type=\"string\"files_with_matches tool=\"grep\" index=\"2\" key=\"pattern\" type=\"string\"attach_model_routes key=\"path\" type=\"string\"/srv/git/odbus-verified key=\"output_mode\" type=\"string\"files_with_matches tool=\"read\" index=\"3\" key=\"path\" type=\"string\"/srv/git/odbus-verified/HANDOFF.md"
+    },
+    {
+      "model": "glm-5-3",
+      "content": "# Risk checklist: source-only `binary_namespace` + `attach_model_routes` removal\n\n## 1. Ownership / coordination\n- **HANDOFF claim first**: add an Active-work row before any edit; check no sibling owns `tched_router.rs`, `mod.rs`, dispatch, or hash-helper files. Message idle peers (OverlapScout, WrapperScout) if their scope touches these.\n- The prior wrapper deletion was **unbuilt/unsealed** \u2014 confirm your edit composes with those half-applied removals rather than reverting or duplicating them.\n\n## 2. `binary_namespace` removal\n- **Grep the whole workspace**, not just the declaring crate, for: `binary_namespace`, `mod binary_namespace`, `use ...binary_namespace`, and any re-export (`pub use`) before deleting the file. A single missed `use` breaks the build the main agent will run later.\n- Check **generated surfaces** (`src/grpc/gen/`, schema views, toolsets) for references \u2014 generated files must be regenerated by existing mechanisms, never hand-edited, and stale references there are the most likely compile break.\n- Check **capability/hash helpers**: if the module contributed to capability hashing or grant tables, removing it changes hashes. Per constraints, no grant actions \u2014 so flag any hash/grant-table impact to Main rather than editing policy.\n- Check the **sibling UI** (`/srv/git/3tched.com`) for method names the module exposed; a removed method with live UI callers needs a truthful unsupported outcome or a caller migration note, not silent deletion.\n\n## 3. `attach_model_routes` / early namespace dispatch removal\n- **Preserve native typed `config_*` APIs**: verify the early dispatch path doesn't also serve `config_get/init/list/migrate/patch/set` or the 15 config-group router methods. If dispatch order matters (early namespace dispatch shadowing native paths), removing it may change which handler answers \u2014 trace each affected method's new resolution path with source evidence.\n- **Callers of the registration**: find who calls `attach_model_routes` (likely `tched_router.rs` plugin registration or bridge dispatch). Removing registration without removing the dispatch arm, or vice versa, leaves dead code or a panic path.\n- **Capability mapping**: the removed routes may carry exact capabilities distinct from native ones. Removing the route removes the capability check point \u2014 confirm the native path performs equivalent admission (actor/session, read/write distinction) so this isn't a silent authorization change. No wildcard grants, no bypass.\n- **State/receipts**: if the early dispatch committed SHM state or produced typed receipts, confirm the native path does the same or record the behavior change as a deliberate disposition (retire/defer), not a fake success.\n\n## 4. Cross-cutting\n- **Mount adapter** (`deploy/runit/libexec-3tched/mount-3tchedfs`): parent owns `mount-3tchedfs` and `threetched.rs` \u2014 do not edit; only report if the removal implies mount-selection changes.\n- **Catalog consistency**: removing dispatch without removing the corresponding schema declarations (or vice versa) creates drift between mounted declarations and code. Note which side Main must reconcile at seal time.\n- **No builds/tests/Clippy/fmt** \u2014 so you cannot lean on the compiler to catch missed references. Compensate with exhaustive `grep` of every removed symbol, including string-form references (method names in match arms, serde tags, test fixtures, docs you don't own).\n- **Documentation is Main's** \u2014 do not edit SIGNALS/WISHLIST/HANDOFF beyond your ownership row.\n\n## 5. Evidence to hand back\n- Exact file/line list of removals and the grep evidence that no callers remain.\n- Per-method disposition for anything the removed dispatch served (migrated to native path / retired / deferred), with the native capability that now governs admission.\n- Explicit list of unverified items (no build run): compile status unknown, catalog delta unknown, hash/grant impact flagged for Main."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "I will investigate the codebase to locate `binary_namespace`, `attach_model_routes`, and their callers to formulate the risk checklist."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The substantive checklists require shared-ownership confirmation before editing and preservation of Main-owned files and existing modifications.",
+      "Removal safety depends on tracing module exports, registration sites, dispatch branches, and remaining callers across source.",
+      "Native typed config_* APIs, exact native capabilities, and identity admission must remain unchanged.",
+      "Removed namespace methods must not silently fall through to unrelated handlers or produce fake success.",
+      "The cleanup must remain source-only, with no builds, tests, service changes, or grant actions, and its handoff must disclose unverified status."
+    ],
+    "contradictions": [
+      {
+        "topic": "Preservation of compatibility aliases",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Explicitly prohibits aliases as part of the cleanup."
+          },
+          {
+            "model": "opus-5-5",
+            "stance": "Says alias resolution must move or be preserved if it resides in the deleted code, potentially expanding the cleanup beyond the stated no-alias boundary."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Provide actionable risk checklists, but no observed source findings or confirmed ownership."
+      },
+      {
+        "models": [
+          "kimi-k3",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Only announce an investigation; neither delivers the requested checklist. Kimi includes apparent tool-call text but no returned evidence."
+      },
+      {
+        "models": [
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Explicitly cover sibling UI callers, generated surfaces, schema/dispatch consistency, and reconciliation with earlier wrapper deletions."
+      },
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5",
+          "glm-5-3"
+        ],
+        "point": "Cover potential state-publication and error-semantics dependencies, but these remain conditional risks rather than established responsibilities of the removed module."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Clearly distinguishes an advisory checklist from verified removal safety and explicitly states that the supplied brief lacks the relevant definitions and callers."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Identifies less visible compile-time dependencies: path attributes, feature gates, macro-generated references, self-registration, trait implementations, exhaustive matches, and deny-unused lint settings."
+      },
+      {
+        "model": "opus-5-5",
+        "insight": "Calls out dangling grants as something to report without modifying policy and distinguishes removal of admission checkpoints from preservation of admission ordering."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Explicitly separates unknown compile status, unknown catalog delta, and possible hash/grant impact in the proposed handoff."
+      }
+    ],
+    "blind_spots": [
+      "No response establishes actual callers, exported symbols, dispatch behavior, capabilities, or current shared ownership with observed source evidence.",
+      "The panel does not establish whether attach_model_routes owns declarations, runtime handlers, aliases, or some combination; recommendations about its effects are conditional.",
+      "Claims that generated references are the most likely compile failure, or that deleting a hashing-related module necessarily changes hashes, are unsupported.",
+      "The longer checklists risk expanding a concise source-only cleanup into broader catalog, UI, and compatibility work without first demonstrating affected consumers.",
+      "Mandatory repository and skill preloads are not demonstrated; Kimi's apparent investigation begins with searches rather than the required prerequisite reads.",
+      "Most responses enumerate prohibited checks but do not explicitly repeat the blanket prohibition on diagnostics; source inspection should not be confused with permission to run operational probes."
+    ]
+  }
+}

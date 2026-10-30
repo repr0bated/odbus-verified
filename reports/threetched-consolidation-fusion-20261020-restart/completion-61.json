@@ -1,0 +1,63 @@
+{
+  "request": 61,
+  "started": "2026-10-20T17:19:59.324965+00:00",
+  "finished": "2026-10-20T17:20:10.136259+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-07836491fe72f6a7016ad7a2c5cc2c87d18722a9a5fd241eb4",
+    "created": 1792516806,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Stopping original-byte provenance investigation\",\"path\":\"agent://ReleaseReceiptScout\",\"content\":\"Parent stopped further investigation; no original bytes held. Do not pursue. Reporting regenerated same catalog/report only, without formatting-only or semantic-equivalence claim.\"}",
+                "name": "write"
+              },
+              "id": "call_e0UXv2PLhVmllzNOWYyrQhuW",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 177,
+      "prompt_tokens": 204655,
+      "total_tokens": 204832,
+      "completion_tokens_details": {
+        "reasoning_tokens": 33
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 133329
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:20:10.134764+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,33 @@
+#!/bin/sh
+# Keep the control-plane chatbot's existing identity container running.
+# Starts and stops the Incus instance only; storage, Btrfs members and the
+# identity record stay with their owners. Humans start at login in the bridge.
+exec 2>&1
+NAME=${CHATBOT_CONTAINER:-3tchedCtlChatbot}
+rm -f /run/opdbus/runit-ready/chatbot-identity
+sv start incus >/dev/null 2>&1 || true
+i=0
+until incus info >/dev/null 2>&1; do
+    i=$((i + 1))
+    [ "$i" -lt 90 ] || { echo 'incusd API not ready after 90s' >&2; exit 1; }
+    sleep 1
+done
+state() { incus list -f csv -c s "^${NAME}\$" 2>/dev/null; }
+[ -n "$(state)" ] || { echo "container $NAME does not exist" >&2; exit 1; }
+if [ "$(state)" != RUNNING ]; then
+    echo "starting $NAME"
+    incus start "$NAME" || { incus info "$NAME" --show-log 2>&1 | tail -n 40; exit 1; }
+fi
+i=0
+until [ "$(state)" = RUNNING ]; do
+    i=$((i + 1))
+    [ "$i" -lt 60 ] || { echo "$NAME did not reach RUNNING" >&2; exit 1; }
+    sleep 1
+done
+echo "$NAME is RUNNING"
+install -d -m 755 /run/opdbus/runit-ready
+: > /run/opdbus/runit-ready/chatbot-identity
+trap 'echo "stopping $NAME"; incus stop "$NAME" --timeout 30 || incus stop "$NAME" --force; exit 0' TERM INT HUP
+while [ "$(state)" = RUNNING ]; do sleep 5 & wait $!; done
+echo "$NAME left RUNNING; exiting for restart"
+exit 1

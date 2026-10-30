@@ -1,0 +1,2 @@
+sample5 2026-09-30T17:42:01Z rss_kB=13488848 swap_kB=4484432 combined_kB=17973280 combined_MiB=17552.031250
+overall_sample1_to_5 rss_delta_MiB=240.414062 swap_delta_MiB=-240.644531 combined_delta_kB=-236 combined_delta_MiB=-0.230469

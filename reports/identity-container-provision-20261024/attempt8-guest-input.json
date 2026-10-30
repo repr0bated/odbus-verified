@@ -1,0 +1,11 @@
+{
+  "task": "identity-container-provision-20261024",
+  "at": "2026-10-25T02:38:54Z",
+  "purpose": "offline-guest-input-only",
+  "client_sha256": "32090c85463f770dd2a60f632f26cb4b95fc21386e0dec728bd84b1a3dd81929",
+  "native_sha256": "454ff4c18822535e782b0f9010d348302d4555709872b9f0e3830239c07ddf65",
+  "native_manifest_sha256": "a08341900e3fc3bb7a1f4f263bbbfe23c2e73a2eced66724bc3359e01e48bfad",
+  "catalog_manifest_sha256": "a2b26c05dd52836ff4fdad2880bc996d0d84bfcfefec5c0893c5aa42edcb32c6",
+  "host_deployed": false,
+  "guest_boot_verified": false
+}

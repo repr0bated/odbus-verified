@@ -1,0 +1,126 @@
+#!/bin/sh
+# Installed base-system launcher; holds one open-file-description lock through exec.
+# Base-installation authorization contract (never installed by this launcher):
+# /usr/local/libexec/opdbus-release is root:root 0755, outside every application
+# overlay, containing ONLY op-release, op-release-launch and manifest.sha256.
+# The executables and /etc/init.d/op-release-activate are root:root 0755 regular
+# single-link files. The manifest is root:root 0600, with exactly one canonical
+# SHA256 line ("<64 lowercase hex>  <absolute path>") for each of those THREE
+# executables, including the init script outside this directory. No self-entry.
+# Authorize those bytes together from the independently authored op-deployment
+# op-release build and these two source scripts; never approve a historical
+# controller by copying or renaming it. Publish the manifest only after review
+# of the complete installed set, with release/boot callers inactive during the
+# base installation. This is root approval, not a remotely signed provenance
+# claim. No generated manifest, fallback, or live installation is performed here.
+# Existing receiver.json, first-activation.json and native lifetime gates remain
+# separate authorities; this kit neither creates nor relaxes them.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+LC_ALL=C
+export PATH LC_ALL
+umask 077
+base=/usr/local/libexec/opdbus-release
+state=/var/lib/opdbus-release
+runtime=/run/opdbus-release
+[ "$#" -gt 0 ] || { echo 'usage: op-release-launch {release|deploy|provision-slots|status|activate a|b|rollback|abort|boot}' >&2; exit 2; }
+verb=$1
+case "$verb" in
+  activate) [ "$#" -eq 2 ] && { [ "$2" = a ] || [ "$2" = b ]; } || exit 2 ;;
+  release|deploy|provision-slots|status|rollback|abort|boot) [ "$#" -eq 1 ] || exit 2 ;;
+  *) echo 'unsupported release verb; host/Incus provisioning belongs to its existing owner' >&2; exit 2 ;;
+esac
+# Independently authored, read-only release-kit verifier. It intentionally has
+# no shell-source dependency and knows no storage daemon, guard tool or helper.
+fail() { printf 'op-release-launch: %s\n' "$*" >&2; exit 1; }
+secure_directory() {
+    [ -d "$1" ] && [ ! -L "$1" ] &&
+        [ "$(stat -c %u:%g "$1")" = 0:0 ] &&
+        [ "$((0$(stat -c %a "$1") & 07022))" -eq 0 ] ||
+        fail "insecure directory: $1"
+}
+secure_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] &&
+        [ "$(stat -c %u:%g:%a:%h "$1")" = "0:0:$2:1" ] ||
+        fail "expected root-owned, non-symlink, single-link mode $2 file: $1"
+}
+verify_release_kit() {
+    for directory in / /usr /usr/local /usr/local/libexec "$base" /etc /etc/init.d; do
+        secure_directory "$directory"
+    done
+    [ "$(stat -c %a "$base")" = 755 ] || fail 'release-kit directory must be mode 0755'
+    secure_file "$base/op-release" 755
+    secure_file "$base/op-release-launch" 755
+    secure_file /etc/init.d/op-release-activate 755
+    secure_file "$base/manifest.sha256" 600
+    # Reject mixed kits, including unmanifested hidden files and subdirectories.
+    for entry in "$base"/* "$base"/.[!.]* "$base"/..?*; do
+        [ -e "$entry" ] || [ -L "$entry" ] || continue
+        case "${entry##*/}" in
+            op-release|op-release-launch|manifest.sha256) ;;
+            *) fail "unexpected release-kit entry: $entry" ;;
+        esac
+    done
+    [ "$(stat -c %s "$base/manifest.sha256")" -le 1024 ] ||
+        fail 'release-kit manifest is oversized'
+    awk '
+        BEGIN {
+            allowed["/usr/local/libexec/opdbus-release/op-release"] = 1
+            allowed["/usr/local/libexec/opdbus-release/op-release-launch"] = 1
+            allowed["/etc/init.d/op-release-activate"] = 1
+        }
+        {
+            if (NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-f]/ ||
+                $0 != $1 "  " $2 || !($2 in allowed) || seen[$2]++) {
+                invalid = 1
+                exit 1
+            }
+            count++
+        }
+        END { if (invalid || count != 3) exit 1 }
+    ' "$base/manifest.sha256" || fail 'manifest must name exactly the three approved release-kit files'
+    sha256sum --strict --check --quiet "$base/manifest.sha256" ||
+        fail 'approved release-kit digest mismatch'
+    # Existing approval policy data only. New kernels/BTF require separate
+    # review; successful hashing or a lifetime feature does not confer approval.
+    btf=$(sha256sum /sys/kernel/btf/vmlinux) || fail 'kernel BTF is unavailable'
+    kernel=$(uname -r) || fail 'kernel release is unavailable'
+    case "$kernel ${btf%% *}" in
+        '6.18.57-x64v3-op-release-lifetime1-xanmod1 418e74eb9598f5747b4039d3934d77f244b1d9e7ba0f64d729c21a6ddebdb975' | \
+        '6.18.56-x64v3-xanmod1 488c010609b5e98244ddf062cd7bcaf86b17b2a32bc70b369ca3c2a4efd59cb2' | \
+        '6.12.111+deb13-amd64 117c3da349bc97db5eb4c0627b7b12afc9a3f83686e35c2b28d6031e13767018') ;;
+        *) fail 'kernel/BTF pair requires separate policy approval' ;;
+    esac
+}
+verify_release_kit
+if [ "$verb" = status ]; then
+    exec "$base/op-release" "$@"
+fi
+[ "$(id -u)" -eq 0 ] || { echo 'release requires the authorized root owner' >&2; exit 1; }
+for directory in /var /var/lib "$state" /run; do
+    secure_directory "$directory"
+done
+secure_file "$state/lock" 600
+if [ -e "$runtime" ] || [ -L "$runtime" ]; then secure_directory "$runtime"; fi
+install -d -m 0755 -o root -g root "$runtime"
+exec 9>>"$state/lock"
+if ! flock -n 9; then
+    if [ "$verb" = boot ]; then
+        temporary=$(mktemp "$runtime/.ready.XXXXXX")
+        printf 'recovery-pending lock-busy\n' > "$temporary"
+        chmod 0644 "$temporary"
+        mv -f "$temporary" "$runtime/ready"
+    fi
+    echo 'another release transaction holds fd9' >&2
+    exit 1
+fi
+if [ "$verb" != boot ]; then
+    # Membership is preinstalled authority, not a request to turn the guard on.
+    # Never create a cgroup, alter trusted maps, auto-rearm or require guard ON.
+    [ -f /sys/fs/cgroup/opdbus-release/cgroup.procs ] || {
+        echo 'approved existing release cgroup is absent' >&2; exit 1;
+    }
+    printf '%s\n' "$$" > /sys/fs/cgroup/opdbus-release/cgroup.procs
+fi
+# No top-level mount, independent recovery process, or restart-all loop here.
+exec "$base/op-release" "$@"

@@ -593,6 +593,7 @@ fn introspection_xml(present: &PresentPlugin) -> Result<String> {
     <annotation name="org.opdbus.v1.SchemaHash" value="{hash}"/>
     <annotation name="org.opdbus.v1.PluginSchema" value="{metadata}"/>
     <method name="Call"><arg name="method" type="s" direction="in"/><arg name="json_args" type="s" direction="in"/><arg type="s" direction="out"/></method>
+    <method name="CallWithOperationId"><arg name="method" type="s" direction="in"/><arg name="json_args" type="s" direction="in"/><arg name="operation_id" type="s" direction="in"/><arg type="s" direction="out"/></method>
     <method name="GetProperty"><arg name="name" type="s" direction="in"/><arg type="s" direction="out"/></method>
     <method name="GetAllProperties"><arg type="s" direction="out"/></method>
     <method name="SetProperty"><arg name="name" type="s" direction="in"/><arg name="json_value" type="s" direction="in"/><annotation name="org.opdbus.v1.WriteRoute" value="freedesktop.Call(Set) with target mutation admission"/></method>

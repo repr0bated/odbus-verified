@@ -1,0 +1,44 @@
+{
+  "request": 4,
+  "started": "2026-10-19T04:37:01.132340+00:00",
+  "finished": "2026-10-19T04:37:32.838209+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 3,
+    "panel_failures": 2,
+    "analysis_available": true
+  },
+  "tool_names": [],
+  "response": {
+    "id": "chatcmpl-064b2c5d2b101534016ad59e8aabc087d09f44153a428ba076",
+    "created": 1792384650,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "<title>Diagnose unfinished identity-container provisioning</title>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 45,
+      "prompt_tokens": 4759,
+      "total_tokens": 4804,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1222
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:37:30.170393+00:00",
+  "stream_chunks": 3
+}

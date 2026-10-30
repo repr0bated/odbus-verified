@@ -1,0 +1,95 @@
+{
+  "request": 91,
+  "started": "2026-10-18T22:02:31.572332+00:00",
+  "finished": "2026-10-18T22:02:42.679043+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0b36f2770731bccd016ad541fa605c87d086dc1d89579ebda7",
+    "created": 1792360954,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading legacy paired publication path\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs:1-155\"}",
+                "name": "read"
+              },
+              "id": "call_kKY0NYoBTxhYVxOliGsbKDL4",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading pinned missing method error\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/method_contract_admission.rs:157-170\"}",
+                "name": "read"
+              },
+              "id": "call_92NCYmVlC4R2czVVL2Ap6yXa",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading canonical state response\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router.rs:2377-2446\"}",
+                "name": "read"
+              },
+              "id": "call_3CUFdinUBKOCfakOtANlg7vn",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading exact route validation\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs:60-130\"}",
+                "name": "read"
+              },
+              "id": "call_lw2fqxlMokP3g6pbpyROZGN4",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating preserved observation helper\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/large_language_model_dispatch.rs\",\"pattern\":\"observed_tched_router_state|persist_tched_router_observation|coherent_observation\"}",
+                "name": "grep"
+              },
+              "id": "call_BdLxmKpz26qXmTygcT0XSW7A",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 672,
+      "prompt_tokens": 116129,
+      "total_tokens": 116801,
+      "completion_tokens_details": {
+        "reasoning_tokens": 130
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 58945
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:02:42.676271+00:00",
+  "stream_chunks": 12
+}

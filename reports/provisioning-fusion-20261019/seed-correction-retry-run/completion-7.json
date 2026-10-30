@@ -1,0 +1,64 @@
+{
+  "request": 7,
+  "started": "2026-10-19T05:39:49.371463+00:00",
+  "finished": "2026-10-19T05:40:08.111919+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-08f336811ce4c8f3016ad5ad2866e887d0a8f9f36e5b82df2d",
+    "created": 1792388392,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording correction recovery ingestion\",\"input\":\"[/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/ingestion-receipt.json#FB87]\\nPUT >2:\\n+  \\\"current_recovery\\\": {\\n+    \\\"status\\\": \\\"Owner seed-mechanism correction received; semantic review continuation pending\\\",\\n+    \\\"actual_reads\\\": [\\n+      {\\\"path\\\":\\\"latest-owner-correction.json\\\",\\\"lines\\\":\\\"1-11\\\",\\\"complete\\\":true},\\n+      {\\\"path\\\":\\\"subvolume-preference.json\\\",\\\"lines\\\":\\\"1-10\\\",\\\"complete\\\":true},\\n+      {\\\"path\\\":\\\"manifest.json\\\",\\\"lines\\\":\\\"1-26,59,1256 and structural summary\\\",\\\"complete\\\":false},\\n+      {\\\"path\\\":\\\"analysis/recovery-semantic-coverage.json\\\",\\\"lines\\\":\\\"1-2,3173,3457-3500 and structural summary\\\",\\\"complete\\\":false},\\n+      {\\\"path\\\":\\\"recovery/checkpoint.json\\\",\\\"lines\\\":\\\"1-29,51-52,141-151 and structural summary\\\",\\\"complete\\\":false},\\n+      {\\\"path\\\":\\\"analysis/ingestion-receipt.json\\\",\\\"lines\\\":\\\"1-85\\\",\\\"complete\\\":true}\\n+    ],\\n+    \\\"original_evidence_received\\\": [\\\"Current owner correction verbatim in request\\\", \\\"Commit 26a4ad132fbbd4523b05724060bfdeb9ca661824 op-identity-root lines 1172-1196\\\", \\\"Hermes original records 4095,4099,4111 quoted in request\\\"],\\n+    \\\"constraints\\\": [\\\"NO HOST LOOP DEVICES, including pool and seed wrappers\\\", \\\"Prefer no disk images/subvolumes only if retained semantics survive\\\", \\\"Preserve btrfs device add seed/sprout mechanism; distinguish backing, member, Cozo association, exposed subvolumes and upgrade replica\\\", \\\"Writes only under analysis/; no implementation/runtime/storage/identity/grant/service/build/test/deployment/provisioning changes\\\", \\\"No new agents/workpools; one explicit smol completion at a time; reuse completed reviews\\\"],\\n+    \\\"judge_role\\\": \\\"JEV judges decisions/evidence only, never routing or mutation authorization\\\",\\n+    \\\"coverage_gaps\\\": [\\\"First correction panel not yet obtained\\\", \\\"Completed packet metadata not yet fully read; preserve existing reviews\\\", \\\"Pending packets and supplements not yet reviewed in this session\\\", \\\"Existing source reports need integration, not repeated research\\\"],\\n+    \\\"prior_receipt_note\\\": \\\"Remaining fields below are preserved predecessor observations, not reads or completion claims by this session.\\\"\\n+  },\"}",
+                "name": "edit"
+              },
+              "id": "call_6cOcIhY1W1cWAsbLntw0PA6W",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1276,
+      "prompt_tokens": 150522,
+      "total_tokens": 151798,
+      "completion_tokens_details": {
+        "reasoning_tokens": 217
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 101400
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T05:40:08.110648+00:00",
+  "stream_chunks": 4
+}

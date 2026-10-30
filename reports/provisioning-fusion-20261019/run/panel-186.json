@@ -1,0 +1,102 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review cross-check. Packet from Hermes session 20261018_190519_b780ef rows590-614: sequential container names correction conveyed to children; steer sa-0 queued then async completion explicitly says steer did not land; sa-1 steer errors no live child; list later zero. Clarify chooses container-1 then direct owner ID-1 supersedes; successful HANDOFF patch records ID-1 etc but allocator and golden integration unimplemented, public Incus state omits names/devices. Source reads: provisioning script retains hard-coded 3tchedChatbot raw GPT .img layout and direct local Incus creation; golden snippet removes provisioning helpers and installs only five unrelated helpers. Child completion reports F5/F10 sync restoration/boot fixes and F2/F4/F9 fstab/device-admission fixes with shell parse only, no runtime/deployment, admission unresolved. Full bind script confirms session-pinned mounted invoke device changes, exact nested receipts, no admission fallback, native private readback and direct volatile idmap maintenance, read-only overlay and private agent mounts, root-bound only not adopted/FUSE mounted. Adoption script fresh or exact deletion tombstone, native ETag, physical seed selection excludes duplicate RO loop, bounded plan publication not adoption. Sync source ends mid-line86; includes explicit losetup dependency, .img, mount guards, fsynced intent and fail-closed manual recovery. Latest review constraint forbids ALL host loops incl pool, native Incus preference conditional on preserving real seed/sprout, persistent isolation, upgrade replica/send receive, admission, durable recovery and final CAS. Identify key evidentiary cautions and missing-boundary risks, without asserting unseen runtime facts. No commands.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"hermes-20261018_190519_b780ef-rows590-614\",\n  \"fully_reviewed\": false,\n  \"review_scope\": {\n    \"material_reviewed\": \"The supplied current_question packet synopsis and accompanying evidence index and constraints.\",\n    \"original_packet_available\": false,\n    \"limitation\": \"Original rows590-614, individual message/tool-call IDs, arguments, results and record metadata were not included. Findings below cross-check the supplied synopsis; they do not establish character-complete review of the original packet or complete conversation ingestion.\",\n    \"actions\": \"No commands, tools, mutations, builds, tests or runtime operations performed.\"\n  },\n  \"findings\": [\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; individual rows unavailable\",\n      \"ids\": [\"sa-0\", \"sa-1\"],\n      \"original_short_quote\": \"async completion explicitly says steer did not land\",\n      \"quote_provenance\": \"Supplied synopsis, not independently available transcript text.\",\n      \"classification\": \"observation_of_supplied_synopsis\",\n      \"stage\": \"delegation and correction propagation\",\n      \"observation\": \"The synopsis distinguishes a queued sa-0 steer from its later failed delivery, a sa-1 steer error due to no live child, and a subsequent list containing zero children.\",\n      \"actual_tool_result\": \"Reported results: sa-0 steer queued, later explicitly not delivered; sa-1 steer errored; later child listing was empty. Original receipts unavailable.\",\n      \"correction_propagation_or_discrepancy\": \"Queuing is not evidence that a correction reached a worker or affected its output. An empty later listing does not establish successful delivery, cancellation, or correction of completed work.\",\n      \"missing_boundary_risk\": \"Need exact steer/completion ordering, delegation parent links and worker outputs before attributing the naming correction to either child.\"\n    },\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; individual rows unavailable\",\n      \"ids\": [],\n      \"original_short_quote\": \"Clarify chooses container-1 then direct owner ID-1 supersedes\",\n      \"quote_provenance\": \"Supplied synopsis.\",\n      \"classification\": \"observation_of_supplied_synopsis\",\n      \"stage\": \"naming requirements and documentation\",\n      \"observation\": \"The direct owner correction takes precedence over the clarification choice. A reported successful HANDOFF patch records ID-1 naming, while allocator and golden integration remain unimplemented.\",\n      \"actual_tool_result\": \"HANDOFF patch success is reported; its exact patch and tool receipt are unavailable.\",\n      \"correction_propagation_or_discrepancy\": \"Documentation propagation is supported by the synopsis; implementation, deployment and worker uptake are not. Naming remains display policy, not native UUID identity or authorization.\",\n      \"missing_boundary_risk\": \"The evidence index identifies later naming corrections, including original message2655. Those boundaries must be reviewed before treating this interval as the final naming contract.\"\n    },\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; individual rows unavailable\",\n      \"ids\": [],\n      \"original_short_quote\": \"public Incus state omits names/devices\",\n      \"quote_provenance\": \"Supplied synopsis.\",\n      \"classification\": \"inference\",\n      \"stage\": \"native-state inspection and proof\",\n      \"observation\": \"A public projection without names or devices cannot establish naming compliance or root-device correctness.\",\n      \"actual_tool_result\": \"The synopsis reports omitted public fields; no original state response is available.\",\n      \"correction_propagation_or_discrepancy\": \"Omitted fields are not evidence that native instances lack names or devices. Private authoritative readback must be distinguished from the public projection.\",\n      \"missing_boundary_risk\": \"Need the complete public response, schema/version and corresponding authorized private native readback.\"\n    },\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; individual rows unavailable\",\n      \"ids\": [],\n      \"original_short_quote\": \"hard-coded 3tchedChatbot raw GPT .img layout and direct local Incus creation\",\n      \"quote_provenance\": \"Supplied synopsis.\",\n      \"classification\": \"observation_of_supplied_synopsis\",\n      \"stage\": \"native preparation, storage establishment and golden integration\",\n      \"observation\": \"The reported source retains an older fixed-name, image-based creation path. The golden excerpt reportedly removes provisioning helpers and installs only five unrelated helpers.\",\n      \"actual_tool_result\": \"Source-read observations only; no invocation, runtime effect or deployment result is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"This indicates source-level integration drift, not proof that the old script ran during this interval. A direct local creation path also requires admission/control-plane ownership review before reuse.\",\n      \"missing_boundary_risk\": \"The golden snippet does not prove the complete installation process lacks another provisioning-helper installation stage. Exact paths, full file contents, versions and caller relationships are needed.\"\n    },\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; individual rows unavailable\",\n      \"ids\": [\"F5\", \"F10\", \"F2\", \"F4\", \"F9\"],\n      \"original_short_quote\": \"shell parse only, no runtime/deployment, admission unresolved\",\n      \"quote_provenance\": \"Supplied synopsis; F-labels are finding labels, not transcript message IDs.\",\n      \"classification\": \"observation_of_supplied_synopsis\",\n      \"stage\": \"storage synchronization, boot restoration and admission\",\n      \"observation\": \"Child completions report F5/F10 synchronization/restoration fixes and F2/F4/F9 fstab/device-admission fixes, with shell parsing as the stated validation boundary.\",\n      \"actual_tool_result\": \"Reported shell-parse validation only. Exact commands, exit codes, patches and deployment receipts are unavailable.\",\n      \"correction_propagation_or_discrepancy\": \"Parsing cannot prove mounted-destination selection, device admission, restoration, successful receive or boot readiness. Admission was unresolved at this historical point; the evidence index explicitly reports later admission repair.\",\n      \"missing_boundary_risk\": \"Do not carry this historical admission status forward as the current blocker. Need later repair receipts and confirmation of which worker edits reached installed application helpers and the separate base boot service.\"\n    },\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; individual rows unavailable\",\n      \"ids\": [],\n      \"original_short_quote\": \"root-bound only not adopted/FUSE mounted\",\n      \"quote_provenance\": \"Supplied synopsis.\",\n      \"classification\": \"observation_of_supplied_synopsis\",\n      \"stage\": \"root binding\",\n      \"observation\": \"The reported bind source uses session-pinned mounted invocation for device changes, exact nested receipts, no admission fallback and private native readback. It also contains direct volatile idmap maintenance, a read-only overlay and private agent mounts.\",\n      \"actual_tool_result\": \"A full source read is reported; no successful bind invocation or runtime verification is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve the admission and receipt safeguards. Direct volatile idmap maintenance requires explicit ownership and authorization review rather than assuming every mutation uses the mounted invocation path. A root-bound state does not establish authoritative adoption or a mounted identity FUSE surface.\",\n      \"missing_boundary_risk\": \"Need the caller's success predicate, stopped-state checks, exact native/storage identity matching, idmap maintenance scope, rollback behavior and the subsequent adoption/start receipts.\"\n    },\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; individual rows unavailable\",\n      \"ids\": [],\n      \"original_short_quote\": \"bounded plan publication not adoption\",\n      \"quote_provenance\": \"Supplied synopsis.\",\n      \"classification\": \"observation_of_supplied_synopsis\",\n      \"stage\": \"adoption preparation\",\n      \"observation\": \"The reported adoption-preparation source requires a fresh record or exact deletion tombstone, uses native ETag checks and selects the physical seed while excluding a duplicate read-only loop.\",\n      \"actual_tool_result\": \"Source inspection only. No published plan, accepted adoption operation or authoritative CAS receipt is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"A prepared plan is not identity adoption. Native ETag protection is not interchangeable with final Cozo digest/revision CAS. Excluding one duplicate loop from seed selection does not demonstrate absence of all host loops.\",\n      \"missing_boundary_risk\": \"Need exact plan binding, publication durability, consumer validation, tombstone matching, stale-plan rejection and final authoritative adoption results.\"\n    },\n    {\n      \"source\": \"current_question\",\n      \"row\": \"590-614; source excerpt reportedly ends mid-line86\",\n      \"ids\": [],\n      \"original_short_quote\": \"explicit losetup dependency, .img, mount guards, fsynced intent and fail-closed manual recovery\",\n      \"quote_provenance\": \"Supplied synopsis.\",\n      \"classification\": \"observation_of_supplied_synopsis\",\n      \"stage\": \"upgrade synchronization and durable recovery\",\n      \"observation\": \"The available description combines a legacy loop/image dependency with destination guards, durable intent handling and fail-closed recovery.\",\n      \"actual_tool_result\": \"A truncated source-read result is reported. No synchronization execution result is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"The loop-dependent design conflicts with the latest no-host-loop constraint. Its safeguards remain requirements for any replacement. An fsynced intent records work or recovery state; it does not prove receive or pairing completed.\",\n      \"missing_boundary_risk\": \"The missing remainder may contain receive, pairing, completion, cleanup and recovery transitions. Do not infer their correctness or absence from the truncated excerpt.\"\n    },\n    {\n      \"source\": \"Latest owner instructions and current_question\",\n      \"row\": \"Outside historical rows590-614\",\n      \"ids\": [],\n      \"original_short_quote\": \"NO HOST LOOP DEVICES.\",\n      \"quote_provenance\": \"Direct latest owner instruction supplied in this request.\",\n      \"classification\": \"observation\",\n      \"stage\": \"architecture constraints and modification specification\",\n      \"observation\": \"The current prohibition includes pool backing and seed wrappers. Subvolume-only storage is a conditional preference, not authorization to replace immutable seed/sprout semantics with copied roots or snapshots.\",\n      \"actual_tool_result\": null,\n      \"correction_propagation_or_discrepancy\": \"Historical loop/image implementation is evidence of a design conflict, not current authorization. The supplied index records a loop-backed pool; this review cannot establish its present runtime state and must not propose detaching it as an incidental correction.\",\n      \"missing_boundary_risk\": \"A feasible specification must connect native Incus ownership to actual seed/sprout primitives, isolated persistent writes, a separate upgrade replica, send/receive, root composition, admission, durable recovery and final CAS/start. Cozo metadata or a root-device declaration alone does not supply those semantics.\"\n    }\n  ],\n  \"truncations_unavailable\": [\n    {\n      \"item\": \"Original Hermes rows590-614\",\n      \"status\": \"Unavailable in this panel input\",\n      \"impact\": \"Cannot verify individual IDs, exact tool arguments/results, physical ordering, parent links, compacted/inactive flags, timestamps or original quotations.\"\n    },\n    {\n      \"item\": \"sync source after reported mid-line86 cutoff\",\n      \"status\": \"Reported historical truncation\",\n      \"im",
+      "truncated": true
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "The single supplied panel response treats the input as a synopsis, not the original Hermes rows590\u2013614, and explicitly declines character-complete or whole-conversation review claims.",
+      "Queued steering, documentation patches, shell parsing, source inspection, root binding and plan publication must not be equated with correction delivery, deployed readiness, authoritative adoption or successful startup.",
+      "The latest no-host-loop prohibition includes pool backing; subvolume-only storage remains conditional on preserving the full required semantics and security safeguards."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Correction propagation is addressed, including failed sa-0 delivery and sa-1's absent live child, but original receipts, exact ordering and worker provenance were unavailable."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Naming, legacy provisioning, golden integration, binding, adoption preparation and synchronization are discussed from the synopsis rather than independently reviewed original source excerpts."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The response distinguishes historical unresolved admission from later reported repair, but cannot establish the repair's exact authoritative receipt or deployment propagation."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "The supplied response is truncated during its truncations/unavailable section. Its complete boundary-dependency and uncertainty accounting cannot be assessed."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "An empty later child listing proves neither successful correction delivery nor cancellation or correction of completed worker output."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Public Incus projections omitting names and devices do not prove those properties are absent from native state."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "A golden installation excerpt omitting provisioning helpers cannot establish that the complete installation process lacks another installation stage."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Direct volatile idmap maintenance needs a separate ownership and authorization assessment despite session-pinned mounted invocation for other device changes."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Native ETag checks and final Cozo digest/revision CAS protect different boundaries; adoption-plan publication proves neither authoritative adoption nor startup."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Excluding a duplicate read-only loop during seed selection does not establish host-wide loop absence, and an fsynced intent does not prove receive or pairing completion."
+      }
+    ],
+    "blind_spots": [
+      "Only one panel response was supplied, so cross-model agreement, disagreement and independently corroborated insights cannot be established.",
+      "Original packet text, exact record IDs, tool arguments/results, timestamps, parent relationships and compacted/inactive metadata were not supplied to the panel.",
+      "The synchronization excerpt reportedly stops mid-line86; subsequent receive, pairing, cleanup and recovery transitions remain unverified.",
+      "No independent evidence establishes which historical edits reached installed helpers or the separately installed base boot service.",
+      "No supported no-host-loop architecture is demonstrated here; exact primitives preserving immutable seed/sprout behavior alongside native Incus storage remain an evidence boundary.",
+      "Runtime admission, isolation enforcement, final adoption, startup and stopped-boot recovery are not established by this packet review.",
+      "No substantive JEV adjudication receipt is present in the supplied response."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "error_type": "RateLimitError",
+      "failure_reason": "rate_limited"
+    }
+  ]
+}

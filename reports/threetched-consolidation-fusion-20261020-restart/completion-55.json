@@ -1,0 +1,63 @@
+{
+  "request": 55,
+  "started": "2026-10-20T17:19:09.786640+00:00",
+  "finished": "2026-10-20T17:19:22.793615+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01e05e9b2567efb7016ad7a293c17887d1aebd5a70719cb985",
+    "created": 1792516755,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Requesting retained provenance location\",\"path\":\"agent://Main\",\"content\":\"Current generator emits compact/unformatted Rust; pre-run file was known formatted-looking line112715 module vs current compact output. HEAD bytes hash39154d97\u2026 differs from pre-run a726893d\u2026 so HEAD cannot establish pre/post formatting-only. I retained pre/post hashes but not original contents. Do you/ReleaseReceiptScout have original source snapshot or release log describing formatting step? Investigating bounded provenance; will not claim semantic equivalence without bytes.\"}",
+                "name": "write"
+              },
+              "id": "call_QY9ljMRTRv6bsXzplRUShlR0",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 417,
+      "prompt_tokens": 187122,
+      "total_tokens": 187539,
+      "completion_tokens_details": {
+        "reasoning_tokens": 110
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 123456
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:19:22.792413+00:00",
+  "stream_chunks": 4
+}

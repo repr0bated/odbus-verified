@@ -1,0 +1,5 @@
+id	path	line	position_1based	text	meaning	JEV	answer_confidence	human_decision	change_status
+O1	crates/op-execution-tracker/src/execution_context.rs	17	29-33	/// Execution has been dispatched to executor	dispatched = ordinary execution lifecycle word; means sent to executor	J1	ordinary_english 1.00; accurate_retain 0.88; retain 1.00	retain	unchanged
+O2	crates/op-execution-tracker/src/execution_context.rs	18	10-14	    Dispatched,	Dispatched execution status, not a 3tched product identifier	J1	ordinary_english 1.00; accurate_retain 0.88; retain 1.00	retain	unchanged
+O3	crates/op-execution-tracker/src/execution_context.rs	40	35-39	            ExecutionStatus::Dispatched => write!(f, "Dispatched"),	ExecutionStatus variant use for lifecycle matching; not a product identifier	J1	ordinary_english 1.00; accurate_retain 0.88; retain 1.00	retain	unchanged
+O4	crates/op-execution-tracker/src/execution_context.rs	40	60-64	            ExecutionStatus::Dispatched => write!(f, "Dispatched"),	Display label for the same lifecycle status; not a product identifier	J1	ordinary_english 1.00; accurate_retain 0.88; retain 1.00	retain	unchanged

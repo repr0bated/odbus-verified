@@ -89,7 +89,7 @@ impl EmbeddingConfig {
             .or_else(|| {
                 (provider == EmbeddingProvider::Voyage)
                     .then(|| {
-                        std::env::var("COGNITIVE_MCP_VOYAGE_MODEL")
+                        std::env::var("COGNITIVE_VOYAGE_MODEL")
                             .or_else(|_| std::env::var("VOYAGE_MODEL"))
                             .ok()
                     })

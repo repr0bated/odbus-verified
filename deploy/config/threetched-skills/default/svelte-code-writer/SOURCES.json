@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/sveltejs/ai-tools",
+  "commit": "6b5d0dab3c9c083387247ab20dc684573481076b",
+  "source_path": "plugins/claude/svelte/skills/svelte-code-writer",
+  "files": [
+    {
+      "path": "LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "b94e2313723c4920d2919417a85261d02123a9ee3a0deb79a43c2cd960d5dd1d"
+    },
+    {
+      "path": "SKILL.md",
+      "source_path": "plugins/claude/svelte/skills/svelte-code-writer/SKILL.md",
+      "sha256": "ccd435bc524f1bdc38f7ca34a3ff279de1e855d3e5165151345d08b85706e95f"
+    }
+  ]
+}

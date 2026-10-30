@@ -192,7 +192,11 @@ pub(crate) async fn authorize(
         Ok(topic) => topic,
         Err(_) => return Verdict::Deny,
     };
-    if !subscribe || topic != own_topic {
+    // An identity may read its own doorbell and the retained toolset
+    // manifest (names only; each call is still admitted by its grants).
+    if !subscribe
+        || (topic != own_topic && topic != op_plugins::state_plugins::emqx::TOOLSETS_TOPIC)
+    {
         return Verdict::Deny;
     }
     match sled_still_derives(engine, client_id).await {
@@ -327,6 +331,17 @@ mod tests {
             Verdict::Deny
         );
         assert_eq!(
+            authorize(
+                &engine,
+                &client_id,
+                true,
+                op_plugins::state_plugins::emqx::TOOLSETS_TOPIC
+            )
+            .await,
+            Verdict::Allow,
+            "a live identity reads the toolset manifest"
+        );
+        assert_eq!(
             owner_key_for_sled(&sled).as_deref(),
             Some(client_id.as_str()),
             "the kick targets the same derived key"
@@ -386,6 +401,25 @@ mod tests {
         // Own topic, but no sled derives the key in this fixture.
         assert_eq!(
             authorize(&engine, &key, true, &format!("opdbus/wake/{key}")).await,
+            Verdict::Deny
+        );
+        // The toolset manifest is read-only to identities, and still needs
+        // a live sled.
+        assert_eq!(
+            authorize(&engine, &key, false, "opdbus/toolsets").await,
+            Verdict::Deny,
+            "identities never publish toolsets"
+        );
+        assert_eq!(
+            authorize(&engine, &key, true, "opdbus/toolsets").await,
+            Verdict::Deny
+        );
+        assert_eq!(
+            authorize(&engine, &key, true, "opdbus/toolsets/#").await,
+            Verdict::Deny
+        );
+        assert_eq!(
+            authorize(&engine, "device-42", true, "opdbus/toolsets").await,
             Verdict::Deny
         );
         let validator =

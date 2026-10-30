@@ -1,0 +1,131 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          op-3tchedfs-mount
+# Required-Start:    op-release-activate
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Mount separate OP-DBUS and threetched views from fstab
+### END INIT INFO
+# The release stages this adapter in /usr/local/libexec/op-dbus/helpers.
+# /usr/sbin/mount.fuse.3tchedFS and rcS/S13op-3tchedfs-mount link there.
+# The fstab noauto entry is mounted explicitly after S12op-release-activate.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+fail() { printf 'mount-3tchedfs: %s\n' "$*" >&2; exit 1; }
+case "${1:-}" in
+    start)
+        [ "$#" = 1 ] || exit 2
+        mount /run/mounts/3tchedFS
+        exec mount /run/mounts/threetched
+        ;;
+    stop) exit 0 ;;
+esac
+[ "$(id -u)" = 0 ] || fail 'host mount owner must be root'
+[ "$#" = 4 ] && [ "$3" = -o ] ||
+    fail 'expected the declared 3tchedFS fstab entry'
+fs_name=$1
+mount_path=$2
+case "$fs_name:$mount_path" in
+    3tchedFS:/run/mounts/3tchedFS) selection=--exclude-plugin ;;
+    threetched:/run/mounts/threetched) selection=--include-plugin ;;
+    *) fail 'unexpected mount source or target' ;;
+esac
+upstream_plugins=threetched,tched_router
+catalog=/usr/share/op-dbus/plugin-blobs
+options=$4
+while [ -n "$options" ]; do
+    option=${options%%,*}
+    case "$option" in
+        rw|noauto|nosuid|nodev|noexec|noatime|defaults) ;;
+        *) fail "unsupported mount option: $option" ;;
+    esac
+    case "$options" in *,*) options=${options#*,} ;; *) options= ;; esac
+done
+protected_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    case "$(stat -c '%u:%g:%a' "$1")" in 0:0:400|0:0:600) return 0 ;; *) return 1 ;; esac
+}
+session_file=/etc/op-dbus/human-lungs-session
+owner_file=/etc/op-dbus/human-lungs-call-owner-uid
+protected_file "$session_file" && protected_file "$owner_file" || fail 'unsafe or absent host identity selection'
+session=$(tr -d '[:space:]' <"$session_file")
+printf '%s\n' "$session" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' || fail 'invalid session'
+owner_uid=$(tr -d '[:space:]' <"$owner_file")
+case "$owner_uid" in ''|*[!0-9]*) fail 'invalid local caller UID' ;; esac
+[ "$owner_uid" = "$(id -u jeremy)" ] || fail 'local operator UID changed'
+ensure_dir() {
+    if [ ! -e "$1" ] && [ ! -L "$1" ]; then mkdir -m "$2" "$1"; fi
+    [ -d "$1" ] && [ ! -L "$1" ] && [ "$(stat -c '%u:%g:%a' "$1")" = "0:0:$2" ] ||
+        fail "unsafe directory: $1"
+}
+ensure_dir /run/opdbus 755
+ensure_dir /run/opdbus/host-fuse 700
+runtime=/run/opdbus/host-fuse/$fs_name
+ensure_dir "$runtime" 700
+umask 077
+exec 9>"$runtime/adapter.lock"
+flock -w 15 9 || fail 'another mount invocation is active'
+mounted_kind() { findmnt -rn -M "$mount_path" -o FSTYPE; }
+ready() {
+    [ "$(mounted_kind)" = fuse.3tchedFS ] || return 1
+    [ "$(findmnt -rn -M "$mount_path" -o SOURCE)" = "$fs_name" ] || return 1
+    timeout 3 jq -e --arg session "$session" --argjson uid "$owner_uid" '
+        .mount_identity.kind == "host_session" and
+        .mount_identity.session == $session and
+        .local_call_owner_uid == $uid and .workspace_id == null
+    ' "$mount_path/.3tchedfs.json" >/dev/null || return 1
+    timeout 3 jq -e --arg name "$fs_name" --arg upstream "$upstream_plugins" \
+        --slurpfile catalog "$catalog/.manifest.json" '
+        ($upstream | split(",") | sort) as $upstream |
+        (.objects | keys | sort) as $actual |
+        (.source_catalog_hash == $catalog[0].catalog_hash and
+         .source_catalog_generation == $catalog[0].generation) and
+        (if $name == "threetched" then $actual == $upstream
+        else (.objects | has("tched_fs")) and
+            ($actual == (($catalog[0].plugins | keys | sort) - $upstream))
+        end)
+    ' "$mount_path/view.json" >/dev/null
+}
+if [ -n "$(mounted_kind)" ]; then
+    ready || fail 'existing mount differs from the declared identity or release view'
+    date -u +%Y-%m-%dT%H:%M:%SZ >"$runtime/fstab-ready-at"
+    exit 0
+fi
+binary=/usr/local/libexec/op-dbus/bin/3tched-fs
+store=/dev/shm/3tchedfs-$fs_name
+[ -x "$binary" ] && [ -f "$catalog/.manifest.json" ] || fail 'committed release is unavailable'
+case "$(findmnt -rn -M /usr/local/libexec/op-dbus/bin -o SOURCE)" in
+    opdbus-release:*) ;; *) fail 'application binary target is not an active release' ;;
+esac
+[ -c /dev/fuse ] || fail 'missing /dev/fuse'
+ensure_dir /run/mounts 755
+ensure_dir "$mount_path" 755
+[ -z "$(find "$mount_path" -mindepth 1 -maxdepth 1 -print -quit)" ] || fail 'mountpoint is not empty'
+ensure_dir "$store" 700
+# Mount sealed declarations before bridge startup. Operations still require
+# the existing session and grants; no identity/state is manufactured here.
+"$binary" --store "$store" capture --schema-only --catalog "$catalog" --state /dev/shm/opdbus/state \
+    "$selection" "$upstream_plugins" >"$runtime/capture.json"
+nohup setsid "$binary" --store "$store" mount \
+    --fs-name "$fs_name" \
+    --catalog /dev/shm/opdbus/plugin-blobs --state /dev/shm/opdbus/state \
+    --allow-other --auto-unmount --call-owner-uid "$owner_uid" \
+    --lungs-socket /run/opdbus/lungs/lungs.sock --lungs-session "$session" \
+    "$mount_path" >"$runtime/daemon.log" 2>&1 </dev/null 9>&- &
+daemon_pid=$!
+printf '%s\n' "$daemon_pid" >"$runtime/daemon.pid"
+attempt=0
+while [ "$attempt" -lt 100 ]; do
+    if ready; then
+        date -u +%Y-%m-%dT%H:%M:%SZ >"$runtime/fstab-ready-at"
+        exit 0
+    fi
+    kill -0 "$daemon_pid" 2>/dev/null || break
+    attempt=$((attempt + 1))
+    sleep 0.1
+done
+kill "$daemon_pid" 2>/dev/null || true
+wait "$daemon_pid" 2>/dev/null || true
+fail "mount did not become ready; see $runtime/daemon.log"

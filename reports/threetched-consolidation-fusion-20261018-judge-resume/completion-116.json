@@ -1,0 +1,64 @@
+{
+  "request": 116,
+  "started": "2026-10-18T22:04:22.612032+00:00",
+  "finished": "2026-10-18T22:04:30.377735+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0e0b472f99d5bbc6016ad54269c17c87d087709945b460f06c",
+    "created": 1792361065,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating provisioning correction handoff\",\"pattern\":\"^#{1,4} .*([Hh]ermes|[Pp]rovision|22:00)|SCOPE CORRECTION|ID-1 numbering|provision-release-nel1e7ai|correct task-local source scope|provision-fix-20261018\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md\"}",
+                "name": "grep"
+              },
+              "id": "call_QLOJ3Xk04qWqNhaR8miVBOiv",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 266,
+      "prompt_tokens": 90212,
+      "total_tokens": 90478,
+      "completion_tokens_details": {
+        "reasoning_tokens": 48
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 39046
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:04:30.376668+00:00",
+  "stream_chunks": 4
+}

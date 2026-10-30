@@ -1,0 +1,38 @@
+# This overlay applies only to the requested consolidation run.
+modelRoles:
+  judge: typesafe/jev-latest
+skills:
+  customDirectories:
+    - /home/jeremy/.omp/local-router/mixed-trial/skills
+    - /srv/git/odbus-verified/.agents/skills
+    - /srv/git/odbus-verified/.claude/skills
+  includeSkills:
+    - grpc-expert
+    - grpc-protocol-expert
+    - json-render
+    - ovs-db-analysis
+    - kernel-fuse-diagnosis
+    - fuse
+    - btrfs
+    - rust-memory-optimization
+    - memory-safety-patterns
+    - jev-router
+    - rust
+    - application-security
+    - salad
+    - salad-ai-gateway-request
+    - salad-ai-gateway-troubleshoot
+    - systematic-debugging
+    - svelte
+    - svelte-code-writer
+    - sveltekit
+    - vite
+    - typescript-patterns
+    - openapi
+    - using-superpowers
+    - agent-patterns
+    - dispatching-parallel-agents
+    - verification-before-completion
+retry:
+  fallbackChains:
+    consolidation-fusion/litellm/fusion-1: []

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Base-network owner: direct WireGuard admission for the demo door.
+set -eu
+exec 2>&1
+/usr/bin/wg-quick up wg-opdbus
+exec sleep infinity

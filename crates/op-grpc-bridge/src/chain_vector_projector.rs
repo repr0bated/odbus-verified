@@ -10,7 +10,8 @@
 //! The noise filter is the **sealed plugin schema that created the data**
 //! ([`SchemaProjectionPolicy`]): the embedding text is the method's (or
 //! signal's) schema-described arguments with the descriptions the schema
-//! author wrote, `x-secret` fields dropped, undeclared keys ignored. Hashes,
+//! author wrote, `x-secret` and `x-opdbus-private` fields dropped, undeclared
+//! keys ignored. Hashes,
 //! event ids, raw timestamps and identity metadata stay out of the text and
 //! go to the Qdrant payload as allow-listed filters.
 //!
@@ -22,7 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use op_cognitive_mcp::chain_vectors::{ChainVectorIndex, ProjectionPolicy};
+use op_cognitive::chain_vectors::{ChainVectorIndex, ProjectionPolicy};
 use op_snowball::ChainBlockRef;
 use op_state_store::schema_projection::described_fields;
 use tokio::sync::{Mutex, Notify};
@@ -249,7 +250,7 @@ impl ChainVectorProjector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use op_cognitive_mcp::chain_vectors::embedding_text_under;
+    use op_cognitive::chain_vectors::embedding_text_under;
 
     fn block(plugin: &str, action: &str, input: serde_json::Value) -> ChainBlockRef {
         let data = serde_json::json!({
@@ -305,14 +306,14 @@ mod tests {
         use crate::human_principal_dispatch::tests::temp_shm_with_schemas;
         use op_state::StatePlugin as _;
         let _shm = temp_shm_with_schemas(&[
-            op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
+            op_plugins::state_plugins::chat_router::ChatRouterPlugin::new()
                 .schema()
                 .unwrap(),
         ]);
         let catalog = crate::sealed_schema_reader::blob_catalog_dir_from_env();
         let policy = SchemaProjectionPolicy::new(catalog);
         let block = block(
-            "tched_router",
+            "chat_router",
             "Chat",
             serde_json::json!({
                 "message": "restart the emqx broker",

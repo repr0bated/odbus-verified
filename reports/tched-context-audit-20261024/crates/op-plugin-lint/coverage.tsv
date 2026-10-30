@@ -1,0 +1,27 @@
+path	inventory_lines	status	read_receipt_or_next
+crates/op-plugin-lint/Cargo.toml	29	complete	Full sequential read 1-29
+crates/op-plugin-lint/examples/README.md	32	complete	Full sequential read 1-32; one recorded occurrence at line 29
+crates/op-plugin-lint/examples/zeroclaw-final-plugin-schema.json	8509	complete	Full sequential read 1-8509
+crates/op-plugin-lint/examples/zeroclaw-final-schema.json	8831	complete	Full sequential read 1-8831
+crates/op-plugin-lint/examples/zeroclaw-full-schema.json	8509	complete	Full sequential read 1-8509
+crates/op-plugin-lint/examples/zeroclaw-full-schema.with-compare.json	8837	complete	Sequential reads 1-2435 earlier; resumed at 2436 and continued through line 8837
+crates/op-plugin-lint/examples/zeroclaw-introspect-gaps.json	2710	complete	Sequential reads 1-2710; two recorded FetchedCatalog occurrences at lines 2220-2221
+crates/op-plugin-lint/examples/zeroclaw-introspect-gaps.md	217	complete	Full sequential read 1-217
+crates/op-plugin-lint/examples/zeroclaw.complete.json	4244	complete	Sequential reads 1-1100, 1101-2200, 2201-3227, and 3228-4245 (tool's line-count header reports 4245; inventory count 4244)
+crates/op-plugin-lint/examples/zeroclaw.complete.md	971	complete	Sequential read 1-971; reread lines 500-971 and 900-971 to inspect tool output truncation
+crates/op-plugin-lint/src/audit.rs	691	complete	Full sequential read 1-691
+crates/op-plugin-lint/src/binary.rs	558	complete	Full sequential read 1-558
+crates/op-plugin-lint/src/emit.rs	636	complete	Full sequential read 1-636
+crates/op-plugin-lint/src/gadget.rs	327	complete	Full sequential read 1-327
+crates/op-plugin-lint/src/gaps.rs	345	complete	Full sequential read 1-345
+crates/op-plugin-lint/src/introspect.rs	340	complete	Full sequential read 1-340
+crates/op-plugin-lint/src/lib.rs	38	complete	Full sequential read 1-38
+crates/op-plugin-lint/src/main.rs	294	complete	Full sequential read 1-294
+crates/op-plugin-lint/src/repomix.rs	1003	complete	Full sequential read 1-1003
+crates/op-plugin-lint/src/report.rs	103	complete	Full sequential read 1-103
+crates/op-plugin-lint/src/rust_emit.rs	467	complete	Full sequential read 1-467
+crates/op-plugin-lint/src/subid.rs	56	complete	Full sequential read 1-56
+crates/op-plugin-lint/tests/audit_tests.rs	104	complete	Full sequential read 1-104
+crates/op-plugin-lint/tests/fixtures/bad_plugin.rs	30	complete	Full sequential read 1-30
+crates/op-plugin-lint/tests/fixtures/demo_instance.json	13	complete	Full sequential read 1-13
+crates/op-plugin-lint/tests/fixtures/good_plugin.rs	82	complete	Full sequential read 1-82

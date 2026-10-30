@@ -1,0 +1,121 @@
+{
+  "task_id": "tched-routing-audit-20261024",
+  "crate": "op-cache",
+  "auditor": "Codex crate worker",
+  "status": "complete",
+  "audit_mode": "report_only_static_sequential",
+  "completed_at": "2026-10-24T19:52:46.608577+00:00",
+  "source_scope": "crates/op-cache/",
+  "inventory": "/var/tmp/tched-routing-audit-20261024/crates/op-cache/inventory.tsv",
+  "report_directory": "reports/tched-routing-audit-20261024/crates/op-cache/",
+  "coverage": {
+    "files_expected": 28,
+    "files_read_through_eof": 28,
+    "lines_read": 13168,
+    "inventory_initial_bytes": 452136,
+    "sequential_ranges_contiguous": true,
+    "all_observed_line_totals_match_inventory": true,
+    "initial_sha256_provenance": "supplied inventory; not recomputed",
+    "atomic_snapshot": false
+  },
+  "counts": {
+    "occurrences": 0,
+    "dead_ends": 0,
+    "reroutes": 0,
+    "leaves": 0,
+    "renames": 0,
+    "deletions": 0,
+    "uncertainties": 0
+  },
+  "roles": {
+    "routing_dispatch": 0,
+    "model_selection_calling": 0,
+    "filesystem_projection": 0,
+    "contract_identifier": 0,
+    "ordinary_word": 0
+  },
+  "integrity": {
+    "dead_end": 0,
+    "alive": 0,
+    "not_applicable": 0
+  },
+  "actions": {
+    "repoint_to_op_llm": 0,
+    "repoint_to_threetched_fuse": 0,
+    "delete_dead_end": 0,
+    "rename_to_3tched": 0,
+    "rename_to_threetched": 0,
+    "leave_as_is": 0
+  },
+  "occurrences": [],
+  "jev": {
+    "installed_declarative_calls": 1,
+    "typed_answers": 3,
+    "confidence_min": 0.98,
+    "confidence_max": 1,
+    "occurrence_judgments": 0,
+    "selected_excerpt_review_only": true,
+    "receipts": "judgments.md",
+    "answers": {
+      "J1_callback_routing": {
+        "type": "choice",
+        "choice": "generic_callbacks_only",
+        "confidence": 1,
+        "probabilities": {
+          "generic_callbacks_only": 1,
+          "retired_router_call": 0,
+          "direct_model_selection": 0
+        }
+      },
+      "J2_ingress": {
+        "type": "choice",
+        "choice": "fail_closed_before_bind",
+        "confidence": 0.98,
+        "probabilities": {
+          "fail_closed_before_bind": 0.99,
+          "loopback_listener_active": 0.01,
+          "deployment_proven": 0
+        }
+      },
+      "J3_completion_limits": {
+        "type": "choice",
+        "choice": "qualified_static_report",
+        "confidence": 1,
+        "probabilities": {
+          "qualified_static_report": 1,
+          "runtime_pass": 0,
+          "invent_occurrence": 0
+        }
+      }
+    }
+  },
+  "source_files_changed_by_this_worker": [],
+  "reports": [
+    "status.md",
+    "coverage.tsv",
+    "judgments.md",
+    "findings.md",
+    "result.json"
+  ],
+  "shared_bookkeeping": "HANDOFF.md updated only to satisfy mandatory higher-priority session requirements; other claims preserved",
+  "verification": {
+    "report_reconciliation": "28 inventory-ordered rows; all sequential ranges begin at 1, end at EOF and have no gaps; zero occurrence ledger",
+    "search_tools_used": false,
+    "cargo_run": false,
+    "builds_run": false,
+    "tests_run": false,
+    "lint_run": false,
+    "format_run": false,
+    "custom_smoke_run": false,
+    "runtime_operations": false,
+    "deployed": false,
+    "seal_grant_credential_changes": false,
+    "git_operations": false
+  },
+  "limitations": [
+    "Primary reader observation establishes zero substrings; selected Jev excerpts do not independently certify all-file absence.",
+    "External callback receivers and live deployment intentionally unverified.",
+    "Initial hashes copied from supplied inventory, not recomputed; no atomic snapshot guarantee."
+  ],
+  "next_action": "Coordinator consumes reports; no tched-related patch recommended for op-cache."
+}

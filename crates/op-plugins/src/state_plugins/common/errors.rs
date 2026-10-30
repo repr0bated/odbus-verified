@@ -1,6 +1,6 @@
 //! 3tched Router error taxonomy (spec §14).
 //!
-//! `TchedRouterError` is a schema-contract type: it derives `schemars::JsonSchema`
+//! `ChatRouterError` is a schema-contract type: it derives `schemars::JsonSchema`
 //! so the error shape is surfaced in MCP tool responses and D-Bus method error
 //! payloads. subid: `sch.software.3tched-router-error.schema@v1`.
 
@@ -14,7 +14,7 @@ use thiserror::Error;
 /// Provider Adapter Layer).
 #[derive(Debug, Clone, PartialEq, Eq, Error, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
-pub enum TchedRouterError {
+pub enum ChatRouterError {
     #[error("route not declared: {hint}")]
     RouteNotDeclared { hint: String },
 

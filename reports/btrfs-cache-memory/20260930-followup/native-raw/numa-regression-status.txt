@@ -1,0 +1,2 @@
+baseline_expected_failure=1
+variant_success=0

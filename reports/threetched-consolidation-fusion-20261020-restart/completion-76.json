@@ -1,0 +1,53 @@
+{
+  "request": 76,
+  "started": "2026-10-20T17:24:41.981247+00:00",
+  "finished": "2026-10-20T17:24:53.942975+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0db32f2365097bbf016ad7a3e0b7bc87d18f20b72a5f28537a",
+    "created": 1792517088,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Build succeeded: exit code **0**, GNU release example completed in **2m 48s** with 33 example warnings.\n\n- Receipt: `/var/tmp/typed-use-generated-1792516892107.receipt`\n- Log: `/var/tmp/typed-use-generated-1792516892107.log`\n- Completed: `2026-10-20T17:24:20Z`\n\nRan the assigned command once via `setsid`, closed stdin, `CXXFLAGS='-include cstdint'`, preserved capture selectors, and offline Cargo. Initial exclusion gate was clear. No source edits, tests, checks, formatting, runtime invocation, or deployment.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 383,
+      "prompt_tokens": 77131,
+      "total_tokens": 77514,
+      "completion_tokens_details": {
+        "reasoning_tokens": 96
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 69104
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:24:53.941824+00:00",
+  "stream_chunks": 3
+}

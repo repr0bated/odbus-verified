@@ -1,0 +1,16 @@
+[Unit]
+Description=Private service routes over the verified SSH TUN
+Wants=op-warp-ssh.service
+After=op-warp-ssh.service
+RequiresMountsFor=/opt/op-dbus/releases
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/libexec/op-warp-ssh/routing.sh activate
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,72 @@
+{
+  "request": 66,
+  "started": "2026-10-18T21:44:17.804116+00:00",
+  "finished": "2026-10-18T21:44:36.514158+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0604658129c0b845016ad53db4a4f487d0b26275a837f352c4",
+    "created": 1792359860,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing durable evidence records\",\"op\":\"done\",\"task\":\"Update HANDOFF SIGNALS WISHLIST and existing reports with exact delivery status\"}",
+                "name": "todo"
+              },
+              "id": "call_dMPR4jpmm1adV5LpO398iCE9",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading compiler occupancy receipt\",\"path\":\"artifact://16\"}",
+                "name": "read"
+              },
+              "id": "call_yVszjktHhgfaRJRLMASZNhPF",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 413,
+      "prompt_tokens": 227708,
+      "total_tokens": 228121,
+      "completion_tokens_details": {
+        "reasoning_tokens": 214
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 115465
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:44:36.512371+00:00",
+  "stream_chunks": 6
+}

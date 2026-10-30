@@ -1,0 +1,127 @@
+{
+  "request": 10,
+  "started": "2026-10-18T21:51:26.804691+00:00",
+  "finished": "2026-10-18T21:51:40.579918+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-03b88be5d32d1d82016ad53f62581887d0858d079bb2f4c08a",
+    "created": 1792360290,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required gRPC skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/grpc-expert/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_sk4T67CbvnVgKvqt9DRpuSij",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required protocol skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/grpc-protocol-expert/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_ufL17cTV7NRT3nX6DcrkA6Nc",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required render skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/json-render/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_H7lrw1Fa37sodP6HgE2TcwFt",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required OVS skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/ovs-db-analysis/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_jzDbSsDsjt9ySeWJtPhdRQtE",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required kernel skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/kernel-fuse-diagnosis/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_oxcpyt0zkn7XHJKRiwHwS4qg",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required FUSE skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/fuse/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_btiFpUVXhXjrhiyxqKUbdEad",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required filesystem skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/btrfs/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_NaXVuRGXKIINPPgnRZp9FfUJ",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required optimization skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/rust-memory-optimization/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_fjJJ5LisKnHiOBKxkW26Q6KX",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required memory skill\",\"path\":\"/srv/git/odbus-verified/.agents/skills/memory-safety-patterns/SKILL.md\"}",
+                "name": "read"
+              },
+              "id": "call_YirGkknOxyiCO1kT6B5CFlQM",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 604,
+      "prompt_tokens": 25338,
+      "total_tokens": 25942,
+      "completion_tokens_details": {
+        "reasoning_tokens": 165
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 17734
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:51:40.575315+00:00",
+  "stream_chunks": 20
+}

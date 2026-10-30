@@ -94,8 +94,8 @@ actor + capability attribution and a Merkle proof.
 
 | Client | Point it at |
 |---|---|
-| NotebookLM, Droid, Cursor, Codex, Junie, Gemini CLI | `op-cognitive-mcp` at `:3003` (WireGuard `100.90.37.254`) — the universal gateway |
-| Local chatbot only | `compact-mcp` at `127.0.0.1:11436` (never external) |
+| NotebookLM, Droid, Cursor, Codex, Junie, Gemini CLI | `op-grpc-bridge` at `https://<host>:8090/mcp`, with cognitive in process |
+| Local chatbot only | Compact mode in op-web; no standalone listener |
 | Generic MCP | `op-mcp` (stdio / HTTP-SSE / WebSocket / gRPC; modes compact / agents / full) |
 
 Do not create new shim services or point external clients at
@@ -158,7 +158,7 @@ From `.kiro/specs/schemars-to-reflection-plugin-pipeline`:
 Target tier A. Migrating a plugin means typing the state struct and switching
 `schema()` to the adapter, keeping the drift test green.
 
-## 10. Working with the cognitive-mcp / embedding boundary
+## 10. Working with the cognitive / embedding boundary
 
 Per `.kiro/specs/voyage-plugin-cognitive-mcp-boundaries`:
 
@@ -166,9 +166,9 @@ Per `.kiro/specs/voyage-plugin-cognitive-mcp-boundaries`:
   (provider, API key, endpoint, model, dimensions). Do not add
   `VOYAGE_PUBLIC_URL` / `VOYAGE_MONGODB_URL` / `al-` prefix logic anywhere else.
 - Consumers read runtime config from `/dev/shm/opdbus/projections/embedding_model`
-  and `/dev/shm/opdbus/projections/cognitive_mcp`; env vars are a bootstrap-only
+  and `/dev/shm/opdbus/projections/cognitive`; env vars are a bootstrap-only
   fallback.
-- `op-cognitive-mcp` reads projections, never writes them.
+- `op-cognitive` reads projections, never writes them.
 
 ## 11. Common pitfalls
 

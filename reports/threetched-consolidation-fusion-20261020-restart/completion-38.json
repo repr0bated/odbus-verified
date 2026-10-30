@@ -1,0 +1,64 @@
+{
+  "request": 38,
+  "started": "2026-10-20T17:11:24.257010+00:00",
+  "finished": "2026-10-20T17:11:37.276621+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0fc47fb9f8a599d4016ad7a0c20ec087d1bb5fb083fa373802",
+    "created": 1792516290,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"const proc = Bun.spawn(['strings','target/x86_64-unknown-linux-gnu/release/examples/typed_specialize'],{cwd:'/srv/git/odbus-verified',stdout:'pipe',stderr:'pipe'}); const text = await new Response(proc.stdout).text(); print({exit:await proc.exited,sourceRoot:text.includes('/srv/git/odbus-verified/crates/threetched-fs'),currentDiagnostic:text.includes('sealed tched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report'),oldDiagnostic:text.includes('sealed threetched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report'),exampleFlag:text.includes('--use-example'),captureSchemaOnly:text.includes('capture_schema_only')});\",\"title\":\"Inspecting generator embedded provenance\"}",
+                "name": "eval"
+              },
+              "id": "call_178HcqErInVsffZ0dTZ8nSdi",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: establish catalog-pin equality and generator provenance; capture original output hashes; invoke the existing generator once with closed stdin, persistent log, and terminal receipt; report generated artifacts and coverage limits without compiling or invoking runtime operations."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 728,
+      "prompt_tokens": 117381,
+      "total_tokens": 118109,
+      "completion_tokens_details": {
+        "reasoning_tokens": 140
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 109055
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:11:37.274845+00:00",
+  "stream_chunks": 5
+}

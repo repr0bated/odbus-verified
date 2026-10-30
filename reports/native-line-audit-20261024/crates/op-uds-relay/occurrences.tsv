@@ -1,0 +1,2 @@
+path	line/position	exact token/context	intended meaning	judgment reference	JEV outcome/confidence	decision	change/status
+No occurrences	See all three complete rows in coverage.tsv; source lines 1-17 exact reread	No case/compound `native` occurrence encountered, including in the supplemental source range	Not applicable	No JEV call: no occurrence to evaluate; no occurrence fabricated	Not applicable	No native-specific disposition required	No source change

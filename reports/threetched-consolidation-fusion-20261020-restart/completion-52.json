@@ -1,0 +1,65 @@
+{
+  "request": 52,
+  "started": "2026-10-20T17:18:46.840989+00:00",
+  "finished": "2026-10-20T17:19:25.292854+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0583a939d99f7c26016ad7a27d0e5887d18019a8de236a7511",
+    "created": 1792516733,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording reconciled release evidence\",\"input\":\"[/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md#E1C2]\\nPUT 653.=653:\\n+### Historical release blocker \u2014 superseded by October 20 reconciliation below\\nPUT >677:\\n+\\n+### Release reconciliation \u2014 Fusion, 2026-10-20\\n+\\n+The preceding source-only/blocker entries describe the October 18 session,\\n+not the current consolidation outcome. Hermes completed the released source's\\n+GNU workspace build, isolated seal and specialization later that evening.\\n+The 33 retirements remain present in the current generated and mounted catalog.\\n+Do not repeat the workspace build or seal solely because those entries were stale.\\n+\\n+**Durable evidence:** `/home/jeremy/.hermes/state.db`, `messages` primary keys\\n+3093 (worker mapping), 3418/3431/3445 (first successful build/preparation/final\\n+result), 3848 (corrected-path workspace build exit 0), 3954 (seal, specialization,\\n+export and provenance capture each exit 0), 3957 (exact catalog delta), 3961\\n+(native provenance), 3962 (11m27s release build marker), 3990/3994/3997/3998\\n+(historical activation and readback). These are recovered execution records,\\n+not a fresh build. Recorded source HEAD was\\n+`051a20d056afba074e21d797aa34f8947c543c5a`, with shared dirty source preserved.\\n+\\n+The completed command was:\\n+\\n+```sh\\n+CXXFLAGS='-include cstdint' cargo build --workspace --release --target x86_64-unknown-linux-gnu\\n+```\\n+\\n+The corrected build used the existing capture binary and manifest under\\n+`target/threetched-artifacts/tched-router/`, `TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router`,\\n+`COGNITIVE_QDRANT_URL=http://127.0.0.1:6334`, runtime binary\\n+`/usr/local/libexec/op-dbus/threetched/threetched`, and runtime manifest\\n+`/usr/share/op-dbus/threetched-manifests/tched-router.json`.\\n+The earlier `/usr/bin/threetched` runtime-selector catalog was superseded,\\n+not repaired by changing sealed bytes or restoring retired methods.\\n+\\n+The corrected isolated catalog was\\n+`/home/jeremy/.hermes/cache/scratch/provision-runtime-path-20261018.MMsrUT/catalog`.\\n+That scratch directory is now absent: its original artifact inventories and\\n+catalog cannot be independently reread there. Terminal receipts and the\\n+catalog-derived report survive. Current mounted metadata and the declared\\n+catalog manifest independently match generation **72**, hash\\n+`6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c`.\\n+Manifest SHA256 is `40427e0a12373f53470b68fe4a2d53ed3f5463bb878c261d80d4cde988100826`.\\n+\\n+| Catalog delta | Before | After |\\n+|---|---:|---:|\\n+| Plugins | 74 | 72 |\\n+| Declared methods | 1,388 | 1,357 |\\n+| Removed methods | \u2014 | 33 |\\n+| Added methods | \u2014 | 2 |\\n+\\n+Baseline hash: `8a34d0da9517b137063314e07f5fa9a24fe3a3fe33920b1de2df941380041fd6`.\\n+Removed plugins: `tched_plugins`, `tched_skills`; no added plugins.\\n+The two unrelated additions are `identity_sled.prepare_container` and\\n+`incus.reconcile_creation`; they explain why the net method reduction is 31,\\n+not 33. The per-method dispositions above remain controlling: seven router\\n+methods, seven LLM facades, Gemma `route` and 18 wrapper methods retired.\\n+No duplicate was relocated to another handwritten schema.\\n+\\n+The current specialization records 1,182 generated methods, 175 unsupported\\n+methods and 11 unsupported state/public-state subjects. Native threetched's\\n+147 methods remain sealed but unsupported by static specialization (`allOf`).\\n+Router's 36 methods are specialized; its full State exceeds the generator's\\n+128 MiB limit, while PublicState is supported. These are disclosed generator\\n+limits, not missing native methods or a successful consumer-compilation claim.\\n+\\n+The optional generated example still imported obsolete `plugin_f_threetched_5ffs`.\\n+The existing GNU `typed_specialize` binary was run once with the matching\\n+declared catalog and `--use-example`, alongside its normal source/report outputs.\\n+Authoring exited 0 at `2026-10-20T17:13:57Z`; durable receipt directory:\\n+`/var/tmp/threetched-generated-example-20261020.40Ea0x/`.\\n+The example now imports `plugin_f_tched_5ffs`; no schema hash was manually edited.\\n+The report is byte-identical; generated Rust and example were rewritten.\\n+The README now documents the actual pin, coverage limits and all three output\\n+arguments. A narrowly targeted example build is recorded separately below.\\n+\\n+**Deployment boundary:** Hermes's October 18 canonical activation succeeded for\\n+`release-c068ba1e-02d3-4362-88f7-faf41919a837` (A/root315, previous B/root304),\\n+with historical catalog parity and 70 main/2 upstream objects. Current metadata\\n+also shows that split, but this is not current service readiness: the separate\\n+October 20 release incident and explicit no-restore instruction remain controlling.\\n+This continuation performs no activation, install, restart, grants, identity,\\n+storage, guard or network changes. No authenticated operation or test-suite\\n+success is claimed. OD-122/OD-123 and the separately recorded policy migration\\n+debt remain deferred; existing UI/pinned UI inputs have no demonstrated removed\\n+method caller and remain intentionally unchanged.\\n\"}",
+                "name": "edit"
+              },
+              "id": "call_FMm2Z4fb4Rs0X21iZll8VZ54",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Recovered receipts confirm the 33 retirements were built and sealed. The catalog has 1,357 methods: 33 removed and two unrelated provisioning methods added. I regenerated the stale example through the existing generator; a targeted build is pending. No live activation or service recovery is being attempted."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1978,
+      "prompt_tokens": 255867,
+      "total_tokens": 257845,
+      "completion_tokens_details": {
+        "reasoning_tokens": 109
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 167435
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:19:25.290024+00:00",
+  "stream_chunks": 5
+}

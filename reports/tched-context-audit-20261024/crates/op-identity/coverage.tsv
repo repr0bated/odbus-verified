@@ -1,0 +1,21 @@
+path	status	read_ranges	eof	occurrences_reviewed	notes
+crates/op-identity/Cargo.toml	complete	1-38	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/SPEC.md	complete	1-86	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/compare-op-identity.md	complete	1-79	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/bin/op-decoy-issuer.rs	complete	1-548	yes	complete	Full raw reads; six baseline occurrences at 14,369,483,484,485,486; issuer docs reassessed against independently read UI consumer source
+crates/op-identity/src/bin/op-identity-headers.rs	complete	1-109	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/depreciated-wg.rs	complete	1-92	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/gcloud_auth.rs	complete	1-244	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/identity_projection_reads_tests.rs	complete	1-112	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/identity_vault.rs	complete	1-157	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/lib.rs	complete	1-41	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/oracle_assertion.rs	complete	1-865	yes	complete	Complete sequential reads through EOF; no case-insensitive tched occurrence; coordinator source-read receipt shows no display gaps
+crates/op-identity/src/recovery.rs	complete	1-154	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/registration.rs	complete	1-55	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/schema_bridge.rs	complete	1-219	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/sealed_id.rs	complete	1-442	yes	complete	Complete sequential reads through EOF; no case-insensitive tched occurrence; coordinator source-read receipt shows no display gaps
+crates/op-identity/src/session.rs	complete	1-469	yes	complete	Complete sequential reads through EOF; baseline occurrence at 115 corrected; no remaining case-insensitive tched occurrence
+crates/op-identity/src/session_genesis.rs	complete	1-132	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/session_projection.rs	complete	1-593	yes	complete	Complete sequential reads through EOF; no case-insensitive tched occurrence; coordinator source-read receipt shows no display gaps
+crates/op-identity/src/wg.rs	complete	1-1	yes	complete	Full raw read; no case-insensitive tched occurrence
+crates/op-identity/src/wireguard.rs	complete	1-113	yes	complete	Full raw read; no case-insensitive tched occurrence

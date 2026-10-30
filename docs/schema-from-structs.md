@@ -88,7 +88,7 @@ that deliberately, per plugin, with this recipe:
 Plugins that already follow this recipe include:
 - Phase 1/2: `unix_socket`, `oscal_subid_registry`, `cron`
 - Phase 3: `zeroclaw`, `antigravity`, `antigravity_chat`
-- Phase 4 (mechanical): `adc`, `gcloud_adc`, `agent_config`, `mcp`, `compact_mcp`, `cognitive_mcp`, `keypair`, `endpoint`, `net`, `hardware`, `software`, `sessdecl`, `config`, `ctl_plane_chatbot`
+- Phase 4 (mechanical): `adc`, `gcloud_adc`, `agent_config`, `mcp`, `compact_mcp`, `cognitive`, `keypair`, `endpoint`, `net`, `hardware`, `software`, `sessdecl`, `config`, `ctl_plane_chatbot`
 - Phase 5 (no-struct authored): `lxc`, `procfs`, `notebooklm`, `web_ui`, `wgcf`, `xray`, `workflows_plugin`, `schema_renderer`
 
 Remaining plugins still use their original hand-rolled schemas and should be migrated only when typing their structs is independently worthwhile.

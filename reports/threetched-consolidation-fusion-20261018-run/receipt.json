@@ -1,0 +1,33 @@
+{
+  "started_at": "2026-10-18T20:33:49.293919+00:00",
+  "source": "/srv/git/odbus-verified/reports/threetched-consolidation-handoff-20261018.md",
+  "source_sha256": "282b6befe8b7bfa312407f5563bedbcb9b6c968248d3c0c86fd39bfa5916a935",
+  "prompt_sha256": "416b797c9f012770d282202476caa6f28e2056710c2b0cedc8c2fe058219d59d",
+  "evidence_sha256": "e53a59f3e1b1d4c41d88ccf35a857a7333f7b5ab9fcf434fb66fd7d782b7dcc9",
+  "request_sha256": "263c1f218174232e185fbf39ab11c3cab4226cc11ee8ee3070f58a9084c1e5ba",
+  "runtime": "/home/jeremy/litellm-fusion/.venv/bin/python",
+  "litellm_version": "1.103.0",
+  "litellm_origin": {
+    "url": "https://github.com/BerriAI/litellm.git",
+    "vcs_info": {
+      "vcs": "git",
+      "commit_id": "acc788352a65fce6649d773a7dec3ed0f793af17",
+      "requested_revision": "acc788352a65fce6649d773a7dec3ed0f793af17"
+    }
+  },
+  "config_sha256": "02770b37ae54695f016e26bd707d2710c654adc2562c73ea164200af1ae04265",
+  "execution_tools_attached": false,
+  "task_rewritten_as_review": false,
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 3,
+    "panel_failures": 2,
+    "analysis_available": true
+  },
+  "finish_reason": "stop",
+  "exit_code": 0,
+  "finished_at": "2026-10-18T20:40:09.010552+00:00",
+  "elapsed_seconds": 379.715
+}

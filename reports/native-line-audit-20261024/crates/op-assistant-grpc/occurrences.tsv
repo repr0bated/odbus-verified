@@ -1,0 +1,5 @@
+path	line_position	exact_token_context	intended_meaning	judgment_reference	jev_outcome_confidence	decision	change_status
+# occurrence_count=0; no native occurrences, including case variants and compound forms, in the 31 fully read assigned crate files.
+# coverage_reference=coverage.tsv; complete sequential source reads retained from the original session; no new source-read ranges claimed.
+# judgment_reference=judgments.md; original source-context JEV receipts retained; no nonexistent occurrence contexts submitted or fabricated.
+# scope=crates/op-assistant-grpc/ only; audit reports outside the crate are not source occurrences; no native-specific change pending.

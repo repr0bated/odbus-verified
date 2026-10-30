@@ -55,8 +55,8 @@ async fn configure_public() -> Result<()> {
     let public_address = env_or("PUBLIC_ADDR", "188.68.58.237/22");
     let public_gateway = env_or("PUBLIC_GW", "188.68.56.1");
     let grpc = env_or("GRPC_PORT", "grpc0");
-    let grpc_address = env_or("GRPC_ADDR", "10.200.0.2/24");
-    let internal_ports = env_or("INTERNAL_PORTS", "svc0 grpc0");
+    let grpc_address = std::env::var("GRPC_ADDR").unwrap_or_default();
+    let internal_ports = std::env::var("INTERNAL_PORTS").unwrap_or_default();
 
     require_interface(&physical)?;
     require_interface(&public)?;
@@ -80,7 +80,7 @@ async fn configure_public() -> Result<()> {
     }
 
     add_address(&public, &public_address).await?;
-    if Path::new("/sys/class/net").join(&grpc).exists() {
+    if !grpc_address.is_empty() && Path::new("/sys/class/net").join(&grpc).exists() {
         add_address(&grpc, &grpc_address).await?;
     }
     rtnetlink::add_default_route_onlink(&public, &public_gateway)
@@ -95,8 +95,8 @@ async fn configure_services() -> Result<()> {
     let bridge = env_or("BRIDGE", "ovsbr0");
     let bridge_address = env::var("BRIDGE_ADDR").unwrap_or_default();
     let grpc = env_or("GRPC_PORT", "grpc0");
-    let grpc_address = env_or("GRPC_ADDR", "10.200.0.2/24");
-    let internal_ports = env_or("INTERNAL_PORTS", "svc0 grpc0");
+    let grpc_address = std::env::var("GRPC_ADDR").unwrap_or_default();
+    let internal_ports = std::env::var("INTERNAL_PORTS").unwrap_or_default();
     let service_addresses = env::var("BRIDGE_SVC_ADDRS").unwrap_or_default();
 
     require_interface(&bridge)?;
@@ -107,7 +107,7 @@ async fn configure_services() -> Result<()> {
         }
     }
 
-    if Path::new("/sys/class/net").join(&grpc).exists() {
+    if !grpc_address.is_empty() && Path::new("/sys/class/net").join(&grpc).exists() {
         add_address(&grpc, &grpc_address).await?;
     }
     if !bridge_address.is_empty() {
@@ -134,9 +134,22 @@ async fn configure_services() -> Result<()> {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    match env::args().nth(1).as_deref() {
+    let mut args = env::args().skip(1);
+    match args.next().as_deref() {
         Some("public") => configure_public().await,
         Some("services") => configure_services().await,
-        _ => bail!("usage: op-rtnetlink-init <public|services>"),
+        Some("wgcf-policy") => {
+            if !matches!(env::var("OP_NETWORK_ROLE").as_deref(), Ok("decoy")) {
+                bail!("wgcf-policy requires OP_NETWORK_ROLE=decoy");
+            }
+            let interface = args.next().context("wgcf-policy requires the retained interface")?;
+            if args.next().is_some() {
+                bail!("usage: op-rtnetlink-init wgcf-policy <interface>");
+            }
+            let receipt = op_network::wgcf_egress::restore_selected_policy(&interface).await?;
+            println!("{}", serde_json::to_string(&receipt)?);
+            Ok(())
+        }
+        _ => bail!("usage: op-rtnetlink-init <public|services|wgcf-policy <interface>>"),
     }
 }

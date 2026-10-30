@@ -1,0 +1,64 @@
+{
+  "request": 2,
+  "started": "2026-10-19T04:36:32.718917+00:00",
+  "finished": "2026-10-19T04:36:45.163873+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-070ec0aad57d88b7016ad59e542c1087d0b108aa53a26f2d7f",
+    "created": 1792384596,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording initial ingestion receipt\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/ingestion-receipt.json\",\"content\":\"{\\n  \\\"task\\\": \\\"provisioning-fusion-20261019\\\",\\n  \\\"phase\\\": \\\"initial ingestion; not complete\\\",\\n  \\\"actual_reads\\\": [\\n    {\\\"path\\\":\\\"latest-owner-correction.json\\\",\\\"lines\\\":\\\"1-9\\\",\\\"complete\\\":true},\\n    {\\\"path\\\":\\\"subvolume-preference.json\\\",\\\"lines\\\":\\\"1-10\\\",\\\"complete\\\":true},\\n    {\\\"path\\\":\\\"manifest.json\\\",\\\"lines\\\":\\\"1-17,50-51,76-77,1179,1204,1247 plus structural summaries\\\",\\\"complete\\\":false,\\\"note\\\":\\\"Reader elided 1192 lines; no corpus ingestion claimed.\\\"}\\n  ],\\n  \\\"constraints\\\": [\\\"No host loop devices, including existing pool backing; no mutation authorized.\\\",\\\"Prefer subvolumes only without disk images only if all retained semantics survive.\\\",\\\"Read-only diagnosis and specification; writes only in analysis/; no source/runtime/storage/identity/grant/service/HANDOFF/SIGNALS edits; no builds/tests/provisioning/deployment; supplied redacted histories only.\\\"],\\n  \\\"jev_role\\\":\\\"Decision/evidence judge only via native typed judge/judge_batch with configured typesafe/jev-latest; never model routing or mutation authorization.\\\",\\n  \\\"mandatory_skills\\\":\\\"Ten mandatory skill texts supplied in task context and read; current task constraints supersede historical generic guidance.\\\",\\n  \\\"coverage_gaps\\\":[\\\"Manifest elided sections\\\", \\\"CASE.md\\\", \\\"Parent judgment receipts\\\", \\\"All 6620 exported history records\\\", \\\"All source/installed/historical snapshots\\\", \\\"Original evidence not yet sent to Fusion panel\\\", \\\"No JEV invocation yet\\\"],\\n  \\\"records_read\\\":[]\\n}\\n\"}",
+                "name": "write"
+              },
+              "id": "call_PIGBHsWuFByjdWfb68Dz5gDP",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 916,
+      "prompt_tokens": 135843,
+      "total_tokens": 136759,
+      "completion_tokens_details": {
+        "reasoning_tokens": 69
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 89860
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:36:45.162170+00:00",
+  "stream_chunks": 4
+}

@@ -1,0 +1,2 @@
+path	line	position	text	context	intended_meaning	source_authority_or_caller	jev_reference	answer_confidence	human_decision	change_status
+# Zero case-insensitive `tched` occurrences across all eight assigned files, based on complete sequential reads documented in coverage.tsv. No occurrence-level JEV judgment applies; coverage/disposition judgments are in judgments.md.

@@ -972,8 +972,8 @@
   (Search/Completion modes) the default is the whole
   DEFAULT_VOYAGE4_LITE_COLLECTIONS set — all 6 language collections fused
   automatically (rag_pipeline.rs:830). Overridable via env:
-  COGNITIVE_MCP_SEARCH_COLLECTIONS, COGNITIVE_MCP_COMPLETION_COLLECTIONS,
-  COGNITIVE_MCP_RAG_COLLECTIONS.
+  COGNITIVE_SEARCH_COLLECTIONS, COGNITIVE_COMPLETION_COLLECTIONS,
+  COGNITIVE_RAG_COLLECTIONS.
 
   Fusion mechanics (query_fused_collections, rag_pipeline.rs:501): embed the
   query once → search every collection with that one vector → merge → sort by
@@ -1005,7 +1005,7 @@
 
   1. Query model is unset → defaults to voyage-4, but your collections were
   built with voyage-4-lite. Those are different models/spaces — you should set
-  COGNITIVE_MCP_VOYAGE_MODEL=voyage-4-lite in /etc/s6/sv/op-cognitive-mcp/env/
+  COGNITIVE_VOYAGE_MODEL=voyage-4-lite in /etc/s6/sv/op-cognitive-mcp/env/
   so query embeddings match the index.
   2. The running binary looks older than the working tree — my earlier
   code_search returned the single-collection: repomix_rag shape, while current
@@ -1013,8 +1013,8 @@
   multi-collection behavior is in the source but needs a rebuild/redeploy to 
   actually be live.
 
-  Want me to add the COGNITIVE_MCP_VOYAGE_MODEL=voyage-4-lite env file (and a
-  COGNITIVE_MCP_SEARCH_COLLECTIONS that includes the new rust collection once
+  Want me to add the COGNITIVE_VOYAGE_MODEL=voyage-4-lite env file (and a
+  COGNITIVE_SEARCH_COLLECTIONS that includes the new rust collection once
   built), so the fused setup is correct when you redeploy?
 
 ✻ Sautéed for 1m 47s
@@ -1219,12 +1219,12 @@
   1. Account #2's voyage-code-3 API key wired into ~/.bash_secrets (the pipeline
   reads VOYAGE_API_KEY_RUST; it's currently account #1's exhausted key). The
   same key must also be the server's query embedder
-  (COGNITIVE_MCP_VOYAGE_API_KEY + COGNITIVE_MCP_VOYAGE_MODEL=voyage-code-3) so
+  (COGNITIVE_VOYAGE_API_KEY + COGNITIVE_VOYAGE_MODEL=voyage-code-3) so
   searches against the code-3 collections work.
   2. Confirm the collection target: repos_lsp_rust_voyage_code_3 for the 44 deps
   (kept separate from rust_lang_rust_lsp_voyage_code_3, fused at query time).
 
-  Want me to: (a) wire COGNITIVE_MCP_VOYAGE_MODEL=voyage-code-3 into the s6 env
+  Want me to: (a) wire COGNITIVE_VOYAGE_MODEL=voyage-code-3 into the s6 env
   and set up the dep-ingest command targeting code-3, then (b) you drop account
   #2's key in and I launch it? I won't touch secrets myself — just tell me once
   the key's in place.
@@ -1272,8 +1272,8 @@
   │ compliance /     │ already lite — no change                             │
   │ other langs      │                                                      │
   ├──────────────────┼──────────────────────────────────────────────────────┤
-  │ server query     │ COGNITIVE_MCP_VOYAGE_MODEL=voyage-4-lite;            │
-  │ model            │ COGNITIVE_MCP_SEARCH_COLLECTIONS = all lite          │
+  │ server query     │ COGNITIVE_VOYAGE_MODEL=voyage-4-lite;            │
+  │ model            │ COGNITIVE_SEARCH_COLLECTIONS = all lite          │
   │                  │ collections incl. new rust                           │
   └──────────────────┴──────────────────────────────────────────────────────┘
 
@@ -1411,7 +1411,7 @@
   in a single code_search.
 
   When you're ready, the concrete steps are:
-  1. Add a 4-series API key + COGNITIVE_MCP_VOYAGE_MODEL=voyage-4-large to the
+  1. Add a 4-series API key + COGNITIVE_VOYAGE_MODEL=voyage-4-large to the
   s6 env (you drop the key, I wire the env).
   2. Run the dep ingest (vectorize_lsp_group.py --model voyage-4-large →
   repos_lsp_rust_voyage_4_large) plus a 4-large re-do of rust-lang/rust.
@@ -1484,7 +1484,7 @@
   Whenever you're ready to execute, I need just two things from you:
   1. A 4-series API key (with voyage-4-large tokens) dropped into
   ~/.bash_secrets.
-  2. Go-ahead to wire COGNITIVE_MCP_VOYAGE_MODEL=voyage-4-large into the s6 env
+  2. Go-ahead to wire COGNITIVE_VOYAGE_MODEL=voyage-4-large into the s6 env
   and launch the rust ingest.
 
   Then I'll run the dep batch + the rust-lang/rust re-do and make the one-line
@@ -4695,7 +4695,7 @@
 
   Ran 1 shell command (ctrl+o to expand)
 ● Clear split: 14 mechanical candidates (opaque=0: adc, mcp, compact_mcp,
-  cognitive_mcp, agent_config, keypair, endpoint, net, hardware, software,
+  cognitive, agent_config, keypair, endpoint, net, hardware, software,
   sessdecl, gcloud_adc, config, ctl_plane_chatbot) and 3 opaque (cron,
   antigravity, antigravity_chat) that need struct typing.
 

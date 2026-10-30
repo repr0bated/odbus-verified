@@ -1,0 +1,2 @@
+path	line	position	text	context	meaning	source_authority	jev_reference	answer_confidence	human_decision	change_status
+# Zero case-insensitive tched occurrences across the 8 completely read inventory files (585 listed lines); see coverage.tsv and judgments.md.

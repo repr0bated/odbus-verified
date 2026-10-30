@@ -1,0 +1,19 @@
+{
+  "task": "tched-context-audit-20261024/op-introspection",
+  "crate": "op-introspection",
+  "status": "complete",
+  "files_reviewed": 10,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-introspection/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-introspection/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-introspection/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-introspection/judgments.md"],
+  "limitations": [
+    "Static source audit only; no runtime or deployment conclusion.",
+    "Build/tests/Clippy/format/smoke/runtime/deployment were not run per assignment.",
+    "No tched occurrence existed, so no occurrence-level JEV judgment applies."
+  ],
+  "next_action": "Coordinator may aggregate this complete zero-occurrence crate result."
+}

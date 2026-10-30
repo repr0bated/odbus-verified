@@ -143,17 +143,17 @@ pub enum ResponseContent {
 pub struct ChatTurn {
     #[schemars(
         description = "Human principal whose private scope holds this turn [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub principal_id: String,
     #[schemars(
         description = "Verified human session that asked (provenance only; the scope is the principal) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_id: String,
     #[schemars(
         description = "Genesis of the asking session (provenance only) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_genesis: String,
     #[schemars(
@@ -235,7 +235,7 @@ pub struct ChatTurn {
 pub struct ConversationSummary {
     #[schemars(
         description = "Human principal that owns the conversation [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub principal_id: String,
     #[schemars(
@@ -256,12 +256,12 @@ pub struct ConversationSummary {
     pub started_at: String,
     #[schemars(
         description = "Verified session that started the conversation (provenance only) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_id: String,
     #[schemars(
         description = "Genesis of the starting session (provenance only) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_genesis: String,
     #[schemars(
@@ -439,7 +439,7 @@ impl StatePlugin for ChatResponsePlugin {
 
 /// Every method with its subid, side effect and capability. The schema, the
 /// bridge dispatch and the tests all read this one table.
-pub const METHODS: [(&str, &str, bool); 7] = [
+pub const METHODS: [(&str, &str, bool); 8] = [
     // (method, subid, is_mutation)
     (
         "start_conversation",
@@ -476,15 +476,23 @@ pub const METHODS: [(&str, &str, bool); 7] = [
         "obs.service.chat-response.conversation.get@v1",
         false,
     ),
+    (
+        "list_pending_turns",
+        "obs.service.chat-response.pending-turns.list@v1",
+        false,
+    ),
 ];
 
 pub const RESPONSE_COMMITTED_SUBID: &str = "evt.service.chat-response.response.committed@v1";
 
 /// The capability a method requires: the three response methods need
 /// `chat_response.respond`; starting and reading need `chat_response.read`.
+/// `list_pending_turns` requires `chat_response.respond` (responders only).
 pub fn required_capability(method: &str) -> Option<&'static str> {
     match method {
-        "respond_to_user" | "request_clarification" | "cannot_perform" => Some(RESPOND_CAPABILITY),
+        "respond_to_user" | "request_clarification" | "cannot_perform" | "list_pending_turns" => {
+            Some(RESPOND_CAPABILITY)
+        }
         "start_conversation" | "get_turn_response" | "list_conversations" | "get_conversation" => {
             Some(READ_CAPABILITY)
         }
@@ -496,8 +504,9 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
     use super::chat_response_methods::{
         CannotPerformInput, GetConversationInput, GetConversationOutput, GetTurnResponseInput,
         GetTurnResponseOutput, ListConversationsInput, ListConversationsOutput,
-        RequestClarificationInput, RespondToUserInput, RespondToUserOutput, ResponseCommitOutput,
-        StartConversationInput, StartConversationOutput,
+        ListPendingTurnsInput, ListPendingTurnsOutput, RequestClarificationInput,
+        RespondToUserInput, RespondToUserOutput, ResponseCommitOutput, StartConversationInput,
+        StartConversationOutput,
     };
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
     use op_state_store::{MethodDecl, SideEffect};
@@ -581,6 +590,9 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
             "get_conversation" => {
                 declare::<GetConversationInput, GetConversationOutput>(name, subid, mutation)
             }
+            "list_pending_turns" => {
+                declare::<ListPendingTurnsInput, ListPendingTurnsOutput>(name, subid, mutation)
+            }
             other => unreachable!("undeclared chat_response method {other}"),
         };
         schema.methods.insert(name.to_string(), declaration);
@@ -590,7 +602,7 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
         RESPOND_CAPABILITY.to_string(),
         op_state_store::CapabilityDecl {
             id: RESPOND_CAPABILITY.to_string(),
-            description: "Agents only. Grants: respond_to_user, request_clarification, cannot_perform — each answers one bridge-minted turn whose designated responder is the caller, into the asking human's scope.".to_string(),
+            description: "Agents only. Grants: respond_to_user, request_clarification, cannot_perform, list_pending_turns — each answers one bridge-minted turn whose designated responder is the caller, into the asking human's scope.".to_string(),
         },
     );
     schema.capabilities.insert(

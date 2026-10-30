@@ -105,6 +105,8 @@ if [ "${1:-}" = "--check-config" ]; then
     export EMQX_DASHBOARD__DEFAULT_USERNAME=admin
     export EMQX_DASHBOARD__DEFAULT_PASSWORD="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-dashboard-password)"
     export EMQX_LOG_DIR=/var/log/emqx
+    export EMQX_NODE__DATA_DIR=/var/lib/emqx
+    export EMQX_ETC_DIR=/usr/share/op-dbus/emqx-etc
     chpst -u emqx:emqx /opt/emqx/bin/emqx check_config
 elif [ "$#" -ne 0 ]; then
     echo "usage: emqx-prepare [--check-config]" >&2

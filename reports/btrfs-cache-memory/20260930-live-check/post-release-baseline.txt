@@ -1,0 +1,18 @@
+2026-09-30T22:14:30Z
+/opt/op-dbus/releases/20260930T212601Z-identity-46c8a19/bin/op-grpc-bridge
+8b828b2088635907c5fdb7a1e4a5377226828f8178fc6ca74e4a7564dd5cb9aa  /proc/28384/exe
+Name:	op-grpc-bridge
+VmPeak:	 2720664 kB
+VmSize:	 2497040 kB
+VmHWM:	 1657712 kB
+VmRSS:	 1566040 kB
+RssAnon:	 1477672 kB
+RssFile:	   88368 kB
+RssShmem:	       0 kB
+VmData:	 1677268 kB
+VmSwap:	       0 kB
+Threads:	46
+starttime_ticks=5062684
+               total        used        free      shared  buff/cache   available
+Mem:        32856188     6432192    11879400       65084    15075476    26423996
+Swap:       16777212     4317812    12459400

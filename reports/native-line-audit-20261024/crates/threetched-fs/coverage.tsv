@@ -1,0 +1,39 @@
+path	sequential_ranges_read	initial_sha256	finding_or_action	status
+crates/threetched-fs/.gitignore	1-1 (EOF)	44c92e3a70ad3307b7056871c2bdb096d8bfa9373f5bf06a79bb6324a20ff2fb	No native occurrence observed	complete-read
+crates/threetched-fs/Cargo.toml	1-40 (EOF)	c0a5804fcf6f2a4ac630287ccf85ddd6a789d980241fb847917960feee492a56	No native occurrence observed	complete-read
+crates/threetched-fs/LICENSE	1-21 (EOF)	c91490e2d0f987d894550db4944a854761b13f1de8f6e52f105c561eceede3b0	No native occurrence observed	complete-read
+crates/threetched-fs/README.md	1-495 (EOF)	d43649e6c4960449d45a1d965b6e8836a2d24ba6cb48783366c1db3fe53557a2	Native wording at line 482; occurrence-specific JEV accurate / 0.37, low confidence; retain provisionally	complete-read
+crates/threetched-fs/docs/ARCHITECTURE.md	1-202 (EOF)	595038bc759b119cc52d0d704ee1d03e2bd1fe1703fc5ff45bb435d3e6c043e5	Native wording at line 173; JEV insufficient / 0.66; no correction supported	complete-read
+crates/threetched-fs/docs/typed-filesystem-backing.evidence.json	1-1418 (EOF)	de040a73d5b30c270f3ea2b19dcd7b3bc22694874d5da9fc90ad90319616be8c	No native occurrence observed	complete-read
+crates/threetched-fs/docs/typed-filesystem-binding-input.json	1-2320 (EOF)	a85c379f2e4ef386ff99b6c1e8498d4a00d753ae9191b5c5b5bc13afea2fce8f	Native/native-compound at 2297; JEV accurate / 0.49, low confidence; retain explicit scope boundary	complete-read
+crates/threetched-fs/docs/typed-filesystem-build.sh	1-6 (EOF)	5cd46cf2f402db276daa632a20cd5513c923d0bf9371eeb467b06b5f0d6cb9b7	No native occurrence observed	complete-read
+crates/threetched-fs/docs/typed-filesystem-gaps.json	1-204 (EOF)	80f33ba1397df9ffea09557e694c4f617b910f1da762a654d6c8b0cde9797fd6	Native wording at line 15; JEV accurate / 0.70; retain pending GNU build gate	complete-read
+crates/threetched-fs/docs/typed-filesystem-nodes.evidence.json	1-10386 (EOF)	f25f5abb84110d768f7b9ca9484ffc659a54cb32dda2bdcf0329011f1f10364f	Three macOS-only/non-native-Linux platform statements at 4707, 4735, 4783; JEV accurate / 0.53, 0.35, 0.37 (low confidence); retain provisionally	complete-read
+crates/threetched-fs/docs/typed-filesystem-policy.json	1-133 (EOF)	c31e9d6f9719f45daf1b5a1bb3a924e5e5d5f0cc1ce39a72748944470e74e9eb	Native occurrences at 105 and 126; JEV accurate / 0.66 and 0.82; retain scope and target/deployment wording	complete-read
+crates/threetched-fs/docs/typed-filesystem-provenance.json	1-203 (EOF)	23dfeac7b30646085b9a0e2e6477247010fd863fc4615a34f83258ecceb00bd1	No native occurrence observed	complete-read
+crates/threetched-fs/docs/typed-filesystem-verification.json	1-375 (EOF)	da17a5c239fbe7eeb0e03841d07c1a7dc33af52f1912ea7154d75b7bb08019b5	Native occurrences at lines 5 and 8; JEV accurate / 0.37 (low confidence) and 0.80; current build remains explicitly pending	complete-read
+crates/threetched-fs/docs/typed-filesystem.schema.json	1-16058 (EOF)	3e58878d436335a6444d784068594b63c29e8d8de0d7e4ac1a3f6ffffa981e27	Known native contexts at 5369, 8314, 8342, 8390, 13038, 15105, 15420, 15432 (two occurrences), 15435 each have contextual JEV; occurrence mapping in occurrences.tsv; global audit remains partial for generated source	complete-read; generated audit pending
+crates/threetched-fs/docs/typed-specialization-report.json	1-5148 (EOF)	6089286f2e4db875259ee266c3e11fe29a51eb632ef4f6fd24a67d7f808cae2c	Identifier native_list_providers at line 3297; occurrence-specific JEV insufficient / 0.51; preserve pending sealed API authority	complete-read
+crates/threetched-fs/examples/typed_check.rs	1-465 (EOF)	44d7ec52b508f866cc2653ecaef55193dc34325cbc84441346efad82b59cc646	No native occurrence observed	complete-read
+crates/threetched-fs/examples/typed_export.rs	1-264 (EOF)	39005c71719e2b1821008b35f5ca0b19d007a822edda6890ac28b2b085b4fb1d	No native occurrence observed	complete-read
+crates/threetched-fs/examples/typed_generate.rs	1-323 (EOF)	fdd3cb70e87f49b1d0fc86856867f1996ab6066a03a5c6d74858bade19f4a667	No native occurrence observed	complete-read
+crates/threetched-fs/examples/typed_specialize.rs	1-1291 (EOF)	5eb1939a2441550a450ba311e63530ad7d30f382f3632584ba36c74e2e4cce85	No native occurrence observed	complete-read
+crates/threetched-fs/examples/typed_use_generated.rs	1-34 (EOF)	c2522a0165198f5d370be2d55b99445ec6706156ca16adc9ff4b4593c4ddcf23	No native occurrence observed	complete-read
+crates/threetched-fs/examples/typed_validate.rs	1-179 (EOF)	ed699c325020f14968c782850bbb62b3d523f2923ef6d1ca9832a79fcee5d5b5	No native occurrence observed	complete-read
+crates/threetched-fs/generated/plugin_types.rs	case-insensitive `native` expression search over whole 121,297-line file; generated contexts grouped by exact source line	96731d423656ea6bc36595d2063fdf1de5f1daf4ea793af7e633077b0bbe9dde	Coordinator baseline: 8,827 substring hits; contextual classes and line mappings in occurrences.tsv; alternatives substring and literal identifiers dispositioned lexically; current JEV batches jdgb-15b34681524c0d96 (7/7), jdgb-15b346aab94c0d97 (22/22)	complete-contextual-review
+crates/threetched-fs/src/dispatch.rs	1-508 (EOF)	d05edd1e58bed70c5f8b7dcdfa43dffa392440da97707dc7ae1894d678f9899b	Native Incus binding wording at 324; judged accurate / 0.43; no change	complete-read
+crates/threetched-fs/src/fuse_buffers.rs	1-157 (EOF)	62509bff1b0b99839fc05bcb524c6ac4d4054c08de000450a14b83580bb8c187	No native occurrence observed	complete-read
+crates/threetched-fs/src/fuse_fs.rs	1-2322 (EOF), sequential chunks; line windows re-read where reader collapsed context	a58da2b5f344553086b70944c1248e4500f5bbc03f6ca9ba27779c0466a18862	No native occurrence observed	complete-read
+crates/threetched-fs/src/fuse_process.rs	1-794 (EOF)	a6da28ba0aabc2a556b2e61f266a6e5aabd54921e5836d753500638380e1e99b	No native occurrence observed	complete-read
+crates/threetched-fs/src/invocation.rs	1-99 (EOF)	ca3d9670ff719093f9be7a0500fa420e0f63ecb86e906aeda2ed1cecec8f0bb6	No native occurrence observed	complete-read
+crates/threetched-fs/src/lib.rs	1-15 (EOF)	cd33b5f1785eb0c3effc5f747b96e78edc9d2db62ed354d7eaa610430495f6f9	No native occurrence observed	complete-read
+crates/threetched-fs/src/main.rs	1-929 (EOF)	75d5a38e9347efc08eda7ed78fa9dd8d27d9ba1e7948600724a14823b3800dfc	No native occurrence observed	complete-read
+crates/threetched-fs/src/mcp.rs	1-1584 (EOF), sequential chunks	4e10134513ffdae5f1629274939f8f012e7c9066bcdec2c1f102e34f56afa741	No native occurrence observed	complete-read
+crates/threetched-fs/src/model.rs	1-1460 (EOF), sequential chunks	4bc7b17bd49f1c564ba1efb97182421f8b958a339ecc32fb65e42e76a3a241c0	No native occurrence observed	complete-read
+crates/threetched-fs/src/mounted.rs	1-1274 (EOF), sequential chunks	c59f17168ad8e86225af67a1380423f00fff01c426d5e29ffad0c14e467ece7b	Native clients at 405; JEV judgments 0.30 and 0.40 both low confidence; disposition unresolved, no correction	complete-read
+crates/threetched-fs/src/namespace.rs	1-1519 (EOF), sequential chunks	47bf69644a89a203935d2a250d74b776c2f769fbefcfbd56f3a2e1f8dcde6ddd	No native occurrence observed	complete-read
+crates/threetched-fs/src/source.rs	1-713 (EOF)	24f3cd2ef38c40fdf9217f3a47a7eccb9620ec29ee50125e1c326777f0ae7a32	No native occurrence observed	complete-read
+crates/threetched-fs/src/store.rs	1-922 (EOF)	943f3bbd29a1cef8caa3f9c135f72479935dfed5abfed29e93b260498c088ffb	No native occurrence observed	complete-read
+crates/threetched-fs/src/threetched-surface.rs	1-1512 (EOF), sequential chunks	96f54f6ad4896dd44500ed89abf609513f9b480886c854f9ec41e471c7947420	No native occurrence observed	complete-read
+crates/threetched-fs/src/typed_bindings.rs	1-1453 (EOF), sequential chunks	20a653f54658ee027c7f9c80f41b6f69fcb54614dd2684ce62f28611631c447c	No native occurrence observed	complete-read
+crates/threetched-fs/src/typed_runtime.rs	1-1974 (EOF), sequential chunks	027d2d834d871b7801e2a8c007fbc638447ed6a36d7443ea43904fa4737b7989	No native occurrence observed	complete-read

@@ -1,0 +1,28 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-mcp/AGENTS.md	1-43 EOF	518c4a9cab3771075d2753fecac565f28d5d824aefa2129141c3850b90a5fb29	No native occurrence; scope guidance read	complete
+crates/op-mcp/Cargo.toml	1-58 EOF	d232875307f67132b9a40a8f213685fdd454e33540685996b30430cb0bad0c63	No native occurrence	complete
+crates/op-mcp/README.md	1-139 EOF	557be097e764d2a3132d987ed6c4f97f1bb86b0b159498249623aeb1a37a32d4	No native occurrence; stale inventory/binary docs generic report-only	complete
+crates/op-mcp/SPEC.md	1-133 EOF	d9e087c847de9331508261422cc9b9683c7dfe88f39ff6c79528c281eaf97b8d	No native occurrence; stale inventory generic report-only	complete
+crates/op-mcp/build.rs	1-29 EOF	a2e9c95fd2c0bcaa722e337dacd960c69ff8af4a7d36071cb6c48c60d384001e	No native occurrence	complete
+crates/op-mcp/compare-op-mcp.md	1-122 EOF	2921757511d35cdf04189d59efc006d6778ced8e32ebb4cf2989309e25c8d71c	No native occurrence; historical inventory generic report-only	complete
+crates/op-mcp/docs/ARCHITECTURE.md	1-134 EOF	d17683aef2643f83648878ebf440ea995bf1864455497c0b4a94d8298aff31f8	No native occurrence	complete
+crates/op-mcp/proto/internal_agents.proto	1-250;251-351 EOF	000f14178a740fbf5f3e90c14a11eb2d7f456aa37afbd803f712a6be8ea3744e	No native occurrence	complete
+crates/op-mcp/proto/mcp.proto	1-232 EOF	6be7e06783f402a82ac57c5fe29d9debb17c8e970eb2294543c0c52e1e7b9d85	No native occurrence	complete
+crates/op-mcp/src/agents_server.rs	1-240;241-410 EOF	b17bf66e9782a6fb8f19ca62b827b4298ec39bbb01bf0e6727d7bf0d55cb5be2	No native occurrence; generic agent proxy admission not established	complete
+crates/op-mcp/src/blob_schema.rs	1-240;241-397 EOF	b11516f72e8b70afde1167818eb5a9db5baf6a8602e102a894fcf589e7e24263	No native occurrence; filename-first blob lookup generic report-only	complete
+crates/op-mcp/src/cognitive_bridge.rs	1-256 EOF	aa5923c913bb886f36b4deec316fb49199e6bc2993ad013d3af41b6b445e1205	No native occurrence; bridge admission claims not runtime-verified	complete
+crates/op-mcp/src/compact.rs	1-250;251-500;501-661 EOF	a21075b35a4656da574ca31cbd91417934966e179086b1a85ecf9376ae64606d	No native occurrence; controller guard retained	complete
+crates/op-mcp/src/external_client.rs	1-250;251-500;501-783 EOF	3eeacfc7dd30b7f31bd5a8f0946d417230982a9c044dbf85aed2e4a1e74b5417	No native occurrence; configured MCP transport not model selection	complete
+crates/op-mcp/src/grpc/client.rs	1-250;251-313 EOF	f2bc599dd5a0268a109d400b4a20fef5123ef95f463e2f6748b5f0ed2bd47fd3	No native occurrence	complete
+crates/op-mcp/src/grpc/mod.rs	1-37 EOF	27f7fbab7826d542773e3e49dbef2eb88a768f01025d48f2cb7cd8781835b92c	No native occurrence	complete
+crates/op-mcp/src/grpc/server.rs	1-240;241-317 EOF	451a4ab312855c07d2f87085c6671b84ea1156d9a8d8b2298bc5892d9370b48a	No native occurrence; generic constructor admission gap report-only	complete
+crates/op-mcp/src/grpc/service.rs	1-250;251-500;501-737 EOF	a655a870597218ab82b6701530fd256b5f64f033498bcf0d26f00c1237e882c3	No native occurrence; generic direct registry dispatch report-only	complete
+crates/op-mcp/src/lib.rs	1-106 EOF	d141da26b6fd02d9d4954e648b13b546036cafe203c4f2ebcdc4111099e4e1e5	No native occurrence	complete
+crates/op-mcp/src/protocol.rs	1-209 EOF	55d7a655c340a98a6e147878a85f7aa6debeda58b6aa21bcee95ea56c0786e74	No native occurrence	complete
+crates/op-mcp/src/resources.rs	1-157 EOF	ee4d7a31ca7ee8b01871b75de005791ba22e0f933227e865585bee3de78c1afe	No native occurrence	complete
+crates/op-mcp/src/server.rs	1-250;251-500;501-750;751-867 EOF	f8673466d721fd12b42ffe6b93aba41911a5afc65d60835bf64d536973e1df76	No native occurrence; client-name compact selection only J1	complete
+crates/op-mcp/src/tool_registry.rs	1-240;241-423 EOF	f04226eaf7b4358ff5b1467b393ed0c3f78bb42b867743e67c506a622dd4cbb2	No native occurrence	complete
+crates/op-mcp/src/transport/http.rs	1-250;251-500;501-750 EOF	71e7cc9dd7caab56234b394f940653308b8ee2564c4a318a42689585ec6cac29	No native occurrence; default validator denies credentials	complete
+crates/op-mcp/src/transport/mod.rs	1-48 EOF	5bcabd5aaf8ce1099e8016c740df4c896996e4e42295f3d616875ff0329612c4	No native occurrence	complete
+crates/op-mcp/src/transport/stdio.rs	1-64 EOF	ee4926bb710fced2a797426e2f6b3aacdd5574076a7f9107680647d6a13d3b93	No native occurrence	complete
+crates/op-mcp/src/transport/websocket.rs	1-197 EOF	bd5911b4cb1e42869f5eeb5e137c9abd43a440d2de5b200d81f088b39149dacb	No native occurrence	complete

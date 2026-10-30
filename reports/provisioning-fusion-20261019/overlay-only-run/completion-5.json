@@ -1,0 +1,89 @@
+{
+  "request": 5,
+  "started": "2026-10-19T06:03:50.329997+00:00",
+  "finished": "2026-10-19T06:04:04.946320+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-038cbde8e5b8baad016ad5b2c9844487d0b2c0d5cbe0824625",
+    "created": 1792389833,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Comparing current overlay helper snapshots\",\"command\":\"sha256sum deploy/scripts/sync-instance-upgrade.sh deploy/scripts/bind-instance-root.sh deploy/runit/libexec-3tched/restore-chatbot-root deploy/runit/identity-roots/run reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/sync-instance-upgrade.sh reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/bind-instance-root.sh reports/provisioning-fusion-20261019/evidence/source/deploy/runit/libexec-3tched/restore-chatbot-root reports/provisioning-fusion-20261019/evidence/source/deploy/runit/identity-roots/run\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_V5KxJkbthL80uI8Qrtm4zCyd",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading boot selection boundaries\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/source/deploy/runit/identity-roots/run:76-180\"}",
+                "name": "read"
+              },
+              "id": "call_1xYvY3f6ZEpsDf2pdZYYSZuN",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading existing judge conclusions\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/jev-seed-mechanism-correction.json?q=del(.evidence,.context,.question)\"}",
+                "name": "read"
+              },
+              "id": "call_AoNUSmf5T8g7zN4pi6lFoUNO",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading binder mapping selection\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/evidence/source/deploy/scripts/bind-instance-root.sh:87-139\"}",
+                "name": "read"
+              },
+              "id": "call_mIv4Yd4DnPIEPXscQZUrqlFL",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The saved helpers already implement send/receive ancestry checks, upgrade-over-seed read-only composition, and stopped-root restoration. I\u2019ll specify the narrow integration and recovery gaps; baseline paths and storage identities remain owner-supplied values, not new architectural blockers."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1061,
+      "prompt_tokens": 230120,
+      "total_tokens": 231181,
+      "completion_tokens_details": {
+        "reasoning_tokens": 229
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 153468
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T06:04:04.943612+00:00",
+  "stream_chunks": 11
+}

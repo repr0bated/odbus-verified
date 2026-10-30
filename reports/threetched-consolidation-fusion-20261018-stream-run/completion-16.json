@@ -1,0 +1,64 @@
+{
+  "request": 16,
+  "started": "2026-10-18T21:30:36.284314+00:00",
+  "finished": "2026-10-18T21:30:51.500472+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01c6878ef6ece6e4016ad53a80357087d0849217e6ba4d818c",
+    "created": 1792359040,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"display(Object.fromEntries(Object.entries(wrappers).map(([id, methods])=>[id,Object.entries(methods).map(([name,m])=>({name,cap:m.required_capability,args:m.args.properties,required:m.args.required}))]))); display(Object.entries(native.methods).filter(([k])=>/^(plugin\\\\.|skills\\\\.)/.test(k)).map(([name,m])=>({name,cap:m.required_capability,args:Object.keys(m.args.properties??{}),required:m.args.required})));\",\"title\":\"Summarizing exact admission mappings\"}",
+                "name": "eval"
+              },
+              "id": "call_ZSRmU5IBhL91j9HhXlxGLfUp",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 594,
+      "prompt_tokens": 233465,
+      "total_tokens": 234059,
+      "completion_tokens_details": {
+        "reasoning_tokens": 199
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 190036
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:30:51.499264+00:00",
+  "stream_chunks": 4
+}

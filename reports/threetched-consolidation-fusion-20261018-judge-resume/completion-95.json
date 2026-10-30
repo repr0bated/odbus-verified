@@ -1,0 +1,87 @@
+{
+  "request": 95,
+  "started": "2026-10-18T22:02:55.156366+00:00",
+  "finished": "2026-10-18T22:03:09.235009+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0d68d026ffba076e016ad54211db7887d0bf5947b8c449e40b",
+    "created": 1792360977,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading durable publication commit\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs:6236-6296\"}",
+                "name": "read"
+              },
+              "id": "call_rZtXMnWIyhBmlyKoPkSkWnUn",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming obsolete policy grant references\",\"path\":\"/srv/git/odbus-verified/deploy/security/capability-grants.json\",\"pattern\":\"3tched-router.config-schema.read\"}",
+                "name": "grep"
+              },
+              "id": "call_UklhqMRuLAtFoEaJFVIXvsht",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading active ownership row\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:424-427\"}",
+                "name": "read"
+              },
+              "id": "call_QohDhWBsUsboPVB9lifxOFoT",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading preserved coherence owner\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_config_engine.rs:410-425\"}",
+                "name": "read"
+              },
+              "id": "call_vco3rppjofxPrL5luuATZ3FB",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 693,
+      "prompt_tokens": 133244,
+      "total_tokens": 133937,
+      "completion_tokens_details": {
+        "reasoning_tokens": 359
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 114214
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:03:09.232499+00:00",
+  "stream_chunks": 10
+}

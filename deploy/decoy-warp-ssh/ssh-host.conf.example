@@ -1,0 +1,37 @@
+# Separate sshd instance. Replace placeholders in the offline rootfs.
+# Never Include the administrative sshd configuration.
+AddressFamily inet
+ListenAddress REPLACE_HOST_PUBLIC_IPV4
+Port REPLACE_TUNNEL_SSH_PORT
+PidFile /run/op-warp-ssh/sshd.pid
+HostKey REPLACE_EXISTING_PINNED_HOST_KEY
+AllowUsers REPLACE_DEDICATED_NONROOT_USER
+AuthorizedKeysFile /etc/op-dbus/warp-ssh.authorized_keys
+AuthenticationMethods publickey
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+PermitRootLogin no
+UsePAM yes
+StrictModes yes
+PermitTunnel point-to-point
+MaxSessions 0
+AllowTcpForwarding no
+AllowStreamLocalForwarding no
+AllowAgentForwarding no
+X11Forwarding no
+PermitTTY no
+PermitUserRC no
+PermitUserEnvironment no
+GatewayPorts no
+ClientAliveInterval 15
+ClientAliveCountMax 3
+LoginGraceTime 20
+MaxAuthTries 3
+LogLevel VERBOSE
+# Root-owned authorized_keys (restrict also denies TUN on current OpenSSH):
+# no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding,tunnel="REMOTE_TUN_ID" ssh-ed25519 ...
+# MaxSessions 0 above denies shell/subsystem sessions; only the pinned TUN is allowed.
+# Precreate tunREMOTE_TUN_ID owned by the dedicated user. No session shell,
+# sudo, or CAP_NET_ADMIN is required by that user. No DisableForwarding yes.

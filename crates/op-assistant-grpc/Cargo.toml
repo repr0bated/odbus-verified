@@ -7,7 +7,7 @@ description = "gRPC gateway for Assistant integration with D-Bus first transport
 
 [dependencies]
 # Cognitive memory (CozoDB-backed)
-op-cognitive-mcp = { path = "../op-cognitive-mcp" }
+op-cognitive = { path = "../op-cognitive" }
 # Shared Ghostbridge session-genesis verification
 op-identity = { path = "../op-identity" }
 

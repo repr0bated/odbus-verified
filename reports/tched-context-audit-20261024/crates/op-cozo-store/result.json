@@ -1,0 +1,32 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-cozo-store",
+  "status": "complete",
+  "files_reviewed": 29,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 26,
+  "findings_report": "/srv/git/odbus-verified/reports/tched-context-audit-20261024/crates/op-cozo-store/findings.md",
+  "coverage_report": "/srv/git/odbus-verified/reports/tched-context-audit-20261024/crates/op-cozo-store/coverage.tsv",
+  "occurrences_report": "/srv/git/odbus-verified/reports/tched-context-audit-20261024/crates/op-cozo-store/occurrences.tsv",
+  "jev_receipts": [
+    {"id":"jdgb-15b33344ea55cf68","groups":7,"result":"Initial contextual batch; non-path dispositions retained, lower-confidence path/fixture/storage results treated as provisional."},
+    {"id":"jdgb-15b33375fad5cf69","groups":1,"result":"Initial manifest path judgment insufficient (0.98), superseded after reading full producer/staging contract."},
+    {"id":"jdgb-15b33644e897fbf4","groups":2,"result":"Full producer-contract reassessment: manifest_path correct (0.98); binary_root correct (0.92)."}
+  ],
+  "supplemental_reads": {
+    "mandatory_preload_paths": 28,
+    "initial_full_receipts": false,
+    "continuation_read_through_eof": true,
+    "files": "/var/tmp/tched-context-audit-20261024/mandatory-preload.txt",
+    "coordinator_followup": "/var/tmp/tched-context-audit-20261024/crates/op-cozo-store/coordinator-followup.md",
+    "coordinator_source_gaps": {"inventory_files_with_metadata":29,"missing_line_files":0,"column_limited_files":0},
+    "producer_sources_read_through_eof":["deploy/lib/golden/build-golden.sh","vendor/tched-router/source.pin","vendor/tched-router/build-threetched.sh"]
+  },
+  "limitations": [
+    "No Cargo/build/test/Clippy/fmt/smoke/runtime/deployment checks were run, as prohibited by per-crate audit instructions.",
+    "The initial mandatory skill preload did not have full receipts; the continuation completed all 28 reads through EOF and does not claim those reads occurred initially.",
+    "Source/preparation evidence establishes declared artifact paths only; it does not establish current deployment or live state."
+  ],
+  "next_action": "Coordinator aggregates the updated report; no further op-cozo-store fix is evidenced."
+}

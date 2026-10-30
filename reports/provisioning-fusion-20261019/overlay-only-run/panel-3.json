@@ -1,0 +1,43 @@
+{
+  "status": "ok",
+  "query": "Provide a 3-6 word imperative session title for this goal: deliver a focused upgrade-overlay specification and receipt, only writing two analysis files, with owner implementing provisioning baseline. No code or runtime changes. Output a short title only.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "<title>Specify upgrade overlay and receipt</title>"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<title>Specify upgrade overlay and receipt</title>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Both responses propose the identical imperative title: Specify upgrade overlay and receipt.",
+      "Both titles name the focused specification and receipt deliverables and satisfy the 3\u20136 word requirement."
+    ],
+    "contradictions": [],
+    "partial_coverage": [],
+    "unique_insights": [],
+    "blind_spots": [
+      "Neither title explicitly mentions the two-analysis-file limit, owner-implemented provisioning baseline, or prohibition on code and runtime changes."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

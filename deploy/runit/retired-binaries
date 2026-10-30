@@ -1,6 +1,9 @@
 # Standalone network/control-plane executables replaced by bridge-owned,
 # in-process dispatch. Their crates may remain as libraries or admin tooling,
 # but golden preparation must not stage these listener binaries.
+# Daemon and companion retired with the host network owner on 2026-10-19.
+rust-network-mgr
+rust-network-mgr-mcp
 op-cognitive-mcp
 op-gemma
 op-mcp-agents
@@ -10,6 +13,10 @@ op-waypipe-grpc
 op-chat
 op-mcp-shim
 zeroclaw-gui
+# Native runtime renamed to threetched; keep the old executable out of releases.
+zeroclaw
+# Our filesystem client is 3tched-fs; threetched names the external runtime.
+threetched-fs
 # Stale pre-runit build outputs: the current crate produces op-runit-systemctl
 # and svd. Scanning target/release must not resurrect earlier s6 executables.
 op-s6-systemctl

@@ -1,0 +1,159 @@
+{
+  "status": "ok",
+  "query": "Read-only evidence review assistance; do not execute commands. Packet history-254 is an Astra JSONL excerpt with leading truncated HANDOFF text, rows117-138 complete, row139 cut off. Main evidence: historical handoff says relay build blocked by worker Shell denial (no compilation), lungs socket absent then; corrected guest public /run/3tched-lungs.socket symlink backing /run/opdbus/lungs/lungs.sock, strict profile admission, guest-owned FUSE needed, six seed subvolumes guarded. Current reads: missing seed /etc/op-dbus (row118), loopback-only manager config row117; egress socket conditional on env file and 127.0.0.1:3128 row119. ss rows126/134 shows lungs listener and xray-owned /run/ghostbridge/xray/egress-http.sock PID3376. Manager README describes control not proxy; main.rs truncated 1-300/341 shows nft setup errors logged nonfatal, API clones initial state, reload leaves shared interface config update commented. Manager service disables ProtectSystem/PrivateTmp/NoNewPrivileges (comment mentions systemd226, not actual failure). Egress service still strict sandbox and socket-proxyd; env template unassigned requiring verified HTTP CONNECT proxy. Prepared runit carrier different path /run/ghostbridge/xray-egress/{carrier,http}.sock, not enabled by preparation. Scoped binary glob no files; pgrep exit1 no output, not compilation failure. Final calls ldd/curl have no results visible; duplicate skill and HANDOFF refs external to packet cannot independently resolve. Identify key cautionary distinctions for final JSON review; no need to restate corpus.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "{\n  \"packet_id\": \"history-254\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"ids\": [],\n      \"row\": \"leading truncated HANDOFF text\",\n      \"source\": \"current_question packet synopsis; original excerpt not supplied\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported historical observation, not independently verified.\",\n      \"stage\": \"Historical relay build and guest transport readiness\",\n      \"actual_tool_result\": \"The synopsis reports a worker Shell denial preventing compilation and a historically absent lungs socket. Neither underlying receipt is visible here.\",\n      \"correction_propagation_or_discrepancy\": \"Keep permission denial distinct from a compiler failure. Historical socket absence must not override later listener evidence in rows126/134. Neither later listeners nor a handoff claim establishes that the relay was built or deployed.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"leading truncated HANDOFF text; exact correction rows unavailable\",\n      \"source\": \"current_question packet synopsis; original excerpt not supplied\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported correction and safeguards; implementation and runtime enforcement remain unverified.\",\n      \"stage\": \"Guest transport, admission and filesystem isolation\",\n      \"actual_tool_result\": \"No original patch, configuration result or runtime security receipt is supplied.\",\n      \"correction_propagation_or_discrepancy\": \"Preserve the distinction between guest public /run/3tched-lungs.socket and backing /run/opdbus/lungs/lungs.sock. Retain strict profile admission, guest-owned FUSE and the reported six guarded seed subvolumes. Do not infer guest accessibility, correct ownership or enforced guards merely from a host listener.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"117-119\",\n      \"source\": \"current_question packet synopsis; original JSONL rows unavailable\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported file/configuration observations; broader blocker claims would be inference.\",\n      \"stage\": \"Seed configuration and egress prerequisites\",\n      \"actual_tool_result\": \"Row117 reportedly reads a loopback-only manager configuration; row118 reports missing seed /etc/op-dbus; row119 reports an egress socket conditional on an environment file and a 127.0.0.1:3128 endpoint.\",\n      \"correction_propagation_or_discrepancy\": \"Do not generalize absence at the inspected seed path into absence across installed or runtime configurations. Loopback binding identifies exposure scope, not automatically a defect. The environment condition and configured endpoint do not prove that a usable HTTP CONNECT proxy exists.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"126 and 134\",\n      \"source\": \"current_question packet synopsis; original ss output unavailable\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported runtime listener observations with limited scope.\",\n      \"stage\": \"Host transport availability\",\n      \"actual_tool_result\": \"The synopsis reports a lungs listener and xray-owned /run/ghostbridge/xray/egress-http.sock associated with PID3376.\",\n      \"correction_propagation_or_discrepancy\": \"These observations qualify historical socket-absence claims but do not prove HTTP CONNECT behavior, guest namespace visibility, access permissions, relay interoperability or end-to-end egress. Keep this observed path distinct from the separately prepared xray-egress carrier paths.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"within rows117-138; precise rows not supplied\",\n      \"source\": \"current_question packet synopsis of manager README and main.rs\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported documentation/source observations; operational consequences are conditional inferences.\",\n      \"stage\": \"Manager control-plane semantics and configuration consistency\",\n      \"actual_tool_result\": \"The synopsis describes README control functionality rather than proxy functionality. The main.rs read covers only lines1-300 of341 and reportedly logs nft setup errors nonfatally, clones initial state into the API and leaves shared interface configuration updates on reload commented out.\",\n      \"correction_propagation_or_discrepancy\": \"Do not count a control API as an HTTP CONNECT proxy. Nonfatal error handling permits apparent service availability without proving nft setup succeeded; it does not prove such an error occurred. Cloned initial state and omitted reload updates raise a stale-state concern, but complete source and runtime receipts are needed to establish affected behavior.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"within rows117-138; precise rows not supplied\",\n      \"source\": \"current_question packet synopsis of manager and egress service definitions\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported configuration observations, not proof of effective deployed service settings.\",\n      \"stage\": \"Service isolation and proxy forwarding\",\n      \"actual_tool_result\": \"Manager service configuration reportedly disables ProtectSystem, PrivateTmp and NoNewPrivileges. An accompanying comment mentions systemd226. The separate egress service reportedly retains strict sandboxing and socket-proxyd.\",\n      \"correction_propagation_or_discrepancy\": \"Do not present the systemd226 comment as an encountered failure or justification verified on the host. Do not transfer the manager's weakened settings to the distinct egress service. socket-proxyd forwarding does not itself implement an HTTP CONNECT proxy. These historical service artifacts do not authorize service-manager changes.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"within rows117-138; precise rows not supplied\",\n      \"source\": \"current_question packet synopsis of environment template and prepared runit carrier\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported preparation evidence; activation and compatibility are unproven.\",\n      \"stage\": \"Egress carrier preparation versus deployment\",\n      \"actual_tool_result\": \"The environment template is reportedly unassigned and requires a verified HTTP CONNECT proxy. Prepared runit inputs use /run/ghostbridge/xray-egress/carrier.sock and /run/ghostbridge/xray-egress/http.sock; preparation did not enable the service.\",\n      \"correction_propagation_or_discrepancy\": \"Do not equate prepared files with enabled or running services. The prepared paths differ from the listener reported at /run/ghostbridge/xray/egress-http.sock. A verified connection between those artifacts is required before claiming integration or readiness.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"within rows117-138; precise rows not supplied\",\n      \"source\": \"current_question packet synopsis of binary glob and pgrep receipts\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported negative results limited to the queries' scopes.\",\n      \"stage\": \"Artifact and process discovery\",\n      \"actual_tool_result\": \"A scoped binary glob reportedly found no files; pgrep reportedly returned exit1 without output. Exact arguments are unavailable.\",\n      \"correction_propagation_or_discrepancy\": \"Neither result is a compilation failure. They support only no matching artifact or process within the inspected scope, not global absence, an established build failure or proof that deployment never occurred.\"\n    },\n    {\n      \"ids\": [],\n      \"row\": \"packet end; row139 cut off\",\n      \"source\": \"current_question packet synopsis\",\n      \"original_short_quote\": null,\n      \"observation_vs_inference\": \"Reported calls without visible outcomes.\",\n      \"stage\": \"Dependency and connectivity verification\",\n      \"actual_tool_result\": \"Final ldd and curl calls reportedly have no results visible in this packet.\",\n      \"correction_propagation_or_discrepancy\": \"Do not infer dependency resolution, successful connectivity, HTTP CONNECT support or failure from invocation alone. Results may belong to the following packet.\"\n    }\n  ],\n  \"truncations/unavailable\": [\n    \"Only the supplied packet synopsis was available for this review, not the original history-254 JSONL excerpt. Exact original quotations, message IDs, arguments and byte coverage cannot be certified.\",\n    \"The synopsis describes leading HANDOFF text as truncated, rows117-138 as complete and row139 as cut off; these boundaries were not independently inspected.\",\n    \"The reported main.rs output covers lines1-300 of341, leaving the remainder unavailable in that read.\",\n    \"Final ldd/curl results are not visible according to the synopsis.\",\n    \"Duplicate skill and HANDOFF references point outside the packet; their exact strings and first-reviewed provenance cannot be independently resolved.\",\n    \"Physical order beyond supplied row anchors, parent links, timestamps, active/compacted flags and queued/live-delegation correction metadata are unavailable.\"\n  ],\n  \"boundary_dependencies\": [\n    \"Original packet text is required to complete character-level review, attach exact quotations and IDs, and preserve record metadata.\",\n    \"Adjacent packets are needed for the beginning of the HANDOFF fragment and completion of row139 and pending tool results.\",\n    \"First-provenance records are required to account for duplicate references without silently treating them as reviewed.\",\n    \"Separate installed and runtime receipts are required to connect prepared service definitions to effective processes, sockets and guest access.\",\n    \"This packet's transport and configuration evidence cannot establish identity-container storage completion, authoritative adoption or startup.\",\n    \"No supplied evidence here establishes a need to reintroduce previously rejected extra egress or unrelated network services as provisioning prerequisites.\",\n    \"Any storage proposal remains subject to the latest no-host-loop constraint, including pool backing; this packet does not resolve native subvolume-only seed/sprout feasibility.\"\n  ],\n  \"uncertainty\": {\n    \"assessment\": \"These are advisory distinctions derived from the supplied synopsis, not an independently completed original-packet audit.\",\n    \"root_cause\": \"No definitive provisioning root cause or current blocker can be established from this material alone.\",\n    \"review_status\": \"Synopsis reviewed; original packet coverage, complete-history coverage and JEV adjudication are not claimed.\",\n    \"actions\": \"No commands, builds, tests, mutations, deployments or runtime actions were executed; no analysis files were written.\"\n  }\n}"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "{\n  \"packet_id\": \"history-254\",\n  \"fully_reviewed\": false,\n  \"findings\": [\n    {\n      \"id\": \"F-117\",\n      \"row\": \"117\",\n      \"source\": \"astra/history-254.jsonl\",\n      \"original_quote\": \"loopback-only manager config\",\n      \"observation\": \"Manager configuration restricts network to loopback.\",\n      \"inference\": \"Intended for isolation, but conflicts with required egress proxy via 127.0.0.1:3128.\",\n      \"stage\": \"Configuration\",\n      \"actual_tool_result\": \"N/A (read-only evidence review)\",\n      \"correction_propagation\": \"Historical correction established guest-owned FUSE and strict profile admission; current config disables security flags citing systemd226 without verified failure.\",\n      \"discrepancy\": \"Security flags disabled without documented runtime failure; loopback config does not satisfy no-host-loop device constraint if it implies host-side loopback device creation.\"\n    },\n    {\n      \"id\": \"F-118\",\n      \"row\": \"118\",\n      \"source\": \"astra/history-254.jsonl\",\n      \"original_quote\": \"missing seed /etc/op-dbus\",\n      \"observation\": \"Seed path /etc/op-dbus is absent in current read.\",\n      \"inference\": \"Seed provisioning incomplete or path mismatch with historical six guarded subvolumes.\",\n      \"stage\": \"Storage/Admission\",\n      \"actual_tool_result\": \"N/A\",\n      \"correction_propagation\": \"Owner correction mandates immutable shared seed and isolated persistent writes; subvolume-only preference applies here.\",\n      \"discrepancy\": \"Historical handoff confirms six seed subvolumes guarded, but current evidence shows missing seed path. No host loop devices permitted.\"\n    },\n    {\n      \"id\": \"F-119\",\n      \"row\": \"119\",\n      \"source\": \"astra/history-254.jsonl\",\n      \"original_quote\": \"egress socket conditional on env file and 127.0.0.1:3128\",\n      \"observation\": \"Egress setup depends on env file and proxy address.\",\n      \"inference\": \"Egress is conditional and currently unassigned/unverified.\",\n      \"stage\": \"Network/Proxy\",\n      \"actual_tool_result\": \"N/A\",\n      \"correction_propagation\": \"Egress service retains strict sandbox and socket-proxyd; env template unassigned.\",\n      \"discrepancy\": \"Conditional dependency blocks definitive egress verification; no host loop devices allowed.\"\n    },\n    {\n      \"id\": \"F-126-134\",\n      \"row\": \"126/134\",\n      \"source\": \"astra/history-254.jsonl\",\n      \"original_quote\": \"ss rows126/134 shows lungs listener and xray-owned /run/ghostbridge/xray/egress-http.sock PID3376\",\n      \"observation\": \"Runtime sockets exist and are bound to PIDs.\",\n      \"inference\": \"Services are listening, but alignment with strict profile and FUSE requirements is unverified.\",\n      \"stage\": \"Runtime\",\n      \"actual_tool_result\": \"N/A\",\n      \"correction_propagation\": \"Corrected guest public /run/3tched-lungs.socket symlink backing /run/opdbus/lungs/lungs.sock established.\",\n      \"discrepancy\": \"Manager README describes control not proxy; main.rs truncated shows nft setup errors logged nonfatal. API clones initial state but reload leaves shared interface config update commented.\"\n    },\n    {\n      \"id\": \"F-139\",\n      \"row\": \"139\",\n      \"source\": \"astra/history-254.jsonl\",\n      \"original_quote\": \"row139 cut off\",\n      \"observation\": \"Packet truncation at row 139.\",\n      \"inference\": \"Incomplete evidence prevents full state verification.\",\n      \"stage\": \"Analysis\",\n      \"actual_tool_result\": \"N/A\",\n      \"correction_propagation\": \"N/A\",\n      \"discrepancy\": \"Truncation prevents verification of final state and correction propagation.\"\n    }\n  ],\n  \"truncations_unavailable\": \"Row 139 is cut off. Leading HANDOFF text is truncated. Final calls ldd/curl have no results visible. External duplicate skill and HANDOFF refs cannot independently resolve.\",\n  \"boundary_dependencies\": \"Requires verification of actual systemd226 failure vs commented-out security flags. Requires runtime inspection of /run/ghostbridge/xray/egress-http.sock and /run/3tched-lungs.socket alignment with strict profile admission. Requires confirmation of seed subvolume mapping to /etc/op-dbus without host loop devices.\",\n  \"uncertainty\": \"High uncertainty regarding whether the manager service's disabled security flags are a genuine workaround for a systemd226 bug or an unauthorized relaxation. Uncertainty remains on whether the egress proxy (127.0.0.1:3128) is fully operational given the unassigned env template. The missing seed path /etc/op-dbus contradicts the historical record of six guarded subvolumes; root cause is unknown without runtime evidence. No host loop devices are permitted, so any reliance on loopback-only config for host-side device mapping is a critical discrepancy. JEV adjudication required to resolve security flag relaxation vs. documented failure.\"\n}"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Both responses mark history-254 as not fully reviewed and acknowledge the leading truncated HANDOFF, cut-off row139, missing ldd/curl results and unresolved external duplicate references.",
+      "Both distinguish observed listeners from complete verification of guest access, profile admission, FUSE requirements or end-to-end egress.",
+      "Both identify the conditional egress configuration and unassigned environment template as insufficient evidence of a working proxy.",
+      "Both note that the manager's security-setting comment does not establish an actual systemd226 failure."
+    ],
+    "contradictions": [
+      {
+        "topic": "Network loopback versus host storage loop devices",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Treats loopback binding as network exposure scope, not automatically a defect, and treats the no-host-loop storage requirement separately."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Suggests loopback-only configuration could imply prohibited host loop-device creation or mapping. This conflates network loopback with storage loop devices; the supplied synopsis establishes no such connection."
+          }
+        ]
+      },
+      {
+        "topic": "Whether loopback-only configuration conflicts with a localhost proxy",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Says loopback binding is not automatically defective and the configured endpoint requires separate proxy verification."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Claims loopback-only configuration conflicts with egress through 127.0.0.1:3128, although the synopsis supplies no evidence establishing that incompatibility."
+          }
+        ]
+      },
+      {
+        "topic": "Missing seed configuration directory versus guarded subvolumes",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Limits the missing /etc/op-dbus observation to the inspected seed path and rejects generalizing it into broader absence."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Calls the missing directory a contradiction of six guarded seed subvolumes and suggests incomplete provisioning. Guard coverage and directory existence are distinct facts; their incompatibility is not established."
+          }
+        ]
+      },
+      {
+        "topic": "Evidence provenance and quotation fidelity",
+        "stances": [
+          {
+            "model": "astra-pro",
+            "stance": "Explicitly identifies the supplied synopsis as its source, leaves original quotations and message IDs unavailable, and does not certify original-packet coverage."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Labels synopsis wording as original quotations and attributes findings to astra/history-254.jsonl, a source path not established by the supplied material. Its F-prefixed IDs are finding labels, not original record IDs."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Neither response independently reviews the original JSONL packet; exact message IDs, arguments, metadata and character-level coverage remain unavailable."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Omits the historical Shell denial versus compiler-failure distinction and the limited meaning of the empty binary glob and pgrep exit1."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Does not account for the prepared runit carrier's different socket paths or the fact that preparation did not enable it."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Mentions manager control semantics and reload concerns but does not clearly distinguish source-level failure possibilities from encountered runtime failures. Its actual_tool_result fields say N/A despite the synopsis reporting historical tool outcomes."
+      },
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Provides broader cautionary coverage, but its reconstructed groupings cannot establish precise physical order or correction propagation beyond the synopsis's explicit row anchors."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Separates a Shell permission denial that prevented compilation from an actual compiler failure, and separates empty artifact/process searches from either."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Explains that later listener observations qualify historical socket-absence claims without proving relay build, deployment or guest connectivity."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Distinguishes the observed /run/ghostbridge/xray/egress-http.sock from prepared /run/ghostbridge/xray-egress/carrier.sock and http.sock, preventing preparation from being mistaken for deployed integration."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Separates manager control functionality, socket-proxyd forwarding and actual HTTP CONNECT proxy behavior."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Notes that nonfatal nft error handling and potentially stale API state identify possible observability problems, not proof that those failures occurred."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly prevents transport evidence from being promoted into proof of storage completion, authoritative adoption or startup, or into justification for previously rejected network prerequisites."
+      }
+    ],
+    "blind_spots": [
+      "Neither response can establish whether the historical service files correspond to installed or effective runtime configuration without original provenance and deployment receipts.",
+      "Neither response establishes actual guest socket ownership, namespace visibility, FUSE operation or enforcement of the six-subvolume guards.",
+      "Neither response supplies JEV adjudication; substantive conclusions remain unadjudicated rather than approved decisions.",
+      "The suggested boundary checks need explicit separation between additional read-only export/source review and runtime inspection requiring separately authorized follow-up.",
+      "The packet synopsis cannot establish a current provisioning root cause or resolve subvolume-only immutable-seed/sprout feasibility."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

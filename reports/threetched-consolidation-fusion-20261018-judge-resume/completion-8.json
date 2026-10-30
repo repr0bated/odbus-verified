@@ -1,0 +1,81 @@
+{
+  "request": 8,
+  "started": "2026-10-18T21:50:47.263132+00:00",
+  "finished": "2026-10-18T21:51:09.775277+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0d9a8111f821a289016ad53f3a5eb887d087ef55e72fb3cdc7",
+    "created": 1792360250,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Claiming resumed consolidation ownership\",\"input\":\"[/srv/git/odbus-verified/HANDOFF.md#AF7B]\\nPUT <424:\\n+| Fusion execution \u2014 RESUMED SOURCE REVIEW | `threetched-consolidation-fusion-20261018` / OD-121 | Preserve prior implementation; own additional consolidation source only after evidence review and scoped claim, plus existing report/shared-note updates. ScopeReview read-only; ReleaseReadiness owns readiness evidence only pending source freeze. | 2026-10-18 | Latest owner correction: JEV judge-only, no class-router load/retest or worker/global model changes. Provisioning worker sa-0-32370f11 owns compiler until authoritative completion receipt; old PID25761 is historical, not current. No Cargo started. No tests/fmt/Clippy/fixtures/install/service/live activation/grant/storage/network changes. |\\n\"}",
+                "name": "edit"
+              },
+              "id": "call_SwvvLUFLAn3lgsXLsyRETbm3",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting available language servers\",\"path\":\"xd://lsp\",\"content\":\"{\\\"action\\\":\\\"status\\\"}\"}",
+                "name": "write"
+              },
+              "id": "call_XduYLMUj8fcGvxZqvAUc7kZn",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording current revision identity\",\"command\":\"git rev-parse HEAD\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_uEqUc09BkilYjwo5YFtUdAKu",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The prior edits remain intact. JEV stays judge-only; I will not load or retest the class-router. Two workers are reviewing outstanding contract obligations and release prerequisites. The provisioning build still owns the compiler slot until its completion is recorded.\n\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1443,
+      "prompt_tokens": 220834,
+      "total_tokens": 222277,
+      "completion_tokens_details": {
+        "reasoning_tokens": 249
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 149091
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:51:09.772354+00:00",
+  "stream_chunks": 11
+}

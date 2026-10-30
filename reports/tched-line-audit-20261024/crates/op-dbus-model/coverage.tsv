@@ -1,0 +1,6 @@
+path	sequential_ranges_read	supplied_initial_sha256	finding_action	status
+crates/op-dbus-model/Cargo.toml	1-15 EOF (requested 1-80)	1de5411790f490d32e93728512d673ac9f216255c2fc3500ac8517c7310ffab5	zero tched substrings; unchanged	complete
+crates/op-dbus-model/compare-op-dbus-model.md	1-63 EOF (requested 1-100)	7d0336db73f7f6e20b49956a7559a15ea57b22189966adb2fc0fe45e33aa58a5	zero tched substrings; unchanged	complete
+crates/op-dbus-model/SPEC.md	1-199 EOF (requested 1-240)	1956b98572bfa2e2f000ed21f4859b38989acfdd319ed868d8c002622d85dc7f	zero tched substrings; unchanged; non-naming documentation drift report-only	complete
+crates/op-dbus-model/src/lib.rs	1-66 EOF (requested 1-100)	28659411e0099bed31cbdc3cacea1f29b1ba70f4187aca143a6ca130f7b3b7e3	zero tched substrings; unchanged	complete
+crates/op-dbus-model/src/models.rs	1-47 EOF (requested 1-100)	98366d0644a6629dbd1bc141919c612a01481cfcc5b2628f04e2fd4310a83aa9	zero tched substrings; unchanged	complete

@@ -1,0 +1,5 @@
+path	complete_sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-dbus-cli/Cargo.toml	1-25 EOF	9f6468a396317ab4647f8e5ed0e85b33bbf2e1b689116e2c748f98bb4c303a73	No native-specific dependency/selection override; preserve	reviewed
+crates/op-dbus-cli/src/identity.rs	1-53 EOF	f6dc57e67104457d8fe17edf2ab9c1a7495a36d7c7b7122780455fbce058812b	Configured session resolver; display-only local struct; preserve	reviewed
+crates/op-dbus-cli/src/introspect.rs	1-250;251-500;501-732 EOF	bc8eab24091c5ad8ab8eaa1c30682d08a2b5e506189dccd944850004f23bcaa6	No native occurrence; live introspection/protocol conversion; bus address is transport selection; preserve	reviewed
+crates/op-dbus-cli/src/main.rs	1-240;241-480;481-682 EOF	1963d47d3f4817782495075e3b5623d0a04ff1dd15f473bcd00c0a4c1d542838	No native occurrence or implicit provider/model/config override; generic marshalling and admission limits recorded; preserve	reviewed

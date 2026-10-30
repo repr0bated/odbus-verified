@@ -1,0 +1,104 @@
+{
+  "request": 3,
+  "started": "2026-10-19T04:48:42.604304+00:00",
+  "finished": "2026-10-19T04:49:09.771625+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-09faf806574780b1016ad5a12d905c87d09c3b860b355b7504",
+    "created": 1792385325,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading saved source findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/SourceChain.md:1-280:raw\"}",
+                "name": "read"
+              },
+              "id": "call_8iBNsW4gY9KEBiX2IUzdcedY",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading saved historical findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/HistoricalScripts.md:raw\"}",
+                "name": "read"
+              },
+              "id": "call_mfwjLnkzRTkCkUmiz6M1eYMf",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading saved feasibility findings\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/NativeFeasibility.md:1-260:raw\"}",
+                "name": "read"
+              },
+              "id": "call_MvvPteAEaYvAcp17eT8mALih",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading parent judgment answers\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/jev-evidence-decisions.json:raw\"}",
+                "name": "read"
+              },
+              "id": "call_eXtoDqjxM0GupeO564yngAbh",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading parent judgment inputs\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/jev-evidence-inputs.json:raw\"}",
+                "name": "read"
+              },
+              "id": "call_gUOYBZo7J7iRF0eHXMmqwoaz",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading native judgment interface\",\"path\":\"xd://eval/judge\"}",
+                "name": "read"
+              },
+              "id": "call_6Mn6hcAsPIcge2Q5pXWYm2PV",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 580,
+      "prompt_tokens": 306891,
+      "total_tokens": 307471,
+      "completion_tokens_details": {
+        "reasoning_tokens": 67
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 200516
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:49:09.768923+00:00",
+  "stream_chunks": 14
+}

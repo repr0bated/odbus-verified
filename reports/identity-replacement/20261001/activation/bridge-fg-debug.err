@@ -1,0 +1,35 @@
+Error: TCP fabric requires TLS — set TCHED_ROUTER_TLS_CERT+TCHED_ROUTER_TLS_KEY, TCHED_ROUTER_TLS_CERT_FILE+TCHED_ROUTER_TLS_KEY_FILE, or TCHED_ROUTER_DEV_SELF_SIGNED=1 (dev only)
+
+Stack backtrace:
+   0: <anyhow::Error>::msg::<&str>
+   1: op_grpc_bridge::server::prepare_tcp_identities
+   2: op_grpc_bridge::server::run_tched_router_server::{closure#0}
+   3: op_grpc_bridge::main::{closure#0}
+   4: <tokio::runtime::park::CachedParkThread>::block_on::<core::pin::Pin<alloc::boxed::Box<op_grpc_bridge::main::{closure#0}>>>
+   5: tokio::runtime::context::runtime::enter_runtime::<<tokio::runtime::scheduler::multi_thread::MultiThread>::block_on<core::pin::Pin<alloc::boxed::Box<op_grpc_bridge::main::{closure#0}>>>::{closure#0}, core::result::Result<(), anyhow::Error>>
+   6: <tokio::runtime::runtime::Runtime>::block_on::<op_grpc_bridge::main::{closure#0}>
+   7: op_grpc_bridge::main
+   8: std::sys::backtrace::__rust_begin_short_backtrace::<fn() -> core::result::Result<(), anyhow::Error>, core::result::Result<(), anyhow::Error>>
+   9: std::rt::lang_start::<core::result::Result<(), anyhow::Error>>::{closure#0}
+  10: <&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/core/src/ops/function.rs:287:21
+  11: std::panicking::catch_unwind::do_call::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/panicking.rs:581:40
+  12: std::panicking::catch_unwind::<i32, &dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync>
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/panicking.rs:544:19
+  13: std::panic::catch_unwind::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/panic.rs:359:14
+  14: std::rt::lang_start_internal::{closure#0}
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/rt.rs:175:24
+  15: std::panicking::catch_unwind::do_call::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/panicking.rs:581:40
+  16: std::panicking::catch_unwind::<isize, std::rt::lang_start_internal::{closure#0}>
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/panicking.rs:544:19
+  17: std::panic::catch_unwind::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal
+             at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/std/src/rt.rs:171:5
+  19: main
+  20: <unknown>
+  21: __libc_start_main
+  22: _start

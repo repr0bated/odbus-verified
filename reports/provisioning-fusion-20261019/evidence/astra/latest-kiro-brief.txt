@@ -1,0 +1,155 @@
+Source: /home/jeremy/.omp/agent/sessions/--srv-git-odbus-verified--/2026-10-19T02-58-21-842Z_01a15218-8812-74df-8b47-4bcae55ac905.jsonl line1204 message e1aa9d0e
+Not an implementation receipt.
+
+Here’s the revised **Kiro prompt for the whole existing Hermes provisioning script, with bootstrap excluded**:
+
+```text
+Specify modifications to the complete existing OP-DBUS container-provisioning
+workflow in /srv/git/odbus-verified.
+
+MODIFY THE EXISTING HERMES SCRIPT. Do not create a replacement provisioning
+script, another orchestrator, or a parallel control plane.
+
+BOOTSTRAP IS ALREADY COMPLETE AND OUT OF SCOPE
+
+Begin with an already-bootstrapped identity. Consume and preserve its existing
+identity/session records. Do not create, repeat, or redesign bootstrap.
+
+If required identity records are missing or inconsistent, report the missing
+prerequisite and stop. Do not repair that by inventing another identity.
+
+EXISTING SCRIPT LOCATIONS
+
+Primary Hermes orchestration script:
+  /srv/git/odbus-verified/deploy/scripts/provision-workspace-subscriber.sh
+
+Installed entry point already being used:
+  /usr/local/libexec/op-dbus/helpers/provision-workspace-subscriber
+
+Existing helpers, relative to the repository:
+  deploy/scripts/prepare-instance-disk.sh
+  deploy/scripts/sync-instance-upgrade.sh
+  deploy/scripts/bind-instance-root.sh
+  deploy/scripts/prepare-chatbot-adoption.sh
+
+Existing boot consumers:
+  deploy/runit/libexec-3tched/restore-chatbot-root
+  deploy/runit/identity-roots/run
+
+Authoritative provisioning and adoption implementation:
+  crates/op-grpc-bridge/src/identity_clean_provision.rs
+  crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs
+  crates/op-grpc-bridge/src/identity_clean_provision/storage.rs
+
+Relevant guidance and prior audit:
+  AGENTS.md
+  HANDOFF.md
+  .agents/skills/incus/SKILL.md
+  docs/src/operations/shared-seed-provisioning.md
+  reports/provisioning-audit-20261018.md
+
+Follow the actual call chain from these files. Distinguish installed behavior
+from unbuilt source changes. Preserve the existing entry point and supported
+identity-bound operations.
+
+REQUESTED STORAGE ARRANGEMENT
+
+- Keep instances as unprivileged Incus containers, not VMs.
+- Use the existing Incus Btrfs pool named `3tched`.
+- Express storage through native Incus instance/profile disk declarations.
+- Evaluate replacing the previous two-partition arrangement with two
+  Incus-managed storage volumes.
+- Do not introduce LVM provisioning or custom per-container loop management.
+- Preserve the immutable shared Btrfs seed, isolated identity writes and
+  separate upgrade-replica storage.
+
+Resolve this compatibility issue explicitly:
+
+An Incus Btrfs filesystem volume is a subvolume, not a writable block device
+that can be added to a seeded Btrfs filesystem. Incus-managed custom block
+volumes attach to VMs, not containers.
+
+Determine whether the requested native two-volume arrangement can preserve
+the seed contract. If it cannot, identify the exact incompatible requirements
+and the smallest decision needed from the owner.
+
+Do not silently replace seeding with copied roots, convert the container to
+a VM, introduce LVM, or simply rename “partition” to “volume.”
+
+SPECIFY THE COMPLETE POST-BOOTSTRAP WORKFLOW
+
+1. Admission and existing-state resolution
+   Identify the caller and existing identity/session. Preserve grants,
+   capability checks and authoritative operation receipts.
+
+2. Native container preparation
+   Explain the existing identity_sled.prepare_container operation.
+   Reuse an existing matching container. Reject conflicting UUID, session
+   or identity bindings instead of overwriting or recreating them.
+
+3. Storage establishment
+   Specify allocation ownership, exact Incus declarations and the durable
+   identity-to-storage association. Establish storage once during explicit
+   provisioning; lifecycle operations must reuse it.
+
+4. Filesystem and upgrade preparation
+   Specify initial preparation, initial upgrade receive, later synchronization
+   and their ordering. Preserve the seed and identity isolation.
+   Before receiving, prove that the intended destination is mounted from the
+   correct filesystem. Never fall through onto the host root filesystem.
+
+5. Root composition and binding
+   Preserve the existing approved root layout, UID/GID mapping, isolation and
+   device restrictions. Explain how prepared storage becomes the container
+   root and other required mounts. Do not expose raw block administration to
+   the guest or modify live overlay lower layers.
+
+6. Adoption and authoritative commit
+   Distinguish the adoption plan prepared by the helper from the authoritative
+   identity_sled.provision_container operation.
+   Specify native/storage validation, Cozo binding updates and completion
+   receipts. Writing a local plan is not successful provisioning.
+
+7. Start and boot restoration
+   Define when the container becomes runnable and how existing boot consumers
+   restore its established storage.
+   Start, stop, restart and recovery must not recreate identity storage or
+   add/remove Btrfs members.
+
+8. Failure, cancellation and resume
+   Define stages, locks, durable receipts, partial-completion recovery and
+   safe rollback. Preserve identity records and authoritative data.
+   Do not blindly replay an unresolved preparation intent.
+
+EXISTING TARGET
+
+Container: 3tchedCtlChatbot
+Logical identity designation: ID0
+
+Preserve its existing identity, session, native UUID and creation records.
+Its last recorded root configuration used the directory-backed
+`identity-roots` pool.
+
+The failed blank raw-image disk was deleted at the owner's direction.
+Its failed receipt was retained; do not treat it as successful preparation.
+
+Earlier shell and Rust repairs were left unbuilt, undeployed and paused.
+Review them as drafts, not as the selected architecture.
+
+DELIVERABLE
+
+Produce a specification for modifying the existing Hermes workflow, covering:
+
+- Its actual call chain and the owner of each stage.
+- Exact Incus volume definitions and instance/profile YAML.
+- Inputs, outputs, ordering and authoritative completion receipts.
+- Failure handling, cancellation, resume and rollback.
+- Concrete changes to each affected existing script and Rust module.
+- Obsolete raw-image assumptions and code to remove.
+- Acceptance criteria for provisioning an already-bootstrapped identity,
+  resuming this existing chatbot, upgrade synchronization and boot recovery.
+- Any unresolved architectural decision requiring owner input.
+
+Keep confirmed capabilities, proposed changes, implemented source and deployed
+behavior separate. Bootstrap remains outside the specification.
+```

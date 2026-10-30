@@ -1,0 +1,20 @@
+{
+  "task": "tched-context-audit-20261024/op-execution-tracker",
+  "crate": "op-execution-tracker",
+  "status": "complete",
+  "files_reviewed": 9,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 4,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-execution-tracker/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-execution-tracker/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-execution-tracker/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-execution-tracker/judgments.md"],
+  "limitations": [
+    "Static source/context review only; runtime consumers, sealed catalog, deployment, build, and tests not verified.",
+    "One occurrence was initially omitted from the ledger; coordinator identified the second line-40 occurrence. Full file reread and four-position ledger corrected the count.",
+    "Initial mandatory preload did not establish full-read receipts for every skill file; supplemental follow-up reread all 28 paths and recorded this without backdating.",
+    "Prior JEV completion judgment confidence 0.76 was made against the undercounted ledger and is not used to establish final occurrence completeness. Semantic JEV judgments from the full line 40 apply to both line-40 occurrences."
+  ],
+  "next_action": "Coordinator may aggregate the corrected four-occurrence report and supplemental preload record."
+}

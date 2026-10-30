@@ -1,0 +1,23 @@
+{
+  "task": "provisioning-fusion-20261019",
+  "parent_deliverable": "Evidence export and Fusion handoff complete; substantive Fusion diagnostic analysis continues.",
+  "repo": "/srv/git/odbus-verified",
+  "snapshot_commit": "051a20d056afba074e21d797aa34f8947c543c5a",
+  "conversation_exports": {"sessions":42,"records":6620,"hermes_main_records":1778,"hermes_linked_workers":30,"full_selected_stored_public_history":true},
+  "source_exports": {"current_and_installed":49,"historical_commit_blobs":65},
+  "integrity_receipt":"export-integrity.json",
+  "submitted_prompt":"CASE.md",
+  "launch_receipt":"run/receipt.json",
+  "actual_initial_ingestion_receipt":"analysis/ingestion-receipt.json",
+  "observed_streamed_tool_continuation":"run/completion-6.json",
+  "initial_panel_receipt":"run/panel-1.json",
+  "initial_panel_accepted":["astra-pro","glm-5-3","qwen-3-6-35b-a3b"],
+  "initial_panel_failed":["opus-5-5","kimi-k3"],
+  "actual_jev_backend":"typesafe/jev-1.13.0",
+  "actual_jev_batch":"jdgb-15abe9bb5bbfe19c",
+  "jev_receipts":["jev-initial-decision.json","jev-no-host-loops.json","jev-evidence-inputs.json","jev-evidence-decisions.json"],
+  "latest_requirements":{"no_host_loop_devices":"mandatory; no implicit pool exemption","subvolumes_only_no_images":"preferred if all retained semantics can be preserved","jev":"decision judge, not model router"},
+  "remaining_limits":["Full corpus review, panel evidence coverage and final design feasibility are not yet established.","Only initial constraints/manifest reads and subsequent tool-enabled continuation independently observed.","Individual Fusion panel members do not automatically inherit outer-agent file/tool history.","Original truncated tool outputs remain truncated; exports omit hidden reasoning and redact credential-like content.","Native SSE is recorded in child run files; current parent chat is not a live token mirror."],
+  "mutation_status":"No application or host source repair, provisioning, storage/grant/service change, build, test or deployment.",
+  "shared_notes":"HANDOFF.md own row and dated entry; SIGNALS.md appended observation."
+}

@@ -1,0 +1,27 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-llm/Cargo.toml	1-32 EOF	b1d9677f068c555ca73a02986289370c7d65a9fd7ad0ba1f13df91778d459c47	No native text; preserve	complete
+crates/op-llm/SPEC.md	1-97 EOF	f22b14325c5313c2b776878aa6808efa656f17df0cce0c898eef3e4800753ea8	No native text; stale source inventory generic/report-only	complete
+crates/op-llm/compare-op-llm.md	1-91 EOF	7e0fca0ed569bcb7384de604076940b98dd561414d7261a08234d491ff795405	No native text; stale source inventory generic/report-only	complete
+crates/op-llm/scripts/authenticate-chatbot.js	1-99 EOF	cc6c98c628a2cae32b8113015268f37189c944b919e8d15da9573b202ca92f39	No native text; not executed	complete
+crates/op-llm/scripts/extract-cursor-auth.js	1-195 EOF	3a99db5db62df32fa88506c2fd5599f7c2dc269792dbfe9c1bba23b79d8b3419	No native text; not executed	complete
+crates/op-llm/scripts/record-login.js	1-229 EOF	fe1b6d582cfafdf0ef3365dfd6d3554a2f39a0b3ecb7a23850e14142ef3c9d64	No native text; not executed	complete
+crates/op-llm/scripts/spoof-auth.js	1-150 EOF	13e4944fe6af2d229901edf92804e5f28b858d8f93db40bf93bdf81765fb8b31	No native text; not executed	complete
+crates/op-llm/src/anthropic.rs	1-240;241-447 EOF	2881ea7f3dbd0077e85b80e67d955daa1694d63da147bc94e49bedb87e2be259	No native text	complete
+crates/op-llm/src/antigravity.rs	1-260;261-520;521-780;781-1040;1041-1329 EOF	469b146274ae41774d2a6cc0b01626027ae9a31dc6f9a5e6b4d07cf582446b14	13 occurrences; J1.sdk_direct and J1.bridge_terms preserve SDK/API/status terminology	complete
+crates/op-llm/src/assistant.rs	1-206 EOF	86209602b93f6c12fb8826f542c0eb3b828a4615501a6175e9e3ccd0feacfdee	No native text	complete
+crates/op-llm/src/chat.rs	1-260;261-520;521-795 EOF;full same ranges reread before edit	c5665b17b9c50fcf451b9ec827bfecbb301bd97bc4730ed83a05ab9059efd6ca	4 occurrences; J1.chat_descriptions; F1 fixed lines6/627 descriptions only; exact BEFORE saved	complete
+crates/op-llm/src/factory.rs	1-220;221-426 EOF	5cb323b5f9cbff3eb1d5f4f097b856aa70578956f8a30e64551f08f46100b870	No native text; configured compatible route is not native billing proof	complete
+crates/op-llm/src/gcloud_adc.rs	1-220;221-414 EOF	f182bcbcb13b3fee29425aaeaa8ae3720656989967e194868388e6e2b47c12e0	No native text; old replacement claim/gcloud subprocess separate generic observation	complete
+crates/op-llm/src/gemini.rs	1-260;261-520;521-780;781-1040;1041-1281 EOF	f2290ce633744c1c4bac29133cfdef8684b5b9914caa3e293112c21cca296a27	1 native-audio vendor model token; J1.model_identifier preserve; generic routing separately reported	complete
+crates/op-llm/src/gemini_cli.rs	1-180;181-344 EOF	218686a185136430e52b36222513d4102bd3690a1729aba2be8afea92cc7eb6e	No native text	complete
+crates/op-llm/src/graph_turn_manager_tests.rs	1-113 EOF	849bd0eee38e9438ddefd93f45daa45729025fa3e0710fce1fd58ec57ba374ed	No native text; fixtures read not executed	complete
+crates/op-llm/src/graph_turn_reminder.rs	1-74 EOF;1-74 reread before edit	ffbbc05a0262c240399bcad17281a66762df5f08bf3fdc862fbb4e3f465760bf	3 initial occurrences; J1.fixture_description; F2 fixed comment59-60;2 local identifiers preserved; postedit73lines	complete
+crates/op-llm/src/headless_oauth.rs	1-200;201-356 EOF	cc86dca2e323f7ac76915153cb3c6ad34f0ef7fe02c64beddcb47a7617d97615	No native text	complete
+crates/op-llm/src/huggingface.rs	1-180;181-339 EOF	6e49f034c9e9797ff67cacf7ef3d466134878fa785bb8ffceb261bebf77991a4	No native text	complete
+crates/op-llm/src/lib.rs	1-90 EOF	5acf966b5621df2d473e757d36b88974b5afd3415f12908a21b2afd82f8f699e	No native text; stale systemctl guidance generic/report-only	complete
+crates/op-llm/src/openclaw.rs	1-220;221-440;441-649 EOF	14b63956f73d254373b685a405b87996f4ba86f858350fc8bb057eda61afc162	No native text; legacy identity headers generic/report-only	complete
+crates/op-llm/src/perplexity.rs	1-285 EOF	22bc9db11c7421d46998f9b3ffa600319d703d4f6fd1a0af6dba53525855fd41	No native text	complete
+crates/op-llm/src/provider.rs	1-200;201-370 EOF	8f0bc95cea7a2bcfbed2369b495e0c86a79d4fe4577dcc3571bfb534197a2f7a	No native text	complete
+crates/op-llm/src/pty_bridge.rs	1-200;201-400;401-585 EOF	8a61031a3012def4546783b844977615da56e80050579c49bf6573a14794a8ca	No native text; helper not executed	complete
+crates/op-llm/src/salad.rs	1-260;261-508 EOF	8e9b9136a356b51be1ff47868edc2c5666fdda1925862ca846a895626b99916d	No native text	complete
+crates/op-llm/src/schema.rs	1-18 EOF	aaa93debb203a6e136458dca5ea0375cde94dcba272529b9dd33bea83d573d9c	No native text; shared tched authority preserved	complete

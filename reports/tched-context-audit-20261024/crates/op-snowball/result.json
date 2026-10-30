@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024/op-snowball",
+  "crate": "op-snowball",
+  "status": "complete",
+  "files_reviewed": 13,
+  "files_pending": [],
+  "changed_files": [],
+  "occurrence_count": 4,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-snowball/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-snowball/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-snowball/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-snowball/judgments.md"],
+  "limitations": ["Static audit only; prohibited build/tests/runtime/deployment actions were not run."],
+  "next_action": "Coordinator may aggregate; no crate source changes."
+}

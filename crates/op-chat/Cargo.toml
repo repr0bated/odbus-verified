@@ -34,7 +34,7 @@ op-execution-tracker = { path = "../op-execution-tracker" }
 regex = { workspace = true }
 libc = { workspace = true }
 op-agents = { path = "../op-agents" }
-op-cognitive-mcp = { path = "../op-cognitive-mcp" }
+op-cognitive = { path = "../op-cognitive" }
 tonic = { workspace = true }
 tonic-web = { workspace = true }
 tonic-reflection = { workspace = true }

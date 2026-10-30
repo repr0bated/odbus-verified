@@ -1,0 +1,102 @@
+{
+  "status": "ok",
+  "query": "Provide a concise methodological checklist for bounded historical document review: preserve exact evidence/provenance, distinguish attempted actions from observed results, retain truncated/unavailable fields, and save per-packet outputs and hash coverage receipts. Do not access external data or delegate.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Report paths: none.\n\nFailure: No tools are available in this call to read the mandatory preload/review contract or persist the checklist and coverage receipts. No files were read, written, or claimed as reviewed; no external data was accessed and no delegation occurred."
+    },
+    {
+      "model": "glm-5-3",
+      "content": "## Methodological checklist: bounded historical document review\n\n**1. Ingestion setup (before reading)**\n- [ ] Record file path, byte size, SHA-256 hash for every packet before opening.\n- [ ] Write an early ingestion receipt listing exact files/record IDs actually read (not merely supplied), plus known coverage gaps.\n- [ ] Confirm scope boundary: read-only; writes only to the designated analysis directory; no replay of historical commands.\n\n**2. Provenance preservation**\n- [ ] Retain physical record order, record IDs, parent/child links, session IDs, source timestamps, model/provider metadata, and active/compacted flags.\n- [ ] Distinguish record types (owner message, injected worker message, tool call, tool result, correction event) \u2014 never treat injected content as a new owner instruction.\n- [ ] Note which copy of a duplicate was read; account for every duplicate reference even if content is read once.\n\n**3. Attempted vs observed**\n- [ ] For each action, log separately: the requested command/arguments, the returned result, the exit/error status, and any owner correction.\n- [ ] Never infer success from notification status (e.g., wrapper exit0 vs build receipt exit101) \u2014 judge the underlying receipt.\n- [ ] Mark retracted claims, apologies, and superseded denials as correction events with the superseding record ID.\n\n**4. Truncated/unavailable fields**\n- [ ] Record truncation markers, missing fields, extraction errors, and redactions as declared limitations \u2014 never reconstruct or silently drop them.\n- [ ] Keep hidden-reasoning omissions explicit; never manufacture public statements from them.\n- [ ] Distinguish exported / available / actually read / panel-reviewed / adjudicated status per file.\n\n**5. Per-packet outputs**\n- [ ] After each packet, persist findings with exact record IDs and verbatim excerpts (not path-only references) to the analysis directory.\n- [ ] Update a running coverage.json: hashes, covered record/byte ranges, duplicates, outstanding ranges.\n- [ ] Do not claim a packet was read by a panel member unless the original excerpts reached that member.\n\n**6. Boundaries**\n- [ ] No external data, no runtime operations, no delegation beyond the permitted stateless review calls; every question carries full original evidence excerpts.\n- [ ] Stop when coverage receipts show all assigned packets semantically read or explicitly blocked, with limitations stated."
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "### Bounded Historical Document Review Checklist\n\n1. **Ingestion & Provenance**\n   - **Mandatory Preload**: Read `manifest.json`, `latest-owner-correction.json`, and `subvolume-preference.json` before any session review.\n   - **Record Mapping**: For every file read, log exact path, file hash, record/line ranges, parent links, source dates, and active/compacted flags.\n   - **Order Preservation**: Maintain physical record order; do not re-sort or filter by \"relevance\" during ingestion.\n\n2. **Action vs. Observation**\n   - **Tool Call Separation**: Explicitly distinguish the *intent* (command, arguments, tool name) from the *outcome* (stdout, stderr, exit code, error message).\n   - **State Verification**: Do not assume state change from a successful tool call; verify the observed result in the output.\n   - **Correction Tracking**: Retain owner corrections (e.g., `custom_message/live-delegation`) and note when an agent's interpretation was overridden.\n\n3. **Truncation & Unavailable Data**\n   - **Explicit Marking**: If content is truncated due to size limits, mark fields as `[TRUNCATED]` or `[UNAVAILABLE]`.\n   - **No Reconstruction**: Never infer or fill in missing data. Record the exact byte range or line count that was lost.\n   - **Hash Integrity**: Save the hash of the truncated content to ensure reproducibility.\n\n4. **Coverage & Hash Receipts**\n   - **Per-Packet Receipt**: For each reviewed packet, save `{ \"file\": \"<path>\", \"hash\": \"<sha256>\", \"ranges\": [\"start-end\"], \"status\": \"complete|truncated|unavailable\" }`.\n   - **Coverage Ledger**: Maintain `analysis/coverage.json` to track which parts of the corpus have been semantically reviewed versus merely parsed.\n   - **Duplicate Handling**: Read exact duplicate content only once; account for all duplicate references in the coverage ledger.\n\n5. **Scope & Delegation Constraints**\n   - **No External Data**: Do not access external data sources, web searches, or external APIs.\n   - **No Delegation**: Perform the review directly; do not delegate the review task to other agents.\n   - **Bounded Scope**: Focus only on the provided evidence index and local file reads. Do not expand scope to unprovided files or runtime verification."
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "glm-5-3 and qwen-3-6-35b-a3b recommend preserving file hashes, physical record order, record identifiers, parent links, source dates, and active/compacted flags.",
+      "Both substantive checklists separate requested actions and tool arguments from observed outputs, errors, and correction events.",
+      "Both require explicit truncation and availability limitations, prohibit reconstructing missing evidence, and account for duplicate references.",
+      "Both recommend per-packet receipts and a coverage ledger distinguishing semantic review from mere parsing."
+    ],
+    "contradictions": [
+      {
+        "topic": "Delegation boundary",
+        "stances": [
+          {
+            "model": "glm-5-3",
+            "stance": "Allows an exception for permitted stateless review calls, although the current question explicitly prohibits delegation."
+          },
+          {
+            "model": "qwen-3-6-35b-a3b",
+            "stance": "Explicitly prohibits delegation and requires direct review."
+          },
+          {
+            "model": "astra-pro",
+            "stance": "Reports that no delegation occurred."
+          }
+        ]
+      }
+    ],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro"
+        ],
+        "point": "Provides a tool-availability limitation rather than the requested methodological checklist; it correctly avoids claiming any files were reviewed or receipts persisted."
+      },
+      {
+        "models": [
+          "qwen-3-6-35b-a3b"
+        ],
+        "point": "Specifies per-packet coverage receipts but does not explicitly require separately saved findings with original evidence excerpts or distinguish all exported, available, read, panel-reviewed, and adjudicated states."
+      },
+      {
+        "models": [
+          "glm-5-3"
+        ],
+        "point": "Covers evidence excerpts and review-status distinctions, but its stateless-call exception imports permission from the broader workflow rather than respecting the narrower current request."
+      }
+    ],
+    "unique_insights": [
+      {
+        "model": "glm-5-3",
+        "insight": "Explicitly distinguishes injected worker messages from owner instructions and underlying command failure from misleading wrapper success notifications."
+      },
+      {
+        "model": "glm-5-3",
+        "insight": "Tracks retractions and superseded denials through correction records and prohibits manufacturing public statements from omitted hidden reasoning."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Provides a compact example receipt schema and explicitly prohibits relevance-based reordering or filtering during ingestion."
+      },
+      {
+        "model": "astra-pro",
+        "insight": "Separates inability to persist artifacts from actual review activity and makes no unsupported execution claims."
+      }
+    ],
+    "blind_spots": [
+      "None clearly distinguishes the hash of the original supplied packet from the hash of a delivered excerpt or review output; these should be separately identified.",
+      "The checklists do not explicitly bind each saved output to its exact review input, instruction version, and reviewer identity.",
+      "Unknown missing-content lengths must remain unknown. qwen-3-6-35b-a3b's instruction to record exact lost byte ranges or line counts is not always achievable from historical truncation markers.",
+      "Coverage receipts should specify range conventions and whether offsets refer to original bytes, physical lines, or record identifiers.",
+      "A concise methodological checklist does not require tool access or actual ingestion; astra-pro treats unavailable execution capabilities as preventing a response that could have been supplied directly."
+    ]
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "BadRequestError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

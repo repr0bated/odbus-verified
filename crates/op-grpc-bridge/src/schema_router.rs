@@ -331,7 +331,7 @@ impl SchemaRouter {
             .await
             .map_err(|e| SchemaRouterError::DbusCallFailed {
                 method: method_name.to_string(),
-                error: e.to_string(),
+                error: e,
             })?;
 
         Ok(result)
@@ -375,7 +375,7 @@ impl SchemaRouter {
             .await
             .map_err(|e| SchemaRouterError::DbusCallFailed {
                 method: format!("GetProperty({property_name})"),
-                error: e.to_string(),
+                error: e,
             })
     }
 
@@ -421,7 +421,7 @@ impl SchemaRouter {
             .await
             .map_err(|e| SchemaRouterError::DbusCallFailed {
                 method: format!("SetProperty({property_name})"),
-                error: e.to_string(),
+                error: e,
             })?;
 
         Ok(())
@@ -497,7 +497,7 @@ impl SchemaRouter {
         Some(routes)
     }
 
-    fn build_route(plugin_id: &str, schema: &JsonValue) -> PluginRoute {
+    pub(crate) fn build_route(plugin_id: &str, schema: &JsonValue) -> PluginRoute {
         let dbus_path = canonical::plugin_path(plugin_id);
         let dbus_destination = BASE_SERVICE_NAME.to_string();
         let dbus_interface = canonical::plugin_interface(plugin_id);
@@ -578,6 +578,8 @@ pub struct SchemaBackedInterface {
     /// Set only on objects served over one identity's lungs socket: every
     /// call on that connection is that identity, whatever the header says.
     lungs_identity: Option<Arc<crate::lungs_socket::LungsIdentity>>,
+    /// Receiver-bound private MCP connection; never negotiated from D-Bus arguments.
+    mcp_identity: Option<Arc<crate::mcp_dbus_dispatch::McpDbusIdentity>>,
 }
 
 impl SchemaBackedInterface {
@@ -652,7 +654,27 @@ impl SchemaBackedInterface {
             engine: None,
             identity_resolver: None,
             lungs_identity: None,
+            mcp_identity: None,
         }
+    }
+
+    pub(crate) fn with_mcp_receiver(
+        plugin_id: String,
+        route: PluginRoute,
+        engine: Arc<MutationEngine>,
+        identity: Arc<crate::mcp_dbus_dispatch::McpDbusIdentity>,
+    ) -> Self {
+        let state_dir =
+            std::env::var("OP_SHM_STATE_DIR").unwrap_or_else(|_| DEFAULT_SHM_STATE_DIR.to_string());
+        let mut interface = Self::with_engine_and_storage(
+            plugin_id,
+            route,
+            Some(engine),
+            state_dir,
+            crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+        );
+        interface.mcp_identity = Some(identity);
+        interface
     }
 
     /// Reads one complete committed projection through the exact sealed
@@ -805,6 +827,9 @@ impl SchemaBackedInterface {
     /// This validation happens before dispatch, so invalid args cause no mutation
     /// (Requirement 6.3 / VAL-VALIDATE-003).
     fn validate_json_args(&self, method_decl: &JsonValue, json_args: &str) -> Result<(), String> {
+        if json_args.len() > op_state_store::method_receipt::MAX_METHOD_ARGUMENT_BYTES {
+            return Err("arguments exceed 1 MiB".into());
+        }
         let args_schema = method_decl
             .get("args")
             .ok_or_else(|| "missing args schema".to_string())?;
@@ -830,6 +855,17 @@ impl SchemaBackedInterface {
         method: String,
         json_args: String,
         identity: Option<&GhostbridgeIdentity>,
+    ) -> zbus::fdo::Result<String> {
+        self.dispatch_call_for_identity_operation(method, json_args, identity, None)
+            .await
+    }
+
+    async fn dispatch_call_for_identity_operation(
+        &self,
+        method: String,
+        json_args: String,
+        identity: Option<&GhostbridgeIdentity>,
+        operation_id: Option<&str>,
     ) -> zbus::fdo::Result<String> {
         let method_decl = match self.route.methods.get(&method) {
             Some(decl) => decl,
@@ -876,8 +912,19 @@ impl SchemaBackedInterface {
                 "MutationEngine not wired to this interface — dispatch unavailable".to_string(),
             )
         })?;
-        let result = engine
-            .dispatch_method_call_with_identity(
+        let dispatch = if let Some(operation_id) = operation_id {
+            engine.dispatch_method_call_with_operation_id(
+                &self.plugin_id,
+                &method,
+                &json_args,
+                required_cap,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                operation_id,
+            )
+        } else {
+            engine.dispatch_method_call_with_identity(
                 &self.plugin_id,
                 &method,
                 &json_args,
@@ -886,10 +933,34 @@ impl SchemaBackedInterface {
                 Some(&identity.session_id),
                 Some(&identity.session_genesis),
             )
+        };
+        let result = dispatch
             .await
-            .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))?;
+            .map_err(method_dispatch_error)?;
 
         serde_json::to_string(&result).map_err(|error| zbus::fdo::Error::Failed(error.to_string()))
+    }
+}
+
+fn method_dispatch_error(error: anyhow::Error) -> zbus::fdo::Error {
+    match error.downcast_ref::<op_state_store::method_receipt::AuditedMethodRefusal>() {
+        Some(refusal) => zbus::fdo::Error::NotSupported(refusal.to_string()),
+        None => zbus::fdo::Error::Failed(error.to_string()),
+    }
+}
+
+pub(crate) fn unsupported_method_message(error: &zbus::Error) -> Option<&str> {
+    match error {
+        zbus::Error::MethodError(name, message, _)
+            if name.as_str() == "org.freedesktop.DBus.Error.NotSupported" =>
+        {
+            Some(message.as_deref().unwrap_or("method unsupported"))
+        }
+        zbus::Error::FDO(error) => match error.as_ref() {
+            zbus::fdo::Error::NotSupported(message) => Some(message),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
@@ -937,6 +1008,15 @@ impl SchemaBackedInterface {
         json_args: String,
         #[zbus(header)] header: Header<'_>,
     ) -> zbus::fdo::Result<String> {
+        if let Some(receiver) = &self.mcp_identity {
+            let identity = receiver
+                .resolve()
+                .await
+                .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+            return self
+                .dispatch_call_for_identity(method, json_args, Some(&identity))
+                .await;
+        }
         if let Some(lungs) = &self.lungs_identity {
             let identity = lungs
                 .resolve()
@@ -955,6 +1035,66 @@ impl SchemaBackedInterface {
             .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
         self.dispatch_call_for_identity(method, json_args, Some(&identity))
             .await
+    }
+
+    /// Same admission as Call, with caller-scoped correlation retained before
+    /// submission. This identifier is never identity or capability evidence.
+    async fn call_with_operation_id(
+        &self,
+        method: String,
+        json_args: String,
+        operation_id: String,
+        #[zbus(header)] header: Header<'_>,
+    ) -> zbus::fdo::Result<String> {
+        let parsed = uuid::Uuid::parse_str(&operation_id)
+            .map_err(|_| zbus::fdo::Error::InvalidArgs("invalid operation id".into()))?;
+        if parsed.to_string() != operation_id {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "noncanonical operation id".into(),
+            ));
+        }
+        if let Some(receiver) = &self.mcp_identity {
+            let identity = receiver
+                .resolve()
+                .await
+                .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+            return self
+                .dispatch_call_for_identity_operation(
+                    method,
+                    json_args,
+                    Some(&identity),
+                    Some(&operation_id),
+                )
+                .await;
+        }
+        if let Some(lungs) = &self.lungs_identity {
+            let identity = lungs
+                .resolve()
+                .await
+                .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+            return self
+                .dispatch_call_for_identity_operation(
+                    method,
+                    json_args,
+                    Some(&identity),
+                    Some(&operation_id),
+                )
+                .await;
+        }
+        let resolver = self.identity_resolver.as_ref().ok_or_else(|| {
+            zbus::fdo::Error::AccessDenied("D-Bus identity resolver is not available".into())
+        })?;
+        let identity = resolver
+            .resolve(&header)
+            .await
+            .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+        self.dispatch_call_for_identity_operation(
+            method,
+            json_args,
+            Some(&identity),
+            Some(&operation_id),
+        )
+        .await
     }
 
     /// Get a property value from SHM present-state.
@@ -1044,7 +1184,7 @@ pub enum SchemaRouterError {
     #[error("D-Bus proxy build failed: {0}")]
     ProxyBuildFailed(String),
     #[error("D-Bus call failed: {method}: {error}")]
-    DbusCallFailed { method: String, error: String },
+    DbusCallFailed { method: String, error: zbus::Error },
     #[error("Serialization failed: {0}")]
     SerializationFailed(String),
 }
@@ -1078,7 +1218,10 @@ impl From<SchemaRouterError> for tonic::Status {
                 tonic::Status::internal(format!("D-Bus proxy build failed: {}", msg))
             }
             SchemaRouterError::DbusCallFailed { method, error } => {
-                tonic::Status::internal(format!("D-Bus call failed: {}: {}", method, error))
+                match unsupported_method_message(&error) {
+                    Some(message) => tonic::Status::unimplemented(message),
+                    None => tonic::Status::internal(format!("D-Bus call failed: {}: {}", method, error)),
+                }
             }
             SchemaRouterError::SerializationFailed(msg) => {
                 tonic::Status::internal(format!("Serialization failed: {}", msg))
@@ -1095,6 +1238,30 @@ mod tests {
     use serde_json::json;
     use std::fs;
     use std::path::PathBuf;
+
+    #[test]
+    fn method_refusal_survives_dbus_and_router_status_mapping() {
+        use op_state_store::method_receipt::{AuditedMethodRefusal, UnsupportedBeforeEffect};
+        let refusal = UnsupportedBeforeEffect::new("editor_unsupported", "omit --edit");
+        let public = AuditedMethodRefusal::new(uuid::Uuid::nil(), refusal);
+        let message = public.to_string();
+        let dbus = method_dispatch_error(anyhow::Error::new(public).context("private context"));
+        assert!(matches!(&dbus, zbus::fdo::Error::NotSupported(text) if text == &message));
+        let status: tonic::Status = SchemaRouterError::DbusCallFailed {
+            method: "skills.add".into(), error: dbus.into(),
+        }.into();
+        assert_eq!(status.code(), tonic::Code::Unimplemented);
+        assert_eq!(status.message(), message);
+        for error in [anyhow::Error::new(refusal), anyhow::anyhow!(message)] {
+            assert!(matches!(method_dispatch_error(error), zbus::fdo::Error::Failed(_)));
+        }
+        let failed: zbus::Error = zbus::fdo::Error::Failed("method_outcome_unknown".into()).into();
+        assert!(unsupported_method_message(&failed).is_none());
+        let status: tonic::Status = SchemaRouterError::DbusCallFailed {
+            method: "skills.add".into(), error: failed,
+        }.into();
+        assert_eq!(status.code(), tonic::Code::Internal);
+    }
 
     /// Builds a test `PluginRoute` with a single method and two properties.
     fn test_route() -> PluginRoute {

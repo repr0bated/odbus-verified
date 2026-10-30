@@ -1,0 +1,9 @@
+path	sequential_ranges_read	initial_sha256	finding_action	status
+crates/op-inspector/ADAPTER-WORKFLOW.md	1-203;204-383 EOF	a3fa7906d2b97112d031a1284d2e571ded65eaec2246368d82fdea0e74091aa5	No native occurrence; historical workflow claims separate from native scope	complete
+crates/op-inspector/Cargo.toml	1-24 EOF	ec30d8775cf3db5b5d2729ba9966440ba9a245d6ba6a3627899cf001c0cb5391	No native occurrence; final unterminated line24 read beyond supplied23 newlines	complete
+crates/op-inspector/SPEC.md	1-81 EOF	6d79b5d8508433b30ac970d980970fea4def539ea9490b82c9a80634f7769d0a	No native occurrence; stale module/dependency inventory report-only	complete
+crates/op-inspector/compare-op-inspector.md	1-75 EOF	8d3758f16a09e38e4d5891cdace8dfd55834102fd50974cd0a30f5b2baa94a6b	No native occurrence; stale inventory report-only	complete
+crates/op-inspector/src/gcloud.rs	1-233;234-463;464-670 EOF	1f9fb5c85eadecabf7f111db8e45c2e25ae0dd641d312d9e01ea65945547a56c	No native occurrence; command introspection not model routing	complete
+crates/op-inspector/src/introspective_gadget.rs	1-223;224-443;444-668;669-893;894-1100 EOF	e2da79834d5a4030276ed88fec238e9caf00389711c54ecab440336621e7e421	No native occurrence; local deterministic parser/schema selection; J1 complete context disposition	complete
+crates/op-inspector/src/lib.rs	1-43 EOF	0bde48ce86b1556ba0f693907691b2aa3fd3cf9bf49aee9bf543ed364dce7aed	No native occurrence	complete
+crates/op-inspector/src/runit.rs	1-203;204-403;404-529 EOF	dcc0f41ac7dfd12d2767a39981600ed3895ab87dbd64f1d3b6c4be065878b185	No native occurrence; man-page parser not model routing	complete

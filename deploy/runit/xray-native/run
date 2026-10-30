@@ -1,0 +1,27 @@
+#!/bin/sh
+# Native host Xray (owner, 2026-10-16): no Incus container and no TCP listener.
+# Inbounds bind Unix sockets under /run/ghostbridge/xray; uds-xray-reality is the
+# only TCP publication. The one live config path is /etc/xray/xray_config.json.
+exec 2>&1
+CONFIG=/etc/xray/xray_config.json
+SOCK_DIR=/run/ghostbridge/xray
+
+if [ ! -s "$CONFIG" ]; then
+    echo "missing canonical Xray config $CONFIG"
+    sleep 30
+    exit 1
+fi
+
+install -d -o root -g root -m 0755 /run/ghostbridge
+install -d -o xray -g xray -m 0750 "$SOCK_DIR"
+rm -f "$SOCK_DIR"/*.sock "$SOCK_DIR"/*.sock.lock
+
+export XRAY_LOCATION_ASSET=/usr/local/share/xray
+if ! chpst -u xray:xray /usr/local/bin/xray run -test -config "$CONFIG" >/dev/null; then
+    echo "Xray config test failed: $CONFIG"
+    sleep 30
+    exit 1
+fi
+
+echo "starting native Xray with $CONFIG"
+exec chpst -u xray:xray /usr/local/bin/xray run -config "$CONFIG"

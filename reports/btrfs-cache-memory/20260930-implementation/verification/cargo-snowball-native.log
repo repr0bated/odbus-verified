@@ -1,0 +1,89 @@
+   Compiling tokio-util v0.7.19
+   Compiling h2 v0.4.15
+   Compiling hyper v1.11.0
+   Compiling hyper-util v0.1.20
+   Compiling tower v0.5.3
+   Compiling tokio-rustls v0.26.4
+   Compiling axum v0.7.9
+   Compiling tower v0.4.13
+   Compiling hyper-timeout v0.5.2
+   Compiling tokio-stream v0.1.18
+   Compiling tonic v0.12.3
+   Compiling zbus v5.18.0
+   Compiling op-core v0.1.0 (/srv/git/odbus-verified/crates/op-core)
+   Compiling op-identity v0.1.0 (/srv/git/odbus-verified/crates/op-identity)
+   Compiling tower-http v0.6.11
+   Compiling hyper-rustls v0.27.9
+   Compiling tonic-web v0.12.3
+   Compiling reqwest v0.12.28
+   Compiling op-cozo-store v1.0.0 (/srv/git/odbus-verified/crates/op-cozo-store)
+   Compiling tonic-reflection v0.12.3
+   Compiling tonic-health v0.12.3
+   Compiling op-cache v0.1.0 (/srv/git/odbus-verified/crates/op-cache)
+   Compiling qdrant-client v1.18.0
+   Compiling op-snowball v1.0.0 (/srv/git/odbus-verified/crates/op-snowball)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 55.47s
+     Running unittests src/lib.rs (target/debug/deps/op_snowball-c91990924c199dfd)
+
+running 58 tests
+test btrfs_delta::tests::keeps_paths_containing_spaces ... ok
+test btrfs_delta::tests::parses_find_new_deduped_and_sorted ... ok
+test btrfs_delta::tests::parses_find_new_with_no_changes ... ok
+test btrfs_delta::tests::parses_generation_and_received_uuid ... ok
+test btrfs_delta::tests::query_starts_one_past_the_indexed_generation ... ok
+test btrfs_numa_integration::tests::test_optimized_snowball_creation_and_caching ... ignored, requires an isolated Btrfs fixture at OPDBUS_TEST_BTRFS_ROOT
+test btrfs_numa_integration::tests::writer_cpu_respects_allowed_sparse_mask ... ok
+test btrfs_numa_integration::tests::writer_thread_carries_the_pin_and_tokio_workers_do_not ... ok
+test footprint::tests::chain_event_hash_is_carried_without_hashing_the_hash ... ok
+test footprint::tests::test_block_event_creation ... ok
+test footprint::tests::test_plugin_footprint_creation ... ok
+test replication::tests::absolute_paths_reject_traversal_controls_and_root ... ok
+test replication::tests::arrival_hook_uses_snapshot_path_and_stream_identity_not_logical_counter ... ok
+test replication::tests::descriptor_walk_rejects_final_and_ancestor_symlinks ... ok
+test replication::tests::diagnostics_are_fully_drained_with_bounded_retention ... ok
+test replication::tests::incremental_parent_is_distinct_readonly_snapshot_on_same_filesystem ... ok
+test replication::tests::ordinary_directory_is_rejected_before_any_transport ... ok
+test replication::tests::preflight_requires_snapshot_root_readonly_and_provenance ... ok
+test replication::tests::remote_arguments_are_one_quoted_command_and_never_ssh_options ... ok
+test retention::tests::test_default_policy ... ok
+test retention::tests::test_from_json ... ok
+test snapshot::tests::test_duration ... ok
+test snapshot::tests::test_from_str ... ok
+test snowball::tests::active_transfer_pin_prevents_native_snapshot_pruning ... ok
+test snowball::tests::block_ref_reads_timing_record_and_flattens_data ... ok
+test snowball::tests::bounded_fields_preserve_utf8_and_release_oversized_capacity ... ok
+test snowball::tests::bounded_writer_admission_yields_and_preserves_fifo ... ok
+test snowball::tests::bounded_writer_drains_admitted_jobs_after_sender_drop ... ok
+test snowball::tests::bounded_writer_recovers_after_panicking_job ... ok
+test snowball::tests::complete_historical_flat_triple_remains_readable ... ok
+test snowball::tests::concurrent_event_and_snapshot_never_split_timing_from_vector ... ok
+test snowball::tests::embedding_text_is_deterministic_and_sorted ... ok
+test snowball::tests::existing_plain_data_directory_requires_explicit_migration ... ok
+test snowball::tests::failed_native_set_deletion_withdraws_commit_before_touching_members ... ok
+test snowball::tests::failed_snapshot_removes_hidden_staging_directory ... ok
+test snowball::tests::incomplete_and_legacy_snapshot_sets_are_handled_without_pruning_history ... ok
+test snowball::tests::long_fields_are_capped_in_embedding_text ... ok
+test snowball::tests::native_snapshot_triple_send_receive_round_trip ... ignored, native Btrfs send/receive requires root; isolated fixture deletes only its own subvolumes
+test snowball::tests::parses_block_and_vector_file_names ... ok
+test snowball::tests::pending_retry_keeps_work_after_partial_projection_failure ... ok
+test snowball::tests::pending_selection_does_not_parse_large_vectorized_history ... ok
+test snowball::tests::pending_selection_propagates_selected_io_failure ... ok
+test snowball::tests::pending_selection_recovers_gaps_and_orders_before_limiting ... ok
+test snowball::tests::pending_selection_refills_after_malformed_oldest_record ... ok
+test snowball::tests::pending_zero_limit_counts_coverage_without_reading_payloads ... ok
+test snowball::tests::refuses_symlinked_chain_root ... ok
+test snowball::tests::rejects_truncated_or_empty_vector_files ... ok
+test snowball::tests::resumes_block_numbering_from_disk ... ok
+test snowball::tests::retention_ignores_staging_and_preserves_unknown_snapshot_names ... ok
+test snowball::tests::retention_never_prunes_the_newest_snapshot_on_a_timestamp_tie ... ok
+test snowball::tests::retention_still_prunes_beyond_the_policy ... ok
+test snowball::tests::separate_handles_allocate_distinct_block_numbers_from_disk ... ok
+test snowball::tests::separate_handles_allocate_distinct_committed_snapshot_counters ... ok
+test snowball::tests::snapshot_set_name_is_canonical ... ok
+test snowball::tests::vector_round_trips_through_on_disk_encoding ... ok
+test snowball::tests::write_state_validated_allows_declared_keys ... ok
+test snowball::tests::write_state_validated_rejects_undeclared_in_strict_mode ... ok
+test snowball::tests::write_state_validated_warns_but_allows_undeclared_in_non_strict ... ok
+
+test result: ok. 56 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 2.08s
+

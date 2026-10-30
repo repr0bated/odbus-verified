@@ -1,0 +1,6 @@
+path	inventory_lines	actual_read	status	occurrences
+crates/op-runit-systemctl/Cargo.toml	26	1-26	complete_through_EOF	0
+crates/op-runit-systemctl/README.md	110	1-110	complete_through_EOF	1
+crates/op-runit-systemctl/src/bin/svd.rs	110	1-110	complete_through_EOF	0
+crates/op-runit-systemctl/src/dbus.rs	789	1-789 sequential contiguous ranges	complete_through_EOF	0
+crates/op-runit-systemctl/src/main.rs	94	1-94	complete_through_EOF	0

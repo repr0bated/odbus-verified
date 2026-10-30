@@ -1,8 +1,25 @@
 #!/bin/sh
-# Mark fabric->internet traffic forwarded from the router (wg-opdbus, 10.0.0.0/24)
-# with 0x51820 so the existing rule (fwmark 0x51820 -> table 51820 -> wgcf-ingress)
-# and masquerade carry it out WARP. MSS-clamp the double-tunnel path. Idempotent.
+# Mark fabric->internet traffic forwarded from wg-opdbus with 0x51820.
+# Restore its existing policy slot (priority 41 -> table 51820) independently
+# of MASQUE/Xray. The table's WARP default and masquerade remain externally owned.
 set -eu
+die() { printf 'decoy-fabric-egress: %s\n' "$*" >&2; exit 1; }
+case "$#" in
+    0) policy_only=false ;;
+    1) [ "$1" = --policy-only ] || die 'usage: decoy-fabric-egress [--policy-only]'
+       policy_only=true ;;
+    *) die 'usage: decoy-fabric-egress [--policy-only]' ;;
+esac
+
+# Native routing ownership is shared with op-network, not reimplemented here.
+# The existing WARP device/default and packet classifier remain unchanged.
+OP_NETWORK_ROLE=decoy "${OP_RTNETLINK_INIT:-/usr/local/bin/op-rtnetlink-init}" \
+    wgcf-policy wgcf-ingress
+if [ "$policy_only" = true ]; then
+    echo 'decoy-fabric-egress: mark 0x51820 -> WARP, fail-closed on link loss'
+    exit 0
+fi
+
 sysctl -qw net.ipv4.ip_forward=1
 iptables -t mangle -N FABRIC_EGRESS 2>/dev/null || iptables -t mangle -F FABRIC_EGRESS
 iptables -t mangle -C PREROUTING -i wg-opdbus -j FABRIC_EGRESS 2>/dev/null || \

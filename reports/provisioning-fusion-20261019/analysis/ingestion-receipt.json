@@ -1,0 +1,101 @@
+{
+  "task": "provisioning-fusion-20261019",
+  "current_recovery": {
+    "status": "Owner seed-mechanism correction received; semantic review continuation pending",
+    "actual_reads": [
+      {"path":"latest-owner-correction.json","lines":"1-11","complete":true},
+      {"path":"subvolume-preference.json","lines":"1-10","complete":true},
+      {"path":"manifest.json","lines":"1-26,59,1256 and structural summary","complete":false},
+      {"path":"analysis/recovery-semantic-coverage.json","lines":"1-2,3173,3457-3500 and structural summary","complete":false},
+      {"path":"recovery/checkpoint.json","lines":"1-29,51-52,141-151 and structural summary","complete":false},
+      {"path":"analysis/ingestion-receipt.json","lines":"1-85","complete":true}
+    ],
+    "original_evidence_received": ["Current owner correction verbatim in request", "Commit 26a4ad132fbbd4523b05724060bfdeb9ca661824 op-identity-root lines 1172-1196", "Hermes original records 4095,4099,4111 quoted in request"],
+    "constraints": ["NO HOST LOOP DEVICES, including pool and seed wrappers", "Prefer no disk images/subvolumes only if retained semantics survive", "Preserve btrfs device add seed/sprout mechanism; distinguish backing, member, Cozo association, exposed subvolumes and upgrade replica", "Writes only under analysis/; no implementation/runtime/storage/identity/grant/service/build/test/deployment/provisioning changes", "No new agents/workpools; one explicit smol completion at a time; reuse completed reviews"],
+    "judge_role": "JEV judges decisions/evidence only, never routing or mutation authorization",
+    "coverage_gaps": ["First correction panel not yet obtained", "Completed packet metadata not yet fully read; preserve existing reviews", "Pending packets and supplements not yet reviewed in this session", "Existing source reports need integration, not repeated research"],
+    "prior_receipt_note": "Remaining fields below are preserved predecessor observations, not reads or completion claims by this session."
+  },
+  "phase": "initial ingestion; not complete",
+  "actual_reads": [
+    {
+      "path": "latest-owner-correction.json",
+      "lines": "1-9",
+      "complete": true
+    },
+    {
+      "path": "subvolume-preference.json",
+      "lines": "1-10",
+      "complete": true
+    },
+    {
+      "path": "manifest.json",
+      "lines": "1-17,50-51,76-77,1179,1204,1247 plus structural summaries",
+      "complete": false,
+      "note": "Reader elided 1192 lines; no corpus ingestion claimed."
+    },
+    {
+      "path": "recovery/checkpoint.json",
+      "complete": true
+    },
+    {
+      "path": "recovery/SourceChain.md",
+      "lines": "1-546",
+      "complete": true
+    },
+    {
+      "path": "recovery/BackendProof.md",
+      "lines": "1-300",
+      "complete": false
+    },
+    {
+      "path": "recovery/NativeFeasibility.md",
+      "lines": "1-260,261-approximately530; tool output capped",
+      "complete": false
+    },
+    {
+      "path": "recovery/HistoricalScripts.md",
+      "complete": true,
+      "note": "Saved report ends mid-citation; claimed complete historical review is not a complete preserved report."
+    },
+    {
+      "path": "jev-evidence-inputs.json",
+      "complete": true
+    },
+    {
+      "path": "jev-evidence-decisions.json",
+      "complete": true
+    }
+  ],
+  "constraints": [
+    "No host loop devices, including existing pool backing; no mutation authorized.",
+    "Prefer subvolumes only without disk images only if all retained semantics survive.",
+    "Read-only diagnosis and specification; writes only in analysis/; no source/runtime/storage/identity/grant/service/HANDOFF/SIGNALS edits; no builds/tests/provisioning/deployment; supplied redacted histories only."
+  ],
+  "jev_role": "Decision/evidence judge only via native typed judge/judge_batch with configured typesafe/jev-latest; never model routing or mutation authorization.",
+  "mandatory_skills": "Ten mandatory skill texts supplied in task context and read; current task constraints supersede historical generic guidance.",
+  "coverage_gaps": [
+    "Manifest elided sections",
+    "CASE.md",
+    "Parent judgment receipts",
+    "All 6620 exported history records",
+    "All source/installed/historical snapshots",
+    "Original evidence not yet sent to Fusion panel",
+    "No JEV invocation yet"
+  ],
+  "records_read": [],
+  "recovery": {
+    "checkpoint": "recovery/checkpoint.json",
+    "previous_failure": "Upstream Astra Pro Hermes stream HTTP502, terminal exit1; no fallback. Not a provisioning failure.",
+    "limits": [
+      "Do not recreate exports or duplicate successful source research.",
+      "No new agents, workpools or parallel completion fan-out. At most one outstanding explicit completion globally.",
+      "Keep full corpus available, checkpoint completed packet reviews, and preserve explicit coverage gaps.",
+      "Do not directly invoke internal litellm_fusion tool after its router prohibits repeated invocation.",
+      "No implementation, provisioning, storage, grants, service, build, test or deployment."
+    ],
+    "packet_role": "smol",
+    "actual_resolved_model": "Not yet observed in this recovery; prior scout resolved openai-codex/gpt-6-astra",
+    "semantic_packet_reviews_completed": 0
+  }
+}

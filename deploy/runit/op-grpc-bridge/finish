@@ -1,4 +1,6 @@
 #!/bin/sh
+exec 2>&1
+printf 'op-grpc-bridge finish exit=%s wait_status=%s\n' "${1:-unknown}" "${2:-unknown}"
 default_ready_path=/run/opdbus/runit-ready/op-grpc-bridge
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment

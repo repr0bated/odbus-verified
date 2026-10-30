@@ -1,0 +1,63 @@
+{
+  "request": 37,
+  "started": "2026-10-18T21:58:04.237320+00:00",
+  "finished": "2026-10-18T21:58:12.498994+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-08541974fe05cb90016ad540f026d087d0b690667b4befaa74",
+    "created": 1792360688,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading required skill preload\",\"path\":\"/srv/git/odbus-verified/.agents/skills/grpc-expert/SKILL.md:raw\"}",
+                "name": "read"
+              },
+              "id": "call_ixfvcf8anaE7tTuRnDsygBIp",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 129,
+      "prompt_tokens": 34469,
+      "total_tokens": 34598,
+      "completion_tokens_details": {
+        "reasoning_tokens": 23
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 22526
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:58:12.497702+00:00",
+  "stream_chunks": 4
+}

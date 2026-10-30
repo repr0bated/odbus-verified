@@ -1,0 +1,10 @@
+{
+  "task": "identity-container-provision-20261024",
+  "phase": "bridge-build",
+  "exit": 101,
+  "completed_at": "2026-10-25T00:31:13Z",
+  "target": "x86_64-unknown-linux-gnu",
+  "installed": false,
+  "deployed": false,
+  "tested": false
+}

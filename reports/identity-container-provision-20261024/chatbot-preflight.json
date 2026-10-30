@@ -1,0 +1,28 @@
+{
+  "plugin_id": "identity_sled",
+  "method": "inspect_provision_preflight",
+  "subid": "obs.service.identity-sled.container.provision-preflight@v1",
+  "required_capability": "identity_sled.write",
+  "side_effect": "read",
+  "idempotent": true,
+  "result": {
+    "success": true,
+    "event_id": 7239,
+    "event_hash": "a539a6fa201f7ad84074d092d13052a3",
+    "plugin_id": "identity_sled",
+    "method": "inspect_provision_preflight",
+    "result": {
+      "session_id": "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+      "wireguard_pubkey": "Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=",
+      "expected_revision": 1,
+      "expected_revision_operation_id": "initialize-configured-chatbot-1cbb00cb4f3b4ece8f95dea366be4e3b",
+      "previous_instance": null,
+      "previous_instance_etag": "",
+      "previous_native_instance": null
+    },
+    "operation_id": "d4aef49a-6473-4407-bb93-250401bc3552",
+    "outcome": "completed",
+    "terminal_event_id": 7240,
+    "terminal_event_hash": "e59dd6d734c109dc8203d039ddb13c5a"
+  }
+}

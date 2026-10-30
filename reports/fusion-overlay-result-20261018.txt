@@ -1,0 +1,147 @@
+member ok   openai/gpt-6-astra-pro
+member ok   openai/gpt-6-astra-pro
+member ok   z-ai/glm-5.3
+member ok   qwen3.6-35b-a3b
+member ok   anthropic/claude-opus-5.5
+member ok   moonshotai/kimi-k3
+member ok   openai/gpt-6-astra-pro
+FUSION_RECEIPT {"invoked": true, "protocol": "fusion-tool-v1", "panel_successes": 3, "panel_failures": 2, "analysis_available": true}
+RESULT model= openai/gpt-6-astra-pro
+# Overlay activation failure: diagnosis and proposed evidence patch
+
+**Conclusion:** The activation reached bridge startup but failed readiness. The evidence does not identify whether the wrapper exited, the native bridge failed initialization, a prerequisite remained pending, or the readiness check rejected an otherwise running process. **The smallest justified next step is retained bridge output and exit evidence—not a timeout increase or speculative configuration repair.**
+
+This report uses the supplied evidence and all nine reference skills. No commands, inspections, builds, or changes were performed.
+
+## 1. What is proven—and what is not
+
+The saved activation receipt establishes that the controller persisted and staged the catalog—74 blobs plus manifest—and started six services before encountering:
+
+```text
+timeout: run: /etc/sv/op-grpc-bridge: (pid 25981) 12s
+```
+
+It then stopped affected services, removed newly added supervision, restored `notebook-sources-sync`, and reported restoration of the original complete state.
+
+The later installed-launcher status—no active release, journal, transaction, or overlay mounts—is consistent with completed rollback. It does not independently verify every restored resource. There is **no demonstrated send/receive or overlay-mount failure**, but neither the receipt nor status proves all release mechanics flawless.
+
+For the bridge, the receipt proves failure to satisfy the bounded service/readiness operation. The displayed `12s` describes the current runit process incarnation; it is not the configured timeout. It may support investigating a restart or delayed start, but does not establish either. The PID might still represent the shell wrapper rather than the native bridge.
+
+The handoff’s crash-loop description is secondary evidence, not a substitute for exit records. No actual bridge stderr is available.
+
+Other important limits:
+
+- Catalog staging does not prove successful `SchemaLoader` validation.
+- TLS-directory existence does not establish usable certificates, keys, or trust.
+- Token ownership/mode satisfies only part of the wrapper’s validation.
+- Missing optional environment files do not independently explain startup failure. The model-provider path needs its own consumer trace.
+- Missing local-human state without an initializer explicitly permits `Ok(None)` in the supplied code; selector mismatches and other identity errors remain separate possibilities.
+- Native decoy configuration reads are shown in admitted method dispatch, not established as unconditional startup requirements.
+- Checkout HEAD and concurrent modifications are not proven equivalent to the received release. Every source-derived hypothesis remains conditional on artifact provenance.
+
+## 2. Ranked hypotheses and smallest distinguishing observations
+
+These are investigative priorities, not numerical probabilities.
+
+### 1. Wrapper or execution-chain failure before native startup
+
+**Evidence:** The wrapper explicitly rejects invalid token inputs, missing runtime commands, unsuitable storage placement, and unsupported policy values. The final `numactl`/executable chain can fail independently. These fit the handoff’s reported restart behavior.
+
+**Counterevidence:** Observed token ownership/mode is compatible with its checks. No actual failure message exists. The wrapper could instead be waiting.
+
+**Smallest observation:** Retained wrapper stderr, a content-free marker immediately before final execution, and runsv’s exit-status arguments. If permitted, correlate the supervised PID with `/proc/<pid>/exe` during activation. A pre-exec marker alone does **not** prove successful execution.
+
+### 2. Native bridge initialization fails before listeners become ready
+
+**Evidence:** Startup includes fallible TLS preparation, catalog loading, private projections, runtime documents, identity recovery, and identity bootstrap. These occur before readiness. Errors can propagate without listeners becoming available.
+
+**Counterevidence:** No failing operation is observed. Protected inputs reportedly came from a verified backup. The shown container-start failure is explicitly nonfatal; not every startup operation is fatal.
+
+**Smallest observation:** The first retained native error, correlated with executable identity and the finish record. Investigate only its named operation against the actual release bytes.
+
+### 3. Wrapper remains in a dependency or address wait
+
+**Evidence:** Controller calls use `sv -w 30` with a 35-second outer bound. Wrapper waits allow 90 iterations, and dependency commands can themselves consume time. The controller can reject readiness before those waits finish.
+
+**Counterevidence:** Several dependencies had already started, and the handoff describes repeated exits. Neither fact rules out another prerequisite remaining pending.
+
+**Smallest observation:** Timestamped begin/completion markers around existing dependency and address waits, plus two PID/start-time observations inside the existing readiness window. An unmatched wait marker identifies the current prerequisite. A stable PID establishes neither health nor forward progress.
+
+Do not increase timeouts merely because their configured bounds differ.
+
+### 4. Native process remains alive but readiness verification fails
+
+**Evidence:** `check` requires a ready marker, Unix socket, and CA-validated HTTPS returning exactly `401`. A running process or listening port alone is insufficient.
+
+**Counterevidence:** There is no contemporaneous marker, socket, TLS, or HTTP result.
+
+**Smallest observation:** If the native process remains alive, identify the first failed clause of the existing check: marker, socket, TLS/connectivity, or HTTP status. Preserve its existing limits and authentication expectation. Do not assume a service logger captures a check launched separately by `sv`.
+
+## 3. Minimal proposed diagnostic patch
+
+### One prerequisite before a complete deployable diff
+
+**Confirm the authoritative release logger integration contract:** how logger files are packaged/materialized, and how persistent directory ownership, access, and bounded retention are configured.
+
+The notebook logger establishes the existing `svlog` account/root fallback and `svlogd -tt` pattern. The controller recognizes `sv/<service>/log/run` and manages logger lifecycle. However, the supplied excerpts do not establish the complete packaging and retention contract. A full deployment-ready logger script should not invent it.
+
+### Narrow patch package
+
+After that confirmation:
+
+1. Add `deploy/runit/op-grpc-bridge/log/run`, using the established account convention without creating an account.
+2. Retain output under the persistent service-log hierarchy, ordinarily `/var/log/op-dbus/op-grpc-bridge`, outside application overlays.
+3. Use the existing bounded rotation mechanism, with verified size/count limits accounting for current and rotated files. Preserve appropriately restricted access.
+4. Add finish-status recording and content-free wrapper stage markers.
+5. Leave `check`, startup prerequisites, execution semantics, and controller timeouts unchanged.
+
+The existing `run` already begins with `exec 2>&1`; runit logger integration can therefore capture both wrapper and native stderr without replacing the bridge’s `exec` process model.
+
+**Exact proposed insertion immediately after the existing `finish` shebang:**
+
+```sh
+exec 2>&1
+printf 'op-grpc-bridge finish: exit_code=%s wait_status_low_byte=%s\n' \
+    "${1:-unknown}" "${2:-unknown}"
+```
+
+Keep the remaining finish script unchanged. Recording before environment sourcing preserves the record if sourcing fails. The second argument is the raw low byte of wait status—not simply a signal number.
+
+Add fixed-label markers to `run` for:
+
+- wrapper entry;
+- each dependency/address wait beginning and completing;
+- entry into the final execution branch.
+
+Do not print environment contents, tokens, arguments containing protected values, or enable shell tracing. Do not add a child-wait wrapper or change signal handling.
+
+No startup truncation, recursive ownership changes, destructive cleanup, or manual supervision links belong in this patch. The controller must own logger installation and supervision. Verify that its shutdown sequence drains retained output before removing logger definitions; persistent storage alone does not guarantee final-message capture.
+
+## 4. Conditional repairs after a confirmed error
+
+- **Missing executable/runtime dependency:** Correct the demonstrated packaging or host prerequisite through its existing owner. Application changes use prepared snapshots, never copied binaries.
+- **Token/configuration rejection:** Have the protected-input owner verify the specific input through the approved recovery procedure. Do not invent values or expose secret contents.
+- **Missing address or dependency readiness:** Return the exact unmet prerequisite to its existing owner. No fallback interfaces, listeners, routes, or readiness markers.
+- **TLS failure:** Verify the particular path, access requirement, and certificate/trust relationship through its owner. Preserve verification; do not generate replacement identity material.
+- **Catalog/schema failure:** Reconcile the actual executable and shipped catalog through normal release production. No manual blob edits or relaxed schema validation.
+- **Identity, audit, or projection failure:** Stop at the named operation and escalate to its owner. Do not initialize, reset, replace, or bypass protected state.
+- **Readiness-only discrepancy:** Repair the demonstrated path, listener, or trust mismatch while retaining every existing readiness condition.
+
+Exit codes are supporting evidence, not unique diagnoses. Correlate them with messages and timing; rollback-induced termination is not necessarily the initiating failure.
+
+The logger warnings beginning at 13:57:21 are a **separate rollback-window symptom**. Disappearing overlay-backed targets or supervision teardown ordering could explain them. Their timing does not prove files were missing during activation, nor establish harmlessness. Compare shutdown and target-removal chronology before proposing any repair.
+
+## 5. Ready-to-use handoff to Devin
+
+> Preserve all concurrent work. First compare the received release’s relevant scripts and executable provenance with the checkout; HEAD alone is insufficient.
+>
+> Confirm the logger integration/retention contract, then prepare only the narrow diagnostic changes above. Coordinate overlapping edits; do not stage unrelated changes merely because they share a file.
+>
+> Deliver application changes through a prepared read-only snapshot, Btrfs send/receive, and the existing release controller. Do not edit received snapshots or install supervision manually.
+>
+> Make at most one owner-controlled diagnostic activation attempt. Retain the activation receipt and bounded bridge logs. Within the existing readiness window, take two native `sv status` observations and, where permitted, correlate PID/start time with executable identity. Do not dump environments.
+>
+> Stop after success or controller rollback. Return the release identifier, first failed stage/error, finish record, contemporaneous observations, and final supported-launcher status. Review diagnostic excerpts for sensitive content before sharing.
+>
+> If evidence remains silent, report the unresolved branch rather than retrying blindly. Do not change timeouts or weaken checks. No tests, Clippy, or formatting gates are proposed.
+member ok   openai/gpt-6-astra-pro

@@ -1,0 +1,64 @@
+{
+  "request": 40,
+  "started": "2026-10-20T17:11:51.203303+00:00",
+  "finished": "2026-10-20T17:12:13.964882+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0fa3f2b7abcadff9016ad7a0dd5e7c87d187d1e5d4756b2b33",
+    "created": 1792516317,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"code\":\"print(await judge({'source':'typed_specialize.rs862-872 selects tched_fs;1017 capture_schema_only;1020-1039 three output writes','binary':'GNU x86-64 ELF buildID cf6ae1d238fdcaf0c0de36748029eb0255d78f81; Oct18 22:51:49 newer than generator18:11:43 and included source filesOct11; depfile rooted /srv/git/odbus-verified; strings current sealed tched_fs diagnostic=true, obsolete sealed threetched_fs diagnostic=false, --use-example=true,capture_schema_only=true','pins':'manifest/report generation72 and hash6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c identical'}, {'currency':{'type':'bool','instructions':'Does this combined evidence support using this existing generator for the requested authoring run rather than treating it as the obsolete pre-rename generator? This is not reproducible-build or runtime correctness proof.'}}))\",\"title\":\"Judging generator currency evidence\"}",
+                "name": "eval"
+              },
+              "id": "call_WyxeM86bhOxKcmSBrDFl1NYK",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: establish catalog-pin equality and generator provenance, record pre-run hashes, run the existing generator once with detached stdin and persistent receipts, then report output hashes and coverage limits. No compilation, tests, mounted calls, or catalog mutation.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1310,
+      "prompt_tokens": 118929,
+      "total_tokens": 120239,
+      "completion_tokens_details": {
+        "reasoning_tokens": 572
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 110102
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:12:13.962892+00:00",
+  "stream_chunks": 5
+}

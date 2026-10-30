@@ -1,0 +1,17 @@
+{
+  "task_id": "fs-core-20261005",
+  "status": "isolated-preparation-only",
+  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "generation": 1356,
+  "catalog_hash": "e4eb66049a57ecb8c04fc467770307012db9b5bbec31197f5c64e4e33879cb4c",
+  "plugin_count": 69,
+  "added": [
+    "threetched_fs"
+  ],
+  "removed": [],
+  "threetched_fs_schema_hash": "a7ccb95158ee001e04d48bec296c914cae0ad312f91867b2ae89812bf1a85f72",
+  "tests": {
+    "status": "not-run",
+    "reason": "Owner explicitly reserved test execution"
+  }
+}

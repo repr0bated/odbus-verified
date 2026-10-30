@@ -1,0 +1,21 @@
+{
+  "outer_mount": "/run/mounts/seed-3tched",
+  "outer_fstype": "ext4",
+  "outer_uuid": "5573f463-435c-4a21-8e92-d048524eea44",
+  "image": "/run/mounts/seed-3tched/seed.img",
+  "staged_image": "/var/lib/cargo-build/staging/identity-container-provision-20261024.v2FToSfM/seed.img",
+  "image_sha256_before_inspection_mount": "a31c3616912b22eb375149cb85d00adfaebc7befea6485046ecdf1f7098f114d",
+  "image_loop": "/dev/loop1",
+  "root_fsid": "802bb381-26f4-4392-8ad7-3a9916aad351",
+  "upgrade_fsid": "807b35b1-99ac-49c3-bf63-a2dc77e0d304",
+  "inspection_mount": "/run/mounts/seed-3tched/rootfs",
+  "rollback": "/var/lib/cargo-build/staging/identity-container-provision-20261024.v2FToSfM/current-lv-40GiB.raw.img",
+  "rollback_sha256": "4a4b836e42283a5c4420dee1415a1728699624c0dda1f62a4c2c6087548b8228",
+  "original_backup": "/var/lib/cargo-build/staging/seed-backup-raw.img",
+  "original_backup_sha256": "919295e4eaa30efcac4390e65ca63a5ee2d74488957fa39efed843197297a708",
+  "root_and_agent_user_writable": true,
+  "upgrade_at_empty_writable": true,
+  "filesystem_seeding": false,
+  "identity_created": false,
+  "guest_boot_verified": false
+}

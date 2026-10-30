@@ -1,0 +1,64 @@
+{
+  "request": 33,
+  "started": "2026-10-20T17:10:08.607540+00:00",
+  "finished": "2026-10-20T17:10:23.215572+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0713ef6bdef9f726016ad7a0769a6887d1a3998f068946c3e6",
+    "created": 1792516214,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting generator provenance metadata\",\"command\":\"stat -c '%n | size=%s | mtime=%y' target/x86_64-unknown-linux-gnu/release/examples/typed_specialize crates/threetched-fs/examples/typed_specialize.rs crates/threetched-fs/src/model.rs crates/threetched-fs/src/source.rs crates/threetched-fs/src/store.rs\",\"cwd\":\"/srv/git/odbus-verified\"}",
+                "name": "bash"
+              },
+              "id": "call_czFP4rEhGUoQVxUdViJwIko6",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: compare the manifest/report pins, inspect the existing GNU generator\u2019s provenance against its source, then run it once in a detached shell with closed stdin and persistent receipts. Record output hashes before and after, identify content changes, and report generation coverage without compiling or invoking runtime operations.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 677,
+      "prompt_tokens": 106451,
+      "total_tokens": 107128,
+      "completion_tokens_details": {
+        "reasoning_tokens": 188
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 91568
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:10:23.213708+00:00",
+  "stream_chunks": 5
+}

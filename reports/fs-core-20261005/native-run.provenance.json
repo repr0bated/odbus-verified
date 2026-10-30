@@ -1,0 +1,58 @@
+{
+  "task_id": "fs-core-20261005",
+  "status": "approved-source-prepared-not-activated",
+  "prepared_at_utc": "2026-10-05T21:05:49Z",
+  "approval": {
+    "source": "Owner asynchronous approval response in this session",
+    "scope": "separate UID1001 human-session native mount and readonly filesystem route; preserve guest/default service list/providers/config",
+    "approved_answer": "Approve the scoped native mount and read-only route",
+    "received_at_utc": "2026-10-05T21:05:49Z"
+  },
+  "base": {
+    "live_path": "/etc/runit/sv/tched-router/run",
+    "kind": "regular file",
+    "required_sha256": "cc31914fd5db554aa145f86bcef95e3a16bc448a5035e8c31b1e38ae52a9dfdd",
+    "captured_path": "reports/fs-core-20261005/native-run.before.sh",
+    "captured_sha256": "cc31914fd5db554aa145f86bcef95e3a16bc448a5035e8c31b1e38ae52a9dfdd"
+  },
+  "candidate": {
+    "path": "reports/fs-core-20261005/native-run.approved.sh",
+    "sha256": "9d6e3338099b0071317a761e20e861c1eae1a4ee2cd2ce705317b6ce879c1151"
+  },
+  "source_fragments": {
+    "path": "deploy/runit/tched-router/run",
+    "sha256": "205831b741e680c42562b16386b4a9f6688f30aa2dbca1c56fbfb1ab98528782",
+    "changes": [
+      "protected marker/session/environment block immediately after set -eu",
+      "derived filesystem environment arguments on existing env-i exec",
+      "exact owned-root CAS block after existing readonly risk loop"
+    ]
+  },
+  "preservation": {
+    "non_filesystem_bytes": "Reversing the exact three transformations reproduces the captured base byte-for-byte.",
+    "provider_bootstrap_model_key_autonomy": "No unrelated canonical source changes imported.",
+    "guest_mount": "unchanged /run/mount/3tchedFS owner1000000",
+    "enabled_services": "No default entry added."
+  },
+  "diff_unified": "--- native-run.before.sh\n+++ native-run.approved.sh\n@@ -2,6 +2,43 @@\n exec 2>&1\n set -eu\n \n+# This root-controlled opt-in is deliberately absent from default releases.\n+# Session selectors are operator input, never credentials or model arguments.\n+filesystem_marker=/etc/op-dbus/native-filesystem.enabled\n+filesystem_session_file=/etc/op-dbus/human-lungs-session\n+filesystem_root=/run/mount/3tchedFS-native\n+filesystem_root_receipt=/etc/op-dbus/native-filesystem.allowed-root-owned\n+filesystem_enabled=false\n+protected_filesystem_file() {\n+    [ -f \"$1\" ] && [ ! -L \"$1\" ] || return 1\n+    set -- $(stat -c '%u %a' \"$1\")\n+    [ \"$1\" = 0 ] && { [ \"$2\" = 400 ] || [ \"$2\" = 600 ]; }\n+}\n+unset OPDBUS_FILESYSTEM_ROOT OPDBUS_FILESYSTEM_SESSION OPDBUS_FILESYSTEM_READ_HELPER\n+set --\n+if [ -e \"$filesystem_marker\" ] || [ -L \"$filesystem_marker\" ]; then\n+    [ ! -L /etc/op-dbus ] && [ \"$(stat -c '%u %a' /etc/op-dbus)\" = '0 755' ] || exit 78\n+    protected_filesystem_file \"$filesystem_marker\" || { echo 'tched-router: unprotected filesystem opt-in marker' >&2; exit 78; }\n+    [ \"$(wc -c <\"$filesystem_marker\")\" -le 6 ] || exit 78\n+    case \"$(cat \"$filesystem_marker\")\" in\n+        true) filesystem_enabled=true ;;\n+        false) ;;\n+        *) echo 'tched-router: filesystem opt-in marker must contain true or false' >&2; exit 78 ;;\n+    esac\n+fi\n+if [ \"$filesystem_enabled\" = true ]; then\n+    [ \"$(id -u jeremy)\" = 1001 ] || exit 78\n+    protected_filesystem_file \"$filesystem_session_file\" || { echo 'tched-router: unprotected human session source' >&2; exit 78; }\n+    [ \"$(wc -c <\"$filesystem_session_file\")\" -le 37 ] || exit 78\n+    OPDBUS_FILESYSTEM_ROOT=$filesystem_root\n+    OPDBUS_FILESYSTEM_SESSION=$(cat \"$filesystem_session_file\")\n+    OPDBUS_FILESYSTEM_READ_HELPER=1\n+    printf '%s' \"$OPDBUS_FILESYSTEM_SESSION\" | jq -Re 'test(\"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\")' >/dev/null || exit 78\n+    export OPDBUS_FILESYSTEM_ROOT OPDBUS_FILESYSTEM_SESSION OPDBUS_FILESYSTEM_READ_HELPER\n+    set -- OPDBUS_FILESYSTEM_ROOT=\"$OPDBUS_FILESYSTEM_ROOT\" \\\n+        OPDBUS_FILESYSTEM_SESSION=\"$OPDBUS_FILESYSTEM_SESSION\" OPDBUS_FILESYSTEM_READ_HELPER=1\n+fi\n+\n # Keep only public service settings across the first exec. The shared\n # environment file can contain unrelated provider credentials; none of those\n # become ambient input to the router daemon.\n@@ -22,7 +59,7 @@\n         TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER=\"${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-custom.opencode_control_plane}\" \\\n         OPDBUS_SLED_AUTH_URL=\"${OPDBUS_SLED_AUTH_URL:-https://10.0.0.2:8090/mcp}\" \\\n         OPDBUS_SLED_CA_FILE=\"${OPDBUS_SLED_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}\" \\\n-        /bin/sh \"$0\" --sanitized\n+        \"$@\" /bin/sh \"$0\" --sanitized\n fi\n \n CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}\n@@ -86,6 +123,40 @@\n       {op:\"add\",path:($p+\"/block_high_risk_commands\"),value:true}\n     ]' | native_config patch - >/dev/null\n done\n+\n+# The native config owner applies one compare-and-swap of this exact list.\n+# An ownership receipt distinguishes our addition from a pre-existing root.\n+if [ \"$filesystem_enabled\" = true ] || [ -e \"$filesystem_root_receipt\" ] || [ -L \"$filesystem_root_receipt\" ]; then\n+    [ ! -L /etc/op-dbus ] && [ \"$(stat -c '%u %a' /etc/op-dbus)\" = '0 755' ] || exit 78\n+    if [ -e \"$filesystem_root_receipt\" ] || [ -L \"$filesystem_root_receipt\" ]; then\n+        protected_filesystem_file \"$filesystem_root_receipt\" || exit 78\n+        [ \"$(cat \"$filesystem_root_receipt\")\" = \"$filesystem_root\" ] || exit 78\n+    fi\n+    roots=$(native_config get risk_profiles.control_plane.allowed_roots --json | jq -ce '.value | if type == \"string\" then fromjson else . end | arrays | select(all(.[]; type == \"string\"))')\n+    if [ \"$filesystem_enabled\" = true ]; then\n+        [ \"$(findmnt -rn -M \"$filesystem_root\" -o FSTYPE)\" = fuse.3tchedFS ] || { echo 'tched-router: native filesystem mount is not ready' >&2; exit 78; }\n+        jq -e --arg session \"$OPDBUS_FILESYSTEM_SESSION\" '.mount_identity.kind == \"host_session\" and .mount_identity.session == $session and .local_call_owner_uid == 1001 and .workspace_id == null' \"$filesystem_root/.3tchedfs.json\" >/dev/null || exit 78\n+        if ! printf '%s' \"$roots\" | jq -e --arg root \"$filesystem_root\" 'index($root) != null' >/dev/null; then\n+            # Record intent before the atomic native patch, so interrupted\n+            # startup can still roll back only this exact added permission.\n+            receipt_tmp=$(mktemp /etc/op-dbus/.native-filesystem-root.XXXXXX)\n+            chmod 0600 \"$receipt_tmp\"\n+            printf '%s\\n' \"$filesystem_root\" >\"$receipt_tmp\"\n+            mv -f \"$receipt_tmp\" \"$filesystem_root_receipt\"\n+            jq -n --argjson roots \"$roots\" --arg root \"$filesystem_root\" '[\n+                {op:\"test\",path:\"/risk_profiles/control_plane/allowed_roots\",value:$roots},\n+                {op:\"replace\",path:\"/risk_profiles/control_plane/allowed_roots\",value:($roots + [$root])}\n+            ]' | native_config patch - >/dev/null\n+        fi\n+    elif [ -e \"$filesystem_root_receipt\" ]; then\n+        jq -n --argjson roots \"$roots\" --arg root \"$filesystem_root\" '[\n+            {op:\"test\",path:\"/risk_profiles/control_plane/allowed_roots\",value:$roots},\n+            {op:\"replace\",path:\"/risk_profiles/control_plane/allowed_roots\",value:($roots | map(select(. != $root)))}\n+        ]' | native_config patch - >/dev/null\n+        rm -f \"$filesystem_root_receipt\"\n+    fi\n+    unset roots receipt_tmp\n+fi\n while IFS='|' read -r agent model risk wire; do\n     profile=\"opencode_$agent\"\n     provider=\"custom.$profile\"\n",
+  "stage_after_full_golden": {
+    "candidate": "/opt/op-dbus/golden/sv/tched-router/run",
+    "optional_mount_service": "/opt/op-dbus/golden/sv/threetched-fs-native/{run,check,finish}",
+    "base_recovery_copy": "/opt/op-dbus/golden/share/op-dbus/native-filesystem/native-run.before.sh",
+    "provenance": "/opt/op-dbus/golden/share/op-dbus/native-filesystem/native-run.provenance.json"
+  },
+  "received_activation_links": {
+    "native_run": "/etc/runit/sv/tched-router/run -> /opt/op-dbus/current/sv/tched-router/run",
+    "native_mount_scripts": "/etc/runit/sv/threetched-fs-native/{run,check,finish} -> /opt/op-dbus/current/sv/threetched-fs-native/{run,check,finish}",
+    "explicit_mount_enable": "/etc/runit/runsvdir/default/threetched-fs-native -> /etc/runit/sv/threetched-fs-native"
+  },
+  "release_boundary": "Stage only after full golden preparation, then immutable snapshot and Btrfs send/receive; root owns atomic activation and deliberate service actions.",
+  "verification": "Source capture/diff/reversal only; no tests, Cargo, live writes, markers, config mutations or restarts performed.",
+  "runtime_repair": {
+    "condition": "native config get returns value as JSON text, observed value_type string",
+    "change": "decode string value with fromjson before requiring an array of string roots",
+    "permission_scope": "unchanged approved native readonly route",
+    "tests": "not run; separate owner agent",
+    "deployment": "replacement received snapshot pending"
+  }
+}

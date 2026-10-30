@@ -1,0 +1,64 @@
+{
+  "request": 17,
+  "started": "2026-10-19T04:54:26.984617+00:00",
+  "finished": "2026-10-19T04:54:50.373906+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0f74440b23039751016ad5a285e5a087d097752e0e006520d8",
+    "created": 1792385669,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var jstate={scope:await fs.readFile(base+'CASE.md','utf8'),latest:JSON.parse(await fs.readFile(base+'latest-owner-correction.json','utf8')),preference:JSON.parse(await fs.readFile(base+'subvolume-preference.json','utf8')),evidence:await fs.readFile(base+'recovery/BackendProof.md','utf8'),feasibility:await fs.readFile(base+'recovery/NativeFeasibility.md','utf8'),proposal:await fs.readFile(a+'proposed-changes.md','utf8'),uncertainty:'Saved reports include original excerpts/citations, not live proof. Complete semantic history review unfinished. Judge evidence/design only, never model selection or permission.'};var jq={proof_migration:{type:'choice',instructions:'Judge whether changing shell allocation alone can meet no-host-loops while retaining current authoritative adoption/start verification.',criteria:{coordinated_change:'Evidence requires coordinated storage representation, helper, proof and transaction validation changes without weakening invariants.',shell_only:'Shell-only change is sufficient under current proofs.',insufficient:'Evidence cannot distinguish.'}},subvolume_equivalence:{type:'choice',instructions:'Judge claim native Btrfs filesystem subvolumes alone preserve the required actual seed/sprout semantics.',criteria:{unsupported:'Subvolumes do not provide writable block membership; equivalence is unsupported.',supported:'Evidence demonstrates full equivalence including seeding and upgrade behavior.',uncertain:'Evidence insufficient even to distinguish primitives.'}},topology:{type:'choice',instructions:'Judge proposed non-loop direct-block or dm-linear topology as a completed solution under permanent seed mount requirement.',criteria:{conditional_only:'Kernel/mount topology and allocation authorization remain unresolved; not a proven solution.',complete:'Evidence proves supported topology and available allocation.',impossible_all:'Evidence proves every possible non-loop topology impossible.'}},completion:{type:'choice',instructions:'Judge diagnostic completion claim when packet semantic coverage is incomplete.',criteria:{incomplete:'Source findings are useful but complete requested corpus analysis cannot be claimed.',complete:'Source reports alone satisfy complete corpus analysis.'}}};await fs.writeFile(a+'jev-recovery-input.json',JSON.stringify({state:jstate,questions:jq},null,2));try{var ja=await judge(jstate,jq);await fs.writeFile(a+'jev-recovery-answer.json',JSON.stringify(ja,null,2));await fs.appendFile(a+'decisions.jsonl',JSON.stringify({at:new Date().toISOString(),input:'jev-recovery-input.json',answer:ja,requested_role:'modelRoles.judge=typesafe/jev-latest',resolved_model:'Not exposed by judge return; do not infer from parent judgments',uncertainty:jstate.uncertainty})+'\\\\n');console.log(ja);}catch(e){await fs.writeFile(a+'jev-recovery-failure.json',JSON.stringify({error:String(e)},null,2));console.log('JEV FAILURE',String(e));}\",\"title\":\"Judging substantive design decisions\",\"timeout\":3600}",
+                "name": "eval"
+              },
+              "id": "call_zC53KC9E2j00CcdNnC01y5MG",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1192,
+      "prompt_tokens": 214228,
+      "total_tokens": 215420,
+      "completion_tokens_details": {
+        "reasoning_tokens": 432
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 154321
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:54:50.372160+00:00",
+  "stream_chunks": 4
+}

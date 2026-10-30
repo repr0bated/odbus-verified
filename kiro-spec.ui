@@ -1,0 +1,181 @@
+Follow the spec workflow. Produce a complete, evidence-backed specification for migrating the application to identity-bound FUSE operations, sealed-plugin-schema discovery, and a wholly model-generated Svelte UI.
+
+SPECIFICATION ONLY. Do not implement application changes, change identities/grants/keys, invoke mutating operations, run builds/tests, reseal catalogs, deploy, or restart services. I will have another assistant review your spec and return corrections before implementation.
+
+REPOSITORIES
+
+Backend: /srv/git/odbus-verified
+Production UI: /srv/git/3tched.com
+
+MANDATORY PRELOAD — ALL SKILLS, NOT ONLY RELEVANT SKILLS
+
+Before analysis, planning, source investigation, or subagent work:
+- Read the applicable repository instructions and shared HANDOFF.md first. Respect existing file ownership.
+- Enumerate every SKILL.md beneath /srv/git/odbus-verified/.agents/skills and the skill directories declared by applicable instructions in /srv/git/3tched.com. Load and read ALL of those skills completely, even when their domains appear unrelated. Do not select only a relevant subset.
+- Read every additional reference explicitly required by those skills or repository instructions. Follow matching-skill precedence and repository-specific restrictions. A reference skill for another framework does not authorize changing the mandated Svelte stack.
+- Do not treat a directory listing, skill description, summary, parent's preload, or truncated file preview as a completed preload. Continue reading until each required file has been read completely.
+- Every delegated agent or model handoff must independently repeat this preload for its own session. Do not delegate before supplying that requirement.
+- Identify any inaccessible or missing required skill precisely. Do not claim it was loaded or silently substitute another document.
+- Record a concise preload manifest with skill/reference paths and completion or blocker status in the spec's evidence section. Do not copy entire skill texts into the spec.
+
+The backend's explicitly mandatory files include ALL of the following; this list is a minimum, not a substitute for loading every discovered skill:
+.agents/skills/grpc-expert/SKILL.md
+.agents/skills/grpc-protocol-expert/SKILL.md
+.agents/skills/json-render/SKILL.md
+.agents/skills/ovs-db-analysis/SKILL.md
+.agents/skills/kernel-fuse-diagnosis/SKILL.md
+.agents/skills/fuse/SKILL.md
+.agents/skills/btrfs/SKILL.md
+.agents/skills/incus/SKILL.md
+.agents/skills/rust-memory-optimization/SKILL.md
+.agents/skills/memory-safety-patterns/SKILL.md
+.agents/skills/requesting-code-review/SKILL.md
+.agents/skills/requesting-code-review/code-reviewer.md
+.agents/skills/receiving-code-review/SKILL.md
+.agents/skills/quality-auditor/SKILL.md
+.agents/skills/quality-auditor/references/verification-gap-protocol.md
+.agents/skills/quality-auditor/references/audit-rubric.md
+.agents/skills/quality-auditor/references/anti-patterns-guide.md
+.agents/skills/verification-before-completion/SKILL.md
+.agents/skills/agent-self-evaluation/SKILL.md
+.agents/skills/application-security/SKILL.md
+.agents/skills/rust/SKILL.md
+.agents/skills/rust-patterns/SKILL.md
+.agents/skills/rust-testing/SKILL.md
+.agents/skills/svelte/SKILL.md
+.agents/skills/svelte-code-writer/SKILL.md
+.agents/skills/web-design-guidelines/SKILL.md
+.agents/skills/unified-memory/SKILL.md
+.agents/skills/using-superpowers/SKILL.md
+
+After completing the preload, read relevant recent SIGNALS.md entries. Verify current source rather than trusting old conversations or deployment claims. Filter candidate source files using the repository's required evidence-judgment workflow before opening full files.
+
+Reuse an existing matching spec if appropriate; otherwise create:
+.kiro/specs/fuse-schema-generated-ui/requirements.md
+.kiro/specs/fuse-schema-generated-ui/design.md
+.kiro/specs/fuse-schema-generated-ui/tasks.md
+
+WORKFLOW
+
+1. Complete the mandatory preload above.
+2. Inspect the current implementation and relevant architectural decisions.
+3. Document the current end-to-end execution and identity paths with source references.
+4. Write requirements and acceptance criteria.
+5. Design the complete cutover, including removal of obsolete paths.
+6. Produce dependency-ordered implementation tasks.
+7. Stop for review. Do not begin implementation.
+
+SETTLED OWNER REQUIREMENTS
+
+1. Identity and root authority
+
+- The control-plane chatbot's container IS the chatbot identity. It is not an unrelated worker acting under an interchangeable service account.
+- This container is intended to run continuously.
+- The control-plane chatbot is the sole root-authority application identity. Anything the chatbot executes, including its UI-generation/backend work, runs as root in its designated execution environment.
+- Other identities are other containers, each assigned a group governing its grants and capabilities.
+- Distinguish the root execution owner from the identity on whose behalf an operation is requested. Running a backend as root must not silently grant root authority to every browser or container caller.
+- Document the actual container UID mapping and host privilege boundary. Do not silently equate container UID 0 with unrestricted host UID 0.
+- Do not reinterpret this requirement as permission to delete host accounts, remove necessary system services, weaken isolation, or bypass application admission.
+- Identify discrepancies between the intended identity model and current implementation explicitly.
+
+2. WireGuard-derived chatbot identity
+
+- The chatbot identity is already bound to the keypair belonging to the WireGuard server.
+- This means the server's public/private keypair identity, NOT a WireGuard preshared key and NOT a separate client/peer keypair.
+- Preserve that existing binding. Do not create a separate WireGuard peer identity for the chatbot.
+- The VPS is not running a WireGuard server for this purpose; the binding is being used for application identity.
+- Do not introduce a WireGuard service on the VPS, change transport topology, rotate keys, or copy private keys as part of this migration.
+- Keep private keys out of specs, logs, generated UI, browser payloads, and fixtures.
+- The intended "this identity must not be provisioned/admitted as a peer" policy needs explicit enforcement. Do not claim that choosing the server keypair alone proves this policy is enforced.
+
+3. Whole-UI generation
+
+- The model generates the whole application UI, not merely text responses or isolated widgets.
+- Use Svelte/SvelteKit, Vite, and @json-render/svelte.
+- Do not restore Antigravity rendering, the retired op-gemma crate, React, or another rendering framework.
+- Every visible application component must be declared in the active UI catalog and implemented by its trusted registry.
+- Model output is a validated declarative UI spec, not arbitrary executable code.
+- Distinguish unavoidable connection/loading/error bootstrap from the model-generated application. Do not substitute a fixed fallback dashboard.
+
+4. Layout
+
+- The generated canvas is the main workspace.
+- Chatbot and model-selection menus are collapsible panels on a layer ABOVE the canvas.
+- They must not force the canvas into a separate dashboard layout.
+- Their components and actions still belong to the active catalog/registry.
+- Specify stacking, keyboard access, focus, responsive behavior, and preservation of conversations and model-selection state while collapsed.
+
+5. One authoritative model selection
+
+- UI generation uses whichever provider/model is selected for the control-plane chatbot.
+- No independent UI-generation model, Gemma-specific assumption, hidden fallback, or second routing authority.
+- Specify how selection is read authoritatively and pinned for each generation.
+- Changes to the control-plane model affect subsequent UI generations.
+- Existing identity/group permissions determine who may change the selection.
+
+6. Plugin detection and sealed-blob schemas
+
+- The UI detects plugins through the caller's authorized FUSE namespace and loads the corresponding sealed-blob schemas to generate interfaces and bind actions.
+- The sealed blob IS the plugin/schema authority.
+- Define precisely how detecting a plugin, projecting/mounting its corresponding blob, obtaining its schema, and rendering its interface work in the existing architecture.
+- Use the supported mount owner and FUSE projection mechanism; do not let model output request arbitrary host mounts.
+- Do not create parallel schema files, duplicate handwritten contracts, client-invented plugin definitions, or runtime registry fallbacks.
+- Plugin visibility is not permission to invoke it.
+- Cover plugin additions/removals, catalog generations, schema pin changes, stale UI specs, and unavailable committed state.
+- Preserve threetched's binary-derived schema ownership, including relevant command/config/plugin/skill surfaces. Inventory coverage rather than assuming CLI help captures every native capability.
+
+7. FUSE-only integration
+
+- Generation, plugin actions, model/provider operations, and schema access use the appropriate identity-bound 3tchedFS/threetched mounted surface.
+- Remove direct application integration with threetched through loopback HTTP/A2A or WebSocket.
+- A FUSE facade that secretly continues using those same threetched HTTP/WebSocket bypasses is not the requested migration.
+- Preserve canonical backend admission and D-Bus infrastructure; do not invent a second control plane.
+- Browsers cannot open host FUSE files directly. Design the necessary authenticated browser-to-FUSE adapter using existing patterns.
+- Preserve the verified principal, session, group grants, capabilities, and authorized namespace throughout.
+- Never route all users through an operator's host-session mount or implicitly select the chatbot identity for ordinary callers.
+- Avoid FUSE -> bridge -> same FUSE operation recursion, lock inversion, and callback deadlocks.
+- Preserve operation receipts, cancellation, unknown-outcome recovery, and prohibition of automatic retries after uncertain execution.
+
+8. Response lifecycle
+
+- The owner expects respond_to_user to be the response boundary associated with invoking threetched.
+- Current inspected source treats chat_response.respond_to_user as committing already-authored content. Reconcile this mismatch explicitly.
+- Do not leave generation on the old tched_router.Chat bypass while merely adding a response commit afterward.
+- Preserve turn ownership, conversation isolation, canvas validation, capability checks, authoritative state publication, and response receipts.
+- Define generation, response commit, rendering, failure, and cancellation as one complete workflow.
+
+CURRENT INVESTIGATION STARTING POINTS
+
+Verify these against current source:
+
+- The current chatbot inference path invokes the mounted `threetched.agent` method; read its current sealed schema and exact capability from the mounted surface before relying on an older v1 example.
+- Verify that the active path uses the mounted `threetched` native contract; do not assume the retired `tched_router_runtime` HTTP/A2A/WebSocket paths are active.
+- chat_response_dispatch.rs implements respond_to_user as a commit.
+- crates/op-plugins/src/state_plugins/threetched.rs owns binary-discovered sealed command methods.
+- crates/op-plugins/src/state_plugins/tched_fs.rs owns the filesystem protocol/contract, not every target plugin's methods.
+- crates/threetched-fs/src/mounted.rs implements mounted discovery and same-descriptor operation receipts.
+- An earlier live observation found 147 mounted threetched methods, including agent, plugin.*, and skills.*. Their CLI contracts use token arguments and stdout/stderr/exit results; this is not proof of complete semantic chat contracts.
+- Static schemas and operation directories were readable while some value.json reads returned EIO. Exact runtime cause was not established. Do not confuse missing state with missing schema.
+- A previous chat operation had unknown outcome. Do not replay it.
+
+DELIVERABLE QUALITY
+
+requirements.md:
+- Numbered, testable requirements.
+- Acceptance criteria covering authentication, discovery, generation, overlays, model changes, authorized actions, denied actions, cancellation, catalog changes, and authoritative receipts/state.
+- Explicit non-goals and privilege boundaries.
+
+design.md:
+- Evidence-linked current and proposed architecture.
+- Exact owners and contracts for identity, discovery, schemas, selection, generation, rendering, actions, and response commits.
+- Identify native contracts missing beyond generic CLI envelopes; do not invent semantic behavior or hide gaps with mock fallbacks.
+- Clean cutover, obsolete-path removal, deployment boundaries, and recoverability.
+
+tasks.md:
+- Dependency-ordered, actionable tasks across both repositories.
+- Concrete files/symbols, contracts, callers to migrate, obsolete code to remove, and observable acceptance evidence.
+- Update affected tests/docs while respecting repository policy on when checks may execute.
+- Separate implemented, built, deployed, and verified status.
+- No scaffolding, compatibility shims, or partial transport swap presented as completion.
+
+Report genuine unresolved questions only after exhausting repository evidence. Finish with the spec paths, preload completion/blockers, and remaining design blockers. Stop before implementation.

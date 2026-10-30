@@ -1,0 +1,64 @@
+{
+  "request": 5,
+  "started": "2026-10-19T04:49:31.536840+00:00",
+  "finished": "2026-10-19T04:49:47.100176+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-05531c80d7897574016ad5a15e420887d0be33dbcd0527c7d9",
+    "created": 1792385374,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var fs=await import('node:fs/promises'); var crypto=await import('node:crypto');var base='/srv/git/odbus-verified/reports/provisioning-fusion-20261019/';var a=base+'analysis/';var hash=x=>crypto.createHash('sha256').update(x).digest('hex'); var checkpoint=JSON.parse(await fs.readFile(base+'recovery/checkpoint.json','utf8'));var receipt=JSON.parse(await fs.readFile(a+'ingestion-receipt.json','utf8'));receipt.recovery={checkpoint:'recovery/checkpoint.json',previous_failure:checkpoint.failure,limits:checkpoint.resume_constraints,packet_role:'smol',actual_resolved_model:'Not yet observed in this recovery; prior scout resolved openai-codex/gpt-6-astra',semantic_packet_reviews_completed:0};receipt.actual_reads.push({path:'recovery/checkpoint.json',complete:true},{path:'recovery/SourceChain.md',lines:'1-546',complete:true},{path:'recovery/BackendProof.md',lines:'1-300',complete:false},{path:'recovery/NativeFeasibility.md',lines:'1-260,261-approximately530; tool output capped',complete:false},{path:'recovery/HistoricalScripts.md',complete:true,note:'Saved report ends mid-citation; claimed complete historical review is not a complete preserved report.'},{path:'jev-evidence-inputs.json',complete:true},{path:'jev-evidence-decisions.json',complete:true});await fs.writeFile(a+'ingestion-receipt.json',JSON.stringify(receipt,null,2));console.log('Recovery receipt saved; no completion launched.');\",\"title\":\"Checkpointing recovery ingestion\"}",
+                "name": "eval"
+              },
+              "id": "call_CXOovFSGTEXcb0PIoSPWnaxL",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 971,
+      "prompt_tokens": 357436,
+      "total_tokens": 358407,
+      "completion_tokens_details": {
+        "reasoning_tokens": 162
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 242333
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:49:47.099006+00:00",
+  "stream_chunks": 4
+}

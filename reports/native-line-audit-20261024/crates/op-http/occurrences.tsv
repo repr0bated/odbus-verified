@@ -1,0 +1,2 @@
+path	line_position	exact_token_context	intended_meaning	judgment_reference	jev_outcome_confidence	decision	change_status
+ALL_EIGHT_INVENTORY_FILES	Complete sequential ranges in coverage.tsv; 1259 lines through EOF	No native occurrence observed, including case/compound contexts, documentation and inline test	Not applicable	coverage.tsv full-file reads; judgments.md J1-J3 contextual classifications only	No occurrence to judge; contextual J1-J3 confidence 1 each	No native-specific repair needed	No crate source edit; complete static coverage

@@ -1,0 +1,80 @@
+{
+  "request": 77,
+  "started": "2026-10-20T17:24:54.296610+00:00",
+  "finished": "2026-10-20T17:25:05.989825+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-063a9fb441694ba9016ad7a3ec8ba887d1877ec8432034cfce",
+    "created": 1792517100,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading targeted build receipt\",\"path\":\"/var/tmp/typed-use-generated-1792516892107.receipt\"}",
+                "name": "read"
+              },
+              "id": "call_4EyTiP3nEdoHBnq52tchWb2c",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading terminal build evidence\",\"path\":\"/var/tmp/typed-use-generated-1792516892107.log:-8\"}",
+                "name": "read"
+              },
+              "id": "call_4xT3wpoxwy53x8Ez0hYbKXBG",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Recording completed release evidence\",\"op\":\"done\",\"task\":\"Obtain GNU workspace build and isolated catalog evidence without duplicating completed work\"}",
+                "name": "todo"
+              },
+              "id": "call_qi45ctrrcciuxR796NUNpcBC",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 314,
+      "prompt_tokens": 277065,
+      "total_tokens": 277379,
+      "completion_tokens_details": {
+        "reasoning_tokens": 44
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 183190
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:25:05.987987+00:00",
+  "stream_chunks": 8
+}

@@ -1,0 +1,10 @@
+owned_fixture=/var/tmp/op-cache-fixed-transport-wWQgzR
+phase=warm cycle=0 ms=146 rust_live=341371 rust_peak=361879 rss_kib=36592 pss_kib=32778 anonymous_kib=5860 swap_kib=0 fds=10 threads=18 children=0
+phase=snapshot cycle=1 ms=236 rust_live=341525 rust_peak=362760 rss_kib=36616 pss_kib=32802 anonymous_kib=5872 swap_kib=0 fds=10 threads=18 children=0
+phase=drained cycle=1 ms=335 rust_live=341789 rust_peak=352828 rss_kib=36764 pss_kib=32950 anonymous_kib=6020 swap_kib=0 fds=10 threads=18 children=0
+phase=snapshot cycle=2 ms=412 rust_live=341525 rust_peak=362703 rss_kib=36764 pss_kib=32950 anonymous_kib=6020 swap_kib=0 fds=10 threads=18 children=0
+phase=drained cycle=2 ms=518 rust_live=341533 rust_peak=352324 rss_kib=36772 pss_kib=32957 anonymous_kib=6028 swap_kib=0 fds=10 threads=18 children=0
+phase=snapshot cycle=3 ms=614 rust_live=341525 rust_peak=362766 rss_kib=36772 pss_kib=32957 anonymous_kib=6028 swap_kib=0 fds=10 threads=18 children=0
+phase=drained cycle=3 ms=711 rust_live=341533 rust_peak=352832 rss_kib=36780 pss_kib=32965 anonymous_kib=6036 swap_kib=0 fds=10 threads=18 children=0
+phase=cancelled_drained cycle=3 ms=946 rust_live=341777 rust_peak=362892 rss_kib=36792 pss_kib=32977 anonymous_kib=6048 swap_kib=0 fds=10 threads=18 children=0
+PASS: three complete six-member cycles; source cleanup; destination integrity; cancelled creation; partial received cleanup

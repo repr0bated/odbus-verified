@@ -24,7 +24,7 @@ OUT=/var/log/boot-net-summary.log
     /usr/local/libexec/3tched/ovsdb-port list-ports ovsbr0 2>/dev/null || true
   fi
   echo "-- service log tails (early chain) --"
-  for s in uplink-dhcp ovsdb-server ovs-vswitchd ovsbr0-uplink ovsbr0-addr ovsbr0-svc-addr ovsbr0-eth0; do
+  for s in uplink-dhcp ovsdb-server ovs-vswitchd ovsbr0-uplink ovsbr0-tun5 ovsbr0-addr ovsbr0-svc-addr ovsbr0-eth0; do
     f=/var/log/op-dbus/$s/current
     echo "#### $s"
     if [ -f "$f" ]; then

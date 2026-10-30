@@ -14,7 +14,7 @@ pub(crate) use super::agent_config::agent_config_schema as agent_config_plugin_s
 pub(crate) use super::antigravity::antigravity_schema as antigravity_plugin_schema;
 pub(crate) use super::antigravity_chat::antigravity_chat_schema as antigravity_chat_plugin_schema;
 pub(crate) use super::btrfs_plugin::btrfs_schema as btrfs_plugin_schema;
-pub(crate) use super::cognitive_mcp::cognitive_mcp_schema as cognitive_mcp_plugin_schema;
+pub(crate) use super::cognitive::cognitive_schema as cognitive_plugin_schema;
 pub(crate) use super::cron::cron_schema as cron_plugin_schema;
 pub(crate) use super::ctl_plane_chatbot::ctl_plane_chatbot_schema as ctl_plane_chatbot_plugin_schema;
 pub(crate) use super::endpoint::endpoint_schema as endpoint_plugin_schema;
@@ -40,7 +40,7 @@ pub(crate) use super::schema_renderer::schema_renderer_schema as schema_renderer
 pub(crate) use super::service::service_schema as service_plugin_schema;
 pub(crate) use super::sessdecl::sess_decl_schema as sess_decl_plugin_schema;
 pub(crate) use super::software::software_schema as software_plugin_schema;
-pub(crate) use super::tched_router::tched_router_plugin_schema;
+pub(crate) use super::chat_router::chat_router_plugin_schema;
 pub(crate) use super::unix_socket::unix_socket_schema_derived as unix_socket_plugin_schema;
 pub(crate) use super::users::users_schema as users_plugin_schema;
 pub(crate) use super::web_ui::web_ui_schema as web_ui_plugin_schema;

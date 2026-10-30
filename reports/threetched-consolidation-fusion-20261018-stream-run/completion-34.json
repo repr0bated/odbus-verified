@@ -1,0 +1,68 @@
+{
+  "request": 34,
+  "started": "2026-10-18T21:36:57.505766+00:00",
+  "finished": "2026-10-18T21:39:25.989542+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 4,
+    "panel_failures": 1,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0fb3d7c5c1e37073016ad53c833db087d0b53776005c160ef0",
+    "created": 1792359555,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Rejecting unsupported editor execution\",\"input\":\"[/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/threetched.rs#1A71]\\nPUT >288:\\n+    // The filesystem executor has no interactive terminal or content-input\\n+    // contract. Refuse before spawning instead of opening an editor (or\\n+    // reporting success without applying the retired edit_skill contents).\\n+    ensure!(method != \\\"skills.edit\\\", \\\"skills.edit is unavailable in the noninteractive filesystem executor; native content editing is not captured\\\");\\n+    if method == \\\"skills.add\\\" {\\n+        let editor_requested = surface.option_spellings(method, \\\"--edit\\\")?\\n+            .iter().any(|spelling| value.get(*spelling).and_then(Value::as_bool) == Some(true));\\n+        ensure!(!editor_requested, \\\"skills.add with an editor is unavailable in the noninteractive filesystem executor; omit --edit\\\");\\n+    }\"}",
+                "name": "edit"
+              },
+              "id": "call_1TXlQqiygt6NHWHvBFENTR4h",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The wrappers are not transparent replacements: native commands require distinct capabilities, and `edit_skill(contents)` has no captured noninteractive equivalent. I\u2019m preserving native grants, retiring that convenience, and removing the five unused router namespace facades. Typed config APIs and generation-job state remain unchanged.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 832,
+      "prompt_tokens": 294429,
+      "total_tokens": 295261,
+      "completion_tokens_details": {
+        "reasoning_tokens": 243
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 141440
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:39:14.848972+00:00",
+  "stream_chunks": 5
+}

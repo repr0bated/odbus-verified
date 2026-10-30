@@ -5,14 +5,14 @@
 //! compatible merely because its plugin contract has been rebuilt.
 use crate::{
     generation_jobs_dispatch::GenerationBackend,
-    tched_router_generation_native::{NativeGenerationAdmission, NativeGenerationTask},
-    tched_router_runtime::TchedRouterRuntimeClient,
+    chat_router_generation::{NativeGenerationAdmission, NativeGenerationTask},
+    chat_router_runtime::ChatRouterRuntimeClient,
 };
 use anyhow::Result;
-use op_plugins::state_plugins::tched_router::generation::StartGenerationInput;
+use op_plugins::state_plugins::chat_router::generation::StartGenerationInput;
 use std::sync::Arc;
 
-impl GenerationBackend for TchedRouterRuntimeClient {
+impl GenerationBackend for ChatRouterRuntimeClient {
     fn spawn(
         &self,
         input: StartGenerationInput,

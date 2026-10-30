@@ -3,9 +3,8 @@
 
 prepare-groups snapshots native chat/tool records and raw external conversation
 database rows, with explicit legacy-only gaps; no summaries/redaction/truncation.
-sync-groups requires an explicit current SID1 session and uses the public TLS
-PluginService adapter to the same schema dispatcher as D-Bus PluginV1.Call.
-Old unauthenticated cognitive-tool helpers remain for compatibility tests only.
+sync-groups requires an explicit session UUID and identity-bound mounted 3tchedFS.
+The installed 3tched-fs helper validates the mounted schema and receipt.
 Remote writes never use direct nlm execution, change grants, or create identities.
 """
 
@@ -25,25 +24,25 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from collections.abc import Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import closing
 from pathlib import Path
 from typing import Any
 
 BRIDGE_BUS_NAME = "org.opdbus.v1.plugins"
 PLUGIN_INTERFACE = "org.opdbus.v1.PluginV1"
-COGNITIVE_OBJECT_PATH = "/org/opdbus/v1/plugins/cognitive_mcp"
+COGNITIVE_OBJECT_PATH = "/org/opdbus/v1/plugins/cognitive"
 DEFAULT_SESSION_BUS_ADDRESS = "unix:path=/run/opdbus/session-bus.sock"
 
 CREATE_NOTEBOOK_TOOL = "create_notebook"
 ADD_SOURCE_TEXT_TOOL = "add_source_text"
 MAX_SOURCE_CHARS = 180_000
 
-# This is a client of the existing schema dispatcher, not another MCP listener.
-GROUPED_SERVICE = "operation.v1.PluginService/CallMethod"
 MAX_CHUNK_BYTES = 8 * 1024 * 1024
 MAX_CHUNK_WORDS = 400_000
+MAX_CALLS_PER_CYCLE = 128
+MAX_HELPER_OUTPUT = 32 * 1024 * 1024  # Pretty JSON may expand a 16 MiB receipt.
 TOPICS = {
     "architecture": "odBus — Architecture & Plugin Contracts",
     "security": "odBus — Identity, Security & OSCAL",
@@ -61,7 +60,10 @@ DEFAULT_TITLE = os.environ.get(
 
 
 class NotebookSyncError(RuntimeError):
-    """The canonical D-Bus call or its response contract failed."""
+    """Mounted dispatch or its synchronization contract failed."""
+    def __init__(self, message: str, diagnostic: dict | None = None):
+        super().__init__(message)
+        self.diagnostic = diagnostic or {}
 
 
 def session_bus_address(environ: Mapping[str, str] | None = None) -> str:
@@ -70,7 +72,7 @@ def session_bus_address(environ: Mapping[str, str] | None = None) -> str:
     env = os.environ if environ is None else environ
     return (
         env.get("DBUS_SESSION_BUS_ADDRESS")
-        or env.get("COGNITIVE_MCP_BUS_ADDRESS")
+        or env.get("COGNITIVE_BUS_ADDRESS")
         or DEFAULT_SESSION_BUS_ADDRESS
     )
 
@@ -87,21 +89,8 @@ def build_plugin_call_command(
     *,
     bus_address: str | None = None,
 ) -> list[str]:
-    """Build an argv-only PluginV1.Call command; no shell quoting is involved."""
-
-    address = bus_address or session_bus_address()
-    return [
-        "busctl",
-        f"--address={address}",
-        "call",
-        BRIDGE_BUS_NAME,
-        COGNITIVE_OBJECT_PATH,
-        PLUGIN_INTERFACE,
-        "Call",
-        "ss",
-        method,
-        compact_json(arguments),
-    ]
+    """Retired transport entry point; fail old callers explicitly."""
+    raise NotebookSyncError("direct D-Bus sync is retired; use mounted sync-groups")
 
 
 def parse_busctl_string(stdout: str) -> str:
@@ -143,32 +132,8 @@ def invoke_tool(
     timeout: int,
     bus_address: str | None = None,
 ) -> Any:
-    """Invoke one live cognitive tool through the schema method ``invoke_tool``."""
-
-    call_args = {"tool_name": tool_name, "arguments": dict(arguments)}
-    command = build_plugin_call_command(
-        "invoke_tool", call_args, bus_address=bus_address
-    )
-    try:
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            check=False,
-            text=True,
-            timeout=timeout,
-        )
-    except FileNotFoundError as error:
-        raise NotebookSyncError("busctl is required for session-bus dispatch") from error
-    except subprocess.TimeoutExpired as error:
-        raise NotebookSyncError(
-            f"{tool_name} timed out after {timeout}s through PluginV1.Call"
-        ) from error
-    if completed.returncode != 0:
-        detail = (completed.stderr or completed.stdout).strip()
-        raise NotebookSyncError(
-            f"PluginV1.Call({tool_name}) failed with exit {completed.returncode}: {detail}"
-        )
-    return parse_call_reply(completed.stdout)
+    """Retired unauthenticated path; never fall back to another transport."""
+    raise NotebookSyncError("legacy tool invocation is retired; use mounted sync-groups")
 
 
 def unwrap_tool_payload(result: Any) -> Any:
@@ -177,7 +142,7 @@ def unwrap_tool_payload(result: Any) -> Any:
     if not isinstance(result, dict):
         return result
     if result.get("isError") is True:
-        raise NotebookSyncError(f"tool returned isError: {result!r}")
+        raise NotebookSyncError("tool reported an error")
 
     structured = result.get("structuredContent")
     if structured is not None:
@@ -245,7 +210,7 @@ def extract_notebook_id(result: Any) -> str:
     notebook_id = _find_notebook_id(payload)
     if not notebook_id:
         raise NotebookSyncError(
-            f"{CREATE_NOTEBOOK_TOOL} returned no notebook identifier: {payload!r}"
+            f"{CREATE_NOTEBOOK_TOOL} returned no notebook identifier"
         )
     return notebook_id
 
@@ -255,10 +220,10 @@ def ensure_tool_success(tool_name: str, result: Any) -> Any:
     if isinstance(payload, dict):
         for flag in ("success", "ok", "added"):
             if payload.get(flag) is False:
-                raise NotebookSyncError(f"{tool_name} reported failure: {payload!r}")
+                raise NotebookSyncError(f"{tool_name} reported failure")
         status = payload.get("status")
         if isinstance(status, str) and status.lower() in {"error", "failed", "failure"}:
-            raise NotebookSyncError(f"{tool_name} reported failure: {payload!r}")
+            raise NotebookSyncError(f"{tool_name} reported failure")
     return payload
 
 
@@ -313,9 +278,11 @@ def create(title: str = DEFAULT_TITLE) -> str:
     raise NotebookSyncError("legacy create retired; use prepare-groups and authenticated sync-groups")
 
 
-def ingest(title: str | None = None, notebook_id: str | None = None) -> None:
+def ingest(title: str | None = None, notebook_id: str | None = None,
+           session: str | None = None, state_dir: Path | None = None) -> dict:
     if os.environ.get("OPDBUS_NOTEBOOK_SYNC_MODE") == "per-model":
-        state_dir = SOURCES / ".grouped-sync"
+        session = selected_session(session or os.environ.get("OPDBUS_NOTEBOOK_SESSION_ID", ""))
+        state_dir = state_dir or SOURCES / ".grouped-sync"
         state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         with (state_dir / ".lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -324,13 +291,17 @@ def ingest(title: str | None = None, notebook_id: str | None = None) -> None:
             # Drain the exact frozen snapshot before capturing later appends.
             recover_repair(state_dir)
             remote = json.loads(remote_path.read_text()) if remote_path.exists() else {"groups": {}}
-            if not any(group.get("pending") or group.get("retired") for group in remote["groups"].values()):
+            if remote.get("session_id", session) != session:
+                raise NotebookSyncError("saved remote state belongs to another session")
+            if remote.get("quarantine_only"):
+                prepare_groups(state_dir, preserve_unresolved=True)
+            elif not remote.get("cycle_incomplete") and not any(
+                unresolved_group(group) for group in remote["groups"].values()
+            ):
                 prepare_groups(state_dir)
-            counts = sync_groups(state_dir, os.environ.get("OPDBUS_NOTEBOOK_SESSION_ID", ""), defer_processing=True)
+            counts = sync_groups(state_dir, session, defer_processing=True)
             print(json.dumps(counts))
-            if counts["pending"]:
-                raise NotebookSyncError(f"{counts['pending']} sources still processing; receipts preserved")
-        return
+        return counts
     raise NotebookSyncError(
         "legacy ingest retired: it truncated and duplicated history; "
         "run prepare-groups, then sync-groups --session SESSION_ID"
@@ -342,10 +313,18 @@ def atomic_json(path: Path, value: Any) -> None:
     descriptor, name = tempfile.mkstemp(prefix=".state-", dir=path.parent)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            if os.geteuid() == 0:
+                owner = path.stat() if path.exists() else path.parent.stat()
+                os.fchown(stream.fileno(), owner.st_uid, owner.st_gid)
             json.dump(value, stream, ensure_ascii=False, sort_keys=True, indent=2)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(name, path)
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     finally:
         if os.path.exists(name):
             os.unlink(name)
@@ -366,7 +345,7 @@ def repartition_pending(state_dir: Path, slot: str, parts: int = 2) -> dict:
     Use only after the provider reports processing failure, not merely preparing.
     A journal makes the local three-file update recoverable after interruption.
     """
-    if not isinstance(parts, int) or not 2 <= parts <= 32:
+    if isinstance(parts, bool) or not isinstance(parts, int) or not 2 <= parts <= 32:
         raise NotebookSyncError("replacement part count must be between 2 and 32")
     recover_repair(state_dir)
     plan = json.loads((state_dir / "plan.json").read_text())
@@ -380,7 +359,7 @@ def repartition_pending(state_dir: Path, slot: str, parts: int = 2) -> dict:
     key, group, chunk = matches[0]
     saved = remote["groups"][key]
     pending = saved.get("pending", {}).get(slot)
-    if not pending or pending["sha256"] != chunk["sha256"]:
+    if not pending or not pending.get("source_id") or pending["sha256"] != chunk["sha256"]:
         raise NotebookSyncError("repartition requires an owned pending upload of the exact chunk")
     text = Path(chunk["path"]).read_bytes().decode("utf-8")
     if hashlib.sha256(text.encode()).hexdigest() != chunk["sha256"]:
@@ -443,44 +422,90 @@ def unwrap_dispatch(value: Any) -> Any:
     return ensure_tool_success("notebooklm", value)
 
 
+class MountedPayload(dict):
+    """Domain result plus the verified receipt; mutation receipts are persisted."""
+    def __init__(self, payload: dict, receipt: dict):
+        super().__init__(payload)
+        self.receipt = receipt
+
+
+def selected_session(session: str) -> str:
+    try:
+        if str(uuid.UUID(session)) != session:
+            raise ValueError
+    except (ValueError, AttributeError, TypeError) as error:
+        raise NotebookSyncError("an explicit canonical session UUID is required") from error
+    return session
+
+
+def safe_helper_diagnostic(stderr: str | bytes | None, method: str) -> dict:
+    """Retain only attributed, typed recovery locators, never provider text."""
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode("utf-8", errors="replace")
+    text = (stderr or "")[:16384]
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            value, _ = decoder.raw_decode(text[match.start():])
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(value, dict) or value.get("plugin") != "notebooklm" or value.get("method") != method:
+            continue
+        result = {}
+        if value.get("stage") in {"parse", "validate", "credential", "register", "call", "transport", "outcome_unknown", "contract", "result"}:
+            result["stage"] = value["stage"]
+        operation = value.get("operation_id")
+        if isinstance(operation, str):
+            try:
+                result["operation_id"] = str(uuid.UUID(operation))
+            except ValueError:
+                pass
+        return result
+    return {}
+
+
 def grouped_call(method: str, arguments: Mapping[str, Any], session: str) -> Any:
     read = {"notebook_list", "notebook_get", "source_get_content", "get_health"}
     write = {"notebook_create", "source_add", "source_delete"}
     if method not in read | write:
         raise NotebookSyncError("unsupported sync method")
-    capability = "notebooklm.read" if method in read else "notebooklm.invoke"
-    helper = ["/usr/local/bin/op-identity-headers", "--session", session]
-    if os.geteuid() != 0:
-        helper = ["sudo", "-n", *helper]
-    credential = subprocess.run(helper, capture_output=True, text=True, timeout=15)
-    if credential.returncode:
-        raise NotebookSyncError("current selected session credential is unavailable")
-    header = json.loads(credential.stdout)["x-opdbus-sealed-id-bin"]
-    env = dict(os.environ)
-    env["OPDBUS_NOTEBOOK_CALL_SID"] = base64.b64encode(
-        base64.urlsafe_b64decode(header + "=" * (-len(header) % 4))
-    ).decode()
-    request = {
-        "plugin_id": "notebooklm", "method_name": method,
-        "capability_id": capability, "arguments": [dict(arguments)],
-    }
+    selected_session(session)
+    mount = os.environ.get("OPDBUS_NOTEBOOK_FS_ROOT", "")
+    if not mount or not Path(mount).is_absolute():
+        raise NotebookSyncError("OPDBUS_NOTEBOOK_FS_ROOT must name the configured absolute mount")
     command = [
-        "grpcurl", "-max-time", "240", "-max-msg-sz", "67108864",
-        "-expand-headers", "-H",
-        "x-opdbus-sealed-id-bin: ${OPDBUS_NOTEBOOK_CALL_SID}",
-        "-H", f"x-opdbus-capability: {capability}", "-d", "@",
-        os.environ.get("OPDBUS_NOTEBOOK_GRPC_TARGET", "10.0.0.3:8090"),
-        GROUPED_SERVICE,
+        "/usr/local/bin/3tched-fs", "call", "notebooklm", method,
+        "--mount", mount, "--expected-session", session, "--args", "-",
     ]
-    reply = subprocess.run(command, input=compact_json(request), capture_output=True,
-                           text=True, env=env, timeout=250)
+    if method in write:
+        command.append("--confirm-side-effects")
+    try:
+        reply = subprocess.run(command, input=compact_json(dict(arguments)),
+                               capture_output=True, text=True, timeout=250)
+    except subprocess.TimeoutExpired as error:
+        raise NotebookSyncError(f"mounted notebooklm.{method} timed out; do not retry mutations",
+                                safe_helper_diagnostic(error.stderr, method)) from error
+    except OSError as error:
+        raise NotebookSyncError(f"mounted notebooklm.{method} helper unavailable; do not retry mutations") from error
     if reply.returncode:
-        # Neither credentials nor raw source content belongs in diagnostic logs.
-        raise NotebookSyncError(f"authenticated notebooklm.{method} failed (exit {reply.returncode})")
-    envelope = json.loads(reply.stdout)
-    if not isinstance(envelope, dict) or envelope.get("success") is not True:
-        raise NotebookSyncError(f"notebooklm.{method} dispatch denied or failed")
-    return unwrap_dispatch(envelope)
+        # Helper diagnostics may contain provider payloads. Do not log them.
+        raise NotebookSyncError(f"mounted notebooklm.{method} failed (exit {reply.returncode}); receipt unresolved",
+                                {"exit_code": reply.returncode, **safe_helper_diagnostic(reply.stderr, method)})
+    if len(reply.stdout.encode("utf-8")) > MAX_HELPER_OUTPUT:
+        raise NotebookSyncError("mounted helper output exceeds the receipt budget")
+    try:
+        envelope = json.loads(reply.stdout)
+    except (json.JSONDecodeError, UnicodeError) as error:
+        raise NotebookSyncError("mounted helper returned a malformed receipt") from error
+    if not isinstance(envelope, dict) or envelope.get("plugin_id") != "notebooklm" or envelope.get("method") != method:
+        raise NotebookSyncError("mounted receipt attribution mismatch")
+    engine = envelope.get("result")
+    if not isinstance(engine, dict) or engine.get("success") is not True or engine.get("outcome") != "completed":
+        raise NotebookSyncError("mounted operation has no verified completed result")
+    payload = unwrap_dispatch(engine)
+    if not isinstance(payload, dict):
+        raise NotebookSyncError("notebooklm returned a non-object result")
+    return MountedPayload(payload, envelope)
 
 
 def model_names(record: Any) -> set[str]:
@@ -510,6 +535,9 @@ class RawChunks:
     """Bounded lossless UTF-8 packing; concatenating chunks recovers the stream."""
     def __init__(self, directory: Path, key: str, title: str):
         self.directory, self.key, self.title = directory, key, title
+        self.epoch = os.environ.get("OPDBUS_NOTEBOOK_CAPTURE_EPOCH", "")
+        if self.epoch and not re.fullmatch(r"[a-z0-9-]{1,48}", self.epoch):
+            raise NotebookSyncError("capture epoch must be a bounded filename component")
         self.buffer = bytearray()
         self.words = 0
         self.chunks: list[dict[str, Any]] = []
@@ -534,12 +562,16 @@ class RawChunks:
         if not self.buffer:
             return
         digest = hashlib.sha256(self.buffer).hexdigest()
-        slot = f"{self.key}__{len(self.chunks) + 1:04d}"
+        namespace = f"{self.key}__{self.epoch}" if self.epoch else self.key
+        slot = f"{namespace}__{len(self.chunks) + 1:04d}"
         path = self.directory / f"{slot}__{digest[:16]}.txt"
         if not path.exists():
             self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
             with path.open("xb") as stream:
                 os.chmod(path, 0o600)
+                if os.geteuid() == 0:
+                    owner = self.directory.stat()
+                    os.fchown(stream.fileno(), owner.st_uid, owner.st_gid)
                 stream.write(self.buffer)
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -582,8 +614,54 @@ def topic_for(path: str) -> str:
     return next((topic for topic, pattern in rules if re.search(pattern, name)), "architecture")
 
 
-def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None) -> dict:
-    repo = repo or Path(__file__).resolve().parents[2]
+def unresolved_group(group: dict) -> bool:
+    return bool(group.get("pending") or group.get("retired") or
+                (group.get("create_intent") and not group.get("notebook_id")) or
+                any(item.get("status") != "confirmed_absent"
+                    for item in group.get("deletions", {}).values()))
+
+
+def quarantined_group(group: dict) -> bool:
+    pending = group.get("pending", {})
+    return bool(pending) and all(
+        item.get("blocked_reason") == "legacy_source_absent_requires_reconciliation" and
+        item.get("absence_proof", {}).get("notebook_id") == group.get("notebook_id")
+        for item in pending.values()
+    ) and not (group.get("create_intent") and not group.get("notebook_id")) and all(
+        item.get("status") == "confirmed_absent" for item in group.get("deletions", {}).values()
+    )
+
+
+def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
+                   *, preserve_unresolved: bool = False) -> dict:
+    # The service names retained/current native history roots explicitly. No
+    # credentials or arbitrary host files are included by these patterns.
+    history_roots = {home.resolve()}
+    for value in os.environ.get("OPDBUS_NOTEBOOK_HISTORY_ROOTS", "").split(":"):
+        if value:
+            root = Path(value)
+            if not root.is_absolute() or not root.is_dir():
+                raise NotebookSyncError("history roots must be existing absolute directories")
+            history_roots.add(root.resolve())
+    state_path = state_dir / "remote-state.json"
+    frozen_groups = {}
+    if state_path.exists():
+        remote = json.loads(state_path.read_text())
+        unresolved = {key for key, group in remote["groups"].items() if unresolved_group(group)}
+        if remote.get("cycle_incomplete") or unresolved:
+            if not preserve_unresolved or not remote.get("quarantine_only") or not all(
+                quarantined_group(remote["groups"][key]) for key in unresolved
+            ):
+                raise NotebookSyncError("drain the frozen plan before preparing later appends")
+            previous = json.loads((state_dir / "plan.json").read_text())
+            for key in unresolved:
+                frozen_groups[key] = previous["groups"][key]
+                for chunk in frozen_groups[key]["chunks"]:
+                    if hashlib.sha256(Path(chunk["path"]).read_bytes()).hexdigest() != chunk["sha256"]:
+                        raise NotebookSyncError("quarantined frozen source changed; reconciliation required")
+    repo = repo or Path(os.environ.get("OPDBUS_NOTEBOOK_PROJECT_ROOT", str(Path(__file__).resolve().parents[2])))
+    if not repo.is_absolute() or not (repo / "AGENTS.md").is_file():
+        raise NotebookSyncError("project capture root must be an absolute repository with AGENTS.md")
     groups: dict[str, RawChunks] = {}
     gaps: list[dict[str, str]] = []
 
@@ -617,7 +695,7 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None)
         ".gemini/tmp/**/chats/session-*.jsonl", ".gemini/tmp/**/chats/session-*.json",
         ".gemini/antigravity-cli/brain/**/transcript.jsonl",
     ]
-    native = sorted({path.resolve() for pattern in patterns for path in home.glob(pattern)
+    native = sorted({path.resolve() for root in history_roots for pattern in patterns for path in root.glob(pattern)
                      if path.is_file()})
     captured_names = set()
     for path in native:
@@ -636,8 +714,9 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None)
     # External applications own SQLite; read raw conversation tables only.
     # This is not an odBus state store and does not add a SQLite dependency.
     database_sessions: set[tuple[str, str]] = set()
-    for cli in ("opencode", "kilo"):
-        db = home / f".local/share/{cli}/{cli}.db"
+    databases = {(cli, (root / f".local/share/{cli}/{cli}.db").resolve())
+                 for root in history_roots for cli in ("opencode", "kilo")}
+    for cli, db in sorted(databases):
         if not db.exists():
             continue
         with closing(sqlite3.connect(f"{db.as_uri()}?mode=ro", uri=True)) as connection:
@@ -675,7 +754,8 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None)
     # Antigravity stores protobuf/BLOB fields, not just readable transcripts.
     # Preserve every conversation-table field losslessly; do not guess a model
     # by searching arbitrary binary data. Legacy text stays separately labelled.
-    for db in sorted(home.glob(".gemini/antigravity-cli/conversations/*.db")):
+    for db in sorted({path.resolve() for root in history_roots
+                      for path in root.glob(".gemini/antigravity-cli/conversations/*.db")}):
         target = bucket("Unattributed")
         row_count = 0
         with closing(sqlite3.connect(f"{db.as_uri()}?mode=ro", uri=True)) as connection:
@@ -706,7 +786,7 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None)
         bucket(model).capture(path, "legacy_export_original_unavailable")
         gaps.append({"path": str(path), "reason": "original raw transcript unavailable; export is not raw"})
 
-    doc_paths = sorted(set(repo.glob("docs/**/*.md")) | set(repo.glob("schemas/plugin/*.json")) |
+    doc_paths = sorted(set(repo.glob("docs/**/*.md")) |
                        {repo / name for name in ("AGENTS.md", "SIGNALS.md", "WISHLIST.md")})
     for path in doc_paths:
         if not path.is_file() or path.is_symlink():
@@ -715,13 +795,18 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None)
         key = f"topic-{topic}"
         target = groups.setdefault(key, RawChunks(state_dir / "chunks", key, TOPICS[topic]))
         target.capture(path, "project_document")
-    plan = {"version": 1, "grouping": "per_model_and_project_topic", "gaps": gaps, "groups": {}}
+    plan = {"version": 1, "grouping": "per_model_and_project_topic", "gaps": gaps, "groups": {},
+            "capture_epoch": os.environ.get("OPDBUS_NOTEBOOK_CAPTURE_EPOCH", ""),
+            "history_roots": [str(root) for root in sorted(history_roots)]}
     repairs_path = state_dir / "repartitions.json"
     repairs = json.loads(repairs_path.read_text()) if repairs_path.exists() else {}
     for key, target in sorted(groups.items()):
         target.flush()
         if target.chunks:
             plan["groups"][key] = {"title": target.title, "chunks": apply_repartitions(target.chunks, repairs), "inputs": target.inputs}
+    # Only independent groups advance. Every chunk and receipt in unresolved
+    # groups stays attached to its exact original content-addressed plan.
+    plan["groups"].update(frozen_groups)
     atomic_json(state_dir / "plan.json", plan)
     return plan
 
@@ -734,149 +819,299 @@ def source_id(value: Any) -> str:
         for key in ("source", "notebook"):
             if isinstance(value.get(key), dict):
                 return source_id(value[key])
+        if isinstance(value.get("results"), list) and len(value["results"]) == 1:
+            return source_id(value["results"][0])
     raise NotebookSyncError("provider returned no source id")
+
+
+class CycleLimit(RuntimeError):
+    """A bounded cycle ended; its exact plan and receipts remain resumable."""
+
+
+def mutation_record(result: Any) -> dict:
+    receipt = getattr(result, "receipt", None)
+    return {"result": dict(result), **({"receipt": receipt} if receipt else {})}
+
+
+def complete_absence_proof(remote: Any, notebook_id: str) -> dict:
+    """Absence requires a complete attributed read receipt, never a partial list."""
+    receipt = getattr(remote, "receipt", None)
+    sources = remote.get("sources")
+    if not isinstance(receipt, dict) or receipt.get("plugin_id") != "notebooklm" or receipt.get("method") != "notebook_get":
+        raise NotebookSyncError("legacy pending absence requires a completed mounted notebook receipt")
+    engine = receipt.get("result")
+    if not isinstance(engine, dict) or engine.get("success") is not True or engine.get("outcome") != "completed":
+        raise NotebookSyncError("legacy pending absence has no completed read proof")
+    if remote.get("notebook_id") != notebook_id or not isinstance(sources, list):
+        raise NotebookSyncError("legacy pending absence notebook attribution mismatch")
+    count = remote.get("source_count")
+    identifiers = [item.get("id") for item in sources if isinstance(item, dict)]
+    if type(count) is not int or count != len(sources) or len(identifiers) != count or any(
+        not isinstance(sid, str) or not sid for sid in identifiers
+    ) or len(set(identifiers)) != count:
+        raise NotebookSyncError("legacy pending absence requires a complete unique source listing")
+    try:
+        operation_id = selected_session(engine["operation_id"])
+    except (KeyError, NotebookSyncError) as error:
+        raise NotebookSyncError("legacy pending absence lacks a canonical operation locator") from error
+    return {"notebook_id": notebook_id, "operation_id": operation_id, "source_count": count,
+            "source_ids_sha256": hashlib.sha256(compact_json(sorted(identifiers)).encode()).hexdigest(),
+            "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
 
 
 def sync_groups(state_dir: Path, session: str, only: str | None = None,
                 defer_processing: bool = False) -> dict:
-    if not session:
-        raise NotebookSyncError("--session is required; sync never adopts another identity")
+    selected_session(session)
+    counts = {"created": 0, "uploaded": 0, "skipped": 0, "replaced": 0, "pending": 0, "quarantined": 0}
+    try:
+        _sync_groups(state_dir, session, only, defer_processing, counts)
+    except CycleLimit:
+        counts["pending"] += 1
+    return counts
+
+
+def _sync_groups(state_dir: Path, session: str, only: str | None,
+                 defer_processing: bool, counts: dict) -> None:
     recover_repair(state_dir)
     plan = json.loads((state_dir / "plan.json").read_text())
     state_path = state_dir / "remote-state.json"
     state = json.loads(state_path.read_text()) if state_path.exists() else {"groups": {}}
-    call = lambda method, args: grouped_call(method, args, session)
+    if state.get("session_id", session) != session:
+        raise NotebookSyncError("saved remote state belongs to another session")
+    # Legacy receipts are retained in place, bound to the explicitly selected
+    # session on migration. No other identity or notebook is inferred.
+    state["session_id"] = session
+    state["version"] = 2
+    state["cycle_incomplete"] = True
+    state["quarantine_only"] = False
+    atomic_json(state_path, state)
+    calls = 0
+    deadline = time.monotonic() + 900
+
+    def check_budget() -> None:
+        if calls >= MAX_CALLS_PER_CYCLE or time.monotonic() >= deadline:
+            raise CycleLimit
+
+    def call(method: str, args: dict, intent: dict | None = None) -> Any:
+        nonlocal calls
+        check_budget()
+        calls += 1
+        if intent is not None:
+            # Reserve the bounded call before publishing; once fsynced, dispatch
+            # this one call without another deadline gate or automatic retry.
+            intent["attempted_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            publish()
+        try:
+            return grouped_call(method, args, session)
+        except NotebookSyncError as error:
+            if intent is not None:
+                intent["diagnostic"] = error.diagnostic
+                publish()
+            raise
+
+    def publish() -> None:
+        atomic_json(state_path, state)
+
     notebooks = call("notebook_list", {})
     if isinstance(notebooks, dict):
         notebooks = notebooks.get("notebooks")
     if not isinstance(notebooks, list):
         raise NotebookSyncError("invalid notebook list result")
-    counts = {"created": 0, "uploaded": 0, "skipped": 0, "replaced": 0, "pending": 0}
-    for key, group in plan["groups"].items():
+    notebook_ids = {item["id"] for item in notebooks}
+    keys = list(plan["groups"])
+    quarantined_groups = set()
+    cursor = state.get("next_group")
+    if cursor in keys:
+        start = keys.index(cursor)
+        keys = keys[start:] + keys[:start]
+    for index, key in enumerate(keys):
+        group = plan["groups"][key]
         if only and only not in (key, group["title"]):
             continue
+        state["next_group"] = key
+        publish()
         saved = state["groups"].setdefault(key, {"sources": {}, "title": group["title"]})
         notebook_id = saved.get("notebook_id")
         if not notebook_id:
-            matches = [n for n in notebooks if n.get("title") == group["title"]]
-            if len(matches) > 1:
-                raise NotebookSyncError(f"ambiguous notebook title: {group['title']}")
-            if matches:
-                notebook_id = matches[0]["id"]
+            intent = saved.get("create_intent")
+            if intent:
+                record = intent.get("confirmed")
+                if not record:
+                    raise NotebookSyncError("notebook creation outcome unresolved; caller-scoped receipt required before retry")
+                notebook_id = record["result"]["notebook_id"]
             else:
-                created = call("notebook_create", {"title": group["title"]})
-                notebook_id = extract_notebook_id(created)
+                if any(item.get("title") == group["title"] for item in notebooks):
+                    raise NotebookSyncError("matching notebook is unowned; explicit ownership reconciliation required")
+                check_budget()
+                intent = {"title": group["title"], "status": "outcome_unknown"}
+                saved["create_intent"] = intent
+                result = call("notebook_create", {"title": group["title"]}, intent)
+                intent["confirmed"] = mutation_record(result)
+                publish()
+                notebook_id = result.get("notebook_id")
+                if not notebook_id:
+                    raise NotebookSyncError("notebook creation returned no exact notebook_id")
+                notebook_ids.add(notebook_id)
                 counts["created"] += 1
             saved["notebook_id"] = notebook_id
-            atomic_json(state_path, state)
+            publish()
+        if notebook_id not in notebook_ids:
+            raise NotebookSyncError("owned notebook absent from caller-scoped list; never recreate automatically")
         remote = call("notebook_get", {"notebook_id": notebook_id})
+        if remote.get("notebook_id", notebook_id) != notebook_id:
+            raise NotebookSyncError("notebook result attribution mismatch")
         existing = {item["id"]: item for item in remote["sources"]}
         saved.setdefault("pending", {})
-        if defer_processing:
-            # Bounded client-side concurrency; all state publication stays on
-            # the main thread. Provider processing is checked independently.
-            uploads = []
-            for chunk in group["chunks"]:
-                old = saved["sources"].get(chunk["slot"])
-                if old and old.get("sha256") == chunk["sha256"] and old.get("source_id") in existing and old.get("verified"):
-                    continue
-                if chunk["slot"] in saved["pending"]:
-                    continue
-                path = Path(chunk["path"])
-                if hashlib.sha256(path.read_bytes()).hexdigest() != chunk["sha256"]:
-                    raise NotebookSyncError("prepared source changed; prepare again")
-                matches = [item for item in existing.values() if item.get("title") == path.name]
-                if len(matches) > 1:
-                    raise NotebookSyncError("ambiguous content-addressed remote source")
-                if matches:
-                    saved["pending"][chunk["slot"]] = {"source_id": matches[0]["id"],
-                        "sha256": chunk["sha256"], "path": str(path)}
-                    atomic_json(state_path, state)
-                else:
-                    uploads.append(chunk)
-            failures = []
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                futures = {executor.submit(call, "source_add", {
-                    "notebook_id": notebook_id, "source_type": "file", "file_path": chunk["path"],
-                }): chunk for chunk in uploads}
-                for future in as_completed(futures):
-                    chunk = futures[future]
-                    try:
-                        sid = source_id(future.result())
-                    except Exception:
-                        failures.append(chunk["slot"])
-                        continue
-                    saved["pending"][chunk["slot"]] = {"source_id": sid,
-                        "sha256": chunk["sha256"], "path": chunk["path"]}
-                    atomic_json(state_path, state)
-                    counts["uploaded"] += 1
-                    print(f"uploaded {group['title']} {chunk['slot']}", flush=True)
-            if failures:
-                raise NotebookSyncError(f"{len(failures)} uploads failed; successful receipts retained for retry")
+        saved.setdefault("deletions", {})
+
+        def delete_owned(sid: str) -> None:
+            intent = saved["deletions"].get(sid)
+            if sid not in existing:
+                if intent:
+                    intent["status"] = "confirmed_absent"
+                    publish()
+                return
+            if intent:
+                # A successful receipt still requires authoritative absence.
+                # A timeout never justifies reissuing this non-idempotent method.
+                raise NotebookSyncError("source deletion unresolved; authoritative absence required before retry")
+            check_budget()
+            intent = {"source_id": sid, "notebook_id": notebook_id, "status": "outcome_unknown"}
+            saved["deletions"][sid] = intent
+            result = call("source_delete", {"source_id": sid, "confirm": True}, intent)
+            intent["confirmed"] = mutation_record(result)
+            publish()
+            if sid not in result.get("deleted_source_ids", []):
+                raise NotebookSyncError("deletion receipt did not confirm the exact owned source")
+            after = call("notebook_get", {"notebook_id": notebook_id})
+            if after.get("notebook_id", notebook_id) != notebook_id:
+                raise NotebookSyncError("post-deletion notebook attribution mismatch")
+            if any(item["id"] == sid for item in after["sources"]):
+                raise NotebookSyncError("deleted source still exists; do not retry mutation")
+            existing.pop(sid, None)
+            intent["status"] = "confirmed_absent"
+            publish()
+
         for chunk in group["chunks"]:
+            check_budget()
             slot, digest = chunk["slot"], chunk["sha256"]
             old = saved["sources"].get(slot)
             if old and old.get("sha256") == digest and old.get("source_id") in existing and old.get("verified"):
                 counts["skipped"] += 1
                 continue
             path = Path(chunk["path"])
+            # The frozen artifact, including legacy larger chunks, is not replaced
+            # or truncated. New captures use the existing 8 MiB packing bound.
             if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
-                raise NotebookSyncError("prepared source changed; prepare again")
-            pending = saved.setdefault("pending", {}).get(slot)
-            if pending and pending["sha256"] != digest:
-                raise NotebookSyncError("previous pending upload needs verification before replacing the plan")
-            if not pending:
-                # Recover a successful upload whose response/state write was lost.
+                raise NotebookSyncError("prepared source changed; frozen plan must be reconciled")
+            pending = saved["pending"].get(slot)
+            if pending and pending.get("sha256") != digest:
+                raise NotebookSyncError("previous pending upload requires verification before replacing the plan")
+            if pending and not pending.get("source_id") and pending.get("confirmed"):
+                pending["source_id"] = source_id(pending["confirmed"]["result"])
+                pending["status"] = "accepted"
+                publish()
+            verified = False
+            if not pending or not pending.get("source_id"):
                 matches = [item for item in existing.values() if item.get("title") == path.name]
                 if len(matches) > 1:
                     raise NotebookSyncError("ambiguous content-addressed remote source")
-                sid = matches[0]["id"] if matches else source_id(call("source_add", {
-                    "notebook_id": notebook_id, "source_type": "file", "file_path": str(path),
-                }))
-                pending = {"source_id": sid, "sha256": digest, "path": str(path)}
-                saved["pending"][slot] = pending
-                atomic_json(state_path, state)
-                counts["uploaded"] += not bool(matches)
-            # Upload acceptance is not processing success. Keep the old source until readable.
-            verified = False
-            for attempt in range(1 if defer_processing else 6):
-                try:
+                if matches:
+                    # Titles alone do not prove ownership or processing. The
+                    # caller-scoped content must reproduce the frozen bytes.
+                    content = call("source_get_content", {"source_id": matches[0]["id"]})
+                    text = content.get("content")
+                    if not isinstance(text, str) or hashlib.sha256(text.encode("utf-8")).hexdigest() != digest:
+                        raise NotebookSyncError("upload outcome unresolved; authoritative content does not match frozen bytes")
+                    pending = {**(pending or {}), "source_id": matches[0]["id"], "sha256": digest,
+                               "path": str(path), "recovered_by_content_sha256": True}
+                    saved["pending"][slot] = pending
+                    publish()
+                    verified = True
+                elif pending:
+                    raise NotebookSyncError("upload outcome unresolved; missing source is not evidence to retry")
+                else:
+                    check_budget()
+                    pending = {"sha256": digest, "path": str(path), "status": "outcome_unknown"}
+                    saved["pending"][slot] = pending
+                    result = call("source_add", {"notebook_id": notebook_id,
+                                  "source_type": "file", "file_path": str(path)}, pending)
+                    pending["confirmed"] = mutation_record(result)
+                    # Persist the receipt even if extracting its identifier fails.
+                    publish()
+                    pending["source_id"] = source_id(result)
+                    pending["status"] = "accepted"
+                    publish()
+                    counts["uploaded"] += 1
+            # Accepted legacy pending records have an owned source ID. A source
+            # missing from the scoped notebook is unresolved, never reuploaded.
+            if pending.get("source_id") not in existing and not pending.get("confirmed"):
+                pending["blocked_reason"] = "legacy_source_absent_requires_reconciliation"
+                pending["absence_proof"] = complete_absence_proof(remote, notebook_id)
+                quarantined_groups.add(key)
+                counts["quarantined"] += 1
+                counts["pending"] += 1
+                publish()
+                continue
+            pending.pop("blocked_reason", None)
+            pending.pop("absence_proof", None)
+            if not verified:
+                for attempt in range(1 if defer_processing else 6):
+                    # Permissions, missing mount and transport failures fail
+                    # the cycle. Empty successful content means processing.
                     content = call("source_get_content", {"source_id": pending["source_id"]})
-                    text = content.get("content") if isinstance(content, dict) else None
+                    text = content.get("content")
                     if isinstance(text, str) and text.strip():
                         verified = True
                         break
-                except NotebookSyncError:
-                    pass
-                if not defer_processing:
-                    time.sleep(min(2 ** attempt, 10))
+                    if not defer_processing:
+                        time.sleep(min(2 ** attempt, 10))
             if not verified:
                 if defer_processing:
                     counts["pending"] += 1
                     continue
-                raise NotebookSyncError(f"source processing not verified; old source retained: {slot}")
-            if old and old.get("source_id") != pending["source_id"] and old.get("source_id") in existing:
-                call("source_delete", {"source_id": old["source_id"], "confirm": True})
+                raise NotebookSyncError("source processing not verified; old source retained")
+            if pending["source_id"] not in existing:
+                refreshed = call("notebook_get", {"notebook_id": notebook_id})
+                if refreshed.get("notebook_id", notebook_id) != notebook_id:
+                    raise NotebookSyncError("post-upload notebook attribution mismatch")
+                existing = {item["id"]: item for item in refreshed["sources"]}
+                if pending["source_id"] not in existing:
+                    raise NotebookSyncError("accepted source absent from owned notebook; do not reupload")
+            if old and old.get("source_id") != pending["source_id"]:
+                delete_owned(old["source_id"])
                 counts["replaced"] += 1
             saved["sources"][slot] = {**pending, "verified": True}
             del saved["pending"][slot]
-            atomic_json(state_path, state)
-            print(f"synced {group['title']} {slot}", flush=True)
+            publish()
         for sid, retired in list(saved.get("retired", {}).items()):
-            if all(saved["sources"].get(child, {}).get("verified") and child not in saved["pending"]
-                   for child in retired["replacement_slots"]):
-                if sid in existing:
-                    call("source_delete", {"source_id": sid, "confirm": True})
+            if retired.get("receipt", {}).get("source_id") != sid:
+                raise NotebookSyncError("retired source has no matching owned receipt")
+            children = retired["replacement_slots"]
+            if children and all(saved["sources"].get(child, {}).get("verified")
+                                and saved["sources"][child].get("source_id") in existing
+                                and child not in saved["pending"] for child in children):
+                delete_owned(sid)
                 del saved["retired"][sid]
                 counts["replaced"] += 1
-                atomic_json(state_path, state)
-        print(f"notebook: {group['title']} ({len(group['chunks'])} sources; {len(saved['pending'])} pending)", flush=True)
-    return counts
+                publish()
+            else:
+                counts["pending"] += 1
+        state["next_group"] = keys[(index + 1) % len(keys)]
+        publish()
+    if only is None:
+        state["cycle_incomplete"] = bool(counts["pending"])
+        unresolved = {key for key, saved in state["groups"].items() if unresolved_group(saved)}
+        state["quarantine_only"] = bool(unresolved) and all(
+            key in quarantined_groups and quarantined_group(saved)
+            for key, saved in state["groups"].items() if key in unresolved
+        )
+        publish()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Notebook create/ingest through session-bus PluginV1.Call"
+        description="Lossless grouped sync through the configured identity-bound 3tchedFS mount"
     )
     parser.add_argument(
         "cmd",
@@ -918,8 +1153,8 @@ def main() -> int:
         create(args.title)
         return 0
     if args.cmd == "ingest":
-        ingest(args.title)
-        return 0
+        counts = ingest(args.title, session=args.session, state_dir=args.state_dir)
+        return 2 if counts["pending"] else 0
     if args.cmd == "create-and-ingest":
         notebook_id = create(args.title)
         ingest(args.title, notebook_id)
@@ -930,6 +1165,11 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (NotebookSyncError, OSError, ValueError) as error:
+    except NotebookSyncError as error:
         print(f"notebook-sync: {error}", file=sys.stderr)
+        raise SystemExit(1)
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as error:
+        # Invalid persisted/local data may include raw records in exception
+        # messages. Report the category and preserve evidence in place.
+        print(f"notebook-sync: local state/capture failure ({type(error).__name__}); evidence retained", file=sys.stderr)
         raise SystemExit(1)

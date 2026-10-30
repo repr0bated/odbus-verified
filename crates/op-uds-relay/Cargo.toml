@@ -1,0 +1,15 @@
+[package]
+name = "op-uds-relay"
+version = "0.1.0"
+edition = "2021"
+
+# Deliberately dependency-free (std only). This binary is cross-compiled to
+# x86_64-unknown-linux-musl and pushed into unprivileged Incus containers that
+# have no package manager reachable (no NIC, no route). Adding any dependency
+# reintroduces a toolchain/link surface we cannot service from inside a
+# network-isolated container, so keep this crate std-only.
+[dependencies]
+
+[[bin]]
+name = "op-uds-relay"
+path = "src/bin/op-uds-relay.rs"

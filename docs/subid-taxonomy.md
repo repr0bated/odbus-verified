@@ -20,7 +20,7 @@ rules.
 
 - `category` — one of `src`, `prj`, `sch`, `mut`, `obs`, `evt`, `exp`.
 - `component-type` — OSCAL vocabulary: `service`, `software`, `network`, etc.
-- `subject` — lowercase hyphenated noun (e.g. `xray`, `cognitive-mcp`).
+- `subject` — lowercase hyphenated noun (e.g. `xray`, `cognitive`).
 - `verb` — lowercase hyphenated action (e.g. `serve`, `route`, `monitor`).
 - `facet` — optional qualifier for routing variants.
 - `@vN` — optional version, default `@v1`.
@@ -37,7 +37,7 @@ Tags used by the host consolidation:
 | `xray-tls` | xray TLS ingress on 443 | `src.network.xray-serve@v1` | ingress |
 | `xray-reality` | xray REALITY ingress on 8443 | `src.network.xray-serve@v1` | ingress |
 | `grpc-bridge` | zeroclaw gateway on 127.0.0.1:8090 | `exp.service.zeroclaw-serve@v1` | gRPC |
-| `cognitive-mcp` | cognitive MCP on 127.0.0.1:3003 | `exp.service.cognitive-mcp-serve@v1` | gRPC |
+| `cognitive` | embedded runtime in `op-grpc-bridge`; no separate listener | plugin-owned cognitive operation subids | bridge MCP / gRPC |
 | `qdrant` | qdrant vector store on 127.0.0.1:6334 | `src.service.qdrant-serve@v1` | TCP |
 | `netmaker-api` | Netmaker REST API on 127.0.0.1:28081 | `src.service.netmaker-api-serve@v1` | TCP |
 | `netmaker-mq` | Netmaker message broker on 127.0.0.1:21883 | `src.service.netmaker-mq-serve@v1` | TCP |

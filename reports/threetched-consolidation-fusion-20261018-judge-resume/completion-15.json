@@ -1,0 +1,87 @@
+{
+  "request": 15,
+  "started": "2026-10-18T21:52:12.152023+00:00",
+  "finished": "2026-10-18T21:52:22.810917+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0b748f3292543403016ad53f8f324887d0bf8d19fe91af2b43",
+    "created": 1792360335,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating authoring selector definitions\",\"query\":\"resolve paired THREETCHED_CAPTURE_BIN THREETCHED_CAPTURE_MANIFEST capture paths defaults\",\"grep_keywords\":[\"THREETCHED_CAPTURE_BIN\",\"THREETCHED_CAPTURE_MANIFEST\"],\"path\":\"/srv/git/odbus-verified/crates/op-plugins\"}",
+                "name": "find"
+              },
+              "id": "call_zCgUHBYvpnjfLHmIPgEzN83H",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading service schema settings\",\"pattern\":\"THREETCHED|TCHED_ROUTER_CONFIG_DIR|COGNITIVE_QDRANT_URL|QDRANT_GRPC_URL\",\"path\":\"/srv/git/odbus-verified/deploy/runit/op-grpc-bridge/run;/srv/git/odbus-verified/HANDOFF.md\"}",
+                "name": "grep"
+              },
+              "id": "call_xnFuxC5w1LUYLNVCHHPVBNsj",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating provisioning report files\",\"path\":\"/srv/git/odbus-verified/reports/*provision*\",\"limit\":60}",
+                "name": "glob"
+              },
+              "id": "call_UaY9SwvMRcitq1WqguhTlNvL",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Inspecting release preparation inputs\",\"path\":\"/srv/git/odbus-verified/target/schema-capture-release-20261018.g7uixn\"}",
+                "name": "read"
+              },
+              "id": "call_LxlN4FciGLMA8G99Px6egiWG",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 617,
+      "prompt_tokens": 202294,
+      "total_tokens": 202911,
+      "completion_tokens_details": {
+        "reasoning_tokens": 120
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 171874
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:52:22.808000+00:00",
+  "stream_chunks": 10
+}

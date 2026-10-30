@@ -1,0 +1,1 @@
+../../docs/DROP-IN-SPEC.md

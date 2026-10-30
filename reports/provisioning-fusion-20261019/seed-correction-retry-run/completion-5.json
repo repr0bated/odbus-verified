@@ -1,0 +1,67 @@
+{
+  "request": 5,
+  "started": "2026-10-19T05:38:04.681995+00:00",
+  "finished": "2026-10-19T05:39:40.809539+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 2,
+    "panel_failures": 3,
+    "analysis_available": true
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-00bbf0d708694c80016ad5ad17a9ec87d09c94006f66ec4b16",
+    "created": 1792388375,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading recovery checkpoint\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/recovery/checkpoint.json\"}",
+                "name": "read"
+              },
+              "id": "call_0lxtGLsSjqOm6WxN6w9bqt4f",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 198,
+      "prompt_tokens": 158076,
+      "total_tokens": 158274,
+      "completion_tokens_details": {
+        "reasoning_tokens": 85
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 97690
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T05:39:35.283905+00:00",
+  "stream_chunks": 4
+}

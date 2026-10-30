@@ -1,0 +1,64 @@
+{
+  "request": 11,
+  "started": "2026-10-19T04:51:32.711016+00:00",
+  "finished": "2026-10-19T04:51:46.070344+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-02e497ea8cef4647016ad5a1d7d28487d0956a8cf237ccad47",
+    "created": 1792385495,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var pi=JSON.parse(await fs.readFile(a+'packet-index.json','utf8'));var si=JSON.parse(await fs.readFile(a+'supplement-index.json','utf8'));console.log(JSON.stringify(pi).slice(0,6000)); console.log(JSON.stringify(si).slice(0,1800));console.log((await fs.readFile(a+'review-contract.txt','utf8')).split('\\\\n')[0]);\",\"title\":\"Inspecting preserved packet indices\"}",
+                "name": "eval"
+              },
+              "id": "call_Pe51O6jsCrCyhLoeHFJrV7ob",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 388,
+      "prompt_tokens": 196777,
+      "total_tokens": 197165,
+      "completion_tokens_details": {
+        "reasoning_tokens": 146
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 129876
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:51:46.069002+00:00",
+  "stream_chunks": 4
+}

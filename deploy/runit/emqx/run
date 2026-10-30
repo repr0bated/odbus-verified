@@ -1,4 +1,5 @@
 #!/bin/sh
+# op-dbus-release: application
 set -eu
 exec 2>&1
 
@@ -13,7 +14,7 @@ wait_dep() {
 }
 
 wait_dep op-grpc-bridge
-/usr/local/libexec/3tched/emqx-prepare
+/usr/local/libexec/op-dbus/helpers/emqx-prepare
 
 [ -x /opt/emqx/bin/emqx ] || { echo "standalone EMQX artifact is not installed" >&2; exit 1; }
 
@@ -21,6 +22,8 @@ export EMQX_NODE__COOKIE="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-node-cookie)
 export EMQX_DASHBOARD__DEFAULT_USERNAME=admin
 export EMQX_DASHBOARD__DEFAULT_PASSWORD="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-dashboard-password)"
 export EMQX_LOG_DIR=/var/log/emqx
+export EMQX_NODE__DATA_DIR=/var/lib/emqx
+export EMQX_ETC_DIR=/usr/share/op-dbus/emqx-etc
 export EMQX_DEFAULT_LOG_HANDLER=console
 
 READY_DIR=/run/opdbus/runit-ready

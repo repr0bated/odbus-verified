@@ -1,0 +1,32 @@
+path	sequential_ranges_read	supplied_initial_sha256	finding_action	status
+crates/op-assistant-grpc/Cargo.toml	1-61 EOF	db0c02eed14e2ac948b9a3ad8bbfb85f1793333ce21b2d381bc588d5141b9f46	No native selection or override; dependency declarations only	reviewed
+crates/op-assistant-grpc/build.rs	1-31 EOF	92eb4c29cfa19d8607433cba4f49fde7836fe433b6df1c53e36ec43920b9b198	Compile checked-in assistant proto definitions; no native selection	reviewed
+crates/op-assistant-grpc/proto/assistant/agent.proto	1-89 EOF	c8b73db35364164cda8222c73eab9a75e8027944183b107fc6652733ed5ed50c	Explicit model request field; no implicit native override	reviewed
+crates/op-assistant-grpc/proto/assistant/common.proto	1-20 EOF	e2c31bafd360b1681401ec166318d874ff8ad319f2b1f14b59146526f4731c16	Common data types; no native behavior	reviewed
+crates/op-assistant-grpc/proto/assistant/cron.proto	1-46 EOF	a67d0566d181613f63238f24d64d6c2ef7dcbc5c3db8c06659efebef2e828a6f	Cron contract; no native behavior	reviewed
+crates/op-assistant-grpc/proto/assistant/memory.proto	1-68 EOF	7409cd77afb6c9cb70992d6efa17bfe581dafe3b4f3b6368224768ab6df7e29b	Memory contract; no native behavior	reviewed
+crates/op-assistant-grpc/proto/assistant/model.proto	1-37 EOF	e1d99e1c1fb101ee7d629e9faf626d4fbbf60d9492a71a072560d34a44dd7ac0	Explicit SwitchModel model_id; no implicit selection	reviewed
+crates/op-assistant-grpc/proto/assistant/namespace.proto	1-39 EOF	90fe83fd6bdd286daa97134166f8e4919c20bd4c2a4528b57a6d93ebb1d6dd4f	Namespace contract; no native behavior	reviewed
+crates/op-assistant-grpc/proto/assistant/session.proto	1-71 EOF	da35a5259102b6e63c4368e903e480e28c163095b604d1a2155524f0611357e8	Session contract; no native behavior	reviewed
+crates/op-assistant-grpc/proto/assistant/soul.proto	1-43 EOF	d52b4cd7113dd037a48031ff45ec9d0138d6f3f37adeb02a1ca0b50ca2c5a040	Soul contract; no native behavior	reviewed
+crates/op-assistant-grpc/proto/assistant/task.proto	1-54 EOF	e08919f107ee9d27b474b580a84df0fd1e382f29081ba811de395f1af37a0fb0	Task contract; no native behavior	reviewed
+crates/op-assistant-grpc/src/agents.rs	1-235 EOF	85eaa7cae9512353bbed00c4ba3e08311df881fe78a22476ba9ee4bce0930e83	Request model forwarded unchanged; no native override; no edit	reviewed
+crates/op-assistant-grpc/src/auth.rs	1-105 EOF	c6fa9242104b1d85eef92945d25d21c04d399ce83a5ff9ebb8f332c008c00acf	Fail-closed standalone admission; no native gate; no edit	reviewed
+crates/op-assistant-grpc/src/bin/op-assistant-grpc.rs	1-31 EOF	58624574efe4c9d6cbabbfd91d35df77a265060c80980eb161a79de5cc2d6f96	Starts default server; stale topology wording outside native scope; no edit	reviewed
+crates/op-assistant-grpc/src/client.rs	1-91 EOF	854e4515a048e8b15bfc081507177e4e1b151728813535e9e07019f1cffc67db	JSON-RPC envelope/error mapping only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/cognitive_client.rs	1-240;241-480;481-691 EOF	1b876b2107712ec791dd1c19f694ba4e9000c391d546d9f51e761a2e2b6a5823	Reads sealed cognitive contract; memory/soul/binding adapters; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/convert.rs	1-138 EOF	5553ad7b8f6ffe7e1308282311cfe38b5d9560e07c0e5365798b1e31fd259f8e	Wire value conversion only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/cron.rs	1-102 EOF	a4ecad87d28a88911ed335bd5fced9775c8e071fbbbf722502bfd3dbbd3a039c	Cron forwarding only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/dbus_service.rs	1-68 EOF	fd8493e4629e52f7578a62c2e78a60b26a38bb3b988f92fb980b2c0bd1c57a2e	Generic compatibility passthrough denied unconditionally; no edit	reviewed
+crates/op-assistant-grpc/src/error.rs	1-74 EOF	8a3d9fe7be0449e4cc1b2aeb39ade716c56838266d27bfa0c4a9fbba5f60045f	Error/status conversion only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/incus.rs	1-73 EOF	59d790033feebb8a83f373f0e4001db9b0ed4524813a244228a17cbbc9b847bd	Legacy identity tags/endpoints not model selection; no edit	reviewed
+crates/op-assistant-grpc/src/lib.rs	1-45 EOF	ea3a44750c710851ed39e210c1d7d6a1aac1bc8112df78bb1cb29253ca916ece	Module exports; stale authentication/fallback docs outside native scope; no edit	reviewed
+crates/op-assistant-grpc/src/memory.rs	1-259 EOF	325ca81340c6a341212f7b1d7439746bd83011b18c3d80fbf22da436c9d928d9	Memory operations only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/models.rs	1-76 EOF	81edf8d04a17718e1635f404d7b028486d09fb942e719e65b9c80d4622a4a019	Explicit model_id forwarded with optional scope; no implicit override; no edit	reviewed
+crates/op-assistant-grpc/src/namespace.rs	1-154 EOF	f0d298cb884ae1a134722fcc1538a42449017156044aec1f0834bd69e0cb19d2	Memory namespace binding only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/server.rs	1-197 EOF	6c7ff3c3b85c7c40f632af07a9a3c0719b5a4406ba747840bad8f98f060db947	All eight application services intercepted; loopback constrained; no native model gate; no edit	reviewed
+crates/op-assistant-grpc/src/sessions.rs	1-164 EOF	2724e0558506129cf903085148788a2e72f17a4aea265014df3d4494ce2d67ce	Session forwarding only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/soul.rs	1-143 EOF	c08ccc60edc98154382ca18a509d629d6374757004bdbbd4449921c372aa0cc0	Soul persistence only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/tasks.rs	1-138 EOF	237066595a9a8ce052993c92db1e5ebbaf8e990ef7f8bf2ac3546e60dcbd5ba8	Task forwarding only; no native behavior; no edit	reviewed
+crates/op-assistant-grpc/src/transport.rs	1-181 EOF	a6f713567c9dd2a06872e1800546893c7fef6b5122bbfec8b3dae247ee80ed70	Explicit transport config, direct HTTP path disabled; no provider/model override; no edit	reviewed
+crates/op-assistant-grpc/tests/integration.rs	1-131 EOF	aedf15b7ec92abd61186a47eb7a42f321cd4f450ee99c00fe0910363f0cf0575	In-memory persistence tests read only; no native routing fixture; not run	reviewed

@@ -1,0 +1,95 @@
+{
+  "request": 46,
+  "started": "2026-10-18T21:58:51.047848+00:00",
+  "finished": "2026-10-18T21:59:01.067390+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0ab07c64f2cec81f016ad5411dace487d0983be7749f9c565f",
+    "created": 1792360733,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Confirming exclusive type removal\",\"path\":\"/srv/git/odbus-verified/crates/**/*.rs;/srv/git/3tched.com/src\",\"pattern\":\"GetProviderCatalogOutput|GetConfigSchemaOutput\"}",
+                "name": "grep"
+              },
+              "id": "call_0JIaXU655GygnOFj8UOaclHg",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Locating complete observation merge\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/tched_config_engine.rs\",\"pattern\":\"coherent_observation|assignments|represented_state|alternative\"}",
+                "name": "grep"
+              },
+              "id": "call_hulJHrtbrzxS8NILj5is0voe",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading publication authority contract\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/large_language_model_dispatch.rs:95-116\"}",
+                "name": "read"
+              },
+              "id": "call_9UXJFWdIMnDAjuSHT1Li4bUT",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading legacy observer completion\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/state_plugins/tched_router_legacy_methods.rs:150-170\"}",
+                "name": "read"
+              },
+              "id": "call_MDGSElLyzNLOnXytMZC5PduT",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading completion evidence skill\",\"path\":\"skill://verification-before-completion\"}",
+                "name": "read"
+              },
+              "id": "call_DUQC3mZcWZ4P4JqiWUwTpEAk",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 742,
+      "prompt_tokens": 158796,
+      "total_tokens": 159538,
+      "completion_tokens_details": {
+        "reasoning_tokens": 227
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 148153
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:59:01.064427+00:00",
+  "stream_chunks": 12
+}

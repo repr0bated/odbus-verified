@@ -1,0 +1,6 @@
+case=keys fixture=temporary ordinary-filesystem memory_accounting=Rust_requested_bytes
+phase=empty rust_live_bytes=254047 delta_bytes=0 peak_bytes=331592
+phase=32_keys_32_payload_bytes rust_live_bytes=271231 delta_bytes=17184 peak_bytes=795140
+phase=fast_path_cleared_kv_index_kept rust_live_bytes=271231 delta_bytes=17184 peak_bytes=285551
+phase=all_cleared rust_live_bytes=254047 delta_bytes=0 peak_bytes=795528
+phase=cache_dropped rust_live_bytes=186356 delta_bytes=-67691 peak_bytes=254047

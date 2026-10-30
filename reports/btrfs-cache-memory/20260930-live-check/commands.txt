@@ -1,0 +1,10 @@
+Read-only memory measurement for PID 1123. Four samples ~20 seconds apart.
+Per sample: UTC timestamp; sudo -n selected /proc/1123/status; selected /proc/1123/smaps_rollup; /proc/1123/stat field 22 only (starttime); free -k; selected /proc/vmstat pswpin/pswpout.
+No process memory dump, cmdline, environ, profiler, cache action, or service action.
+Initial attempt at 2026-09-30T17:30:57Z: status/free/vmstat captured; smaps_rollup sed extraction failed due unmatched parenthesis; stat starttime=601 ticks. See sample-1-initial.txt.
+Corrected per-sample extraction used for samples 2-4:
+date -u +'%Y-%m-%dT%H:%M:%SZ'
+sudo -n sh -c 'awk -F: "/^(Name|Pid|VmRSS|VmHWM|VmSize|VmData|VmSwap|Threads):/ {gsub(/^[ \t]+/, \"\", \$2); print \$1 \"=\" \$2}" /proc/1123/status; awk "/^(Rss|Pss|Pss_Anon|Pss_File|Private_Dirty|Anonymous|Swap|SwapPss):/ {print}" /proc/1123/smaps_rollup; awk "{print \$22}" /proc/1123/stat'
+free -k
+awk '/^pswp(in|out) / {print}' /proc/vmstat
+Sampling loop began with 20s sleeps; sample cadence was 17:30:57Z, 17:31:38Z, 17:31:58Z, 17:32:19Z. PID name+number and stat starttime were checked each sample.

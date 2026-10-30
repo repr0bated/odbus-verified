@@ -1,15 +1,6 @@
-#!/usr/bin/env bash
-# notebook-sync — uv-managed cognitive notebook create/ingest
-set -euo pipefail
-# Prefer repo checkout; fall back to fixed host path
-if [[ -n "${OP_DBUS_ROOT:-}" && -d "${OP_DBUS_ROOT}/scripts/uv-tools" ]]; then
-  ROOT="$OP_DBUS_ROOT"
-elif [[ -d /srv/git/odbus/scripts/uv-tools ]]; then
-  ROOT=/srv/git/odbus
-elif [[ -d /home/admin/git/odbus/scripts/uv-tools ]]; then
-  ROOT=/home/admin/git/odbus
-else
-  ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-fi
-PROJ="$ROOT/scripts/uv-tools"
-exec uv run --project "$PROJ" python "$PROJ/notebook_sync.py" "$@"
+#!/bin/sh
+# Received code and mutable capture data have separate roots.
+set -eu
+SCRIPT_PATH=$(readlink -f -- "$0")
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd -P)
+exec /usr/bin/python3 "$SCRIPT_DIR/uv-tools/notebook_sync.py" "$@"

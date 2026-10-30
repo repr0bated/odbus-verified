@@ -1,0 +1,28 @@
+{
+   "partitiontable": {
+      "label": "gpt",
+      "id": "45E20575-CA5C-4AB6-A681-221B2D8B6377",
+      "device": "/run/mounts/seed-3tched/seed.img",
+      "unit": "sectors",
+      "firstlba": 34,
+      "lastlba": 83886046,
+      "sectorsize": 512,
+      "partitions": [
+         {
+            "node": "/run/mounts/seed-3tched/seed.img1",
+            "start": 2048,
+            "size": 23144448,
+            "type": "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
+            "uuid": "EA483946-EB14-4372-A099-B72A0DD4D1FF",
+            "name": "3tched-base"
+         },{
+            "node": "/run/mounts/seed-3tched/seed.img2",
+            "start": 41945088,
+            "size": 41940959,
+            "type": "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
+            "uuid": "880FE6C2-5988-4901-B516-EC2C1D79452D",
+            "name": "3tched-upgrade"
+         }
+      ]
+   }
+}

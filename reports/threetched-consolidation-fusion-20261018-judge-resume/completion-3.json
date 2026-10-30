@@ -1,0 +1,44 @@
+{
+  "request": 3,
+  "started": "2026-10-18T21:49:42.815158+00:00",
+  "finished": "2026-10-18T21:50:24.207290+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": true,
+    "protocol": "fusion-tool-v1",
+    "panel_successes": 5,
+    "panel_failures": 0,
+    "analysis_available": true
+  },
+  "tool_names": [],
+  "response": {
+    "id": "chatcmpl-0e2392aeb9e1cd98016ad53f1da73087d08710e92c2def9e99",
+    "created": 1792360221,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "<title>Complete canonical plugin consolidation</title>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 146,
+      "prompt_tokens": 5150,
+      "total_tokens": 5296,
+      "completion_tokens_details": {
+        "reasoning_tokens": 101
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 1379
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:50:21.094013+00:00",
+  "stream_chunks": 3
+}

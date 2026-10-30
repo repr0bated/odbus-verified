@@ -1,0 +1,64 @@
+{
+  "request": 43,
+  "started": "2026-10-20T17:12:41.827659+00:00",
+  "finished": "2026-10-20T17:12:58.404516+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-01c94bb373597eae016ad7a110ab6487d190019f131c5fd6a8",
+    "created": 1792516368,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading schema-only capture boundary\",\"path\":\"/srv/git/odbus-verified/crates/threetched-fs/src/source.rs:182-207\"}",
+                "name": "read"
+              },
+              "id": "call_7cf5sn6ThjzDZIUutp7I8Wg5",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: establish catalog-pin equality and generator provenance, run the existing generator once with detached execution and durable receipts, then report output hashes, the emitted module, and coverage limitations. No build, tests, or runtime operations.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 617,
+      "prompt_tokens": 120226,
+      "total_tokens": 120843,
+      "completion_tokens_details": {
+        "reasoning_tokens": 396
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 111615
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:12:58.402207+00:00",
+  "stream_chunks": 5
+}

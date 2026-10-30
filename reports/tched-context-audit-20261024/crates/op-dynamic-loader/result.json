@@ -1,0 +1,20 @@
+{
+  "task": "tched-context-audit-20261024/op-dynamic-loader",
+  "crate": "op-dynamic-loader",
+  "status": "complete",
+  "files_reviewed": 8,
+  "files_pending": [],
+  "listed_lines_reviewed": 585,
+  "changed_files": [],
+  "occurrence_count": 0,
+  "findings_report": "findings.md",
+  "coverage_report": "coverage.tsv",
+  "occurrences_report": "occurrences.tsv",
+  "jev_receipts": ["judgments.md"],
+  "limitations": [
+    "Static source review only; runtime, sealed catalog, and deployment were not verified.",
+    "Inventory hashes were not independently recomputed; reads were not atomic.",
+    "No Cargo/build/test/lint/format/smoke/runtime/deployment commands were run, as prohibited by assignment instructions."
+  ],
+  "next_action": "Coordinator may consume the complete zero-occurrence crate report; no tched-specific patch or build is indicated."
+}

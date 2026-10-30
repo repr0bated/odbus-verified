@@ -1,0 +1,10 @@
+{
+  "task": "identity-container-provision-20261024",
+  "phase": "complete",
+  "exit": 0,
+  "completed_at": "2026-10-25T01:13:02Z",
+  "live_catalog_changed": false,
+  "installed": false,
+  "deployed": false,
+  "tested": false
+}

@@ -1,7 +1,7 @@
 //! NamespaceMemoryService — agent → namespace mapping plus the namespace
 //! itself.
 //!
-//! Production: D-Bus `PluginV1.Call` on the cognitive_mcp plugin (the Cozo
+//! Production: D-Bus `PluginV1.Call` on the cognitive plugin (the Cozo
 //! owner). Tests: in-process `CognitiveMemoryStore` + `SoulMemoryStore`.
 
 use crate::cognitive_client::{MemoryBackend, SoulBackend};
@@ -10,8 +10,8 @@ use crate::proto::{
     ClearMemoryNamespaceRequest, Empty, GetMemoryNamespaceRequest, ListMemoryNamespacesRequest,
     ListMemoryNamespacesResponse, MemoryNamespace, SetMemoryNamespaceRequest,
 };
-use op_cognitive_mcp::memory_store::{CognitiveMemoryStore, EntryQuery, NamespaceKind};
-use op_cognitive_mcp::soul_memory::{AgentNamespaceBinding, SoulMemoryStore};
+use op_cognitive::memory_store::{CognitiveMemoryStore, EntryQuery, NamespaceKind};
+use op_cognitive::soul_memory::{AgentNamespaceBinding, SoulMemoryStore};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 

@@ -1,0 +1,64 @@
+# Implementation prompt
+
+Implement threetched consolidation in `/srv/git/odbus-verified`, using the grounded implementation brief included below this prompt in this same file. Read that brief in full before editing.
+
+Read `AGENTS.md` and all its mandatory skill preloads first, then current `HANDOFF.md`, relevant `SIGNALS.md`, `WISHLIST.md`, the brief, and:
+
+- `reports/threetched-overlap-map-20261018.md`
+- `reports/threetched-overlap-map-20261018.txt` — JSON method inventory with a sharing-friendly extension.
+
+The original NotebookLM report is a synthesis of supplied sources, not live verification. The grounded brief supersedes its unsupported endpoint names, equivalence claims and automatic test gates. Verify present code and mounted declarations before relying on dated counts or source locations.
+
+## Objective
+
+Collapse handwritten operations already owned by the native threetched runtime into its one native-derived plugin schema. Keep our code under the 3tched distinction and the external ZeroClaw-derived runtime under threetched. Do not relocate duplicate declarations into `large_language_model`, another plugin, a separate schema directory or a new transport shim.
+
+Deliver working implementation and required build/catalog preparation, not another plan. Make the largest coherent, evidence-backed consolidation you can complete without speculative feature expansion. Begin with the direct plugin/skill wrappers, then continue into other established overlaps in dependency order. Explicitly record remaining work and blockers; do not describe a partial slice as complete consolidation.
+
+Full feature parity is not required. Missing persona/configuration features are **OD-122**, and native memory integration is **OD-123**. Those are wishlist work, not prerequisites for unrelated consolidation. Keep **Cozo** as the storage authority. Introduce no SQL/SQLite backend, automatic data migration or silent memory substitution. Existing unrelated migration debt is not this task.
+
+Current access is filesystem I/O, and the current name is **cognitive**. Lungs becomes an MCP interface after consolidation settles; do not implement that future interface here.
+
+## Implementation requirements
+
+1. Claim ownership in HANDOFF before editing. Preserve shared changes. The two direct wrapper modules were already deleted in source, with associated module/dispatch/hash-helper edits, but that removal was not built, sealed or deployed. Reconcile and finish it; do not reset or blindly repeat it.
+
+2. Begin with the mounted namespaces `/run/mounts/threetched` and `/run/mounts/3tchedFS`. Discover supported contracts there. Use pinned native source/export code to diagnose missing capture through the repository's supported maintenance/authoring path. Preserve caller identity and capability checks; do not bypass an absent or denied operation with another identity or transport.
+
+3. Complete the direct-wrapper slice: map all six `tched_plugins` and twelve `tched_skills` operations to the already captured native commands; reconcile arguments/results, callers, exact capabilities, registry/module/dispatch references, generated artifacts and mount selection. The mount adapter currently lists all four upstream IDs. Catalog removal and the adapter must agree.
+
+4. For additional config/provider/cron/router/LLM/cognitive overlap, assign every affected method a concrete disposition: migrate now, retain a genuine local integration responsibility, defer, or retire. Existing caller dependencies identify migration work; they do not justify a second native schema authority. Reconcile callers for removed or deferred behavior and expose truthful unsupported/unavailable outcomes instead of fake success.
+
+5. Add only the native capture required for the selected operations. Extend the existing verified native export/capture and explicit `opblob` authoring boundary. Runtime continues to consume sealed blobs. Do not invent `threetched.Chat`, HTTP endpoints, WebSocket frames or native memory support. The brief contains the observed real names and source references. Missing capture does not mean a feature is absent, and a configuration section is not an HTTP endpoint.
+
+6. Keep identity admission, private state partitions, exact grants, committed SHM publication, receipt/error semantics and cancellation outcomes intact for delivered operations. Do not globally rename state ownership or rewrite grants without tracing the affected contracts. Native stream disconnect does not prove a provider request was undone. No wildcard grants, new identity, blanket capability expansion or security-policy weakening.
+
+7. Update demonstrated consumers across the bridge, generated surfaces, toolsets, the sibling `/srv/git/3tched.com` UI and its pinned release input where affected. A compatibility name may temporarily resolve to the canonical declaration and admission path; it must not establish a separately authored schema. Do not retain wrappers indefinitely merely to avoid migrating callers.
+
+## Build, catalog and deployment boundary
+
+This prompt requests a native GNU release workspace build for the resulting cross-crate change:
+
+```sh
+CXXFLAGS="-include cstdint" cargo build --workspace --release --target x86_64-unknown-linux-gnu
+```
+
+Use the repository's existing JEV execution routing without model overrides. Run one Cargo process at a time; respect an existing build. Keep the primary agent available for source review and communication. Every delegated agent must perform its own mandatory preload and share task/file ownership.
+
+Use the freshly built `target/x86_64-unknown-linux-gnu/release/opblob` to prepare a **new isolated catalog** through `seal-plugins <new-catalog-dir>`, with the service's current schema-shaping environment. Review exact added/changed/removed plugin IDs, retain recoverable inputs and ensure matching binaries, generated views, configuration and any affected pinned UI input. Golden consumes the presealed catalog via `OP_PERSISTED_CATALOG_SOURCE`; it does not reseal it.
+
+The default deliverable for this prompt is implemented source, required build results, isolated release inputs and a precise deployment handoff. If the owner separately includes live activation in the receiving task, use only the canonical `./activate-golden.sh` snapshot/send-receive path and its receipts. Never hand-copy application binaries into the live installation. Keep host mount wiring and rollback implications explicit.
+
+Tests, Clippy, formatting checks and custom smoke fixtures run only on explicit owner request. Do not treat the NotebookLM report as permission to run them, and do not make full feature parity or a new test suite a prerequisite for the requested implementation. Use bounded authoring/readiness/operation receipts appropriately and report what was actually checked. Preserve the existing guard/storage hold and deferred subvolume pinning.
+
+## Required handoff
+
+Update HANDOFF, SIGNALS and the existing WISHLIST entries with:
+
+- Current commit and exact changed files, preserving other agents' work.
+- Methods/plugins consolidated, retired, retained for a specific local responsibility, or deferred.
+- Canonical native targets and important argument/result/capability/state differences resolved.
+- Build command and actual result; isolated catalog location, provenance and removal delta.
+- Deployment status, unresolved blockers and the exact next action.
+
+Distinguish **proposed, implemented, built, sealed, deployed and tested**. Stop at the authorized delivery boundary. Do not claim complete consolidation, persona equivalence, successful authenticated operation or zero downtime without the corresponding evidence.

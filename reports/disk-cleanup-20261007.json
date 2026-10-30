@@ -1,0 +1,49 @@
+{
+  "task_id": "disk-cleanup-20261007",
+  "agent": "Codex",
+  "verified_at": "2026-10-07T05:53:31Z",
+  "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+  "status": "complete",
+  "removed_paths": [
+    "/srv/git/odbus-verified/target/debug/incremental",
+    "/srv/git/odbus-verified/target/x86_64-unknown-linux-gnu/debug/incremental",
+    "/var/tmp/identity-sled-lifecycle-20260930/attach-harness/target/debug"
+  ],
+  "available_bytes_before": 58009247744,
+  "available_bytes_after": 114773934080,
+  "net_recovered_bytes": 56764686336,
+  "net_recovered_gib": 52.866233825683594,
+  "usage_percent_before": 95,
+  "usage_percent_after": 90,
+  "verification": {
+    "removed_paths_absent": true,
+    "canonical_paths_and_mount_guards_passed": true,
+    "nested_subvolume_guards_passed": true,
+    "no_compiler_process_at_removal": true,
+    "btrfs_sync_completed": true,
+    "application_and_network_selectors_unchanged": true,
+    "chatbot_https_status": 200,
+    "private_page_http_status": 200,
+    "bridge_web_xray_ssh_services_running": true
+  },
+  "preserved": [
+    "All source checkouts and worktrees",
+    "Credentials, identity storage and grants",
+    "Cozo/Qdrant data, embedding responses, selections and token ledger",
+    "Release/golden/native/mail/UI artifacts and recovery snapshots",
+    "Explicitly retained Kiro/browser and regression build targets",
+    "Active corpus download and runtime services"
+  ],
+  "private_evidence_directory": "/var/tmp/disk-cleanup-20261007",
+  "separate_observation": {
+    "prior_vectorization_workspace": "/srv/git/repos-bulk/1stRun/compliance-index",
+    "prior_worker_pid": 15819,
+    "prior_worker_running": false,
+    "last_status_update": "2026-10-07T04:48:52Z",
+    "last_verified_documents": 18567,
+    "state_preserved": true,
+    "new_corpus_download_running": true,
+    "new_corpus_directory": "/home/jeremy/3tched-compliance-corpus",
+    "cleanup_did_not_stop_or_restart_either_job": true
+  }
+}

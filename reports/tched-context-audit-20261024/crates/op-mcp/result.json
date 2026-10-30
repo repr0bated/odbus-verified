@@ -1,0 +1,21 @@
+{
+  "task": "tched-context-audit-20261024/op-mcp",
+  "crate": "op-mcp",
+  "status": "complete",
+  "files_reviewed": 27,
+  "files_pending": [],
+  "changed_files": ["crates/op-mcp/src/blob_schema.rs"],
+  "occurrence_count": 2,
+  "findings_report": "reports/tched-context-audit-20261024/crates/op-mcp/findings.md",
+  "coverage_report": "reports/tched-context-audit-20261024/crates/op-mcp/coverage.tsv",
+  "occurrences_report": "reports/tched-context-audit-20261024/crates/op-mcp/occurrences.tsv",
+  "jev_receipts": ["reports/tched-context-audit-20261024/crates/op-mcp/judgments.md"],
+  "limitations": [
+    "No Cargo/build/check/test/Clippy/fmt/smoke/runtime/deployment/catalog operation was run, per assignment.",
+    "The source correction is implemented but not built or tested; coordinator owns the required scoped GNU-target build.",
+    "Runtime catalog membership and deployment remain unverified.",
+    "A pre-existing uncommitted edit in crates/op-mcp/src/cognitive_bridge.rs was read and preserved.",
+    "Root AGENTS.md was independently read in a supplemental pass after source review had begun; this sequencing deviation is disclosed in status.md."
+  ],
+  "next_action": "Coordinator consumes this receipt and performs the required scoped build after cross-crate reconciliation."
+}

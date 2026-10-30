@@ -1,0 +1,47 @@
+{
+  "status": "ok",
+  "query": "Provide a 3-6 word imperative session title for this user goal: Implement threetched consolidation, collapsing handwritten operations owned by the native threetched runtime into its one native-derived plugin schema, with working implementation and build/catalog preparation. Use user key words. Return title only.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "<title>Implement threetched native schema consolidation</title>"
+    },
+    {
+      "model": "opus-5-5",
+      "content": "<title>Implement threetched native schema consolidation</title>"
+    },
+    {
+      "model": "kimi-k3",
+      "content": "<title>Implement threetched consolidation into native schema</title>"
+    },
+    {
+      "model": "glm-5-3",
+      "content": "<title>Implement threetched consolidation</title>"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "<title>Implement threetched consolidation</title>"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "All responses use an imperative title beginning with Implement threetched and name consolidation.",
+      "All titles meet the 3\u20136 word requirement and use the user's key words."
+    ],
+    "contradictions": [],
+    "partial_coverage": [
+      {
+        "models": [
+          "astra-pro",
+          "opus-5-5",
+          "kimi-k3"
+        ],
+        "point": "Explicitly include native schema consolidation; glm-5-3 and qwen-3-6-35b-a3b name consolidation without its schema target."
+      }
+    ],
+    "unique_insights": [],
+    "blind_spots": [
+      "No title explicitly mentions build or catalog preparation, although the length constraint reasonably favors the primary consolidation goal."
+    ]
+  }
+}

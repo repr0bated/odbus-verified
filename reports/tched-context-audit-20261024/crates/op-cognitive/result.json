@@ -1,0 +1,15 @@
+{
+  "task": "tched-context-audit-20261024",
+  "crate": "op-cognitive",
+  "status": "complete",
+  "files_reviewed": 35,
+  "files_pending": 0,
+  "changed_files": [],
+  "occurrence_count": 7,
+  "findings_report": "findings.md",
+  "coverage_report": "coverage.tsv",
+  "occurrences_report": "occurrences.tsv",
+  "jev_receipts": ["occurrence-context-batch-01; questions need_fix, fixture, e2e; all answers and confidence recorded in judgments.md"],
+  "limitations": ["No runtime/deployment evidence checked or inferred.", "No Cargo/build/test/fmt/smoke/runtime/deploy actions performed per assignment.", "Coordinator reconciliation found missing initial read metadata for blob_vectors_tool.rs; supplemental full read closed it and is not backdated.", "All 28 mandatory preload paths were read in this supplemental turn; not backdated as initial reads.", "rag_pipeline.rs inventory count is 1316 lines while current source EOF was confirmed at line 1312; coordinator attributes current rag_pipeline.rs/voyage.rs hash differences to a separate worker's comment-only changes."],
+  "next_action": "Coordinator reconciliation/build; no additional op-cognitive source action is indicated."
+}

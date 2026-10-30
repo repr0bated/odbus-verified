@@ -25,7 +25,7 @@ pub(crate) const READ_CAPABILITY: &str = "chatbot.read";
 // The generic Cozo plugin deliberately exposes native queries and archives.
 // Its database must never contain the private episode owner's relations.
 pub(crate) fn require_distinct_database_paths(episode: &str) -> Result<()> {
-    let cognitive = std::env::var("COGNITIVE_MCP_DB_PATH")
+    let cognitive = std::env::var("COGNITIVE_DB_PATH")
         .unwrap_or_else(|_| "/var/lib/op-dbus/cognitive-memory.db".into());
     distinct_databases(
         std::path::Path::new(episode),
@@ -337,6 +337,93 @@ impl EpisodePublisher {
         })
     }
 
+    /// Chat reconciles only an unfinished publication for its verified owner.
+    /// This restores committed state from Cozo without replaying an inference.
+    pub(crate) async fn admit_chat_effect(
+        self: &Arc<Self>,
+        engine: &MutationEngine,
+        scope: EpisodeScope,
+    ) -> Result<EpisodeEffect> {
+        crate::project_dispatch::verified_session(
+            engine,
+            &scope.principal_id,
+            Some(&scope.session_id),
+            Some(&scope.session_genesis),
+        )
+        .await?;
+        let store = engine.ctl_plane_chatbot_episode_cozo().await?;
+        let operation = self.operation.clone().lock_owned().await;
+        crate::project_dispatch::verified_session(
+            engine,
+            &scope.principal_id,
+            Some(&scope.session_id),
+            Some(&scope.session_genesis),
+        )
+        .await?;
+        let publisher = self.clone();
+        // Hold writer exclusion until reconciliation finishes even if the
+        // requesting transport disconnects. Only the next new Chat can run.
+        tokio::spawn(async move {
+            let owner = owner_key(&scope);
+            let wake_owner = owner.clone();
+            let worker = publisher.clone();
+            let worker_scope = scope.clone();
+            let (pin, reconciled) = tokio::task::spawn_blocking(move || -> Result<_> {
+                let pin = worker.pin()?;
+                let directory = worker.root.prepare_child(&owner)?;
+                directory.ensure_distinct_from(std::path::Path::new(
+                    &op_core::projection_shm::shm_state_dir(),
+                ))?;
+                let Some(pending) = directory.pending_document()? else {
+                    return Ok((pin, false));
+                };
+                anyhow::ensure!(
+                    pending.plugin_id == PLUGIN,
+                    "pending episode owner mismatch"
+                );
+                let publication = directory.recover_document_with_decision(
+                    PLUGIN,
+                    &pending.operation_id,
+                    || worker.document_from_durable(&worker_scope, &pin, &store, None),
+                )?;
+                match publication {
+                    PrivateDocumentPublication::Committed { .. } => Ok((pin, true)),
+                    PrivateDocumentPublication::Pending { .. } => {
+                        anyhow::bail!("episode projection reconciliation failed")
+                    }
+                }
+            })
+            .await??;
+            if reconciled {
+                let _ = publisher.wakes.send(wake_owner);
+            }
+            Ok::<_, anyhow::Error>(EpisodeEffect {
+                scope,
+                pin,
+                operation,
+            })
+        })
+        .await
+        .context("owned episode admission task failed")?
+    }
+
+    fn document_from_durable(
+        &self,
+        scope: &EpisodeScope,
+        pin: &ManifestPinnedSchemaDocument,
+        store: &op_cozo_store::CozoGraphShuttle,
+        previous: Option<&[u8]>,
+    ) -> Result<PrivateDocumentCommit<()>> {
+        let receipt = store.snapshot_scoped_episodes(scope, SNAPSHOT_LIMIT)?;
+        let bytes = serde_json::to_vec(&state(&receipt, scope, &pin.schema)?)?;
+        compare_revision(previous, &bytes, receipt.revision)?;
+        self.recheck(pin)?;
+        Ok(PrivateDocumentCommit::Publish {
+            current: Some(bytes),
+            durable: (),
+        })
+    }
+
     pub(crate) async fn commit_effect(
         self: &Arc<Self>,
         effect: EpisodeEffect,
@@ -380,8 +467,8 @@ impl EpisodePublisher {
         }).await.context("owned episode publication task failed")?
     }
 
-    /// Explicit authenticated list/get admission can restore the private view
-    /// from its sole durable owner. StateSync never performs this recovery.
+    /// Authenticated list/get admission restores the private view from its
+    /// sole durable owner. StateSync never performs this reconciliation.
     pub(crate) async fn recover(
         self: &Arc<Self>,
         engine: &MutationEngine,
@@ -413,14 +500,7 @@ impl EpisodePublisher {
                 let pin = worker.pin()?;
                 let directory = worker.root.prepare_child(&owner)?;
                 let recover = |previous: Option<&[u8]>| -> Result<PrivateDocumentCommit<()>> {
-                    let receipt = store.snapshot_scoped_episodes(&scope, SNAPSHOT_LIMIT)?;
-                    let bytes = serde_json::to_vec(&state(&receipt, &scope, &pin.schema)?)?;
-                    compare_revision(previous, &bytes, receipt.revision)?;
-                    worker.recheck(&pin)?;
-                    Ok(PrivateDocumentCommit::Publish {
-                        current: Some(bytes),
-                        durable: (),
-                    })
+                    worker.document_from_durable(&scope, &pin, &store, previous)
                 };
                 if let Some(pending) = directory.pending_document()? {
                     anyhow::ensure!(
@@ -666,7 +746,11 @@ mod tests {
             .unwrap()
             .write(&op_blob::blobify_plugin_schema(PLUGIN, schema))
             .unwrap();
-        publisher.recover(&engine, scope.clone()).await.unwrap();
+        let effect = publisher
+            .admit_chat_effect(&engine, scope.clone())
+            .await
+            .unwrap();
+        drop(effect);
         assert_eq!(wakes.recv().await.unwrap(), EpisodePublisher::key(&scope));
         let recovered = publisher.read(scope.clone()).await.unwrap();
         assert_eq!(
@@ -678,6 +762,11 @@ mod tests {
                 .get(&second_id)
                 .is_some()
         );
+        // A normal Chat admission does not republish an already clean view.
+        let generation = recovered.generation;
+        drop(publisher.admit_chat_effect(&engine, scope.clone()).await.unwrap());
+        assert_eq!(publisher.read(scope.clone()).await.unwrap().generation, generation);
+        assert!(matches!(wakes.try_recv(), Err(broadcast::error::TryRecvError::Empty)));
 
         // Once the durable owner starts, dropping the transport cannot leave
         // a completed write without its SHM publication and metadata wake.
@@ -727,14 +816,14 @@ mod tests {
 
         // A knowledge push is the same owned effect: durable row, private
         // document child, owner-key wake — and the episode window is intact.
-        let push = op_cognitive_mcp::context_awareness::KnowledgePush {
+        let push = op_cognitive::context_awareness::KnowledgePush {
             id: "push-1".into(),
             session_id: scope.session_id.clone(),
-            trigger: op_cognitive_mcp::context_awareness::PushTrigger::ErrorAssistance,
+            trigger: op_cognitive::context_awareness::PushTrigger::ErrorAssistance,
             trigger_reason: "repeated build error".into(),
             relevance_score: 0.9,
             timestamp: chrono::Utc::now(),
-            content: op_cognitive_mcp::context_awareness::KnowledgeContent::ToolGuidance {
+            content: op_cognitive::context_awareness::KnowledgeContent::ToolGuidance {
                 tool_name: "rust_pro".into(),
                 usage_tips: vec!["check first".into()],
                 example_usage: serde_json::Value::Null,

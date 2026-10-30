@@ -1,6 +1,6 @@
 //! MemoryService implementation.
 //!
-//! Production: D-Bus `PluginV1.Call` on the cognitive_mcp plugin (the Cozo
+//! Production: D-Bus `PluginV1.Call` on the cognitive plugin (the Cozo
 //! owner). Tests: in-process `CognitiveMemoryStore` over in-memory Cozo.
 
 use crate::cognitive_client::MemoryBackend;
@@ -11,7 +11,7 @@ use crate::proto::{
     ReadMemoryRequest, ReadMemoryResponse, SearchMemoryRequest, SearchMemoryResponse,
     WriteMemoryRequest, WriteMemoryResponse,
 };
-use op_cognitive_mcp::memory_store::{
+use op_cognitive::memory_store::{
     CognitiveMemoryStore, EntryQuery, MemoryEntry as StoreEntry, NamespaceKind,
 };
 use serde_json::Value;

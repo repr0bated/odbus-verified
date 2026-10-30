@@ -218,7 +218,7 @@ fn private_identity_lock_order_rejects_aliases_and_finishes_concurrent_revocatio
     let identity_owned = identity_text.to_owned();
     let writer = namespace.clone();
     let publication = std::thread::spawn(move || {
-        let result = writer.commit_document_durable_with_decision("tched_router", "output", |_| {
+        let result = writer.commit_document_durable_with_decision("chat_router", "output", |_| {
             reading_tx.send(()).unwrap();
             // Approved one-way acquisition only: private job file lock ->
             // canonical identity reader. Identity writers never acquire jobs.
@@ -243,5 +243,5 @@ fn private_identity_lock_order_rejects_aliases_and_finishes_concurrent_revocatio
         publication.join().unwrap(),
         PrivateDocumentPublication::Pending { .. }
     ));
-    assert!(namespace.read_snapshot(&["tched_router".into()]).is_err());
+    assert!(namespace.read_snapshot(&["chat_router".into()]).is_err());
 }

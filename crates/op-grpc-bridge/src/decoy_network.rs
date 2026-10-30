@@ -343,10 +343,10 @@ pub(crate) async fn dispatch(
     method: &str,
     arguments: &Value,
     admitted: &PluginSchema,
-    caller: &crate::tched_router_admission::RouterCaller,
+    caller: &crate::chat_router_admission::RouterCaller,
 ) -> Result<NativeNetworkReceipt> {
     let pinned =
-        crate::tched_router_admission::readmit_call(engine, admitted, plugin, method, caller)
+        crate::chat_router_admission::readmit_call(engine, admitted, plugin, method, caller)
             .await?;
     let session = caller
         .session

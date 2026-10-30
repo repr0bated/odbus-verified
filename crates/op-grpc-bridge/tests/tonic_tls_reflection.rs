@@ -55,7 +55,7 @@ async fn start_tls_server() -> (SocketAddr, String) {
     let blobs = tempfile::tempdir().expect("isolated sealed blob catalog");
     op_blob::BlobStore::open(blobs.path())
         .unwrap()
-        .write(&op_grpc_bridge::tched_router_object_blob::from_plugin_schema())
+        .write(&op_grpc_bridge::chat_router_object_blob::from_plugin_schema())
         .unwrap();
     let catalog = op_grpc_bridge::dynamic_reflection::ActiveReflectionCatalog::with_dir(
         blobs.path().to_path_buf(),
@@ -238,7 +238,7 @@ async fn reflection_list_services_over_tls() {
         services,
         [
             "grpc.reflection.v1.ServerReflection",
-            "operation.plugin.v1.TchedRouterPluginMethods",
+            "operation.plugin.v1.ChatRouterPluginMethods",
         ],
         "only mounted services backed by this fixture's blob are discoverable"
     );
@@ -252,9 +252,7 @@ async fn advertised_plugin_route_is_mounted_over_tls() {
     let channel = tls_channel(addr, &ca_pem).await;
     let mut client = op_grpc_bridge::proto::plugin_methods::tched_router_plugin_methods_client::TchedRouterPluginMethodsClient::new(channel);
     let status = client
-        .get_agents_config(
-            op_grpc_bridge::proto::plugin_methods::TchedRouterGetAgentsConfigRequest::default(),
-        )
+        .get_config(op_grpc_bridge::proto::plugin_methods::TchedRouterGetConfigRequest::default())
         .await
         .expect_err("missing identity must fail at the mounted route's auth gate");
     assert_eq!(status.code(), tonic::Code::Unauthenticated);

@@ -30,7 +30,7 @@
         "rust-network-mgr.service"
       ],
       "unix_sockets": [
-        "/run/rust-network-manager/rust-network-manager.sock"
+        "/run/opdbus/lungs/lungs.sock"
       ],
       "tcp_ports": []
     },
@@ -49,7 +49,7 @@
         "rust_service.service"
       ],
       "unix_sockets": [
-        "/run/rust-network-manager/rust-network-manager.sock",
+        "/run/opdbus/lungs/lungs.sock",
         "/tmp/rust_service.sock"
       ],
       "tcp_ports": []
@@ -68,7 +68,7 @@
         "controlplane-ui.service"
       ],
       "unix_sockets": [
-        "/run/rust-network-manager/rust-network-manager.sock",
+        "/run/opdbus/lungs/lungs.sock",
         "/run/assistant-controlplane/http.sock",
         "/run/assistant-controlplane/http1.sock"
       ],
@@ -90,7 +90,7 @@
         "netmaker-exporter.service"
       ],
       "unix_sockets": [
-        "/run/rust-network-manager/rust-network-manager.sock",
+        "/run/opdbus/lungs/lungs.sock",
         "/var/lib/netmaker-runtime/netmaker.sock"
       ],
       "tcp_ports": [
@@ -113,8 +113,7 @@
         "qdrant-socat-grpc.service"
       ],
       "unix_sockets": [
-        "/run/rust-network-manager/rust-network-manager.sock",
-        "/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock"
+        "/run/opdbus/lungs/lungs.sock"
       ],
       "tcp_ports": [
         6333,
@@ -138,7 +137,7 @@
       ],
       "unix_sockets": [
         "/opt/run-mounts/ghostbridge/mail/admin.sock",
-        "/run/rust-network-manager/rust-network-manager.sock"
+        "/run/opdbus/lungs/lungs.sock"
       ],
       "tcp_ports": [
         25,
@@ -161,7 +160,7 @@
         "rust-network-mgr.service"
       ],
       "unix_sockets": [
-        "/run/rust-network-manager/rust-network-manager.sock"
+        "/run/opdbus/lungs/lungs.sock"
       ],
       "tcp_ports": [],
       "require_endpoint": true
@@ -180,8 +179,7 @@
     {
       "name": "qdrant-grpc-loopback",
       "depends_on": [
-        "container:qdrant",
-        "socket:/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock"
+        "container:qdrant"
       ],
       "address": "127.0.0.1",
       "port": 6334
@@ -200,7 +198,7 @@
       "depends_on": [
         "service:op-grpc-bridge-zeroclaw"
       ],
-      "address": "10.200.0.2",
+      "address": "10.0.0.2",
       "port": 8090
     }
   ]

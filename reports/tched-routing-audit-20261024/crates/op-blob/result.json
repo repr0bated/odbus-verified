@@ -1,0 +1,42 @@
+{
+  "task": "tched-routing-audit-20261024",
+  "crate": "op-blob",
+  "auditor": "Codex crate worker",
+  "date": "2026-10-24",
+  "status": "complete_static_audit",
+  "scope": "crates/op-blob/",
+  "report_directory": "reports/tched-routing-audit-20261024/crates/op-blob/",
+  "files_total": 19,
+  "files_read_through_eof": 19,
+  "lines_read": 5146,
+  "directory_inventory_reconciled": true,
+  "hash_provenance": "supplied initial inventory SHA-256; not recomputed",
+  "head": null,
+  "source_edits": [],
+  "counts": {
+    "occurrences": 4,
+    "dead_ends": 0,
+    "reroutes": 0,
+    "repoint_to_op_llm": 0,
+    "repoint_to_threetched_fuse": 0,
+    "delete_dead_end": 0,
+    "rename_to_3tched": 0,
+    "rename_to_threetched": 0,
+    "leaves": 4,
+    "leave_as_is": 4,
+    "uncertain": 0
+  },
+  "roles": {"contract_identifier": 4, "routing_dispatch": 0, "model_selection_calling": 0, "filesystem_projection": 0, "ordinary_word": 0},
+  "integrity": {"not_applicable": 4, "alive": 0, "dead_end": 0},
+  "occurrences": [
+    {"id":"O1","path":"crates/op-blob/src/descriptor.rs","line":877,"token":"threetched.read","role":"contract_identifier","integrity":"not_applicable","action":"leave_as_is","judge_questions":["L877_role","L877_integrity","L877_action"],"confidence":{"role":1,"integrity":1,"action":0.96}},
+    {"id":"O2","path":"crates/op-blob/src/descriptor.rs","line":878,"token":"obs.threetched.configure@v1","role":"contract_identifier","integrity":"not_applicable","action":"leave_as_is","judge_questions":["L878_role","L878_integrity","L878_action"],"confidence":{"role":1,"integrity":1,"action":0.98}},
+    {"id":"O3","path":"crates/op-blob/src/descriptor.rs","line":886,"token":"threetched","role":"contract_identifier","integrity":"not_applicable","action":"leave_as_is","judge_questions":["L886_role","L886_integrity","L886_action"],"confidence":{"role":1,"integrity":1,"action":0.98}},
+    {"id":"O4","path":"crates/op-blob/src/descriptor.rs","line":888,"token":"threetched","role":"contract_identifier","integrity":"not_applicable","action":"leave_as_is","judge_questions":["L888_role","L888_integrity","L888_action"],"confidence":{"role":1,"integrity":1,"action":0.98}}
+  ],
+  "jev": {"api":"installed judge(state, questions)","calls":1,"answers":12,"minimum_confidence":0.96,"receipt":"judgments.md"},
+  "verification": {"method":"sequential reader ranges through EOF; inventory/directory reconciliation; actual declarative JEV receipt","searches":false,"cargo":false,"build":false,"tests":false,"lint":false,"format":false,"smoke":false,"runtime":false,"deploy":false,"seal":false,"grant_changes":false,"credential_changes":false},
+  "limitations": ["Static audit only; external method receiver, registry, live catalog and mounts not inspected outside assigned crate", "Initial inventory hashes not recomputed; HEAD unqueried", "Synthetic configure fixture does not establish a published operation"],
+  "uncertainties": [],
+  "next_action": "Coordinator reconciles 19 coverage rows, four occurrence rows and 12 JEV answers; no crate source migration recommended."
+}

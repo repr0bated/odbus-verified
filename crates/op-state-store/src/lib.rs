@@ -17,6 +17,7 @@ pub mod event_chain;
 pub mod exact_schema;
 pub mod execution_job;
 pub mod memory_store;
+pub mod method_receipt;
 pub mod metrics;
 pub mod plugin_schema;
 pub mod public_state;

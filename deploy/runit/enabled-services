@@ -2,17 +2,37 @@
 decoy-admin-reverse-ssh
 
 # Canonical control-plane and dashboard services.
+opdbus-rundirs
+opdbus-grants
+op-session-bus
 op-grpc-bridge
 op-web
 op-runit-systemctl
 emqx
 tched-router
-mongodb-mcp-server
 unified-execution
-opencode
 
-# Identity-centric containers (OD-86): bring each identity up from its own
-# device after incusd, and keep the transitional control-plane chatbot running
-# so the bridge always has a live identity session.
+# Local conversation capture; remote corpus writes require its own opt-in and
+# the existing identity-bound mount/journal.
+notebook-sources-sync
+
+# Identity-centric storage: restore completed physical roots and their scoped
+# lungs after incusd, then honor each explicit boot-completion start policy.
 identity-roots
-incus-ct-chatbot
+chatbot-identity
+subsidiary-hackathon-3tchedfs
+
+# Base network ownership is independent of application release activation.
+# The distro openvswitch-switch owner retains both daemons and conf.db;
+# ovsdb-server is its native-lifetime/readiness observer, not a second daemon.
+# The endpoint service restores only the already-configured local private IP.
+ovsdb-server
+op-warp-endpoint
+
+# Host Qdrant (2026-10-16). Serves the verified 2026-10-14 restore from
+# /var/lib/qdrant/storage, a copy; /mnt/qdrant-recovered/storage stays the
+# pristine recovery source and is never served directly. Binds 127.0.0.1
+# until the internal interface exists, then takes its own alias there.
+# Replaces the retired qdrant-drive-recovered recovery service, which served
+# a near-empty storage directory.
+qdrant

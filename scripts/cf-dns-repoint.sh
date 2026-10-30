@@ -29,8 +29,12 @@ if [[ -z "$token" && -r /etc/op-dbus/secrets/cf-dns-token ]]; then
   token="$(tr -d '[:space:]' < /etc/op-dbus/secrets/cf-dns-token)"
 fi
 [[ -n "$token" ]] || { echo "no Cloudflare token: set CF_API_TOKEN or install /etc/op-dbus/secrets/cf-dns-token" >&2; exit 2; }
+[[ "$token" != *$'\n'* && "$token" != *$'\r'* ]] || { echo 'Cloudflare token must be one line' >&2; exit 2; }
 
-cf() { curl -sS --fail-with-body -H "Authorization: Bearer $token" -H "Content-Type: application/json" "$@"; }
+cf() {
+  printf 'Authorization: Bearer %s\n' "$token" |
+    curl -sS --fail-with-body -H @- -H "Content-Type: application/json" "$@"
+}
 
 for zone in $ZONES; do
   zone_id="$(cf "$API/zones?name=$zone" | jq -r '.result[0].id // empty')"

@@ -23,7 +23,7 @@ Use this profile to run Zenflow in parallel with your 7-day Gemini trial. It con
 
 ## How it Works
 
-- `LLM_PROVIDER` is set to `openclaw` so `op-llm` and `op-chat` bind to the cognitive MCP gateway.
+- `LLM_PROVIDER` is set to `openclaw` so `op-llm` and `op-chat` bind to the cognitive gateway.
 - `OPENCLAW_MODEL`/`OPENCLAW_DEFAULT_MODEL` specify the OpenClaw agent route key Zenflow should target. The default is `openclaw:gemini3-adc`, which routes into the `gemini3-adc` agent and lets that agent's configured model stack handle the request.
 - OpenClaw gateway access is trusted through internal network isolation. ADC is still used by the target OpenClaw agent for Gemini/Vertex auth.
 - `ZENFLOW_PROFILE=byom` marks this environment as the BYOM profile for any scripts or dashboards that need to introspect which configuration is active.

@@ -1,0 +1,80 @@
+{
+  "request": 39,
+  "started": "2026-10-19T04:41:45.605516+00:00",
+  "finished": "2026-10-19T04:41:54.727700+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0ef2afc660c21cc3016ad59f8c56fc87d09a1a2111ec62cd69",
+    "created": 1792384908,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory security skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:601-900:raw\"}",
+                "name": "read"
+              },
+              "id": "call_m8pTFXJeEYVVpEDR4Fryb0QH",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading mandatory storage skills\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/mandatory-preload.txt:901-1200:raw\"}",
+                "name": "read"
+              },
+              "id": "call_OhcnnxOH4XPcQVPG8xAJqZyL",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading exact contract header\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/analysis/review-contract.txt:1:raw\"}",
+                "name": "read"
+              },
+              "id": "call_PscTOTPoEKboMqCymQwBMiOD",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 306,
+      "prompt_tokens": 48881,
+      "total_tokens": 49187,
+      "completion_tokens_details": {
+        "reasoning_tokens": 63
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 39534
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:41:54.726086+00:00",
+  "stream_chunks": 8
+}

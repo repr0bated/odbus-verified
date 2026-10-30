@@ -1,0 +1,9 @@
+#!/bin/sh
+# Preserve the existing host wgcf egress startup and its external credentials.
+# wg-quick owns the profile's routes/marks; this service does not mint or
+# inject application identity and does not assign the SSH-TUN door alias.
+exec 2>&1
+wg-quick down wgcf 2>/dev/null || true
+wg-quick up wgcf || exit 1
+echo "wgcf: up; profile egress policy retained"
+exec sleep 2147483647

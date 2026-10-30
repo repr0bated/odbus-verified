@@ -1,0 +1,2 @@
+pid=1984 case=construction size=65536 repeat=2
+exit=0 duration_s=1 sampled_peak_rss_kib=37292

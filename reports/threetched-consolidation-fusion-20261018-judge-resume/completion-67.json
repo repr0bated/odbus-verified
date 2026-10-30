@@ -1,0 +1,95 @@
+{
+  "request": 67,
+  "started": "2026-10-18T22:00:28.160110+00:00",
+  "finished": "2026-10-18T22:00:40.138678+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0ff8011fa5c23456016ad5417f0e0487d0b5396fc3eeed25a1",
+    "created": 1792360831,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading current shared claim\",\"path\":\"/srv/git/odbus-verified/HANDOFF.md:423-432\"}",
+                "name": "read"
+              },
+              "id": "call_3CGILJ8Pp8nmMMVHS5c5sT2H",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading complete obsolete route module\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/gemma_brain_dispatch.rs:1-200\"}",
+                "name": "read"
+              },
+              "id": "call_5Wbl6uPSUyCGuhwuvKHrLBFi",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading route bridge wiring\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/lib.rs:45-59\"}",
+                "name": "read"
+              },
+              "id": "call_fUdSdJwIuB0pr4mhO6zODEXt",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading facade bridge match\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/src/mutation_engine.rs:3880-3925,5190-5225\"}",
+                "name": "read"
+              },
+              "id": "call_mdHyMcvd9zIfB2NPeucXIN9X",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading backing migration regions\",\"path\":\"/srv/git/odbus-verified/crates/op-grpc-bridge/tests/tched_router_backing.rs:405-490,530-555,700-765,825-950,1400-1505\"}",
+                "name": "read"
+              },
+              "id": "call_o263lKisoArZupeccLSP7dKT",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 399,
+      "prompt_tokens": 270927,
+      "total_tokens": 271326,
+      "completion_tokens_details": {
+        "reasoning_tokens": 86
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 172404
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T22:00:40.134974+00:00",
+  "stream_chunks": 12
+}

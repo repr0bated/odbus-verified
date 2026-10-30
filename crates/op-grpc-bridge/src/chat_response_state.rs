@@ -73,7 +73,7 @@ pub(crate) fn emqx_doorbell() -> Doorbell {
 pub(crate) struct ChatResponsePublisher {
     root: PrivateProjectionDirectory,
     catalog: PathBuf,
-    operation: Arc<Mutex<()>>,
+    operation: Arc<Mutex<BTreeMap<String, Arc<Mutex<()>>>>>,
     wakes: broadcast::Sender<String>,
     doorbell: std::sync::OnceLock<Doorbell>,
 }
@@ -243,7 +243,7 @@ impl ChatResponsePublisher {
         Self {
             root,
             catalog,
-            operation: Arc::new(Mutex::new(())),
+            operation: Arc::new(Mutex::new(BTreeMap::new())),
             wakes,
             doorbell: std::sync::OnceLock::new(),
         }
@@ -299,7 +299,15 @@ impl ChatResponsePublisher {
         store: Arc<CozoGraphShuttle>,
         principal_id: &str,
     ) -> Result<ChatEffect> {
-        let operation = self.operation.clone().lock_owned().await;
+        let owner_key_value = owner_key(principal_id);
+        let owner_lock = {
+            let mut locks = self.operation.lock().await;
+            locks
+                .entry(owner_key_value.clone())
+                .or_insert_with(|| Arc::new(Mutex::new(())))
+                .clone()
+        };
+        let operation = owner_lock.lock_owned().await;
         let publisher = self.clone();
         let principal = principal_id.to_string();
         let asker = Arc::new(std::sync::Mutex::new(None));
@@ -367,6 +375,7 @@ impl ChatResponsePublisher {
     /// principal's private document and wake its subscribers. Fails when the
     /// private document is left pending recovery; use `commit_reporting` when
     /// the caller must act on a durable write either way.
+    #[allow(dead_code)]
     pub(crate) async fn commit<T: Send + 'static>(
         self: &Arc<Self>,
         effect: ChatEffect,

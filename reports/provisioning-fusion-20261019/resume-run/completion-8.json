@@ -1,0 +1,64 @@
+{
+  "request": 8,
+  "started": "2026-10-19T04:50:51.065214+00:00",
+  "finished": "2026-10-19T04:51:06.737406+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-02060714d9fdb258016ad5a1ae785487d0b979a1a7b4176d02",
+    "created": 1792385454,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading diagnostic case requirements\",\"path\":\"/srv/git/odbus-verified/reports/provisioning-fusion-20261019/CASE.md:1-100:raw\"}",
+                "name": "read"
+              },
+              "id": "call_I8KgkxKdI7Gtb9f2Dcd7WTyv",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 286,
+      "prompt_tokens": 169926,
+      "total_tokens": 170212,
+      "completion_tokens_details": {
+        "reasoning_tokens": 190
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 98253
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:51:06.736151+00:00",
+  "stream_chunks": 4
+}

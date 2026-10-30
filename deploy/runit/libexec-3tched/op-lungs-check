@@ -20,7 +20,7 @@
 set -u
 
 SESSION=${1:-${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}}
-LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs.sock}
+LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
 LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
 TIMING=${OPDBUS_SNOWBALL_PATH:-/var/lib/opdbus/snowball}/timing
 LUNGS_CHECK_CALL=${LUNGS_CHECK_CALL:?set LUNGS_CHECK_CALL=plugin.method to a method this identity is granted}

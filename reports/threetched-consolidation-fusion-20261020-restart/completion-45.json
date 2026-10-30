@@ -1,0 +1,64 @@
+{
+  "request": 45,
+  "started": "2026-10-20T17:13:17.703909+00:00",
+  "finished": "2026-10-20T17:13:41.316632+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0bf794c1b0d1da9f016ad7a134192c87d1800fe6415e4eb3c0",
+    "created": 1792516404,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Writing bounded authoring worker\",\"path\":\"/var/tmp/threetched-generated-example-20261020.40Ea0x/worker.sh\",\"content\":\"#!/bin/sh\\nset -eu\\ncd /srv/git/odbus-verified\\nreceipt=/var/tmp/threetched-generated-example-20261020.40Ea0x\\nbinary=target/x86_64-unknown-linux-gnu/release/examples/typed_specialize\\nmanifest=/dev/shm/opdbus/plugin-blobs/.manifest.json\\nreport=crates/threetched-fs/docs/typed-specialization-report.json\\ntypes=crates/threetched-fs/generated/plugin_types.rs\\nexample=crates/threetched-fs/examples/typed_use_generated.rs\\nfinish() {\\n    result=$?\\n    trap - EXIT\\n    printf 'exit_code=%s\\\\nfinished_at=%s\\\\n' \\\"$result\\\" \\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\\" > \\\"$receipt/completion.receipt\\\"\\n    exit \\\"$result\\\"\\n}\\ntrap finish EXIT\\nprintf 'started_at=%s\\\\n' \\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\\"\\nprintf '%s\\\\n' 'Authoring only: native catalog is read-only input; no build/test/format/runtime invocation.'\\nfile \\\"$binary\\\"\\nstat -c '%n | size=%s | mtime=%y' \\\"$binary\\\" crates/threetched-fs/examples/typed_specialize.rs crates/threetched-fs/src/model.rs crates/threetched-fs/src/source.rs crates/threetched-fs/src/store.rs\\nsha256sum \\\"$binary\\\" crates/threetched-fs/examples/typed_specialize.rs crates/threetched-fs/src/model.rs crates/threetched-fs/src/source.rs crates/threetched-fs/src/store.rs > \\\"$receipt/provenance.sha256\\\"\\njq -es '.[0].generation == .[1].catalog_generation and .[0].catalog_hash == .[1].catalog_hash and .[0].generation == 72 and .[0].catalog_hash == \\\"6f576dbdcdb4416f3471028393be42852078b3ed54c6439fe28c79d7248d260c\\\"' \\\"$manifest\\\" \\\"$report\\\"\\njq '{generation,catalog_hash}' \\\"$manifest\\\" > \\\"$receipt/catalog-before.json\\\"\\nsha256sum \\\"$types\\\" \\\"$report\\\" \\\"$example\\\" \\\"$manifest\\\" > \\\"$receipt/before.sha256\\\"\\nprintf '%s\\\\n' 'COMMAND: target/x86_64-unknown-linux-gnu/release/examples/typed_specialize --catalog /dev/shm/opdbus/plugin-blobs --out-file crates/threetched-fs/generated/plugin_types.rs --report crates/threetched-fs/docs/typed-specialization-report.json --use-example crates/threetched-fs/examples/typed_use_generated.rs'\\nset +e\\n\\\"$binary\\\" --catalog /dev/shm/opdbus/plugin-blobs --out-file \\\"$types\\\" --report \\\"$report\\\" --use-example \\\"$example\\\" </dev/null\\ngenerator_result=$?\\nset -e\\nprintf 'generator_exit_code=%s\\\\n' \\\"$generator_result\\\"\\nsha256sum \\\"$types\\\" \\\"$report\\\" \\\"$example\\\" \\\"$manifest\\\" > \\\"$receipt/after.sha256\\\"\\njq '{generation,catalog_hash}' \\\"$manifest\\\" > \\\"$receipt/catalog-after.json\\\"\\njq '{catalog_generation,catalog_hash,plugins:(.plugins|length),methods:([.plugins[].methods|length]|add),unsupported:([.plugins[].unsupported|length]|add),dynamic_slots:([.plugins[].dynamic_slots|length]|add),tched_fs:.plugins.tched_fs}' \\\"$report\\\" > \\\"$receipt/coverage.json\\\"\\nexit \\\"$generator_result\\\"\\n\"}",
+                "name": "write"
+              },
+              "id": "call_unRFk8fJDmkoxvAFcZuvLIwT",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "Plan: retain the verified generation-72 catalog pin, record binary/source provenance and pre-run hashes, run the existing generator once with closed stdin and a persistent completion receipt, then report its output hashes and coverage limits. No build, test, formatter, catalog mutation, or runtime operation will run.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1865,
+      "prompt_tokens": 122434,
+      "total_tokens": 124299,
+      "completion_tokens_details": {
+        "reasoning_tokens": 401
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 113223
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-20T17:13:41.313749+00:00",
+  "stream_chunks": 5
+}

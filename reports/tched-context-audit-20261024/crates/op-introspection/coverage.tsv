@@ -1,0 +1,11 @@
+path	listed_lines	read_coverage	status
+crates/op-introspection/Cargo.toml	31	complete start-to-EOF; raw full read	complete
+crates/op-introspection/SPEC.md	109	complete start-to-EOF; raw full read	complete
+crates/op-introspection/compare-op-introspection.md	88	complete start-to-EOF; raw full read	complete
+crates/op-introspection/src/cache.rs	44	complete start-to-EOF; raw full read	complete
+crates/op-introspection/src/indexer.rs	531	complete sequential read through EOF; ranges 1-183, 184-353, then exact raw 354-531 for clipped display	complete
+crates/op-introspection/src/indexer_manager.rs	52	complete start-to-EOF; raw full read	complete
+crates/op-introspection/src/lib.rs	110	complete start-to-EOF; raw full read	complete
+crates/op-introspection/src/parser.rs	26	complete start-to-EOF; raw full read	complete
+crates/op-introspection/src/projection.rs	234	complete lines 1-234	complete
+crates/op-introspection/src/scanner.rs	479	complete sequential read through EOF; ranges 1-203, exact raw 204-350 and 351-479	complete

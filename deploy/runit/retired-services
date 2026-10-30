@@ -38,6 +38,8 @@ op-web-tls
 netmaker-op-grpc-adapters.retired-netns
 nm-ovs-nic.retired
 notebooklm-mcp
+# Local OpenCode server. OpenCode is a provider list entry, not a binary.
+opencode
 
 # Host-side WireGuard peer link into the decoy's identity WireGuard (wg-opdbus),
 # tunnelled inside WARP. Retired 2026-09-19: the host is never a WireGuard
@@ -46,8 +48,43 @@ notebooklm-mcp
 # decoy's user-facing 10.0.0.1 VIP reaches the host through the WARP/Xray leg.
 mkdrt
 zeroclaw
+threetched-fs-native
+# Host FUSE mounts are owned by fstab and the post-release rcS hook.
+threetched-fs
 
 # Incus cozo container. Host Cozo stores under /var/lib/op-dbus are opened by
 # op-grpc-bridge. The container disk only held chat-memory-rocksdb, copied to
 # the host on 2026-09-24 before the instance and volume were deleted.
 incus-ct-cozo
+# MongoDB MCP provider, retired 2026-09-28.
+mongodb-mcp-server
+
+# Legacy container managers. Physical identity roots and scoped lungs belong
+# to identity-roots; guest power transitions use the identity lifecycle owner.
+incus-ct-chatbot
+incus-ct-assistant
+ovsbr0-addr
+# Replaced by the decoy-originated SSH TUN carried inside MASQUE (OD-104).
+gre-decoy
+
+# 2026-10 bridge rebuild: op-ovsbr0-setup --seed-only (run from
+# ovs-vswitchd/run) replaces the whole seed+uplink+addr chain in one atomic
+# step; ovsbr0-cutover replaces the IP-cutover+alias tail. Only the OVS-side
+# plumbing is retired here — tun5 must still never be enslaved into ovsbr0
+# (that was the actual OD-104 regression). op-warp-ssh-host/-routes, the
+# decoy-originated WARP/MASQUE SSH tunnel itself are NOT retired:
+# the design goal is that every external observer sees nothing but ordinary
+# WARP traffic to the decoy, including admin SSH. They stay live, just
+# disconnected from the bridge.
+ovsbr0-uplink
+ovsbr0-eth0
+ovsbr0-svc-addr
+ovsbr0-tun5
+
+# Host only: WireGuard/WARP wgcf belongs on the decoy. Its marked-traffic
+# policy is separate from MASQUE and is not altered by host retirement.
+wgcf
+strongswan
+
+# Host owner removed this service on 2026-10-19; never resurrect it in golden.
+rust-network-mgr

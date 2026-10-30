@@ -551,7 +551,6 @@ pub(crate) fn mail_server_schema() -> PluginSchema {
                 "dovecot_lmtp": "/var/spool/postfix/private/dovecot-lmtp",
                 "postfix_pickup": "/var/spool/postfix/private/pickup"
             },
-            "container_ip": "10.200.0.2",
             "healthy": true,
             "last_error": null,
             "administration": {

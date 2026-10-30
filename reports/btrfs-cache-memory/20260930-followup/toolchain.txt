@@ -1,0 +1,3 @@
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+Linux artix 7.2.3-x64v3-xanmod1 #0~20260902.g3b1e0e2 SMP PREEMPT_DYNAMIC Wed Sep  2 16:05:46 UTC x86_64 GNU/Linux
+tmpfs

@@ -1,0 +1,65 @@
+{
+  "request": 6,
+  "started": "2026-10-19T04:37:15.647604+00:00",
+  "finished": "2026-10-19T04:37:43.465225+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-0c8c70759c56e3fb016ad59e7eac9087d081a176add299dcf1",
+    "created": 1792384638,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"js\",\"code\":\"var fs = await import('node:fs/promises'); var crypto = await import('node:crypto'); var root='/srv/git/odbus-verified/'; var base=root+'reports/provisioning-fusion-20261019/'; var manifest=JSON.parse(await fs.readFile(base+'manifest.json','utf8')); var hm=JSON.parse(await fs.readFile(base+'evidence/hermes/manifest.json','utf8')); var histories=[...hm.sessions,...manifest.astra,...manifest.other_conversations]; console.log(histories.map(x=>({path:x.export_path,rows:x.export_rows??x.records,bytes:x.bytes}))); console.log('manifest other keys',Object.keys(manifest)); console.log('sample record',JSON.parse((await fs.readFile(root+histories[0].export_path,'utf8')).split('\\\\n')[0])); console.log('sources',manifest.source_and_installed.map(x=>({path:x.export_path,bytes:x.bytes}))); console.log('historical',manifest.historical_scripts.slice(0,2));\",\"title\":\"Inventorying complete exported corpus\"}",
+                "name": "eval"
+              },
+              "id": "call_s362U4R6jqWrxXvmQRWOE2cw",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "I\u2019m separating full-record ingestion from evidence selected for Fusion and JEV. The analysis will distinguish historical failures, later repairs, unbuilt drafts, and deployed receipts; no historical operation will be replayed.\n"
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 1390,
+      "prompt_tokens": 192884,
+      "total_tokens": 194274,
+      "completion_tokens_details": {
+        "reasoning_tokens": 808
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 134843
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:37:43.463870+00:00",
+  "stream_chunks": 5
+}

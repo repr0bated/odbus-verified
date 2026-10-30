@@ -1,0 +1,89 @@
+{
+  "request": 50,
+  "started": "2026-10-18T21:41:31.606767+00:00",
+  "finished": "2026-10-18T21:41:53.645399+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "todo",
+    "web_search",
+    "write"
+  ],
+  "response": {
+    "id": "chatcmpl-073839a88c0235a3016ad53d0e452087d0a4b456c9544faea9",
+    "created": 1792359694,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading isolated sealing command\",\"path\":\"/srv/git/odbus-verified/crates/op-plugins/src/bin/opblob.rs:670-765\"}",
+                "name": "read"
+              },
+              "id": "call_ATmtYUgtjLjCu1hpoRIjJpMU",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Reading generated binding procedure\",\"path\":\"/srv/git/odbus-verified/crates/threetched-fs/README.md:460-495\"}",
+                "name": "read"
+              },
+              "id": "call_jJaMXVYd6uRerb3EWEWMU92F",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Completing wrapper source reconciliation\",\"op\":\"done\",\"task\":\"Complete eighteen plugin and skill wrapper migrations with exact admission and mount selection\"}",
+                "name": "todo"
+              },
+              "id": "call_HiKx1z7Fd2zfWKaXmCKzM7q9",
+              "type": "function"
+            },
+            {
+              "function": {
+                "arguments": "{\"i\":\"Clearing stale process blocker\",\"op\":\"unblock\",\"task\":\"Run authorized GNU workspace release build or record existing process blocker\"}",
+                "name": "todo"
+              },
+              "id": "call_qcA5D3kvAfv9uHdxHBHWvlKQ",
+              "type": "function"
+            }
+          ],
+          "reasoning_content": "The source cut retires the 18 wrappers and five short router config facades. Native grants remain unchanged; content editing is explicitly unsupported rather than silently translated. Workspace links and mount selection now target the surviving owners. The authorized GNU workspace release build is delegated; tests and live activation remain excluded."
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 800,
+      "prompt_tokens": 255162,
+      "total_tokens": 255962,
+      "completion_tokens_details": {
+        "reasoning_tokens": 253
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 173837
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-18T21:41:53.643027+00:00",
+  "stream_chunks": 11
+}

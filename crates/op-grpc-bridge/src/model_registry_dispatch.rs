@@ -1,0 +1,1078 @@
+//! model_registry methods: the provider list from the root-owned TOML, each
+//! provider's current models fetched over HTTPS, and the system-wide Cozo
+//! catalog they are folded into.
+//!
+//! The caller holds the method's exact grant, rechecked here; the
+//! control-plane chatbot runs `refresh` hourly through its lungs, and any
+//! granted identity reads. Keys come only from root-owned 0400/0600 files
+//! under /etc/op-dbus/secrets/ that the provider entry names, are sent only
+//! to that provider's own `models_url` (no redirects are followed), and are
+//! never logged or stored. A provider that cannot be read keeps its last good
+//! list; the admitted call is the chain record of each refresh.
+
+use std::{
+    io::Read,
+    os::unix::fs::{MetadataExt, OpenOptionsExt},
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
+
+use anyhow::{Context, Result, anyhow, bail, ensure};
+use async_trait::async_trait;
+use futures::StreamExt;
+use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
+use op_plugins::state_plugins::model_registry::{
+    DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
+    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
+    MaintainCredentialsInput, MaintainCredentialsOutput, ModelListFormat, ModelRecord,
+    ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh, ProviderStatus, ProvidersFile,
+    RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput, SetModelProfileOutput,
+    bounded_error, page_limit, parse_models_response, parse_providers_toml, valid_model_id,
+    valid_provider_id, validate_list_models, validate_set_model_profile,
+};
+use op_state_store::PluginSchema;
+use serde_json::Value;
+
+use crate::{
+    interceptor::load_capability_grants, method_contract_admission, mutation_engine::MutationEngine,
+};
+
+const PLUGIN: &str = "model_registry";
+const FETCH_TIMEOUT: Duration = Duration::from_secs(30);
+// Bound provider response/parse working sets independently of the list size.
+const MAX_CONCURRENT_MODEL_LISTS: usize = 4;
+const ANTHROPIC_VERSION: &str = "2023-06-01";
+
+/// One refresh at a time; a second waits rather than interleaving.
+static REFRESH_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+#[cfg(test)]
+#[path = "model_registry_dispatch_tests.rs"]
+mod tests;
+
+/// Where the provider list and key files live, and who must own them.
+pub(crate) struct Environment {
+    pub(crate) providers_path: PathBuf,
+    /// The directory a `key_file` under [`SECRETS_DIR`] resolves into.
+    pub(crate) secrets_dir: PathBuf,
+    pub(crate) required_uid: u32,
+}
+
+impl Environment {
+    pub(crate) fn from_env() -> Self {
+        Self {
+            providers_path: std::env::var_os("OP_MODEL_PROVIDERS_PATH")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from(DEFAULT_PROVIDERS_PATH)),
+            secrets_dir: PathBuf::from(SECRETS_DIR),
+            required_uid: 0,
+        }
+    }
+}
+
+/// Lists one provider's current models.
+#[async_trait]
+pub(crate) trait ModelLister: Send + Sync {
+    async fn list(
+        &self,
+        provider: &ProviderConfig,
+        key: Option<&str>,
+    ) -> Result<Vec<ObservedModel>>;
+}
+
+/// Production lister: HTTPS `GET models_url`.
+pub(crate) struct HttpLister;
+
+#[async_trait]
+impl ModelLister for HttpLister {
+    async fn list(
+        &self,
+        provider: &ProviderConfig,
+        key: Option<&str>,
+    ) -> Result<Vec<ObservedModel>> {
+        fetch_models(&provider.models_url, provider.format, provider.auth, key).await
+    }
+}
+
+/// Describe a transport failure without echoing anything it carried.
+fn transport(error: &reqwest::Error) -> anyhow::Error {
+    if error.is_timeout() {
+        anyhow::anyhow!("request timed out")
+    } else if error.is_connect() {
+        anyhow::anyhow!("connection failed")
+    } else if error.is_redirect() {
+        anyhow::anyhow!("provider redirected; redirects are not followed")
+    } else {
+        anyhow::anyhow!("request failed")
+    }
+}
+
+/// GET a model list. The URL was validated with the provider entry.
+pub(crate) async fn fetch_models(
+    url: &str,
+    format: ModelListFormat,
+    auth: ProviderAuth,
+    key: Option<&str>,
+) -> Result<Vec<ObservedModel>> {
+    let client = reqwest::Client::builder()
+        .timeout(FETCH_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::none())
+        .user_agent("op-dbus-model-registry/1.0")
+        .build()
+        .context("HTTP client is unavailable")?;
+    let mut request = client
+        .get(url)
+        .header(reqwest::header::ACCEPT, "application/json");
+    request = match (auth, key) {
+        (ProviderAuth::None, _) => request,
+        (ProviderAuth::Bearer, Some(key)) => request.bearer_auth(key),
+        (ProviderAuth::XApiKey, Some(key)) => request.header("x-api-key", key),
+        (_, None) => bail!("provider key is required"),
+    };
+    if format == ModelListFormat::Anthropic {
+        request = request
+            .header("anthropic-version", ANTHROPIC_VERSION)
+            .query(&[("limit", "1000")]);
+    }
+    let mut response = request.send().await.map_err(|error| transport(&error))?;
+    let status = response.status();
+    ensure!(status.is_success(), "HTTP {}", status.as_u16());
+    if let Some(length) = response.content_length() {
+        ensure!(
+            length <= MAX_MODELS_RESPONSE_BYTES as u64,
+            "model list exceeds {MAX_MODELS_RESPONSE_BYTES} bytes"
+        );
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|error| transport(&error))? {
+        ensure!(
+            body.len() + chunk.len() <= MAX_MODELS_RESPONSE_BYTES,
+            "model list exceeds {MAX_MODELS_RESPONSE_BYTES} bytes"
+        );
+        body.extend_from_slice(&chunk);
+    }
+    parse_models_response(format, &body)
+}
+
+/// Read a root-owned regular file, refusing symlinks, anything writable by
+/// others (or, for a key, readable by others) and anything over `maximum`.
+fn read_owned(path: &Path, required_uid: u32, maximum: usize, private: bool) -> Result<Vec<u8>> {
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(path)
+        .with_context(|| format!("{} is unavailable", path.display()))?;
+    let metadata = file.metadata()?;
+    ensure!(
+        metadata.is_file(),
+        "{} is not a regular file",
+        path.display()
+    );
+    ensure!(
+        metadata.uid() == required_uid,
+        "{} must be owned by root",
+        path.display()
+    );
+    let mode = metadata.mode() & 0o777;
+    if private {
+        ensure!(
+            mode & 0o077 == 0,
+            "{} must be mode 0400 or 0600",
+            path.display()
+        );
+    } else {
+        ensure!(
+            mode & 0o022 == 0,
+            "{} must not be group or world writable",
+            path.display()
+        );
+    }
+    ensure!(
+        metadata.len() <= maximum as u64,
+        "{} exceeds {maximum} bytes",
+        path.display()
+    );
+    let mut bytes = Vec::new();
+    file.by_ref()
+        .take(maximum as u64 + 1)
+        .read_to_end(&mut bytes)?;
+    ensure!(
+        bytes.len() <= maximum,
+        "{} exceeds {maximum} bytes",
+        path.display()
+    );
+    Ok(bytes)
+}
+
+pub(crate) fn load_providers(env: &Environment) -> Result<ProvidersFile> {
+    let bytes = read_owned(
+        &env.providers_path,
+        env.required_uid,
+        MAX_PROVIDERS_FILE_BYTES,
+        false,
+    )
+    .context("provider list is unavailable")?;
+    let text = String::from_utf8(bytes).context("provider list is not UTF-8")?;
+    let file = parse_providers_toml(&text)?;
+    crate::model_providers_validation::validate_providers_config(&file.providers)
+        .context("provider configuration validation failed")?;
+    Ok(file)
+}
+
+/// Read a provider key file validated at refresh time.
+pub(crate) fn read_provider_key(env: &Environment, key_file: &str) -> Result<String> {
+    read_key(env, key_file)
+}
+
+/// A provider's key: the file's single line, printable ASCII, no spaces.
+/// `key_file` was validated to name one file directly under [`SECRETS_DIR`].
+fn read_key(env: &Environment, key_file: &str) -> Result<String> {
+    let name = key_file
+        .strip_prefix(SECRETS_DIR)
+        .filter(|name| !name.is_empty() && !name.contains('/'))
+        .context("key_file is outside the secrets directory")?;
+    let bytes = read_owned(
+        &env.secrets_dir.join(name),
+        env.required_uid,
+        MAX_KEY_BYTES,
+        true,
+    )
+    .context("key file is unavailable")?;
+    let text = String::from_utf8(bytes).map_err(|_| anyhow::anyhow!("key file is not text"))?;
+    let key = text.trim_end_matches(['\r', '\n']);
+    ensure!(
+        !key.is_empty() && key.bytes().all(|b| (0x21..=0x7e).contains(&b)),
+        "key file must hold one printable key"
+    );
+    Ok(key.to_string())
+}
+
+async fn observe(
+    env: &Environment,
+    lister: &dyn ModelLister,
+    provider: &ProviderConfig,
+) -> Result<Vec<RegistryModel>> {
+    let key = match &provider.key_file {
+        Some(path) => Some(read_key(env, path)?),
+        None => None,
+    };
+    let models = lister.list(provider, key.as_deref()).await?;
+    Ok(models
+        .into_iter()
+        .map(|model| RegistryModel {
+            model_id: model.model_id,
+            name: model.name,
+            context_length: model.context_length,
+            prompt_price: model.prompt_price,
+            completion_price: model.completion_price,
+        })
+        .collect())
+}
+
+async fn blocking<T: Send + 'static>(
+    operation: impl FnOnce() -> Result<T> + Send + 'static,
+) -> Result<T> {
+    tokio::task::spawn_blocking(operation)
+        .await
+        .context("model registry worker failed")?
+}
+
+fn cozo(error: CozoError) -> anyhow::Error {
+    anyhow::anyhow!("{error}")
+}
+
+fn now() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+}
+
+/// Credential gate read from the provider TOML itself. Each `[[providers]]`
+/// entry may declare `credential = "key" | "oauth" | "off"` (plain TOML —
+/// no invented syntax). Slots are *references*, never credential values:
+/// keyed providers take theirs from `key_env` (the `~/.bash_secrets`
+/// variable), oauth entries carry `credential_slot` (the native
+/// auth-profile id), and `off` retains the provider's `key_env` for
+/// re-enable. An entry without gate columns is ungated — the plain
+/// `enabled` flag governs (migration-safe). Unknown class text, a declared
+/// slot outside oauth, or a keyed entry without `key_env` fails the whole
+/// parse, so a malformed file can never half-apply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CredentialKind {
+    Key,
+    Oauth,
+    Off,
+}
+
+/// Validate one provider's optional gate columns. `Some(kind)` marks the
+/// entry gated with that class; `None` marks it ungated.
+fn validate_credential_gate(provider: &ProviderConfig) -> Result<Option<CredentialKind>> {
+    let kind = match provider.credential.as_deref() {
+        None => {
+            ensure!(
+                provider.credential_slot.is_none(),
+                "provider {} declares credential_slot without credential",
+                provider.id
+            );
+            None
+        }
+        Some("key") => {
+            ensure!(
+                provider.key_env.as_ref().is_some_and(|slot| !slot.trim().is_empty())
+                    || provider.key_file.as_ref().is_some_and(|slot| !slot.trim().is_empty()),
+                "provider {} credential=key requires its key_env or key_file slot",
+                provider.id
+            );
+            ensure!(
+                provider.credential_slot.is_none(),
+                "provider {} credential_slot is oauth-only; the keyed slot is key_env",
+                provider.id
+            );
+            Some(CredentialKind::Key)
+        }
+        Some("oauth") => {
+            let slot = provider
+                .credential_slot
+                .as_deref()
+                .with_context(|| {
+                    format!("provider {} credential=oauth requires credential_slot", provider.id)
+                })?;
+            ensure!(
+                !slot.trim().is_empty()
+                    && slot.len() <= 128
+                    && !slot.chars().any(|c| c.is_whitespace() || c.is_control())
+                    && !slot.contains('#'),
+                "provider {} oauth slot must be a compact non-empty reference",
+                provider.id
+            );
+            Some(CredentialKind::Oauth)
+        }
+        Some("off") => {
+            ensure!(
+                provider.credential_slot.is_none(),
+                "provider {} credential_slot is oauth-only; an off entry retains key_env",
+                provider.id
+            );
+            Some(CredentialKind::Off)
+        }
+        Some(other) => {
+            anyhow::bail!("provider {} has unknown credential class {other:?}", provider.id)
+        }
+    };
+    Ok(kind)
+}
+
+pub(crate) async fn refresh(
+    env: &Environment,
+    lister: &dyn ModelLister,
+    store: Arc<CozoGraphShuttle>,
+    input: RefreshInput,
+) -> Result<RefreshOutput> {
+    let _guard = REFRESH_LOCK.lock().await;
+    let file = load_providers(env)?;
+    let mut gate = std::collections::BTreeMap::new();
+    for provider in &file.providers {
+        if let Some(kind) = validate_credential_gate(provider)
+            .with_context(|| format!("credential gate for provider {}", provider.id))?
+        {
+            gate.insert(provider.id.clone(), kind);
+        }
+    }
+    let gated = &gate;
+    if let Some(explicit) = &input.provider_id {
+        let refused = match gated.get(explicit) {
+            Some(CredentialKind::Off) => Some(format!("provider {explicit} is off in the credential gate")),
+            Some(CredentialKind::Oauth) => Some(format!(
+                "provider {explicit} is an oauth credential; keyed discovery is not run for it"
+            )),
+            _ => None,
+        };
+        if let Some(reason) = refused {
+            anyhow::bail!(reason);
+        }
+    }
+    let targets: Vec<&ProviderConfig> = match &input.provider_id {
+        Some(id) => {
+            ensure!(valid_provider_id(id), "invalid provider_id");
+            let provider = file
+                .providers
+                .iter()
+                .find(|provider| &provider.id == id)
+                .with_context(|| format!("provider {id} is not in the provider list"))?;
+            ensure!(provider.enabled, "provider {id} is disabled");
+            vec![provider]
+        }
+        None => file
+            .providers
+            .iter()
+            .filter(|provider| provider.enabled)
+            .filter(|provider| !matches!(gated.get(&provider.id), Some(CredentialKind::Off | CredentialKind::Oauth)))
+            .collect(),
+    };
+    let at = now();
+    // Persist each completed provider before admitting more responses. An
+    // ordered bounded stream preserves configured reporting order without
+    // retaining every provider's full model list until the slowest finishes.
+    // Erase the request future type before buffering. This keeps the admitted
+    // dispatch future Send across the async-trait lister's borrowed lifetime.
+    type Request<'a> =
+        futures::future::BoxFuture<'a, (&'a ProviderConfig, Result<Vec<RegistryModel>>)>;
+    let requests: Vec<Request<'_>> = targets
+        .into_iter()
+        .map(|provider| {
+            Box::pin(async move { (provider, observe(env, lister, provider).await) }) as Request<'_>
+        })
+        .collect();
+    let mut observed = futures::stream::iter(requests).buffered(MAX_CONCURRENT_MODEL_LISTS);
+    let mut providers = Vec::new();
+    let mut revision = 0;
+    while let Some((provider, result)) = observed.next().await {
+        let listed = result.map_err(|error| bounded_error(&format!("{error:#}")));
+        let mut failure = listed.as_ref().err().cloned();
+        let (store, id, when) = (store.clone(), provider.id.clone(), at.clone());
+        let record_result = blocking(move || {
+            store
+                .record_model_registry_refresh(
+                    &id,
+                    &when,
+                    listed.as_deref().map_err(String::as_str),
+                )
+                .map_err(cozo)
+        })
+        .await;
+        let (counts, next) = match record_result {
+            Ok((counts, revision)) => (counts, revision),
+            Err(error) => {
+                tracing::error!(%error, provider_id = %provider.id, "model registry refresh store error");
+                failure.get_or_insert_with(|| format!("store error: {error}"));
+                (op_cozo_store::RegistryRefreshCounts::default(), revision)
+            }
+        };
+        revision = next;
+        providers.push(ProviderRefresh {
+            provider_id: provider.id.clone(),
+            status: if failure.is_some() { "error" } else { "ok" }.to_string(),
+            error: failure,
+            available_models: counts.available,
+            added: counts.added,
+            dropped: counts.dropped,
+        });
+    }
+    if input.provider_id.is_none() {
+        // Providers that left the list are retired; disabled ones keep their
+        // last list until they are removed or enabled again.
+        let configured: Vec<String> = file
+            .providers
+            .iter()
+            .map(|provider| provider.id.clone())
+            .collect();
+        let (store, when) = (store.clone(), at.clone());
+        let (retired, next) = blocking(move || {
+            store
+                .retire_model_registry_providers(&configured, &when)
+                .map_err(cozo)
+        })
+        .await?;
+        revision = revision.max(next);
+        providers.extend(
+            retired
+                .into_iter()
+                .map(|(provider_id, counts)| ProviderRefresh {
+                    provider_id,
+                    status: "removed".into(),
+                    error: None,
+                    available_models: 0,
+                    added: 0,
+                    dropped: counts.dropped,
+                }),
+        );
+    }
+    Ok(RefreshOutput {
+        refreshed_at: at,
+        revision,
+        providers,
+    })
+}
+
+pub(crate) async fn list_providers(
+    env: &Environment,
+    store: Arc<CozoGraphShuttle>,
+) -> Result<ListProvidersOutput> {
+    let file = load_providers(env)?;
+    let (rows, revision) =
+        blocking(move || store.list_model_registry_providers().map_err(cozo)).await?;
+    // Validate every provider's gate columns up front so the enumeration
+    // itself is infallible below.
+    let gate: std::collections::BTreeMap<String, Option<CredentialKind>> = file
+        .providers
+        .iter()
+        .map(|provider| {
+            validate_credential_gate(provider)
+                .map(|kind| (provider.id.clone(), kind))
+                .with_context(|| format!("credential gate for provider {}", provider.id))
+        })
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .collect();
+    let mut providers: Vec<ProviderStatus> = file
+        .providers
+        .iter()
+        .map(|provider| {
+            let row = rows.iter().find(|row| row.provider_id == provider.id);
+            let credential = gate.get(&provider.id).cloned().flatten().map(|kind| match kind {
+                CredentialKind::Key => "key".to_string(),
+                CredentialKind::Oauth => "oauth".to_string(),
+                CredentialKind::Off => "off".to_string(),
+            });
+            ProviderStatus {
+                provider_id: provider.id.clone(),
+                native_provider_id: provider.native_provider_id.clone(),
+                inference_url_prefix: provider.inference_url_prefix.clone(),
+                name: Some(provider.name.clone()),
+                configured: true,
+                enabled: provider.enabled,
+                credential,
+                credential_slot: provider.credential_slot.clone(),
+                models_url: Some(provider.models_url.clone()),
+                status: row.map_or_else(|| "never".to_string(), |row| row.status.clone()),
+                error: row.and_then(|row| row.error.clone()),
+                refreshed_at: row.map(|row| row.refreshed_at.clone()),
+                succeeded_at: row.and_then(|row| row.succeeded_at.clone()),
+                available_models: row.map_or(0, |row| row.available_count),
+                known_models: row.map_or(0, |row| row.known_count),
+                control_plane_profiles: provider
+                    .control_plane
+                    .as_ref()
+                    .map(|routing| routing.profiles().into_iter().map(str::to_string).collect())
+                    .unwrap_or_default(),
+            }
+        })
+        .collect();
+    providers.extend(
+        rows.iter()
+            .filter(|row| !file.providers.iter().any(|p| p.id == row.provider_id))
+            .map(|row| ProviderStatus {
+                provider_id: row.provider_id.clone(),
+                native_provider_id: None,
+                inference_url_prefix: None,
+                name: None,
+                configured: false,
+                enabled: false,
+                credential: None,
+                credential_slot: None,
+                models_url: None,
+                status: row.status.clone(),
+                error: row.error.clone(),
+                refreshed_at: Some(row.refreshed_at.clone()),
+                succeeded_at: row.succeeded_at.clone(),
+                available_models: row.available_count,
+                known_models: row.known_count,
+                control_plane_profiles: Vec::new(),
+            }),
+    );
+    Ok(ListProvidersOutput {
+        providers,
+        revision,
+    })
+}
+
+fn model_record(
+    row: RegistryModelRecord,
+    providers: &ProvidersFile,
+    recorded: Option<&str>,
+) -> ModelRecord {
+    let provider = providers
+        .providers
+        .iter()
+        .find(|provider| provider.id == row.provider_id);
+    ModelRecord {
+        provider_id: row.provider_id,
+        model_id: row.model.model_id,
+        native_provider_id: provider
+            .and_then(|provider| provider.native_provider_id_for_model(recorded)),
+        inference_url_prefix: provider.and_then(|provider| provider.inference_url_prefix.clone()),
+        name: row.model.name,
+        context_length: row.model.context_length,
+        prompt_price: row.model.prompt_price,
+        completion_price: row.model.completion_price,
+        available: row.available,
+        first_seen: row.first_seen,
+        last_seen: row.last_seen,
+        recorded_profile: recorded.map(str::to_string),
+        control_plane_profile: provider
+            .and_then(|provider| provider.control_plane_profile(recorded).map(str::to_string)),
+    }
+}
+
+pub(crate) async fn list_models(
+    env: &Environment,
+    store: Arc<CozoGraphShuttle>,
+    input: ListModelsInput,
+) -> Result<ListModelsOutput> {
+    validate_list_models(&input)?;
+    let file = load_providers(env)?;
+    let limit = page_limit(input.limit)?;
+    let provider = input.provider_id.clone();
+    let (rows, profiles, revision) = blocking(move || {
+        let (rows, revision) = store
+            .list_model_registry_models(provider.as_deref())
+            .map_err(cozo)?;
+        let profiles = store.list_model_registry_profiles().map_err(cozo)?;
+        Ok((rows, profiles, revision))
+    })
+    .await?;
+    let recorded: std::collections::BTreeMap<(String, String), String> = profiles
+        .into_iter()
+        .map(|(provider_id, model_id, profile)| ((provider_id, model_id), profile))
+        .collect();
+    let query = input.query.as_deref().map(str::to_lowercase);
+    let include_unavailable = input.include_unavailable.unwrap_or(false);
+    let configured_providers: std::collections::HashSet<&str> = file
+        .providers
+        .iter()
+        .filter(|p| p.enabled)
+        .map(|p| p.id.as_str())
+        .collect();
+    // Credential gate second: entries declaring `credential = "off"` hide
+    // their rows from the menu entirely (no error noise, no refresh noise).
+    // An ungated entry keeps the plain `enabled` behavior.
+    let mut gated: std::collections::BTreeMap<&str, CredentialKind> =
+        std::collections::BTreeMap::new();
+    for provider in &file.providers {
+        if let Some(kind) = validate_credential_gate(provider)
+            .with_context(|| format!("credential gate for provider {}", provider.id))?
+        {
+            gated.insert(provider.id.as_str(), kind);
+        }
+    }
+    let rows = {
+        rows.into_iter()
+            .filter(|row| !matches!(gated.get(row.provider_id.as_str()), Some(CredentialKind::Off)))
+            .collect::<Vec<_>>()
+    };
+    let mut models: Vec<ModelRecord> = rows
+        .into_iter()
+        .filter(|row| configured_providers.contains(row.provider_id.as_str()))
+        .filter(|row| include_unavailable || row.available)
+        .filter(|row| match &input.after {
+            Some(after) => {
+                (row.provider_id.as_str(), row.model.model_id.as_str())
+                    > (after.provider_id.as_str(), after.model_id.as_str())
+            }
+            None => true,
+        })
+        .filter(|row| match &query {
+            Some(query) => {
+                row.model.model_id.to_lowercase().contains(query)
+                    || row
+                        .model
+                        .name
+                        .as_deref()
+                        .is_some_and(|name| name.to_lowercase().contains(query))
+            }
+            None => true,
+        })
+        .take(limit + 1)
+        .map(|row| {
+            let key = (row.provider_id.clone(), row.model.model_id.clone());
+            let profile = recorded.get(&key).map(String::as_str);
+            model_record(row, &file, profile)
+        })
+        .collect();
+    let more = models.len() > limit;
+    models.truncate(limit);
+    Ok(ListModelsOutput {
+        models,
+        more,
+        revision,
+    })
+}
+
+pub(crate) async fn set_model_profile(
+    env: &Environment,
+    store: Arc<CozoGraphShuttle>,
+    input: SetModelProfileInput,
+) -> Result<SetModelProfileOutput> {
+    validate_set_model_profile(&input)?;
+    let file = load_providers(env)?;
+    let provider = file
+        .providers
+        .iter()
+        .find(|provider| provider.id == input.provider_id)
+        .context("provider is not in the provider list")?;
+    if let Some(profile) = &input.profile {
+        let offered = provider
+            .control_plane
+            .as_ref()
+            .map(|routing| routing.profiles())
+            .unwrap_or_default();
+        ensure!(
+            offered.iter().any(|candidate| *candidate == profile),
+            "profile is not one this provider offers the Control Plane"
+        );
+    }
+    let provider_id = input.provider_id.clone();
+    let model_id = input.model_id.clone();
+    let profile = input.profile.clone();
+    let reading = Arc::clone(&store);
+    let revision = blocking(move || {
+        store
+            .set_model_registry_profile(&provider_id, &model_id, profile.as_deref())
+            .map_err(cozo)
+    })
+    .await?;
+    let provider_id = input.provider_id.clone();
+    let model_id = input.model_id.clone();
+    let row = blocking(move || {
+        let (rows, _) = reading
+            .list_model_registry_models(Some(&provider_id))
+            .map_err(cozo)?;
+        rows.into_iter()
+            .find(|row| row.model.model_id == model_id)
+            .context("model is not in the catalog")
+    })
+    .await?;
+    let model = model_record(row, &file, input.profile.as_deref());
+    Ok(SetModelProfileOutput { model, revision })
+}
+
+fn required_capability<'a>(schema: &'a PluginSchema, method: &str) -> Result<&'a str> {
+    schema
+        .methods
+        .get(method)
+        .with_context(|| format!("admitted {PLUGIN}.{method} declaration is absent"))?
+        .required_capability
+        .as_deref()
+        .context("admitted model_registry method has no exact capability")
+}
+
+/// Catalog authority for the separately admitted native binding reflection.
+/// This helper reads no native configuration and grants no native authority.
+pub(crate) async fn catalog_binding_target(
+    engine: &MutationEngine,
+    provider_id: &str,
+    model_id: &str,
+    ) -> Result<crate::chat_router_catalog_binding::BindingTarget> {
+    binding_target_from(
+        &Environment::from_env(),
+        engine.model_registry_cozo().await?,
+        provider_id,
+        model_id,
+    )
+    .await
+}
+
+async fn binding_target_from(
+    env: &Environment,
+    store: Arc<CozoGraphShuttle>,
+    provider_id: &str,
+    model_id: &str,
+    ) -> Result<crate::chat_router_catalog_binding::BindingTarget> {
+    ensure!(valid_provider_id(provider_id), "invalid catalog provider");
+    ensure!(valid_model_id(model_id), "invalid catalog model");
+    let file = load_providers(env)?;
+    let provider = file
+        .providers
+        .iter()
+        .find(|provider| provider.id == provider_id)
+        .context("catalog provider is not configured")?;
+    ensure!(provider.enabled, "catalog provider is disabled");
+    let prefix = provider
+        .inference_url_prefix
+        .clone()
+        .context("catalog provider has no inference endpoint authority")?;
+    let id = provider_id.to_string();
+    let model = model_id.to_string();
+    let (revision, recorded) = blocking(move || {
+        let (rows, revision) = store.list_model_registry_models(Some(&id)).map_err(cozo)?;
+        let row = rows
+            .into_iter()
+            .find(|row| row.model.model_id == model)
+            .context("model is not in the catalog")?;
+        ensure!(row.available, "catalog model is unavailable");
+        let recorded = store
+            .list_model_registry_profiles()
+            .map_err(cozo)?
+            .into_iter()
+            .find(|(provider, candidate, _)| provider == &id && candidate == &model)
+            .map(|(_, _, profile)| profile);
+        let (_, after) = store.list_model_registry_providers().map_err(cozo)?;
+        ensure!(revision == after, "catalog changed during binding lookup");
+        Ok((revision, recorded))
+    })
+    .await?;
+    // A recorded alternative specifies a wire contract. Discovery must not
+    // substitute the default endpoint for an unmapped or retired alternative.
+    let ordinary = provider
+        .native_provider_id_for_model(recorded.as_deref())
+        .or_else(|| {
+            recorded
+                .is_none()
+                .then(|| op_plugins::state_plugins::model_registry::ProviderConfig::derived_native_provider_id(provider_id))
+                .flatten()
+        });
+    if let Some(recorded) = recorded.as_deref() {
+        let default = provider
+            .control_plane
+            .as_ref()
+            .map(|routing| routing.profile.as_str());
+        ensure!(
+            Some(recorded) == default || ordinary.is_some(),
+            "recorded model profile has no ordinary routing counterpart"
+        );
+    }
+    let excluded_references = file
+        .providers
+        .iter()
+        .flat_map(|provider| provider.control_plane.as_ref())
+        .flat_map(|routing| routing.profiles())
+        .map(str::to_string)
+        .collect();
+    ensure!(
+        load_providers(env)? == file,
+        "provider authority changed during binding lookup"
+    );
+    let ordinary_reference = ordinary.clone();
+    let family = ordinary_reference
+        .as_deref()
+        .and_then(crate::chat_router_catalog_binding::reference_family)
+        .map(str::to_string)
+        .with_context(|| {
+            format!(
+                "provider {provider_id} has no native serve family (declare native_provider_id or control_plane)"
+            )
+        })?;
+    Ok(crate::chat_router_catalog_binding::BindingTarget {
+        provider_id: provider_id.to_string(),
+        model_id: model_id.to_string(),
+        inference_url_prefix: prefix,
+        catalog_revision: revision,
+        ordinary_reference,
+        excluded_references,
+        family,
+    })
+}
+
+fn args<T: serde::de::DeserializeOwned>(args: &Value) -> Result<T> {
+    serde_json::from_value(args.clone()).context("invalid model_registry arguments")
+}
+
+/// Apply gate-class operations to the provider TOML itself (the one
+/// governed provider file; no invented line format). Each operation names
+/// an existing `[[providers]]` entry and maintains its plain TOML gate
+/// columns: `key` collapses the slot to the entry's `key_env`, `oauth`
+/// requires `credential_slot` (a native auth-profile reference), `off`
+/// retains the entry's keyed reference for later re-enable, and `remove`
+/// drops the credential columns so the plain `enabled` flag governs again.
+/// The file stays value-free (no credential value passes through), the
+/// write is atomic (temp file + rename, mode preserved), and every applied
+/// operation is verified by re-parsing the complete file before admission.
+async fn maintain_credentials(
+    env: &Environment,
+    input: MaintainCredentialsInput,
+) -> Result<MaintainCredentialsOutput> {
+    use std::os::unix::fs::PermissionsExt;
+    anyhow::ensure!(
+        !input.operations.is_empty() && input.operations.len() <= 32,
+        "maintain_credentials accepts 1..=32 operations"
+    );
+    let path = env.providers_path.clone();
+    use std::os::unix::fs::MetadataExt;
+    let current_mode = std::fs::metadata(&path)
+        .with_context(|| format!("stat provider TOML {path:?}"))?
+        .mode();
+    let raw = tokio::fs::read_to_string(&path)
+        .await
+        .with_context(|| format!("provider TOML {path:?} is unreadable"))?;
+    let mut file: ProvidersFile =
+        parse_providers_toml(&raw).map_err(|error| anyhow!("provider TOML parse failed: {error}"))?;
+    for operation in &input.operations {
+        let provider = file
+            .providers
+            .iter_mut()
+            .find(|provider| provider.id == operation.provider_id)
+            .with_context(|| format!("credential op {}: not in the provider list", operation.provider_id))?;
+        match operation.kind.as_str() {
+            "key" => {
+                if let Some(slot) = operation.slot.as_deref().map(str::trim).filter(|slot| !slot.is_empty()) {
+                    ensure!(
+                        provider.key_env.as_deref() == Some(slot),
+                        "credential op {}: keyed slot is the entry's key_env ({}), not a free argument",
+                        operation.provider_id,
+                        provider.key_env.as_deref().unwrap_or_default()
+                    );
+                }
+                ensure!(
+                    provider.key_env.as_ref().is_some_and(|slot| !slot.trim().is_empty()),
+                    "credential op {}: provider has no key_env slot to gate on",
+                    operation.provider_id
+                );
+                provider.credential = Some("key".to_string());
+                provider.credential_slot = None;
+            }
+            "oauth" => {
+                let slot = operation
+                    .slot
+                    .as_deref()
+                    .map(str::trim)
+                    .with_context(|| {
+                        format!("credential op {}: oauth needs credential_slot", operation.provider_id)
+                    })?;
+                ensure!(
+                    !slot.is_empty()
+                        && slot.len() <= 128
+                        && !slot.chars().any(|c| c.is_whitespace() || c.is_control())
+                        && !slot.contains('#'),
+                    "credential op {}: oauth slot must be a compact non-empty reference",
+                    operation.provider_id
+                );
+                provider.credential = Some("oauth".to_string());
+                provider.credential_slot = Some(slot.to_string());
+            }
+            "off" => {
+                ensure!(
+                    operation.slot.is_none(),
+                    "credential op {}: off retains the provider's reference and carries no slot",
+                    operation.provider_id
+                );
+                provider.credential = Some("off".to_string());
+                provider.credential_slot = None;
+            }
+            "remove" => {
+                ensure!(
+                    operation.slot.is_none(),
+                    "credential op {}: remove carries no slot",
+                    operation.provider_id
+                );
+                provider.credential = None;
+                provider.credential_slot = None;
+            }
+            other => {
+                anyhow::bail!("credential op {}: unknown kind {other:?}", operation.provider_id)
+            }
+        }
+    }
+    crate::model_providers_validation::validate_providers_config(&file.providers)
+        .context("credential op produced an invalid provider list")?;
+    let recomposed =
+        toml::to_string_pretty(&file).context("provider TOML serialization failed")?;
+    // Atomic replace inside the same directory; concurrent readers re-parse
+    // the same canonical path, so a failed rename never half-applies.
+    let parent = path
+        .parent()
+        .with_context(|| format!("provider TOML {path:?} has no parent"))?
+        .to_path_buf();
+    let temp = parent.join(format!(
+        ".model-providers.tmp-{}",
+        uuid::Uuid::new_v4().simple()
+    ));
+    tokio::fs::write(&temp, recomposed.as_bytes())
+        .await
+        .with_context(|| format!("provider TOML temp write {temp:?} failed"))?;
+    std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(current_mode & 0o777))
+        .with_context(|| format!("provider TOML temp chmod {temp:?} failed"))?;
+    tokio::fs::rename(&temp, &path)
+        .await
+        .with_context(|| format!("provider TOML atomic replace {path:?} failed"))?;
+    // Authoritative readback: the complete file must re-parse, re-validate,
+    // and every operation's resulting gate state must match exactly.
+    let verify_raw = tokio::fs::read_to_string(&path)
+        .await
+        .with_context(|| format!("provider TOML readback {path:?} failed"))?;
+    let verify: ProvidersFile = parse_providers_toml(&verify_raw)
+        .map_err(|error| anyhow!("provider TOML readback parse failed: {error}"))?;
+    crate::model_providers_validation::validate_providers_config(&verify.providers)
+        .context("provider TOML readback failed validation")?;
+    for operation in &input.operations {
+        let declared = verify
+            .providers
+            .iter()
+            .find(|provider| provider.id == operation.provider_id)
+            .with_context(|| format!("credential op {}: readback lost the provider", operation.provider_id))?;
+        match operation.kind.as_str() {
+            "key" => ensure!(
+                declared.credential.as_deref() == Some("key") && declared.credential_slot.is_none(),
+                "credential op {} readback diverged (expected credential=key)",
+                operation.provider_id
+            ),
+            "oauth" => ensure!(
+                declared.credential.as_deref() == Some("oauth")
+                    && declared.credential_slot.as_deref() == operation.slot.as_deref(),
+                "credential op {} readback diverged (expected credential=oauth with its slot)",
+                operation.provider_id
+            ),
+            "off" => ensure!(
+                declared.credential.as_deref() == Some("off") && declared.credential_slot.is_none(),
+                "credential op {} readback diverged (expected credential=off)",
+                operation.provider_id
+            ),
+            "remove" => ensure!(
+                declared.credential.is_none() && declared.credential_slot.is_none(),
+                "credential op {} readback diverged (expected credential columns gone)",
+                operation.provider_id
+            ),
+            other => bail!("credential op {}: unknown kind {other:?}", operation.provider_id),
+        }
+    }
+    Ok(MaintainCredentialsOutput {
+        applied: input.operations,
+    })
+}
+
+pub(crate) async fn dispatch(
+    engine: &MutationEngine,
+    method: &str,
+    arguments: &Value,
+    actor: &str,
+    session: Option<&str>,
+    admitted: &PluginSchema,
+) -> Result<Value> {
+    ensure!(
+        session.is_some_and(|session| !session.is_empty()),
+        "a verified session is required"
+    );
+    let required = required_capability(admitted, method)?;
+    ensure!(
+        load_capability_grants(actor).contains(required),
+        "current exact {required} grant is required"
+    );
+    let env = Environment::from_env();
+    let store = engine.model_registry_cozo().await?;
+    let output = match method {
+        "list_providers" => {
+            let _: ListProvidersInput = args(arguments)?;
+            serde_json::to_value(list_providers(&env, store).await?)?
+        }
+        "list_models" => serde_json::to_value(list_models(&env, store, args(arguments)?).await?)?,
+        "native_list_providers" => {
+            let _: op_plugins::state_plugins::model_registry::NativeListProvidersInput =
+                args(arguments)?;
+            let runtime = crate::chat_router_runtime::ChatRouterRuntimeClient::from_env();
+            let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
+                &crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+                "chat_router",
+            )?;
+            let secrets = crate::chat_router_config_engine::pinned_config_secrets(&pinned)?;
+            let providers = runtime.native_providers_inventory(&secrets).await?;
+            serde_json::to_value(
+                op_plugins::state_plugins::model_registry::NativeListProvidersOutput { providers },
+            )?
+        }
+        "maintain_credentials" => {
+            serde_json::to_value(maintain_credentials(&env, args(arguments)?).await?)?
+        }
+        "set_model_profile" => {
+            serde_json::to_value(set_model_profile(&env, store, args(arguments)?).await?)?
+        }
+        "refresh" => {
+            serde_json::to_value(refresh(&env, &HttpLister, store, args(arguments)?).await?)?
+        }
+        other => bail!("{PLUGIN} has no method {other}"),
+    };
+    let declaration = admitted
+        .methods
+        .get(method)
+        .with_context(|| format!("admitted {PLUGIN}.{method} declaration is absent"))?;
+    method_contract_admission::validate_admitted_output(declaration, &output)
+        .context("model_registry output does not conform to the admitted sealed contract")?;
+    Ok(output)
+}

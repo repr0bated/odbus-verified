@@ -1,0 +1,50 @@
+{
+  "status": "ok",
+  "query": "Given a worker assignment to execute exactly one detached Cargo release example build with process exclusion first, followed by a newer user request 'Handler: CLARIFY. Ask ONE short clarifying question and stop; do not use tools or make changes', what single concise clarification best resolves whether to execute the explicit build or remain paused? No execution or filesystem access requested.",
+  "responses": [
+    {
+      "model": "astra-pro",
+      "content": "Should I execute the assigned release example build or keep it paused?"
+    },
+    {
+      "model": "qwen-3-6-35b-a3b",
+      "content": "Should I proceed with the detached Cargo release build now, or remain paused?"
+    }
+  ],
+  "analysis": {
+    "consensus": [
+      "Ask one short question offering the choice between executing the assigned release build and remaining paused.",
+      "Do not execute commands or access the filesystem."
+    ],
+    "contradictions": [],
+    "partial_coverage": [],
+    "unique_insights": [
+      {
+        "model": "astra-pro",
+        "insight": "Explicitly identifies the assigned build as an example build."
+      },
+      {
+        "model": "qwen-3-6-35b-a3b",
+        "insight": "Explicitly identifies the build as detached and using Cargo."
+      }
+    ],
+    "blind_spots": []
+  },
+  "failed_models": [
+    {
+      "model": "opus-5-5",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "kimi-k3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    },
+    {
+      "model": "glm-5-3",
+      "error_type": "NotFoundError",
+      "failure_reason": "unexpected_error"
+    }
+  ]
+}

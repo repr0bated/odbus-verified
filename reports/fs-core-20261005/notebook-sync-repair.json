@@ -1,0 +1,154 @@
+{
+  "format": "opdbus.notebook-sync-repair.v2",
+  "task_id": "fs-core-20261005",
+  "board": "OD-51",
+  "agent": "Codex",
+  "observed_at": "2026-10-06T05:47:28Z",
+  "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+  "status": "deployed-fresh-uploads-confirmed-processing-pending",
+  "supersedes": "Prior report described pre-Oct5 deployment state; retained NotebookLM plugin and received sync service are active.",
+  "deployment": {
+    "release_id": "20261006T054013Z-ed02a78-notebook-progress",
+    "activated_at": "2026-10-06T05:40:45Z",
+    "transport": "complete golden filesystem snapshot via btrfs send/receive",
+    "manifest_sha256": "1676cdbb1d289ef83fed15058899e7b5a3ea27c69f827aa51d7c5a82d0d16025",
+    "baseline": "20261006T032316Z-ed02a78-openai-stateless",
+    "provenance": {
+      "format": "opdbus.source-only-release.v1",
+      "release_id": "20261006T054013Z-ed02a78-notebook-progress",
+      "baseline_release": "releases/20261006T032316Z-ed02a78-openai-stateless",
+      "baseline_manifest_sha256": "2bacfccdbbd1b035096b9c04a24b45ab4e542f62387128e64d366395bd9eef96",
+      "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+      "source_worktree": "modified",
+      "changed_runtime_files": [
+        {
+          "path": "share/op-dbus/notebook-sync/scripts/uv-tools/notebook_sync.py",
+          "sha256": "c2af7436342e4dcbe3da1c10bd576a976646767db970c1a523f4e2feeab654e1"
+        }
+      ],
+      "patch_sha256": "a22187fd2215798532879d3cb96f9884bf932006a7b7c56ea56836efef6ae6c4",
+      "assembly": "complete working received filesystem cloned into isolated golden, authorized sync source substituted, complete readonly snapshot sent/received",
+      "retained_components": "native binaries, sealed catalog, UI, services, identity and grants",
+      "tests": "not run; owner testing agent"
+    },
+    "restarted_services": [
+      "notebook-sources-sync"
+    ],
+    "recovery": "/opt/op-dbus/recovery/notebook-sync-20261006",
+    "working_chat": "same binaries, catalog and UI retained; no Chat restart"
+  },
+  "diagnosis": {
+    "service": "running, failing every cycle",
+    "cause": "Single legacy pending source absent from complete owned notebook_get listing aborts cycle and starves later groups/capture",
+    "owned_notebook_id": "f9b013a6-5167-42fc-a700-61b7bcf7fe0e",
+    "missing_source_id": "21b8c6d6-08ee-48bb-b67d-b04f67734e6f",
+    "frozen_bytes": 93350,
+    "frozen_sha256": "64d18fc6bd2510368701219db01627d3881f6c34f3970fabcca5f5a289354264",
+    "read_receipt": "14be328f-a592-42d1-a7d7-d77d6a43dda7",
+    "source_count": 141,
+    "evidence": "/var/tmp/notebook-sync-20261006/owned-notebook-get.json",
+    "original_upload_outcome": "unverified; legacy record contains no operation locator"
+  },
+  "implementation": [
+    {
+      "name": "receipt-backed-absence-quarantine",
+      "source_refs": [
+        "scripts/uv-tools/notebook_sync.py:813",
+        "scripts/uv-tools/notebook_sync.py:1025"
+      ],
+      "behavior": "Require exact notebook, complete unique count, completed mounted receipt and canonical operation ID. Preserve original source ID/hash/path, append closed absence proof; never reupload absent legacy source."
+    },
+    {
+      "name": "independent-groups-continue",
+      "source_refs": [
+        "scripts/uv-tools/notebook_sync.py:899",
+        "scripts/uv-tools/notebook_sync.py:1028",
+        "scripts/uv-tools/notebook_sync.py:1082"
+      ],
+      "behavior": "Count quarantine honestly as pending, advance cursor through other groups within existing budget. Do not suppress other permission/transport failures."
+    },
+    {
+      "name": "independent-capture-resumes",
+      "source_refs": [
+        "scripts/uv-tools/notebook_sync.py:294",
+        "scripts/uv-tools/notebook_sync.py:614",
+        "scripts/uv-tools/notebook_sync.py:626",
+        "scripts/uv-tools/notebook_sync.py:789"
+      ],
+      "behavior": "After full cycle with unresolved work confined to quarantined groups, capture independent groups; retain entire unresolved frozen plan and byte hashes. Default manual preparation still refuses incomplete work."
+    }
+  ],
+  "permission_scope": {
+    "session_id": "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e",
+    "mount": "/run/mount/3tchedFS-native",
+    "local_uid": 1001,
+    "grants": "unchanged",
+    "credential": "existing selected identity forwarded by installed threetched-fs helper"
+  },
+  "verification": {
+    "cursor": "model-nemotron-3.5-lightning-free-78ff58fb",
+    "verified_sources": 404,
+    "legacy_pending": [
+      {
+        "slot": "model-gpt-5.6-sol-419255f2__0092-part1__0001-part1__0001-part1__0001",
+        "source_id": "21b8c6d6-08ee-48bb-b67d-b04f67734e6f",
+        "blocked_reason": "legacy_source_absent_requires_reconciliation",
+        "absence_proof": {
+          "notebook_id": "f9b013a6-5167-42fc-a700-61b7bcf7fe0e",
+          "observed_at": "2026-10-06T05:40:55Z",
+          "operation_id": "49a3bb03-1538-499a-8dc5-f531022f4635",
+          "source_count": 141,
+          "source_ids_sha256": "2c2eb6cfbd8706f9d82c7f1bb3111c2088dcc88578e05822aa9708aecf79bad1"
+        }
+      }
+    ],
+    "cycle_complete": false,
+    "new_capture": {
+      "groups": 81,
+      "chunks": 1054,
+      "previous_groups": 57,
+      "previous_chunks": 405,
+      "previous_plan_timestamp": "2026-09-09T11:03:38Z"
+    },
+    "tests": "not run; owner testing agent",
+    "fixtures": "three new regression fixtures authored in existing test_notebook_sync.py",
+    "first_cycle": {
+      "created": 0,
+      "uploaded": 0,
+      "skipped": 404,
+      "replaced": 0,
+      "pending": 4,
+      "quarantined": 1,
+      "full_plan_iteration": true,
+      "quarantine_only": true
+    },
+    "fresh_remote_sources": {
+      "operation_id": "7b0e22f0-a8ca-4c3c-880b-db88fe1e61af",
+      "outcome": "completed",
+      "notebook_id": "ec3a06e0-594f-4c91-8e8b-79c461ec6179",
+      "url": "https://notebooklm.google.com/notebook/ec3a06e0-594f-4c91-8e8b-79c461ec6179",
+      "title": "Conversations & Tools — gpt-5.6-terra",
+      "source_count": 49,
+      "new_source_ids": [
+        "5affaf36-ecca-4184-8edc-a5d615eaae00",
+        "2bd792af-3722-4f43-886c-725653d4d664"
+      ],
+      "evidence": "/var/tmp/notebook-sync-20261006/fresh-upload-notebook-get.private.json",
+      "content_processing": "pending; presence is not indexed/readable-content proof"
+    }
+  },
+  "denied_diagnostic": {
+    "operation": "threetched_fs.get_receipt",
+    "session_id": "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e",
+    "missing_capability": "cap.storage.3tchedfs.receipt.read@v1",
+    "requested_receipt": "9c409e1c-d5db-48a7-b531-b02930ed1c14",
+    "response": "AccessDenied",
+    "action": "denial retained; no direct database/audit/alternate-identity fallback",
+    "source_content_probe": "outcome unknown; no retry"
+  },
+  "remaining": [
+    "Legacy missing source and its three predecessor records remain retained for explicit scoped reconciliation.",
+    "New uploads are present in authoritative NotebookLM listing; readable processing and full corpus convergence remain pending.",
+    "No unit or workflow tests were run by this agent."
+  ]
+}

@@ -53,7 +53,7 @@ impl WgServerConfig {
 
         let dns = std::env::var("WG_DNS")
             .or_else(|_| std::env::var("VPN_DNS"))
-            .unwrap_or_else(|_| "10.200.0.1".to_string());
+            .unwrap_or_default();
 
         Self {
             public_key,
@@ -80,21 +80,16 @@ pub fn generate_client_config(
     client_address: &str,
     server: &WgServerConfig,
 ) -> String {
+    let dns_line = if server.dns.trim().is_empty() {
+        String::new()
+    } else {
+        format!("DNS = {}\n", server.dns)
+    };
     format!(
-        r#"[Interface]
-PrivateKey = {}
-Address = {}
-DNS = {}
-
-[Peer]
-PublicKey = {}
-AllowedIPs = {}
-Endpoint = {}
-PersistentKeepalive = 25
-"#,
+        "[Interface]\nPrivateKey = {}\nAddress = {}\n{}\n[Peer]\nPublicKey = {}\nAllowedIPs = {}\nEndpoint = {}\nPersistentKeepalive = 25\n",
         client_private_key,
         client_address,
-        server.dns,
+        dns_line,
         server.public_key,
         server.allowed_ips,
         server.endpoint

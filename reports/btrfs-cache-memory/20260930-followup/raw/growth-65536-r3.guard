@@ -1,0 +1,2 @@
+pid=5191 case=growth size=65536 repeat=3
+exit=0 duration_s=4 sampled_peak_rss_kib=67728

@@ -1,0 +1,64 @@
+{
+  "request": 195,
+  "started": "2026-10-19T04:43:06.951129+00:00",
+  "finished": "2026-10-19T04:43:16.426182+00:00",
+  "model": "openai/gpt-6-astra-pro",
+  "fusion": {
+    "invoked": false,
+    "protocol": "fusion-tool-v1"
+  },
+  "tool_names": [
+    "read",
+    "bash",
+    "edit",
+    "eval",
+    "glob",
+    "grep",
+    "find",
+    "task",
+    "wait",
+    "web_search",
+    "write",
+    "yield"
+  ],
+  "response": {
+    "id": "chatcmpl-0a5fff6cbff756fd016ad59fdda3b487d0950e29e89f4ba0f5",
+    "created": 1792384989,
+    "model": "openai/gpt-6-astra-pro",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "message": {
+          "content": "",
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "function": {
+                "arguments": "{\"language\":\"py\",\"title\":\"Launching first full packet reviews\",\"code\":\"pending={}\\ndef start_packets(ids):\\n    for pid in ids:\\n        path=base/'packets'/f'{pid}.txt'\\n        data=path.read_bytes()\\n        prompt=data.decode('utf-8')\\n        entry={'packet_id':pid,'input':{'path':str(path),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()},'system':receipt['contract'],'input_complete':True,'status':'pending'}\\n        receipt['packets'].append(entry)\\n        pending[pid]=(completion(prompt,system=contract.decode('utf-8')),entry)\\n    (outdir/'slice-10.json').write_text(json.dumps(receipt,indent=2))\\nstart_packets(assigned[:3])\\nprint('Started',list(pending))\"}",
+                "name": "eval"
+              },
+              "id": "call_WPViPctuf0YJ4Hj0ya55jG7e",
+              "type": "function"
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "completion_tokens": 611,
+      "prompt_tokens": 91516,
+      "total_tokens": 92127,
+      "completion_tokens_details": {
+        "reasoning_tokens": 183
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 83969
+      },
+      "cost": 0.0
+    }
+  },
+  "first_chunk": "2026-10-19T04:43:16.424147+00:00",
+  "stream_chunks": 4
+}

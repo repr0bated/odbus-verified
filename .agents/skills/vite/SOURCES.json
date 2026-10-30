@@ -1,0 +1,52 @@
+{
+  "repository": "https://github.com/antfu/skills",
+  "commit": "feb0f3aba6566426f12230e7fc7a10d97c1293bb",
+  "source_path": "skills/vite",
+  "files": [
+    {
+      "path": "GENERATION.md",
+      "source_path": "skills/vite/GENERATION.md",
+      "sha256": "83634e80f21a3b7ba3a9d89a81b59dca6d76b99fe0e4e6bf5962e1ea0a74f10a"
+    },
+    {
+      "path": "LICENSE.md",
+      "source_path": "LICENSE.md",
+      "sha256": "2a596f697b619094b6f4067936e0f385027a393bce32211383db0478774c1cb2"
+    },
+    {
+      "path": "SKILL.md",
+      "source_path": "skills/vite/SKILL.md",
+      "sha256": "20bddfc0d23d4b759abb1603a65c6ee488be631fdc2a2e6144c7b31e82480669"
+    },
+    {
+      "path": "references/build-and-ssr.md",
+      "source_path": "skills/vite/references/build-and-ssr.md",
+      "sha256": "9beb8b4b7b42a0e7aa729375045f9dcc9a4cbab3158abe3e6ddc9451762f59d3"
+    },
+    {
+      "path": "references/core-config.md",
+      "source_path": "skills/vite/references/core-config.md",
+      "sha256": "818fbba3a9842052bf8ee06213bd74fded5330e5af8b72bf7457cf22666efe87"
+    },
+    {
+      "path": "references/core-features.md",
+      "source_path": "skills/vite/references/core-features.md",
+      "sha256": "cf849bb529f26d250147bdec2502fb3edbea331af9048b9d8fec4217d969cb65"
+    },
+    {
+      "path": "references/core-plugin-api.md",
+      "source_path": "skills/vite/references/core-plugin-api.md",
+      "sha256": "879d8fa47b76250f0eaed501754f98db4af9d13b56c9c26c42e8118658c3501f"
+    },
+    {
+      "path": "references/environment-api.md",
+      "source_path": "skills/vite/references/environment-api.md",
+      "sha256": "3685282c3d95c3ded6c2f550135b615d441e2c914a5b3189af8c0eac608e9d2c"
+    },
+    {
+      "path": "references/rolldown-migration.md",
+      "source_path": "skills/vite/references/rolldown-migration.md",
+      "sha256": "3e4618be20c99ad5919f7d319429052174dbb391217cfb4d7829bde2472ccfb1"
+    }
+  ]
+}

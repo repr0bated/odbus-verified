@@ -852,7 +852,7 @@
             "field_type": "string",
             "required": false,
             "description": "gRPC upstream target.",
-            "default": "http://10.200.0.2:50051",
+            "default": "http://127.0.0.1:50051",
             "example": null,
             "constraints": [],
             "read_only": false,
@@ -899,7 +899,7 @@
       "description": "Transport layer metadata.",
       "default": {
         "dbus_object": "/org/opdbus/v1/plugins/zeroclaw",
-        "grpc_target": "http://10.200.0.2:50051",
+        "grpc_target": "http://127.0.0.1:50051",
         "incus_container": "host",
         "browser_surface": "gRPC-Web through op-web",
         "rest_aliases": [
@@ -2871,10 +2871,10 @@
                   "read_only": false,
                   "read_only_when": null
                 },
-                "cognitive_mcp_endpoint": {
+                "cognitive_endpoint": {
                   "field_type": "string",
                   "required": false,
-                  "description": "Cognitive MCP endpoint used by the user container memory flow.",
+                  "description": "Cognitive endpoint used by the user container memory flow.",
                   "default": "https://10.0.0.3:8090/mcp",
                   "example": null,
                   "constraints": [],
@@ -3051,7 +3051,7 @@
               ],
               "container_id_template": "ws-{username}",
               "image": "images:debian/12",
-              "cognitive_mcp_endpoint": "https://10.0.0.3:8090/mcp",
+              "cognitive_endpoint": "https://10.0.0.3:8090/mcp",
               "feature_flags": [
                 "ghostbridge",
                 "semantic_search"
@@ -3836,7 +3836,7 @@
           ],
           "container_id_template": "ws-{username}",
           "image": "images:debian/12",
-          "cognitive_mcp_endpoint": "https://10.0.0.3:8090/mcp",
+          "cognitive_endpoint": "https://10.0.0.3:8090/mcp",
           "feature_flags": [
             "ghostbridge",
             "semantic_search"
@@ -4339,7 +4339,7 @@
     },
     "transport": {
       "dbus_object": "/org/opdbus/v1/plugins/zeroclaw",
-      "grpc_target": "http://10.200.0.2:50051",
+      "grpc_target": "http://127.0.0.1:50051",
       "incus_container": "host",
       "browser_surface": "gRPC-Web through op-web",
       "rest_aliases": [
@@ -5118,7 +5118,7 @@
         ],
         "container_id_template": "ws-{username}",
         "image": "images:debian/12",
-        "cognitive_mcp_endpoint": "https://10.0.0.3:8090/mcp",
+        "cognitive_endpoint": "https://10.0.0.3:8090/mcp",
         "feature_flags": [
           "ghostbridge",
           "semantic_search"
@@ -6511,7 +6511,7 @@
                 "$ref": "#/$defs/UserContainerOptions",
                 "default": {
                   "arguments": [],
-                  "cognitive_mcp_endpoint": "",
+                  "cognitive_endpoint": "",
                   "container_id_template": "",
                   "feature_flags": [],
                   "image": "",
@@ -6675,9 +6675,9 @@
                 "type": "array",
                 "x-oscal-subid": "sch.process-procedure.zeroclaw-options.user-container.arguments@v1"
               },
-              "cognitive_mcp_endpoint": {
+              "cognitive_endpoint": {
                 "default": "",
-                "description": "Cognitive MCP endpoint used by the user container memory flow.",
+                "description": "Cognitive endpoint used by the user container memory flow.",
                 "type": "string",
                 "x-oscal-subid": "exp.service.zeroclaw-options.user-container.mcp-endpoint@v1"
               },
@@ -7355,7 +7355,7 @@
                 "$ref": "#/$defs/UserContainerOptions",
                 "default": {
                   "arguments": [],
-                  "cognitive_mcp_endpoint": "",
+                  "cognitive_endpoint": "",
                   "container_id_template": "",
                   "feature_flags": [],
                   "image": "",
@@ -7919,9 +7919,9 @@
                 "type": "array",
                 "x-oscal-subid": "sch.process-procedure.zeroclaw-options.user-container.arguments@v1"
               },
-              "cognitive_mcp_endpoint": {
+              "cognitive_endpoint": {
                 "default": "",
-                "description": "Cognitive MCP endpoint used by the user container memory flow.",
+                "description": "Cognitive endpoint used by the user container memory flow.",
                 "type": "string",
                 "x-oscal-subid": "exp.service.zeroclaw-options.user-container.mcp-endpoint@v1"
               },
@@ -7998,7 +7998,7 @@
                   },
                   "user_container": {
                     "arguments": [],
-                    "cognitive_mcp_endpoint": "",
+                    "cognitive_endpoint": "",
                     "container_id_template": "",
                     "feature_flags": [],
                     "image": "",

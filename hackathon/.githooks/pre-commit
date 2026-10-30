@@ -1,0 +1,2 @@
+#!/bin/sh
+tools/check-public.sh && exec tools/check-no-stubs.sh
