@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Owner authority correction (2026-10-30):** newer source is authoritative; hackathon code takes precedence over older architectural prose. PR #46 contains hackathon HEAD `2a6e40e` and its newer bridge rewrite. Determine relevance from current module graphs and callers. Do not resurrect removed or unlinked implementations to satisfy historical review comments; repair independently demonstrated defects in retained code. This does not authorize deployment or changes to live identities, grants or storage.
+
 This file provides guidance to the AI agent when working with code in this repository.
 
 ## Mandatory skill preload — every agent and model
@@ -250,7 +252,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 **Frontend — single Vite app, external repo**:
 
-The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a SvelteKit + Svelte + Vite chat app using `@json-render/svelte` that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. The pinned release archive of that checkout is `vendor/3tched-json-render-ui`.
+The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a SvelteKit + Svelte + Vite chat app using `@json-render/svelte` that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. Golden preparation builds from that checkout; the former pinned archive is retired.
 
 **Owner UI stack rule (2026-10-11):** implement application interfaces only
 with Svelte/SvelteKit, Vite and json-render's Svelte renderer. This applies to
@@ -275,11 +277,6 @@ cd /srv/git/3tched.com && npm run dev
 `LANDING` is the mount name under the static root (`live`, `prod`, `3tched`). `URL_PREFIX=/` is the dashboard root, and there the script replaces only `assets/` and `index.html`. A named mount is a separate directory under that root. op-web does **not** embed the UI via RustEmbed — it serves the deployed static files. There is no pairing. The current op-web identity endpoint refuses to infer a browser identity from a TCP source address; remote pickup uses the decoy issuer or an authenticated injecting host page.
 
 On the configured HTTP pages at `10.0.0.2:8080` and `10.0.0.4:8080`, the UI uses op-web's existing same-origin Axum gRPC-Web connector, which forwards the unchanged identity metadata to the TLS door at `10.0.0.2:8090`. Other origins keep the direct HTTPS door. The generic `PluginService/CallMethod`, sealed capabilities, and interceptor identity checks remain the admission path; the connector does not mint or select an identity.
-
-Fresh source exports also include the pinned UI source archive and verifier at
-`vendor/3tched-json-render-ui/build-assets.sh`. That helper builds and checks the
-captured UI without the sibling checkout or live rsync; golden preparation
-stages only its validated asset archive and provenance manifest.
 
 **Deprecated** (do not use for new work):
 - `crates/op-web/ui/` and `crates/zeroclaw-gui/` — deleted 2026-09-18 together with the device-pairing path they existed to call (`/pair`, `/admin/paircode/new`, removed 2026-09-04). Do not resurrect either.
@@ -399,3 +396,11 @@ For non-Cargo delegation, choose the appropriate agent role:
 - `general-purpose` only when the task needs multi-step reasoning or execution that Explore or Plan cannot cover.
 - Use a more capable model for complex cross-crate reasoning, security review, or ambiguous architectural decisions, and for any standard edit, build fix, or test whose quality would drop on the low-cost agent.
 - Do not spawn a subagent for a single-file edit or a direct grep you can do yourself.
+
+## Cursor Cloud specific instructions
+
+- Provision from the repository root with `sh scripts/claude-cloud-setup.sh`. It installs the verified-workspace packages and Rust 1.97.1, fetches the lockfile, and runs `scripts/check-workspace.sh preflight`. It is safe to run again. It does not start services, seal a catalog, or copy host credentials.
+- Native Cozo/RocksDB builds need `CXXFLAGS` to include `-include cstdint`, and they need `CC=gcc` and `CXX=g++`. On the default image `/usr/bin/c++` is clang++, which does not find `cstdint` for that forced include. The setup script persists these variables for login shells and the `ubuntu` bashrc, and it links `/usr/lib/x86_64-linux-gnu/libstdc++.so` so rustc's bundled lld can resolve `-lstdc++`. `scripts/check-workspace.sh` also sets `CXXFLAGS` itself. Keep `CARGO_BUILD_JOBS=2` on a 16 GB agent VM.
+- Smoke checks and tests are manual/on-request under the owner's policy. Do not run them automatically or treat the general `/verify` guidance above as authorization. When requested, `sh scripts/check-workspace.sh smoke` runs `cargo check --locked --workspace`, then `op-core` and `op-plugins` library tests. `verify` is the full fmt, Clippy, and workspace test gate and also requires an explicit request.
+- The Cloud Agent kernel has no `btrfs` filesystem and no `/lib/modules`. `btrfs-progs` is installed, but `btrfs subvolume create` cannot succeed. These `op-plugins` library tests need a btrfs temp directory and fail here: `failed_unknown_rollback_preserves_state_and_retained_snapshots_after_reopen`, `rejects_missing_invalid_and_unsafe_requests`, and `seven_methods_use_persistent_snapshot_state`. Do not skip or weaken them.
+- Do not start the control plane here. `op-web`, the gRPC bridge, OVS, catalog seal, and runit need the Artix host, the sealed blob catalog, and identity state. `op-plugin-lint` can read plugin source without those services.
