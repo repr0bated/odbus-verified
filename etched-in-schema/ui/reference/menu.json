@@ -1,0 +1,278 @@
+[
+  {
+    "id": "chat",
+    "label": "Chat",
+    "section": "Chat",
+    "route": "/antigravity/chat"
+  },
+  {
+    "id": "accountability",
+    "label": "Accountability",
+    "section": "Chat",
+    "route": "/accountability"
+  },
+  {
+    "id": "catalog",
+    "label": "Catalog",
+    "section": "UI Model",
+    "route": "/catalog"
+  },
+  {
+    "id": "gallery",
+    "label": "Gallery",
+    "section": "UI Model",
+    "route": "/gallery"
+  },
+  {
+    "id": "generate",
+    "label": "Generate",
+    "section": "UI Model",
+    "route": "/generate"
+  },
+  {
+    "id": "antigravity-llm",
+    "label": "Antigravity LLM",
+    "section": "UI Model",
+    "route": "/antigravity-llm"
+  },
+  {
+    "id": "overview",
+    "label": "Overview",
+    "section": "Control",
+    "route": "/overview"
+  },
+  {
+    "id": "orchestration",
+    "label": "Orchestration",
+    "section": "Control",
+    "route": "/orchestration"
+  },
+  {
+    "id": "services",
+    "label": "Services",
+    "section": "Control",
+    "route": "/services"
+  },
+  {
+    "id": "llm",
+    "label": "LLM",
+    "section": "Control",
+    "route": "/llm"
+  },
+  {
+    "id": "agents",
+    "label": "Agents",
+    "section": "Agent",
+    "route": "/agents"
+  },
+  {
+    "id": "assistant",
+    "label": "Assistant",
+    "section": "Agent",
+    "route": "/assistant"
+  },
+  {
+    "id": "models",
+    "label": "Routable Models",
+    "section": "Agent",
+    "route": "/models"
+  },
+  {
+    "id": "tools",
+    "label": "Tools",
+    "section": "Agent",
+    "route": "/tools"
+  },
+  {
+    "id": "workflows",
+    "label": "Workflows",
+    "section": "Agent",
+    "route": "/workflows"
+  },
+  {
+    "id": "security",
+    "label": "Security",
+    "section": "Agent",
+    "route": "/security"
+  },
+  {
+    "id": "skills",
+    "label": "Skills",
+    "section": "Agent",
+    "route": "/skills"
+  },
+  {
+    "id": "knowledge",
+    "label": "Knowledge",
+    "section": "Agent",
+    "route": "/knowledge"
+  },
+  {
+    "id": "embedding",
+    "label": "Embedding Pipeline",
+    "section": "Agent",
+    "route": "/embedding"
+  },
+  {
+    "id": "containers",
+    "label": "Containers",
+    "section": "Infrastructure",
+    "route": "/containers"
+  },
+  {
+    "id": "privacy-network",
+    "label": "Privacy Network",
+    "section": "Infrastructure",
+    "route": "/privacy-network"
+  },
+  {
+    "id": "netmaker",
+    "label": "Network Control",
+    "section": "Infrastructure",
+    "route": "/netmaker"
+  },
+  {
+    "id": "ovs",
+    "label": "Open vSwitch",
+    "section": "Infrastructure",
+    "route": "/ovs"
+  },
+  {
+    "id": "openflow",
+    "label": "OpenFlow",
+    "section": "Infrastructure",
+    "route": "/openflow"
+  },
+  {
+    "id": "btrfs",
+    "label": "BTRFS Storage",
+    "section": "Infrastructure",
+    "route": "/btrfs"
+  },
+  {
+    "id": "data-stores",
+    "label": "Data Stores",
+    "section": "Infrastructure",
+    "route": "/data-stores"
+  },
+  {
+    "id": "tched-router-config",
+    "label": "3tched Config",
+    "section": "ZeroClaw",
+    "route": "/tched-router/config"
+  },
+  {
+    "id": "gateway",
+    "label": "Gateway",
+    "section": "ZeroClaw",
+    "route": "/gateway"
+  },
+  {
+    "id": "channels",
+    "label": "Channels",
+    "section": "ZeroClaw",
+    "route": "/channels"
+  },
+  {
+    "id": "cron",
+    "label": "Cron",
+    "section": "ZeroClaw",
+    "route": "/cron"
+  },
+  {
+    "id": "integrations",
+    "label": "Integrations",
+    "section": "ZeroClaw",
+    "route": "/integrations"
+  },
+  {
+    "id": "hardware",
+    "label": "Hardware",
+    "section": "ZeroClaw",
+    "route": "/hardware"
+  },
+  {
+    "id": "config",
+    "label": "Config",
+    "section": "Settings",
+    "route": "/config"
+  },
+  {
+    "id": "inspector",
+    "label": "Inspector",
+    "section": "Settings",
+    "route": "/inspector"
+  },
+  {
+    "id": "state",
+    "label": "State",
+    "section": "Settings",
+    "route": "/state"
+  },
+  {
+    "id": "logs",
+    "label": "Logs",
+    "section": "Settings",
+    "route": "/logs"
+  },
+  {
+    "id": "estop",
+    "label": "E-Stop",
+    "section": "Settings",
+    "route": "/estop"
+  },
+  {
+    "id": "grpc",
+    "label": "gRPC Diagnostics",
+    "section": "Settings",
+    "route": "/grpc"
+  },
+  {
+    "id": "explorer",
+    "label": "gRPC Explorer",
+    "section": "Settings",
+    "route": "/explorer"
+  },
+  {
+    "id": "invoke",
+    "label": "Invoke",
+    "section": "Settings",
+    "route": "/invoke"
+  },
+  {
+    "id": "blobs",
+    "label": "Sealed Blobs",
+    "section": "Blobs",
+    "route": "/blobs"
+  },
+  {
+    "id": "plugins",
+    "label": "Stream",
+    "section": "Plugins",
+    "route": "/plugins"
+  },
+  {
+    "id": "dreams",
+    "label": "Dreams",
+    "section": "Coming Soon",
+    "route": "/dreams"
+  },
+  {
+    "id": "reflections",
+    "label": "Reflections",
+    "section": "Coming Soon",
+    "route": "/reflections"
+  },
+  {
+    "id": "observability",
+    "label": "Observability",
+    "section": "Coming Soon",
+    "route": "/observability"
+  },
+  {
+    "id": "live-trace",
+    "label": "Live Trace",
+    "section": "Coming Soon",
+    "route": "/live-trace"
+  }
+]

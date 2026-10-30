@@ -1,0 +1,2937 @@
+[
+  {
+    "id": "chat",
+    "label": "Chat",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Chat"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "placeholder": "session id"
+          },
+          {
+            "tag": "textarea",
+            "placeholder": "Message (↩ to send, Shift+↩ for line breaks)"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Chat"
+          },
+          {
+            "tag": "p",
+            "text": "Direct gateway chat session for quick interventions."
+          },
+          {
+            "tag": "div",
+            "text": "AI"
+          },
+          {
+            "tag": "span",
+            "text": "Thinking…"
+          },
+          {
+            "tag": "Callout",
+            "text": "Event stream is idle — chat still works through the REST gateway."
+          },
+          {
+            "tag": "button",
+            "text": "New session"
+          },
+          {
+            "tag": "kbd",
+            "text": "↵"
+          },
+          {
+            "tag": "span",
+            "text": "Inspector"
+          },
+          {
+            "tag": "div",
+            "text": "Click a tool result to inspect."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "accountability",
+    "label": "Accountability",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Chatbot Accountability"
+        ],
+        "fields": [
+          {
+            "tag": "textarea",
+            "placeholder": "Ask about the chatbot's reasoning…"
+          },
+          {
+            "tag": "input",
+            "type": "checkbox"
+          },
+          {
+            "tag": "Input",
+            "placeholder": "Semantic search: 'why did the chatbot reconfigure the firewall at 3am?'"
+          },
+          {
+            "tag": "select"
+          },
+          {
+            "tag": "select"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "Accountability Chat"
+          },
+          {
+            "tag": "span",
+            "text": "episode loaded"
+          },
+          {
+            "tag": "div",
+            "text": "Referenced:"
+          },
+          {
+            "tag": "span",
+            "text": "% match"
+          },
+          {
+            "tag": "span",
+            "text": "ms"
+          },
+          {
+            "tag": "span",
+            "text": "Goal"
+          },
+          {
+            "tag": "span",
+            "text": "Decision"
+          },
+          {
+            "tag": "span",
+            "text": "Tools Consulted"
+          },
+          {
+            "tag": "span",
+            "text": "Trigger:"
+          },
+          {
+            "tag": "span",
+            "text": "Exit:"
+          },
+          {
+            "tag": "span",
+            "text": "Confidence: %"
+          },
+          {
+            "tag": "div",
+            "text": "ID:"
+          },
+          {
+            "tag": "span",
+            "text": "Reasoning Episode Search"
+          },
+          {
+            "tag": "span",
+            "text": "ctl_plane_reasoning_episodes"
+          },
+          {
+            "tag": "span",
+            "text": "vectors indexed"
+          },
+          {
+            "tag": "option",
+            "text": "All outcomes"
+          },
+          {
+            "tag": "option",
+            "text": "Success"
+          },
+          {
+            "tag": "option",
+            "text": "Failure"
+          },
+          {
+            "tag": "option",
+            "text": "Partial"
+          },
+          {
+            "tag": "option",
+            "text": "Deferred"
+          },
+          {
+            "tag": "option",
+            "text": "All plugins"
+          },
+          {
+            "tag": "option",
+            "text": "firewall"
+          },
+          {
+            "tag": "option",
+            "text": "dns"
+          },
+          {
+            "tag": "option",
+            "text": "ovs"
+          },
+          {
+            "tag": "option",
+            "text": "wireguard"
+          },
+          {
+            "tag": "option",
+            "text": "mail"
+          },
+          {
+            "tag": "Button",
+            "text": "Clear selection ( )"
+          },
+          {
+            "tag": "p",
+            "text": "No episodes matched"
+          },
+          {
+            "tag": "p",
+            "text": "Try a different query or clear filters"
+          },
+          {
+            "tag": "p",
+            "text": "Search reasoning episodes by natural language query"
+          },
+          {
+            "tag": "p",
+            "text": "e.g. \"why did the chatbot change DNS settings?\""
+          },
+          {
+            "tag": "h1",
+            "text": "Chatbot Accountability"
+          },
+          {
+            "tag": "p",
+            "text": "Semantic search over reasoning episodes · Chat with context from Qdrant vector results"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "catalog",
+    "label": "Catalog",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "UI Model Catalog"
+        ],
+        "elements": [
+          {
+            "tag": "div",
+            "text": "Loading catalog…"
+          },
+          {
+            "tag": "Callout",
+            "text": "No promoted specs yet. Promote specs from the Gallery."
+          },
+          {
+            "tag": "button",
+            "text": "Remove"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "gallery",
+    "label": "Gallery",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "UI Model Gallery"
+        ],
+        "elements": [
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "Callout",
+            "text": "Gallery is the spec workbench: use to mount a surface. Chat mounts from the sealed path ( ) — not and not . 3tched Router surfaces are model routing only; other Antigravity surfaces stay SpecRenderer cards."
+          },
+          {
+            "tag": "span",
+            "text": "View rendering"
+          },
+          {
+            "tag": "span",
+            "text": "antigravity"
+          },
+          {
+            "tag": "span",
+            "text": "ui_surfaces"
+          },
+          {
+            "tag": "span",
+            "text": "/antigravity/chat"
+          },
+          {
+            "tag": "span",
+            "text": "ChatWidget"
+          },
+          {
+            "tag": "span",
+            "text": "tched_router"
+          },
+          {
+            "tag": "span",
+            "text": "antigravity_chat"
+          },
+          {
+            "tag": "Callout",
+            "text": "Probing spec sources…"
+          },
+          {
+            "tag": "button",
+            "text": "View rendering"
+          },
+          {
+            "tag": "button",
+            "text": "Promote"
+          },
+          {
+            "tag": "button",
+            "text": "Delete"
+          },
+          {
+            "tag": "div",
+            "text": "· live rendering"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "generate",
+    "label": "Generate",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Catalog + Zerolang Pattern"
+        ],
+        "elements": [
+          {
+            "tag": "Button",
+            "text": "Import"
+          },
+          {
+            "tag": "Button",
+            "text": "Export"
+          },
+          {
+            "tag": "div",
+            "text": "Three-Layer Pattern"
+          },
+          {
+            "tag": "div",
+            "text": "Layer 1: Graph"
+          },
+          {
+            "tag": "div",
+            "text": "Zerolang-like semantic graph. AI queries/patches, not text edits."
+          },
+          {
+            "tag": "Badge",
+            "text": "Type-safe"
+          },
+          {
+            "tag": "div",
+            "text": "Layer 2: Catalog"
+          },
+          {
+            "tag": "div",
+            "text": "Zod schemas define allowed components. AI output constrained."
+          },
+          {
+            "tag": "Badge",
+            "text": "Validated"
+          },
+          {
+            "tag": "div",
+            "text": "Layer 3: Render"
+          },
+          {
+            "tag": "div",
+            "text": "Safe renderer produces React, PDF, email, video."
+          },
+          {
+            "tag": "Badge",
+            "text": "XSS-free"
+          },
+          {
+            "tag": "span",
+            "text": "Spec validates against catalog"
+          },
+          {
+            "tag": "div",
+            "text": "Live Render (same spec, 7 platforms)"
+          },
+          {
+            "tag": "div",
+            "text": "Spec (Zod-validated JSON)"
+          },
+          {
+            "tag": "div",
+            "text": "Why This Pattern"
+          },
+          {
+            "tag": "li",
+            "text": "✅ AI can't inject arbitrary HTML"
+          },
+          {
+            "tag": "strong",
+            "text": "No XSS:"
+          },
+          {
+            "tag": "li",
+            "text": "✅ Only catalog components exist"
+          },
+          {
+            "tag": "strong",
+            "text": "No hallucinations:"
+          },
+          {
+            "tag": "li",
+            "text": "✅ Zod validates before render"
+          },
+          {
+            "tag": "strong",
+            "text": "Type-safe:"
+          },
+          {
+            "tag": "li",
+            "text": "✅ Works with Claude, GPT, Gemini, Llama"
+          },
+          {
+            "tag": "strong",
+            "text": "Model-agnostic:"
+          },
+          {
+            "tag": "li",
+            "text": "✅ One spec renders on React, PDF, email, video"
+          },
+          {
+            "tag": "strong",
+            "text": "Multi-platform:"
+          },
+          {
+            "tag": "li",
+            "text": "✅ Zerolang-style semantic structure"
+          },
+          {
+            "tag": "strong",
+            "text": "Graph-backed:"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "antigravity-llm",
+    "label": "Antigravity LLM",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Antigravity LLM Projection"
+        ],
+        "elements": [
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "p",
+            "text": "Loading UI surfaces…"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "overview",
+    "label": "Overview",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Overview",
+          "System Resources",
+          "Gateway Access",
+          "Components",
+          "Event Distribution",
+          "Connected Peers",
+          "Raw System Stats",
+          "Raw System Stats",
+          "Notes"
+        ],
+        "columns": [
+          "Client ID",
+          "Type",
+          "Protocol",
+          "Duration",
+          "Streams"
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "MB used"
+          },
+          {
+            "tag": "span",
+            "text": "CPU %"
+          },
+          {
+            "tag": "span",
+            "text": "API Endpoint"
+          },
+          {
+            "tag": "span",
+            "text": "Auth Mode"
+          },
+          {
+            "tag": "div",
+            "text": "WireGuard (trusted-proxy)"
+          },
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "span",
+            "text": "Authenticated via WireGuard tunnel."
+          },
+          {
+            "tag": "div",
+            "text": "No events received yet. Connect to the control plane to see live data."
+          },
+          {
+            "tag": "Badge",
+            "text": "peers"
+          },
+          {
+            "tag": "div",
+            "text": "No connected peers. Peer data will appear when the control plane reports active connections."
+          },
+          {
+            "tag": "TableHead",
+            "text": "Client ID"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Type"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Protocol"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Duration"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Streams"
+          },
+          {
+            "tag": "div",
+            "text": "No stats data received."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "orchestration",
+    "label": "Orchestration",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Orchestration",
+          "Execution Graph",
+          "Task Ledger"
+        ],
+        "columns": [
+          "Task ID",
+          "Agent",
+          "Status",
+          "Duration",
+          "Time"
+        ],
+        "elements": [
+          {
+            "tag": "Button",
+            "text": "Execute"
+          },
+          {
+            "tag": "div",
+            "text": "No agents detected. Waiting for live data…"
+          },
+          {
+            "tag": "Badge",
+            "text": "nodes"
+          },
+          {
+            "tag": "Button",
+            "text": "Reset"
+          },
+          {
+            "tag": "Badge",
+            "text": "results"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Task ID"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Agent"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Status"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Duration"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Time"
+          },
+          {
+            "tag": "TableCell",
+            "text": "No task results yet."
+          },
+          {
+            "tag": "span",
+            "text": "Success"
+          },
+          {
+            "tag": "span",
+            "text": "Failed"
+          },
+          {
+            "tag": "TableCell",
+            "text": "ms"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "services",
+    "label": "Services",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "s6 Services"
+        ],
+        "elements": [
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "span",
+            "text": "services"
+          },
+          {
+            "tag": "span",
+            "text": "started"
+          },
+          {
+            "tag": "span",
+            "text": "errors"
+          },
+          {
+            "tag": "div",
+            "text": "Service"
+          },
+          {
+            "tag": "div",
+            "text": "State"
+          },
+          {
+            "tag": "div",
+            "text": "Bus"
+          },
+          {
+            "tag": "div",
+            "text": "Uptime"
+          },
+          {
+            "tag": "div",
+            "text": "Restarts"
+          },
+          {
+            "tag": "div",
+            "text": "CPU"
+          },
+          {
+            "tag": "div",
+            "text": "Memory"
+          },
+          {
+            "tag": "div",
+            "text": "No s6 services detected. Waiting for live data…"
+          },
+          {
+            "tag": "span",
+            "text": "%"
+          },
+          {
+            "tag": "span",
+            "text": "—"
+          },
+          {
+            "tag": "span",
+            "text": "MB"
+          },
+          {
+            "tag": "span",
+            "text": "—"
+          },
+          {
+            "tag": "span",
+            "text": "Actions:"
+          },
+          {
+            "tag": "div",
+            "text": "Service Metadata"
+          },
+          {
+            "tag": "div",
+            "text": "Configuration"
+          },
+          {
+            "tag": "div",
+            "text": "Service Details"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "llm",
+    "label": "LLM",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "LLM",
+          "Models"
+        ],
+        "elements": [
+          {
+            "tag": "div",
+            "text": "No models detected. Waiting for live data…"
+          },
+          {
+            "tag": "div",
+            "text": "· k context"
+          },
+          {
+            "tag": "Pill",
+            "text": "active"
+          },
+          {
+            "tag": "button",
+            "text": "Switch"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "agents",
+    "label": "Agents",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Agents",
+          "System Prompt"
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "Source:"
+          },
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "div",
+            "text": "No agents found in schema or live state. Ensure personas.yaml is loaded."
+          },
+          {
+            "tag": "span",
+            "text": "+ more"
+          },
+          {
+            "tag": "span",
+            "text": "Sessions:"
+          },
+          {
+            "tag": "span",
+            "text": "Memory:"
+          },
+          {
+            "tag": "button",
+            "text": "Configure"
+          },
+          {
+            "tag": "DialogTitle",
+            "text": "Configuration"
+          },
+          {
+            "tag": "h4",
+            "text": "System Prompt"
+          },
+          {
+            "tag": "button",
+            "text": "Cancel"
+          },
+          {
+            "tag": "button",
+            "text": "Save"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "assistant",
+    "label": "Assistant",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Assistant Gateway",
+          "Antigravity Chat Schema",
+          "antigravity-chat blob schema",
+          "Soul Memories",
+          "Namespace Bindings"
+        ],
+        "fields": [
+          {
+            "tag": "Label"
+          },
+          {
+            "tag": "Switch",
+            "label": "Chatbot public internet"
+          },
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "input"
+          },
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "textarea"
+          }
+        ],
+        "columns": [
+          "Agent",
+          "Identity",
+          "Personality",
+          "Version",
+          "Traits",
+          "Updated",
+          "Agent",
+          "Namespace",
+          "Entries"
+        ],
+        "elements": [
+          {
+            "tag": "div",
+            "text": "Acting as"
+          },
+          {
+            "tag": "Badge",
+            "text": "no execution"
+          },
+          {
+            "tag": "p",
+            "text": "Lifelong account sessid (container = identity). Soul / namespace memory use — not legacy ."
+          },
+          {
+            "tag": "span",
+            "text": "cognitive_mcp"
+          },
+          {
+            "tag": "span",
+            "text": "assistant.v1"
+          },
+          {
+            "tag": "Label",
+            "text": "Public internet"
+          },
+          {
+            "tag": "p",
+            "text": "Production stays off (mesh / ghostbridge only). Turn on only for lab debugging — network enforcement of the off state lands with the capability gate."
+          },
+          {
+            "tag": "dt",
+            "text": "sessid"
+          },
+          {
+            "tag": "dt",
+            "text": "mesh"
+          },
+          {
+            "tag": "dt",
+            "text": "pubkey"
+          },
+          {
+            "tag": "h3",
+            "text": "Antigravity Chat Schema"
+          },
+          {
+            "tag": "h3",
+            "text": "Soul Memories"
+          },
+          {
+            "tag": "p",
+            "text": "No soul memories registered."
+          },
+          {
+            "tag": "th",
+            "text": "Agent"
+          },
+          {
+            "tag": "th",
+            "text": "Identity"
+          },
+          {
+            "tag": "th",
+            "text": "Personality"
+          },
+          {
+            "tag": "th",
+            "text": "Version"
+          },
+          {
+            "tag": "th",
+            "text": "Traits"
+          },
+          {
+            "tag": "th",
+            "text": "Updated"
+          },
+          {
+            "tag": "Badge",
+            "text": "v"
+          },
+          {
+            "tag": "td",
+            "text": "keys"
+          },
+          {
+            "tag": "h3",
+            "text": "Namespace Bindings"
+          },
+          {
+            "tag": "p",
+            "text": "No namespace bindings."
+          },
+          {
+            "tag": "th",
+            "text": "Agent"
+          },
+          {
+            "tag": "th",
+            "text": "Namespace"
+          },
+          {
+            "tag": "th",
+            "text": "Entries"
+          },
+          {
+            "tag": "DialogTitle",
+            "text": "Soul Memory:"
+          },
+          {
+            "tag": "DialogDescription",
+            "text": "Account-scoped soul via cognitive_mcp ( )"
+          },
+          {
+            "tag": "span",
+            "text": "Identity:"
+          },
+          {
+            "tag": "span",
+            "text": "Personality:"
+          },
+          {
+            "tag": "span",
+            "text": "Version:"
+          },
+          {
+            "tag": "span",
+            "text": "Traits:"
+          },
+          {
+            "tag": "DialogTitle",
+            "text": "Edit Soul:"
+          },
+          {
+            "tag": "DialogDescription",
+            "text": "Update identity and personality for this agent"
+          },
+          {
+            "tag": "label",
+            "text": "Identity"
+          },
+          {
+            "tag": "label",
+            "text": "Personality"
+          },
+          {
+            "tag": "button",
+            "text": "Cancel"
+          },
+          {
+            "tag": "button",
+            "text": "Save"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "models",
+    "label": "Routable Models",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Routable Models",
+          "Providers"
+        ],
+        "columns": [
+          "Model ID",
+          "Name",
+          "Params",
+          "Tags",
+          "Available"
+        ],
+        "elements": [
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "div",
+            "text": "Default projection"
+          },
+          {
+            "tag": "div",
+            "text": "tched_router model routes"
+          },
+          {
+            "tag": "div",
+            "text": "Loading providers…"
+          },
+          {
+            "tag": "Pill",
+            "text": "active"
+          },
+          {
+            "tag": "div",
+            "text": "No providers registered."
+          },
+          {
+            "tag": "div",
+            "text": "Loading models…"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Model ID"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Name"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Params"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Tags"
+          },
+          {
+            "tag": "TableHead",
+            "text": "Available"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tools",
+    "label": "Tools",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Tools",
+          "Execute",
+          "Result"
+        ],
+        "fields": [
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "input",
+            "placeholder": "Search tools"
+          },
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "textarea"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "div",
+            "text": "Tool Catalog"
+          },
+          {
+            "tag": "div",
+            "text": "Schema-driven tools exposed by the control plane."
+          },
+          {
+            "tag": "span",
+            "text": "Filter"
+          },
+          {
+            "tag": "div",
+            "text": "shown"
+          },
+          {
+            "tag": "div",
+            "text": "No tools detected. Waiting for live data…"
+          },
+          {
+            "tag": "span",
+            "text": "Arguments (JSON)"
+          },
+          {
+            "tag": "button",
+            "text": "Execute"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "workflows",
+    "label": "Workflows",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Workflows"
+        ],
+        "fields": [
+          {
+            "tag": "input",
+            "placeholder": "Ask about this workflow..."
+          }
+        ],
+        "elements": [
+          {
+            "tag": "Badge",
+            "text": "nodes"
+          },
+          {
+            "tag": "Badge",
+            "text": "edges"
+          },
+          {
+            "tag": "Button",
+            "text": "Validate"
+          },
+          {
+            "tag": "Button",
+            "text": "Run"
+          },
+          {
+            "tag": "span",
+            "text": "Workflow Assistant"
+          },
+          {
+            "tag": "div",
+            "text": "Drop tools onto the canvas, configure them, then validate."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "security",
+    "label": "Security",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Security & Audit",
+          "Auth Mode",
+          "TLS Status",
+          "Audit Chain",
+          "Qdrant",
+          "Blockchain Ledger"
+        ],
+        "fields": [
+          {
+            "tag": "Input",
+            "placeholder": "Semantic Audit Search — search the system's reasoning, mutations, and decisions..."
+          }
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "vectors"
+          },
+          {
+            "tag": "h3",
+            "text": "Blockchain Ledger"
+          },
+          {
+            "tag": "span",
+            "text": "blocks"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "skills",
+    "label": "Skills",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Cognitive Skills",
+          "Configuration"
+        ],
+        "fields": [
+          {
+            "tag": "Input",
+            "placeholder": "Search skills…"
+          },
+          {
+            "tag": "Switch"
+          },
+          {
+            "tag": "Input",
+            "placeholder": "Test this skill…"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "Badge",
+            "text": "v"
+          },
+          {
+            "tag": "Badge",
+            "text": "by"
+          },
+          {
+            "tag": "button",
+            "text": "Test Skill"
+          },
+          {
+            "tag": "DialogTitle",
+            "text": "Test:"
+          },
+          {
+            "tag": "DialogDescription",
+            "text": "Chat with the LLM using this skill's current configuration."
+          },
+          {
+            "tag": "p",
+            "text": "Send a message to test the \" \" skill."
+          },
+          {
+            "tag": "button",
+            "text": "Send"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "knowledge",
+    "label": "Knowledge",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Knowledge &amp; ML",
+          "Local Grinder — Embedding Progress",
+          "Embedding Provider",
+          "Semantic Matches ( )"
+        ],
+        "fields": [
+          {
+            "tag": "Switch"
+          },
+          {
+            "tag": "Input",
+            "placeholder": "Semantic search across 3tched_knowledge…"
+          }
+        ],
+        "tabs": [
+          "Vector Search",
+          "Model Downloader",
+          "Store Details"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Knowledge &amp; ML"
+          },
+          {
+            "tag": "p",
+            "text": "Qdrant knowledge base, local ML grinder, and model management"
+          },
+          {
+            "tag": "div",
+            "text": "P5000 GPU"
+          },
+          {
+            "tag": "span",
+            "text": "°C"
+          },
+          {
+            "tag": "span",
+            "text": "%"
+          },
+          {
+            "tag": "p",
+            "text": "Waiting for live data from knowledge store and ML grinder…"
+          },
+          {
+            "tag": "h2",
+            "text": "Local Grinder — Embedding Progress"
+          },
+          {
+            "tag": "span",
+            "text": "/ Points Indexed"
+          },
+          {
+            "tag": "span",
+            "text": "%"
+          },
+          {
+            "tag": "h2",
+            "text": "Embedding Provider"
+          },
+          {
+            "tag": "span",
+            "text": "Local"
+          },
+          {
+            "tag": "span",
+            "text": "Cloud"
+          },
+          {
+            "tag": "Badge",
+            "text": "⚠ Cloud usage (Vertex AI) may incur costs"
+          },
+          {
+            "tag": "Badge",
+            "text": "✅ Cost-Free Local Mode (CPU via op-ml)"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "Vector Search"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "Model Downloader"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "Store Details"
+          },
+          {
+            "tag": "Button",
+            "text": "Search"
+          },
+          {
+            "tag": "h3",
+            "text": "Semantic Matches ( )"
+          },
+          {
+            "tag": "span",
+            "text": "score:"
+          },
+          {
+            "tag": "Card",
+            "text": "Waiting for model list from op-ml…"
+          },
+          {
+            "tag": "Button",
+            "text": "Download"
+          },
+          {
+            "tag": "span",
+            "text": "%"
+          },
+          {
+            "tag": "CollapsibleTrigger",
+            "text": "Details"
+          },
+          {
+            "tag": "Card",
+            "text": "Waiting for knowledge store metadata…"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "embedding",
+    "label": "Embedding Pipeline",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Embedding Pipeline",
+          "Embedding Worker",
+          "mpsc Channel",
+          "Embed Queue",
+          "Qdrant Collection Roles"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Embedding Pipeline"
+          },
+          {
+            "tag": "p",
+            "text": "Footprint → mpsc channel → Embedding Worker → Axon/Voyage → Qdrant"
+          },
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "h2",
+            "text": "Embedding Worker"
+          },
+          {
+            "tag": "span",
+            "text": "Provider:"
+          },
+          {
+            "tag": "span",
+            "text": "Model:"
+          },
+          {
+            "tag": "span",
+            "text": "Dimensions:"
+          },
+          {
+            "tag": "span",
+            "text": "Uptime:"
+          },
+          {
+            "tag": "p",
+            "text": "Completed"
+          },
+          {
+            "tag": "p",
+            "text": "Failed"
+          },
+          {
+            "tag": "p",
+            "text": "ms"
+          },
+          {
+            "tag": "p",
+            "text": "Avg Latency"
+          },
+          {
+            "tag": "div",
+            "text": "Retry: attempts, ms base, exponential backoff"
+          },
+          {
+            "tag": "h2",
+            "text": "mpsc Channel"
+          },
+          {
+            "tag": "span",
+            "text": "Usage"
+          },
+          {
+            "tag": "span",
+            "text": "/"
+          },
+          {
+            "tag": "span",
+            "text": "Dropped:"
+          },
+          {
+            "tag": "div",
+            "text": "/min"
+          },
+          {
+            "tag": "span",
+            "text": "Drop rate:"
+          },
+          {
+            "tag": "strong",
+            "text": "Policy:"
+          },
+          {
+            "tag": "strong",
+            "text": "Rationale:"
+          },
+          {
+            "tag": "strong",
+            "text": "Audit truth:"
+          },
+          {
+            "tag": "h2",
+            "text": "Embed Queue"
+          },
+          {
+            "tag": "p",
+            "text": "Queue empty — all requests processed."
+          },
+          {
+            "tag": "span",
+            "text": "Collection:"
+          },
+          {
+            "tag": "span",
+            "text": "Queued:"
+          },
+          {
+            "tag": "h2",
+            "text": "Qdrant Collection Roles"
+          },
+          {
+            "tag": "span",
+            "text": "points"
+          },
+          {
+            "tag": "span",
+            "text": "Updated"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "containers",
+    "label": "Containers",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Incus Containers",
+          "Config",
+          "Devices"
+        ],
+        "tabs": [
+          "System ( )",
+          "User ( )"
+        ],
+        "elements": [
+          {
+            "tag": "div",
+            "text": "No containers detected. Waiting for live data…"
+          },
+          {
+            "tag": "div",
+            "text": "cores"
+          },
+          {
+            "tag": "Badge",
+            "text": "devices"
+          },
+          {
+            "tag": "button",
+            "text": "Edit Config"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "System ( )"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "User ( )"
+          },
+          {
+            "tag": "SheetDescription",
+            "text": "Container configuration via Generative UI"
+          },
+          {
+            "tag": "h4",
+            "text": "Config"
+          },
+          {
+            "tag": "h4",
+            "text": "Devices"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "privacy-network",
+    "label": "Privacy Network",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Privacy Network"
+        ],
+        "fields": [
+          {
+            "tag": "Label"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "Badge",
+            "text": "Obf:"
+          },
+          {
+            "tag": "div",
+            "text": "No privacy network nodes. Waiting for live data…"
+          },
+          {
+            "tag": "SheetDescription",
+            "text": "— click fields to edit"
+          },
+          {
+            "tag": "Label",
+            "text": "Obfuscation Level:"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "netmaker",
+    "label": "Network Control",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Netmaker",
+          "Node Detail",
+          "Output"
+        ],
+        "fields": [
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "select"
+          },
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "Input"
+          }
+        ],
+        "columns": [
+          "Name",
+          "Address",
+          "Public Key",
+          "Last Check-in",
+          "Status",
+          "Name",
+          "ID",
+          "Public Key",
+          "Version"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Netmaker"
+          },
+          {
+            "tag": "p",
+            "text": "Mesh network management via op.adapters.v1.NetmakerService"
+          },
+          {
+            "tag": "Badge",
+            "text": "· v"
+          },
+          {
+            "tag": "Button",
+            "text": "Admin UI"
+          },
+          {
+            "tag": "Button",
+            "text": "Admin UI"
+          },
+          {
+            "tag": "Button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "div",
+            "text": "— Mutation commands (join, leave, restart, execute, stream) require the adapter deployed inside the NetMaker container's network namespace. Read methods are functional."
+          },
+          {
+            "tag": "strong",
+            "text": "Read-only mode"
+          },
+          {
+            "tag": "Badge",
+            "text": "local"
+          },
+          {
+            "tag": "span",
+            "text": "Nodes —"
+          },
+          {
+            "tag": "div",
+            "text": "No nodes in this network."
+          },
+          {
+            "tag": "th",
+            "text": "Name"
+          },
+          {
+            "tag": "th",
+            "text": "Address"
+          },
+          {
+            "tag": "th",
+            "text": "Public Key"
+          },
+          {
+            "tag": "th",
+            "text": "Last Check-in"
+          },
+          {
+            "tag": "th",
+            "text": "Status"
+          },
+          {
+            "tag": "h3",
+            "text": "Node Detail"
+          },
+          {
+            "tag": "Button",
+            "text": "Close"
+          },
+          {
+            "tag": "dt",
+            "text": "ID"
+          },
+          {
+            "tag": "dt",
+            "text": "Name"
+          },
+          {
+            "tag": "dt",
+            "text": "Address"
+          },
+          {
+            "tag": "dt",
+            "text": "Connected"
+          },
+          {
+            "tag": "dt",
+            "text": "Public Key"
+          },
+          {
+            "tag": "dt",
+            "text": "Last Check-in"
+          },
+          {
+            "tag": "span",
+            "text": "Host Inventory"
+          },
+          {
+            "tag": "th",
+            "text": "Name"
+          },
+          {
+            "tag": "th",
+            "text": "ID"
+          },
+          {
+            "tag": "th",
+            "text": "Public Key"
+          },
+          {
+            "tag": "th",
+            "text": "Version"
+          },
+          {
+            "tag": "p",
+            "text": "Event streaming requires the adapter deployed inside the NetMaker container."
+          },
+          {
+            "tag": "span",
+            "text": "events"
+          },
+          {
+            "tag": "Button",
+            "text": "Clear"
+          },
+          {
+            "tag": "div",
+            "text": "Waiting for events…"
+          },
+          {
+            "tag": "p",
+            "text": "CLI execution requires the adapter deployed inside the NetMaker container."
+          },
+          {
+            "tag": "span",
+            "text": "Execute netclient command"
+          },
+          {
+            "tag": "label",
+            "text": "Command"
+          },
+          {
+            "tag": "Button",
+            "text": "Execute"
+          },
+          {
+            "tag": "h3",
+            "text": "Output"
+          },
+          {
+            "tag": "span",
+            "text": "$"
+          },
+          {
+            "tag": "Badge",
+            "text": "exit"
+          },
+          {
+            "tag": "span",
+            "text": "No output"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ovs",
+    "label": "Open vSwitch",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Open vSwitch"
+        ],
+        "elements": [
+          {
+            "tag": "button",
+            "text": "Create Bridge"
+          },
+          {
+            "tag": "button",
+            "text": "Create Port"
+          },
+          {
+            "tag": "div",
+            "text": "No OVS bridges detected. Waiting for live data…"
+          },
+          {
+            "tag": "Badge",
+            "text": "VLAN"
+          },
+          {
+            "tag": "DialogTitle",
+            "text": "Create"
+          },
+          {
+            "tag": "DialogDescription",
+            "text": "Fill the form to create a new OVS ."
+          },
+          {
+            "tag": "button",
+            "text": "Create"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "openflow",
+    "label": "OpenFlow",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "OpenFlow",
+          "Global Configuration",
+          "Flow Tables"
+        ],
+        "elements": [
+          {
+            "tag": "h3",
+            "text": "Flow Tables"
+          },
+          {
+            "tag": "button",
+            "text": "Add Flow"
+          },
+          {
+            "tag": "div",
+            "text": "No flow tables received. Waiting for live data…"
+          },
+          {
+            "tag": "span",
+            "text": "Table"
+          },
+          {
+            "tag": "span",
+            "text": "—"
+          },
+          {
+            "tag": "Badge",
+            "text": "flows"
+          },
+          {
+            "tag": "Badge",
+            "text": "pri="
+          },
+          {
+            "tag": "span",
+            "text": "pkts / bytes"
+          },
+          {
+            "tag": "span",
+            "text": "Match:"
+          },
+          {
+            "tag": "Badge",
+            "text": "any"
+          },
+          {
+            "tag": "Badge",
+            "text": "="
+          },
+          {
+            "tag": "span",
+            "text": "Actions:"
+          },
+          {
+            "tag": "DialogTitle",
+            "text": "Add Flow Entry"
+          },
+          {
+            "tag": "DialogDescription",
+            "text": "Define match fields and actions for a new OpenFlow rule."
+          },
+          {
+            "tag": "button",
+            "text": "Add Flow"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "btrfs",
+    "label": "BTRFS Storage",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "BTRFS Storage",
+          "BTRFS Storage",
+          "Subvolumes",
+          "Snapshots",
+          "Incremental Send State",
+          "Disaster Recovery Status"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "BTRFS Storage"
+          },
+          {
+            "tag": "p",
+            "text": "Subvolume layout, snapshots, incremental send state, and disaster recovery status."
+          },
+          {
+            "tag": "button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "h1",
+            "text": "BTRFS Storage"
+          },
+          {
+            "tag": "p",
+            "text": "Subvolume layout, snapshots, incremental send state, and disaster recovery status."
+          },
+          {
+            "tag": "span",
+            "text": "( )"
+          },
+          {
+            "tag": "span",
+            "text": "/"
+          },
+          {
+            "tag": "h2",
+            "text": "Subvolumes"
+          },
+          {
+            "tag": "span",
+            "text": "snaps"
+          },
+          {
+            "tag": "span",
+            "text": "/"
+          },
+          {
+            "tag": "span",
+            "text": "Modified"
+          },
+          {
+            "tag": "h2",
+            "text": "Snapshots"
+          },
+          {
+            "tag": "span",
+            "text": "( )"
+          },
+          {
+            "tag": "span",
+            "text": "📌 Pinned ( remote )"
+          },
+          {
+            "tag": "p",
+            "text": "Parent:"
+          },
+          {
+            "tag": "p",
+            "text": "Pinned for:"
+          },
+          {
+            "tag": "p",
+            "text": "Pin released only after successful incremental send to ALL remotes"
+          },
+          {
+            "tag": "h2",
+            "text": "Incremental Send State"
+          },
+          {
+            "tag": "span",
+            "text": ":"
+          },
+          {
+            "tag": "span",
+            "text": "Last sent:"
+          },
+          {
+            "tag": "span",
+            "text": "At:"
+          },
+          {
+            "tag": "span",
+            "text": "Transferred:"
+          },
+          {
+            "tag": "h2",
+            "text": "Disaster Recovery Status"
+          },
+          {
+            "tag": "p",
+            "text": "state_subvol/current.json"
+          },
+          {
+            "tag": "p",
+            "text": "Vector Snapshot"
+          },
+          {
+            "tag": "p",
+            "text": "Blocks to Replay"
+          },
+          {
+            "tag": "p",
+            "text": "Last Checkpoint"
+          },
+          {
+            "tag": "p",
+            "text": "Recovery Order"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data-stores",
+    "label": "Data Stores",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Data Stores"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Data Stores"
+          },
+          {
+            "tag": "p",
+            "text": "Health and status of all persistent and runtime data stores."
+          },
+          {
+            "tag": "span",
+            "text": "ms"
+          },
+          {
+            "tag": "span",
+            "text": "/"
+          },
+          {
+            "tag": "span",
+            "text": ":"
+          },
+          {
+            "tag": "span",
+            "text": "Checked"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tched-router-config",
+    "label": "3tched Config",
+    "placeholder": false,
+    "screens": [
+      {
+        "fields": [
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "input",
+            "placeholder": "Filter sections"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "Pill",
+            "text": "plugin · tched_router"
+          },
+          {
+            "tag": "p",
+            "text": "No matching sections."
+          },
+          {
+            "tag": "button",
+            "text": "Reset"
+          },
+          {
+            "tag": "button",
+            "text": "Save"
+          },
+          {
+            "tag": "div",
+            "text": "Could not load tched_router config."
+          },
+          {
+            "tag": "p",
+            "text": "Existing aliases only (compact, agents). New MCP names cannot be created here."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "gateway",
+    "label": "Gateway",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Gateway",
+          "Gateway Status"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Gateway"
+          },
+          {
+            "tag": "p",
+            "text": "Manage webhooks, websockets, and gateway server settings"
+          },
+          {
+            "tag": "h3",
+            "text": "Gateway Status"
+          },
+          {
+            "tag": "p",
+            "text": "3tched Router gateway server for webhooks and websockets"
+          },
+          {
+            "tag": "Badge",
+            "text": "Stopped"
+          },
+          {
+            "tag": "Button",
+            "text": "Start Gateway"
+          },
+          {
+            "tag": "Button",
+            "text": "Test Connection"
+          },
+          {
+            "tag": "p",
+            "text": "Gateway management coming soon. This will allow you to:"
+          },
+          {
+            "tag": "li",
+            "text": "Start/stop the gateway server"
+          },
+          {
+            "tag": "li",
+            "text": "View active webhook endpoints"
+          },
+          {
+            "tag": "li",
+            "text": "Monitor websocket connections"
+          },
+          {
+            "tag": "li",
+            "text": "Configure gateway settings"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "channels",
+    "label": "Channels",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Channels"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Channels"
+          },
+          {
+            "tag": "p",
+            "text": "Configure communication channels for 3tched Router"
+          },
+          {
+            "tag": "Button",
+            "text": "Configure"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cron",
+    "label": "Cron",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Scheduled Tasks",
+          "Scheduled Tasks"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Scheduled Tasks"
+          },
+          {
+            "tag": "p",
+            "text": "Manage cron jobs and scheduled tasks for 3tched Router"
+          },
+          {
+            "tag": "h3",
+            "text": "Scheduled Tasks"
+          },
+          {
+            "tag": "Button",
+            "text": "Add Task"
+          },
+          {
+            "tag": "p",
+            "text": "No scheduled tasks configured"
+          },
+          {
+            "tag": "p",
+            "text": "Create tasks to run autonomously on a schedule"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "integrations",
+    "label": "Integrations",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Integrations"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Integrations"
+          },
+          {
+            "tag": "p",
+            "text": "Browse and install 50+ integrations for 3tched Router"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hardware",
+    "label": "Hardware",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Hardware",
+          "Connected Devices"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Hardware"
+          },
+          {
+            "tag": "p",
+            "text": "Discover and introspect USB hardware and peripherals"
+          },
+          {
+            "tag": "h3",
+            "text": "Connected Devices"
+          },
+          {
+            "tag": "Button",
+            "text": "Scan"
+          },
+          {
+            "tag": "p",
+            "text": "No USB devices detected"
+          },
+          {
+            "tag": "p",
+            "text": "Connect hardware to see it listed here"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "config",
+    "label": "Config",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Config"
+        ],
+        "fields": [
+          {
+            "tag": "textarea"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "Settings"
+          },
+          {
+            "tag": "Pill",
+            "text": "valid"
+          },
+          {
+            "tag": "button",
+            "text": "Reset"
+          },
+          {
+            "tag": "button",
+            "text": "Save"
+          },
+          {
+            "tag": "button",
+            "text": "Apply"
+          },
+          {
+            "tag": "div",
+            "text": "Model options unavailable — showing free-text fields instead of a picker. Reason:"
+          },
+          {
+            "tag": "div",
+            "text": "model from the live gateway"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "inspector",
+    "label": "Inspector",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "D-Bus Inspector",
+          "Properties",
+          "Methods",
+          "Signals"
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "Object Tree"
+          },
+          {
+            "tag": "div",
+            "text": "No D-Bus objects. Waiting for live data…"
+          },
+          {
+            "tag": "h4",
+            "text": "Properties"
+          },
+          {
+            "tag": "h4",
+            "text": "Methods"
+          },
+          {
+            "tag": "Badge",
+            "text": "→"
+          },
+          {
+            "tag": "button",
+            "text": "Execute"
+          },
+          {
+            "tag": "h4",
+            "text": "Signals"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "state",
+    "label": "State",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Live State",
+          "State Changes"
+        ],
+        "fields": [
+          {
+            "tag": "Input",
+            "placeholder": "Filter plugins, keys, and events…"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "( )"
+          },
+          {
+            "tag": "Badge",
+            "text": "props"
+          },
+          {
+            "tag": "Badge",
+            "text": "tunable"
+          },
+          {
+            "tag": "div",
+            "text": "No data received for this plugin yet."
+          },
+          {
+            "tag": "div",
+            "text": "Changed Value"
+          },
+          {
+            "tag": "div",
+            "text": "New Value"
+          },
+          {
+            "tag": "span",
+            "text": "plugins"
+          },
+          {
+            "tag": "span",
+            "text": "tunables"
+          },
+          {
+            "tag": "span",
+            "text": "state changes"
+          },
+          {
+            "tag": "div",
+            "text": "No plugins match \" \""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "logs",
+    "label": "Logs",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Logs"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "estop",
+    "label": "E-Stop",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Emergency Stop",
+          "Emergency Stop Status"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Emergency Stop"
+          },
+          {
+            "tag": "p",
+            "text": "Engage, inspect, and resume emergency-stop states"
+          },
+          {
+            "tag": "h3",
+            "text": "Emergency Stop Status"
+          },
+          {
+            "tag": "p",
+            "text": "Currently inactive"
+          },
+          {
+            "tag": "p",
+            "text": "Emergency stop will immediately halt all 3tched Router operations. Use with caution."
+          },
+          {
+            "tag": "Button",
+            "text": "Engage Emergency Stop"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "grpc",
+    "label": "gRPC Diagnostics",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "gRPC Diagnostics",
+          "Event Counts by Type",
+          "Projected State Keys ( )",
+          "Latest Stats ( metrics)"
+        ],
+        "tabs": [
+          "Unary RPCs ( )",
+          "Server Streams ( )",
+          "Store Inspector"
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "gRPC Diagnostics"
+          },
+          {
+            "tag": "p",
+            "text": "Probe every gRPC-Web endpoint to pinpoint connection issues"
+          },
+          {
+            "tag": "Button",
+            "text": "Run All Probes"
+          },
+          {
+            "tag": "Button",
+            "text": "Stop Streams"
+          },
+          {
+            "tag": "p",
+            "text": "Connection Error"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "Unary RPCs ( )"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "Server Streams ( )"
+          },
+          {
+            "tag": "TabsTrigger",
+            "text": "Store Inspector"
+          },
+          {
+            "tag": "p",
+            "text": "/"
+          },
+          {
+            "tag": "span",
+            "text": "ms"
+          },
+          {
+            "tag": "p",
+            "text": "/"
+          },
+          {
+            "tag": "span",
+            "text": "TTFM: ms"
+          },
+          {
+            "tag": "span",
+            "text": "msgs"
+          },
+          {
+            "tag": "span",
+            "text": "waiting for events…"
+          },
+          {
+            "tag": "CardTitle",
+            "text": "Event Counts by Type"
+          },
+          {
+            "tag": "p",
+            "text": "No events received yet"
+          },
+          {
+            "tag": "CardTitle",
+            "text": "Projected State Keys ( )"
+          },
+          {
+            "tag": "p",
+            "text": "No state projected yet — streams may be idle. Snapshot RPCs will populate this on connect."
+          },
+          {
+            "tag": "CardTitle",
+            "text": "Latest Stats ( metrics)"
+          },
+          {
+            "tag": "p",
+            "text": "No metrics received — host_runtime.sample_metrics may not be connected"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "explorer",
+    "label": "gRPC Explorer",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "gRPC Explorer",
+          "About this view"
+        ],
+        "fields": [
+          {
+            "tag": "Input",
+            "placeholder": "Filter frames (substring match on JSON)…"
+          },
+          {
+            "tag": "label"
+          },
+          {
+            "tag": "Input",
+            "type": "number"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "span",
+            "text": "Streaming Methods"
+          },
+          {
+            "tag": "div",
+            "text": "."
+          },
+          {
+            "tag": "span",
+            "text": "."
+          },
+          {
+            "tag": "Badge",
+            "text": "frames"
+          },
+          {
+            "tag": "Badge",
+            "text": "+ buffered"
+          },
+          {
+            "tag": "Badge",
+            "text": "s"
+          },
+          {
+            "tag": "Button",
+            "text": "Invoke"
+          },
+          {
+            "tag": "Button",
+            "text": "Pause"
+          },
+          {
+            "tag": "Button",
+            "text": "Resume"
+          },
+          {
+            "tag": "Button",
+            "text": "Stop"
+          },
+          {
+            "tag": "Button",
+            "text": "Cancel"
+          },
+          {
+            "tag": "Button",
+            "text": "Clear"
+          },
+          {
+            "tag": "label",
+            "text": "Page size"
+          },
+          {
+            "tag": "Badge",
+            "text": "/ shown"
+          },
+          {
+            "tag": "div",
+            "text": "Frames are decoded from the gRPC-Web length-prefixed framing and projected through the shared catalog. The last frames are kept in memory; older frames roll off the buffer."
+          },
+          {
+            "tag": "span",
+            "text": "@json-render"
+          },
+          {
+            "tag": "div",
+            "text": "Selected method, filter, and page size are persisted in the URL and , so reloading or sharing the link reopens the same view."
+          },
+          {
+            "tag": "span",
+            "text": "localStorage"
+          },
+          {
+            "tag": "div",
+            "text": "All calls run with the authenticated session — no additional credentials are required inside the WireGuard perimeter."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "invoke",
+    "label": "Invoke",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Invoke"
+        ],
+        "fields": [
+          {
+            "tag": "Input",
+            "placeholder": "Filter methods…"
+          },
+          {
+            "tag": "Textarea",
+            "placeholder": "{ }"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "Button",
+            "text": "Refresh"
+          },
+          {
+            "tag": "span",
+            "text": "."
+          },
+          {
+            "tag": "Badge",
+            "text": "no codec"
+          },
+          {
+            "tag": "Badge",
+            "text": "ms"
+          },
+          {
+            "tag": "Button",
+            "text": "Invoke"
+          },
+          {
+            "tag": "Button",
+            "text": "Clear"
+          },
+          {
+            "tag": "span",
+            "text": "in"
+          },
+          {
+            "tag": "span",
+            "text": "→"
+          },
+          {
+            "tag": "span",
+            "text": "out"
+          },
+          {
+            "tag": "div",
+            "text": "Request (JSON)"
+          },
+          {
+            "tag": "div",
+            "text": "Response"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "blobs",
+    "label": "Sealed Blobs",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Sealed Blobs"
+        ],
+        "fields": [
+          {
+            "tag": "Input",
+            "placeholder": "Filter plugins…"
+          }
+        ],
+        "elements": [
+          {
+            "tag": "h1",
+            "text": "Sealed Blobs"
+          },
+          {
+            "tag": "div",
+            "text": "Loading catalog…"
+          },
+          {
+            "tag": "div",
+            "text": "No sealed blobs in the catalog."
+          },
+          {
+            "tag": "div",
+            "text": "No plugins match \" \"."
+          },
+          {
+            "tag": "span",
+            "text": "sealed"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "plugins",
+    "label": "Stream",
+    "placeholder": false,
+    "screens": [
+      {
+        "headings": [
+          "Plugins"
+        ],
+        "fields": [
+          {
+            "tag": "Input",
+            "placeholder": "Filter plugins…"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dreams",
+    "label": "Dreams",
+    "placeholder": true,
+    "screens": []
+  },
+  {
+    "id": "reflections",
+    "label": "Reflections",
+    "placeholder": true,
+    "screens": []
+  },
+  {
+    "id": "observability",
+    "label": "Observability",
+    "placeholder": true,
+    "screens": []
+  },
+  {
+    "id": "live-trace",
+    "label": "Live Trace",
+    "placeholder": true,
+    "screens": []
+  }
+]
