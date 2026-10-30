@@ -15,7 +15,15 @@ apt-get update
 apt-get install -y --no-install-recommends \
     build-essential ca-certificates git curl pkg-config cmake clang llvm \
     libclang-dev protobuf-compiler libprotobuf-dev libssl-dev libdbus-1-dev libudev-dev \
-    jq gzip tar patch binutils sudo
+    btrfs-progs jq gzip tar patch binutils sudo
+
+# rustc's bundled lld searches the multiarch lib directory. The unversioned
+# libstdc++.so from libstdc++-13-dev lives only in the GCC private directory,
+# so -lstdc++ fails. Point lld at the shared library.
+stdcxx_link=/usr/lib/x86_64-linux-gnu/libstdc++.so
+if [ ! -e "$stdcxx_link" ] && [ -e /usr/lib/x86_64-linux-gnu/libstdc++.so.6 ]; then
+    ln -s libstdc++.so.6 "$stdcxx_link"
+fi
 
 export CXXFLAGS="${CXXFLAGS:--include cstdint}"
 export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"
@@ -68,6 +76,91 @@ for tool in rustup cargo rustc rustdoc rustfmt cargo-fmt cargo-clippy clippy-dri
         ln -sfn "$CARGO_HOME/bin/$tool" "/usr/local/bin/$tool"
     fi
 done
+
+# Login shells read /etc/profile.d. This image's agent shells also source
+# ~/.bashrc and do not see profile.d, so keep the same block there.
+# Cozo/RocksDB fails on modern GCC without -include cstdint. The default
+# image points /usr/bin/c++ at clang++, and clang does not search the
+# versioned libstdc++ directory for that forced include. Cargo must use g++.
+shell_quote() {
+    printf "'"
+    printf '%s' "$1" | sed "s/'/'\\\\''/g"
+    printf "'"
+}
+
+build_env='# BEGIN op-dbus cloud build environment
+# /usr/bin/c++ is clang on the default image; -include cstdint needs g++.
+export CC="${CC:-gcc}"
+export CXX="${CXX:-g++}"
+case " ${CXXFLAGS:-} " in
+    *'"'"' -include cstdint '"'"'*) ;;
+    *) export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-include cstdint" ;;
+esac
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
+export CARGO_TERM_COLOR="${CARGO_TERM_COLOR:-never}"
+export RUST_BACKTRACE="${RUST_BACKTRACE:-1}"
+export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-1.97.1}"'
+# Persist the actual provisioned stores, even if setup used custom homes.
+build_env="$build_env
+export CARGO_HOME=$(shell_quote "$CARGO_HOME")
+export RUSTUP_HOME=$(shell_quote "$RUSTUP_HOME")
+# END op-dbus cloud build environment"
+
+cat > /etc/profile.d/op-dbus-build.sh <<EOF
+# OP-DBUS native builds. See docs/src/getting-started/verified-workspace.md.
+$build_env
+EOF
+chmod 644 /etc/profile.d/op-dbus-build.sh
+
+if [ -f /etc/environment ]; then
+    # Repair the earlier generated value as well as quoting new entries.
+    sed -i 's/^CXXFLAGS=-include cstdint$/CXXFLAGS="-include cstdint"/' /etc/environment
+    if ! grep -q '^CXXFLAGS=' /etc/environment; then
+        printf '%s\n' 'CXXFLAGS="-include cstdint"' >> /etc/environment
+    fi
+    if ! grep -q '^CARGO_BUILD_JOBS=' /etc/environment; then
+        printf '%s\n' 'CARGO_BUILD_JOBS=2' >> /etc/environment
+    fi
+    if ! grep -q '^CC=' /etc/environment; then
+        printf '%s\n' 'CC=gcc' >> /etc/environment
+    fi
+    if ! grep -q '^CXX=' /etc/environment; then
+        printf '%s\n' 'CXX=g++' >> /etc/environment
+    fi
+fi
+
+bashrc=/home/ubuntu/.bashrc
+marker='# op-dbus cloud build environment'
+if [ -d /home/ubuntu ]; then
+    tmp=$(mktemp "$bashrc.op-dbus.XXXXXX")
+    trap 'rm -f "$tmp"' 0
+    # Prepend exports so noninteractive shells reach them before an early return.
+    printf '%s\n' "$build_env" > "$tmp"
+    if [ -f "$bashrc" ]; then
+        # Replace only our block. The old format ended at RUSTUP_TOOLCHAIN;
+        # preserve later user configuration and any incomplete, unknown block.
+        awk -v marker="$marker" '
+            !mode && $0 == "# BEGIN op-dbus cloud build environment" { mode = 1; block = $0 ORS; next }
+            !mode && $0 == marker { mode = 2; block = $0 ORS; next }
+            mode {
+                block = block $0 ORS
+                if ((mode == 1 && $0 == "# END op-dbus cloud build environment") ||
+                    (mode == 2 && $0 == "export RUSTUP_TOOLCHAIN=\"${RUSTUP_TOOLCHAIN:-1.97.1}\"")) {
+                    mode = 0; block = ""
+                }
+                next
+            }
+            { print }
+            END { printf "%s", block }
+        ' "$bashrc" >> "$tmp"
+        chmod --reference="$bashrc" "$tmp"
+    else
+        chmod 644 "$tmp"
+    fi
+    chown ubuntu:ubuntu "$tmp"
+    mv "$tmp" "$bashrc"
+    trap - 0
+fi
 
 if [ -f Cargo.toml ]; then
     fetched=0
