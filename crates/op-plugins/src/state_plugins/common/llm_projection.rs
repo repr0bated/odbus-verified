@@ -260,6 +260,12 @@ pub struct UiSurface {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.service.llm-ui-surface.schema@v1"))]
     pub schema: String,
+    /// Surface purpose driving renderer behavior (e.g. `select-sets-model`).
+    /// Sealed in the blob; renderers derive behavior from it, never from
+    /// hand-rolled page logic.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "exp.service.llm-ui-surface.purpose@v1"))]
+    pub purpose: String,
 }
 
 /// Rewrite shared `llm-projection` subids so they are plugin-specific.

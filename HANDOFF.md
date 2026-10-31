@@ -1,5 +1,73 @@
 # Agent handoff
 
+## 2026-10-30 — Codex / deploy-preflight-20261030 — launcher blocked, source unresolved
+
+User request was `deploy/`, followed by `proceed` after source/action clarification.
+Inspected candidate checkouts and current release evidence; asked which source to
+ship (`/srv/git/odbus-verified`, `remove-drift-sockets`, or `rewrite-fresh-bridge`),
+with no selection received during this preflight. Do not infer that the dirty
+shared checkout or another agent's branch was selected.
+
+Fresh supported `sudo -n /usr/local/libexec/opdbus-release/op-release-launch status`
+exited 1: `approved release-kit digest mismatch`. Manifest expects op-release
+SHA256 `2fa4b27914c35fc7b623c424c866536335cf5ce58fca01019c4c5616b1fdc205`;
+installed bytes hash `a053f6a22ec3aaed1996cf67bac21974b299d117138ea1e8bccdef3f677a73b8`
+(mtime 2026-10-30 11:23:02 UTC), while the manifest dates from Oct 29.
+The existing `target/release/op-release` in both verified and rewrite checkouts
+matches the approved digest. No controller restoration, manifest change or
+direct execution bypass was attempted; the replacement's provenance is unresolved.
+
+Read-only mount evidence still names slot B
+`release-640f40aa-7b7a-446e-a614-3aecb7771d90`, including the separately mounted
+Oct 30 dashboard override. This is mount evidence, not a current readiness pass.
+The rewrite attempt's retained receipt at
+`/var/tmp/rewrite-deploy-20261029/activate-golden.receipt.json` has exit 1; its log
+ends with exact-generation checked-delete EBUSY for root 489. Its build receipt
+has exit 0. These records do not prove rewrite activation succeeded.
+
+Next: resolve intended source, reconcile the base release kit with its approved
+bytes and current ownership, then use supported launcher status/recovery to
+reconcile the interrupted journal before activation. Account for the UI override
+and preserve the active routing/socket task. No Cargo, tests, seal, application
+deployment, service restart, grants or storage mutation performed in this task.
+
+## 2026-10-30 — Grok — 8080 base page
+
+Owner asked for the landing base on port 8080 immediately. Model selection had to be visible; the picker did not have to be fully wired. `App.svelte` in `/srv/git/3tched.com` now renders the approved `tchedRouterPicker` catalog spec in the page header and leaves the canvas for the chatbot. Published with `OP_WEB_STATIC_DIR=/usr/local/share/op-dbus/dashboard-release URL_PREFIX=/ npm run publish:op-web`. The release dashboard is read-only, so the script bind-mounted `/var/lib/op-dbus/dashboard-overlay-20261030T0545Z` over `index.html` and `assets`. That override lasts until reboot or the next release activation. Headless check of `http://10.0.0.2:8080/`: identity pickup failed from this host (decoy issuer rejected the origin); local workbench then showed Local Lab / Browser Simulator and Atlas Compact / Atlas Reasoning, the canvas, and the chatbot slot. `src/svelte/App.test.ts` and `App.remote.test.ts` passed. Not committed.
+
+## 2026-10-29 — OMP / golden-rewrite-deploy-20261029 — activated, verified
+
+Owner-directed: build → seal → golden → activate, with `deploy/lib/golden/build-golden.sh`
+rewritten from scratch in place (Jev deprecated-vs-active audit first; Jev used via
+`TYPESAFE_API_KEY` from `~/.bash_secrets`). New builder: Svelte-only UI built directly
+from `/srv/git/3tched.com` (clean HEAD checkout + untracked inputs overlay, Node 22
+from `/usr/local/bin`; no vendored UI archive), sealed catalog copied never resealed,
+explicit helper/service staging, `--system/--live-only/--no-restart` retired.
+`AGENTS.md` was restored from `AGENTS.md.bk` (sha `e5d68007…`) and its UI provenance
+updated to the repo-direct decision. Head `b28a343`.
+
+Live result: workspace release build exit 0; `opblob seal-shm`+`persist` (catalog
+generation 144, hash `487402ba…`, 72 blobs); golden prepared; activation complete:
+active slot **B `release-640f40aa-7b7a-446e-a614-3aecb7771d90`**, previous A
+`release-532099cb…` retained for rollback (`op-release-launch rollback`). Readiness
+`complete`; 9 application services run; op-web `10.0.0.2:8080` → 200, door
+`10.0.0.2:8090` → 200. Bridge hydrated sealed catalog (72), control-plane chatbot
+identity re-sealed into its existing sled (principal `1262e982…`, session
+`b0c777e3…` — same identity, not a new device), cognitive chain-vectors running,
+Qdrant shuttle linked (`ctl_plane_reasoning_episodes`/`user_memory`/`blob_vectors`),
+chat_router 36 methods on the 8090 door. This rewrite counts as new development
+under hackathon rules, per owner. Chatbot root untouched (saved for later).
+
+Known leftovers: (1) `notebook-sources-sync` stays in the release (removing a
+supervised service is hard-blocked in `op-release` activate; owner chose include)
+and remains want-down — its first capture takes ~41s vs the 30s `sv` readiness
+wait, so do not `sv up` it during an activation window. (2) `/srv/git/3tched.com`
+worktree has 9 unmerged (UU) files from a stash conflict — untouched; golden
+builds from clean HEAD `fa60f68` until the owner resolves them. (3) Owner's open
+question: whether golden should be replay-tested from a restore before trusting
+it — not yet done; rollback to A is the tested-by-design path, not yet exercised.
+Backup of pre-trim journal state: `/var/lib/opdbus-release/slots.json.pre-notebook-trim-20261029`.
+
 ## 2026-10-22 — Hermes / repository-checkpoint-20261022 — owner-authorized snapshot
 
 Owner requested committing and pushing everything in `/srv/git/odbus-verified` on its existing `restore/devuan-storage-20261013` branch. Scope includes all current tracked changes, deletions and non-ignored new files, including prior staged work and the consolidation audit; this is a shared-worktree checkpoint, not a release or a new full-code audit. Preserve concurrent agents' source and build ownership. No tests, build, deployment, force-push, identity or grant changes are authorized by this checkpoint request.
@@ -565,6 +633,17 @@ Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff
 The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
 
 ## Active work
+| Codex — BLOCKED: DEPLOYMENT PREFLIGHT | `deploy-preflight-20261030` | Source selection unresolved; supported launcher refuses installed op-release digest. Own this task's shared notes only. | 2026-10-30 | Approved target/release artifact found; controller replacement provenance unresolved. Existing B overlays remain mounted; historical rewrite activation failed EBUSY root489. See dated handoff. No runtime changes. |
+| Codex — ACTIVE: RESUMED ROUTING AND SOCKET CLEANUP | `reality-unnumbered-20261030` | Own host routing helper/configuration and existing socket-removal patch reconciliation; preserve other source work. | 2026-10-30 | Current evidence and rollback will be recorded only in docs/src/operations/network.md. |
+| Grok — 8080 BASE PAGE PUBLISHED | `landing-base-20261030` | Catalog model-selection spec on the 8080 landing canvas. Runtime bind-mount only. | 2026-10-30 | Live until reboot or next release activation. Source uncommitted in `/srv/git/3tched.com`. |
+| Claude — PAUSED: JEV CONTENT DECISIONS (experimental) | `jev-content-decisions-20261030` | Branch `feat/jev-content-decisions` (worktree `/srv/git/odbus-verified-jev`): a936999 sealed `jev` plugin (`decide`, `get_config`; pinned HTTPS credential from env JEV_TYPESAFE_API_KEY/TYPESAFE_API_KEY); 5a2bcc3 post-turn reply judgment + `learning_event` on ctl_plane_chatbot episodes (modes Project/Accountability/ControlPlane/NotebookLm only, caller must hold `jev.invoke`, fail-open 10s), new optional episode fields (reseal needed). `cargo check -p op-plugins -p op-grpc-bridge` pass. Test targets blocked by pre-existing `PolicySnapshot` error routing_decision.rs:308. Bridge build needs TCHED_ROUTER_CONFIG_DIR writable for capture when not root. | 2026-10-30 | Not merged, sealed, deployed or tested. Next: owner decides keep/drop; then pre-turn request note, user_corrected from next-turn outcome, bridge env credential + `jev.invoke` grants, reseal, activate-golden. |
+| Codex — COMPLETE: PR RELEVANCE AND RESOLUTION | `pr-relevance-20261030` | Isolated /var/tmp/pr-relevance-20261030/integration, clean branch codex/pr-relevance-20261030; final source6276a187, published8eed47d, merged mainf180bff. Shared working source preserved. | 2026-10-30 | All30 initial PRs handled:45+46 merged,28 superseded, GitHub0 open. Native Jev used newer/hackathon authority. Final GNU10-package/4-binary build passed12m34s;1320 source hashes unchanged. No tests, install, seal, deployment or service actions. Current defects retained in main WISHLIST OD-125 and reconciliation JSON; completion receipt /var/tmp/pr-relevance-20261030/completion.json. |
+| omp — DONE: INTEGRATE-2-WITH-MAIN | `integrate-2-with-main-20261030` | Merged `codex/pr-sweep-deployment-20261023` (57 commits) into `origin/main` (8435d58) in isolated worktree `/tmp/integrate-2-main` → merge `cb7cda3`, clean, 0 conflicts, status empty, 1224 files. Dirty tree on `restore/devuan-storage-20261013` untouched. NOT pushed. | 2026-10-30 | Push only on owner confirm; worktree retained for inspection. |
+| omp — BLOCKED: INTEGRATE-2 BUILD FAILED | `integrate-2-with-main-20261030` | Workspace release build in `/tmp/integrate-2-main` (merge `cb7cda3`) FAILED exit 101, 765s: `op-plugins` `include_str!` missing `deploy/config/threetched-skills/default/…` (36 errors, dir absent untracked in both parents). Log `/tmp/integrate-2-main-build-20261030.log`, receipt `.receipt.json`. Merge clean but UNBUILT — NOT pushed, NOT deployed. | 2026-10-30 | Do not push `cb7cda3` to `origin/main` until bundle source/staging is resolved and build passes. |
+| omp — ACTIVE: UI SELECT-SETS-MODEL + SEALED SURFACE PURPOSES | `ui-select-sets-model-20261031` | UiSurface.purpose sealed in schema (/models select-sets-model, /chat chat-takeover render-only); ModelPicker/ControlPlanePicker auto-apply — provider switch repoints draft only (Select-a-model placeholder), model pick commits complete pair, microtask-coalesced single apply, ctl-plane no-op guard + elevation preserved; ListUiSurfaces purposes wired (adapter→Runtime→App takeover with shell fallback); accountability semantic/chatbot toggle; render maxTurnMs live (300s default, 10–900 clamp), dataset flags disabled pending contract; GalleryPanel verify-only. Files: llm_projection.rs, chat_router.rs, ModelPicker/ControlPlanePicker/App/RuntimeHost/runtime.svelte, RouteFields, door-chat-adapter, chat-adapter (RenderOptions/UiSurfacePurposes), interfaceGeneration, chat-catalog/catalog.ts, AccountabilityEvidence, ModelPicker.test.ts (28/28 rewritten to new contract + gesture-separated commit test). | 2026-10-31 | MINIMAL CHECKS: UI build exit 0 (twice); cargo check -p op-plugins exit 0; ModelPicker.test 28/28 pass; type-check clean for all touched files — 42 errors all pre-existing merge markers in door-chat-adapter.test.ts (UU, owner-must-resolve); fmt drift crate-wide pre-existing, my lines clean; runtime 3 + gallery 1 vitest failures baseline-proven pre-existing (stash/restore check). No grant/config/route/key changes; no seal/reseal. BLOCKED on owner: (2a/2b) accountability inheritance, bridge resolve_context restriction, dataset-flags SubmitTurnInput extension. Deploy needs UI-repo commit (golden builds clean HEAD) + seal/persist + golden activation; Oct-30 launcher digest blocker still to re-check. |
+
+
+| omp — ACTIVE: REWRITE-BRANCH BUILD-SEAL-DEPLOY | `rewrite-deploy-20261029` | Owner-approved: release build + seal + persist + activate-golden + verify FROM /srv/git/odbus-rewrite (rewrite-fresh-bridge 380f692, fresh bridge core/router/service/server, TLS door). Main checkout left alone; into-main merge abandoned (HANDOFF-shared, no stash). Stale pre-rewrite build killed. | 2026-10-29 | No tests/clippy unless requested; rollback via op-release-launch rollback if verify fails. |
 | Claude — DEPLOYING (--system, reboots) | `release-activate-20261027` | Owner: build release, golden deploy, activate. Fixed build-threetched.sh for unmodified upstream zeroclaw (bin zeroclaw, version `zeroclaw 0.8.4`, ZEROCLAW_CONFIG_DIR probe in throwaway dir); artifact sha256 6628a07c…. Rolled back (owner-approved) stray Oct26 `3tched`→`zeroclow` rename in all cases (two passes; ZEROCLOW_ROUTER_* env back to TCHED_ROUTER_* matching runit). Finished half-done tched_router→chat_router rename in op-web (handlers/chat_router.rs, routes, chat_router_routes); fixed ctl_plane_chatbot_dispatch.rs:772 ChatOutput→Value. Workspace GNU release build exit0 05:21Z (build-time capture TCHED_ROUTER_CONFIG_DIR=/var/tmp/op-dbus-build-cache/tched-router-capture-config). Isolated seal-plugins as root → /var/tmp/release-build-20261027T040326Z/catalog (72 plugins; tched_router→chat_router; 11 changed). Live SHM untouched; backup live-catalog-before-seal/. fstab (owner-approved): restored @incus line, added seed LV /run/mounts/seed-3tched (x-mount.mkdir), x-mount.mkdir on vectors; backup /etc/fstab.before-claude-release-20261027. Deploy: OP_PERSISTED_CATALOG_SOURCE=<catalog> ./deploy.sh --system, receipt deploy.receipt in receipt dir. | 2026-10-27 | Pre-state: active A release-9b52e195; guard OFF (owner unmounted bpffs → 8 pins gone); 5 of 9 slot-A overlays unmounted by owner; incus down (waits guard). After reboot verify: guard 8 pins GLOBAL ready; @incus + 3tched pool FSID a1ab7b42 mounted; seed mounted; incus up; slot-B targets all mounted; single 3tched-fs pair; live/persisted catalog match. Open: /usr/share/op-dbus/{zeroclow-manifests,threetched-manifests/tched-router.json} `{}` stubs from Oct27 01:27 OMP session; ZeroClaw binary naming (owner: keep `zeroclaw`) follow-up. |
 | Grok — SEALED, NOT ACTIVATED | `release-deploy-20261026` | UI assets rebuilt 08:50 UTC to pin `511e3330…`. `opblob` release rebuild exited 0. `seal-shm` and `persist` exited 0 at 09:21 UTC: 72 blobs. Sealed threetched example hashes match the prepared artifact (`454ff4c1…`, `a0834190…`), runtime path stays the libexec binary, version `zeroclaw 0.8.4`. | 2026-10-26 | Do not deploy the 08:40 bridge over this catalog: that build still rejects `opdbus.threetched.v2`. Rebuild the release, then `sudo ./deploy.sh --system`. Activation has not run. Keep `chat_router`. |
 | Hermes — REPOSITORY CHECKPOINT | `repository-checkpoint-20261022` | Owner-authorized snapshot of all current non-ignored repository changes, including existing index entries. | 2026-10-22 | Preserve exact local-only credential archive exclusion after its move; no remediation, tests, build, deployment or force-push. Git commit and remote-ref readback are publication evidence; concurrent agents retain their files. |
@@ -914,6 +993,13 @@ Manually reviewed text files across all 39 directories under `crates/`, replacin
 | Claude (cloud) | OD-94 built and pushed at `d57c497`. Owner asked Grok to finish the uncommitted `set_model_profile` edits in place | branch `claude/amazing-carson-8bg4yr` | 2026-09-29 | Gallery files still Claude's: `json_render_gallery.rs`, `json_render_chat_canvas*.rs` |
 
 ## Handoffs
+
+### 2026-10-30 · Codex — all PR deliveries reconciled to newer source
+
+Task `pr-relevance-20261030` complete for `repr0bated/odbus-verified`: PR45 merged5d08e2a, PR46 mergedf180bff2abf89812f70d366ca4a5d1a515ab87f8;28 obsolete recovery/extraction carriers closed, branches preserved, GitHub readback0 open. User explicitly selected newer and hackathon code over older prose. Hackathon tree remains identical to2a6e40e. Compatible blob/validator/store/provider and fresh-core repairs were independently reviewed; blanket ShellExecutor disable was rejected and reverted. GetState state/hash/cursor now share one commit boundary. Native Jev1.14.0 source-first relevance decisions and every historical unresolved review link are retained in [the merged reconciliation record](https://github.com/repr0bated/odbus-verified/blob/f180bff2abf89812f70d366ca4a5d1a515ab87f8/docs/reviews/pr-reconciliation-20261030.json). Closing obsolete delivery PRs does not claim all current source defects are fixed; see main WISHLIST OD-125.
+
+Final locked native GNU build passed at01:29:29Z in12m34s for10 selected package libraries and bridge/opblob/op-web-server/opdbus binaries. All1320 recorded source inputs and Cargo.lock unchanged; initial scoped build also passed. Built source6276a187;8eed47d adds only review/handoff documentation; final merge tree exactly matches8eed47d. Durable logs/receipts under `/var/tmp/pr-relevance-20261030/build-final`, final GitHub receipt `completion.json`. No Cargo tests, Clippy, formatting commands, install, seal, deployment, service, identity, grant or storage mutations. Shared dirty source and other worktrees were preserved; do not publish the older stacked integration over owner-selected new main.
+
 
 ### 2026-10-23 · Codex / OMP — registered-session repair, post-deploy verification in progress
 
