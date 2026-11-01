@@ -7196,3 +7196,9 @@ Authoritative task status, per-PR limitations, source/build/merge receipts, memo
 - Live UI 3tched.com a7c16b8 on release 14:17Z. Model picker removed (6d23a87). `RuntimeHost.svelte` pins every routed mode to `openrouter` / `meta/muse-spark-1.3` via the caller's own selectRoute when the chat context loads (a7c16b8).
 - NOT pinned: the control-plane model, which the chatbot uses to answer chat_response turns. It needs the owner's elevation through ControlPlanePicker and cannot be set automatically.
 - After the demo: revert 6d23a87, 3d2a52c and a7c16b8 in 3tched.com to restore the top-bar picker (57c10bf) and drop the pin.
+
+### 2026-11-01 14:42Z — Claude (Opus 5.5): EMQX file log, demo chat path
+- EMQX logs to /var/log/emqx/emqx.log.N (EMQX's file handler; console disabled) since a4890e9; read it with sudo. The runit logger attempt (da42023) failed the release with "no identifiable runsv supervisor: emqx" and was reverted in 482f467. The Erlang dist flag moved to ERL_AFLAGS (b326ebe), because ERL_ZFLAGS broke the emqx script's -emqx_data_dir parsing (ctl failed).
+- EMQX is a single node (log: "This is a single node"; ctl cluster status lists one node). Community license, expiry 2029. Console "io terminated / license" lines came from my emqx ctl/eval remote sessions.
+- Demo chat (3tched.com 5a935be): one chat_router.Chat call per message returns the reply to the SDK; the bridge records the turn once. The submit_turn/responder flow has no responder (op-chat-responder is not enabled, and nothing implements the D-Bus org.opdbus.v1.ChatResponder it relays to). Owner's target design: the SDK returns the reply and writes to the sled once at the end.
+- Not yet confirmed with a real chat message from the browser.
