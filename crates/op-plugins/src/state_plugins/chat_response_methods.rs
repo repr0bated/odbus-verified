@@ -57,6 +57,28 @@ pub struct StartConversationOutput {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct SubmitTurnInput {
+    #[schemars(description = "Bridge-minted conversation id, bound to the caller's principal")]
+    pub conversation_id: String,
+    #[schemars(description = "Human message text [PII]", extend("x-opdbus-private" = true))]
+    pub message: String,
+    #[schemars(description = "Rendering mode: text or application")]
+    pub response_mode: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SubmitTurnOutput {
+    /// Conversation the turn was appended to, bound to the caller's principal.
+    pub conversation_id: String,
+    /// Bridge-minted id of the human turn.
+    pub turn_id: String,
+    /// Zero-based position of the human turn in its conversation.
+    pub turn_index: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct RespondToUserInput {
     #[schemars(description = "Bridge-minted turn this response answers")]
     pub turn_id: String,

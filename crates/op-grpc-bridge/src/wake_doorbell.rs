@@ -192,10 +192,16 @@ pub(crate) async fn authorize(
         Ok(topic) => topic,
         Err(_) => return Verdict::Deny,
     };
-    // An identity may read its own doorbell and the retained toolset
-    // manifest (names only; each call is still admitted by its grants).
+    // An identity may read its own doorbell, the retained toolset manifest
+    // (names only; each call is still admitted by its grants), and the live
+    // schema/state feed (sealed schemas and state hints; receipts and blobs
+    // stay authoritative). Publishing is never allowed: the feed is written
+    // only through sealed bridge methods.
     if !subscribe
-        || (topic != own_topic && topic != op_plugins::state_plugins::emqx::TOOLSETS_TOPIC)
+        || (topic != own_topic
+            && topic != op_plugins::state_plugins::emqx::TOOLSETS_TOPIC
+            && !topic.starts_with(op_plugins::state_plugins::emqx::SCHEMA_TOPIC_PREFIX)
+            && !topic.starts_with(op_plugins::state_plugins::emqx::STATE_TOPIC_PREFIX))
     {
         return Verdict::Deny;
     }
@@ -342,6 +348,21 @@ mod tests {
             "a live identity reads the toolset manifest"
         );
         assert_eq!(
+            authorize(&engine, &client_id, true, "opdbus/schema/identity_sled").await,
+            Verdict::Allow,
+            "a live identity reads sealed schemas"
+        );
+        assert_eq!(
+            authorize(&engine, &client_id, true, "opdbus/state/emqx").await,
+            Verdict::Allow,
+            "a live identity reads the state feed"
+        );
+        assert_eq!(
+            authorize(&engine, &client_id, false, "opdbus/state/emqx").await,
+            Verdict::Deny,
+            "the feed is never published by identities"
+        );
+        assert_eq!(
             owner_key_for_sled(&sled).as_deref(),
             Some(client_id.as_str()),
             "the kick targets the same derived key"
@@ -416,6 +437,20 @@ mod tests {
         );
         assert_eq!(
             authorize(&engine, &key, true, "opdbus/toolsets/#").await,
+            Verdict::Deny
+        );
+        // The schema/state feed follows the same gate: readable only with
+        // a live sled, never publishable.
+        assert_eq!(
+            authorize(&engine, &key, true, "opdbus/schema/emqx").await,
+            Verdict::Deny
+        );
+        assert_eq!(
+            authorize(&engine, &key, true, "opdbus/state/emqx/events").await,
+            Verdict::Deny
+        );
+        assert_eq!(
+            authorize(&engine, &key, false, "opdbus/schema/emqx").await,
             Verdict::Deny
         );
         assert_eq!(

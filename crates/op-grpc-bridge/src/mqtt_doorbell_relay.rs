@@ -64,6 +64,20 @@ pub(crate) async fn upgrade(
     accept_upgrade(ws, broker, Some(permit))
 }
 
+/// Same-origin entrypoint for op-web's `/mqtt` proxy: the page's own origin
+/// serves the socket so the browser never handles the door's certificate.
+/// Identical origin/subprotocol checks and the same loopback broker; the
+/// bridge's own permit accounting does not apply here.
+pub async fn proxy_browser_upgrade(ws: WebSocketUpgrade, headers: HeaderMap) -> Response {
+    if !allowed_origin(&headers) || !mqtt_subprotocol(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    let broker = match tokio::time::timeout(CONNECT_TIMEOUT, connect_broker()).await {
+        Ok(Ok(broker)) => broker,
+        _ => return StatusCode::BAD_GATEWAY.into_response(),
+    };
+    accept_upgrade(ws, broker, None)
+}
 fn accept_upgrade<S>(
     ws: WebSocketUpgrade,
     broker: WebSocketStream<S>,

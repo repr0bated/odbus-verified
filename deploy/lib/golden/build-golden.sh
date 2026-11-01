@@ -1,47 +1,45 @@
 #!/bin/sh
 # build-golden.sh — prepare the golden btrfs subvolume from one release build.
 #
-# Populate the `golden` btrfs subvolume with the complete deployable content.
-# Taking a read-only snapshot, transferring it with `btrfs send/receive`, and
-# activating the received filesystem belong to the deployment process. This
-# preparation script performs none of those deployment steps and never writes
-# into the running host's installation or restarts a service.
+# Rewritten 2026-10-29 (owner-directed, from scratch). Contract unchanged:
+# populate $OPDBUS_ROOT/golden (default /opt/op-dbus/golden) with the complete
+# deployable content, then let the deployment process snapshot/send/activate
+# it. This script never builds Rust, never seals the catalog, never writes
+# into the running host's installation and never restarts a service.
 #
-# Layout created under $OPDBUS_ROOT (default /opt/op-dbus):
+# Inputs (all must already exist; build/seal happen before this script):
+#   target/release/                 CXXFLAGS="-include cstdint" cargo build --workspace --release
+#   $OP_PERSISTED_CATALOG_SOURCE    sealed catalog from `opblob seal-shm && opblob persist`
+#                                   (default /var/lib/opdbus/plugin-blobs, never modified here)
+#   target/threetched-artifacts/    pinned threetched binary + provenance manifest
+#   /srv/git/3tched.com             the UI repository itself — Svelte/SvelteKit only.
+#                                   There is no vendored UI archive; assets are built
+#                                   from this repo (overridable with OP_UI_REPO).
+#   /var/cache/op-dbus/...          pinned EMQX and NotebookLM wheel artifacts.
 #
-#   golden/                      the deployable subvolume
-#     bin/                       release binaries
-#     libexec/3tched/             application and explicit provisioning helpers/assets
-#     usr/bin/threetched          pinned threetched dependency
-#     usr/share/op-dbus/          immutable config, catalog and provenance
-#     usr/local/share/op-dbus/dashboard/  pinned production UI assets at root
-#     sv/<service>/run            enabled application runit definitions
-#     opt/                       immutable broker and provider runtimes
+# Layout created under golden/:
+#   bin/                            release binaries (+ nlm wrapper)
+#   libexec/3tched/                 explicit provisioning helpers/assets
+#   usr/bin/threetched              pinned threetched dependency
+#   usr/share/op-dbus/              immutable config, catalog, graphs, provenance
+#   usr/local/share/op-dbus/dashboard/  UI assets built from the UI repo, at root
+#   sv/<service>/run                enabled application runit definitions
+#   opt/                            immutable broker, provider, python runtimes
+#   MANIFEST                        commit, build time, sha256 per binary, graph pin
 # Host secrets, grants, network/bootstrap services and writable data are excluded.
-#     MANIFEST                   commit, build time, sha256 per binary
 #
 # Usage:
 #   build-golden.sh                 # prepare and validate golden (default)
 #   build-golden.sh --golden-only   # compatibility alias for the default
-#   build-golden.sh --dry-run
-#   build-golden.sh --system    # also stage the declared base-system payload
-#
-# Retired options `--live-only` and `--no-restart` fail explicitly. Requires
-# root to populate the btrfs subvolume. Never builds: run
-# `CXXFLAGS="-include cstdint" cargo build --workspace --release` first (the
-# vendored RocksDB in cozorocks needs that flag on modern GCC).
-# `OP_PERSISTED_CATALOG_SOURCE` may name an isolated prepared catalog; it
-# defaults to `/var/lib/opdbus/plugin-blobs` and is never modified here.
-# `OP_RELEASE_DIR` selects the same prepared optimized artifact directory as
-# activate-golden.sh; it defaults to the workspace's target/release.
+#   build-golden.sh --dry-run       # validate inputs and print planned changes
+# Retired options --system, --live-only and --no-restart fail explicitly.
+# Requires root for the live run (the UI build itself drops to the repo owner).
 set -eu
 
 OPDBUS_ROOT=${OPDBUS_ROOT:-/opt/op-dbus}
 OPDBUS_ROOT=$(realpath -e -- "$OPDBUS_ROOT")
 GOLDEN_DIR="$OPDBUS_ROOT/golden"
-
 DRY_RUN=0
-PREPARE_SYSTEM=0
 
 SCRIPT_PATH=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
 # Internal helper of ./activate-golden.sh; every relative input lives in deploy/runit.
@@ -52,48 +50,39 @@ else
     PROJECT_ROOT=${OP_DBUS_ROOT:-$(pwd)}
 fi
 RELEASE_DIR=$(realpath -e -- "${OP_RELEASE_DIR:-"$PROJECT_ROOT/target/release"}")
-MCP_AUDIENCE_POLICY_SOURCE="$SCRIPT_DIR/../config/mcp-audience-policy.json"
-HOST_RUNTIME_PACKAGES_SOURCE="$SCRIPT_DIR/../config/host-runtime-packages.txt"
 PERSISTED_CATALOG_DIR=${OP_PERSISTED_CATALOG_SOURCE:-/var/lib/opdbus/plugin-blobs}
 PERSISTED_CATALOG_DIR=$(realpath -e -- "$PERSISTED_CATALOG_DIR")
 case "$PERSISTED_CATALOG_DIR" in
     "$GOLDEN_DIR"|"$GOLDEN_DIR"/*)
         printf '%s\n' "catalog source must be outside the golden preparation tree" >&2
-        exit 1
-        ;;
+        exit 1 ;;
 esac
-RETIRED_SERVICES_FILE="$SCRIPT_DIR/retired-services"
-RETIRED_BINARIES_FILE="$SCRIPT_DIR/retired-binaries"
+
+UI_REPO=${OP_UI_REPO:-/srv/git/3tched.com}
+UI_REPO=$(realpath -e -- "$UI_REPO")
+UI_DIST="$UI_REPO/dist"
+THREETCHED_ARTIFACT_DIR="$PROJECT_ROOT/target/threetched-artifacts/tched-router"
+THREETCHED_BIN="$THREETCHED_ARTIFACT_DIR/threetched"
+THREETCHED_MANIFEST="$THREETCHED_ARTIFACT_DIR/manifest.json"
+TCHED_ROUTER_SOURCE_PIN="$PROJECT_ROOT/vendor/tched-router/source.pin"
 EMQX_VERSION_FILE="$SCRIPT_DIR/../config/emqx.version"
 EMQX_CONFIG_DIR="$SCRIPT_DIR/../emqx"
-EMQX_ARTIFACT_CACHE_DIR=${EMQX_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
-MCP_PROVIDER_ARTIFACT_CACHE_DIR=${MCP_PROVIDER_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
 NOTEBOOKLM_MCP_VERSION_FILE="$SCRIPT_DIR/../config/notebooklm-mcp.version"
+ARTIFACT_CACHE_DIR=${OP_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
+MCP_AUDIENCE_POLICY_SOURCE="$SCRIPT_DIR/../config/mcp-audience-policy.json"
+HOST_RUNTIME_PACKAGES_SOURCE="$SCRIPT_DIR/../config/host-runtime-packages.txt"
 EXECUTION_PYTHON_LOCK="$SCRIPT_DIR/../config/execution-python-requirements.lock"
 EXECUTION_PYTHON_PREPARE="$SCRIPT_DIR/prepare-execution-python.sh"
-NLM_CLI_ROOT=/opt/opdbus
-TCHED_ROUTER_SOURCE_PIN="$PROJECT_ROOT/vendor/tched-router/source.pin"
-TCHED_ROUTER_VENDORED_SOURCE="$PROJECT_ROOT/vendor/tched-router/source.tar.gz"
-TCHED_ROUTER_ARTIFACT_DIR="$PROJECT_ROOT/target/threetched-artifacts/tched-router"
-THREETCHED_BIN="$TCHED_ROUTER_ARTIFACT_DIR/threetched"
-THREETCHED_MANIFEST="$TCHED_ROUTER_ARTIFACT_DIR/manifest.json"
+HOST_RUNTIME_PACKAGE_CHECK="$SCRIPT_DIR/check-host-runtime-packages.sh"
 TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/threetched-runtime.toml"
 TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/threetched-skills/default"
 AGENT_BUNDLE_SOURCE="$SCRIPT_DIR/../config/agents"
-UI_SOURCE_DIR="$PROJECT_ROOT/vendor/3tched-json-render-ui"
-UI_SOURCE_PIN="$UI_SOURCE_DIR/source.pin"
-UI_SOURCE_ARCHIVE="$UI_SOURCE_DIR/source.tar.gz"
-UI_SOURCE_MANIFEST="$UI_SOURCE_DIR/source-sha256sums"
-UI_ASSET_BUILD_HELPER="$UI_SOURCE_DIR/build-assets.sh"
-UI_ARTIFACT_DIR="$PROJECT_ROOT/target/ui-artifacts/3tched-json-render-ui"
-UI_ASSET_ARCHIVE="$UI_ARTIFACT_DIR/assets.tar.gz"
-UI_ASSET_MANIFEST="$UI_ARTIFACT_DIR/manifest.json"
+RETIRED_SERVICES_FILE="$SCRIPT_DIR/retired-services"
+RETIRED_BINARIES_FILE="$SCRIPT_DIR/retired-binaries"
+NLM_CLI_ROOT=/opt/opdbus
 
 # Explicit source -> release-name inventory, relative to deploy/. Never copy
 # the whole host helper directory: network/storage bootstrap stays independent.
-# RELEASE_ROOTS maps libexec/3tched to /usr/local/libexec/op-dbus/helpers, NOT
-# the base-owned /usr/local/libexec/3tched. Guest files are inert image inputs;
-# staging them does not install/enable a host or guest service or prepare a seed.
 RELEASE_HELPER_INPUTS='0755 runit/libexec-3tched/emqx-prepare emqx-prepare
 0755 runit/libexec-3tched/runit-ready-signal runit-ready-signal
 0755 runit/libexec-3tched/prepare-salad-control-plane prepare-salad-control-plane
@@ -117,11 +106,11 @@ RELEASE_HELPER_INPUTS='0755 runit/libexec-3tched/emqx-prepare emqx-prepare
 0644 workspace-image/3tchedfs.fstab 3tchedfs.fstab
 0644 workspace-image/3tched-lungs.conf 3tched-lungs.conf'
 
-is_application_service() {
-    [ -f "$SCRIPT_DIR/$1/run" ] &&
-        grep -qx '# op-dbus-release: application' "$SCRIPT_DIR/$1/run" &&
-        grep -Ev '^[[:space:]]*(#|$)' "$SCRIPT_DIR/enabled-services" | grep -qx "$1" &&
-        ! is_retired_service "$1"
+log() { printf '\033[0;34m[golden]\033[0m %s\n' "$*"; }
+ok()  { printf '\033[0;32m[ ok  ]\033[0m %s\n' "$*"; }
+die() { printf '\033[0;31m[fail ]\033[0m %s\n' "$*" >&2; exit 1; }
+run() {
+    if [ "$DRY_RUN" = 1 ]; then printf '  would run: %s\n' "$*"; else "$@"; fi
 }
 
 # Only this already-provisioned, root-owned preparation tree may be changed.
@@ -130,9 +119,7 @@ ensure_directory() (
     directory=$1
     case "$directory" in "$GOLDEN_DIR"|"$GOLDEN_DIR"/*) ;; *) die "destination outside golden: $directory" ;; esac
     [ ! -L "$directory" ] || die "symlink directory in golden: $directory"
-    if [ "$directory" != "$GOLDEN_DIR" ]; then
-        ensure_directory "$(dirname "$directory")"
-    fi
+    if [ "$directory" != "$GOLDEN_DIR" ]; then ensure_directory "$(dirname "$directory")"; fi
     if [ ! -e "$directory" ]; then
         run install -d -m 0755 -o root -g root "$directory"
     else
@@ -188,11 +175,7 @@ sync_tree() (
         find "$destination" -depth -mindepth 1 -print | while IFS= read -r entry; do
             relative=${entry#"$destination"/}
             if [ ! -e "$source/$relative" ]; then
-                if [ -d "$entry" ] && [ ! -L "$entry" ]; then
-                    run rmdir -- "$entry"
-                else
-                    run rm -- "$entry"
-                fi
+                if [ -d "$entry" ] && [ ! -L "$entry" ]; then run rmdir -- "$entry"; else run rm -- "$entry"; fi
             fi
         done
     fi
@@ -205,43 +188,32 @@ sync_tree() (
         install_file "$mode" "$entry" "$destination/${entry#"$source"/}"
     done
 )
+
 is_retired_service() {
-    svc=$1
     [ -f "$RETIRED_SERVICES_FILE" ] &&
-        grep -Ev '^[[:space:]]*(#|$)' "$RETIRED_SERVICES_FILE" | grep -qx "$svc"
+        grep -Ev '^[[:space:]]*(#|$)' "$RETIRED_SERVICES_FILE" | grep -qx "$1"
 }
-
 is_retired_binary() {
-    binary=$1
     [ -f "$RETIRED_BINARIES_FILE" ] &&
-        grep -Ev '^[[:space:]]*(#|$)' "$RETIRED_BINARIES_FILE" | grep -qx "$binary"
+        grep -Ev '^[[:space:]]*(#|$)' "$RETIRED_BINARIES_FILE" | grep -qx "$1"
 }
-
-log()  { printf '\033[0;34m[golden]\033[0m %s\n' "$*"; }
-ok()   { printf '\033[0;32m[ ok  ]\033[0m %s\n' "$*"; }
-die()  { printf '\033[0;31m[fail ]\033[0m %s\n' "$*" >&2; exit 1; }
-
-run() {
-    if [ "$DRY_RUN" = 1 ]; then
-        printf '  would run: %s\n' "$*"
-    else
-        "$@"
-    fi
+is_application_service() {
+    [ -f "$SCRIPT_DIR/$1/run" ] &&
+        grep -qx '# op-dbus-release: application' "$SCRIPT_DIR/$1/run" &&
+        grep -Ev '^[[:space:]]*(#|$)' "$SCRIPT_DIR/enabled-services" | grep -qx "$1" &&
+        ! is_retired_service "$1"
 }
 
 write_nlm_wrapper() {
-    dest=$1
-    runtime_venv=$2
+    dest=$1 runtime_venv=$2
     if [ "$DRY_RUN" = 1 ]; then
         printf '  would write nlm wrapper: %s -> %s\n' "$dest" "$runtime_venv"
         return 0
     fi
-    # Never follow an existing wrapper symlink or truncate a running wrapper.
     [ ! -L "$dest" ] || die "refusing to overwrite a symlink at $dest"
     wrapper_stage=$(mktemp "$(dirname "$dest")/.nlm-wrapper.XXXXXX")
     # Invoke the module: venv console-script shebangs contain the temporary
-    # build path and are not relocatable. This is always the target's path,
-    # never a path beneath the golden staging prefix.
+    # build path and are not relocatable. This is always the target's path.
     printf '#!/bin/sh\nexec "%s/bin/python" -I -m notebooklm_tools.cli.main "$@"\n' \
         "$runtime_venv" > "$wrapper_stage"
     install_file 0755 "$wrapper_stage" "$dest"
@@ -249,8 +221,7 @@ write_nlm_wrapper() {
 }
 
 install_nlm_cli() {
-    dest_root=$1
-    wrapper=$2
+    dest_root=$1 wrapper=$2
     venv="$dest_root$NLM_CLI_ROOT/$NOTEBOOKLM_MCP_INSTALL_NAME"
     marker="$venv/.opdbus-artifact-sha256"
     if [ -f "$marker" ] && [ "$(sed -n '1p' "$marker")" = "$NOTEBOOKLM_MCP_SHA256" ] &&
@@ -279,6 +250,20 @@ install_nlm_cli() {
     write_nlm_wrapper "$wrapper" "$NLM_CLI_ROOT/$NOTEBOOKLM_MCP_INSTALL_NAME"
 }
 
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --golden-only) ;;
+        --dry-run) DRY_RUN=1 ;;
+        --system) die "--system is retired; the base-system payload is staged by its own owner" ;;
+        --live-only) die "--live-only is retired; deploy only with btrfs send/receive of a prepared snapshot" ;;
+        --no-restart) die "--no-restart is retired because this script never installs or restarts live services" ;;
+        -h|--help) sed -n '2,34p' "$SCRIPT_PATH"; exit 0 ;;
+        *) die "unknown option: $1" ;;
+    esac
+    shift
+done
+
+# ── Declared artifact pins ──────────────────────────────────────────────────
 [ -r "$EMQX_VERSION_FILE" ] || die "missing EMQX artifact declaration: $EMQX_VERSION_FILE"
 # shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated below.
 . "$EMQX_VERSION_FILE"
@@ -286,358 +271,175 @@ case "${EMQX_VERSION:-}" in *[!0-9.]*|'') die "invalid EMQX_VERSION" ;; esac
 case "${EMQX_ARTIFACT:-}" in *[!A-Za-z0-9._-]*|'') die "invalid EMQX_ARTIFACT" ;; esac
 case "${EMQX_SHA256:-}" in *[!0-9a-f]*|'') die "invalid EMQX_SHA256" ;; esac
 [ "${#EMQX_SHA256}" -eq 64 ] || die "EMQX_SHA256 must contain 64 lowercase hex characters"
-EMQX_ARTIFACT_PATH="$EMQX_ARTIFACT_CACHE_DIR/$EMQX_ARTIFACT"
+EMQX_ARTIFACT_PATH="$ARTIFACT_CACHE_DIR/$EMQX_ARTIFACT"
 EMQX_INSTALL_NAME="emqx-$EMQX_VERSION-$EMQX_SHA256"
 
-[ -r "$NOTEBOOKLM_MCP_VERSION_FILE" ] ||
-    die "missing NotebookLM nlm wheel declaration: $NOTEBOOKLM_MCP_VERSION_FILE"
+[ -r "$NOTEBOOKLM_MCP_VERSION_FILE" ] || die "missing NotebookLM wheel declaration: $NOTEBOOKLM_MCP_VERSION_FILE"
 # shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated below.
 . "$NOTEBOOKLM_MCP_VERSION_FILE"
 case "${NOTEBOOKLM_MCP_VERSION:-}" in *[!0-9.]*|'') die "invalid NOTEBOOKLM_MCP_VERSION" ;; esac
 case "${NOTEBOOKLM_MCP_ARTIFACT:-}" in *[!A-Za-z0-9._-]*|'') die "invalid NOTEBOOKLM_MCP_ARTIFACT" ;; esac
 case "${NOTEBOOKLM_MCP_SHA256:-}" in *[!0-9a-f]*|'') die "invalid NOTEBOOKLM_MCP_SHA256" ;; esac
-[ "${#NOTEBOOKLM_MCP_SHA256}" -eq 64 ] ||
-    die "NOTEBOOKLM_MCP_SHA256 must contain 64 lowercase hex characters"
-NOTEBOOKLM_MCP_ARTIFACT_PATH="$MCP_PROVIDER_ARTIFACT_CACHE_DIR/$NOTEBOOKLM_MCP_ARTIFACT"
+[ "${#NOTEBOOKLM_MCP_SHA256}" -eq 64 ] || die "NOTEBOOKLM_MCP_SHA256 must contain 64 lowercase hex characters"
+NOTEBOOKLM_MCP_ARTIFACT_PATH="$ARTIFACT_CACHE_DIR/$NOTEBOOKLM_MCP_ARTIFACT"
 NOTEBOOKLM_MCP_INSTALL_NAME="nlm-cli-$NOTEBOOKLM_MCP_VERSION-$NOTEBOOKLM_MCP_SHA256"
-
-[ -r "$TCHED_ROUTER_SOURCE_PIN" ] ||
-    die "missing threetched source pin: $TCHED_ROUTER_SOURCE_PIN"
-# shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated below.
-. "$TCHED_ROUTER_SOURCE_PIN"
-case "${UPSTREAM_TAG:-}" in v[0-9]*.[0-9]*.[0-9]*) ;; *) die "invalid tched_router UPSTREAM_TAG" ;; esac
-case "${UPSTREAM_COMMIT:-}" in *[!0-9a-f]*|'') die "invalid tched_router UPSTREAM_COMMIT" ;; esac
-[ "${#UPSTREAM_COMMIT}" -eq 40 ] || die "tched_router UPSTREAM_COMMIT must contain 40 lowercase hex characters"
-case "${SOURCE_ARCHIVE_SHA256:-}" in *[!0-9a-f]*|'') die "invalid tched_router SOURCE_ARCHIVE_SHA256" ;; esac
-[ "${#SOURCE_ARCHIVE_SHA256}" -eq 64 ] ||
-    die "tched_router SOURCE_ARCHIVE_SHA256 must contain 64 lowercase hex characters"
-case "${VENDORED_SOURCE_GZIP_SHA256:-}" in *[!0-9a-f]*|'') die "invalid tched_router VENDORED_SOURCE_GZIP_SHA256" ;; esac
-[ "${#VENDORED_SOURCE_GZIP_SHA256}" -eq 64 ] ||
-    die "tched_router VENDORED_SOURCE_GZIP_SHA256 must contain 64 lowercase hex characters"
-[ -f "$TCHED_ROUTER_VENDORED_SOURCE" ] ||
-    die "missing vendored tched_router source archive: $TCHED_ROUTER_VENDORED_SOURCE"
-[ "$(sha256sum "$TCHED_ROUTER_VENDORED_SOURCE" | cut -d' ' -f1)" = "$VENDORED_SOURCE_GZIP_SHA256" ] ||
-    die "vendored tched_router source archive does not match source.pin"
-
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --golden-only) ;;
-        --system) PREPARE_SYSTEM=1 ;;
-        --live-only)   die "--live-only is retired; deploy only with btrfs send/receive of a prepared snapshot" ;;
-        --no-restart)  die "--no-restart is retired because this script never installs or restarts live services" ;;
-        --dry-run)     DRY_RUN=1 ;;
-        -h|--help)     sed -n '2,35p' "$SCRIPT_PATH"; exit 0 ;;
-        *)             die "unknown option: $1" ;;
-    esac
-    shift
-done
 
 # ── Preconditions ───────────────────────────────────────────────────────────
 printf '%s\n' "$RELEASE_HELPER_INPUTS" | while read -r mode source helper; do
     input="$SCRIPT_DIR/../$source"
     [ -f "$input" ] && [ ! -L "$input" ] && [ -r "$input" ] ||
         die "missing or unsafe release helper input: $input"
-    # Some guest script sources are deliberately non-executable in Git.
-    # install_file applies the declared release mode, not the checkout mode.
 done
 [ -d "$RELEASE_DIR" ] || die "no $RELEASE_DIR — build first:
   CXXFLAGS=\"-include cstdint\" cargo build --workspace --release"
 
 BINARIES=$(find "$RELEASE_DIR" -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.so' | sort |
     while IFS= read -r bin; do
-        # Container and decoy owners have separate offline release artifacts.
+        # Container, decoy, storage and release owners have separate artifacts.
         case "$(basename "$bin")" in
             op-mail-admin|op-decoy-*|op-wgcf*|op-ovs*|op-rtnetlink*|op-storage*|op-release*) continue ;;
         esac
         is_retired_binary "$(basename "$bin")" || printf '%s\n' "$bin"
     done)
 [ -n "$BINARIES" ] || die "$RELEASE_DIR contains no executables"
-[ -f "$RELEASE_DIR/3tched-fs" ] && [ -x "$RELEASE_DIR/3tched-fs" ] ||
-    die "release is missing 3tched-fs required by identity provisioning"
 printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/3tched-fs" ||
-    die "3tched-fs is absent from the release binary inventory"
+    die "release is missing 3tched-fs required by identity provisioning"
 [ -x "$RELEASE_DIR/opblob" ] || die "release is missing opblob"
 [ -x "$RELEASE_DIR/system_graph_inventory" ] ||
     die "release is missing system_graph_inventory; rebuild the workspace"
-[ -x "$THREETCHED_BIN" ] ||
-    die "missing threetched binary; run vendor/tched-router/build-threetched.sh --cache-dir /var/cache/op-dbus-build/tched-router --output-dir target/threetched-artifacts/tched-router"
-[ -f "$THREETCHED_MANIFEST" ] ||
-    die "missing threetched provenance manifest: $THREETCHED_MANIFEST"
+
+# threetched: pinned upstream binary staged as usr/bin/threetched.
+[ -f "$TCHED_ROUTER_SOURCE_PIN" ] || die "missing threetched source pin: $TCHED_ROUTER_SOURCE_PIN"
+# shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated in the manifest check below.
+. "$TCHED_ROUTER_SOURCE_PIN"
+[ -x "$THREETCHED_BIN" ] || die "missing threetched binary; run vendor/tched-router/build-threetched.sh"
+[ -f "$THREETCHED_MANIFEST" ] || die "missing threetched provenance manifest: $THREETCHED_MANIFEST"
 THREETCHED_SHA256=$(sha256sum "$THREETCHED_BIN" | cut -d' ' -f1)
 TCHED_ROUTER_MANIFEST_SHA256=$(sha256sum "$THREETCHED_MANIFEST" | cut -d' ' -f1)
-THREETCHED_BYTES=$(wc -c < "$THREETCHED_BIN" | tr -d ' ')
-TCHED_ROUTER_LOCK_SHA256=$(tar -xOzf "$TCHED_ROUTER_VENDORED_SOURCE" Cargo.lock | sha256sum | cut -d' ' -f1)
-jq -e \
-    --arg url "$UPSTREAM_URL" \
-    --arg tag "$UPSTREAM_TAG" \
-    --arg commit "$UPSTREAM_COMMIT" \
-    --arg source_sha "$SOURCE_ARCHIVE_SHA256" \
-    --arg vendored_source_gzip_sha "$VENDORED_SOURCE_GZIP_SHA256" \
-    --arg lock_sha "$TCHED_ROUTER_LOCK_SHA256" \
-    --arg binary_sha "$THREETCHED_SHA256" \
-    --argjson binary_bytes "$THREETCHED_BYTES" \
-    '.format == "opdbus.threetched.v2" and
-     .source.mode == "unmodified-upstream" and
-     .source.cargo_lock_sha256 == $lock_sha and
-     (has("patches") | not) and
-     .upstream.url == $url and
-     .upstream.tag == $tag and
-     .upstream.commit == $commit and
-     .upstream.source_archive_sha256 == $source_sha and
-     .upstream.vendored_source_gzip_sha256 == $vendored_source_gzip_sha and
-     .artifact.name == "threetched" and
-     .artifact.upstream_binary == "zeroclaw" and
-     .artifact.sha256 == $binary_sha and
-     .artifact.bytes == $binary_bytes and
-     .artifact.rust_target == "x86_64-unknown-linux-gnu"' \
+jq -e --arg sha "$THREETCHED_SHA256" --arg tag "${UPSTREAM_TAG:-}" \
+    '.format == "opdbus.threetched.v2" and .source.mode == "unmodified-upstream" and
+     (has("patches") | not) and .artifact.name == "threetched" and
+     .artifact.sha256 == $sha and .upstream.tag == $tag' \
     "$THREETCHED_MANIFEST" >/dev/null ||
     die "threetched provenance does not match its pinned source and binary"
 [ "$("$THREETCHED_BIN" --version)" = "zeroclaw ${UPSTREAM_TAG#v}" ] ||
     die "threetched candidate reports an unexpected version"
-strings "$THREETCHED_BIN" | grep -Fq 'tched_router.generation.v1' &&
-    die "threetched candidate still carries the retired patched generation protocol"
-[ -f "$TCHED_ROUTER_BOOTSTRAP_CONFIG" ] ||
-    die "missing tched_router bootstrap configuration: $TCHED_ROUTER_BOOTSTRAP_CONFIG"
-[ -d "$TCHED_ROUTER_BOOTSTRAP_SKILLS" ] ||
-    die "missing tched_router bootstrap skill bundle: $TCHED_ROUTER_BOOTSTRAP_SKILLS"
-[ -z "$(find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type l -print -quit)" ] ||
-    die "tched_router bootstrap skill bundle must not contain symlinks"
-TCHED_ROUTER_BOOTSTRAP_SKILL_COUNT=$(find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f | wc -l)
-[ "$TCHED_ROUTER_BOOTSTRAP_SKILL_COUNT" -gt 0 ] ||
-    die "tched_router bootstrap skill bundle is empty"
-[ -f "$AGENT_BUNDLE_SOURCE/AGENTS.md" ] ||
-    die "missing shared agent bundle instructions: $AGENT_BUNDLE_SOURCE/AGENTS.md"
-[ -z "$(find "$AGENT_BUNDLE_SOURCE" ! -type f ! -type d -print -quit)" ] ||
-    die "shared agent bundle must contain only regular files and directories"
-TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256=$(sha256sum "$TCHED_ROUTER_BOOTSTRAP_CONFIG" | cut -d' ' -f1)
-TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256=$(
-    find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f -print | sort |
-        while IFS= read -r skill; do
-            relative=${skill#"$TCHED_ROUTER_BOOTSTRAP_SKILLS"/}
-            printf '%s  %s\n' "$(sha256sum "$skill" | cut -d' ' -f1)" "$relative"
-        done | sha256sum | cut -d' ' -f1
-)
-[ -x "$UI_ASSET_BUILD_HELPER" ] || die "missing pinned UI asset builder: $UI_ASSET_BUILD_HELPER"
-[ -f "$UI_SOURCE_PIN" ] && [ -f "$UI_SOURCE_ARCHIVE" ] && [ -f "$UI_SOURCE_MANIFEST" ] ||
-    die "pinned UI source archive, pin, or content manifest is missing under $UI_SOURCE_DIR"
-[ -f "$UI_ASSET_ARCHIVE" ] && [ -f "$UI_ASSET_MANIFEST" ] || die "missing pinned UI asset artifact; build it with:
-  $UI_ASSET_BUILD_HELPER --npm-cache /var/cache/op-dbus-build/npm --output-dir $UI_ARTIFACT_DIR"
+[ -f "$TCHED_ROUTER_BOOTSTRAP_CONFIG" ] || die "missing threetched bootstrap config"
+[ -d "$TCHED_ROUTER_BOOTSTRAP_SKILLS" ] && [ -n "$(find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f -print -quit)" ] ||
+    die "missing or empty threetched bootstrap skill bundle"
+[ -f "$AGENT_BUNDLE_SOURCE/AGENTS.md" ] || die "missing shared agent bundle: $AGENT_BUNDLE_SOURCE"
 
-ui_pin() {
-    key=$1
-    sed -n "s/^${key}=//p" "$UI_SOURCE_PIN"
-}
-UI_PIN_FORMAT=$(ui_pin format)
-UI_PIN_HEAD=$(ui_pin source_head)
-UI_PIN_WORKTREE=$(ui_pin source_worktree)
-UI_PIN_ARCHIVE_SHA256=$(ui_pin source_archive_sha256)
-UI_PIN_CONTENT_MANIFEST_SHA256=$(ui_pin content_manifest_sha256)
-UI_PIN_ASSET_BASE=$(ui_pin asset_base)
-UI_PIN_DOOR=$(ui_pin door_default)
-[ "$UI_PIN_FORMAT" = opdbus.3tched-json-render-ui-source.v1 ] || die "unsupported pinned UI source format: $UI_PIN_FORMAT"
-case "$UI_PIN_HEAD" in *[!0-9a-f]*|'') die "invalid pinned UI source revision" ;; esac
-[ "${#UI_PIN_HEAD}" -eq 40 ] || die "pinned UI source revision must contain 40 lowercase hex characters"
-case "$UI_PIN_WORKTREE" in clean|modified) ;; *) die "invalid pinned UI worktree state" ;; esac
-[ "$UI_PIN_ASSET_BASE" = / ] || die "pinned UI asset base must be the dashboard root"
-[ -n "$UI_PIN_DOOR" ] || die "pinned UI production door is empty"
-case "$UI_PIN_ARCHIVE_SHA256" in *[!0-9a-f]*|'') die "invalid pinned UI archive digest" ;; esac
-[ "${#UI_PIN_ARCHIVE_SHA256}" -eq 64 ] || die "pinned UI archive digest must contain 64 lowercase hex characters"
-case "$UI_PIN_CONTENT_MANIFEST_SHA256" in *[!0-9a-f]*|'') die "invalid pinned UI content manifest digest" ;; esac
-[ "${#UI_PIN_CONTENT_MANIFEST_SHA256}" -eq 64 ] || die "pinned UI content manifest digest must contain 64 lowercase hex characters"
-[ "$(sha256sum "$UI_SOURCE_ARCHIVE" | cut -d' ' -f1)" = "$UI_PIN_ARCHIVE_SHA256" ] ||
-    die "pinned UI source archive does not match source.pin"
-[ "$(sha256sum "$UI_SOURCE_MANIFEST" | cut -d' ' -f1)" = "$UI_PIN_CONTENT_MANIFEST_SHA256" ] ||
-    die "pinned UI source manifest does not match source.pin"
-tar -tzf "$UI_SOURCE_ARCHIVE" | awk '
-    /^\// || /(^|\/)\.\.($|\/)/ { bad=1 }
-    !/^3tched-json-render-ui\// { bad=1 }
-    END { exit bad ? 1 : 0 }
-' || die "pinned UI source archive contains an unsafe or unexpected path"
-tar -tzf "$UI_SOURCE_ARCHIVE" | grep -qx '3tched-json-render-ui/package-lock.json' ||
-    die "pinned UI source archive is missing package-lock.json"
-"$UI_ASSET_BUILD_HELPER" --verify-only || die "pinned UI source archive failed verification"
+# UI: the repository itself, Svelte only. Dependencies may list React
+# (Vercel AI SDK and Chat SDK peers). The Svelte app must not import it.
+[ -f "$UI_REPO/package.json" ] || die "missing UI repository package.json: $UI_REPO"
+grep -q '"@json-render/svelte"' "$UI_REPO/package.json" && grep -q '"svelte"' "$UI_REPO/package.json" ||
+    die "UI repository is not the Svelte/@json-render/svelte app: $UI_REPO"
+react_use=$(git -C "$UI_REPO" grep -n -E \
+    -e "from ['\"]react['\"/]" \
+    -e "from ['\"]react-dom['\"/]" \
+    -e "require\\(['\"]react" \
+    HEAD -- src || true)
+if [ -n "$react_use" ]; then
+    printf '%s\n' "$react_use" >&2
+    die "UI source imports React; dependencies may be present, src/ may not use react or react-dom"
+fi
+UI_HEAD=$(git -C "$UI_REPO" rev-parse HEAD 2>/dev/null) || die "UI repository has no git HEAD: $UI_REPO"
+UI_WORKTREE=clean-head
+UI_TMP=
+cleanup_ui() { [ -z "$UI_TMP" ] || rm -rf -- "$UI_TMP"; }
+trap cleanup_ui EXIT HUP INT TERM
+if [ "$DRY_RUN" = 1 ]; then
+    [ -f "$UI_DIST/index.html" ] || die "UI dist missing; build $UI_REPO first (npm run build) or run without --dry-run"
+    UI_STAGE="$UI_DIST"
+else
+    # Build from a clean HEAD checkout: the live UI worktree may be dirty or
+    # conflicted and is never modified here. Deps are shared read-only via the
+    # repo's existing node_modules; the temp checkout is removed on exit.
+    ui_owner=$(stat -c %U "$UI_REPO")
+    UI_TMP=$(mktemp -d)
+    git -C "$UI_REPO" archive HEAD | tar -x -C "$UI_TMP" ||
+        die "cannot export clean UI HEAD from $UI_REPO"
+    [ -d "$UI_REPO/node_modules" ] || die "UI repo node_modules missing: $UI_REPO/node_modules"
+    ln -s "$UI_REPO/node_modules" "$UI_TMP/node_modules"
+    # Untracked build inputs (e.g. generated sources) live only in the
+    # worktree; tracked files always come from HEAD above, never the worktree.
+    if [ -n "$(git -C "$UI_REPO" ls-files --others --exclude-standard)" ]; then
+        (CDPATH= cd -- "$UI_REPO" && git ls-files --others --exclude-standard -z |
+            tar --null -T - -cf -) | tar -x -C "$UI_TMP" ||
+            die "cannot overlay untracked UI inputs from $UI_REPO"
+    fi
+    log "building UI assets from clean HEAD ${UI_HEAD} of $UI_REPO (owner $ui_owner)"
+    # /usr/local/bin/node is v22 (SvelteKit postbuild needs Promise.withResolvers);
+    # restricted caller PATHs (activate-golden.sh) would otherwise pick v20.
+    if [ "$(id -u)" = 0 ] && [ "$ui_owner" != root ]; then
+        chown -R "$ui_owner" "$UI_TMP"
+        sudo -n -u "$ui_owner" -- env "HOME=$(getent passwd "$ui_owner" | cut -d: -f6)" \
+            "PATH=/usr/local/bin:$PATH" "SVELTEKIT_BASE_PATH=" npm --prefix "$UI_TMP" run build >/dev/null ||
+            die "UI build failed for clean HEAD of $UI_REPO"
+    else
+        PATH="/usr/local/bin:$PATH" SVELTEKIT_BASE_PATH= npm --prefix "$UI_TMP" run build >/dev/null ||
+            die "UI build failed for clean HEAD of $UI_REPO"
+    fi
+    [ -f "$UI_TMP/dist/index.html" ] || die "UI build produced no dist/index.html for clean HEAD of $UI_REPO"
+    UI_STAGE="$UI_TMP/dist"
+fi
+UI_TREE_SHA256=$(find "$UI_STAGE" -type f -print | sort |
+    while IFS= read -r f; do sha256sum "$f"; done | sha256sum | cut -d' ' -f1)
 
-UI_SOURCE_HEAD=$(jq -er 'select(.format == "opdbus.3tched-json-render-ui-assets.v1") | .source.head | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest has an invalid format or source head"
-UI_SOURCE_WORKTREE=$(jq -er '.source.worktree | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing source worktree provenance"
-UI_SOURCE_ARCHIVE_SHA256=$(jq -er '.source.archive_sha256 | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing source archive provenance"
-UI_SOURCE_CONTENT_MANIFEST_SHA256=$(jq -er '.source.content_manifest_sha256 | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing source content manifest provenance"
-UI_SOURCE_CONTENT_SHA256=$(jq -er '.source.package_lock_sha256 | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing package-lock provenance"
-UI_PIN_PACKAGE_LOCK_SHA256=$(tar -xOzf "$UI_SOURCE_ARCHIVE" 3tched-json-render-ui/package-lock.json | sha256sum | cut -d' ' -f1)
-UI_ASSET_DOOR=$(jq -er '.build.door | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing the production door"
-UI_ASSET_BASE=$(jq -er '.build.base | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing the UI asset base"
-UI_ASSET_SHA256=$(jq -er '.artifact.sha256 | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing the artifact digest"
-UI_ASSET_BYTES=$(jq -er '.artifact.bytes | numbers' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing the artifact size"
-UI_ASSET_NAME=$(jq -er '.artifact.name | strings' "$UI_ASSET_MANIFEST") ||
-    die "UI asset manifest is missing the artifact name"
-[ "$UI_SOURCE_HEAD" = "$UI_PIN_HEAD" ] && [ "$UI_SOURCE_WORKTREE" = "$UI_PIN_WORKTREE" ] ||
-    die "UI asset manifest source revision does not match source.pin"
-[ "$UI_SOURCE_ARCHIVE_SHA256" = "$UI_PIN_ARCHIVE_SHA256" ] ||
-    die "UI asset manifest source archive digest does not match source.pin"
-[ "$UI_SOURCE_CONTENT_MANIFEST_SHA256" = "$UI_PIN_CONTENT_MANIFEST_SHA256" ] ||
-    die "UI asset manifest content manifest digest does not match source.pin"
-[ "$UI_SOURCE_CONTENT_SHA256" = "$UI_PIN_PACKAGE_LOCK_SHA256" ] ||
-    die "UI asset manifest package-lock digest does not match the pinned source archive"
-[ "$UI_ASSET_BASE" = "$UI_PIN_ASSET_BASE" ] && [ "$UI_ASSET_BASE" = / ] ||
-    die "UI asset manifest base does not match the pinned dashboard root"
-[ "$UI_ASSET_DOOR" = "$UI_PIN_DOOR" ] || die "UI asset manifest door does not match source.pin"
-[ "$UI_ASSET_NAME" = assets.tar.gz ] || die "UI asset manifest names an unexpected artifact"
-case "$UI_ASSET_SHA256" in *[!0-9a-f]*|'') die "invalid UI asset digest in manifest" ;; esac
-[ "${#UI_ASSET_SHA256}" -eq 64 ] || die "UI asset digest must contain 64 lowercase hex characters"
-[ "$(sha256sum "$UI_ASSET_ARCHIVE" | cut -d' ' -f1)" = "$UI_ASSET_SHA256" ] ||
-    die "UI asset archive does not match its provenance manifest"
-[ "$(wc -c < "$UI_ASSET_ARCHIVE" | tr -d ' ')" = "$UI_ASSET_BYTES" ] ||
-    die "UI asset archive size does not match its provenance manifest"
-UI_ASSET_MANIFEST_SHA256=$(sha256sum "$UI_ASSET_MANIFEST" | cut -d' ' -f1)
-tar -tzf "$UI_ASSET_ARCHIVE" | awk '
-    /^\// || /(^|\/)\.\.($|\/)/ { bad=1 }
-    END { exit bad ? 1 : 0 }
-' || die "UI asset archive contains an unsafe path"
-tar -tvzf "$UI_ASSET_ARCHIVE" | awk 'substr($1,1,1) !~ /[-d]/ {bad=1} END {exit bad ? 1 : 0}' ||
-    die "UI asset archive must contain only files and directories"
-tar -tzf "$UI_ASSET_ARCHIVE" | grep -qx './index.html' ||
-    die "UI asset archive is missing index.html"
+# Sealed catalog: copied, never resealed here.
 [ -f "$PERSISTED_CATALOG_DIR/.manifest.json" ] ||
-    die "missing persisted sealed catalog; run the freshly built opblob seal-shm and persist preparation steps first"
-jq -e '
-    (.generation | type == "number" and floor == . and . >= 1) and
-    (.catalog_hash | type == "string" and test("^[0-9a-f]{64}$")) and
-    (.plugins | type == "object" and length > 0) and
-    all(.plugins | to_entries[];
-        (.key | test("^[a-z0-9_-]+$")) and
-        (.value | type == "string" and test("^[0-9a-f]{64}$")))
-' "$PERSISTED_CATALOG_DIR/.manifest.json" >/dev/null ||
-    die "persisted sealed catalog manifest is invalid"
-jq -e '.plugins.threetched | type == "string"' "$PERSISTED_CATALOG_DIR/.manifest.json" >/dev/null ||
-    die "persisted sealed catalog is missing threetched; seal its selected capture inputs with opblob first"
+    die "missing persisted sealed catalog; run the freshly built opblob seal-shm and persist first"
+jq -e '(.generation | type == "number" and . >= 1) and
+       (.catalog_hash | type == "string" and test("^[0-9a-f]{64}$")) and
+       (.plugins | type == "object" and length > 0) and (.plugins.threetched | type == "string")' \
+    "$PERSISTED_CATALOG_DIR/.manifest.json" >/dev/null ||
+    die "persisted sealed catalog manifest is invalid or missing threetched"
 CATALOG_GENERATION=$(jq -r '.generation' "$PERSISTED_CATALOG_DIR/.manifest.json")
 CATALOG_HASH=$(jq -r '.catalog_hash' "$PERSISTED_CATALOG_DIR/.manifest.json")
 CATALOG_MANIFEST_SHA256=$(sha256sum "$PERSISTED_CATALOG_DIR/.manifest.json" | cut -d' ' -f1)
 CATALOG_PLUGIN_COUNT=$(jq -r '.plugins | length' "$PERSISTED_CATALOG_DIR/.manifest.json")
-ACTUAL_CATALOG_BLOB_COUNT=$(find "$PERSISTED_CATALOG_DIR" -maxdepth 1 -type f -name '*.blob' | wc -l)
-[ "$ACTUAL_CATALOG_BLOB_COUNT" -eq "$CATALOG_PLUGIN_COUNT" ] ||
+[ "$(find "$PERSISTED_CATALOG_DIR" -maxdepth 1 -type f -name '*.blob' | wc -l)" -eq "$CATALOG_PLUGIN_COUNT" ] ||
     die "persisted sealed catalog blob count does not match its manifest"
-jq -r '.plugins | to_entries[] | [.key, .value] | @tsv' \
-    "$PERSISTED_CATALOG_DIR/.manifest.json" |
-    while IFS="$(printf '\t')" read -r plugin_id schema_hash; do
-        blob="$PERSISTED_CATALOG_DIR/$plugin_id.$(printf '%s' "$schema_hash" | cut -c1-16).blob"
-        [ -f "$blob" ] || die "persisted sealed catalog is missing $blob"
-        inspected=$("$RELEASE_DIR/opblob" inspect "$blob") ||
-            die "persisted sealed catalog contains an invalid blob: $blob"
-        [ "$(printf '%s\n' "$inspected" | awk '$1 == "plugin" { print $2; exit }')" = "$plugin_id" ] ||
-            die "persisted sealed catalog blob plugin id does not match its manifest: $blob"
-        [ "$(printf '%s\n' "$inspected" | awk '$1 == "schema" && $2 == "sha256" { print $3; exit }')" = "$schema_hash" ] ||
-            die "persisted sealed catalog blob schema hash does not match its manifest: $blob"
-        if [ "$plugin_id" = threetched ]; then
-            printf '%s\n' "$inspected" | awk '$1 == "method" {found=1} END {exit found ? 0 : 1}' ||
-                die "sealed threetched blob has no method inventory"
-            printf '%s\n' "$inspected" | awk '$1 == "descriptor" && /services=\["/ {found=1} END {exit found ? 0 : 1}' ||
-                die "sealed threetched blob has no method service descriptor"
-        fi
-    done
-# Use the existing schema projection to inspect the sealed plugin example.
-# This only reads the supplied catalog into a disposable declaration-only view;
-# opblob remains the sole sealer and the backing binary is never recaptured here.
-(
-    threetched_validation=$(mktemp -d "${TMPDIR:-/tmp}/threetched-release-catalog.XXXXXX") || exit 1
-    trap 'rm -rf -- "$threetched_validation"' EXIT HUP INT TERM
-    mkdir "$threetched_validation/state" || exit 1
-    "$RELEASE_DIR/3tched-fs" --store "$threetched_validation/store" capture --schema-only \
-        --catalog "$PERSISTED_CATALOG_DIR" --state "$threetched_validation/state" >/dev/null || exit 1
-    "$RELEASE_DIR/3tched-fs" --store "$threetched_validation/store" inspect --plugin threetched |
-        jq -e --arg binary_sha "$THREETCHED_SHA256" --arg manifest_sha "$TCHED_ROUTER_MANIFEST_SHA256" '
-            .plugin_id == "threetched" and .schema.name == "threetched" and
-            (.schema.methods | type == "object" and length > 0) and
-            .schema.example.binary == "/usr/local/libexec/op-dbus/threetched/threetched" and
-            .schema.example.manifest == "/usr/share/op-dbus/threetched-manifests/tched-router.json" and
-            .schema.example.binary_sha256 == $binary_sha and
-            .schema.example.manifest_sha256 == $manifest_sha
-        ' >/dev/null
-) || die "sealed threetched capture provenance does not match the prepared release binary and manifest"
-[ -f "$EMQX_ARTIFACT_PATH" ] || die "missing pinned EMQX artifact: $EMQX_ARTIFACT_PATH"
-[ "$(sha256sum "$EMQX_ARTIFACT_PATH" | cut -d' ' -f1)" = "$EMQX_SHA256" ] ||
-    die "EMQX artifact digest does not match deploy/config/emqx.version"
-tar -tzf "$EMQX_ARTIFACT_PATH" | awk '
-    /^\// || /(^|\/)\.\.($|\/)/ { bad = 1 }
-    END { exit bad ? 1 : 0 }
-' || die "EMQX artifact contains an unsafe path"
-for required in bin/emqx etc/emqx.conf etc/base.hocon; do
-    tar -tzf "$EMQX_ARTIFACT_PATH" | grep -qx "$required" ||
-        die "EMQX artifact is missing $required"
-done
-for required_config in emqx.conf base.hocon acl.conf; do
-    [ -f "$EMQX_CONFIG_DIR/$required_config" ] ||
-        die "missing tracked EMQX config: $EMQX_CONFIG_DIR/$required_config"
-done
-[ -f "$NOTEBOOKLM_MCP_ARTIFACT_PATH" ] ||
-    die "missing pinned jacob-bd nlm wheel: $NOTEBOOKLM_MCP_ARTIFACT_PATH"
-[ "$(sha256sum "$NOTEBOOKLM_MCP_ARTIFACT_PATH" | cut -d' ' -f1)" = "$NOTEBOOKLM_MCP_SHA256" ] ||
-    die "nlm wheel digest does not match deploy/config/notebooklm-mcp.version"
-python3 - "$NOTEBOOKLM_MCP_ARTIFACT_PATH" <<'PY' ||
-import sys, zipfile
-wheel = zipfile.ZipFile(sys.argv[1])
-names = wheel.namelist()
-if any(n.startswith("/") or "/../" in n or n.startswith("../") for n in names):
-    raise SystemExit("unsafe path in nlm wheel")
-if not any(n.endswith("entry_points.txt") for n in names):
-    raise SystemExit("nlm wheel is missing entry_points.txt")
-text = wheel.read(next(n for n in names if n.endswith("entry_points.txt"))).decode()
-if "nlm =" not in text and "nlm=" not in text:
-    raise SystemExit("nlm wheel does not declare the nlm console script")
-PY
-    die "pinned nlm wheel failed integrity checks"
 
-[ -x "$RELEASE_DIR/op-grants-materializer" ] ||
-    die "release is missing op-grants-materializer"
+[ -f "$EMQX_ARTIFACT_PATH" ] && [ "$(sha256sum "$EMQX_ARTIFACT_PATH" | cut -d' ' -f1)" = "$EMQX_SHA256" ] ||
+    die "missing or mismatched pinned EMQX artifact: $EMQX_ARTIFACT_PATH"
+[ -f "$NOTEBOOKLM_MCP_ARTIFACT_PATH" ] &&
+    [ "$(sha256sum "$NOTEBOOKLM_MCP_ARTIFACT_PATH" | cut -d' ' -f1)" = "$NOTEBOOKLM_MCP_SHA256" ] ||
+    die "missing or mismatched pinned NotebookLM wheel: $NOTEBOOKLM_MCP_ARTIFACT_PATH"
+[ -x "$RELEASE_DIR/op-grants-materializer" ] || die "release is missing op-grants-materializer"
 "$RELEASE_DIR/op-grants-materializer" validate-audience "$MCP_AUDIENCE_POLICY_SOURCE" >/dev/null ||
     die "MCP audience policy is invalid"
-[ -r "$HOST_RUNTIME_PACKAGES_SOURCE" ] ||
-    die "missing host runtime package manifest: $HOST_RUNTIME_PACKAGES_SOURCE"
-HOST_RUNTIME_PACKAGES=$(grep -Ev '^[[:space:]]*(#|$)' "$HOST_RUNTIME_PACKAGES_SOURCE")
-[ -n "$HOST_RUNTIME_PACKAGES" ] || die "host runtime package manifest is empty"
-[ -r "$EXECUTION_PYTHON_LOCK" ] || die "missing execution Python requirements lock"
-[ -x "$EXECUTION_PYTHON_PREPARE" ] || die "execution Python preparation helper is not executable"
-EXECUTION_PYTHON_LOCK_SHA256=$(sha256sum "$EXECUTION_PYTHON_LOCK" | cut -d' ' -f1)
-HOST_RUNTIME_PACKAGE_CHECK="$SCRIPT_DIR/check-host-runtime-packages.sh"
-[ -x "$HOST_RUNTIME_PACKAGE_CHECK" ] || die "missing host runtime package checker: $HOST_RUNTIME_PACKAGE_CHECK"
+[ -r "$HOST_RUNTIME_PACKAGES_SOURCE" ] && [ -x "$HOST_RUNTIME_PACKAGE_CHECK" ] ||
+    die "missing host runtime package manifest or checker"
 if ! missing_host_packages=$("$HOST_RUNTIME_PACKAGE_CHECK" "$HOST_RUNTIME_PACKAGES_SOURCE"); then
     die "host runtime package verification failed: $(printf '%s' "$missing_host_packages" | tr '\n' ' ')"
 fi
+[ -r "$EXECUTION_PYTHON_LOCK" ] && [ -x "$EXECUTION_PYTHON_PREPARE" ] ||
+    die "missing execution Python lock or preparation helper"
+EXECUTION_PYTHON_LOCK_SHA256=$(sha256sum "$EXECUTION_PYTHON_LOCK" | cut -d' ' -f1)
+TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256=$(sha256sum "$TCHED_ROUTER_BOOTSTRAP_CONFIG" | cut -d' ' -f1)
+TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256=$(
+    find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f -print | sort |
+        while IFS= read -r skill; do sha256sum "$skill"; done | sha256sum | cut -d' ' -f1)
 BIN_COUNT=$(printf '%s\n' "$BINARIES" | wc -l)
 log "$BIN_COUNT release binaries in $RELEASE_DIR"
-
 if [ "$DRY_RUN" != 1 ] && [ "$(id -u)" != 0 ]; then
     die "must run as root to prepare the golden btrfs subvolume"
 fi
-
 COMMIT=$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
 STAMP=$(date -u '+%Y%m%dT%H%M%SZ')
 
-# ═══ Path 1: golden subvolume ═══════════════════════════════════════════════
+# ═══ Golden subvolume ═══════════════════════════════════════════════════════
 build_golden() {
     log "building golden subvolume at $GOLDEN_DIR"
-
     [ -d "$GOLDEN_DIR" ] && [ ! -L "$GOLDEN_DIR" ] ||
         die "golden must already exist; use op-release provision-slots"
-    [ "$(stat -f -c %T "$GOLDEN_DIR")" = btrfs ] &&
-        [ "$(stat -c %i "$GOLDEN_DIR")" = 256 ] ||
+    [ "$(stat -f -c %T "$GOLDEN_DIR")" = btrfs ] && [ "$(stat -c %i "$GOLDEN_DIR")" = 256 ] ||
         die "golden is not a Btrfs subvolume; use op-release provision-slots"
-    [ "$(stat -c %u:%g "$GOLDEN_DIR")" = 0:0 ] ||
-        die "golden must be root-owned"
+    [ "$(stat -c %u:%g "$GOLDEN_DIR")" = 0:0 ] || die "golden must be root-owned"
     case "$(stat -c %a "$GOLDEN_DIR")" in 700|750|755) ;; *) die "unsafe golden root mode" ;; esac
-    btrfs subvolume show "$GOLDEN_DIR" >/dev/null ||
-        die "cannot inspect the provisioned golden subvolume"
-    [ "$(btrfs property get -ts "$GOLDEN_DIR" ro)" = ro=false ] ||
-        die "golden must be writable preparation state"
-    # Refuse nested filesystem ownership before any subtractive cutover.
+    btrfs subvolume show "$GOLDEN_DIR" >/dev/null || die "cannot inspect the provisioned golden subvolume"
+    [ "$(btrfs property get -ts "$GOLDEN_DIR" ro)" = ro=false ] || die "golden must be writable preparation state"
     [ -z "$(find "$GOLDEN_DIR" -mindepth 1 -type d -inum 256 -print -quit)" ] ||
         die "golden contains a nested Btrfs subvolume"
     if findmnt -rn -o TARGET | awk -v root="$GOLDEN_DIR/" \
@@ -649,30 +451,15 @@ build_golden() {
     ensure_directory "$GOLDEN_DIR/sv"
     ensure_directory "$GOLDEN_DIR/usr/share/op-dbus"
 
-    # These were preparation-owned paths in the old root-shaped golden.
-    # Never remove their live host counterparts or any unrecognized base files.
+    # Preparation-owned paths from older golden layouts. Never remove their
+    # live host counterparts or any unrecognized base files.
     for legacy in sbin/systemd-unit-to-runit sbin/op-convert-systemd-units \
         sbin/systemctl-shim sbin/ban-caddy-nginx sbin/build-golden.sh sbin/agent-runit-guard.sh \
         libexec/op-warp-ssh share/op-dbus/warp-ssh \
         share/op-dbus/notebook-sync var/lib/opdbus/plugin-blobs \
-        etc/environment.default etc/pacman-hooks/99-systemd-unit-to-runit.hook \
-        etc/pacman-hooks/99-ban-caddy-nginx.hook etc/pacman-hooks/99-agent-runit-guard.hook \
-        etc/opdbus/capability-grants.json etc/opdbus/mcp-audience-policy.json \
-        etc/opdbus/mcp-toolsets.json etc/opdbus/host-runtime-packages.txt \
-        etc/opdbus/enabled-services etc/opdbus/retired-services etc/opdbus/retired-binaries \
-        etc/op-dbus/threetched-runtime.toml etc/op-dbus/model-providers.toml \
-        etc/op-dbus/threetched-skills etc/op-dbus/opencode-runtime.json \
-        etc/dbus-1/system.d/org.dbusmcp.conf etc/pam.d/op-dbus-elevate \
-        etc/nftables.conf etc/iptables/iptables.rules etc/op-dbus/network.conf \
-        etc/op-dbus/openflow-static-flows.json etc/ssh/sshd_config \
-        etc/ssh/sshd_config.d/10-loopback-only.conf \
-        etc/ssh/sshd_config.d/15-ghostbridge-vip.conf \
-        etc/ssh/sshd_config.d/90-singleuser-password.conf etc/emqx \
-        opt/op-mcp-providers opt/op-dbus/container-artifacts/mail-3tched-x86_64-linux-gnu-bundle.tar \
-        usr/share/op-dbus/etc/opdbus/mcp-toolsets.json \
-        usr/share/op-dbus/etc/op-dbus/model-providers.toml \
-        usr/share/op-dbus/etc/rust-network-mgr \
-        usr/bin/opencode; do
+        etc/environment.default etc/opdbus etc/op-dbus etc/dbus-1 etc/pam.d \
+        etc/nftables.conf etc/iptables etc/ssh etc/emqx \
+        opt/op-mcp-providers usr/share/op-dbus/etc/rust-network-mgr usr/bin/opencode; do
         if [ -e "$GOLDEN_DIR/$legacy" ] || [ -L "$GOLDEN_DIR/$legacy" ]; then
             remove_owned "$GOLDEN_DIR/$legacy"
         fi
@@ -687,11 +474,11 @@ build_golden() {
             fi
         }
     done
-    # All binary entries here belonged to the prior release builder.
+
+    # Binaries: stage exactly the filtered release inventory.
     find "$GOLDEN_DIR/bin" -mindepth 1 -maxdepth 1 -print | while IFS= read -r old; do
         [ "$(basename "$old")" = nlm ] && continue
-        printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/$(basename "$old")" ||
-            run rm -- "$old"
+        printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/$(basename "$old")" || run rm -- "$old"
     done
     printf '%s\n' "$BINARIES" | while IFS= read -r bin; do
         install_file 0755 "$bin" "$GOLDEN_DIR/bin/$(basename "$bin")"
@@ -700,23 +487,17 @@ build_golden() {
     install_file 0644 "$THREETCHED_MANIFEST" \
         "$GOLDEN_DIR/usr/share/op-dbus/threetched-manifests/tched-router.json"
 
-    ui_destination="$GOLDEN_DIR/usr/local/share/op-dbus/dashboard"
-    ui_manifest="$GOLDEN_DIR/usr/share/op-dbus/ui-manifests/3tched-ui.json"
-    if [ ! -f "$ui_manifest" ] || ! cmp -s "$UI_ASSET_MANIFEST" "$ui_manifest" ||
-       [ ! -f "$ui_destination/index.html" ]; then
-        if [ "$DRY_RUN" = 1 ]; then
-            log "would synchronize changed UI archive"
-        else
-            (
-                ui_stage=$(mktemp -d)
-                trap 'rm -rf -- "$ui_stage"' EXIT HUP INT TERM
-                tar -xzf "$UI_ASSET_ARCHIVE" --no-same-owner -C "$ui_stage"
-                sync_tree "$ui_stage" "$ui_destination"
-            )
-        fi
-    fi
-    install_file 0644 "$UI_ASSET_MANIFEST" "$ui_manifest"
+    # UI: assets built from the UI repository, staged at the dashboard root.
+    sync_tree "$UI_STAGE" "$GOLDEN_DIR/usr/local/share/op-dbus/dashboard"
+    ui_manifest_tmp=$(mktemp)
+    jq -n --arg head "$UI_HEAD" --arg worktree "$UI_WORKTREE" --arg repo "$UI_REPO" \
+        --arg tree "$UI_TREE_SHA256" \
+        '{format:"opdbus.3tched-ui-repo.v1", source:{repo:$repo, head:$head, worktree:$worktree},
+          artifact:{tree_sha256:$tree, base:"/"}}' > "$ui_manifest_tmp"
+    install_file 0644 "$ui_manifest_tmp" "$GOLDEN_DIR/usr/share/op-dbus/ui-manifests/3tched-ui.json"
+    rm -f -- "$ui_manifest_tmp"
 
+    # Sealed catalog.
     golden_catalog="$GOLDEN_DIR/usr/share/op-dbus/plugin-blobs"
     ensure_directory "$golden_catalog"
     find "$golden_catalog" -maxdepth 1 -type f -name '*.blob' -print |
@@ -730,9 +511,7 @@ build_golden() {
         done
     install_file 0644 "$PERSISTED_CATALOG_DIR/.manifest.json" "$golden_catalog/.manifest.json"
 
-    # One release-owned helper target. Only the explicit provisioning closure
-    # above joins the existing application helpers; base service definitions,
-    # host-installed helper copies, receipts and storage remain untouched.
+    # Helpers: only the explicit provisioning closure above.
     ensure_directory "$GOLDEN_DIR/libexec/3tched"
     for old in "$GOLDEN_DIR/libexec/3tched"/*; do
         [ -e "$old" ] || [ -L "$old" ] || continue
@@ -754,8 +533,7 @@ build_golden() {
             "$GOLDEN_DIR/usr/share/op-dbus/notebook-sync/scripts/$helper"
     done
 
-    # Preserve unchanged content-addressed installations. Only the writable
-    # data/log paths escape the read-only broker target; config is immutable.
+    # EMQX: pinned content-addressed broker installation.
     golden_emqx="$GOLDEN_DIR/opt/$EMQX_INSTALL_NAME"
     ensure_directory "$GOLDEN_DIR/opt"
     [ ! -L "$golden_emqx" ] || die "symlink broker installation in golden"
@@ -776,16 +554,12 @@ build_golden() {
             chmod 0644 "$golden_emqx_marker"
         fi
     else
-        [ "$(cat "$golden_emqx_marker")" = "$EMQX_SHA256" ] ||
-            die "EMQX content-address marker mismatch"
+        [ "$(cat "$golden_emqx_marker")" = "$EMQX_SHA256" ] || die "EMQX content-address marker mismatch"
     fi
     # esockd ships a public demonstration private key, not runtime credentials.
-    # Never publish it in the immutable broker target. Real TLS keys remain
-    # under the external /etc/emqx/certs boundary declared by emqx.conf.
     for demo_key in "$golden_emqx"/lib/esockd-*/priv/demo.key; do
         [ -e "$demo_key" ] || [ -L "$demo_key" ] || continue
-        [ -f "$demo_key" ] && [ ! -L "$demo_key" ] ||
-            die "unexpected esockd demonstration key type"
+        [ -f "$demo_key" ] && [ ! -L "$demo_key" ] || die "unexpected esockd demonstration key type"
         run rm -- "$demo_key"
     done
     if [ "$DRY_RUN" != 1 ]; then
@@ -804,15 +578,12 @@ build_golden() {
     for mapping in etc:/usr/share/op-dbus/emqx-etc data:/var/lib/emqx log:/var/log/emqx; do
         name=${mapping%%:*} target=${mapping#*:}
         if [ -L "$golden_emqx/$name" ]; then
-            [ "$(readlink "$golden_emqx/$name")" = "$target" ] ||
-                run rm -- "$golden_emqx/$name"
+            [ "$(readlink "$golden_emqx/$name")" = "$target" ] || run rm -- "$golden_emqx/$name"
         elif [ -e "$golden_emqx/$name" ]; then
-            # These are vendor archive defaults, never host data.
             run rm -r -- "$golden_emqx/$name"
         fi
         [ -L "$golden_emqx/$name" ] || run ln -s "$target" "$golden_emqx/$name"
     done
-    # The target is the actual pinned installation, not this old selector.
     if [ -L "$GOLDEN_DIR/opt/emqx" ]; then
         run rm -- "$GOLDEN_DIR/opt/emqx"
     elif [ -e "$GOLDEN_DIR/opt/emqx" ]; then
@@ -824,6 +595,7 @@ build_golden() {
         [ -f "$old/.opdbus-artifact-sha256" ] || die "unowned old EMQX tree: $old"
         run rm -r -- "$old"
     done
+
     install_nlm_cli "$GOLDEN_DIR" "$GOLDEN_DIR/bin/nlm"
     for old in "$GOLDEN_DIR"/opt/opdbus/nlm-cli-*; do
         [ -e "$old" ] || continue
@@ -831,17 +603,16 @@ build_golden() {
         [ -f "$old/.opdbus-artifact-sha256" ] || die "unowned old provider tree: $old"
         run rm -r -- "$old"
     done
+
     ensure_directory "$GOLDEN_DIR/opt/op-dbus"
-    [ ! -L "$GOLDEN_DIR/opt/op-dbus/execution-python" ] ||
-        die "symlink execution environment in golden"
+    [ ! -L "$GOLDEN_DIR/opt/op-dbus/execution-python" ] || die "symlink execution environment in golden"
     run env OP_EXECUTION_PYTHON_ROOT="$GOLDEN_DIR/opt/op-dbus/execution-python" \
         OP_EXECUTION_PYTHON_REPO="$PROJECT_ROOT" OP_EXECUTION_PYTHON_LOCK="$EXECUTION_PYTHON_LOCK" \
         OP_EXECUTION_PYTHON_CACHE="${OP_EXECUTION_PYTHON_CACHE:-/var/cache/op-dbus/execution-python}" \
         OP_EXECUTION_PYTHON_BUNDLE="${OP_EXECUTION_PYTHON_BUNDLE:-/home/jeremy/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu}" \
         "$EXECUTION_PYTHON_PREPARE"
 
-    # One service inventory. Full declarations remain visible, but only marked
-    # enabled application definitions enter this snapshot/restart domain.
+    # Services: one inventory; only enabled application definitions enter.
     for old in "$GOLDEN_DIR/sv"/*; do
         [ -e "$old" ] || [ -L "$old" ] || continue
         svc=$(basename "$old")
@@ -861,6 +632,8 @@ build_golden() {
                 fi
             done
         done
+
+    # Immutable shared config.
     install_file 0644 "$SCRIPT_DIR/../environment.default" "$GOLDEN_DIR/usr/share/op-dbus/etc/environment.default"
     install_file 0600 "$MCP_AUDIENCE_POLICY_SOURCE" "$GOLDEN_DIR/usr/share/op-dbus/etc/opdbus/mcp-audience-policy.json"
     install_file 0644 "$HOST_RUNTIME_PACKAGES_SOURCE" "$GOLDEN_DIR/usr/share/op-dbus/etc/opdbus/host-runtime-packages.txt"
@@ -871,8 +644,7 @@ build_golden() {
     sync_tree "$TCHED_ROUTER_BOOTSTRAP_SKILLS" "$GOLDEN_DIR/usr/share/op-dbus/etc/op-dbus/threetched-skills/default"
     sync_tree "$AGENT_BUNDLE_SOURCE" "$GOLDEN_DIR/usr/share/op-dbus/agents"
 
-    # MANIFEST: staged release identity and hashes for verification after the
-    # read-only snapshot is received. This script does not inspect a live host.
+    # MANIFEST: staged release identity and hashes for post-receive verification.
     if [ "$DRY_RUN" != 1 ]; then
         {
             printf 'golden-build: %s\n' "$STAMP"
@@ -884,12 +656,10 @@ build_golden() {
             printf 'tched-router-manifest-sha256: %s\n' "$TCHED_ROUTER_MANIFEST_SHA256"
             printf 'tched-router-bootstrap-config-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256"
             printf 'tched-router-bootstrap-skills-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256"
-            printf 'ui-source-head: %s\n' "$UI_SOURCE_HEAD"
-            printf 'ui-source-worktree: %s\n' "$UI_SOURCE_WORKTREE"
-            printf 'ui-source-archive-sha256: %s\n' "$UI_SOURCE_ARCHIVE_SHA256"
-            printf 'ui-source-content-sha256: %s\n' "$UI_SOURCE_CONTENT_SHA256"
-            printf 'ui-assets-sha256: %s\n' "$UI_ASSET_SHA256"
-            printf 'ui-assets-manifest-sha256: %s\n' "$UI_ASSET_MANIFEST_SHA256"
+            printf 'ui-source-repo: %s\n' "$UI_REPO"
+            printf 'ui-source-head: %s\n' "$UI_HEAD"
+            printf 'ui-source-worktree: %s\n' "$UI_WORKTREE"
+            printf 'ui-assets-tree-sha256: %s\n' "$UI_TREE_SHA256"
             printf 'plugin-catalog-generation: %s\n' "$CATALOG_GENERATION"
             printf 'plugin-catalog-hash: %s\n' "$CATALOG_HASH"
             printf 'plugin-catalog-manifest-sha256: %s\n' "$CATALOG_MANIFEST_SHA256"
@@ -905,16 +675,9 @@ build_golden() {
         } > "$GOLDEN_DIR/MANIFEST"
     fi
     ok "wrote golden/MANIFEST (commit $COMMIT)"
-    if [ "$PREPARE_SYSTEM" = 1 ]; then
-        # shellcheck source=system-payload.sh
-        . "$(dirname -- "$SCRIPT_PATH")/system-payload.sh"
-        stage_system_payload
-        ok "staged explicit system payload"
-    fi
-    # Derive inventory from the finished prepared tree. The graph directory and
+
+    # Derive inventory from the finished prepared tree; the graph directory and
     # MANIFEST digest are excluded by the collector to prevent self-reference.
-    # This is preparation only: importing into live Cozo is an authenticated
-    # plugin mutation after activation, never a direct database write here.
     run install -d -m 0755 "$GOLDEN_DIR/usr/share/op-dbus/graphs"
     run "$RELEASE_DIR/system_graph_inventory" \
         --prepared "$GOLDEN_DIR" \
@@ -930,9 +693,7 @@ build_golden() {
     log "golden is ready; the read-only snapshot and btrfs send happen at deploy time"
 }
 
-# ═══ Run ════════════════════════════════════════════════════════════════════
 build_golden
-
 log "commit $COMMIT, build $STAMP"
 log "prepared subvolume: $GOLDEN_DIR"
 log "next deployment boundary: create a read-only snapshot, then transfer it with btrfs send/receive"

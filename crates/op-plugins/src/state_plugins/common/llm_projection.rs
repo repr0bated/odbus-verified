@@ -260,9 +260,10 @@ pub struct UiSurface {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.service.llm-ui-surface.schema@v1"))]
     pub schema: String,
-    /// Surface purpose driving renderer behavior (e.g. `select-sets-model`).
-    /// Sealed in the blob; renderers derive behavior from it, never from
-    /// hand-rolled page logic.
+    /// Surface purpose. A purpose is what gives the schema this UI surface.
+    /// Antigravity's chat interface is the pattern: path, name, and schema.
+    /// The purpose names the stack the renderer draws: Vite, SvelteKit,
+    /// json-render, the Vercel AI SDK, and the Vercel Chat SDK.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.service.llm-ui-surface.purpose@v1"))]
     pub purpose: String,

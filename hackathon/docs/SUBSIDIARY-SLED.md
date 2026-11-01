@@ -33,8 +33,13 @@ How an identity works as the embodiment of a subsidiary. Marked **existing**
   **Planned.**
 - **Subsidiaries**: Linux users on the system. Each subsidiary is bounded by
   its home directory. **Planned.**
-- **Hackathon subsidiary**: embodied by identity `<subsidiary-session>` (today's
-  `3tchedCtlChatbot`). **Existing.**
+- **Hackathon subsidiary** (owner, 2026-10-30): a clone of the root chatbot,
+  display name `etched::hackathon`, gated on `etched0`. The container exists
+  and is stopped. It is not a sled identity yet, and the host mount still
+  uses the root session. What to do, and the new / old / changed split:
+  [ETCHED-HACKATHON.md](ETCHED-HACKATHON.md). The 2026-10-28 line that the
+  subsidiary *is* `3tchedCtlChatbot` described that mount. It is not the
+  current owner model.
 
 ## What the sled is (existing)
 

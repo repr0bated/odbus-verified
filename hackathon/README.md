@@ -117,6 +117,9 @@ the router, and the 3tched.com UI.
 - Its only network is the internet: the Meta model API and the blockchain.
 - Subsidiaries map to Linux users; the root is the 3tched control plane.
   See [docs/SUBSIDIARY-SLED.md](docs/SUBSIDIARY-SLED.md).
+- The hackathon clone is `etched::hackathon`. It is stopped and not a sled
+  identity yet. What to do next, and what is new, old, or changed:
+  [docs/ETCHED-HACKATHON.md](docs/ETCHED-HACKATHON.md).
 - How this compares to SPIFFE, BeyondCorp and DIDs, and what it adds:
   [docs/PRIOR-ART.md](docs/PRIOR-ART.md).
 

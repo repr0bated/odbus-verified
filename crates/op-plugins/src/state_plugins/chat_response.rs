@@ -29,6 +29,11 @@ pub const PLUGIN_VERSION: &str = "1.0.0";
 pub const RESPOND_CAPABILITY: &str = "chat_response.respond";
 /// Humans, on their own principal scope: start a conversation and read it.
 pub const READ_CAPABILITY: &str = "chat_response.read";
+
+/// Humans, on their own principal scope: submit one message turn.
+/// Grants: submit_turn — the door's chat operation admits it, the bridge
+/// opens the answer turn for the designated responder.
+pub const SUBMIT_CAPABILITY: &str = "chat_response.submit";
 /// Content-free commit announcement (owner key, ids and hashes only).
 pub const RESPONSE_COMMITTED_SIGNAL: &str = "response_committed";
 
@@ -439,7 +444,7 @@ impl StatePlugin for ChatResponsePlugin {
 
 /// Every method with its subid, side effect and capability. The schema, the
 /// bridge dispatch and the tests all read this one table.
-pub const METHODS: [(&str, &str, bool); 8] = [
+pub const METHODS: [(&str, &str, bool); 9] = [
     // (method, subid, is_mutation)
     (
         "start_conversation",
@@ -481,6 +486,11 @@ pub const METHODS: [(&str, &str, bool); 8] = [
         "obs.service.chat-response.pending-turns.list@v1",
         false,
     ),
+    (
+        "submit_turn",
+        "mut.service.chat-response.turn.submit@v1",
+        true,
+    ),
 ];
 
 pub const RESPONSE_COMMITTED_SUBID: &str = "evt.service.chat-response.response.committed@v1";
@@ -493,6 +503,7 @@ pub fn required_capability(method: &str) -> Option<&'static str> {
         "respond_to_user" | "request_clarification" | "cannot_perform" | "list_pending_turns" => {
             Some(RESPOND_CAPABILITY)
         }
+        "submit_turn" => Some(SUBMIT_CAPABILITY),
         "start_conversation" | "get_turn_response" | "list_conversations" | "get_conversation" => {
             Some(READ_CAPABILITY)
         }
@@ -584,6 +595,9 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
             "get_turn_response" => {
                 declare::<GetTurnResponseInput, GetTurnResponseOutput>(name, subid, mutation)
             }
+            "submit_turn" => {
+                declare::<super::chat_response_methods::SubmitTurnInput, super::chat_response_methods::SubmitTurnOutput>(name, subid, mutation)
+            }
             "list_conversations" => {
                 declare::<ListConversationsInput, ListConversationsOutput>(name, subid, mutation)
             }
@@ -610,6 +624,13 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
         op_state_store::CapabilityDecl {
             id: READ_CAPABILITY.to_string(),
             description: "Humans, on their own principal scope only. Grants: start_conversation, get_turn_response, list_conversations, get_conversation.".to_string(),
+        },
+    );
+    schema.capabilities.insert(
+        SUBMIT_CAPABILITY.to_string(),
+        op_state_store::CapabilityDecl {
+            id: SUBMIT_CAPABILITY.to_string(),
+            description: "Humans, on their own principal scope only. Grants: submit_turn — appends one message turn and opens the answer turn for the designated responder.".to_string(),
         },
     );
     schema
@@ -698,6 +719,12 @@ mod tests {
             assert_eq!(
                 schema.methods[method].required_capability.as_deref(),
                 Some(READ_CAPABILITY)
+            );
+        }
+        for method in ["submit_turn"] {
+            assert_eq!(
+                schema.methods[method].required_capability.as_deref(),
+                Some(SUBMIT_CAPABILITY)
             );
         }
         let signal = schema

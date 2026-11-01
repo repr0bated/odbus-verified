@@ -1,5 +1,6 @@
 advisors:
   - name: default
+    model: meta/muse-wonder-1.0:high
     tools:
       - read
       - security_scan

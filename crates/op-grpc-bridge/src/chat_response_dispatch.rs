@@ -280,6 +280,45 @@ async fn dispatch_owned(
                 start_conversation(engine, &caller, admitted, &pin, method, input).await?,
             )?
         }
+        "submit_turn" => {
+            use op_plugins::state_plugins::chat_response_methods::{
+                SubmitTurnInput, SubmitTurnOutput, MAX_MESSAGE_BYTES,
+            };
+            let input: SubmitTurnInput = serde_json::from_value(args.clone())
+                .context("invalid submit_turn arguments")?;
+            anyhow::ensure!(!input.message.trim().is_empty(), "a conversation turn requires the human message");
+            anyhow::ensure!(
+                input.message.len() <= MAX_MESSAGE_BYTES,
+                "message exceeds 1048576 bytes"
+            );
+            anyhow::ensure!(
+                input.response_mode == "text" || input.response_mode == "application",
+                "response_mode must be text or application"
+            );
+            let responder = std::env::var("OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .context("this conversation's answer turn needs OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")?;
+            let (human, _pending) = engine
+                .open_chat_turn(
+                    crate::chat_response_turns::TurnOwner {
+                        principal_id: caller.principal_id.clone(),
+                        session_id: caller.session_id.clone(),
+                        session_genesis: caller.session_genesis.clone(),
+                    },
+                    &input.conversation_id,
+                    input.message,
+                    request,
+                    &responder,
+                )
+                .await?;
+            serde_json::to_value(SubmitTurnOutput {
+                conversation_id: human.conversation_id.clone(),
+                turn_id: human.turn_id.clone(),
+                turn_index: human.turn_index,
+            })?
+        }
         "respond_to_user" => {
             let input: RespondToUserInput = serde_json::from_value(args.clone())
                 .context("invalid respond_to_user arguments")?;

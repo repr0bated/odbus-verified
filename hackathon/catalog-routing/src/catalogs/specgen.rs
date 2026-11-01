@@ -140,6 +140,100 @@ mod tests {
     }
 }
 
+/// Build the barebones taxonomy picker spec from the OSCAL table.
+/// Read-only draft: tag → control → operation → capability. A `None`
+/// capability renders as unsealed; the table never grants anything.
+pub fn taxonomy_spec(title: &str, subtitle: &str) -> Value {
+    let table_rows: Vec<Value> = super::compliance::taxonomy()
+        .iter()
+        .flat_map(|(tag, control, ops)| {
+            ops.iter().map(move |(plugin, method, capability)| {
+                json!({
+                    "id": format!("tax-{tag}-{plugin}-{method}"),
+                    "cells": [
+                        tag,
+                        control,
+                        format!("{plugin}/{method}"),
+                        capability.unwrap_or("unsealed — drafts only"),
+                    ],
+                })
+            })
+        })
+        .collect();
+    json!({
+        "root": "root",
+        "elements": {
+            "root": {
+                "type": "container",
+                "props": { "className": null },
+                "children": ["header", "reference", "taxonomy-table"]
+            },
+            "header": {
+                "type": "pageHeader",
+                "props": { "title": title, "subtitle": subtitle }
+            },
+            "reference": {
+                "type": "dashboardStatus",
+                "props": {
+                    "label": "Draft picker",
+                    "detail": "Read-only draft from the taxonomy table. Tags never grant authority.",
+                    "tone": "info"
+                }
+            },
+            "taxonomy-table": {
+                "type": "dashboardTable",
+                "props": {
+                    "caption": "Tag to sealed operation",
+                    "columns": [
+                        { "id": "tag", "label": "Tag" },
+                        { "id": "control", "label": "Control" },
+                        { "id": "operation", "label": "Operation" },
+                        { "id": "capability", "label": "Capability" }
+                    ],
+                    "rows": table_rows
+                }
+            }
+        }
+    })
+}
+
+#[cfg(test)]
+mod taxonomy_tests {
+    use super::*;
+
+    #[test]
+    fn taxonomy_spec_uses_only_catalog_components() {
+        let spec = taxonomy_spec("T", "S");
+        let elements = spec["elements"].as_object().unwrap();
+        for (id, el) in elements {
+            let t = el["type"].as_str().unwrap();
+            assert!(ALLOWED_COMPONENTS.contains(&t), "{id} uses {t}");
+            assert!(el.get("props").is_some(), "{id} missing props");
+        }
+    }
+
+    #[test]
+    fn taxonomy_cells_match_columns_and_cover_table() {
+        let spec = taxonomy_spec("T", "S");
+        let table = &spec["elements"]["taxonomy-table"]["props"];
+        let n_cols = table["columns"].as_array().unwrap().len();
+        let rows = table["rows"].as_array().unwrap();
+        for row in rows {
+            assert_eq!(row["cells"].as_array().unwrap().len(), n_cols);
+        }
+        let expected: usize = crate::catalogs::compliance::taxonomy()
+            .iter()
+            .map(|(_, _, ops)| ops.len())
+            .sum();
+        assert_eq!(rows.len(), expected);
+        assert!(rows.iter().any(|row| row["cells"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|cell| cell == "unsealed — drafts only")));
+    }
+}
+
 /// One provenance row: why a member holds a capability.
 pub struct ProvenanceRow {
     pub capability: &'static str,

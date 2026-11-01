@@ -1214,6 +1214,12 @@ impl ChatRouterPlugin {
                 },
                 ui_surfaces: vec![
                     UiSurface {
+                        path: "/chat".to_string(),
+                        name: "Chat".to_string(),
+                        schema: "chat_router.chat".to_string(),
+                        purpose: "vite, svelte-kit, json-render, ai-sdk, chat-sdk".to_string(),
+                    },
+                    UiSurface {
                         path: "/grpc".to_string(),
                         name: "gRPC Diagnostics".to_string(),
                         schema: "plugin-service".to_string(),
@@ -1223,13 +1229,7 @@ impl ChatRouterPlugin {
                         path: "/models".to_string(),
                         name: "Routable Models".to_string(),
                         schema: "chat_router.providers".to_string(),
-                        purpose: "select-sets-model".to_string(),
-                    },
-                    UiSurface {
-                        path: "/chat".to_string(),
-                        name: "Chat".to_string(),
-                        schema: "chat_router.chat".to_string(),
-                        purpose: "chat-takeover".to_string(),
+                        purpose: "vite, svelte-kit, json-render, ai-sdk, chat-sdk".to_string(),
                     },
                 ],
                 structured_output: StructuredOutput {

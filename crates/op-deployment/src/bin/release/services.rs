@@ -140,7 +140,9 @@ pub fn plan(old: Option<&Inventory>, new: &Inventory, approve_links: &BTreeSet<S
 }
 fn sv(action: &str, name: &str) -> Result<()> {
     fs::secure_absolute(Path::new("/usr/bin/sv"), libc::O_RDONLY)?;
-    run(Command::new("/usr/bin/sv").args(["-w", "30", action]).arg(service_path(name)), 35)
+    // Local notebook capture finishes in about 40s. A 30s check always timed out
+    // and rolled the activation back after the services had already started.
+    run(Command::new("/usr/bin/sv").args(["-w", "120", action]).arg(service_path(name)), 150)
 }
 pub fn exit_added(state: &mut State, name: &str) -> Result<()> {
     ensure!(!linked(name)?, "cannot exit a supervisor while its enable link remains");

@@ -222,6 +222,10 @@ enum Command {
         /// Toolsets (plugin ids) loaded when the connection opens.
         #[arg(long = "load", value_name = "TOOLSET")]
         load: Vec<String>,
+        /// Serve one sealed plugin through the FUSE mount, every method as a
+        /// tool. External clients use `--plugin cognitive`.
+        #[arg(long, requires = "mount", conflicts_with_all = ["compact", "all", "load"])]
+        plugin: Option<String>,
         /// Publish the toolset manifest to EMQX on start, as this identity.
         #[arg(long)]
         announce_toolsets: bool,
@@ -378,17 +382,22 @@ async fn main() -> Result<()> {
         all,
         compact,
         load,
+        plugin,
         announce_toolsets,
         ..
     } = &cli.command
     {
         let namespace = mounted::MountedNamespace::open(mount, expected_session.as_deref())?;
-        let surface = match (*all, *compact) {
-            (true, _) => mcp::Surface::Full,
-            (_, true) => mcp::Surface::Compact,
-            _ => mcp::Surface::Toolsets,
+        let server = if let Some(plugin) = plugin {
+            mcp::IdentityMcp::from_mount_plugin(namespace, plugin)?
+        } else {
+            let surface = match (*all, *compact) {
+                (true, _) => mcp::Surface::Full,
+                (_, true) => mcp::Surface::Compact,
+                _ => mcp::Surface::Toolsets,
+            };
+            mcp::IdentityMcp::from_mount(namespace, surface)?
         };
-        let server = mcp::IdentityMcp::from_mount(namespace, surface)?;
         server.preload(load)?;
         if *announce_toolsets {
             match server.announce_toolsets().await {
@@ -793,6 +802,26 @@ mod cli_tests {
                 "/run/opdbus/lungs/lungs.sock",
             ])
             .is_err()
+        );
+        let cli = Cli::try_parse_from([
+            "threetched-fs",
+            "mcp",
+            "--mount",
+            "/run/mounts/3tchedFS",
+            "--plugin",
+            "cognitive",
+        ])
+        .unwrap();
+        assert!(matches!(
+            cli.command,
+            Command::Mcp {
+                plugin: Some(plugin),
+                mount: Some(_),
+                ..
+            } if plugin == "cognitive"
+        ));
+        assert!(
+            Cli::try_parse_from(["threetched-fs", "mcp", "--plugin", "cognitive"]).is_err()
         );
     }
 

@@ -12,9 +12,9 @@ use crate::model::Operation;
 /// sealed capability)` triples. Capability is `None` when no blob is
 /// sealed for the method yet (e.g. `web3` anchor: drafts only).
 /// `(plugin, sealed method, sealed capability or None if unsealed)`.
-type SealedOp = (&'static str, &'static str, Option<&'static str>);
+pub type SealedOp = (&'static str, &'static str, Option<&'static str>);
 /// `(control tag, OSCAL control, candidate sealed operations)`.
-type TaxonomyRow = (&'static str, &'static str, &'static [SealedOp]);
+pub type TaxonomyRow = (&'static str, &'static str, &'static [SealedOp]);
 const TAXONOMY: &[TaxonomyRow] = &[
     (
         "pii",
@@ -75,6 +75,12 @@ const TAXONOMY: &[TaxonomyRow] = &[
         ],
     ),
 ];
+
+/// The taxonomy table as data: tag, control, candidate operations.
+/// Spec builders consume this; `match_controls` remains the routing view.
+pub fn taxonomy() -> &'static [TaxonomyRow] {
+    TAXONOMY
+}
 
 /// A control the request matched, with its candidate operations.
 #[derive(Debug, Clone, PartialEq, Eq)]

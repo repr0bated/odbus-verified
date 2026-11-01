@@ -1,5 +1,65 @@
 # Agent handoff
 
+## 2026-11-01 — Grok / hackathon-demo-stage-20261031 — startup finish installed, waiting for reboot
+
+`deploy/release/startup-finish.sh` is wired into boot. rcS `S11op-release-startup-finish` runs `install` after filesystems and before `op-release-activate` mounts slot A. It resumes only the parked `quiescent-delete:495` journal through `op-release-launch release`. The runit service `op-release-startup-finish` then runs `activate` and, when slot B is root 497 `release-f7c28383-9cc3-4081-929c-1047f8fecf1f`, switches the live slot. It also clears a `hackbr0` address if Incus restored one. It does not create a subvolume, ordinary-delete, or change the guard. A failure is logged at `/var/tmp/op-release-startup-finish/log` and boot continues. The service is already up and refused to activate while the journal is open. The early install has not run yet; it runs on the next boot.
+
+## 2026-11-01 — Grok / hackathon-demo-stage-20261031 — new release received, slot B not replaced
+
+Golden `b0f8caf` / UI `8b067b2` / build `20261101T050906Z` was received as top-level root 497 `release-f7c28383-9cc3-4081-929c-1047f8fecf1f`. It is not installed and not active. Install is stuck in a deploy journal at `quiescent-delete:495`: checked-delete of previous slot B `@release-b` returns EBUSY. The kernel guard allowed the ioctl (counter 2). No mount namespace still has the old B overlays; the stale copies in WARP's mount namespace (pid 2283) were unmounted. `drop_caches` did not clear the reference. Do not ordinary-delete 495 or 489. Live slot is A `release-532099cb-00e9-422e-8347-a071fe1abcc2` root 489. Services are still running from that rollback. Ready is `recovery-pending` for the 495 delete, so a service restart will exit 111 until the journal is recovered. `/dev/shm/opdbus` was recreated. `op-release` service check wait is 120s (notebook capture takes ~40s); installed digest `26835798ce2c6784b63802acc0e293f51f1c75f8f0ea632eb7ad4be4c7aaed55`. `hackbr0` has no address. Next: find the remaining reference on root 495, then `op-release-launch release` resumes install of 497 into slot B; then `op-release-launch activate b`. Do not start another deploy while this journal exists.
+
+## 2026-11-01 — Cursor / single-mode-finish-20261101 — kernel-guard repair done; stay single
+
+Busy ref for root 489 was the nine slot-B `lowerdir+` overlays; umounted, then
+`op-release-launch abort` cleared journal (candidate 501 removed; abort later
+hung in SUBVOL_SYNC_WAIT and was killed). `boot` remounted committed B
+overlays. Guard: bpffs remounted, installed object loaded GLOBAL with the three
+existing trust bindings only; CREATE absent from object (trusted create denied).
+Active b/495, previous a/489, journal null. Ready:
+`recovery-pending catalog-mismatch`. Host left in single. Operator return:
+`sudo runsvchdir default`. Evidence `/var/tmp/single-mode-finish/` incl.
+`OPERATOR-RETURN.txt`. No app service restart; no runsvchdir by this agent.
+
+## 2026-11-01 — Grok / hackathon-demo-stage-20261031 — hackbr0 has no address
+
+Reboot restored Incus `hackbr0` with `198.18.66.1/24`. Owner: socket networking, no address. Set `ipv4.address=none`, `ipv4.dhcp=false`, `ipv4.nat=false`. Interface now has no address. Bridge remains unused. ACL `internet-only` unchanged.
+
+## 2026-11-01 — Grok / hackathon-demo-stage-20261031 — single-mode finish script
+
+Operator script `deploy/release/single-mode-finish.sh` records guard and
+subvolume evidence, starts sshd, and launches Cursor agent as jeremy. It
+refuses to run unless the runlevel is already single. It does not delete a
+subvolume, change the guard, or return to the default runlevel. Not executed.
+
+## 2026-11-01 — Grok / hackathon-demo-stage-20261031 — UI pushed, activate EBUSY
+
+3tched.com branch `svelte-chat-sdk` commit `8b067b2` is pushed. Golden
+preparation from that HEAD succeeded (`b0f8caf`, 20261101T033139Z).
+`op-release` then failed: exact-generation checked-delete of btrfs root 489
+(`@release-a`) returned EBUSY. Live overlays remain
+`release-640f40aa-7b7a-446e-a614-3aecb7771d90`. `/opt/op-dbus/current` is absent.
+Do not delete root 489 while it is busy. Receipt
+`/var/tmp/svelte-chat-activate.receipt` exit 1.
+
+## 2026-11-01 — Grok / hackathon-demo-stage-20261031 — Svelte chat wired, not activated
+
+`/chat` is rendered by `Chat` from `@ai-sdk/svelte`. Each send converts the
+turn with the Chat SDK `toAiMessages`, then `ChatSession.submit` still calls
+the door. `src/react` is removed from the 3tched.com working tree. `react` and
+`react-dom` remain in package.json. Chat interaction tests: 2 passed.
+Golden still archives 3tched.com HEAD, so this UI is not in the published
+tree until that repo is committed. Activate was not rerun. Release, seal, and
+persist from 2026-11-01T03:00Z still stand. `/opt/op-dbus/current` was not swapped.
+
+## 2026-10-31 — Grok / hackathon-demo-stage-20261031 — stage only
+
+Owner locked the demo: identity as an appliance, schema tag routing, and a
+drop-in CMS generated from the system JSON. Code is not ready. Wrote
+`hackathon/docs/DEMO-STAGING.md` and pointed SPARK-BRIEF, START-HERE, and the
+book summary at it. Meta event page still points at Official Rules that this
+session did not retrieve (raw fetch 403). Model-list call failed `URLError`.
+No code, seal, activation, grant, clone, or mount change.
+
 ## 2026-10-30 — Codex / deploy-preflight-20261030 — launcher blocked, source unresolved
 
 User request was `deploy/`, followed by `proceed` after source/action clarification.
@@ -633,6 +693,8 @@ Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff
 The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
 
 ## Active work
+| Cursor — DONE: SINGLE-MODE KERNEL-GUARD REPAIR | `single-mode-finish-20261101` | 489 busy ref released; journal cleared; guard GLOBAL create-deny restored; stay single. | 2026-11-01 | See Handoff + `/var/tmp/single-mode-finish/OPERATOR-RETURN.txt`. Operator: `sudo runsvchdir default`. |
+| Grok — RELEASE GOLDEN ACTIVATE | `hackathon-demo-stage-20261031` | Startup finish is installed. Early install of root 497 runs on the next boot, then the runit service activates it. | 2026-11-01 | Journal is still `quiescent-delete:495`. Live slot is old A until reboot. Do not ordinary-delete 495 or 489. Receipt path `/var/tmp/op-release-startup-finish/`. |
 | Codex — BLOCKED: DEPLOYMENT PREFLIGHT | `deploy-preflight-20261030` | Source selection unresolved; supported launcher refuses installed op-release digest. Own this task's shared notes only. | 2026-10-30 | Approved target/release artifact found; controller replacement provenance unresolved. Existing B overlays remain mounted; historical rewrite activation failed EBUSY root489. See dated handoff. No runtime changes. |
 | Codex — ACTIVE: RESUMED ROUTING AND SOCKET CLEANUP | `reality-unnumbered-20261030` | Own host routing helper/configuration and existing socket-removal patch reconciliation; preserve other source work. | 2026-10-30 | Current evidence and rollback will be recorded only in docs/src/operations/network.md. |
 | Grok — 8080 BASE PAGE PUBLISHED | `landing-base-20261030` | Catalog model-selection spec on the 8080 landing canvas. Runtime bind-mount only. | 2026-10-30 | Live until reboot or next release activation. Source uncommitted in `/srv/git/3tched.com`. |
@@ -640,7 +702,7 @@ The owner is starting a new session. **Finish the release and identity migration
 | Codex — COMPLETE: PR RELEVANCE AND RESOLUTION | `pr-relevance-20261030` | Isolated /var/tmp/pr-relevance-20261030/integration, clean branch codex/pr-relevance-20261030; final source6276a187, published8eed47d, merged mainf180bff. Shared working source preserved. | 2026-10-30 | All30 initial PRs handled:45+46 merged,28 superseded, GitHub0 open. Native Jev used newer/hackathon authority. Final GNU10-package/4-binary build passed12m34s;1320 source hashes unchanged. No tests, install, seal, deployment or service actions. Current defects retained in main WISHLIST OD-125 and reconciliation JSON; completion receipt /var/tmp/pr-relevance-20261030/completion.json. |
 | omp — DONE: INTEGRATE-2-WITH-MAIN | `integrate-2-with-main-20261030` | Merged `codex/pr-sweep-deployment-20261023` (57 commits) into `origin/main` (8435d58) in isolated worktree `/tmp/integrate-2-main` → merge `cb7cda3`, clean, 0 conflicts, status empty, 1224 files. Dirty tree on `restore/devuan-storage-20261013` untouched. NOT pushed. | 2026-10-30 | Push only on owner confirm; worktree retained for inspection. |
 | omp — BLOCKED: INTEGRATE-2 BUILD FAILED | `integrate-2-with-main-20261030` | Workspace release build in `/tmp/integrate-2-main` (merge `cb7cda3`) FAILED exit 101, 765s: `op-plugins` `include_str!` missing `deploy/config/threetched-skills/default/…` (36 errors, dir absent untracked in both parents). Log `/tmp/integrate-2-main-build-20261030.log`, receipt `.receipt.json`. Merge clean but UNBUILT — NOT pushed, NOT deployed. | 2026-10-30 | Do not push `cb7cda3` to `origin/main` until bundle source/staging is resolved and build passes. |
-| omp — ACTIVE: UI SELECT-SETS-MODEL + SEALED SURFACE PURPOSES | `ui-select-sets-model-20261031` | UiSurface.purpose sealed in schema (/models select-sets-model, /chat chat-takeover render-only); ModelPicker/ControlPlanePicker auto-apply — provider switch repoints draft only (Select-a-model placeholder), model pick commits complete pair, microtask-coalesced single apply, ctl-plane no-op guard + elevation preserved; ListUiSurfaces purposes wired (adapter→Runtime→App takeover with shell fallback); accountability semantic/chatbot toggle; render maxTurnMs live (300s default, 10–900 clamp), dataset flags disabled pending contract; GalleryPanel verify-only. Files: llm_projection.rs, chat_router.rs, ModelPicker/ControlPlanePicker/App/RuntimeHost/runtime.svelte, RouteFields, door-chat-adapter, chat-adapter (RenderOptions/UiSurfacePurposes), interfaceGeneration, chat-catalog/catalog.ts, AccountabilityEvidence, ModelPicker.test.ts (28/28 rewritten to new contract + gesture-separated commit test). | 2026-10-31 | MINIMAL CHECKS: UI build exit 0 (twice); cargo check -p op-plugins exit 0; ModelPicker.test 28/28 pass; type-check clean for all touched files — 42 errors all pre-existing merge markers in door-chat-adapter.test.ts (UU, owner-must-resolve); fmt drift crate-wide pre-existing, my lines clean; runtime 3 + gallery 1 vitest failures baseline-proven pre-existing (stash/restore check). No grant/config/route/key changes; no seal/reseal. BLOCKED on owner: (2a/2b) accountability inheritance, bridge resolve_context restriction, dataset-flags SubmitTurnInput extension. Deploy needs UI-repo commit (golden builds clean HEAD) + seal/persist + golden activation; Oct-30 launcher digest blocker still to re-check. |
+| omp — ACTIVE: UI SELECT-SETS-MODEL + SEALED SURFACE PURPOSES | `ui-select-sets-model-20261031` | UiSurface.purpose sealed in schema (/models select-sets-model, /chat chat-takeover render-only); ModelPicker/ControlPlanePicker auto-apply — provider switch repoints draft only, model pick commits complete pair, microtask-coalesced single apply, ctl-plane no-op guard + elevation preserved; ListUiSurfaces purposes wired (adapter→Runtime→App takeover with shell fallback); accountability semantic/chatbot toggle; render maxTurnMs live, dataset flags removed; GalleryPanel verify-only. Files committed: odbus b0f8caf (3 files), 3tched.com 23e0d74 (13 files + trim). ModelPicker.test 28/28 rewritten + gesture-separated commit test. | 2026-11-01 | DEPLOY IN FLIGHT: dirty-tree build failed only on threetched capture (EACCES, fixed with TCHED_ROUTER_CONFIG_DIR per Oct-27 receipt); isolated worktree /tmp/rel-b0f8caf@b0f8caf release build exit 0 (29m48s); fresh opblob seal-shm + persist exit 0 (72 blobs, purposes byte-verified in chat_router.a6ee14bd, persisted copy matches). Digest gate RESOLVED without bypass: worktree op-release == approved 2fa4b279, installed a053f6 was foreign — backed up to /root/op-release-reconcile-20261101/, installed approved bytes (0:0:755:1), launcher status exit 0. Interrupted Oct-29 deploy journal (quiescent-delete:489) aborted via supported abort verb; journal null. activate-golden.sh running (bg_11). No grant/config/route/key changes yet; no seal/reseal beyond authorized catalog. Remaining: activation receipt, L7 + readiness verify, smoke tests. |
 
 
 | omp — ACTIVE: REWRITE-BRANCH BUILD-SEAL-DEPLOY | `rewrite-deploy-20261029` | Owner-approved: release build + seal + persist + activate-golden + verify FROM /srv/git/odbus-rewrite (rewrite-fresh-bridge 380f692, fresh bridge core/router/service/server, TLS door). Main checkout left alone; into-main merge abandoned (HANDOFF-shared, no stash). Stale pre-rewrite build killed. | 2026-10-29 | No tests/clippy unless requested; rollback via op-release-launch rollback if verify fails. |
@@ -7064,3 +7126,9 @@ Authoritative task status, per-PR limitations, source/build/merge receipts, memo
 - Owner: "we had MCP removed because there is none, it was replaced by fusefs" and asked to flag it as an initial setup error. `AGENTS.md`: the "MCP gateway (settled)" invariant is replaced by "MCP retired — initial setup error": identities act only through their 3tchedFS mount (call files); do not build on or re-enable `/mcp`, `3tched-fs mcp`, router MCP bundles or in-process cognitive/compact MCP. The plugin-is-schema bullet now lists 3tchedFS operation files instead of MCP tool inputs.
 - Live: reverted my same-day router change that had re-enabled MCP (dashboard agent back to its empty `control_plane` bundle; MCP server entry back to its original non-resolving URL; skill-bundle removal kept). Config restored from `/var/lib/tched-router/config.toml.bak-20261028-mcp`; pre-revert copy `…bak-20261028-pre-mcp-revert`. Router healthy.
 - Not changed: source code still contains MCP code paths (`mcp_frontend.rs`, cognitive MCP in the bridge, `3tched-fs mcp`). Removing them is a separate code change for the owner to schedule.
+
+### 2026-11-01T06:36Z — Claude (Opus 5.5) — slot rotation unstuck; release f7c28383 live on slot b
+- Cause: deploy a→b (b0f8caf golden, 05:08Z/05:13Z) stopped at `quiescent-delete:495` with EBUSY. The NotebookLM MCP server (`/opt/opdbus/nlm-cli-0.11.2-…/bin/python`, launched by Claude/agy/Gemini sessions, not runit) kept running from the old slot's detached overlay after the 05:06Z rollback, so the slot-b inodes stayed live.
+- Fix: copied the venv byte-identically to `~/.local/share/opdbus-tools/nlm-cli-0.11.2-86f23f28…` (base system, uses `/usr/bin/python3`) and repointed `~/.claude.json`, `~/.gemini/settings.json`, `~/.gemini/config/mcp_config.json` (backups `*.bak-20261101-nlm`).
+- 06:31Z `op-release-launch release` reconciled the journal (root 495 deleted, journal cleared, receipt `/var/tmp/activate-retry.receipt`). 06:33Z `op-release-launch activate b` exit 0 (`/var/tmp/activate-b.{log,receipt}`). State: active b `release-f7c28383`, previous a `release-532099cb`, ready `complete b`; 8080/8090 on 10.0.0.2 and 8084 on loopback listening.
+- Remaining: agent sessions started before this fix still run NotebookLM from slot a (seen: PID 4853 under agy, 27246 under a Claude session). Restart them before the next release, which reuses slot a, or it will hit the same EBUSY. Not done: an op-release preflight that lists PIDs pinning the victim slot before journaling. No tests run.

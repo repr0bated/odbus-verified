@@ -119,3 +119,4 @@ blob.bin
 
 # Preserved Cargo output from the release-target mount migration.
 /target.before-release-target-*/
+.vercel

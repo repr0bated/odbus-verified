@@ -114,7 +114,7 @@ produced, and the Web3 index can anchor the chain head.
 
 | Mount | Identity | Status |
 |---|---|---|
-| `/home/3tched/Hackathon/3tchedfs` (host) | Hackathon subsidiary `<subsidiary-session>` | mounted, runit `subsidiary-hackathon-3tchedfs` |
+| `/home/3tched/Hackathon/3tchedfs` (host) | Still the root chatbot session `b0c777e3-0955-cd8b-3d01-ca12998cae28`. The clone `etched::hackathon` is not admitted yet. | mounted, runit `subsidiary-hackathon-3tchedfs` |
 | `/run/mount/3tchedfs`, `/run/mount/threetched` (inside the identity container) | same identity | mounted |
 | `/run/mounts/3tchedFS`, `/run/mounts/threetched` (host) | owner `<owner-session>` | **not mounted** — fstab entries missing since the reboot; owner's decision to restore |
 

@@ -3372,7 +3372,10 @@ pub(crate) mod tests {
         let root = fixture.path().join("received-chain");
         std::fs::create_dir(&root).unwrap();
         std::fs::create_dir(root.join("vectors")).unwrap();
-        let error = StreamingSnowball::open_received(&root).await.unwrap_err();
+        let error = match StreamingSnowball::open_received(&root).await {
+            Ok(_) => panic!("open_received must refuse a chain without timing"),
+            Err(error) => error,
+        };
         assert!(error.to_string().contains("timing"));
         assert!(!root.join("state").exists());
         assert!(!root.join("snapshots").exists());

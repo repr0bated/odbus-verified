@@ -84,7 +84,7 @@ mod memory_binding;
 pub(crate) mod method_contract_admission;
 pub(crate) mod model_providers_validation;
 mod model_registry_dispatch;
-mod mqtt_doorbell_relay;
+pub mod mqtt_doorbell_relay;
 pub mod mutation_engine;
 pub(crate) mod native_sled_identity;
 pub mod nlm_cli;

@@ -780,3 +780,58 @@ async fn list_pending_turns_respects_responder_scope() {
     assert_eq!(pending_for_agent.len(), 1);
     assert_eq!(pending_for_other.len(), 0);
 }
+
+#[tokio::test]
+async fn submit_turn_opens_the_human_turn_and_reserves_the_answer() {
+    use op_plugins::state_plugins::chat_response::SUBMIT_CAPABILITY;
+    let f = fixture().await;
+    let conversation = start(&f, &f.human).await;
+    let args = serde_json::json!({
+        "conversation_id": conversation,
+        "message": PRIVATE_QUESTION,
+        "response_mode": "text",
+    });
+    // No submit grant yet: refused before any turn exists.
+    let refused = error_of(call(&f, &f.human, "submit_turn", args.clone()).await);
+    assert!(refused.contains(SUBMIT_CAPABILITY), "{refused}");
+    // Grant submit; the agent answers, resolved like the attach path does.
+    let grants_path = std::env::var_os("OP_GRANTS_PATH").unwrap();
+    std::fs::write(
+        &grants_path,
+        serde_json::to_vec(&serde_json::json!({
+            (f.human.principal.clone()): {"capabilities": [READ_CAPABILITY, SUBMIT_CAPABILITY]},
+            (f.agent.principal.clone()): {"capabilities": [RESPOND_CAPABILITY]},
+            (f.other.principal.clone()): {"capabilities": [READ_CAPABILITY, RESPOND_CAPABILITY]},
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let _responder = Environment::set(&[(
+        "OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID",
+        f.agent.principal.clone(),
+    )]);
+    let submitted = call(&f, &f.human, "submit_turn", args).await.unwrap();
+    assert_eq!(submitted["conversation_id"].as_str().unwrap(), conversation);
+    assert_eq!(submitted["turn_index"].as_u64().unwrap(), 0);
+    assert_eq!(
+        uuid::Uuid::parse_str(submitted["turn_id"].as_str().unwrap())
+            .unwrap()
+            .get_version_num(),
+        7
+    );
+    // The answer is reserved: a second submit while it is open is refused.
+    let refused = error_of(
+        call(
+            &f,
+            &f.human,
+            "submit_turn",
+            serde_json::json!({
+                "conversation_id": conversation,
+                "message": "second human message",
+                "response_mode": "text",
+            }),
+        )
+        .await,
+    );
+    assert!(!refused.is_empty(), "second submit while open must be refused");
+}

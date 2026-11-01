@@ -3,12 +3,18 @@
 Hackathon: Meta Model API, **Startup Track — judged on a working product**.
 Builder: Jeremy Hobson (3tched).
 
-**Scope (owner, 2026-10-28):** the identity/3tched platform predates the
-hackathon and is used through its interfaces. The new, judged development is
-(1) compliance routing, (2) rule enforcement, (3) policy, and (4) a drop-in
-consumer app (team chat first). The UI is optional. See README "Goals" for the
-golden path. Sections below about the avatar, CMS demo and on-chain anchoring
-are background, not the critical path.
+**Demo scope (owner, 2026-10-31):** three beats, and nothing else on stage.
+(1) the identity as an appliance — pre-existing, used through its mount,
+(2) schema tag routing, (3) a drop-in CMS. The CMS is the sealed schema's
+UI surface. Antigravity already does this for chat (`/chat`, `Antigravity
+Chat`). The purpose names Vite, the Vercel AI SDK, and the Vercel Chat SDK.
+The renderer draws that surface. Muse Spark is the model the AI SDK calls,
+and that call stays on screen.
+Code is not ready. The stage script and the Meta rules check are
+`docs/DEMO-STAGING.md`. Team chat, the avatar, and on-chain anchoring are
+off this demo. The earlier plan was compliance routing, rule enforcement,
+policy, and a team-chat drop-in.
+
 State as of 2026-10-28. Everything marked **proven** was demonstrated on the
 host that day; everything else is planned.
 
@@ -139,6 +145,15 @@ Do not add a mesh (Netmaker/Cloudflare) as an identity layer.
 
 ## Progress log
 
+- 2026-10-31 (owner): **Demo stage locked. Code is not ready.** The demo is
+  the identity as an appliance, schema tag routing, and a drop-in CMS. The
+  CMS generator is a modification of the existing renderer
+  (`ApplicationRenderer` plus sealed `json_render`). On stage the audience
+  sees Muse Spark (`muse-spark-1.3`) write the spec, then that renderer
+  draw it. A spec from a file, from hand, or from Qwen is not this beat.
+  Stage script: `docs/DEMO-STAGING.md`. No seal, activation, grant change,
+  clone start, or mount retarget. A model-list call from this host failed
+  with `URLError` before any completion; do not substitute another model.
 - 2026-10-28: Junie pinned to Muse Spark for this repo — new
   `.junie/config.json` sets `model: muse-spark-1.3`, `effort: medium`
   (matches `~/.junie/settings.json` launch default, provider `meta`).
@@ -172,4 +187,5 @@ Do not add a mesh (Netmaker/Cloudflare) as an identity layer.
 - 2026-10-28: `approvals/` crate implements APPROVALS-SPEC §§4-7 as pure Rust (request types, canonical sha256 args hash, truth table with fixed 0.7/0.3 thresholds, single-use TicketStore; `cargo test` 12/12 incl. acceptance criteria 3 and 5). No I/O or network yet. Next: policy engine skeleton + `route(Request, Profile)`.
 - 2026-10-28: Docs auto-publish live: `book/` (mdBook guide, single-source symlinks) + rustdoc API combined by `tools/build-docs.sh` into `site/` (gitignored), deployed by `.github/workflows/docs.yml` to https://repr0bated.github.io/etched-in-schema/ (verified 200 on guide + API). Local: `mdbook` 0.5.4 via cargo.
 - 2026-10-29 (Claude): **omp 404 `model_not_found` diagnosed — Meta-side, not local.** Every `meta/muse-spark-*` ID 404s, including direct curl to `api.meta.ai/v1` (both `responses` and `chat/completions`) with omp bypassed; `/v1/models` returns HTTP 200 with `{"data":[]}`. omp's cache shows an authoritative 5-model list at 2026-10-28 15:49Z; last success 23:39:48Z, first 404 23:56:31Z. Key file unchanged since 17:38Z. Owner reports the same setup works from the laptop; open: whether the laptop uses the same key. `.omp/config.yml`: added `local` to `disabledProviders` and `retry.fallbackChains.meta/*: []` (global config fell back `meta/*` -> `local/lfm2.5-350m`, the tiny title model). Platform: `opblob seal-shm` changed `chat_router`/`threetched` blobs and the running bridge refused them (`compiled_sealed_contract_mismatch`); restored with `opblob stage-shm` from `/var/lib/opdbus/plugin-blobs`, `chat_router` verified working. Found: router config pins `model =` per provider (40 lines) and `chat_router` rejects any model other than the config's native selection — models should come only from live provider catalogs (owner rule). Proposed bridge fix: **Planned** (owner approval pending). `/usr/local/bin/3tched-callfile` lacks a shebang (sh runs it; broken).
+- 2026-10-30: Subsidiary record written at `docs/ETCHED-HACKATHON.md`. The root chatbot stays `3tchedCtlChatbot` / `b0c777e3-…`. The clone `etched-hackathon` (`etched::hackathon`, session `cc59ab57-…`) is stopped, keyed, and nic-parented to `etched0`. It is not a sled identity. The hackathon mount still uses the root session. Owner's next work is the one-repo consolidation, then principal registration and external seed provision, then the mount retarget. Internet on `etched0` stays later. Older docs that called the root container the subsidiary now point at that file.
 - 2026-10-29 (owner, done by Claude): **Hackathon now lives on `odbus-verified` branch `hackathon`** (this file is `hackathon/SPARK-BRIEF.md` there; worktree `/srv/git/odbus-verified-hackathon`, branched from `restore/devuan-storage-20261013` at b28a343). etched-in-schema's full history (58 commits, master c779bed) was merged once with `--allow-unrelated-histories` under `hackathon/` (merge 4d815ca); verified all 58 SHAs, authors, committers, timestamps and trees identical and reachable. Tag `spark-provenance-20261029` -> 4d051ed (last Spark commit) in both repos. `hackathon` added to the root workspace `exclude` (f343af3). `/home/jeremy/Hackathon` now links to this directory. `repr0bated/etched-in-schema` is left as the original record; never rewrite its commits.

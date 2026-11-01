@@ -4,7 +4,9 @@
 //! view is a tool, every plugin's schema and live state is a resource, and
 //! each call runs as that identity. With `--mount`, tools, resources and
 //! calls use only that identity's FUSE namespace: a tool call writes the
-//! mounted `call` file and reads its receipt. The store-and-lungs path remains
+//! mounted `call` file and reads its receipt. `--plugin cognitive` is the
+//! external-client surface: every sealed cognitive method is a tool, and
+//! each call still goes through that mount. The store-and-lungs path remains
 //! for a schema-only guest that has no mount. Nothing here grants authority.
 //! The server speaks stdio through the reference Rust SDK (`rmcp`), so any
 //! IDE that launches an MCP server can use it.
@@ -127,8 +129,15 @@ impl Catalog {
     }
 
     fn load_mount(mount: &MountedNamespace) -> Result<Self> {
+        Self::load_mount_only(mount, None)
+    }
+
+    fn load_mount_only(mount: &MountedNamespace, only: Option<&str>) -> Result<Self> {
         let mut objects = BTreeMap::new();
         for plugin in mount.plugins()? {
+            if only.is_some_and(|selected| selected != plugin) {
+                continue;
+            }
             let schema = mount.schema(&plugin)?;
             objects.insert(
                 plugin,
@@ -136,6 +145,12 @@ impl Catalog {
                     schema,
                     source_schema_hash: None,
                 },
+            );
+        }
+        if let Some(plugin) = only {
+            anyhow::ensure!(
+                objects.contains_key(plugin),
+                "plugin {plugin} is absent from the mounted catalog"
             );
         }
         mount.verify()?;
@@ -365,6 +380,24 @@ impl IdentityMcp {
                 view_id,
             },
             surface,
+            catalog: Arc::new(RwLock::new(Arc::new(catalog))),
+            loaded: Arc::new(RwLock::new(Default::default())),
+        })
+    }
+
+    /// Every sealed method of one plugin, served through this identity's mount.
+    /// External clients use this for `cognitive`: each tool writes that
+    /// plugin's `call` file and reads the receipt.
+    pub fn from_mount_plugin(namespace: MountedNamespace, plugin: &str) -> Result<Self> {
+        let view_id = namespace.view_id()?.to_owned();
+        let catalog = Catalog::load_mount_only(&namespace, Some(plugin))
+            .with_context(|| format!("load mounted plugin {plugin}"))?;
+        Ok(Self {
+            delivery: Delivery::Mount {
+                namespace: Arc::new(namespace),
+                view_id,
+            },
+            surface: Surface::Full,
             catalog: Arc::new(RwLock::new(Arc::new(catalog))),
             loaded: Arc::new(RwLock::new(Default::default())),
         })

@@ -31,15 +31,20 @@ Schemas: `operations/<plugin>/<method>/{input,output}.schema.json`.
 Live state files (`plugins/*/value.json`) currently return EIO — use operations.
 
 The mount is supervised by runit `subsidiary-hackathon-3tchedfs` and survives
-reboots (**proven**). It acts as identity `<subsidiary-session>`, which today also holds
-**root** grants — keep demo actions to pre-tested operations until a dedicated
-low-privilege identity exists (**planned**; blocked on storage repair).
+reboots (**proven**). On 2026-10-30 it still acts as the root chatbot session
+`b0c777e3-0955-cd8b-3d01-ca12998cae28`, which holds **root** grants. The
+dedicated subsidiary is the stopped clone `etched::hackathon`; it is not
+admitted yet. Keep demo actions on pre-tested operations until that clone is
+the session on this mount (**planned**). Steps and the new / old / changed
+split: [ETCHED-HACKATHON.md](ETCHED-HACKATHON.md).
 
 ## OpenFlow development (2026-10-28)
 
 - Bridge `etched0`: isolated OVS bridge for the subsidiary (no ports, no
-  address, no uplink, fail-mode `secure`). Never touch `ovsbr0` — it carries
-  3tched's own networking.
+  address, no uplink, fail-mode `secure`). As of 2026-10-30 it is also the
+  stopped clone's NIC parent. The bridge itself was not given an uplink.
+  See [ETCHED-HACKATHON.md](ETCHED-HACKATHON.md). Never touch `ovsbr0` — it
+  carries 3tched's own networking.
 - The subsidiary holds `openflow.read` (**proven**: `get_datapath_health
   {bridge: etched0}` completed). `openflow.write` is withheld until
   `enforcement/` refuses any flow operation whose `bridge` is not `etched0`;

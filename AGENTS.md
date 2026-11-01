@@ -250,7 +250,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 **Frontend — single Vite app, external repo**:
 
-The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a SvelteKit + Svelte + Vite chat app using `@json-render/svelte` that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. The pinned release archive of that checkout is `vendor/3tched-json-render-ui`.
+The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a SvelteKit + Svelte + Vite chat app using `@json-render/svelte` that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. Golden builds it directly from that repo (see the 2026-10-29 decision below); there is no pinned release archive.
 
 **Owner UI stack rule (2026-10-11):** implement application interfaces only
 with Svelte/SvelteKit, Vite and json-render's Svelte renderer. This applies to
@@ -276,10 +276,13 @@ cd /srv/git/3tched.com && npm run dev
 
 On the configured HTTP pages at `10.0.0.2:8080` and `10.0.0.4:8080`, the UI uses op-web's existing same-origin Axum gRPC-Web connector, which forwards the unchanged identity metadata to the TLS door at `10.0.0.2:8090`. Other origins keep the direct HTTPS door. The generic `PluginService/CallMethod`, sealed capabilities, and interceptor identity checks remain the admission path; the connector does not mint or select an identity.
 
-Fresh source exports also include the pinned UI source archive and verifier at
-`vendor/3tched-json-render-ui/build-assets.sh`. That helper builds and checks the
-captured UI without the sibling checkout or live rsync; golden preparation
-stages only its validated asset archive and provenance manifest.
+**Owner decision (2026-10-29): there is no vendored UI.** Golden preparation
+builds the UI directly from the `/srv/git/3tched.com` repository: a clean
+HEAD checkout (tracked files from HEAD, untracked build inputs overlaid,
+worktree never modified) built with Node 22, staged at the dashboard root.
+`build-golden.sh` records repo HEAD and the staged tree hash in the golden
+MANIFEST and `usr/share/op-dbus/ui-manifests/3tched-ui.json`. The former
+pinned archive at `vendor/3tched-json-render-ui` is retired for golden use.
 
 **Deprecated** (do not use for new work):
 - `crates/op-web/ui/` and `crates/zeroclaw-gui/` — deleted 2026-09-18 together with the device-pairing path they existed to call (`/pair`, `/admin/paircode/new`, removed 2026-09-04). Do not resurrect either.

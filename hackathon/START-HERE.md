@@ -4,6 +4,13 @@ You are building **Etched in Schema** for the Meta Model API hackathon,
 **Startup Track — judged on a working product**. Builder: Jeremy Hobson
 (3tched). Use Meta's models (Muse Spark) for the product's AI steps.
 
+> **Demo stage (owner, 2026-10-31).** Three beats: identity as an appliance,
+> schema tag routing, and a drop-in CMS. The CMS generator is a modification
+> of the existing renderer. On stage, Muse Spark writes the spec in view,
+> then that renderer draws it. Code is not ready. Read
+> [`docs/DEMO-STAGING.md`](docs/DEMO-STAGING.md) before the older golden path
+> below. Do not treat this stage as a live run.
+
 
 > **The method is the blob — the identity acts only through 3tchedFS.**
 > Every method is a plugin schema sealed into a blob. The identity's own

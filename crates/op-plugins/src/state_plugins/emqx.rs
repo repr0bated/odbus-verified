@@ -59,6 +59,15 @@ pub fn wake_topic(owner_key: &str) -> Result<String> {
 /// catalog. It holds names only: which tools a connection may call is still
 /// decided per call by the identity's grants.
 pub const TOOLSETS_TOPIC: &str = "opdbus/toolsets";
+/// Retained per-plugin method schemas, as sealed: `opdbus/schema/<plugin>`.
+/// Names, arguments, results and the required capability per method; the
+/// feed never grants the right to call them.
+pub const SCHEMA_TOPIC_PREFIX: &str = "opdbus/schema/";
+/// Retained per-plugin state snapshots plus live events:
+/// `opdbus/state/<plugin>` (snapshot + generation) and
+/// `opdbus/state/<plugin>/events` (per-commit receipts). Hints, not proof:
+/// receipts and the sealed blobs stay authoritative.
+pub const STATE_TOPIC_PREFIX: &str = "opdbus/state/";
 const MAX_TOOLSETS: usize = 512;
 const MAX_ANNOUNCED_TOOLS: usize = 16_384;
 const MAX_TOOLSETS_PAYLOAD: usize = 1024 * 1024;

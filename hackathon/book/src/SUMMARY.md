@@ -7,6 +7,7 @@
 
 # Specs
 
+- [Demo stage](demo-staging.md)
 - [Drop-in Spec](drop-in-spec.md)
 - [Approvals Spec](approvals-spec.md)
 - [Runtime](runtime.md)

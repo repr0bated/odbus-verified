@@ -2,7 +2,9 @@
 
 use axum::{
     Router,
-    extract::Extension,
+    extract::{Extension, WebSocketUpgrade},
+    http::HeaderMap,
+    response::Response,
     routing::{delete, get, post},
 };
 use std::sync::Arc;
@@ -290,6 +292,14 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     // WebSocket route
     let ws_route = Router::new().route("/ws", get(websocket::websocket_handler));
 
+    /// Same-origin MQTT doorbell proxy: the dashboard page opens its wake
+    /// socket here so the browser never handles the door's certificate.
+    /// Byte-identical admission to the bridge relay; EMQX stays loopback-only.
+    async fn mqtt_proxy_handler(ws: WebSocketUpgrade, headers: HeaderMap) -> Response {
+        op_grpc_bridge::mqtt_doorbell_relay::proxy_browser_upgrade(ws, headers).await
+    }
+    let mqtt_route = Router::new().route("/mqtt", get(mqtt_proxy_handler));
+
     // Main dashboard/REST router. MCP and gRPC are served only by the
     // authenticated bridge on TLS :8090; op-web forwards the page's gRPC-Web
     // calls to it unchanged (`door_proxy`).
@@ -317,6 +327,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
                 .route_layer(axum::middleware::from_fn(security::no_store)),
         )
         .merge(ws_route)
+        .merge(mqtt_route)
         .nest("/groups-admin", groups_admin::create_groups_admin_router())
         .nest("/admin", admin::admin_routes());
 

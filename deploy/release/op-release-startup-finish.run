@@ -1,0 +1,8 @@
+#!/bin/sh
+# After the early-boot install, switch the live slot once supervisors exist.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+exec 2>&1
+/srv/git/odbus-verified/deploy/release/startup-finish.sh activate || true
+exec sleep infinity
