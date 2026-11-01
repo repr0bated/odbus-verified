@@ -300,7 +300,7 @@ async fn dispatch_owned(
                 .map(|value| value.trim().to_string())
                 .filter(|value| !value.is_empty())
                 .context("this conversation's answer turn needs OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")?;
-            let (human, _pending) = engine
+            let (human, pending) = engine
                 .open_chat_turn(
                     crate::chat_response_turns::TurnOwner {
                         principal_id: caller.principal_id.clone(),
@@ -317,6 +317,8 @@ async fn dispatch_owned(
                 conversation_id: human.conversation_id.clone(),
                 turn_id: human.turn_id.clone(),
                 turn_index: human.turn_index,
+                response_turn_id: pending.turn_id().to_string(),
+                response_turn_index: pending.turn_index(),
             })?
         }
         "respond_to_user" => {

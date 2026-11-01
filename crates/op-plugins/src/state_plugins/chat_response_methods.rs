@@ -75,6 +75,10 @@ pub struct SubmitTurnOutput {
     pub turn_id: String,
     /// Zero-based position of the human turn in its conversation.
     pub turn_index: u64,
+    /// Bridge-reserved id of the answer turn the chatbot commits; wait on this.
+    pub response_turn_id: String,
+    /// Zero-based position of the answer turn (the human turn plus one).
+    pub response_turn_index: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
