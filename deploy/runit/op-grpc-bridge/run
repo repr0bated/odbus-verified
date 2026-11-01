@@ -177,10 +177,11 @@ export OPDBUS_NUMA_POLICY="${OPDBUS_NUMA_POLICY:-localalloc}"
 export OP_MCP_AUDIENCE_POLICY_PATH=/usr/share/op-dbus/etc/opdbus/mcp-audience-policy.json
 export OP_MCP_TOOLSETS_PATH="${OP_MCP_TOOLSETS_PATH:-/etc/opdbus/mcp-toolsets.json}"
 export OP_IDENTITY_PROJECTION_GROUP="${OP_IDENTITY_PROJECTION_GROUP:-secrets}"
-# jacob-bd nlm lives in the release binary target. Never put NOTEBOOKLM_COOKIES in this
+# jacob-bd nlm lives on the base system (deploy/notebooklm/install-base.sh), not in
+# the release. Never put NOTEBOOKLM_COOKIES in this
 # environment — those vars freeze stale auth over the on-disk profile.
 unset NOTEBOOKLM_COOKIES NOTEBOOKLM_CSRF_TOKEN NOTEBOOKLM_SESSION_ID NOTEBOOKLM_COOKIE
-export OP_NLM_BIN=/usr/local/libexec/op-dbus/bin/nlm
+export OP_NLM_BIN=/usr/local/lib/opdbus-notebooklm/bin/nlm
 NLM_READY_DIR=/run/opdbus/runit-ready
 install -d -m 0755 "$NLM_READY_DIR"
 if [ -x "$OP_NLM_BIN" ]; then

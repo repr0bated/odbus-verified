@@ -18,7 +18,7 @@
 #   /var/cache/op-dbus/...          pinned EMQX and NotebookLM wheel artifacts.
 #
 # Layout created under golden/:
-#   bin/                            release binaries (+ nlm wrapper)
+#   bin/                            release binaries
 #   libexec/3tched/                 explicit provisioning helpers/assets
 #   usr/bin/threetched              pinned threetched dependency
 #   usr/share/op-dbus/              immutable config, catalog, graphs, provenance
@@ -67,7 +67,6 @@ THREETCHED_MANIFEST="$THREETCHED_ARTIFACT_DIR/manifest.json"
 TCHED_ROUTER_SOURCE_PIN="$PROJECT_ROOT/vendor/tched-router/source.pin"
 EMQX_VERSION_FILE="$SCRIPT_DIR/../config/emqx.version"
 EMQX_CONFIG_DIR="$SCRIPT_DIR/../emqx"
-NOTEBOOKLM_MCP_VERSION_FILE="$SCRIPT_DIR/../config/notebooklm-mcp.version"
 ARTIFACT_CACHE_DIR=${OP_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
 MCP_AUDIENCE_POLICY_SOURCE="$SCRIPT_DIR/../config/mcp-audience-policy.json"
 HOST_RUNTIME_PACKAGES_SOURCE="$SCRIPT_DIR/../config/host-runtime-packages.txt"
@@ -79,7 +78,6 @@ TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/threetched-skills/default"
 AGENT_BUNDLE_SOURCE="$SCRIPT_DIR/../config/agents"
 RETIRED_SERVICES_FILE="$SCRIPT_DIR/retired-services"
 RETIRED_BINARIES_FILE="$SCRIPT_DIR/retired-binaries"
-NLM_CLI_ROOT=/opt/opdbus
 
 # Explicit source -> release-name inventory, relative to deploy/. Never copy
 # the whole host helper directory: network/storage bootstrap stays independent.
@@ -204,51 +202,6 @@ is_application_service() {
         ! is_retired_service "$1"
 }
 
-write_nlm_wrapper() {
-    dest=$1 runtime_venv=$2
-    if [ "$DRY_RUN" = 1 ]; then
-        printf '  would write nlm wrapper: %s -> %s\n' "$dest" "$runtime_venv"
-        return 0
-    fi
-    [ ! -L "$dest" ] || die "refusing to overwrite a symlink at $dest"
-    wrapper_stage=$(mktemp "$(dirname "$dest")/.nlm-wrapper.XXXXXX")
-    # Invoke the module: venv console-script shebangs contain the temporary
-    # build path and are not relocatable. This is always the target's path.
-    printf '#!/bin/sh\nexec "%s/bin/python" -I -m notebooklm_tools.cli.main "$@"\n' \
-        "$runtime_venv" > "$wrapper_stage"
-    install_file 0755 "$wrapper_stage" "$dest"
-    rm -- "$wrapper_stage"
-}
-
-install_nlm_cli() {
-    dest_root=$1 wrapper=$2
-    venv="$dest_root$NLM_CLI_ROOT/$NOTEBOOKLM_MCP_INSTALL_NAME"
-    marker="$venv/.opdbus-artifact-sha256"
-    if [ -f "$marker" ] && [ "$(sed -n '1p' "$marker")" = "$NOTEBOOKLM_MCP_SHA256" ] &&
-       [ -x "$venv/bin/python" ]; then
-        :
-    else
-        [ ! -e "$venv" ] && [ ! -L "$venv" ] ||
-            die "content-addressed nlm root exists but is invalid; preserving it: $venv"
-        if [ "$DRY_RUN" = 1 ]; then
-            printf '  would venv+pip: %s from %s\n' "$venv" "$NOTEBOOKLM_MCP_ARTIFACT_PATH"
-        else
-            ensure_directory "$dest_root$NLM_CLI_ROOT"
-            nlm_stage=$(mktemp -d "$dest_root$NLM_CLI_ROOT/.nlm-stage.XXXXXX")
-            python3 -m venv "$nlm_stage" || die "python3 -m venv failed; retained $nlm_stage"
-            "$nlm_stage/bin/python" -I -m pip install --no-cache-dir --disable-pip-version-check \
-                "$NOTEBOOKLM_MCP_ARTIFACT_PATH" ||
-                die "pip install notebooklm-mcp-cli failed; retained $nlm_stage"
-            "$nlm_stage/bin/python" -I -m notebooklm_tools.cli.main --version >/dev/null ||
-                die "nlm entry point validation failed; retained $nlm_stage"
-            printf '%s\n' "$NOTEBOOKLM_MCP_SHA256" > "$nlm_stage/.opdbus-artifact-sha256"
-            chmod 0755 "$nlm_stage"
-            mv -T -- "$nlm_stage" "$venv"
-        fi
-    fi
-    ensure_directory "$venv"
-    write_nlm_wrapper "$wrapper" "$NLM_CLI_ROOT/$NOTEBOOKLM_MCP_INSTALL_NAME"
-}
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -273,16 +226,6 @@ case "${EMQX_SHA256:-}" in *[!0-9a-f]*|'') die "invalid EMQX_SHA256" ;; esac
 [ "${#EMQX_SHA256}" -eq 64 ] || die "EMQX_SHA256 must contain 64 lowercase hex characters"
 EMQX_ARTIFACT_PATH="$ARTIFACT_CACHE_DIR/$EMQX_ARTIFACT"
 EMQX_INSTALL_NAME="emqx-$EMQX_VERSION-$EMQX_SHA256"
-
-[ -r "$NOTEBOOKLM_MCP_VERSION_FILE" ] || die "missing NotebookLM wheel declaration: $NOTEBOOKLM_MCP_VERSION_FILE"
-# shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated below.
-. "$NOTEBOOKLM_MCP_VERSION_FILE"
-case "${NOTEBOOKLM_MCP_VERSION:-}" in *[!0-9.]*|'') die "invalid NOTEBOOKLM_MCP_VERSION" ;; esac
-case "${NOTEBOOKLM_MCP_ARTIFACT:-}" in *[!A-Za-z0-9._-]*|'') die "invalid NOTEBOOKLM_MCP_ARTIFACT" ;; esac
-case "${NOTEBOOKLM_MCP_SHA256:-}" in *[!0-9a-f]*|'') die "invalid NOTEBOOKLM_MCP_SHA256" ;; esac
-[ "${#NOTEBOOKLM_MCP_SHA256}" -eq 64 ] || die "NOTEBOOKLM_MCP_SHA256 must contain 64 lowercase hex characters"
-NOTEBOOKLM_MCP_ARTIFACT_PATH="$ARTIFACT_CACHE_DIR/$NOTEBOOKLM_MCP_ARTIFACT"
-NOTEBOOKLM_MCP_INSTALL_NAME="nlm-cli-$NOTEBOOKLM_MCP_VERSION-$NOTEBOOKLM_MCP_SHA256"
 
 # ── Preconditions ───────────────────────────────────────────────────────────
 printf '%s\n' "$RELEASE_HELPER_INPUTS" | while read -r mode source helper; do
@@ -403,9 +346,6 @@ CATALOG_PLUGIN_COUNT=$(jq -r '.plugins | length' "$PERSISTED_CATALOG_DIR/.manife
 
 [ -f "$EMQX_ARTIFACT_PATH" ] && [ "$(sha256sum "$EMQX_ARTIFACT_PATH" | cut -d' ' -f1)" = "$EMQX_SHA256" ] ||
     die "missing or mismatched pinned EMQX artifact: $EMQX_ARTIFACT_PATH"
-[ -f "$NOTEBOOKLM_MCP_ARTIFACT_PATH" ] &&
-    [ "$(sha256sum "$NOTEBOOKLM_MCP_ARTIFACT_PATH" | cut -d' ' -f1)" = "$NOTEBOOKLM_MCP_SHA256" ] ||
-    die "missing or mismatched pinned NotebookLM wheel: $NOTEBOOKLM_MCP_ARTIFACT_PATH"
 [ -x "$RELEASE_DIR/op-grants-materializer" ] || die "release is missing op-grants-materializer"
 "$RELEASE_DIR/op-grants-materializer" validate-audience "$MCP_AUDIENCE_POLICY_SOURCE" >/dev/null ||
     die "MCP audience policy is invalid"
@@ -477,7 +417,6 @@ build_golden() {
 
     # Binaries: stage exactly the filtered release inventory.
     find "$GOLDEN_DIR/bin" -mindepth 1 -maxdepth 1 -print | while IFS= read -r old; do
-        [ "$(basename "$old")" = nlm ] && continue
         printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/$(basename "$old")" || run rm -- "$old"
     done
     printf '%s\n' "$BINARIES" | while IFS= read -r bin; do
@@ -596,13 +535,15 @@ build_golden() {
         run rm -r -- "$old"
     done
 
-    install_nlm_cli "$GOLDEN_DIR" "$GOLDEN_DIR/bin/nlm"
+    # NotebookLM is independent of releases (deploy/notebooklm/install-base.sh
+    # installs it on the base system); agent sessions running it from an
+    # overlay pin retired slots. Golden ships only its MCP setting.
     for old in "$GOLDEN_DIR"/opt/opdbus/nlm-cli-*; do
         [ -e "$old" ] || continue
-        [ "$old" = "$GOLDEN_DIR/opt/opdbus/$NOTEBOOKLM_MCP_INSTALL_NAME" ] && continue
         [ -f "$old/.opdbus-artifact-sha256" ] || die "unowned old provider tree: $old"
         run rm -r -- "$old"
     done
+    install_file 0644 "$SCRIPT_DIR/../config/agent-mcp.json" "$GOLDEN_DIR/usr/share/op-dbus/agent-mcp.json"
 
     ensure_directory "$GOLDEN_DIR/opt/op-dbus"
     [ ! -L "$GOLDEN_DIR/opt/op-dbus/execution-python" ] || die "symlink execution environment in golden"
@@ -665,8 +606,6 @@ build_golden() {
             printf 'plugin-catalog-manifest-sha256: %s\n' "$CATALOG_MANIFEST_SHA256"
             printf 'emqx-artifact: %s\n' "$EMQX_ARTIFACT"
             printf 'emqx-sha256: %s\n' "$EMQX_SHA256"
-            printf 'nlm-cli-artifact: %s\n' "$NOTEBOOKLM_MCP_ARTIFACT"
-            printf 'nlm-cli-sha256: %s\n' "$NOTEBOOKLM_MCP_SHA256"
             printf 'execution-python-lock-sha256: %s\n' "$EXECUTION_PYTHON_LOCK_SHA256"
             printf '\n[sha256]\n'
             printf '%s\n' "$BINARIES" | while IFS= read -r bin; do

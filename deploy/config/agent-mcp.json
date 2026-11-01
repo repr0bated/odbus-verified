@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "notebooklm": {
+      "command": "/usr/local/lib/opdbus-notebooklm/bin/notebooklm-mcp",
+      "args": []
+    }
+  }
+}
