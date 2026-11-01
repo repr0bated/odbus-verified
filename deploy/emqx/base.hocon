@@ -2,8 +2,9 @@
 ## /var/lib/emqx/configs/cluster.hocon; the immutable listener/auth policy in
 ## emqx.conf remains authoritative.
 
-log.console.level = info
-log.file.enable = false
+log.console.enable = false
+log.file.enable = true
+log.file.level = info
 
 exhook.servers = [
   {
