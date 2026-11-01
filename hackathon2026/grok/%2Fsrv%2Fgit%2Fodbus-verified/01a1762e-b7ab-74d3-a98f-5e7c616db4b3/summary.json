@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a1762e-b7ab-74d3-a98f-5e7c616db4b3",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a1762e-b7ab-74d3-a98f-5e7c616db4b3",
+  "attempt_id": "at1.a03028bfd964444a245656dee364e50",
+  "session_summary": "Rename op-cozo-store tched identifiers via JEV",
+  "created_at": "2026-10-26T03:08:56.022195312Z",
+  "updated_at": "2026-10-26T03:11:25.499083674Z",
+  "num_messages": 138,
+  "num_chat_messages": 60,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:11:25.499083674Z",
+  "generated_title": "Rename op-cozo-store tched identifiers via JEV",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

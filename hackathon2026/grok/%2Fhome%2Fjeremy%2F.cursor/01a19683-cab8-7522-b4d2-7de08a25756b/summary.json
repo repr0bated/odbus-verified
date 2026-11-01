@@ -1,0 +1,26 @@
+{
+  "info": {
+    "id": "01a19683-cab8-7522-b4d2-7de08a25756b",
+    "cwd": "/home/jeremy/.cursor"
+  },
+  "agent_id": "ag1.1888550c5630493ead702d08a8523fd5",
+  "attempt_id": "at1.613681143c374b25856a2f406a27ab84",
+  "session_summary": "Clone upstream forks into /srv/git",
+  "created_at": "2026-11-01T09:49:42.090601738Z",
+  "updated_at": "2026-11-01T10:03:25.438116693Z",
+  "num_messages": 83,
+  "num_chat_messages": 59,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 4,
+  "chat_format_version": 1,
+  "request_id": "012d6f0c-447f-4053-ab85-28b5d0cbfb9c",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-11-01T10:03:25.438116693Z",
+  "generated_title": "Clone upstream forks into /srv/git",
+  "agent_name": "grok-build-plan",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high",
+  "last_turn_summary": "`clone-upstreams.sh` clones 108 upstreams into `/srv/git`; origin not forks",
+  "last_turn_summary_prompt_id": "012d6f0c-447f-4053-ab85-28b5d0cbfb9c",
+  "last_recap": "We wrote `/home/jeremy/git/clone-upstreams.sh` to clone 108 upstream repos into `/srv/git` with `origin` set to each upstream, skipping existing directories such as `zeroclaw`."
+}

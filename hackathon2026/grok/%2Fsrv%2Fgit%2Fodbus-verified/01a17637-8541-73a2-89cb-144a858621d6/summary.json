@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17637-8541-73a2-89cb-144a858621d6",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17637-8541-73a2-89cb-144a858621d6",
+  "attempt_id": "at1.aaf0afa40600400fbb6e210433f43825",
+  "session_summary": "JEV-gate op-blob threetched reference rewrites",
+  "created_at": "2026-10-26T03:18:32.747163697Z",
+  "updated_at": "2026-10-26T03:24:05.312461029Z",
+  "num_messages": 134,
+  "num_chat_messages": 76,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:24:05.312461029Z",
+  "generated_title": "JEV-gate op-blob threetched reference rewrites",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

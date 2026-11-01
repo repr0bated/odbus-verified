@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a1762e-b7aa-7a91-ba7e-8bb5acea094e",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a1762e-b7aa-7a91-ba7e-8bb5acea094e",
+  "attempt_id": "at1.4a99e5c8f64740a59a7db69e061a605e",
+  "session_summary": "Rename op-cache tched identifiers via JEV",
+  "created_at": "2026-10-26T03:08:56.284129036Z",
+  "updated_at": "2026-10-26T03:10:44.379038544Z",
+  "num_messages": 141,
+  "num_chat_messages": 76,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:10:44.379038544Z",
+  "generated_title": "Rename op-cache tched identifiers via JEV",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

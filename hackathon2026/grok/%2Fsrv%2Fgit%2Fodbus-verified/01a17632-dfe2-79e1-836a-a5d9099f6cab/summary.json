@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17632-dfe2-79e1-836a-a5d9099f6cab",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17632-dfe2-79e1-836a-a5d9099f6cab",
+  "attempt_id": "at1.3ae3efe9068b4abcb6af911a221e0701",
+  "session_summary": "op-core tched to threetched JEV rename",
+  "created_at": "2026-10-26T03:13:28.113510066Z",
+  "updated_at": "2026-10-26T03:13:49.067773458Z",
+  "num_messages": 140,
+  "num_chat_messages": 72,
+  "current_model_id": "grok-4.7",
+  "parent_session_id": "01a1762e-b7ab-74d3-a98f-5d9be0a19050",
+  "forked_at": "2026-10-26T03:13:28.113512110Z",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent_resume",
+  "fork_context_source": "resumed",
+  "fork_parent_prompt_id": "94acdc53-1da7-473d-a4b6-f45ff2c0be27",
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:13:49.067773458Z",
+  "generated_title": "op-core tched to threetched JEV rename",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

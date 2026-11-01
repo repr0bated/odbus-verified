@@ -1,0 +1,22 @@
+{
+  "info": {
+    "id": "01a19663-183f-7a61-9730-0b06ad3810eb",
+    "cwd": "/home/jeremy"
+  },
+  "agent_id": "ag1.1157a8afdad4498398aebde18216a4ba",
+  "attempt_id": "at1.e5e17867baca42c9acb303f63806b2aa",
+  "session_summary": "/resume-codex 01a1965d-3906-7ed2-b6b5-4c67e1531b09",
+  "created_at": "2026-11-01T09:13:59.171567342Z",
+  "updated_at": "2026-11-01T09:15:46.831441767Z",
+  "num_messages": 12,
+  "num_chat_messages": 6,
+  "current_model_id": "vercel-ai-gateway",
+  "next_trace_turn": 2,
+  "chat_format_version": 1,
+  "request_id": "552d97cf-4be9-4290-a18f-7ecfef692ce5",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-11-01T09:15:46.831441767Z",
+  "generated_title": "/resume-codex 01a1965d-3906-7ed2-b6b5-4c67e1531b09",
+  "agent_name": "grok-build-plan",
+  "sandbox_profile": "off"
+}

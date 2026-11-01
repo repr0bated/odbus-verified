@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a1762e-b7aa-7a91-ba7e-8b5774c04159",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a1762e-b7aa-7a91-ba7e-8b5774c04159",
+  "attempt_id": "at1.4d63e6095d344f6e9af7e4dd041c4860",
+  "session_summary": "op-web tched to threetched JEV rename",
+  "created_at": "2026-10-26T03:08:55.762539851Z",
+  "updated_at": "2026-10-26T03:11:25.238653624Z",
+  "num_messages": 233,
+  "num_chat_messages": 103,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:11:25.238653624Z",
+  "generated_title": "op-web tched to threetched JEV rename",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

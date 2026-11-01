@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17632-6e60-7a33-8077-85b6ac0c8060",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17632-6e60-7a33-8077-85b6ac0c8060",
+  "attempt_id": "at1.5f3146cd41684c648f591b3aa55b4f26",
+  "session_summary": "Inline threetched identifier renames in op-chat",
+  "created_at": "2026-10-26T03:12:59.151275887Z",
+  "updated_at": "2026-10-26T03:14:17.044034552Z",
+  "num_messages": 88,
+  "num_chat_messages": 39,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:14:17.044034552Z",
+  "generated_title": "Inline threetched identifier renames in op-chat",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

@@ -1,0 +1,595 @@
+{
+  "window_start": "2026-10-26T00:00:00Z",
+  "collected_at": "2026-11-01T18:33:09Z",
+  "files": 854,
+  "bytes": 633484483,
+  "by_source": {
+    "claude": {
+      "files": 31,
+      "bytes": 124424977,
+      "records": 23211,
+      "tool_events": 7570
+    },
+    "codex": {
+      "files": 18,
+      "bytes": 35481303,
+      "records": 6714,
+      "tool_events": 1742
+    },
+    "cursor": {
+      "files": 8,
+      "bytes": 640439,
+      "records": 714,
+      "tool_events": 927
+    },
+    "gemini": {
+      "files": 95,
+      "bytes": 16149592,
+      "records": 11999,
+      "tool_events": 4366
+    },
+    "grok": {
+      "files": 372,
+      "bytes": 253869825,
+      "records": 225630,
+      "tool_events": 18518
+    },
+    "hermes": {
+      "files": 7,
+      "bytes": 1832771,
+      "records": 2485,
+      "tool_events": 240
+    },
+    "junie": {
+      "files": 17,
+      "bytes": 357,
+      "records": 17,
+      "tool_events": 0
+    },
+    "kiro": {
+      "files": 7,
+      "bytes": 571945,
+      "records": 425,
+      "tool_events": 207
+    },
+    "omp": {
+      "files": 299,
+      "bytes": 200513274,
+      "records": 58411,
+      "tool_events": 19647
+    }
+  },
+  "tool_names": {
+    "claude": [
+      [
+        "Bash",
+        2410
+      ],
+      [
+        "Write",
+        74
+      ],
+      [
+        "Edit",
+        64
+      ],
+      [
+        "ToolSearch",
+        18
+      ],
+      [
+        "Monitor",
+        12
+      ],
+      [
+        "TaskStop",
+        11
+      ],
+      [
+        "Read",
+        10
+      ],
+      [
+        "WebFetch",
+        9
+      ],
+      [
+        "AskUserQuestion",
+        6
+      ],
+      [
+        "mcp__claude_ai_Gmail__search_threads",
+        6
+      ],
+      [
+        "mcp__claude_ai_Google_Drive__search_files",
+        5
+      ],
+      [
+        "mcp__claude_ai_Microsoft_365__authenticate",
+        4
+      ],
+      [
+        "mcp__claude_ai_Gmail__get_thread",
+        2
+      ],
+      [
+        "mcp__claude_ai_Google_Drive__get_file_metadata",
+        2
+      ],
+      [
+        "mcp__claude_ai_Google_Drive__read_file_content",
+        2
+      ],
+      [
+        "mcp__claude_ai_Google_Drive__download_file_content",
+        2
+      ],
+      [
+        "Skill",
+        1
+      ],
+      [
+        "mcp__claude_ai_Claude_Docs__batch",
+        1
+      ],
+      [
+        "mcp__claude_ai_Claude_Docs__guide",
+        1
+      ],
+      [
+        "mcp__claude_ai_Claude_Docs__update",
+        1
+      ]
+    ],
+    "codex": [
+      [
+        "exec",
+        621
+      ],
+      [
+        "github.get_pr_info",
+        84
+      ],
+      [
+        "send_message",
+        65
+      ],
+      [
+        "github.list_pull_request_review_threads",
+        32
+      ],
+      [
+        "github.update_pull_request",
+        31
+      ],
+      [
+        "sleep",
+        21
+      ],
+      [
+        "followup_task",
+        13
+      ],
+      [
+        "github.resolve_review_thread",
+        13
+      ],
+      [
+        "spawn_agent",
+        9
+      ],
+      [
+        "wait",
+        8
+      ],
+      [
+        "read_thread",
+        7
+      ],
+      [
+        "request_user_input_async",
+        6
+      ],
+      [
+        "wait_agent",
+        5
+      ],
+      [
+        "github.search_prs",
+        5
+      ],
+      [
+        "send_message_to_thread",
+        3
+      ],
+      [
+        "js",
+        2
+      ],
+      [
+        "list_threads",
+        2
+      ],
+      [
+        "github.merge_pull_request",
+        2
+      ],
+      [
+        "github.get_user_login",
+        1
+      ],
+      [
+        "github.get_repo",
+        1
+      ]
+    ],
+    "cursor": [
+      [
+        "Read",
+        299
+      ],
+      [
+        "Grep",
+        295
+      ],
+      [
+        "Shell",
+        200
+      ],
+      [
+        "StrReplace",
+        76
+      ],
+      [
+        "Glob",
+        30
+      ],
+      [
+        "CallDynamicTool",
+        13
+      ],
+      [
+        "GetDynamicTools",
+        7
+      ],
+      [
+        "Write",
+        7
+      ]
+    ],
+    "gemini": [
+      [
+        "run_command",
+        2895
+      ],
+      [
+        "read_file",
+        956
+      ],
+      [
+        "manage_task",
+        424
+      ],
+      [
+        "write_file",
+        39
+      ],
+      [
+        "edit_file",
+        28
+      ],
+      [
+        "schedule",
+        16
+      ],
+      [
+        "call_mcp_tool",
+        4
+      ],
+      [
+        "search_web",
+        4
+      ]
+    ],
+    "grok": [
+      [
+        "read_file",
+        8774
+      ],
+      [
+        "grep",
+        1671
+      ],
+      [
+        "run_terminal_command",
+        1563
+      ],
+      [
+        "search_replace",
+        789
+      ],
+      [
+        "list_dir",
+        562
+      ],
+      [
+        "web_fetch",
+        517
+      ],
+      [
+        "spawn_subagent",
+        192
+      ],
+      [
+        "write",
+        148
+      ],
+      [
+        "kill_command_or_subagent",
+        144
+      ],
+      [
+        "get_command_or_subagent_output",
+        27
+      ],
+      [
+        "monitor",
+        15
+      ],
+      [
+        "search_tool",
+        6
+      ],
+      [
+        "exit_plan_mode",
+        4
+      ]
+    ],
+    "hermes": [
+      [
+        "terminal",
+        113
+      ],
+      [
+        "read_file",
+        48
+      ],
+      [
+        "search_files",
+        25
+      ],
+      [
+        "tool_call",
+        14
+      ],
+      [
+        "execute_code",
+        12
+      ],
+      [
+        "skill_view",
+        8
+      ],
+      [
+        "tool_describe",
+        4
+      ],
+      [
+        "write_file",
+        4
+      ],
+      [
+        "skill_manage",
+        3
+      ],
+      [
+        "web_extract",
+        2
+      ],
+      [
+        "tool_search",
+        2
+      ],
+      [
+        "web_search",
+        2
+      ],
+      [
+        "patch",
+        2
+      ],
+      [
+        "skills_list",
+        1
+      ]
+    ],
+    "junie": [],
+    "kiro": [
+      [
+        "execute_bash",
+        52
+      ],
+      [
+        "read_file",
+        15
+      ],
+      [
+        "list_directory",
+        9
+      ],
+      [
+        "validate_spec_format",
+        9
+      ],
+      [
+        "remote_web_search",
+        4
+      ],
+      [
+        "web_fetch",
+        4
+      ],
+      [
+        "invoke_sub_agent",
+        3
+      ],
+      [
+        "file_search",
+        2
+      ],
+      [
+        "fs_write",
+        2
+      ],
+      [
+        "fetch_cloud_config",
+        2
+      ],
+      [
+        "analyze_requirements",
+        1
+      ],
+      [
+        "web_search",
+        1
+      ]
+    ],
+    "omp": [
+      [
+        "read",
+        8206
+      ],
+      [
+        "bash",
+        4763
+      ],
+      [
+        "grep",
+        1526
+      ],
+      [
+        "edit",
+        1121
+      ],
+      [
+        "advise",
+        1027
+      ],
+      [
+        "todo",
+        864
+      ],
+      [
+        "write",
+        647
+      ],
+      [
+        "eval",
+        429
+      ],
+      [
+        "glob",
+        358
+      ],
+      [
+        "wait",
+        283
+      ],
+      [
+        "task",
+        168
+      ],
+      [
+        "find",
+        147
+      ],
+      [
+        "ask",
+        96
+      ],
+      [
+        "get_weather",
+        4
+      ],
+      [
+        "web_search",
+        2
+      ],
+      [
+        "self_default.glob",
+        2
+      ],
+      [
+        "grep -n \"pub mod\\|pub use\" /srv/git/odbus-verified/crates/op-plugins/src/state_plugins/mod.rs | grep -i \"chat\\|router\"\n</parameter>\n<parameter=i",
+        1
+      ],
+      [
+        "grep -n \"pub use\\|pub mod\\|pub reexport\" /srv/git/odbus-verified/crates/op-plugins/src/lib.rs | head -20\n</parameter>\n<parameter=i",
+        1
+      ],
+      [
+        "grep -n \"pub struct\\|pub type\" crates/op-plugins/src/state_plugins/chat_router.rs | head -30\n</parameter>\n<parameter=i",
+        1
+      ]
+    ]
+  },
+  "notes": [
+    {
+      "source": "opencode",
+      "reason": "0 sessions updated on or after cutoff. Latest session update 2026-10-24T01:19:11Z. Database not copied because it contains a credential table."
+    },
+    {
+      "source": "kilo",
+      "reason": "0 sessions updated on or after cutoff. Latest session update 2026-10-24T19:16:07Z. Database not copied because it contains a credential table."
+    },
+    {
+      "source": "factory",
+      "reason": "0 *.jsonl files written on or after cutoff under /home/jeremy/.factory/sessions"
+    },
+    {
+      "source": "pi",
+      "reason": "0 *.jsonl files written on or after cutoff under /home/jeremy/.pi/agent/sessions"
+    },
+    {
+      "source": "paseo",
+      "reason": "0 *.json files written on or after cutoff under /home/jeremy/.paseo/agent-requests"
+    },
+    {
+      "source": "claude-server-commander",
+      "reason": "tool-history.jsonl last written 2026-10-23T09:25:10Z, before the cutoff, so it was not copied."
+    },
+    {
+      "source": "root-codex",
+      "reason": "/root/.codex is not readable by this user"
+    },
+    {
+      "source": "root-claude",
+      "reason": "/root/.claude is not readable by this user"
+    },
+    {
+      "source": "root-grok",
+      "reason": "/root/.grok is not readable by this user"
+    },
+    {
+      "source": "3tched-claude",
+      "reason": "/home/3tched/.claude is not readable by this user"
+    },
+    {
+      "source": "3tched-codex",
+      "reason": "/home/3tched/.codex is not readable by this user"
+    },
+    {
+      "source": "3tched-grok",
+      "reason": "/home/3tched/.grok is not readable by this user"
+    },
+    {
+      "source": "notebooklm-sources",
+      "reason": "derived capture left in place at /home/jeremy/.notebooklm-sources/.local-capture: 4118 files touched since cutoff, 30316830277 bytes. Not duplicated into this archive."
+    },
+    {
+      "source": "gemini-sqlite",
+      "reason": "Antigravity conversation *.db files are protobuf trajectory stores. Readable transcripts were copied from brain/**/transcript.jsonl. The databases were not copied."
+    }
+  ]
+}

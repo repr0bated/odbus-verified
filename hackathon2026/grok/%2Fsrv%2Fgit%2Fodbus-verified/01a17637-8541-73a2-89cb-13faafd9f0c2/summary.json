@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17637-8541-73a2-89cb-13faafd9f0c2",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17637-8541-73a2-89cb-13faafd9f0c2",
+  "attempt_id": "at1.9d1f96ac37d54cbe9a215c1d63ae04db",
+  "session_summary": "JEV-classify op-network threetched references",
+  "created_at": "2026-10-26T03:18:32.699311880Z",
+  "updated_at": "2026-10-26T03:24:33.089496913Z",
+  "num_messages": 165,
+  "num_chat_messages": 78,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:24:33.089496913Z",
+  "generated_title": "JEV-classify op-network threetched references",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

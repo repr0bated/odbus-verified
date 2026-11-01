@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a1762e-b7ab-74d3-a98f-5e2a6f017913",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a1762e-b7ab-74d3-a98f-5e2a6f017913",
+  "attempt_id": "at1.6c1ddf66e4d3475183120bb525b3f8c5",
+  "session_summary": "Rename op-jsonrpc tched identifiers via JEV",
+  "created_at": "2026-10-26T03:08:55.999868978Z",
+  "updated_at": "2026-10-26T03:10:21.849085606Z",
+  "num_messages": 60,
+  "num_chat_messages": 33,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:10:21.849085606Z",
+  "generated_title": "Rename op-jsonrpc tched identifiers via JEV",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17632-dfe3-7ba0-9a77-9717d409d780",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17632-dfe3-7ba0-9a77-9717d409d780",
+  "attempt_id": "at1.a4d9262e5c954b739a43798590f89cf8",
+  "session_summary": "Rename op-dbus-cli tched identifiers via JEV",
+  "created_at": "2026-10-26T03:13:44.589808815Z",
+  "updated_at": "2026-10-26T03:13:55.307117019Z",
+  "num_messages": 84,
+  "num_chat_messages": 45,
+  "current_model_id": "grok-4.7",
+  "parent_session_id": "01a1762e-b7ab-74d3-a98f-5edae011d7e5",
+  "forked_at": "2026-10-26T03:13:44.589810368Z",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent_resume",
+  "fork_context_source": "resumed",
+  "fork_parent_prompt_id": "94acdc53-1da7-473d-a4b6-f45ff2c0be27",
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:13:55.307117019Z",
+  "generated_title": "Rename op-dbus-cli tched identifiers via JEV",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

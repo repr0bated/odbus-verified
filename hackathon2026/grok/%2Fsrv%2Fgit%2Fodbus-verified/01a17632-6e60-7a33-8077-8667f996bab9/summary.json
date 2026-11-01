@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17632-6e60-7a33-8077-8667f996bab9",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17632-6e60-7a33-8077-8667f996bab9",
+  "attempt_id": "at1.73888ab7274848509c6640dcd6896ff9",
+  "session_summary": "Rename tched bridge tokens to threetched in op-cozo-store",
+  "created_at": "2026-10-26T03:12:59.249252684Z",
+  "updated_at": "2026-10-26T03:14:17.325120519Z",
+  "num_messages": 45,
+  "num_chat_messages": 20,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:14:17.325120519Z",
+  "generated_title": "Rename tched bridge tokens to threetched in op-cozo-store",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

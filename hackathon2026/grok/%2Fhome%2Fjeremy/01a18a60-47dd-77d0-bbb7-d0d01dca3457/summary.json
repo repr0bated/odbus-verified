@@ -1,0 +1,26 @@
+{
+  "info": {
+    "id": "01a18a60-47dd-77d0-bbb7-d0d01dca3457",
+    "cwd": "/home/jeremy"
+  },
+  "agent_id": "ag1.3cbf62aff9984a3d837d81f57f533b68",
+  "attempt_id": "at1.2d9912b276204a2d8534a4a2d7e8c149",
+  "session_summary": "VPS voxtype via laptop GPU Whisper",
+  "created_at": "2026-10-30T01:15:28.186140164Z",
+  "updated_at": "2026-10-30T05:26:44.393949293Z",
+  "num_messages": 2382,
+  "num_chat_messages": 540,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 58,
+  "chat_format_version": 1,
+  "request_id": "88bf85f1-2fc0-4b31-939e-a1b63013a5a5",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-30T05:26:44.393949293Z",
+  "generated_title": "VPS voxtype via laptop GPU Whisper",
+  "agent_name": "grok-build-plan",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high",
+  "last_turn_summary": "Landing page unpublished; base page won’t wait on corpus",
+  "last_turn_summary_prompt_id": "88bf85f1-2fc0-4b31-939e-a1b63013a5a5",
+  "last_recap": "We put a source-only loading page on the seed path: Hi, chatbot place, canvas place, one `ui_render` after the tonic door on 8090, and left the generative-UI corpus unvectorized until the research files arrive."
+}

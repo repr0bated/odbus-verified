@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17632-dfe2-79e1-836a-a58d4dad4250",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17632-dfe2-79e1-836a-a58d4dad4250",
+  "attempt_id": "at1.23eb828f38df4f329da4ab1e7d381793",
+  "session_summary": "op-http tched to threetched identifier rename",
+  "created_at": "2026-10-26T03:13:28.105038933Z",
+  "updated_at": "2026-10-26T03:13:40.816776628Z",
+  "num_messages": 90,
+  "num_chat_messages": 48,
+  "current_model_id": "grok-4.7",
+  "parent_session_id": "01a1762e-b7ab-74d3-a98f-5e1093fddcda",
+  "forked_at": "2026-10-26T03:13:28.105040836Z",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent_resume",
+  "fork_context_source": "resumed",
+  "fork_parent_prompt_id": "94acdc53-1da7-473d-a4b6-f45ff2c0be27",
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:13:40.816776628Z",
+  "generated_title": "op-http tched to threetched identifier rename",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

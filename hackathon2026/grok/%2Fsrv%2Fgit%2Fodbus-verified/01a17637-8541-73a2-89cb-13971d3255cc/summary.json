@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a17637-8541-73a2-89cb-13971d3255cc",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a17637-8541-73a2-89cb-13971d3255cc",
+  "attempt_id": "at1.6f67cc6392d943a3a4d20cd60f8be9f3",
+  "session_summary": "JEV-classify threetched-fs skill plugin routes",
+  "created_at": "2026-10-26T03:18:32.561299425Z",
+  "updated_at": "2026-10-26T03:29:25.652635372Z",
+  "num_messages": 181,
+  "num_chat_messages": 105,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:29:25.652635372Z",
+  "generated_title": "JEV-classify threetched-fs skill plugin routes",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

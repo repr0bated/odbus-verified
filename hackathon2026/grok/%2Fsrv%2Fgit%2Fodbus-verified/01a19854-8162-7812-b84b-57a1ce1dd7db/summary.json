@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a19854-8162-7812-b84b-57a1ce1dd7db",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "ag1.7022e59d21484baa9267bd5030752154",
+  "attempt_id": "at1.a4e34cd3461346a7a0ab7dd1f7471b70",
+  "session_summary": "Collect hackathon conversations and tool history",
+  "created_at": "2026-11-01T18:17:17.558987968Z",
+  "updated_at": "2026-11-01T18:28:16.704043577Z",
+  "num_messages": 130,
+  "num_chat_messages": 75,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 2,
+  "chat_format_version": 1,
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "c86871c30f14536140e413279dec29c47e8dfe25",
+  "head_branch": "restore/devuan-storage-20261013",
+  "request_id": "520983d2-60ae-4dfa-ba75-b9d1ddf3ad44",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-11-01T18:28:16.704043577Z",
+  "generated_title": "Collect hackathon conversations and tool history",
+  "agent_name": "grok-build-plan",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}

@@ -1,0 +1,29 @@
+{
+  "info": {
+    "id": "01a1762e-b7ab-74d3-a98f-5ebda48a80d3",
+    "cwd": "/srv/git/odbus-verified"
+  },
+  "agent_id": "01a1762e-b7ab-74d3-a98f-5ebda48a80d3",
+  "attempt_id": "at1.eed21261bafc4d139666d48225a76435",
+  "session_summary": "Rename tched identifiers in op-runit-systemctl",
+  "created_at": "2026-10-26T03:09:40.320795598Z",
+  "updated_at": "2026-10-26T03:10:56.974573595Z",
+  "num_messages": 73,
+  "num_chat_messages": 40,
+  "current_model_id": "grok-4.7",
+  "next_trace_turn": 1,
+  "chat_format_version": 1,
+  "session_kind": "subagent",
+  "git_root_dir": "/srv/git/odbus-verified/",
+  "git_remotes": [
+    "https://github.com/repr0bated/odbus-verified.git"
+  ],
+  "head_commit": "86f03d2dede738e2d780ab789dd5800b58678479",
+  "head_branch": "restore/devuan-storage-20261013",
+  "grok_home": "/home/jeremy/.grok",
+  "last_active_at": "2026-10-26T03:10:56.974573595Z",
+  "generated_title": "Rename tched identifiers in op-runit-systemctl",
+  "agent_name": "general-purpose",
+  "sandbox_profile": "off",
+  "reasoning_effort": "high"
+}
