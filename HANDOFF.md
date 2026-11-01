@@ -7191,3 +7191,8 @@ Authoritative task status, per-PR limitations, source/build/merge receipts, memo
 - In this release: submit_turn returns the reserved answer turn and the UI waits on it. Picker is back in the top bar with a Hide models/Models handle that collapses it upward (57c10bf; supersedes the "picker does not render" open item above). The left chat panel starts below the bar.
 - Still unproven: the 3tchedCtlChatbot (principal 1262e982…) committing respond_to_user on a reserved turn. The first real message from the owner is the test. If no reply arrives within the 300 s wait, inspect the chatbot container's responder wake handling.
 - Still missing grant: cap.storage.3tchedfs.contract.read@v1 (mounted application admission).
+
+### 2026-11-01 14:18Z — Claude (Opus 5.5): DEMO build live (temporary)
+- Live UI 3tched.com a7c16b8 on release 14:17Z. Model picker removed (6d23a87). `RuntimeHost.svelte` pins every routed mode to `openrouter` / `meta/muse-spark-1.3` via the caller's own selectRoute when the chat context loads (a7c16b8).
+- NOT pinned: the control-plane model, which the chatbot uses to answer chat_response turns. It needs the owner's elevation through ControlPlanePicker and cannot be set automatically.
+- After the demo: revert 6d23a87, 3d2a52c and a7c16b8 in 3tched.com to restore the top-bar picker (57c10bf) and drop the pin.
