@@ -23,6 +23,8 @@ export EMQX_DASHBOARD__DEFAULT_USERNAME=admin
 export EMQX_DASHBOARD__DEFAULT_PASSWORD="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-dashboard-password)"
 export EMQX_LOG_DIR=/var/log/emqx
 export EMQX_NODE__DATA_DIR=/var/lib/emqx
+# Erlang distribution (4370) binds loopback only; the node is emqx@127.0.0.1.
+export ERL_ZFLAGS="-kernel inet_dist_use_interface {127,0,0,1}"
 export EMQX_ETC_DIR=/usr/share/op-dbus/emqx-etc
 export EMQX_DEFAULT_LOG_HANDLER=console
 
