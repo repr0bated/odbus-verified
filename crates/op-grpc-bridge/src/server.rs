@@ -721,14 +721,6 @@ fn build_axum_app_with_mcp(
         "/mqtt",
         axum::routing::get(crate::mqtt_doorbell_relay::upgrade),
     )
-    .route(
-        crate::agent_ui_proxy::THREETCHED_PREFIX,
-        axum::routing::any(crate::agent_ui_proxy::threetched),
-    )
-    .route(
-        "/threetched/*rest",
-        axum::routing::any(crate::agent_ui_proxy::threetched),
-    )
     .merge(build_routes(loader, server, validator).into_axum_router())
     .layer(cors)
     .layer(axum::middleware::from_fn(crate::agent_ui_proxy::route))
