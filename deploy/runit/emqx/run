@@ -28,6 +28,10 @@ export EMQX_NODE__DATA_DIR=/var/lib/emqx
 # -emqx_data_dir, and the emqx script parses that value from the running
 # node, so ctl and node detection saw a bogus data dir.
 export ERL_AFLAGS="-kernel inet_dist_use_interface {127,0,0,1}"
+# runit gives services no locale; without UTF-8 the VM uses latin1 file-name
+# encoding and Elixir warns it may malfunction. +fnu forces UTF-8 regardless.
+export LANG=C.UTF-8 LC_ALL=C.UTF-8
+export ELIXIR_ERL_OPTIONS="+fnu"
 export EMQX_ETC_DIR=/usr/share/op-dbus/emqx-etc
 # Own rotating log file at $EMQX_LOG_DIR/emqx.log; nothing on the boot console.
 export EMQX_DEFAULT_LOG_HANDLER=file
