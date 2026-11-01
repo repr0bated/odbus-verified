@@ -5911,6 +5911,19 @@ impl MutationEngine {
             return Ok(result);
         }
 
+        // UI surfaces are declared by the sealed schema itself (path, name,
+        // schema, purpose); the committed router projection does not carry
+        // them, so answer from the manifest-pinned blob.
+        if method == "ListUiSurfaces" {
+            let surfaces = pinned
+                .schema
+                .fields
+                .get("ui_surfaces")
+                .and_then(|field| field.default.clone())
+                .context("sealed chat_router schema declares no ui_surfaces")?;
+            return Ok(serde_json::json!({ "ui_surfaces": surfaces }));
+        }
+
         let stored = self
             .projected_state::<serde_json::Value>("chat_router")
             .await?
