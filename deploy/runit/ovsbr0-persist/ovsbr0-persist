@@ -2,11 +2,16 @@
 # Restore the host network after openvswitch-switch restores conf.db:
 # the public address on pub0, the OpenFlow address on ovsbr0, the door
 # address on its own TUN interface (warp0, peer 10.0.0.1), and the door port forward (pub0:8090 -> 10.0.0.2:8090).
-# The bridge, eth0 uplink, and pub0 MAC already persist in
-# /etc/openvswitch/conf.db. Linux addresses and nftables tables do not.
+#
+# Topology (ovsbr0 + eth0 uplink + pub0) is supposed to live in conf.db.
+# If someone deletes the bridge (ovs-vsctl del-br), conf.db stays empty across
+# reboot. Re-seed with op-ovsbr0-setup --seed-only before waiting for the
+# interfaces — same binary the designed ovs-vswitchd runit path uses.
 set -eu
 
 CONF=${OVSBR0_PERSIST_CONF:-/etc/op-dbus/ovsbr0-persist.conf}
+NETCONF=${OVSBR0_NETWORK_CONF:-/etc/op-dbus/network.conf}
+SEED=${OP_OVSBR0_SETUP:-/usr/local/bin/op-ovsbr0-setup}
 # shellcheck disable=SC1090
 . "$CONF"
 
@@ -14,6 +19,40 @@ CONF=${OVSBR0_PERSIST_CONF:-/etc/op-dbus/ovsbr0-persist.conf}
     echo "ovsbr0-persist: $CONF is missing PUB_ADDR, PUB_GW, or BRIDGE_ALIASES" >&2
     exit 1
 }
+
+seed_bridge_if_missing() {
+    [ -x "$SEED" ] || {
+        echo "ovsbr0-persist: missing $SEED — cannot rebuild ovsbr0" >&2
+        return 1
+    }
+    if ovs-vsctl --timeout=5 br-exists ovsbr0 2>/dev/null; then
+        return 0
+    fi
+    echo "ovsbr0-persist: ovsbr0 missing from OVSDB; running $SEED --seed-only" >&2
+    set -a
+    # shellcheck disable=SC1090
+    [ -r "$NETCONF" ] && . "$NETCONF"
+    set +a
+    export OVSDB_SOCKET="${OVSDB_SOCKET:-/run/openvswitch/db.sock}"
+    export BRIDGE="${BRIDGE:-ovsbr0}"
+    export UPLINK="${UPLINK_PHYS:-eth0}"
+    export PUBLIC_PORT="${PUBLIC_PORT:-pub0}"
+    export INTERNAL_PORTS="${INTERNAL_PORTS:-}"
+    export FAIL_MODE="${FAIL_MODE:-standalone}"
+    "$SEED" --seed-only
+}
+
+# OVSDB must be up (Required-Start: openvswitch-switch). Re-seed if empty.
+i=0
+until [ -S /run/openvswitch/db.sock ]; do
+    i=$((i + 1))
+    if [ "$i" -ge 30 ]; then
+        echo "ovsbr0-persist: OVSDB socket did not appear" >&2
+        exit 1
+    fi
+    sleep 1
+done
+seed_bridge_if_missing
 
 i=0
 while [ ! -d /sys/class/net/pub0 ] || [ ! -d /sys/class/net/ovsbr0 ]; do
@@ -30,8 +69,10 @@ done
 ip link set eth0 up
 ip link set pub0 up
 ip link set ovsbr0 up
+# Cut public IP off the enslaved NIC if DHCP left it there.
+ip addr del "$PUB_ADDR" dev eth0 2>/dev/null || true
 ip addr replace "$PUB_ADDR" dev pub0
-ip route replace default via "$PUB_GW" dev pub0 onlink
+ip route replace default via "$PUB_GW" dev pub0 src "${PUB_ADDR%/*}" onlink
 for alias in $BRIDGE_ALIASES; do
     ip addr replace "$alias" dev ovsbr0
 done

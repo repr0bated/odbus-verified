@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+install -d -o root -g adm -m 0750 /var/log/ct-egress-proxy
+exec svlogd -tt /var/log/ct-egress-proxy

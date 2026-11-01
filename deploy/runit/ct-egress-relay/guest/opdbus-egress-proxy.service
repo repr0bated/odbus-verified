@@ -1,0 +1,17 @@
+[Unit]
+Description=Loopback HTTP proxy 127.0.0.1:3128 over the host egress socket
+# /run/opdbus-egress/proxy.sock is bound into this container's /run by the
+# host's ct-egress-relay-<instance> runit service. No NIC: loopback only.
+
+[Service]
+ExecStart=/usr/bin/socat TCP4-LISTEN:3128,bind=127.0.0.1,reuseaddr,fork UNIX-CONNECT:/run/opdbus-egress/proxy.sock
+Restart=always
+RestartSec=2
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

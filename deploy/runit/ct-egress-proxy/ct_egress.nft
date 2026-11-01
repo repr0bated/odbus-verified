@@ -1,0 +1,23 @@
+# Kernel-enforced filter for the container egress proxy user (ct-egress).
+# Xray routing already denies these ranges; this table closes DNS-rebinding and
+# any other path where the dialed address differs from the routed one.
+# Loaded by /etc/sv/ct-egress-proxy/run before Xray starts.
+table inet ct_egress
+delete table inet ct_egress
+table inet ct_egress {
+	set blocked4 {
+		type ipv4_addr
+		flags interval
+		elements = { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8,
+			     169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24,
+			     192.168.0.0/16, 198.18.0.0/15, 224.0.0.0/3 }
+	}
+
+	chain out {
+		type filter hook output priority filter; policy accept;
+		meta skuid != "ct-egress" accept
+		meta nfproto ipv6 reject
+		ip daddr @blocked4 reject
+		fib daddr type local reject
+	}
+}

@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "vercel": "^65.8.0"
+  },
+  "trustedDependencies": [
+    "esbuild",
+    "koffi"
+  ]
+}

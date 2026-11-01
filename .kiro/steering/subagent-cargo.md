@@ -1,0 +1,17 @@
+---
+inclusion: always
+---
+
+# Cargo execution
+
+JEV owns model selection and routing. Do not allocate a Cargo-specific model,
+map caller families to models, or add a separate shell/CLI model dispatcher.
+An execution worker runs the assigned command once without recursively
+delegating it. Keep the primary agent available; use completion receipts
+instead of polling build processes or watching their logs.
+
+Run Cargo from the repository root. Release commands retain
+`CXXFLAGS="-include cstdint"`. Do not run `cargo install` or `cargo publish`
+as part of this workflow.
+
+One cargo process at a time. If cargo, rustc, or clippy is already running, do not start another. A workspace-wide check, test, or build only when the user explicitly says workspace. Native target is `x86_64-unknown-linux-gnu`. Do not install binaries or restart services from a cargo run.

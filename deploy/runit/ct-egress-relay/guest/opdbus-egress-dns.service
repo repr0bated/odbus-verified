@@ -1,0 +1,17 @@
+[Unit]
+Description=Loopback DNS 127.0.0.2:53 over the host egress socket
+# One UDP query per stream to /run/opdbus-egress/dns.sock; the host relay sends
+# it to the host resolver. /etc/resolv.conf points at 127.0.0.2.
+
+[Service]
+ExecStart=/usr/bin/socat -T 5 UDP4-RECVFROM:53,bind=127.0.0.2,reuseaddr,fork UNIX-CONNECT:/run/opdbus-egress/dns.sock
+Restart=always
+RestartSec=2
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

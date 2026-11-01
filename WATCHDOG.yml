@@ -1,6 +1,6 @@
 advisors:
   - name: default
-    model: meta/muse-wonder-1.0:high
+    model: salad/qwen3.6-35b-a3b:high
     tools:
       - read
       - security_scan

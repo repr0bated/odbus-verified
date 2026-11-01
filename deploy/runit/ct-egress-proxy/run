@@ -1,0 +1,31 @@
+#!/bin/sh
+# Container egress proxy (owner, 2026-11-01): NIC-less identity containers reach
+# the internet through this host Xray HTTP proxy. No TCP listener: the inbound is
+# the Unix socket /run/ct-egress/proxy.sock, which ct-egress-relay-<instance>
+# relays into each container's own /run (no Incus proxy device or mount).
+# The ct_egress nft table rejects this user's traffic to private, loopback,
+# multicast and host-local addresses, so the proxy cannot reach the door, EMQX or
+# any other host service; Xray's own routing denies the same ranges first.
+exec 2>&1
+CONFIG=/etc/ct-egress/xray.json
+NFT=/etc/ct-egress/ct_egress.nft
+SOCK_DIR=/run/ct-egress
+
+if ! nft -f "$NFT"; then
+    echo "nft $NFT failed; refusing to start without the egress filter"
+    sleep 30
+    exit 1
+fi
+
+install -d -o ct-egress -g ct-egress -m 0750 "$SOCK_DIR"
+rm -f "$SOCK_DIR/proxy.sock" "$SOCK_DIR/proxy.sock.lock"
+
+export XRAY_LOCATION_ASSET=/usr/local/share/xray
+if ! chpst -u ct-egress:ct-egress /usr/local/bin/xray run -test -config "$CONFIG" >/dev/null; then
+    echo "Xray config test failed: $CONFIG"
+    sleep 30
+    exit 1
+fi
+
+echo "starting container egress proxy on $SOCK_DIR/proxy.sock"
+exec chpst -u ct-egress:ct-egress /usr/local/bin/xray run -config "$CONFIG"

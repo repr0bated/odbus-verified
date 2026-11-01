@@ -1,0 +1,3 @@
+// opdbus-egress: loopback HTTP proxy over the host egress socket (no NIC).
+Acquire::http::Proxy "http://127.0.0.1:3128";
+Acquire::https::Proxy "http://127.0.0.1:3128";

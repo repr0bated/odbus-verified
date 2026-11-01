@@ -1,0 +1,59 @@
+#!/bin/bash
+# Container egress relay (owner, 2026-11-01): socket networking with no NIC, no
+# Incus proxy device and no mounted directory. Installed per instance as
+# /etc/sv/ct-egress-relay-<instance>; the suffix names the container.
+#
+# As root, enter the running container's own /run tmpfs through
+# /proc/<init>/root, then drop to the container-root host id (the only id that
+# can create inodes on that userns-owned tmpfs) and bind, inside the container:
+#   /run/opdbus-egress/proxy.sock -> host Xray HTTP proxy /run/ct-egress/proxy.sock
+#   /run/opdbus-egress/dns.sock   -> host resolver UDP 53, one query per stream
+# The guest's own socat units listen on 127.0.0.1:3128 and 127.0.0.2:53.
+# Exits when the container's init exits, so runsv rebinds into the next boot.
+exec 2>&1
+set -u
+CT=${PWD##*/ct-egress-relay-}
+HOST_PROXY=/run/ct-egress/proxy.sock
+
+fail() { echo "$CT: $1"; sleep "${2:-10}"; exit 1; }
+
+[ -S "$HOST_PROXY" ] || fail "waiting for $HOST_PROXY (ct-egress-proxy)" 5
+info=$(incus query "/1.0/instances/$CT?recursion=1") || fail "no such instance" 30
+pid=$(jq -r '.state.pid // 0' <<<"$info")
+[[ $pid =~ ^[0-9]+$ ]] && [ "$pid" -gt 1 ] || fail "not running"
+idmap=$(jq -r '.config["volatile.idmap.current"] // "[]"' <<<"$info")
+uid=$(jq -r 'map(select(.Isuid and .Nsid == 0))[0].Hostid // 0' <<<"$idmap")
+gid=$(jq -r 'map(select(.Isgid and .Nsid == 0))[0].Hostid // 0' <<<"$idmap")
+[[ $uid =~ ^[0-9]+$ && $gid =~ ^[0-9]+$ ]] && [ "$uid" -gt 0 ] && [ "$gid" -gt 0 ] ||
+    fail "unprivileged root id map required" 30
+dns=$(awk '$1 == "nameserver" && $2 ~ /^[0-9.]+$/ {print $2; exit}' /etc/resolv.conf)
+[ -n "$dns" ] || fail "no IPv4 nameserver in host /etc/resolv.conf" 30
+egress_gid=$(getent group ct-egress | cut -d: -f3)
+[ -n "$egress_gid" ] || fail "group ct-egress missing" 30
+
+as_ct() {
+    setpriv --reuid="$uid" --regid="$gid" --groups="$egress_gid" \
+        --inh-caps=-all --bounding-set=-all --no-new-privs -- "$@"
+}
+# The container controls its own /run: an absolute symlink there would resolve
+# against the host root. Accept only the container-root-owned tmpfs.
+container_tmpfs() {
+    [ "$(stat -f -c %T .)" = tmpfs ] && [ "$(stat -c %u .)" = "$uid" ] &&
+        { [ -z "${1:-}" ] || [ "$(stat -c %d .)" = "$1" ]; }
+}
+
+cd "/proc/$pid/root/run" 2>/dev/null || fail "cannot enter /run of pid $pid" 5
+container_tmpfs || fail "/run is not the container's tmpfs" 30
+run_dev=$(stat -c %d .)
+as_ct mkdir -p opdbus-egress || fail "cannot create /run/opdbus-egress" 5
+cd -P opdbus-egress && container_tmpfs "$run_dev" || fail "/run/opdbus-egress escapes the container" 30
+as_ct chmod 0750 . || fail "cannot set /run/opdbus-egress mode" 5
+
+as_ct socat UNIX-LISTEN:proxy.sock,fork,unlink-early,mode=0660 "UNIX-CONNECT:$HOST_PROXY" &
+as_ct socat -T 5 UNIX-LISTEN:dns.sock,fork,unlink-early,mode=0660 "UDP4:$dns:53" &
+tail --pid="$pid" -f /dev/null &
+echo "$CT: pid $pid, relaying proxy and DNS ($dns) into /run/opdbus-egress"
+wait -n
+kill $(jobs -p) 2>/dev/null
+wait
+echo "$CT: relay ended; rebinding"

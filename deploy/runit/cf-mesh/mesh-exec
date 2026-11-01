@@ -1,0 +1,30 @@
+#!/bin/bash
+# WARP Connector launcher for cf-mesh. Lives on the host rootfs
+# (/usr/local/sbin), not under any release overlay target.
+#
+# After entering the private mount namespace, drop every opdbus-release
+# overlay and FUSE view so warp-svc cannot pin a retired release
+# subvolume (EBUSY on slot rotate/delete).
+set -euo pipefail
+if [ "${CF_MESH_MOUNTED:-}" != 1 ]; then
+ export CF_MESH_MOUNTED=1
+ exec ip netns exec cf-mesh unshare --mount --propagation private "$0" "$@"
+fi
+# Sit on rootfs only: private ns would otherwise keep copies of the
+# host's release overlays and 3tchedFS mounts.
+findmnt -rn -o TARGET,SOURCE,FSTYPE | awk '$2 ~ /^opdbus-release:/ || $3 ~ /^fuse/ {print $1}' |
+ sort -r | while read -r target; do umount "$(printf %b "$target")" || true; done
+mkdir -p /var/lib/cloudflare-warp /var/log/cloudflare-warp /run/cloudflare-warp /etc/cloudflare-warp
+mount --bind /var/lib/cloudflare-mesh /var/lib/cloudflare-warp
+mount --bind /var/log/cloudflare-mesh /var/log/cloudflare-warp
+mount --bind /run/cloudflare-mesh /run/cloudflare-warp
+mount --bind /etc/cloudflare-mesh/resolv.conf /etc/resolv.conf
+if [ -e /run/dbus/system_bus_socket ]; then mount --bind /dev/null /run/dbus/system_bus_socket; fi
+if [ "$1" = daemon ]; then
+ exec "$(cat /etc/cloudflare-mesh/svc-path)"
+fi
+cli=$(cat /etc/cloudflare-mesh/cli-path)
+if [ "$1" = enroll ]; then
+ exec "$cli" --accept-tos connector new "$(cat /etc/cloudflare-mesh/node.token)"
+fi
+exec "$cli" --accept-tos "$@"

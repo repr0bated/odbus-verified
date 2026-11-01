@@ -61,17 +61,20 @@ ensure_shm() {
     chmod 0755 /dev/shm/opdbus
 }
 
-reassert_hackbr0() {
+# hackbr0 was a one-off hackathon NAT bridge. Clearing its address was not
+# enough: Incus still recreates the interface on every boot while the managed
+# network object exists. Delete the network (and unused ACL) if it returns.
+remove_hackbr0() {
     command -v incus >/dev/null 2>&1 || return 0
-    addr=$(incus network get hackbr0 ipv4.address 2>/dev/null || true)
-    case "$addr" in
-        ''|none) return 0 ;;
-    esac
-    log "hackbr0 had ${addr}; clearing it"
-    incus network set hackbr0 ipv4.dhcp=false
-    incus network set hackbr0 ipv4.nat=false
-    incus network set hackbr0 ipv6.address=none
-    incus network set hackbr0 ipv4.address=none
+    incus info >/dev/null 2>&1 || return 0
+    if incus network show hackbr0 >/dev/null 2>&1; then
+        log "hackbr0 present; deleting managed network"
+        incus network delete hackbr0
+    fi
+    if incus network acl show internet-only >/dev/null 2>&1; then
+        log "internet-only ACL present; deleting"
+        incus network acl delete internet-only || true
+    fi
 }
 
 run_launch() {
@@ -149,13 +152,13 @@ case "$phase" in
         if command -v incus >/dev/null 2>&1; then
             i=0
             while [ "$i" -lt 30 ]; do
-                if incus network get hackbr0 ipv4.address >/dev/null 2>&1; then
+                if incus info >/dev/null 2>&1; then
                     break
                 fi
                 i=$((i + 1))
                 sleep 1
             done
-            reassert_hackbr0 || log "activate: hackbr0 check failed"
+            remove_hackbr0 || log "activate: hackbr0 removal failed"
         fi
         ;;
 esac

@@ -40,7 +40,17 @@
         "event_hash": { "type": "string" },
         "plugin": { "type": "string" },
         "method": { "type": "string" },
-        "required_capability": { "type": "string" }
+        "required_capability": { "type": "string" },
+        "catalog_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Hash of the sealed catalog the call was admitted under. Must be emitted by the bridge from the manifest-pinned sealed catalog at commit time, never caller-supplied."
+        },
+        "schema_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The method's sealed schema hash beside the catalog hash: the exact rule that admitted the call. Must be emitted by the bridge at commit time, never caller-supplied."
+        }
       }
     },
     "resource": {

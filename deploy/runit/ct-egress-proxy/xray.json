@@ -1,0 +1,19 @@
+{
+  "log": {"loglevel": "warning", "access": "none"},
+  "inbounds": [{
+    "tag": "ct-egress", "listen": "/run/ct-egress/proxy.sock,0660",
+    "protocol": "http", "settings": {}
+  }],
+  "outbounds": [
+    {"tag": "direct", "protocol": "freedom", "settings": {"domainStrategy": "UseIPv4"}},
+    {"tag": "deny", "protocol": "blackhole", "settings": {"response": {"type": "http"}}}
+  ],
+  "routing": {
+    "domainStrategy": "IPOnDemand",
+    "rules": [
+      {"type": "field", "domain": ["full:localhost", "domain:localhost"], "outboundTag": "deny"},
+      {"type": "field", "ip": ["geoip:private"], "outboundTag": "deny"},
+      {"type": "field", "inboundTag": ["ct-egress"], "outboundTag": "direct"}
+    ]
+  }
+}

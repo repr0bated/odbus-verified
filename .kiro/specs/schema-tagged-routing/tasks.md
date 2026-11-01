@@ -632,6 +632,27 @@ network phase.
   revision; stale associations stay stale.
 - **TX.3 — WISHLIST promotion** (R14): open the `OD-##` rows and link this spec;
   record phase status there, not in a new TODO doc.
+- **TX.4 — Bridge-emitted admission hashes in receipts** (R9): every committed
+  operation's receipt carries `catalog_hash` + `schema_hash` emitted by the
+  bridge from the manifest-pinned sealed catalog at admission/commit time,
+  never caller-supplied. Index entries and anchor payloads reuse these
+  bridge-emitted values. Verify: a caller-supplied hash is rejected/ignored;
+  a receipt resolves to the exact sealed blob version that admitted it.
+- **TX.5 — Purpose/hash/grant separation** (R1): `UiSurface` stays
+  purpose-only; hashes live in the receipt/anchor payload, never in the
+  schema/state being hashed (no circular self-hash). Tags, subids, purposes,
+  hashes, and capability grants remain five distinct objects; no code path
+  converts one into another. Verify: reseal changes hashes without struct
+  churn; no path grants authority from a purpose or hash value.
+- **TX.6 — Anchor pins the schema version** (R9): every anchored root covers
+  the receipt set plus the catalog/method schema hashes, so "matches every
+  time" is mechanically checkable: receipt → schema hash → sealed blob → the
+  admitting rule. Verify: an anchor without hashes is rejected; a stale-hash
+  anchor verifies against the old blob, never the current one.
+- **TX.7 — Shadow-mode anchor verification** (R9): before any render gated on
+  anchored truth, resolve the anchor's hashes to the sealed catalog and
+  confirm the admitting rule; unverified anchors render as unverified, never
+  as truth. Runs each phase.
 
 ---
 

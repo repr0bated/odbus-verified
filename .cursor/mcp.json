@@ -1,0 +1,4 @@
+{
+  "command": "3tched-fs",
+  "args": ["mcp", "--mount", "/run/mounts/3tchedFS", "--plugin", "cognitive"]
+}

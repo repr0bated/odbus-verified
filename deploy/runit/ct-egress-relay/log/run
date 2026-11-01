@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+dir=/var/log/$(basename "$(dirname "$(pwd -P)")")
+install -d -o root -g adm -m 0750 "$dir"
+exec svlogd -tt "$dir"
