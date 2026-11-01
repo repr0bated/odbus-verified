@@ -115,6 +115,42 @@ pub(crate) async fn route(request: Request, next: Next) -> Response {
     }
 }
 
+/// threetched behind the door's demux, like `/mqtt` for EMQX: `/threetched/<path>`
+/// relays to its loopback gateway with the prefix removed. Authentication stays
+/// threetched's own; WebSockets accept only the canonical page origins.
+const THREETCHED_GATEWAY: &str = "127.0.0.1:8084";
+pub(crate) const THREETCHED_PREFIX: &str = "/threetched";
+const THREETCHED_PAGE_ORIGINS: [&str; 2] =
+    ["http://10.0.0.2:8080", "http://dashboard.ghostbridge.tech:8080"];
+
+pub(crate) async fn threetched(mut request: Request) -> Response {
+    if websocket(request.headers()) {
+        let origins: Vec<_> = request.headers().get_all(header::ORIGIN).iter().collect();
+        let allowed = match origins.as_slice() {
+            [] => true,
+            [origin] => origin.to_str().is_ok_and(|o| THREETCHED_PAGE_ORIGINS.contains(&o)),
+            _ => false,
+        };
+        if !allowed { return StatusCode::FORBIDDEN.into_response(); }
+        // Checked here against the page origins; forward() checks the gateway host.
+        request.headers_mut().remove(header::ORIGIN);
+    }
+    let Some(rest) = request.uri().path().strip_prefix(THREETCHED_PREFIX) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    if !(rest.is_empty() || rest.starts_with('/')) { return StatusCode::NOT_FOUND.into_response(); }
+    let path = if rest.is_empty() { "/" } else { rest };
+    let target = match request.uri().query() {
+        Some(query) => format!("{path}?{query}"),
+        None => path.to_string(),
+    };
+    match target.parse::<Uri>() {
+        Ok(uri) => *request.uri_mut() = uri,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    }
+    forward(request, THREETCHED_GATEWAY, THREETCHED_GATEWAY).await
+}
+
 async fn forward(mut request: Request, address: &str, original_host: &str) -> Response {
     let is_ws = websocket(request.headers());
     if is_ws && !browser_origin(request.headers(), original_host) {
