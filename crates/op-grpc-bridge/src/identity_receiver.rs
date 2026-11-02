@@ -206,7 +206,6 @@ pub async fn verify_sid1(wire: &[u8], transport: &str) -> anyhow::Result<Verifie
 #[cfg(test)]
 mod tests {
     use super::*;
-    use base64::Engine as _;
     use op_state::StatePlugin;
 
     #[test]

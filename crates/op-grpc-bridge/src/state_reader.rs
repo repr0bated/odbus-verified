@@ -58,11 +58,9 @@ pub(crate) fn read_public_state_in(
             && before.sealed_schema_json == after.sealed_schema_json,
         "sealed plugin changed during state read"
     );
-    let mut bytes = snapshot
-        .states
-        .get(plugin_id)
-        .cloned()
-        .unwrap_or_else(|| b"{}".to_vec());
+    let Some(mut bytes) = snapshot.states.get(plugin_id).cloned() else {
+        return Ok(None);
+    };
     let private = simd_json::to_owned_value(&mut bytes)?;
     let Some(projected) = schema.project_public_state(&private)? else {
         return Ok(None);
@@ -110,6 +108,19 @@ mod tests {
         );
         assert!(snapshot.generation > 0);
         assert_eq!(snapshot.schema_hash, blob.manifest.schema_hash);
+
+        let untouched = op_state_store::PluginSchema::builder("untouched")
+            .string_field("status", false, "")
+            .public_state_paths(&["/status"])
+            .build();
+        catalog
+            .write(&op_blob::blobify_plugin_schema("untouched", untouched))
+            .unwrap();
+        assert!(
+            read_public_state_in(&catalog_dir, state_path, "untouched")
+                .unwrap()
+                .is_none()
+        );
 
         let closed = op_state_store::PluginSchema::builder("closed")
             .string_field("status", false, "")
