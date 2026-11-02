@@ -36,6 +36,7 @@ pub mod grant_document;
 pub mod mqtt_doorbell_relay;
 pub mod router;
 pub mod server;
+pub mod sid1_checks;
 pub mod tls_door;
 pub mod service;
 

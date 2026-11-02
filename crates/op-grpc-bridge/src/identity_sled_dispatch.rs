@@ -762,25 +762,7 @@ pub(crate) async fn authenticate_sid1_wire(
     wire: &[u8],
     transport: &str,
 ) -> Result<op_identity::sealed_id::SealedId, String> {
-    let claims = op_identity::sealed_id::SealedId::open(wire).map_err(|error| error.to_string())?;
-    if claims.principal_kind != "wireguard-principal"
-        || !claims
-            .transport_scope
-            .split(',')
-            .any(|scope| scope.trim() == transport)
-    {
-        return Err(format!(
-            "sealed identity is not valid for the {transport} transport"
-        ));
-    }
-    if op_identity::session::derive_session_id(&claims.wireguard_pubkey) != claims.session_id
-        || op_identity::session::derive_principal_id(&claims.wireguard_pubkey)
-            != claims.principal_id
-    {
-        return Err(
-            "sealed identity identifiers do not match its WARP-transported identity".into(),
-        );
-    }
+    let claims = crate::sid1_checks::parse_for_transport(wire, transport)?;
     let sled = stored_session(engine, &claims.session_id)
         .await
         .map_err(|error| error.to_string())?
@@ -788,33 +770,7 @@ pub(crate) async fn authenticate_sid1_wire(
     if !identity_session_binding_matches(&sled) {
         return Err("sealed identity has no matching provisioned container binding".into());
     }
-    let now = chrono::Utc::now().timestamp();
-    if !sled.is_anchored()
-        || sled
-            .expires_at
-            .is_some_and(|expiry| expiry != 0 && expiry <= now)
-    {
-        return Err("sealed identity session is unanchored or expired".into());
-    }
-    let inline = format!(
-        "{}{}",
-        op_identity::sealed_id::INLINE_PREFIX,
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(wire)
-    );
-    if sled.sealed_id.as_deref() != Some(inline.as_str())
-        || sled.wireguard_pubkey != claims.wireguard_pubkey
-        || sled.genesis.as_deref() != Some(claims.session_genesis.as_str())
-        || sled.trace_id != claims.trace_id
-        || sled.schema_version != claims.schema_version
-        || sled.expires_at.unwrap_or(0) != claims.expires_at
-        || sled.arrival_timestamp != claims.arrival_timestamp
-        || claims.issued_at != claims.arrival_timestamp
-        || sled.chain_head_at_arrival != claims.chain_head_at_arrival
-        || sled.catalog_hash_at_arrival != claims.catalog_hash_at_arrival
-        || sled.head_timestamp_at_arrival != claims.head_timestamp_at_arrival
-    {
-        return Err("sealed identity does not match the authoritative sled".into());
-    }
+    crate::sid1_checks::match_committed_session(wire, &sled, transport, chrono::Utc::now().timestamp())?;
     // `active` is deliberately absent: it is Incus power policy, not SID1 revocation.
     Ok(claims)
 }
