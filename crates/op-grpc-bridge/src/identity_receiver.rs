@@ -4,6 +4,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use base64::Engine as _;
 use op_identity::sealed_id::SealedId;
 use op_plugins::state_plugins::identity_sled::{ContainerIdentitySled, IdentitySledState};
 use op_state_store::FieldSchema;
@@ -16,6 +17,12 @@ use crate::catalog::Catalog;
 pub struct VerifiedSid1(SealedId);
 
 pub(crate) struct BoundSid1(SealedId);
+
+impl BoundSid1 {
+    pub(crate) fn claims(&self) -> &SealedId {
+        &self.0
+    }
+}
 
 impl std::fmt::Debug for VerifiedSid1 {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -116,6 +123,32 @@ pub(crate) fn verify_in(
     Ok(BoundSid1(claims))
 }
 
+/// Find the authored SID1 for an already anchored assertion key. This never
+/// mints or changes an identity, and reads only the committed private projection.
+pub(crate) fn bound_session_for_key_in(
+    catalog_dir: &Path,
+    state_dir: &str,
+    key: &str,
+    now: i64,
+) -> anyhow::Result<BoundSid1> {
+    let session_id = op_identity::session::derive_session_id(key);
+    let sled = committed_session(catalog_dir, state_dir, &session_id)?
+        .ok_or_else(|| anyhow::anyhow!("assertion has no committed identity session"))?;
+    let encoded = sled
+        .sealed_id
+        .as_deref()
+        .and_then(|value| value.strip_prefix(op_identity::sealed_id::INLINE_PREFIX))
+        .ok_or_else(|| anyhow::anyhow!("committed identity credential is unavailable"))?;
+    let wire = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(encoded)?;
+    let claims = crate::sid1_checks::match_bound_session(&wire, &sled, "grpc", now)
+        .map_err(anyhow::Error::msg)?;
+    anyhow::ensure!(
+        claims.wireguard_pubkey == key,
+        "assertion key does not match committed identity"
+    );
+    Ok(BoundSid1(claims))
+}
+
 fn verify_registered(
     bound: BoundSid1,
     record: Option<op_cozo_store::HumanPrincipalRecord>,
@@ -129,6 +162,14 @@ fn verify_registered(
         "sealed identity does not match the registered principal"
     );
     Ok(VerifiedSid1(bound.0))
+}
+
+pub(crate) async fn verify_bound_registry(bound: BoundSid1) -> anyhow::Result<VerifiedSid1> {
+    let record =
+        crate::human_principal_registry::resolve_key_for_assertion(&bound.0.wireguard_pubkey)
+            .await
+            .map_err(|_| anyhow::anyhow!("human principal registry unavailable"))?;
+    verify_registered(bound, record)
 }
 
 #[cfg(test)]
@@ -159,11 +200,7 @@ pub async fn verify_sid1(wire: &[u8], transport: &str) -> anyhow::Result<Verifie
         )
     })
     .await??;
-    let record =
-        crate::human_principal_registry::resolve_key_for_assertion(&bound.0.wireguard_pubkey)
-            .await
-            .map_err(|_| anyhow::anyhow!("human principal registry unavailable"))?;
-    verify_registered(bound, record)
+    verify_bound_registry(bound).await
 }
 
 #[cfg(test)]

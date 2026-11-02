@@ -39,6 +39,8 @@ pub mod identity_binding;
 pub mod identity_receiver;
 pub mod mqtt_doorbell_relay;
 pub mod oracle_assertion;
+#[allow(dead_code)] // Receiver is not mounted until all identity paths are wired.
+pub(crate) mod oracle_receiver;
 #[cfg(test)]
 mod oracle_test_support;
 pub mod router;
