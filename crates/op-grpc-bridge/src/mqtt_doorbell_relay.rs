@@ -277,13 +277,13 @@ mod tests {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let certificate = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
-        let identity = crate::server::PemIdentity::from_pem(
+        let identity = crate::tls_door::PemIdentity::from_pem(
             certificate.cert.pem(),
             certificate.key_pair.serialize_pem(),
         );
         let server_tls = identity.server_config().unwrap();
         let server = tokio::spawn(async move {
-            crate::server::serve_upgradeable_tcp(listener, server_tls, app)
+            crate::tls_door::serve_upgradeable_tcp(listener, server_tls, app)
                 .await
                 .unwrap();
         });

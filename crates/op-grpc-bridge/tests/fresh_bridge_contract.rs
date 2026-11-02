@@ -538,7 +538,7 @@ async fn client_roundtrip_set_get_subscribe() {
                 "/demo/obj",
                 simd_json::json!({"volume": 7}),
                 "contract-test",
-                "",
+                "cap.test.fixture.write@v1",
                 &identity,
             )
             .await
@@ -563,7 +563,7 @@ async fn client_roundtrip_set_get_subscribe() {
         .get_state_with_identity("demo.plugin", "/demo/obj", &identity, None)
         .await
         .expect("get_state through client");
-    assert_eq!(got["volume"], simd_json::json!(7));
+    assert_eq!(got["volume"], simd_json::json!(7.0));
 
     // Subscribe receives the next mutation as a state frame.
     let mut stream = client
@@ -582,7 +582,7 @@ async fn client_roundtrip_set_get_subscribe() {
             "/demo/obj",
             simd_json::json!({"volume": 9}),
             "contract-test",
-            "",
+            "cap.test.fixture.write@v1",
             &identity,
         )
         .await
