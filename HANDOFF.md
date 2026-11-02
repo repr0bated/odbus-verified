@@ -28,6 +28,11 @@ another agent's uncommitted work.
 
 ## Handoffs
 
+### 2026-11-02 · Grok (Cursor cloud: snowball is a ledger)
+- **Where:** branch `cursor/cloud-agent-env-760f`, pushed, PR #45.
+- **What:** Owner correction recorded in `AGENTS.md`. A snowball appends a session ledger and is vectorized at the end of the session. It does not take snapshots. Release btrfs send/receive is unchanged. The plugin still exposes snapshot methods; those were not removed.
+- **Next:** Replace `create_snapshot`, `list_snapshots`, `get_snapshot`, and `rollback` with the ledger and end-of-session vectorization when that work is requested.
+
 ### 2026-10-30 · Codex (PR #45 review repair)
 - **Where:** isolated worktree `/var/tmp/pr-relevance-20261030/pr45`, based on `7c05005`; local commit only, not pushed.
 - **What:** cloud build exports precede bashrc early returns, use the provisioned Rust homes, and replace bounded blocks while retaining later user configuration and existing file modes. Missing ubuntu bashrc files are created. Generated `/etc/environment` CXXFLAGS values are quoted, including migration on rerun.
@@ -38,7 +43,7 @@ another agent's uncommitted work.
 - **Where:** branch `cursor/cloud-agent-env-760f`, pushed, PR #45. Not on the host.
 - **What:** `scripts/claude-cloud-setup.sh` pins `CC=gcc`, `CXX=g++`, `CXXFLAGS=-include cstdint`, and the multiarch `libstdc++.so` link. The environment install is that script. No start script. The control plane stays stopped.
 - **Verified:** workspace check finished; `op-core` 50 passed; `op-plugins` 515 passed and 3 Snowball tests failed because this kernel has no btrfs. `op-plugin-lint` audited `proxy_server.rs`. Draft build `bld-20261027-5c870e78-d006-46bc-a81d-55c1d44d857e` preflight passed, and a fresh agent booted from that build passed preflight.
-- **Still manual:** Save the environment in the panel. The three Snowball tests need a btrfs kernel. Do not skip them.
+- **Still manual:** Save the environment in the panel. The three Snowball tests still call `btrfs subvolume create`. The owner model (2026-11-02) is a session ledger vectorized at session end, so those tests are not a request to add btrfs.
 
 ### 2026-10-01 · Grok (Cursor cloud: KeePassXC for Cursor in the CRD Plasma session)
 - **Where:** branch `cursor/crd-cursor-keepass-5bbc`, pushed, draft PR #7. Not copied onto the host. The running launcher is still `/usr/local/lib/chrome-remote-desktop/crd-launch`.
@@ -50,8 +55,3 @@ another agent's uncommitted work.
 - **Live:** `current` → `releases/20260928T145511Z-2bdeb27`. Same commit as the previous release, with the rebuilt `op-web-server` (`197d3115…`). Grants, bridge, EMQX, and op-web pass `sv check`. Catalog unchanged (66 plugins, generation 264).
 - **Rollback:** `releases/20260928T125401Z-2bdeb27`.
 - **Picker:** the API is in this `op-web`. The pinned dashboard bundle does not include the Control plane picker control.
-
-### 2026-09-28 · Grok (Cursor: pull build golden activate)
-- **Live:** `current` → `releases/20260928T125401Z-2bdeb27` (`main` @ `2bdeb27`, bridge default-provider fix `df43133`). Bridge/op-web/grants/EMQX restarted; all four pass `sv check`. Running `op-grpc-bridge` digest `8ba31303…` matches received. SHM, persisted and received catalog manifests match (`930d7843…`, 66 plugins, generation 264).
-- **Rollback:** `releases/20260928T093213Z-f0e83ee`. Pre-seal catalog backup: `/var/tmp/opdbus-release-20260928T122846Z-preseal`.
-- **Send snapshot:** `/opt/op-dbus/send/20260928T125401Z-2bdeb27` (readonly; may be deleted after verification).
