@@ -22,6 +22,50 @@ impl VerifiedOracle {
     pub fn assertion_expires_at(&self) -> i64 {
         self.assertion_expires_at
     }
+
+    async fn revalidate_in(
+        &self,
+        catalog_dir: &Path,
+        state_dir: &str,
+        now: i64,
+    ) -> anyhow::Result<()> {
+        anyhow::ensure!(self.assertion_expires_at > now, "assertion has expired");
+        let expected = self.identity.claims().clone();
+        let key = expected.wireguard_pubkey.clone();
+        let catalog_dir = catalog_dir.to_owned();
+        let state_dir = state_dir.to_owned();
+        let bound = tokio::task::spawn_blocking(move || {
+            crate::identity_receiver::bound_session_for_key_in(&catalog_dir, &state_dir, &key, now)
+        })
+        .await??;
+        let current = crate::identity_receiver::verify_bound_registry(bound).await?;
+        let completed_at = chrono::Utc::now().timestamp();
+        anyhow::ensure!(
+            self.assertion_expires_at > completed_at,
+            "assertion expired during revalidation"
+        );
+        anyhow::ensure!(
+            current.claims().expires_at == 0 || current.claims().expires_at > completed_at,
+            "identity expired during revalidation"
+        );
+        anyhow::ensure!(
+            current.claims() == &expected,
+            "assertion identity changed after verification"
+        );
+        Ok(())
+    }
+
+    /// Recheck the committed identity and active principal without replaying or
+    /// reconstructing the consumed assertion. Call before backend effects and
+    /// while holding long-lived subscriptions.
+    pub async fn revalidate(&self) -> anyhow::Result<()> {
+        let catalog_dir = std::env::var_os("OP_BLOB_CATALOG_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(op_blob::catalog::DEFAULT_SHM_DIR));
+        let state_dir = op_core::projection_shm::shm_state_dir();
+        self.revalidate_in(&catalog_dir, &state_dir, chrono::Utc::now().timestamp())
+            .await
+    }
 }
 
 impl std::fmt::Debug for VerifiedOracle {
@@ -172,7 +216,7 @@ mod tests {
             nextdns: None,
         };
         let wire = claims.seal().unwrap();
-        let state = serde_json::json!({"sleds": [{
+        let mut state = serde_json::json!({"sleds": [{
             "session_id": claims.session_id, "wireguard_pubkey": claims.wireguard_pubkey,
             "principal_kind": "human", "genesis": claims.session_genesis, "trace_id": claims.trace_id,
             "schema_version": claims.schema_version, "expires_at": claims.expires_at,
@@ -205,7 +249,66 @@ mod tests {
         .unwrap();
         assert_eq!(verified.identity().claims().session_id, claims.session_id);
         assert!(
+            verified
+                .revalidate_in(&catalog_dir, state_path, now)
+                .await
+                .is_ok()
+        );
+        assert!(
+            verified
+                .revalidate_in(&catalog_dir, state_path, now + 300)
+                .await
+                .is_err()
+        );
+        assert!(
             verify_in(validator, &assertion, source, &catalog_dir, state_path, now)
+                .await
+                .is_err()
+        );
+        state["sleds"][0]["principal_kind"] = serde_json::json!("service");
+        op_core::projection_shm::update_projection_with_credentials_in(
+            state_path,
+            "identity_sled",
+            nix::unistd::getgid().as_raw(),
+            |_| {
+                Ok(Some((
+                    br#"{"sleds":[],"events":[]}"#.to_vec(),
+                    serde_json::to_vec(&state)?,
+                )))
+            },
+        )
+        .unwrap();
+        assert!(
+            verified
+                .revalidate_in(&catalog_dir, state_path, now)
+                .await
+                .is_err()
+        );
+        state["sleds"][0]["principal_kind"] = serde_json::json!("human");
+        op_core::projection_shm::update_projection_with_credentials_in(
+            state_path,
+            "identity_sled",
+            nix::unistd::getgid().as_raw(),
+            |_| {
+                Ok(Some((
+                    br#"{"sleds":[],"events":[]}"#.to_vec(),
+                    serde_json::to_vec(&state)?,
+                )))
+            },
+        )
+        .unwrap();
+        assert!(
+            verified
+                .revalidate_in(&catalog_dir, state_path, now)
+                .await
+                .is_ok()
+        );
+        crate::oracle_test_support::revoke(&verified.identity().claims().wireguard_pubkey)
+            .await
+            .unwrap();
+        assert!(
+            verified
+                .revalidate_in(&catalog_dir, state_path, now)
                 .await
                 .is_err()
         );
