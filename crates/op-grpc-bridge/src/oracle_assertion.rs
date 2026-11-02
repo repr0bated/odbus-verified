@@ -964,7 +964,7 @@ impl AssertionValidator {
     ) -> Result<HumanPrincipalIdentity, AssertionRejection> {
         let record = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(
-                crate::human_principal_dispatch::resolve_key_for_assertion(human_pubkey),
+                crate::human_principal_registry::resolve_key_for_assertion(human_pubkey),
             )
         })
         .map_err(|_| AssertionRejection::RegistryUnavailable)?;
@@ -1067,14 +1067,13 @@ pub mod tests {
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
     use std::time::Duration;
 
-    use base64::Engine as _;
     use ed25519_dalek::{Signer, SigningKey};
     use op_identity::oracle_assertion::{DecoyIssuer, OracleIdentityAssertion, SignedAssertion};
     use op_identity::session::{derive_principal_id, derive_session_id};
     use tonic::Code;
 
     use super::*;
-    use crate::human_principal_dispatch::tests::{TempCozo, pk, register, revoke, temp_cozo};
+    use crate::oracle_test_support::{TempCozo, pk, register, revoke, temp_cozo};
 
     const TEST_KEY_BYTES: [u8; 32] = [7u8; 32];
     const SAMPLE_PUBKEY_LOCAL: &str = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=";

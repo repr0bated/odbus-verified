@@ -38,6 +38,9 @@ pub mod human_principal_registry;
 pub mod identity_binding;
 pub mod identity_receiver;
 pub mod mqtt_doorbell_relay;
+pub mod oracle_assertion;
+#[cfg(test)]
+mod oracle_test_support;
 pub mod router;
 pub mod server;
 pub mod sid1_checks;
