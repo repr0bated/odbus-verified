@@ -1,5 +1,9 @@
 # Agent handoff
 
+## 2026-11-02 — Codex — unified source merge candidate
+
+The owner requested one merged source line. This merge combines local `restore/devuan-storage-20261013` at `967b96d` with `main` at `7475dd0`, retaining the fresh bridge per owner direction and the newer release changes. GNU workspace release build (`--locked --workspace --release --target x86_64-unknown-linux-gnu`, CXXFLAGS=-include cstdint) passed with warnings; no tests, seal, deployment or activation. The bridge executable still lacks production sealed-catalog, identity/grant admission and D-Bus dispatch integration; the golden builder requires op-grants-materializer, which the fresh bridge no longer builds. Do not deploy this merge until those gaps are repaired and verified. Original branch heads and the shared dirty working tree are preserved.
+
 ## 2026-11-01 — Grok — compliance-vectorize-20261101
 
 Runner `/srv/git/compliance/vectorize_compliance.py`. Standard Voyage API, context-4 first to 195M tokens, then voyage-4-large, voyage-4, voyage-4-lite, each within 200M. Qdrant gRPC 127.0.0.1:6334 only. Cozo `/srv/git/compliance/cozo` is required in the same commit as each upsert. Resume from `/srv/git/compliance/journal.jsonl`. Status `/srv/git/compliance/status.txt`.
