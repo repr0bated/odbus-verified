@@ -1726,7 +1726,7 @@ pub(crate) mod tests {
 }
 
 pub use crate::grant_document::{GRANT_GROUPS, validate_grant_document};
-use crate::grant_document::validated_grant_entries;
+pub(crate) use crate::grant_document::capabilities_for_principal;
 
 /// Load the capabilities granted to one registered principal.
 ///
@@ -1744,56 +1744,4 @@ pub fn load_capability_grants(principal_id: &str) -> std::collections::HashSet<S
         return std::collections::HashSet::new();
     };
     capabilities_for_principal(&document, principal_id)
-}
-
-/// Parse one principal's grants from a document of principals and groups.
-///
-/// The complete document must pass the same validation used by the grant
-/// materializer. Looking up a group name returns nothing: groups are not callers.
-pub(crate) fn capabilities_for_principal(
-    document: &serde_json::Value,
-    principal_id: &str,
-) -> std::collections::HashSet<String> {
-    if principal_id.is_empty() || principal_id == "*" || principal_id.starts_with('$') {
-        return std::collections::HashSet::new();
-    }
-    let Ok(entries) = validated_grant_entries(document) else {
-        return std::collections::HashSet::new();
-    };
-    let Some(entry) = entries.get(principal_id) else {
-        return std::collections::HashSet::new();
-    };
-    let mut granted = std::collections::HashSet::new();
-    let Some(own) = entry.get("capabilities").and_then(serde_json::Value::as_array) else {
-        return std::collections::HashSet::new();
-    };
-    granted.extend(own.iter().filter_map(serde_json::Value::as_str).map(str::to_string));
-    let Some(groups) = entry.get("groups") else {
-        return granted;
-    };
-    let Some(groups) = groups.as_array() else {
-        return std::collections::HashSet::new();
-    };
-    for group in groups {
-        let Some(name) = group.as_str() else {
-            return std::collections::HashSet::new();
-        };
-        if !GRANT_GROUPS.contains(&name) {
-            return std::collections::HashSet::new();
-        }
-        let Some(capabilities) = entries
-            .get(name)
-            .and_then(|group_entry| group_entry.get("capabilities"))
-            .and_then(serde_json::Value::as_array)
-        else {
-            return std::collections::HashSet::new();
-        };
-        granted.extend(
-            capabilities
-                .iter()
-                .filter_map(serde_json::Value::as_str)
-                .map(str::to_string),
-        );
-    }
-    granted
 }
