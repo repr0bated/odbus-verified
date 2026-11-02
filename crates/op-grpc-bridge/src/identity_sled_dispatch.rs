@@ -378,94 +378,8 @@ fn sled_to_genesis(sled: &ContainerIdentitySled) -> GenesisInputsRecord {
     }
 }
 
-const CONTROL_PLANE_CHATBOT_CONTAINER: &str = "3tchedChatbot";
-const RESERVED_CHATBOT_CONTAINER: &str = "3tchedCtlChatbot";
-
-pub(crate) fn configured_chatbot_key() -> Option<String> {
-    std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")
-        .ok()
-        .map(|value| value.trim().to_owned())
-        .filter(|value| !value.is_empty())
-}
-
-fn chatbot_binding_matches(
-    sled: &ContainerIdentitySled,
-    instance: &IncusInstance,
-    configured_session: Option<&str>,
-    configured_key: Option<&str>,
-) -> bool {
-    instance.name == CONTROL_PLANE_CHATBOT_CONTAINER
-        && instance.instance_type == "container"
-        && sled.principal_kind.as_deref() == Some("service")
-        && configured_session == Some(sled.session_id.as_str())
-        && configured_key == Some(sled.wireguard_pubkey.as_str())
-        && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id
-        && instance.config.as_ref().is_some_and(|config| {
-            config.get("user.opdbus.session_id") == Some(&sled.session_id)
-                && config.get("user.opdbus.wireguard_public_key") == Some(&sled.wireguard_pubkey)
-        })
-}
-
-pub(crate) fn identity_instance_matches(sled: &ContainerIdentitySled, instance: &IncusInstance) -> bool {
-    // The native name is a label. Ownership remains the stored UUID, session
-    // and key binding, not the label's number or its creation receipt.
-    let named = (op_cozo_store::is_numbered_native_name(&instance.name)
-        || (instance.name == RESERVED_CHATBOT_CONTAINER
-            && sled.principal_kind.as_deref() == Some("service")
-            && control_plane_chatbot_session_id().as_deref() == Some(sled.session_id.as_str())
-            && configured_chatbot_key().as_deref() == Some(sled.wireguard_pubkey.as_str())
-            && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id))
-        && instance.instance_type == "container"
-        && instance.config.as_ref().is_some_and(|c| {
-            c.get("user.opdbus.session_id") == Some(&sled.session_id)
-                && c.get("user.opdbus.wireguard_public_key") == Some(&sled.wireguard_pubkey)
-                && c.get("volatile.uuid").is_some_and(|v| uuid::Uuid::parse_str(v).is_ok())
-        })
-        && sled.instance.as_ref().is_some_and(|stored| {
-            stored.name == instance.name && stored.config.as_ref().zip(instance.config.as_ref())
-                .is_some_and(|(a,b)| a.get("volatile.uuid") == b.get("volatile.uuid"))
-        });
-    named || (instance.name == sled.session_id && instance.instance_type == "container")
-        || chatbot_binding_matches(
-            sled,
-            instance,
-            control_plane_chatbot_session_id().as_deref(),
-            configured_chatbot_key().as_deref(),
-        )
-}
-
-fn identity_session_binding_matches(sled: &ContainerIdentitySled) -> bool {
-    match sled.instance.as_ref() {
-        Some(instance) => identity_instance_matches(sled, instance),
-        // The identity owner explicitly initializes humans without per-account
-        // containers. Actor class comes from the committed record, not SID1 or
-        // request metadata; any attached instance must still match above.
-        None => sled.principal_kind.as_deref() == Some("human"),
-    }
-}
-
-fn validate_sled(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
-    anyhow::ensure!(!sled.session_id.is_empty(), "identity session id is empty");
-    anyhow::ensure!(
-        sled.mutation_index <= i64::MAX as u64,
-        "mutation index overflow"
-    );
-    if let Some(instance) = &sled.instance {
-        anyhow::ensure!(
-            identity_instance_matches(sled, instance),
-            "identity instance does not match session container"
-        );
-    }
-    if sled.is_anchored() {
-        anyhow::ensure!(
-            sled.sealed_id
-                .as_deref()
-                .is_some_and(|value| !value.is_empty()),
-            "anchored identity lacks authored SID1"
-        );
-    }
-    Ok(())
-}
+pub(crate) use crate::identity_binding::{configured_chatbot_key, control_plane_chatbot_session_id, identity_instance_matches};
+use crate::identity_binding::{CONTROL_PLANE_CHATBOT_CONTAINER, RESERVED_CHATBOT_CONTAINER, identity_session_binding_matches, validate_sled};
 
 fn event_from_record(row: &SessionEventRecord) -> anyhow::Result<SessionEvent> {
     anyhow::ensure!(row.seq >= 0, "negative durable session event sequence");
@@ -767,10 +681,7 @@ pub(crate) async fn authenticate_sid1_wire(
         .await
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "sealed identity session was not found".to_string())?;
-    if !identity_session_binding_matches(&sled) {
-        return Err("sealed identity has no matching provisioned container binding".into());
-    }
-    crate::sid1_checks::match_committed_session(wire, &sled, transport, chrono::Utc::now().timestamp())?;
+    crate::sid1_checks::match_bound_session(wire, &sled, transport, chrono::Utc::now().timestamp())?;
     // `active` is deliberately absent: it is Incus power policy, not SID1 revocation.
     Ok(claims)
 }
@@ -1595,15 +1506,6 @@ fn human_container_running(sled: &ContainerIdentitySled) -> bool {
                 .instance
                 .as_ref()
                 .is_some_and(|instance| instance.status.eq_ignore_ascii_case("Running")))
-}
-
-/// Session id of the control-plane chatbot, from
-/// `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`.
-pub(crate) fn control_plane_chatbot_session_id() -> Option<String> {
-    std::env::var("OP_CONTROL_PLANE_CHATBOT_SESSION_ID")
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
 }
 
 pub(crate) async fn chatbot_awaits_explicit_reprovision(engine: &MutationEngine, session_id: &str) -> anyhow::Result<bool> {

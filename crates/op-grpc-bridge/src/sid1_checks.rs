@@ -69,6 +69,21 @@ pub fn match_committed_session(
     Ok(claims)
 }
 
+/// Check a record from the authoritative private projection, including its
+/// human or container binding. The caller must establish that the supplied
+/// record came from that projection and that its sealed contract is current.
+pub fn match_bound_session(
+    wire: &[u8],
+    sled: &ContainerIdentitySled,
+    transport: &str,
+    now: i64,
+) -> Result<SealedId, String> {
+    if !crate::identity_binding::identity_session_binding_matches(sled) {
+        return Err("sealed identity has no matching provisioned container binding".into());
+    }
+    match_committed_session(wire, sled, transport, now)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,6 +132,9 @@ mod tests {
         parse_for_transport(&wire, "grpc").unwrap();
         assert!(parse_for_transport(&wire, "mcp").is_err());
         assert!(match_committed_session(&wire, &sled, "grpc", 150).is_ok());
+        assert!(match_bound_session(&wire, &sled, "grpc", 150).is_err());
+        sled.principal_kind = Some("human".into());
+        assert!(match_bound_session(&wire, &sled, "grpc", 150).is_ok());
         assert!(match_committed_session(&wire, &sled, "grpc", 200).is_err());
         sled.session_id = "other".into();
         assert!(match_committed_session(&wire, &sled, "grpc", 150).is_err());
