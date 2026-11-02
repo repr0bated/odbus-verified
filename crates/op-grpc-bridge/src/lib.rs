@@ -34,6 +34,7 @@ pub mod core;
 pub mod grpc_client;
 pub mod grant_document;
 pub mod identity_binding;
+pub mod identity_receiver;
 pub mod mqtt_doorbell_relay;
 pub mod router;
 pub mod server;

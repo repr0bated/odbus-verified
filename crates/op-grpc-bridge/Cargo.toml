@@ -98,6 +98,7 @@ tonic-build = { workspace = true }
 op-blob = { path = "../op-blob" }
 op-plugins = { path = "../op-plugins" }
 op-state-store = { path = "../op-state-store" }
+op-state = { path = "../op-state" }
 tokio = { workspace = true, features = ["rt"] }
 serde_json = { workspace = true }
 simd-json = { workspace = true }

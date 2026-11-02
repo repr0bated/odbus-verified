@@ -57,6 +57,9 @@ pub struct PluginEntry {
     /// JSON Schema for the plugin, when the catalog carries it.
     #[serde(default)]
     pub schema: Option<serde_json::Value>,
+    /// Exact schema bytes from the sealed blob, retained for pin comparisons.
+    #[serde(skip)]
+    pub sealed_schema_json: Option<String>,
     #[serde(default, deserialize_with = "de_methods")]
     pub methods: Vec<PluginMethod>,
 }
@@ -88,6 +91,46 @@ pub struct Catalog {
     hash: String,
 }
 
+fn read_sealed_entry(dir: &Path, id: &str, schema_hash: &str) -> anyhow::Result<PluginEntry> {
+    let schema = op_blob::catalog::read_plugin_state_store_schema(dir, id)
+        .ok_or_else(|| anyhow::anyhow!("invalid sealed plugin {id}"))?;
+    anyhow::ensure!(
+        schema_hash.len() == 64 && schema_hash.bytes().all(|b| b.is_ascii_hexdigit()),
+        "invalid schema hash for {id}"
+    );
+    let bytes = std::fs::read(dir.join(format!("{id}.{}.blob", &schema_hash[..16])))?;
+    let blob = op_blob::BlobRef::from_manifest_pinned(&bytes, schema_hash)
+        .map_err(|error| anyhow::anyhow!("invalid sealed plugin {id}: {error}"))?;
+    let pinned_schema = blob
+        .state_store_schema()
+        .map_err(|error| anyhow::anyhow!("invalid sealed plugin {id}: {error}"))?;
+    anyhow::ensure!(
+        serde_json::to_value(&schema)? == serde_json::to_value(&pinned_schema)?,
+        "sealed plugin {id} changed during read"
+    );
+    let raw_schema = serde_json::from_str(blob.schema_json())?;
+    let mut methods: Vec<_> = schema
+        .methods
+        .keys()
+        .cloned()
+        .map(PluginMethod::from)
+        .collect();
+    methods.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(PluginEntry {
+        id: id.to_owned(),
+        name: schema.name,
+        version: schema.version,
+        description: schema.description,
+        dbus_path: format!("/org/opdbus/v1/plugins/{id}"),
+        tags: schema.tags,
+        schema_hash: schema_hash.to_owned(),
+        schema: Some(raw_schema),
+        sealed_schema_json: Some(blob.schema_json().to_owned()),
+        methods,
+        ..Default::default()
+    })
+}
+
 impl Catalog {
     /// Read one consistent manifest-pinned snapshot of the sealed plugin catalog.
     /// The catalog identity comes from the sealer's manifest, never a consumer hash.
@@ -104,42 +147,7 @@ impl Catalog {
             serde_json::from_value(manifest["plugins"].clone())?;
         let mut plugins = Vec::with_capacity(entries.len());
         for (id, schema_hash) in entries {
-            let schema = op_blob::catalog::read_plugin_state_store_schema(dir, &id)
-                .ok_or_else(|| anyhow::anyhow!("invalid sealed plugin {id}"))?;
-            anyhow::ensure!(
-                schema_hash.len() == 64 && schema_hash.bytes().all(|b| b.is_ascii_hexdigit()),
-                "invalid schema hash for {id}"
-            );
-            let bytes = std::fs::read(dir.join(format!("{id}.{}.blob", &schema_hash[..16])))?;
-            let blob = op_blob::BlobRef::from_manifest_pinned(&bytes, &schema_hash)
-                .map_err(|error| anyhow::anyhow!("invalid sealed plugin {id}: {error}"))?;
-            let pinned_schema = blob
-                .state_store_schema()
-                .map_err(|error| anyhow::anyhow!("invalid sealed plugin {id}: {error}"))?;
-            anyhow::ensure!(
-                serde_json::to_value(&schema)? == serde_json::to_value(&pinned_schema)?,
-                "sealed plugin {id} changed during read"
-            );
-            let raw_schema = serde_json::from_str(blob.schema_json())?;
-            let mut methods: Vec<_> = schema
-                .methods
-                .keys()
-                .cloned()
-                .map(PluginMethod::from)
-                .collect();
-            methods.sort_by(|a, b| a.name.cmp(&b.name));
-            plugins.push(PluginEntry {
-                id: id.clone(),
-                name: schema.name.clone(),
-                version: schema.version.clone(),
-                description: schema.description.clone(),
-                dbus_path: format!("/org/opdbus/v1/plugins/{id}"),
-                tags: schema.tags.clone(),
-                schema_hash,
-                schema: Some(raw_schema),
-                methods,
-                ..Default::default()
-            });
+            plugins.push(read_sealed_entry(dir, &id, &schema_hash)?);
         }
         anyhow::ensure!(
             std::fs::read(manifest_path)? == manifest_bytes,
@@ -155,6 +163,23 @@ impl Catalog {
             by_id,
             hash: catalog_hash,
         })
+    }
+
+    /// Read a single manifest-pinned plugin without scanning other blobs.
+    pub fn sealed_plugin(dir: &Path, id: &str) -> anyhow::Result<PluginEntry> {
+        let path = dir.join(op_blob::catalog::MANIFEST_FILENAME);
+        let before = std::fs::read(&path)?;
+        let manifest: serde_json::Value = serde_json::from_slice(&before)?;
+        let hash = manifest["plugins"]
+            .get(id)
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| anyhow::anyhow!("sealed plugin {id} is absent"))?;
+        let entry = read_sealed_entry(dir, id, hash)?;
+        anyhow::ensure!(
+            std::fs::read(path)? == before,
+            "sealed catalog changed during read"
+        );
+        Ok(entry)
     }
 
     /// An empty catalog (hash of the empty pair set).
@@ -253,12 +278,20 @@ mod sealed_tests {
         assert_eq!(plugin.schema_hash, blob.manifest.schema_hash);
         assert_eq!(plugin.schema.as_ref().unwrap()["name"], "fixture");
         assert!(catalog.declares("fixture", "Read"));
+        assert_eq!(
+            Catalog::sealed_plugin(dir.path(), "fixture")
+                .unwrap()
+                .schema_hash,
+            blob.manifest.schema_hash
+        );
+        assert!(Catalog::sealed_plugin(dir.path(), "missing").is_err());
 
         let blob_path = dir
             .path()
             .join(format!("fixture.{}.blob", &blob.manifest.schema_hash[..16]));
         std::fs::write(blob_path, b"invalid sealed blob").unwrap();
         assert!(Catalog::from_sealed(dir.path()).is_err());
+        assert!(Catalog::sealed_plugin(dir.path(), "fixture").is_err());
         std::fs::remove_file(dir.path().join(op_blob::catalog::MANIFEST_FILENAME)).unwrap();
         assert!(Catalog::from_sealed(dir.path()).is_err());
     }
