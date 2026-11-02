@@ -21,70 +21,17 @@
 //!   (an unresolvable principal is an unauthorized one).
 
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 
 use anyhow::{anyhow, bail};
 use base64::Engine as _;
-use op_cozo_store::{CozoGraphShuttle, HumanPrincipalRecord, human_principal_cozo_db_path};
+use op_cozo_store::HumanPrincipalRecord;
 use op_plugins::state_plugins::human_principal::{HumanPrincipal, HumanPrincipalState};
 use serde_json::Value as JsonValue;
 
-/// One open store per DB path: RocksDB locks its directory, so a second open
-/// of the same path in-process would fail. Keyed by path (not a single
-/// process-wide OnceLock) so tests can point
-/// `OP_HUMAN_PRINCIPAL_COZO_DB_PATH` at per-test tempdirs.
-fn stores() -> &'static Mutex<HashMap<PathBuf, CozoGraphShuttle>> {
-    static STORES: OnceLock<Mutex<HashMap<PathBuf, CozoGraphShuttle>>> = OnceLock::new();
-    STORES.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-/// The store for the currently-resolved DB path, or `None` when it cannot be
-/// opened. Open failures are NOT cached: a later call with a writable path
-/// must recover.
-fn store() -> Option<CozoGraphShuttle> {
-    let path = human_principal_cozo_db_path();
-    let mut map = stores()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(existing) = map.get(&path) {
-        return Some(existing.clone());
-    }
-    match CozoGraphShuttle::new_persistent(path.clone()) {
-        Ok(shuttle) => {
-            map.insert(path, shuttle.clone());
-            Some(shuttle)
-        }
-        Err(error) => {
-            tracing::warn!(
-                path = %path.display(),
-                %error,
-                "human principal Cozo store unavailable"
-            );
-            None
-        }
-    }
-}
-
-/// Strict shared durable owner for receiver-authored external MCP anchors.
-pub(crate) fn external_mcp_store() -> anyhow::Result<CozoGraphShuttle> {
-    store().ok_or_else(|| anyhow!("human principal Cozo store unavailable"))
-}
-
-/// Registry lookup for the assertion validator. Unlike the degraded read
-/// path used by ordinary `resolve_key` dispatch, store unavailability is an
-/// error (VAL-BRIDGE-017).
-pub async fn resolve_key_for_assertion(
-    pubkey: &str,
-) -> Result<Option<HumanPrincipalRecord>, RegistryUnavailable> {
-    get_by_pubkey_strict(pubkey)
-        .await
-        .map_err(|_| RegistryUnavailable)
-}
-
-/// Cozo store unavailable for strict assertion resolution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RegistryUnavailable;
+pub use crate::human_principal_registry::{resolve_key_for_assertion, RegistryUnavailable};
+pub(crate) use crate::human_principal_registry::external_mcp_store;
+use crate::human_principal_registry::{get_by_pubkey_strict, store};
 
 /// Dispatch one human_principal schema method. Unknown method names are an
 /// error (the schema declares exactly six).
@@ -179,17 +126,6 @@ async fn list_records_strict() -> anyhow::Result<Vec<HumanPrincipalRecord>> {
         .await
         .map_err(|error| anyhow!("human principal list join: {error}"))?
         .map_err(|error| anyhow!("human principal list: {error}"))
-}
-
-async fn get_by_pubkey_strict(pubkey: &str) -> anyhow::Result<Option<HumanPrincipalRecord>> {
-    let Some(cozo) = store() else {
-        bail!("human principal store unavailable");
-    };
-    let pubkey = pubkey.to_string();
-    tokio::task::spawn_blocking(move || cozo.get_human_principal_by_pubkey(&pubkey))
-        .await
-        .map_err(|error| anyhow!("human principal pubkey lookup join: {error}"))?
-        .map_err(|error| anyhow!("human principal pubkey lookup: {error}"))
 }
 
 async fn get_strict(principal_id: &str) -> anyhow::Result<Option<HumanPrincipalRecord>> {

@@ -29,10 +29,12 @@
 //! remove them with `git rm` when convenient — they no longer compile
 //! into this crate (see `autobins`/`autotests` in Cargo.toml).
 
+pub mod admission;
 pub mod catalog;
 pub mod core;
 pub mod grpc_client;
 pub mod grant_document;
+pub mod human_principal_registry;
 pub mod identity_binding;
 pub mod identity_receiver;
 pub mod mqtt_doorbell_relay;
