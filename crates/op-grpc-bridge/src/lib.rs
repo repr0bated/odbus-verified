@@ -32,6 +32,7 @@
 pub mod catalog;
 pub mod core;
 pub mod grpc_client;
+pub mod grant_document;
 pub mod mqtt_doorbell_relay;
 pub mod router;
 pub mod server;

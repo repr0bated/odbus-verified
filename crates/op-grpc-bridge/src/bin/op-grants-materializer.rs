@@ -10,8 +10,16 @@ use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{bail, Context, Result};
-use op_grpc_bridge::mcp_policy::{parse_audience_policy, parse_toolset_manifest};
+use anyhow::{Context, Result, bail};
+// The materializer uses the shared policy parsers, not the mutation API.
+#[allow(dead_code)]
+#[path = "../mcp_policy.rs"]
+mod mcp_policy;
+#[allow(dead_code)]
+#[path = "../sealed_schema_reader.rs"]
+mod sealed_schema_reader;
+
+use mcp_policy::{parse_audience_policy, parse_toolset_manifest};
 
 const DEFAULT_SOURCE: &str = "/etc/opdbus/capability-grants.json";
 const DEFAULT_TARGET: &str = "/dev/shm/opdbus/capability-grants.json";
@@ -25,7 +33,7 @@ enum ReconcileState {
 }
 
 fn validate_document(bytes: &[u8]) -> Result<()> {
-    op_grpc_bridge::interceptor::validate_grant_document(bytes)
+    op_grpc_bridge::grant_document::validate_grant_document(bytes)
         .map_err(|error| anyhow::anyhow!(error))
 }
 
@@ -278,14 +286,16 @@ mod tests {
     #[test]
     fn rejects_wildcard_and_legacy_footprint_keys() {
         assert!(validate_document(br#"{"*":{"capabilities":[]}}"#).is_err());
-        assert!(validate_document(
-            br#"{
+        assert!(
+            validate_document(
+                br#"{
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {
                     "capabilities": []
                 }
             }"#
-        )
-        .is_err());
+            )
+            .is_err()
+        );
     }
 
     #[test]

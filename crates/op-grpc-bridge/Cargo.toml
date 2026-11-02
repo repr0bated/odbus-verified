@@ -114,6 +114,15 @@ rustls = { version = "0.23", features = ["aws_lc_rs"] }
 name = "op-grpc-bridge"
 path = "src/bin/op-grpc-bridge.rs"
 
+[[bin]]
+name = "op-grants-materializer"
+path = "src/bin/op-grants-materializer.rs"
+test = false
+
 [[test]]
 name = "fresh_bridge_contract"
 path = "tests/fresh_bridge_contract.rs"
+
+[[test]]
+name = "grants_materializer_contract"
+path = "tests/grants_materializer_contract.rs"
