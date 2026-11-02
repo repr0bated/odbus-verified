@@ -62,9 +62,14 @@ async fn verify_in(
         "assertion does not match the committed identity"
     );
     let identity = crate::identity_receiver::verify_bound_registry(bound).await?;
+    let completed_at = chrono::Utc::now().timestamp();
     anyhow::ensure!(
-        assertion.expires_at > chrono::Utc::now().timestamp(),
+        assertion.expires_at > completed_at,
         "assertion expired during verification"
+    );
+    anyhow::ensure!(
+        identity.claims().expires_at == 0 || identity.claims().expires_at > completed_at,
+        "identity expired during verification"
     );
     let validator_for_consume = validator.clone();
     tokio::task::spawn_blocking(move || validator_for_consume.consume_pending(pending)).await??;
