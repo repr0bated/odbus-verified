@@ -1,0 +1,11 @@
+[book]
+title = "Etched in Schema"
+description = "A self-contained 3tched identity that turns business goals into deployed, verified infrastructure."
+authors = ["Jeremy Hobson (3tched)"]
+language = "en"
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/repr0bated/etched-in-schema"
+edit-url-template = "https://github.com/repr0bated/etched-in-schema/blob/master/{path}"
+site-url = "/etched-in-schema/"

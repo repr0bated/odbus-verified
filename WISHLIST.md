@@ -60,6 +60,10 @@ determine server/decoy applicability or retirement before implementing a handler
 
 ## ▶ Current
 
+| ID | Task | Agent | Status | Notes |
+|---|---|---|---|---|
+| OD-125 | Reconcile surviving defects against the newer hackathon/bridge source | owner + unclaimed | TODO — current-source follow-up | PR-delivery reconciliation preserves every unresolved historical thread link and concrete current evidence in [pr-reconciliation-20261030.json](docs/reviews/pr-reconciliation-20261030.json). Priority findings: root notebook capture and user-controlled state (#32/43); Snowball transfer/retention concurrency (#12); FUSE inode type reuse (#22); interrupted default-route recovery (#33); firewall interface/exposure mismatches (#35); concurrent shared-golden preparation (#37); unsafe standalone retention (#42). Cozo gallery aggregate bounds and retained ShellExecutor policy need dedicated compatible repair. Superseding the old PR carriers does not claim these are fixed or deployed; preserve current code authority and validate actual callers before migration. |
+
 *Actively in flight.*
 
 | ID | Task | Agent | Status | Notes |

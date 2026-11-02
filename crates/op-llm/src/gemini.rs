@@ -834,17 +834,11 @@ impl LlmProvider for GeminiClient {
             }
         );
 
-        // Extract system message if present
-        let system_instruction =
-            messages
-                .iter()
-                .find(|m| m.role == "system")
-                .map(|m| GeminiContent {
-                    role: "user".to_string(),
-                    parts: vec![GeminiPart {
-                        text: m.content.clone(),
-                    }],
-                });
+        let system_instruction = crate::graph_turn_reminder::ordered_system_content(&messages)
+            .map(|content| GeminiContent {
+                role: "user".to_string(),
+                parts: vec![GeminiPart { text: content }],
+            });
 
         // Build contents excluding system messages
         let contents: Vec<GeminiContent> = messages
@@ -1036,16 +1030,10 @@ impl LlmProvider for GeminiClient {
             }
         );
 
-        // Extract system message if present
-        let system_instruction = request
-            .messages
-            .iter()
-            .find(|m| m.role == "system")
-            .map(|m| GeminiContent {
+        let system_instruction = crate::graph_turn_reminder::ordered_system_content(&request.messages)
+            .map(|content| GeminiContent {
                 role: "user".to_string(),
-                parts: vec![GeminiPart {
-                    text: m.content.clone(),
-                }],
+                parts: vec![GeminiPart { text: content }],
             });
 
         // Build contents excluding system messages

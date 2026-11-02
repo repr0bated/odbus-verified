@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3tched.com/schema/llc-declaration/v1",
+  "title": "LlcDeclaration",
+  "description": "Declaration of a Florida limited liability company (Articles of Organization, Fla. Stat. 605.0201), headed by OSCAL metadata so the declaration is a typed, attributable artifact. Draft for the hackathon; becomes a sealed 3tched plugin. Not legal advice; filing is done with the Florida Division of Corporations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "company", "registered_agent", "authorized_representatives", "provenance"],
+  "properties": {
+    "metadata": {
+      "description": "OSCAL metadata header (OSCAL 1.1 'metadata' assembly, subset).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "last-modified", "version", "oscal-version"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "last-modified": { "type": "string", "format": "date-time" },
+        "version": { "type": "string" },
+        "oscal-version": { "const": "1.1.2" },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "title"],
+            "properties": { "id": { "type": "string" }, "title": { "type": "string" } }
+          }
+        },
+        "parties": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["uuid", "type", "name"],
+            "properties": {
+              "uuid": { "type": "string", "format": "uuid" },
+              "type": { "enum": ["person", "organization"] },
+              "name": { "type": "string" },
+              "props": { "type": "array", "items": { "type": "object" } }
+            }
+          }
+        },
+        "responsible-parties": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["role-id", "party-uuids"],
+            "properties": {
+              "role-id": { "type": "string" },
+              "party-uuids": { "type": "array", "items": { "type": "string", "format": "uuid" }, "minItems": 1 }
+            }
+          }
+        }
+      }
+    },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "principal_office", "mailing_address"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Must end with 'Limited Liability Company', 'LLC' or 'L.L.C.' (Fla. Stat. 605.0112).",
+          "pattern": "(Limited Liability Company|LLC|L\\.L\\.C\\.)$"
+        },
+        "principal_office": { "$ref": "#/$defs/street_address" },
+        "mailing_address": { "$ref": "#/$defs/address" },
+        "purpose": { "type": "string", "maxLength": 1000 },
+        "effective_date": { "type": "string", "format": "date", "description": "Optional; at most 5 business days before or 90 days after filing." },
+        "management": { "enum": ["member_managed", "manager_managed"] }
+      }
+    },
+    "registered_agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "florida_street_address", "accepted"],
+      "properties": {
+        "name": { "type": "string" },
+        "florida_street_address": { "$ref": "#/$defs/street_address" },
+        "accepted": { "type": "boolean", "const": true, "description": "The agent's written acceptance of the appointment." }
+      }
+    },
+    "authorized_representatives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "title", "address"],
+        "properties": {
+          "name": { "type": "string" },
+          "title": { "enum": ["AMBR", "MGR", "AR"], "description": "Authorized member, manager, or authorized representative." },
+          "address": { "$ref": "#/$defs/address" }
+        }
+      }
+    },
+    "provenance": {
+      "description": "Links the declaration to the 3tched identity that prepared it and to its on-chain anchor.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_session_id", "declaration_hash"],
+      "properties": {
+        "identity_session_id": { "type": "string", "format": "uuid" },
+        "operation_id": { "type": "string", "format": "uuid" },
+        "declaration_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 of the canonical JSON of this declaration without 'provenance'." },
+        "anchor": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "chain_id": { "type": "integer" }, "tx": { "type": "string" }, "attestation_uid": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line1", "city", "state", "postal_code", "country"],
+      "properties": {
+        "line1": { "type": "string" }, "line2": { "type": "string" },
+        "city": { "type": "string" }, "state": { "type": "string" },
+        "postal_code": { "type": "string" }, "country": { "type": "string", "default": "US" }
+      }
+    },
+    "street_address": {
+      "description": "A physical street address; a P.O. box is not accepted.",
+      "allOf": [
+        { "$ref": "#/$defs/address" },
+        { "properties": { "line1": { "not": { "pattern": "(?i)^\\s*(p\\.?\\s*o\\.?\\s*box)" } } } }
+      ]
+    }
+  }
+}

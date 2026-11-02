@@ -1,0 +1,366 @@
+{
+ "catalog": {
+  "controls": [
+   {
+    "id": "etched-pt-1",
+    "title": "PII redaction on publish",
+    "links": [
+     {
+      "href": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+      "rel": "reference",
+      "text": "NIST SP 800-53 Rev 5, PT family (privacy)"
+     }
+    ],
+    "parts": [
+     {
+      "id": "etched-pt-1_smt",
+      "name": "statement",
+      "prose": "The CMS redacts PII automatically on publish. The original is kept only in the owner's private scope; every other surface receives the redacted form."
+     },
+     {
+      "id": "etched-pt-1_gdn",
+      "name": "guidance",
+      "prose": "CMS behaviour: publish path runs the redaction policy (name, email, phone) before rendering to web or team chat. A redaction notice names what was redacted and which policy did it."
+     },
+     {
+      "id": "etched-pt-1_asm",
+      "name": "assessment",
+      "prose": "Evidence: redaction operation receipt naming the triggering policy (operation_id, event_hash). Planned: receipt recorded as OSCAL assessment result and anchored on-chain."
+     }
+    ],
+    "props": [
+     {
+      "name": "tag",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "pii"
+     },
+     {
+      "name": "evidence-kind",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "redaction-receipt"
+     },
+     {
+      "name": "implementation-status",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "planned"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "schema_tag_registry"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "schema_tag_registry/get_policy"
+     },
+     {
+      "name": "sealed-operations",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "[{\"plugin\": \"schema_tag_registry\", \"method\": \"get_policy\", \"capability\": \"cap.governance.schema-tag-registry.read@v1\", \"blob\": \"schema_tag_registry.efda4ac1ab2e6a22.blob\", \"status\": \"sealed\"}]"
+     }
+    ]
+   },
+   {
+    "id": "etched-au-1",
+    "title": "Attributable actions (audit)",
+    "links": [
+     {
+      "href": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+      "rel": "reference",
+      "text": "NIST SP 800-53 Rev 5, AU family (audit)"
+     }
+    ],
+    "parts": [
+     {
+      "id": "etched-au-1_smt",
+      "name": "statement",
+      "prose": "Every CMS create, edit, and publish action is attributable: who did it, under what capability, and when."
+     },
+     {
+      "id": "etched-au-1_gdn",
+      "name": "guidance",
+      "prose": "CMS behaviour: all mutations run through the subsidiary identity's 3tchedFS call files; the bridge checks the exact capability and commits via MutationEngine."
+     },
+     {
+      "id": "etched-au-1_asm",
+      "name": "assessment",
+      "prose": "Evidence: receipt chain per action (required_capability, operation_id, event_id, event_hash, outcome). Proven: bridge issues these fields on every admitted call."
+     }
+    ],
+    "props": [
+     {
+      "name": "tag",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "audit"
+     },
+     {
+      "name": "evidence-kind",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "operation-receipt"
+     },
+     {
+      "name": "implementation-status",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "proven:bridge-receipts; planned:assessment-results-export"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "identity_sled"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "routing_decision"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "identity_sled/get_own_identity"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "routing_decision/get_decision"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "routing_decision/list_decisions"
+     },
+     {
+      "name": "sealed-operations",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "[{\"plugin\": \"identity_sled\", \"method\": \"get_own_identity\", \"capability\": \"cap.identity.sled.self.read@v1\", \"blob\": \"identity_sled.bb45d8f4ddc6edec.blob\", \"status\": \"sealed\"}, {\"plugin\": \"routing_decision\", \"method\": \"get_decision\", \"capability\": \"cap.governance.routing-decision.read@v1\", \"blob\": \"routing_decision.e8c810cd666d3189.blob\", \"status\": \"sealed\"}, {\"plugin\": \"routing_decision\", \"method\": \"list_decisions\", \"capability\": \"cap.governance.routing-decision.read@v1\", \"blob\": \"routing_decision.e8c810cd666d3189.blob\", \"status\": \"sealed\"}]"
+     }
+    ]
+   },
+   {
+    "id": "etched-ac-1",
+    "title": "Least privilege with named refusals",
+    "links": [
+     {
+      "href": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+      "rel": "reference",
+      "text": "NIST SP 800-53 Rev 5, AC family (access control)"
+     }
+    ],
+    "parts": [
+     {
+      "id": "etched-ac-1_smt",
+      "name": "statement",
+      "prose": "CMS roles compile into capability grants. Requests outside the grants are refused with the exact missing capability; root-level actions need two different human approvals."
+     },
+     {
+      "id": "etched-ac-1_gdn",
+      "name": "guidance",
+      "prose": "CMS behaviour: profile compiles to grants and budgets; the team-chat adapter holds no grants and never calls plugins directly. Refusals and approval requests render as first-class results."
+     },
+     {
+      "id": "etched-ac-1_asm",
+      "name": "assessment",
+      "prose": "Evidence: refusal receipt naming the missing capability and rule; approval record (1 of 2, 2 of 2). Proven: bridge refuses with exact capability name. Planned: two-person rule (elevation ticket is single-use today)."
+     }
+    ],
+    "props": [
+     {
+      "name": "tag",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "access-control"
+     },
+     {
+      "name": "evidence-kind",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "refusal-receipt"
+     },
+     {
+      "name": "implementation-status",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "proven:bridge-refusal; planned:two-person-rule"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "elevation"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "schema_tag_registry"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "elevation/authorize_task"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "schema_tag_registry/get_tag"
+     },
+     {
+      "name": "sealed-operations",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "[{\"plugin\": \"elevation\", \"method\": \"authorize_task\", \"capability\": \"elevation.authorize\", \"blob\": \"elevation.88a854ab9ebe7e45.blob\", \"status\": \"sealed\"}, {\"plugin\": \"schema_tag_registry\", \"method\": \"get_tag\", \"capability\": \"cap.governance.schema-tag-registry.read@v1\", \"blob\": \"schema_tag_registry.efda4ac1ab2e6a22.blob\", \"status\": \"sealed\"}]"
+     }
+    ]
+   },
+   {
+    "id": "etched-si-1",
+    "title": "Scheduled retention and expiry",
+    "links": [
+     {
+      "href": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+      "rel": "reference",
+      "text": "NIST SP 800-53 Rev 5, SI-12 (information handling and retention)"
+     }
+    ],
+    "parts": [
+     {
+      "id": "etched-si-1_smt",
+      "name": "statement",
+      "prose": "Published CMS content carries a retention schedule; expiry archives or deletes on time, automatically."
+     },
+     {
+      "id": "etched-si-1_gdn",
+      "name": "guidance",
+      "prose": "CMS behaviour: each publish sets expires_at; the scheduler runs the archive operation. No silent retention."
+     },
+     {
+      "id": "etched-si-1_asm",
+      "name": "assessment",
+      "prose": "Evidence: scheduled-operation receipt (operation_id, event_hash) plus the archived artefact reference. Planned."
+     }
+    ],
+    "props": [
+     {
+      "name": "tag",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "retention"
+     },
+     {
+      "name": "evidence-kind",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "scheduled-operation-receipt"
+     },
+     {
+      "name": "implementation-status",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "planned"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "cron"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "workflows"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "cron/create_job"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "workflows/start_workflow"
+     },
+     {
+      "name": "sealed-operations",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "[{\"plugin\": \"cron\", \"method\": \"create_job\", \"capability\": \"cron.invoke\", \"blob\": \"cron.880d0e766972f96b.blob\", \"status\": \"sealed\"}, {\"plugin\": \"workflows\", \"method\": \"start_workflow\", \"capability\": \"workflows.write\", \"blob\": \"workflows.a739c048cf0ba561.blob\", \"status\": \"sealed\"}]"
+     }
+    ]
+   },
+   {
+    "id": "etched-in-1",
+    "title": "Hash-anchored integrity",
+    "links": [
+     {
+      "href": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+      "rel": "reference",
+      "text": "NIST SP 800-53 Rev 5, SI-7 (information integrity)"
+     }
+    ],
+    "parts": [
+     {
+      "id": "etched-in-1_smt",
+      "name": "statement",
+      "prose": "Published CMS versions are hash-anchored so anyone can verify what was published, by whom, and under what authority, without trusting the agent or operator."
+     },
+     {
+      "id": "etched-in-1_gdn",
+      "name": "guidance",
+      "prose": "CMS behaviour: publish hashes the versioned artefact; the Web3 index entry references the authorising receipt (operation_id, event_hash); the Merkle root is anchored on-chain."
+     },
+     {
+      "id": "etched-in-1_asm",
+      "name": "assessment",
+      "prose": "Evidence: index entry (schema/index-entry.schema.json) plus on-chain anchor a judge can check. Planned; receipt fields it cites are proven."
+     }
+    ],
+    "props": [
+     {
+      "name": "tag",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "integrity"
+     },
+     {
+      "name": "evidence-kind",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "anchor-record"
+     },
+     {
+      "name": "implementation-status",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "planned"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "identity_sled"
+     },
+     {
+      "name": "tched-plugin",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "web3"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "identity_sled/get_identity"
+     },
+     {
+      "name": "tched-operation",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "web3/anchor"
+     },
+     {
+      "name": "sealed-operations",
+      "ns": "https://3tched.com/ns/oscal",
+      "value": "[{\"plugin\": \"identity_sled\", \"method\": \"get_identity\", \"capability\": \"identity_sled.read\", \"blob\": \"identity_sled.bb45d8f4ddc6edec.blob\", \"status\": \"sealed\"}, {\"plugin\": \"web3\", \"method\": \"anchor\", \"capability\": null, \"blob\": null, \"status\": \"unsealed:no-blob\"}]"
+     }
+    ]
+   }
+  ],
+  "metadata": {
+   "title": "Etched 3tched capabilities catalog",
+   "last-modified": "2026-10-28T18:15:00+00:00",
+   "oscal-version": "1.2.1",
+   "version": "1.0.0",
+   "remarks": "Draft for the hackathon. Catalogs 3tched capabilities the golden path needs; each control names implementing plugin operations via props and evidence via assessment parts. Schemas here are drafts; promoted ones become sealed 3tched plugins.",
+   "props": [
+    {
+     "name": "tag-taxonomy",
+     "ns": "https://3tched.com/ns/oscal",
+     "value": "oscal/TAG-TAXONOMY.md v1"
+    }
+   ]
+  },
+  "uuid": "9a8d57cf-da00-4646-a00e-44711aaeedf0"
+ }
+}

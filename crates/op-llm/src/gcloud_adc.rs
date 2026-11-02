@@ -96,14 +96,12 @@ impl GCloudADCProvider {
 
     /// Convert messages to Gemini format
     fn convert_messages(&self, messages: &[ChatMessage]) -> (Vec<Value>, Option<Value>) {
-        let mut system_instruction = None;
+        let system_instruction = crate::graph_turn_reminder::ordered_system_content(messages)
+            .map(|content| json!({"parts": [{"text": content}]}));
         let mut contents = Vec::new();
 
         for msg in messages {
             if msg.role == "system" {
-                system_instruction = Some(json!({
-                    "parts": [{"text": msg.content}]
-                }));
                 continue;
             }
 

@@ -122,7 +122,6 @@ impl Validate for ConstNullValidator {
 struct ConstNumberValidator {
     // This is saved in order to ensure that the error message is not altered by precision loss
     original_value: Number,
-    value: f64,
     location: Location,
 }
 
@@ -131,9 +130,6 @@ impl ConstNumberValidator {
     pub(crate) fn compile(original_value: &Number, location: Location) -> CompilationResult {
         Ok(Box::new(ConstNumberValidator {
             original_value: original_value.clone(),
-            value: original_value
-                .as_f64()
-                .expect("A JSON number will always be representable as f64"),
             location,
         }))
     }
@@ -159,7 +155,7 @@ impl Validate for ConstNumberValidator {
 
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
-            (self.value - item.as_f64().expect("Always representable as f64")).abs() < f64::EPSILON
+            helpers::equal_numbers(&self.original_value, item)
         } else {
             false
         }

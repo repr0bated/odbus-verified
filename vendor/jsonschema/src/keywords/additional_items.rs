@@ -1,7 +1,7 @@
 use crate::{
     compiler,
     error::{no_error, ErrorIterator, ValidationError},
-    keywords::{boolean::FalseValidator, CompilationResult},
+    keywords::CompilationResult,
     node::SchemaNode,
     paths::{LazyLocation, Location},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
@@ -118,7 +118,7 @@ pub(crate) fn compile<'a>(
 ) -> Option<CompilationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {
-            Value::Object(_) => None,
+            Value::Object(_) | Value::Bool(_) => None,
             Value::Array(items) => {
                 let kctx = ctx.new_at_location("additionalItems");
                 let items_count = items.len();
@@ -133,14 +133,6 @@ pub(crate) fn compile<'a>(
                         kctx.location().clone(),
                     )),
                     _ => None,
-                }
-            }
-            Value::Bool(value) => {
-                if *value {
-                    None
-                } else {
-                    let location = ctx.location().join("additionalItems");
-                    Some(FalseValidator::compile(location))
                 }
             }
             _ => Some(Err(ValidationError::multiple_type_error(

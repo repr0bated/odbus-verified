@@ -108,6 +108,35 @@ fn equivalent_object_key_permutations_produce_identical_sealed_blobs() {
 }
 
 #[test]
+fn reduced_schema_canonicalization_sorts_embedded_objects_but_preserves_arrays() {
+    let make_schema = |reverse_keys, reverse_required| {
+        let mut schema: op_blob::PluginSchema = serde_json::from_value(
+            serde_json::to_value(method_schema(reverse_keys, reverse_required)).unwrap(),
+        )
+        .unwrap();
+        // Keep insertion order in serde_json directly. The dev-dependency
+        // enables preserve_order; production canonicalization cannot rely on it.
+        schema.methods.get_mut("Inspect").unwrap().args =
+            args_schema(reverse_keys, reverse_required);
+        schema
+    };
+    let first = make_schema(false, false);
+    let permuted = make_schema(true, false);
+    let reordered_array = make_schema(false, true);
+    assert_ne!(
+        first.methods["Inspect"].args.to_string(),
+        permuted.methods["Inspect"].args.to_string()
+    );
+    assert_eq!(first.canonical_json(), permuted.canonical_json());
+    assert_eq!(first.schema_hash(), permuted.schema_hash());
+    assert_eq!(
+        op_blob::try_blobify(&first).unwrap().seal(),
+        op_blob::try_blobify(&permuted).unwrap().seal()
+    );
+    assert_ne!(first.schema_hash(), reordered_array.schema_hash());
+}
+
+#[test]
 fn canonicalization_preserves_array_order() {
     let first = op_blob::blobify_plugin_schema("canonical_fixture", method_schema(false, false));
     let reordered_array =

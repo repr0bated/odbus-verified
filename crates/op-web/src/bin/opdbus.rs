@@ -13,17 +13,13 @@
 
 use anyhow::Context;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use op_grpc_bridge::MutationEngine;
-use op_grpc_bridge::run_grpc_server;
+use op_grpc_bridge::core::BridgeCore;
+use op_grpc_bridge::Catalog;
 
-use op_network::rovs_proxy::OvsdbDbusClient;
 use op_network::rtnetlink::list_interfaces;
-use op_state_store::{ChainConfig, EventChain};
-use tokio::sync::RwLock;
 
 /// Default port when no explicit listen address is supplied.
 const DEFAULT_GRPC_PORT: u16 = 50051;
@@ -76,12 +72,13 @@ async fn main() -> anyhow::Result<()> {
 
     let addr = resolve_listen_addr().await?;
 
-    let chain = Arc::new(RwLock::new(EventChain::new(ChainConfig::default())));
-    let ovsdb = Arc::new(OvsdbDbusClient::new());
-    let engine = Arc::new(MutationEngine::new(chain, ovsdb));
+    let catalog = match std::env::var("OP_BRIDGE_CATALOG") {
+        Ok(path) => Catalog::from_json_str(&std::fs::read_to_string(&path)?)?,
+        Err(_) => Catalog::empty(),
+    };
 
     info!(addr = %addr, "op-dbus starting");
-    run_grpc_server(addr, engine, None, None).await?;
+    op_grpc_bridge::serve(addr, BridgeCore::new(catalog)).await?;
 
     Ok(())
 }

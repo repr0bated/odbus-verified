@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Owner authority correction (2026-10-30):** newer source is authoritative; hackathon code takes precedence over older architectural prose. PR #46 contains hackathon HEAD `2a6e40e` and its newer bridge rewrite. Determine relevance from current module graphs and callers. Do not resurrect removed or unlinked implementations to satisfy historical review comments; repair independently demonstrated defects in retained code. This does not authorize deployment or changes to live identities, grants or storage.
+
 This file provides guidance to the AI agent when working with code in this repository.
 
 ## Mandatory skill preload — every agent and model
@@ -402,3 +404,11 @@ For non-Cargo delegation, choose the appropriate agent role:
 - `general-purpose` only when the task needs multi-step reasoning or execution that Explore or Plan cannot cover.
 - Use a more capable model for complex cross-crate reasoning, security review, or ambiguous architectural decisions, and for any standard edit, build fix, or test whose quality would drop on the low-cost agent.
 - Do not spawn a subagent for a single-file edit or a direct grep you can do yourself.
+
+## Cursor Cloud specific instructions
+
+- Provision from the repository root with `sh scripts/claude-cloud-setup.sh`. It installs the verified-workspace packages and Rust 1.97.1, fetches the lockfile, and runs `scripts/check-workspace.sh preflight`. It is safe to run again. It does not start services, seal a catalog, or copy host credentials.
+- Native Cozo/RocksDB builds need `CXXFLAGS` to include `-include cstdint`, and they need `CC=gcc` and `CXX=g++`. On the default image `/usr/bin/c++` is clang++, which does not find `cstdint` for that forced include. The setup script persists these variables for login shells and the `ubuntu` bashrc, and it links `/usr/lib/x86_64-linux-gnu/libstdc++.so` so rustc's bundled lld can resolve `-lstdc++`. `scripts/check-workspace.sh` also sets `CXXFLAGS` itself. Keep `CARGO_BUILD_JOBS=2` on a 16 GB agent VM.
+- Smoke checks and tests are manual/on-request under the owner's policy. Do not run them automatically or treat the general `/verify` guidance above as authorization. When requested, `sh scripts/check-workspace.sh smoke` runs `cargo check --locked --workspace`, then `op-core` and `op-plugins` library tests. `verify` is the full fmt, Clippy, and workspace test gate and also requires an explicit request.
+- The Cloud Agent kernel has no `btrfs` filesystem and no `/lib/modules`. `btrfs-progs` is installed, but `btrfs subvolume create` cannot succeed. These `op-plugins` library tests need a btrfs temp directory and fail here: `failed_unknown_rollback_preserves_state_and_retained_snapshots_after_reopen`, `rejects_missing_invalid_and_unsafe_requests`, and `seven_methods_use_persistent_snapshot_state`. Do not skip or weaken them.
+- Do not start the control plane here. `op-web`, the gRPC bridge, OVS, catalog seal, and runit need the Artix host, the sealed blob catalog, and identity state. `op-plugin-lint` can read plugin source without those services.

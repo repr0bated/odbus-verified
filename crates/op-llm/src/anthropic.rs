@@ -216,12 +216,7 @@ impl AnthropicClient {
     async fn chat_with_tools(&self, model: &str, request: &ChatRequest) -> Result<ChatResponse> {
         let url = format!("{}/messages", self.api_url);
 
-        // Extract system message
-        let system_msg = request
-            .messages
-            .iter()
-            .find(|m| m.role == "system")
-            .map(|m| m.content.clone());
+        let system_msg = crate::graph_turn_reminder::ordered_system_content(&request.messages);
 
         // Convert messages (excluding system, handling tool results)
         let anthropic_messages: Vec<AnthropicMessage> = request

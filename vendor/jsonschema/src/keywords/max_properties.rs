@@ -24,7 +24,7 @@ impl MaxPropertiesValidator {
         }
         if ctx.supports_integer_valued_numbers() {
             if let Some(limit) = schema.as_f64() {
-                if limit.trunc() == limit {
+                if limit >= 0.0 && limit.trunc() == limit {
                     #[allow(clippy::cast_possible_truncation)]
                     return Ok(Box::new(MaxPropertiesValidator {
                         // NOTE: Imprecise cast as big integers are not supported yet

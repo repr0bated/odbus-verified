@@ -38,8 +38,8 @@ impl MultipleTypesValidator {
                 }
                 _ => {
                     return Err(ValidationError::single_type_error(
-                        location,
                         Location::new(),
+                        location,
                         item,
                         PrimitiveType::String,
                     ))
@@ -387,6 +387,17 @@ mod tests {
     use crate::tests_util;
     use serde_json::{json, Value};
     use test_case::test_case;
+
+    #[test]
+    fn non_string_type_array_entry_has_compilation_paths() {
+        let items = [json!("string"), json!(1)];
+        let location = crate::paths::Location::new().join("type");
+        let error = super::MultipleTypesValidator::compile(&items, location)
+            .err()
+            .expect("Non-string type entry must fail");
+        assert_eq!(error.schema_path.as_str(), "");
+        assert_eq!(error.instance_path.as_str(), "/type");
+    }
 
     #[test_case(&json!({"type": "array"}), &json!(1), "/type")]
     #[test_case(&json!({"type": "boolean"}), &json!(1), "/type")]

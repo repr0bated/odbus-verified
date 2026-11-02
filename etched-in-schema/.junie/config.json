@@ -1,0 +1,9 @@
+{
+  "model": "muse-spark-1.3",
+  "effort": "medium",
+  "auto-update": true,
+  "mcp-default-locations": true,
+  "skill-default-locations": true,
+  "command-default-locations": true,
+  "agent-default-locations": true
+}

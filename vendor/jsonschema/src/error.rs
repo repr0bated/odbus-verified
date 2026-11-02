@@ -987,7 +987,8 @@ impl fmt::Display for MaskedValidationError<'_, '_, '_> {
                 write!(f, r#"{} is not a "{format}""#, self.placeholder)
             }
             ValidationErrorKind::AdditionalItems { limit } => {
-                write!(f, "Additional items are not allowed ({limit} items)")
+                let count = self.error.instance.as_array().expect("Always valid").len() - limit;
+                write!(f, "Additional items are not allowed ({count} items)")
             }
             ValidationErrorKind::AdditionalProperties { unexpected } => {
                 f.write_str("Additional properties are not allowed (")?;

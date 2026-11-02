@@ -113,7 +113,9 @@ impl StatePlugin for RtnetlinkPlugin {
                 let needs_update = desired_iface.state != current_iface.state
                     || desired_iface.mac_address != current_iface.mac_address
                     || desired_iface.addresses != current_iface.addresses
-                    || desired_iface.default_gateway.is_some();
+                    || desired_iface.default_gateway.as_ref().is_some_and(|gateway| {
+                        current_iface.default_gateway.as_ref() != Some(gateway)
+                    });
 
                 if needs_update {
                     actions.push(StateAction::Modify {

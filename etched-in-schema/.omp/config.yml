@@ -1,0 +1,57 @@
+# Project-scoped omp harness: launched from this directory, the agent may
+# only use Meta (product models) and TypeSafe Jev (judge role).
+# Other directories are unaffected (global config still applies there).
+# Note: project scope honors disabledProviders (deny-list); new providers
+# added by future omp versions default-allow until listed here.
+disabledProviders:
+  - amazon-bedrock
+  - anthropic
+  - bedrock-mantle
+  - cheaper-inference
+  - cursor
+  - devin
+  - google-antigravity
+  - google-vertex
+  - huggingface
+  - kilo
+  - litellm-fusion
+  - local
+  - nous
+  - ollama-cloud
+  - openai
+  - openai-codex
+  - opencode-go
+  - opencode-zen
+  - openrouter
+  - radium
+  - salad
+  - vercel-ai-gateway
+  - xai
+  - xai-oauth
+modelRoles:
+  default: meta/muse-spark-1.3-contributor:high
+  smol: meta/muse-spark-1.1
+  slow: meta/muse-spark-1.3
+  plan: meta/muse-spark-1.3
+  advisor: meta/muse-spark-1.3
+  judge: typesafe/jev-latest
+# Global config falls back meta/* -> local/*; here a Meta failure must surface
+# as an error, never silently switch to a local model.
+retry:
+  fallbackChains:
+    meta/*: []
+task:
+  agentModelOverrides:
+    scout: meta/muse-spark-1.1
+    reviewer: meta/muse-spark-1.2
+    sonic: meta/muse-spark-1.1
+    task: meta/muse-spark-1.3
+    astra-migration-lead: meta/muse-spark-1.3
+    u3-capture-audit: meta/muse-spark-1.3
+    ResponseRoute: meta/muse-spark-1.3
+    SchemaOwnership: meta/muse-spark-1.3
+    migration-spec-inventory: meta/muse-spark-1.3
+    glm-flash: meta/muse-spark-1.1
+    minimax-flash: meta/muse-spark-1.1
+    gemma-hf: meta/muse-spark-1.1
+    salad-qwen: meta/muse-spark-1.1

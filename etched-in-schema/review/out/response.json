@@ -1,0 +1,123 @@
+{
+  "model": "jev-1.14.0",
+  "answers": {
+    "judge.thesis_clear": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "judge.meta_essential": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "judge.proof_checkable": {
+      "type": "noul",
+      "noul": 0.94
+    },
+    "judge.concept_overload": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "judge.memorable_moment": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "judge.overall_appeal": {
+      "type": "score",
+      "score": 1.39,
+      "confidence": 0.27,
+      "legend": {
+        "0": "A judge would see it as a familiar chatbot or infrastructure demo",
+        "1": "A judge would find it interesting but not stand-out",
+        "2": "A judge would see it as novel and clearly demonstrated"
+      },
+      "probabilities": {
+        "0": 0.05,
+        "1": 0.51,
+        "2": 0.44
+      }
+    },
+    "feas.path_mostly_proven": {
+      "type": "noul",
+      "noul": 0.12
+    },
+    "feas.path_depends_on_open_issue": {
+      "type": "noul",
+      "noul": 0.94
+    },
+    "feas.meta_blocker": {
+      "type": "noul",
+      "noul": 0.95
+    },
+    "feas.tool_calling_risk": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "feas.platform_unstable": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "feas.fallback_ready": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "feas.scope_fit": {
+      "type": "score",
+      "score": 1.98,
+      "confidence": 0.98,
+      "legend": {
+        "0": "The planned work is comfortably achievable in ten days",
+        "1": "The planned work is achievable only if nothing goes wrong",
+        "2": "The planned work clearly exceeds ten days for one person"
+      },
+      "probabilities": {
+        "0": 0.0,
+        "1": 0.01,
+        "2": 0.99
+      }
+    },
+    "sec.demo_overprivileged": {
+      "type": "noul",
+      "noul": 0.98
+    },
+    "sec.dedicated_identity_planned": {
+      "type": "noul",
+      "noul": 0.99
+    },
+    "sec.receipts_proven": {
+      "type": "noul",
+      "noul": 0.62
+    },
+    "sec.anchoring_proven": {
+      "type": "noul",
+      "noul": 0.16
+    },
+    "sec.egress_isolated": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "biz.first_customer_named": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "biz.revenue_stated": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "biz.single_product": {
+      "type": "noul",
+      "noul": 0.94
+    },
+    "biz.wedge_specific": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "biz.web3_may_deter_enterprise": {
+      "type": "noul",
+      "noul": 0.85
+    }
+  },
+  "usage": {
+    "input_tokens": 1973,
+    "output_tokens": 483
+  }
+}

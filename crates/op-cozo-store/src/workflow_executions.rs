@@ -130,8 +130,13 @@ impl CozoGraphShuttle {
         let mut p = params(scope);
         p["workflow"] = serde_json::json!(workflow);
         p["execution"] = serde_json::json!(execution);
-        let result = self.run_query(&format!("?[execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at] := *workflow_executions{{principal_id, session_id, session_genesis, execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at}}, principal_id = $principal, session_id = $session, session_genesis = $genesis{filter} :order -accepted_at, -execution_id :limit {limit}"), Some(p))?;
-        result
+        let selected = self.newest_workflow_execution_ids(&mut p, &filter, limit)?;
+        if selected.is_empty() {
+            return Ok(Vec::new());
+        }
+        p["ids"] = serde_json::json!(selected);
+        let result = self.run_query(&format!("?[execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at] := *workflow_executions{{principal_id, session_id, session_genesis, execution_id, workflow_id, owner_epoch, status, revision, document, accepted_at}}, principal_id = $principal, session_id = $session, session_genesis = $genesis{filter}, execution_id in $ids"), Some(p))?;
+        let records: Vec<WorkflowExecutionRecord> = result
             .as_array()
             .ok_or_else(|| CozoError::Other("invalid workflow rows".into()))?
             .iter()
@@ -156,7 +161,53 @@ impl CozoGraphShuttle {
                 validate(&record)?;
                 Ok(record)
             })
+            .collect::<Result<_, CozoError>>()?;
+        let mut records: BTreeMap<_, _> = records.into_iter()
+            .map(|record| (record.execution_id.clone(), record)).collect();
+        selected.iter().map(|id| records.remove(id)
+            .ok_or_else(|| CozoError::Other("selected workflow execution disappeared".into())))
             .collect()
+    }
+
+    /// Called only while holding episode_transaction, also held by every write
+    /// to this relation. Visit O(history) metadata in bounded pages plus the
+    /// requested newest IDs; only the final selected documents are fetched.
+    /// Parse instants in Rust to preserve offsets, pre-epoch dates and nanos;
+    /// Cozo's parse_timestamp uses f64 and cannot preserve that full contract.
+    fn newest_workflow_execution_ids(
+        &self,
+        p: &mut Value,
+        filter: &str,
+        limit: usize,
+    ) -> Result<Vec<String>, CozoError> {
+        const PAGE: usize = 200;
+        let mut after = String::new();
+        let mut newest = Vec::new();
+        loop {
+            p["after"] = serde_json::json!(after);
+            let result = self.run_query(&format!("?[execution_id, accepted_at] := *workflow_executions{{principal_id, session_id, session_genesis, execution_id, workflow_id, accepted_at}}, principal_id = $principal, session_id = $session, session_genesis = $genesis{filter}, execution_id > $after :order execution_id :limit {PAGE}"), Some(p.clone()))?;
+            let page = result.as_array()
+                .ok_or_else(|| CozoError::Other("invalid workflow metadata rows".into()))?;
+            for row in page {
+                let id = row["execution_id"].as_str()
+                    .filter(|id| *id > after.as_str())
+                    .ok_or_else(|| CozoError::Other("workflow metadata cursor did not advance".into()))?;
+                let accepted = row["accepted_at"].as_str()
+                    .ok_or_else(|| CozoError::Other("invalid workflow accepted timestamp".into()))?;
+                let instant = chrono::DateTime::parse_from_rfc3339(accepted)
+                    .map_err(|_| CozoError::Other("invalid workflow accepted timestamp".into()))?;
+                newest.push((instant, id.to_owned()));
+                after = id.to_owned();
+            }
+            // The execution ID is the deterministic descending tie-breaker for
+            // equal instants, regardless of their original offset spelling.
+            newest.sort_unstable_by(|left, right| right.cmp(left));
+            newest.truncate(limit);
+            if page.len() < PAGE {
+                break;
+            }
+        }
+        Ok(newest.into_iter().map(|(_, id)| id).collect())
     }
 
     /// Compare-and-set under the domain owner's shared transaction lock.
@@ -174,7 +225,7 @@ impl CozoGraphShuttle {
         self.runtime_document_preflight()?;
         let mut p = params(&row.scope);
         p["execution"] = serde_json::json!(row.execution_id);
-        let old = self.run_query("?[revision, owner_epoch] := *workflow_executions{principal_id, session_id, session_genesis, execution_id, revision, owner_epoch}, principal_id = $principal, session_id = $session, session_genesis = $genesis, execution_id = $execution", Some(p.clone()))?;
+        let old = self.run_query("?[revision, owner_epoch, workflow_id, accepted_at] := *workflow_executions{principal_id, session_id, session_genesis, execution_id, revision, owner_epoch, workflow_id, accepted_at}, principal_id = $principal, session_id = $session, session_genesis = $genesis, execution_id = $execution", Some(p.clone()))?;
         let rows = old
             .as_array()
             .ok_or_else(|| CozoError::Other("invalid workflow rows".into()))?;
@@ -183,13 +234,15 @@ impl CozoGraphShuttle {
             (Some(revision), [old]) => {
                 old["revision"].as_u64() == Some(revision)
                     && old["owner_epoch"].as_str() == Some(row.owner_epoch.as_str())
+                    && old["workflow_id"].as_str() == Some(row.workflow_id.as_str())
+                    && old["accepted_at"].as_str() == row.document["accepted_at"].as_str()
                     && row.revision == revision.saturating_add(1)
             }
             _ => false,
         };
         if !matches {
             return Err(CozoError::Other(
-                "workflow execution revision/owner conflict".into(),
+                "workflow execution revision/owner/attribution conflict".into(),
             ));
         }
         p["workflow"] = serde_json::json!(row.workflow_id);

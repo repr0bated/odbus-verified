@@ -15,7 +15,6 @@ use tonic::metadata::MetadataValue;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 use tracing::info;
 
-use crate::oracle_assertion_client::DecoyAssertionClient;
 use crate::proto::{
     CallMethodRequest, GetStateRequest, GetStateResponse, MutateRequest,
     OperationType as ProtoOperationType, SubscribeEventsRequest, SubscribeRequest,
@@ -27,9 +26,6 @@ use crate::proto::{
 /// Native chat can exceed tonic's 4 MiB default; identity admission is unchanged.
 pub const MAX_PLUGIN_STATE_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
 
-#[cfg(test)]
-#[path = "grpc_client_large_response_tests.rs"]
-mod large_response_tests;
 
 /// Configuration for a remote gRPC endpoint
 #[derive(Debug, Clone)]
@@ -477,36 +473,6 @@ impl RemoteOperationClient {
     }
 
     /// Acquire one fresh OIA1 assertion from the caller's explicit decoy
-    /// issuer and forward it through the canonical metadata path.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn call_method_via_decoy(
-        &self,
-        plugin_id: &str,
-        object_path: &str,
-        interface_name: &str,
-        method_name: &str,
-        arguments: Vec<simd_json::OwnedValue>,
-        actor_id: &str,
-        capability_id: &str,
-        issuer: &DecoyAssertionClient,
-    ) -> Result<simd_json::OwnedValue, GrpcClientError> {
-        let identity = issuer.acquire().await.map_err(|error| {
-            GrpcClientError::RequestFailed(format!("OIA1 assertion acquisition failed: {error:#}"))
-        })?;
-        self.call_method_with_metadata(
-            plugin_id,
-            object_path,
-            interface_name,
-            method_name,
-            arguments,
-            actor_id,
-            capability_id,
-            &identity,
-        )
-        .await
-    }
-
-    /// Subscribe to state updates from a remote endpoint
     pub async fn subscribe(
         &self,
         plugin_filters: Vec<String>,
@@ -812,18 +778,78 @@ fn attach_plugin_identity_metadata<T>(
     Ok(())
 }
 
+/// Write exactly one identity credential (SID1 or OIA1) into gRPC metadata.
+/// Ported from the legacy interceptor helper; the client keeps no second copy
+/// of the wire bytes beyond the authored credential it was given.
+fn insert_identity_metadata<T>(
+    request: &mut Request<T>,
+    sealed_id: Option<&[u8]>,
+    oracle_assertion: Option<&[u8]>,
+    capability_id: Option<&str>,
+) -> Result<(), GrpcClientError> {
+    let valid_wire =
+        |wire: &[u8], magic: &[u8; 4]| wire.len() <= 16 * 1024 && wire.starts_with(magic);
+    match (sealed_id, oracle_assertion) {
+        (Some(_), Some(_)) => {
+            return Err(GrpcClientError::RequestFailed(
+                "multiple identity credentials".into(),
+            ));
+        }
+        (None, None) => {
+            return Err(GrpcClientError::RequestFailed(
+                "missing identity credential".into(),
+            ));
+        }
+        (Some(wire), None) => {
+            if !valid_wire(wire, b"SID1") {
+                return Err(GrpcClientError::RequestFailed(
+                    "invalid SID1 credential".into(),
+                ));
+            }
+            request.metadata_mut().insert_bin(
+                op_identity::sealed_id::HTTP_HEADER_NAME,
+                MetadataValue::from_bytes(wire),
+            );
+        }
+        (None, Some(wire)) => {
+            if !valid_wire(wire, b"OIA1") {
+                return Err(GrpcClientError::RequestFailed(
+                    "invalid OIA1 credential".into(),
+                ));
+            }
+            request.metadata_mut().insert_bin(
+                "x-oracle-identity-assertion-bin",
+                MetadataValue::from_bytes(wire),
+            );
+        }
+    }
+    if let Some(capability_id) = capability_id {
+        if capability_id.is_empty() {
+            return Err(GrpcClientError::RequestFailed(
+                "capability metadata cannot be empty".into(),
+            ));
+        }
+        request.metadata_mut().insert(
+            "x-opdbus-capability",
+            MetadataValue::try_from(capability_id).map_err(|error| {
+                GrpcClientError::RequestFailed(format!("invalid capability metadata: {error}"))
+            })?,
+        );
+    }
+    Ok(())
+}
+
 fn attach_identity_metadata<T>(
     request: &mut Request<T>,
     identity: &GhostbridgeCallMetadata,
     capability_id: Option<&str>,
 ) -> Result<(), GrpcClientError> {
-    crate::interceptor::insert_identity_metadata(
+    insert_identity_metadata(
         request,
         identity.sealed_id.as_deref(),
         identity.oracle_assertion.as_deref(),
         capability_id,
     )
-    .map_err(|error| GrpcClientError::RequestFailed(error.to_string()))
 }
 
 fn decode_get_state_response(

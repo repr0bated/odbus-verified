@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3tched.com/schema/etched-index-entry/v1",
+  "title": "EtchedIndexEntry",
+  "description": "One thing an identity created or did in Web3, linked to the 3tched receipt that authorised and recorded it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "seq", "prev_hash", "kind", "artifact", "identity", "receipt", "created_at"],
+  "properties": {
+    "format": { "const": "etched.index-entry/1" },
+    "seq": { "type": "integer", "minimum": 0, "description": "Position in this identity's append-only index." },
+    "prev_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 of the previous entry's canonical JSON; 64 zeros for seq 0." },
+    "kind": { "enum": ["contract", "token", "attestation", "ipfs_object", "domain", "offer", "transaction", "other"] },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref"],
+      "properties": {
+        "chain_id": { "type": "integer", "description": "EIP-155 chain id, e.g. 84532 for Base Sepolia." },
+        "ref": { "type": "string", "description": "Transaction hash, contract address, CID, or URL." },
+        "description": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "genesis"],
+      "properties": {
+        "session_id": { "type": "string", "format": "uuid" },
+        "genesis": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "origin_session_id": { "type": "string", "format": "uuid", "description": "The 3tched identity this twin branched from." }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_id", "event_hash", "plugin", "method"],
+      "properties": {
+        "operation_id": { "type": "string", "format": "uuid" },
+        "event_hash": { "type": "string" },
+        "plugin": { "type": "string" },
+        "method": { "type": "string" },
+        "required_capability": { "type": "string" }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gas_used": { "type": "integer", "minimum": 0 },
+        "cost_usd_micros": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

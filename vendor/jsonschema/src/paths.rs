@@ -1,5 +1,10 @@
 //! Facilities for working with paths within schemas or validated instances.
-use std::{fmt, sync::Arc};
+use std::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::{Arc, OnceLock},
+};
 
 use crate::keywords::Keyword;
 
@@ -101,7 +106,7 @@ impl<'a> From<&'a LazyLocation<'_, '_>> for Location {
             }
         }
 
-        Location(Arc::new(buffer))
+        Location::from_pointer(buffer)
     }
 }
 
@@ -136,47 +141,92 @@ impl From<usize> for LocationSegment<'_> {
 }
 
 /// A cheap to clone JSON pointer that represents location with a JSON value.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Location(Arc<String>);
+#[derive(Clone)]
+pub struct Location(Arc<LocationData>);
+
+struct LocationData {
+    pointer: String,
+    // Iteration must return borrowed, decoded segments without changing the
+    // public Copy LocationSegment representation or leaking allocations.
+    decoded: OnceLock<Vec<String>>,
+}
+
+impl fmt::Debug for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Location").field(&self.0.pointer).finish()
+    }
+}
+
+impl PartialEq for Location {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for Location {}
+
+impl Hash for Location {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state);
+    }
+}
+
+impl PartialOrd for Location {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Location {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.as_str().cmp(other.as_str())
+    }
+}
 
 impl serde::Serialize for Location {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.0)
+        serializer.serialize_str(self.as_str())
     }
 }
 
 impl Location {
     /// Create a new, empty `Location`.
     pub fn new() -> Self {
-        Self(Arc::new(String::new()))
+        Self::from_pointer(String::new())
+    }
+    fn from_pointer(pointer: String) -> Self {
+        Self(Arc::new(LocationData {
+            pointer,
+            decoded: OnceLock::new(),
+        }))
     }
     pub fn join<'a>(&self, segment: impl Into<LocationSegment<'a>>) -> Self {
-        let parent = self.0.as_str();
+        let parent = self.as_str();
         match segment.into() {
             LocationSegment::Property(property) => {
                 let mut buffer = String::with_capacity(parent.len() + property.len() + 1);
                 buffer.push_str(parent);
                 buffer.push('/');
                 write_escaped_str(&mut buffer, property);
-                Self(Arc::new(buffer))
+                Self::from_pointer(buffer)
             }
             LocationSegment::Index(idx) => {
                 let mut buffer = itoa::Buffer::new();
                 let segment = buffer.format(idx);
-                Self(Arc::new(format!("{parent}/{segment}")))
+                Self::from_pointer(format!("{parent}/{segment}"))
             }
         }
     }
     /// Get a string slice representing the location.
     pub fn as_str(&self) -> &str {
-        &self.0
+        &self.0.pointer
     }
     /// Get a byte slice representing the location.
     pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
+        self.0.pointer.as_bytes()
     }
 }
 
@@ -235,12 +285,30 @@ impl<'a> IntoIterator for &'a Location {
     type IntoIter = std::vec::IntoIter<LocationSegment<'a>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.as_str()
-            .split('/')
-            .filter(|p| !p.is_empty())
+        self.0
+            .decoded
+            .get_or_init(|| {
+                // Only the first empty component is the pointer's leading slash.
+                // Decode ~1 before ~0 so ~01 remains a literal "~1".
+                self.as_str()
+                    .split('/')
+                    .skip(1)
+                    .map(|part| part.replace("~1", "/").replace("~0", "~"))
+                    .collect()
+            })
+            .iter()
             .map(|p| {
-                p.parse::<usize>()
-                    .map_or(LocationSegment::Property(p), LocationSegment::Index)
+                // Numeric-looking object keys such as "00" and "+1" must not
+                // lose their spelling when the segments are collected again.
+                let canonical_integer = p == "0"
+                    || (p.as_bytes().first().is_some_and(|b| (b'1'..=b'9').contains(b))
+                        && p.bytes().all(|b| b.is_ascii_digit()));
+                let index = if canonical_integer {
+                    p.parse::<usize>().ok()
+                } else {
+                    None
+                };
+                index.map_or(LocationSegment::Property(p), LocationSegment::Index)
             })
             .collect::<Vec<_>>()
             .into_iter()
@@ -337,7 +405,7 @@ mod tests {
         LocationSegment::Index(2)
     ]; "mixed properties and indices")]
     fn test_into_iter(location: &str, expected_segments: Vec<LocationSegment>) {
-        let loc = Location(Arc::new(location.to_string()));
+        let loc = Location::from_pointer(location.to_string());
         assert_eq!(loc.into_iter().collect::<Vec<_>>(), expected_segments);
     }
 
@@ -346,5 +414,30 @@ mod tests {
     #[test_case(vec![LocationSegment::Property("a"), LocationSegment::Index(1)], "/a/1"; "mixed segments")]
     fn test_from_iter(segments: Vec<LocationSegment>, expected: &str) {
         assert_eq!(Location::from_iter(segments).as_str(), expected);
+    }
+
+    #[test]
+    fn escaped_and_empty_segments_round_trip_without_changing_identity() {
+        let location = Location::new().join("").join("a/b").join("~1").join("00").join("+1").join("");
+        let untouched = Location::new().join("").join("a/b").join("~1").join("00").join("+1").join("");
+        let segments: Vec<_> = location.into_iter().collect();
+        assert_eq!(segments, vec![
+            LocationSegment::Property(""), LocationSegment::Property("a/b"),
+            LocationSegment::Property("~1"), LocationSegment::Property("00"),
+            LocationSegment::Property("+1"), LocationSegment::Property(""),
+        ]);
+        assert_eq!(Location::from_iter(segments), untouched);
+        assert_eq!(location, untouched);
+        assert_eq!(location.cmp(&untouched), Ordering::Equal);
+        let hash = |value: &Location| {
+            let mut state = std::collections::hash_map::DefaultHasher::new();
+            value.hash(&mut state);
+            state.finish()
+        };
+        assert_eq!(hash(&location), hash(&untouched));
+        assert!(Location::new().into_iter().next().is_none());
+        assert_eq!(Location::new().join("").into_iter().count(), 1);
+        let clone = location.clone();
+        assert_eq!(clone.into_iter().collect::<Location>(), location);
     }
 }
