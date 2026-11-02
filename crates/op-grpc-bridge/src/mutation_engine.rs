@@ -466,26 +466,6 @@ pub fn sealed_id_digest(sealed_id: Option<&str>) -> Option<String> {
 const ANONYMOUS_ACTOR: &str = "anonymous";
 const IDENTITY_PROJECTION_GROUP_ENV: &str = "OP_IDENTITY_PROJECTION_GROUP";
 
-/// Remove possession material from any identity value that can leave the
-/// MutationEngine through a generic state surface. The full value remains in
-/// the authoritative cache and private credential projection only.
-fn redact_identity_credentials(value: &mut simd_json::OwnedValue) {
-    match value {
-        simd_json::OwnedValue::Object(object) => {
-            object.remove("sealed_id");
-            for nested in object.values_mut() {
-                redact_identity_credentials(nested);
-            }
-        }
-        simd_json::OwnedValue::Array(values) => {
-            for nested in values {
-                redact_identity_credentials(nested);
-            }
-        }
-        _ => {}
-    }
-}
-
 fn contains_identity_credential_field(value: &simd_json::OwnedValue) -> bool {
     match value {
         simd_json::OwnedValue::Object(object) => {
@@ -588,16 +568,7 @@ impl MutationEngine {
     }
 }
 
-pub(crate) fn public_plugin_value(
-    plugin_id: &str,
-    value: &simd_json::OwnedValue,
-) -> simd_json::OwnedValue {
-    let mut public = value.clone();
-    if plugin_id == "identity_sled" {
-        redact_identity_credentials(&mut public);
-    }
-    public
-}
+pub(crate) use crate::state_reader::public_plugin_value;
 
 fn redact_identity_credentials_json(value: &mut serde_json::Value) {
     match value {

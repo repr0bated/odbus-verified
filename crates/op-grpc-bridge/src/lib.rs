@@ -46,6 +46,8 @@ mod oracle_test_support;
 pub mod router;
 pub mod server;
 pub mod sid1_checks;
+#[allow(dead_code)] // The reader is not mounted until request admission is wired.
+pub(crate) mod state_reader;
 pub mod tls_door;
 pub mod service;
 
