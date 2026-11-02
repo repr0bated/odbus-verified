@@ -108,3 +108,28 @@ pub fn validated_grant_entries(
     }
     Ok(entries)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::validate_grant_document;
+
+    #[test]
+    fn accepts_exact_principals_and_declared_groups() {
+        assert!(validate_grant_document(
+            br#"{"$GUEST":{"capabilities":["read"]},"person":{"groups":["$GUEST"],"capabilities":["write"]}}"#
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn rejects_prohibited_keys_and_missing_groups() {
+        for invalid in [
+            br#"{"*":{"capabilities":[]}}"#.as_slice(),
+            br#"{"$UNKNOWN":{"capabilities":[]}}"#.as_slice(),
+            br#"{"person":{"groups":["$GUEST"],"capabilities":[]}}"#.as_slice(),
+            br#"{"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef":{"capabilities":[]}}"#.as_slice(),
+        ] {
+            assert!(validate_grant_document(invalid).is_err());
+        }
+    }
+}

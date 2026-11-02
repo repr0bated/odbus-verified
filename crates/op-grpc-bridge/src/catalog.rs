@@ -113,6 +113,13 @@ impl Catalog {
             let bytes = std::fs::read(dir.join(format!("{id}.{}.blob", &schema_hash[..16])))?;
             let blob = op_blob::BlobRef::from_manifest_pinned(&bytes, &schema_hash)
                 .map_err(|error| anyhow::anyhow!("invalid sealed plugin {id}: {error}"))?;
+            let pinned_schema = blob
+                .state_store_schema()
+                .map_err(|error| anyhow::anyhow!("invalid sealed plugin {id}: {error}"))?;
+            anyhow::ensure!(
+                serde_json::to_value(&schema)? == serde_json::to_value(&pinned_schema)?,
+                "sealed plugin {id} changed during read"
+            );
             let raw_schema = serde_json::from_str(blob.schema_json())?;
             let mut methods: Vec<_> = schema
                 .methods
@@ -247,6 +254,11 @@ mod sealed_tests {
         assert_eq!(plugin.schema.as_ref().unwrap()["name"], "fixture");
         assert!(catalog.declares("fixture", "Read"));
 
+        let blob_path = dir
+            .path()
+            .join(format!("fixture.{}.blob", &blob.manifest.schema_hash[..16]));
+        std::fs::write(blob_path, b"invalid sealed blob").unwrap();
+        assert!(Catalog::from_sealed(dir.path()).is_err());
         std::fs::remove_file(dir.path().join(op_blob::catalog::MANIFEST_FILENAME)).unwrap();
         assert!(Catalog::from_sealed(dir.path()).is_err());
     }
