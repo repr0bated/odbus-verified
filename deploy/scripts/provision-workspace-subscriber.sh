@@ -116,8 +116,8 @@ derive_session_id() {
             echo 'f036f8d8-aabb-c5f2-49c9-18dac19f41ea'
             return 0
             ;;
-        'Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=')
-            echo 'b0c777e3-0955-cd8b-3d01-ca12998cae28'
+        '14jaB7DtdCPS3jXAPkFiUfDfF3i5iMcFqg6TeS3qRF4=')
+            echo '51aa3321-7467-62e1-5599-d63a9ff90e1'
             return 0
             ;;
         '/yBYjQkcD997wTd+e6b1rJiALMKLbLVfF2IO413lj1Y=')

@@ -342,7 +342,7 @@ pub async fn verify(
                         user_id: None,
                         config: None,
                         qr_code: None,
-                        message: "WireGuard server key is not configured on the host.".to_string(),
+                        message: "Decoy WireGuard server key is not configured (WG_SERVER_PUBKEY / WG_SERVER_ENDPOINT).".to_string(),
                     }),
                 );
             }
@@ -499,7 +499,7 @@ pub async fn privacy_access_message(
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>WireGuard Not Configured</title></head>
 <body style="font-family: system-ui, -apple-system, sans-serif; margin: 40px;">
     <h1>WireGuard server key not configured</h1>
-    <p>The privacy network is up, but the server public key is missing. Set <code>WG_SERVER_PUBKEY</code> and restart <code>op-web</code>.</p>
+    <p>The privacy network is up, but the decoy server public key is missing. Set <code>WG_SERVER_PUBKEY</code> and <code>WG_SERVER_ENDPOINT</code> and restart <code>op-web</code>.</p>
 </body>
 </html>"#
                         .to_string(),
@@ -631,7 +631,7 @@ pub async fn get_config(
                         user_id: None,
                         config: None,
                         qr_code: None,
-                        message: "WireGuard server key is not configured on the host.".to_string(),
+                        message: "Decoy WireGuard server key is not configured (WG_SERVER_PUBKEY / WG_SERVER_ENDPOINT).".to_string(),
                     }),
                 );
             }
@@ -1036,7 +1036,7 @@ pub async fn google_callback(
                 user_id: None,
                 config: None,
                 qr_code: None,
-                message: "WireGuard server key is not configured on the host.".to_string(),
+                message: "Decoy WireGuard server key is not configured (WG_SERVER_PUBKEY / WG_SERVER_ENDPOINT).".to_string(),
             }),
         ));
     }

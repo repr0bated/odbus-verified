@@ -1,6 +1,6 @@
 #!/bin/sh
 exec 2>&1
-NAME='b0c777e3-0955-cd8b-3d01-ca12998cae28'
+NAME='51aa3321-7467-62e1-5599-d63a9ff90e1'
 # If still running after run exited, stop it (avoid orphan CT)
 if incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
     echo "finish: stopping leftover $NAME"

@@ -1,21 +1,16 @@
 {
   "version": 1,
-  "mesh": {
-    "interface": "3tched",
-    "server_pubkey": "/yBYjQkcD997wTd+e6b1rJiALMKLbLVfF2IO413lj1Y=",
-    "server_endpoint": "188.68.58.237:51821",
-    "server_address": "100.69.0.254/16",
-    "listen_port": 51821,
-    "network": "100.69.0.0/16"
+  "wireguard": {
+    "server": "decoy",
+    "interface": "wg-opdbus",
+    "network": "10.0.0.0/24",
+    "notes": "The only WireGuard server is on the decoy. This host has no WireGuard interface and runs no WireGuard server; the retired 100.69.0.0/16 host mesh is gone."
   },
   "identities": {
     "host": {
       "role": "host",
       "label": "3tched hypervisor",
-      "pubkey": "/yBYjQkcD997wTd+e6b1rJiALMKLbLVfF2IO413lj1Y=",
-      "allowed_ip": "100.69.0.254/32",
-      "sled_source": true,
-      "notes": "Host WireGuard public key; session identity is projected by identity_sled"
+      "notes": "No WireGuard key on this host; session identity is projected by identity_sled"
     },
     "anna-scribe": {
       "role": "service-persona",
@@ -25,25 +20,22 @@
       "persona_id": "anna-scribe",
       "plugin_ref": "wg_opdbus",
       "credential_ref": "host",
-      "notes": "Persistent service persona; reuses the existing host credential by reference and owns no duplicate key"
+      "notes": "Persistent service persona on the decoy WireGuard owner; reuses the host record by reference and owns no duplicate key"
     },
     "jeremy": {
       "role": "user",
       "label": "jeremy",
       "email": "jeremy@3tched.com",
       "pubkey": "GEMLT/+I81zs5HDPsOF22ntqGf71OEy6eFKMm7P7Dzk=",
-      "allowed_ip": "100.69.0.2/32",
-      "client_conf": "wireguard_clients/jeremy-3tched.conf",
-      "notes": "Existing mesh peer \u2014 keep current PrivateKey on client"
+      "notes": "Existing human identity key; host-mesh peer fields retired with the host mesh"
     },
     "chatbot": {
       "role": "chatbot",
       "label": "assistant chatbot",
       "email": "chatbot@3tched.com",
-      "pubkey": "Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=",
-      "allowed_ip": "100.69.0.10/32",
+      "pubkey": "14jaB7DtdCPS3jXAPkFiUfDfF3i5iMcFqg6TeS3qRF4=",
       "runtime_dir": "/var/lib/opdbus-runtime/identities/chatbot",
-      "notes": "Chatbot container identity on 3tched-storage"
+      "notes": "Control-plane chatbot (3tchedCtlChatbot) identity keypair IS the decoy wg-opdbus server keypair, shared for identity only; the container holds no transport key and this host runs no WireGuard"
     }
   }
 }

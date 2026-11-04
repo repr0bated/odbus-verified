@@ -2,6 +2,8 @@
 
 This file provides guidance to the AI agent when working with code in this repository.
 
+**Live host and decoy facts live in `docs/src/operations/host-facts.md`.** Read it before asking the owner about addresses, logins, keys, sockets or images. Ask only about entries marked UNKNOWN, then write the answer back there.
+
 ## Mandatory skill preload — every agent and model
 
 At the start of every session, before any analysis, planning, edits, or subagent work, read these four files completely:
@@ -137,9 +139,31 @@ cd /srv/git/3tched.com && npm run dev
 
 Run `/verify` before reporting work complete. CI won't catch fmt drift, clippy warnings, or test regressions, so the agent must. `/verify` runs `cargo fmt --all -- --check` + `cargo clippy --workspace --all-targets --all-features -- -D warnings` + `cargo test --workspace --all-targets --all-features`.
 
+## Do not put this back to normal (owner, 2026-11-02)
+
+There is no shared memory that survives from one model to the next. The owner has been the continuity. Each new model sees a shape that does not match the usual platform and "repairs" it. That repair is the bug. The system is inside the identity. Ordinary practice puts identity inside the system. Do not follow that pattern back.
+
+If something looks missing, read this table before adding the usual piece.
+
+| It looks wrong | The usual repair, which is forbidden | What this system is |
+| --- | --- | --- |
+| A container has no NIC | Give it a veth and an address | The socket is the attachment. The missing NIC stays missing. One veth, `mesh-ovs`, remains. See `docs/src/operations/network.md`. |
+| No WireGuard on this host | Bring a tunnel up here | WireGuard ends at the decoy. The key is the identity, not a peer to dial. |
+| gRPC should land inside the container | Route to a container address | The call stops at `10.0.0.2:8090`. The container is on `/run/ghostbridge/container.sock`. |
+| OpenFlow is not listening | The container is unreachable until the controller is up | Tag routing is the later path. The socket does not wait on it. |
+| No public memory server | Stand one up, or treat MCP as that server | Memory is that identity's store. Cozo is the working present. Qdrant is the historian. Cognitive MCP is in-process, not a common store. |
+| The user got no page, so show access denied | Fetch the page, then hide it | No grant, no schema, no render. The page is never built. |
+| The chatbot should just do the work | Hand it execution | It renders the schema it was delivered. It does not execute. |
+| The schema should also live in a file or a proto | Add the second copy | The plugin schema is the only source. The sealed blob is the plugin. |
+| Identity is a user row, a cookie, or a source IP | Add that lookup | The container is the identity. There is no outside from which the identity is merely a record. |
+| Voyage-4 vectors have different lengths, or the model is only one of the three | Call them incompatible, keep the allow-list at three, split the collections, or re-embed until every length matches | The compatible set is the 4 series, not only `voyage-4-large`, `voyage-4`, and `voyage-4-lite`. The compliance run also uses `voyage-context-4`. `voyage-4-nano` is in the same published series. Lengths 256, 512, 1024, and 2048 stay compatible. 1024 is only the width of the collections already stored. The compliance re-vectorization belongs to Grok 4.7 agent `grok-build-plan`, session `01a196af-6419-7de2-a73d-3620fffba585`. Do not start a second one. |
+| The operation should ride MQTT, or only plugins are D-Bus objects | Put the calls on MQTT, or leave a person, a session, and every other object as a row | This is operation D-Bus. A call is a D-Bus call. Every object gets a D-Bus representation: a person record, a session, any object. There will be millions. Call one, or call a group. MQTT is not that path. The EMQX doorbell stays a doorbell: nothing authoritative lives on the broker. |
+
+The repudiated mechanisms are listed in `docs/src/architecture/identity-boundaries.md`. Do not reintroduce them because a session has no memory of the last time they were removed.
+
 ## Architecture — the load-bearing invariants (read these before touching plugins, state, or identity)
 
-- **D-Bus is the only control plane.** Every plugin is a D-Bus object at `/org/opdbus/v1/plugins/<name>` under `org.opdbus.v1`. No `Command::new(...)` subprocesses, no direct file reads for live state, no polling loops in plugin/service code. New backend capabilities register as plugins in `crates/op-plugins/src/default_registry.rs` — never as new gRPC proto service packages.
+- **D-Bus is the only control plane.** Every plugin is a D-Bus object at `/org/opdbus/v1/plugins/<name>` under `org.opdbus.v1`. Owner, 2026-11-02: that is the start, not the limit. A person record, a session, and any other object each get a D-Bus representation, and the call is the D-Bus call, alone or as a group. Do not put that operation on MQTT. No `Command::new(...)` subprocesses, no direct file reads for live state, no polling loops in plugin/service code. New backend capabilities register as plugins in `crates/op-plugins/src/default_registry.rs` — never as new gRPC proto service packages.
 - **The plugin IS the schema — one source of truth, nonnegotiable.** That single schema is sealed into the blob, which IS the plugin. D-Bus method signatures, MCP tool inputs, gRPC shapes, and UI field renderers derive from it. Validate inputs against it. Each plugin defines its schema under `crates/op-plugins/src/state_plugins/`, using `plugin_scaffold_helpers.rs`. **There must be no parallel plugin schema source in a repository-level or plugin `schemas/` directory.** The former plugin capture directories, separate section files, and JSON-file loader have been removed. `crates/op-grpc-bridge/src/schema_loader.rs` still exists by name, but it reads only a manifest-pinned `PluginSchema` from the sealed blob catalog; it is not a file-schema fallback. The tched_router upstream document is imported once into `tched_router_contract.rs`; `tched_router_config_surface.rs` and its methods derive from that plugin-owned contract. Importing a new binary schema must replace that embedded contract through `gen_tched_router_config_surface --import-json`; it must not create a second captured-schema authority. Older docs claiming a single `plugin_schema_defs.rs` are also stale — that file does not exist. Owner reaffirmed this rule on 2026-09-13.
 - **The sealed blob IS the plugin.** Present state lives in the sealed blob catalog at `/dev/shm/opdbus/plugin-blobs/<plugin_id>.<schema_hash16>.blob`. A plugin exists ⟺ its blob is in the catalog. The sole writer is the blob sealer in `op-blob`. Consumers read SHM directly (zero-copy) — they never re-hash and never consult the Rust registry for existence. The old `/dev/shm/opdbus/schemas` folder and `live-schema.json` are gone.
 - **MutationEngine owns state; streaming comes from SHM (owner reaffirmed 2026-09-13).** MutationEngine folds authoritative backend results into the complete state tree, including child objects, and commits that state to canonical SHM before change notifications. Child updates/deletions must preserve unrelated children and parent fields. Existing subscriptions derive their values from committed SHM; an in-memory event payload, method argument, or generator buffer is not a second state authority. Preserve verified principal/session scope for private state. Do not add a separate per-method streaming control plane or claim a buffered unary response provides state streaming.

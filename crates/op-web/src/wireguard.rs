@@ -1,6 +1,11 @@
 //! WireGuard Configuration Generation
 //!
 //! Generates WireGuard client configurations and QR codes for the privacy router.
+//!
+//! The only WireGuard server is on the decoy (`wg-opdbus`). This host has no
+//! WireGuard interface and runs no server, so this module never detects a
+//! local interface and ships no default endpoint: the decoy server public key
+//! and endpoint must be configured explicitly.
 
 use anyhow::Result;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
@@ -27,25 +32,28 @@ pub struct WgServerConfig {
 
 impl Default for WgServerConfig {
     fn default() -> Self {
-        Self::from_env_or_system()
+        Self::from_env()
     }
 }
 
 impl WgServerConfig {
-    pub fn from_env_or_system() -> Self {
-        let interface = std::env::var("WG_INTERFACE").unwrap_or_else(|_| "wg0".to_string());
-
+    pub fn from_env() -> Self {
+        // Decoy server identity, explicitly configured. No local interface
+        // fallback: this host has no WireGuard interface.
         let public_key = std::env::var("WG_SERVER_PUBKEY")
             .or_else(|_| std::env::var("WG_SERVER_PUBLIC_KEY"))
             .or_else(|_| std::env::var("WIREGUARD_PUBLIC_KEY"))
             .ok()
             .filter(|v| !v.trim().is_empty())
-            .or_else(|| detect_interface_public_key(&interface))
             .unwrap_or_default();
 
+        // Decoy server endpoint, explicitly configured. No default: no
+        // endpoint on this host is a WireGuard server.
         let endpoint = std::env::var("WG_SERVER_ENDPOINT")
             .or_else(|_| std::env::var("VPN_ENDPOINT"))
-            .unwrap_or_else(|_| "148.113.204.83:51820".to_string());
+            .ok()
+            .filter(|v| !v.trim().is_empty())
+            .unwrap_or_default();
 
         let allowed_ips = std::env::var("WG_ALLOWED_IPS")
             .or_else(|_| std::env::var("VPN_ALLOWED_IPS"))
@@ -64,14 +72,8 @@ impl WgServerConfig {
     }
 
     pub fn is_configured(&self) -> bool {
-        !self.public_key.trim().is_empty()
+        !self.public_key.trim().is_empty() && !self.endpoint.trim().is_empty()
     }
-}
-
-fn detect_interface_public_key(interface: &str) -> Option<String> {
-    let path = format!("/sys/class/net/{}/wireguard/public_key", interface);
-    let key = std::fs::read_to_string(&path).ok()?.trim().to_string();
-    if key.is_empty() { None } else { Some(key) }
 }
 
 /// Generate a WireGuard client configuration

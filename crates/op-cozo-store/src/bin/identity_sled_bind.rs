@@ -18,8 +18,11 @@ fn main() {
 fn run() -> anyhow::Result<()> {
     let db = std::env::var("IDENTITY_SLED_COZO_DB_PATH")
         .unwrap_or_else(|_| "/var/lib/op-dbus/identity-cozo".to_string());
+    // Transition keep-list: the chatbot session moves to the decoy-server-derived
+    // 51aa3321-... . Keep the old b0c777e3-... row until the chatbot is
+    // re-provisioned on the server keypair, then drop it from this list.
     let keep_raw = std::env::var("IDENTITY_SLED_KEEP_SESSIONS").unwrap_or_else(|_| {
-        "b0c777e3-0955-cd8b-3d01-ca12998cae28,f036f8d8-aabb-c5f2-49c9-18dac19f41ea".to_string()
+        "51aa3321-7467-62e1-5599-d63a9ff90e1,b0c777e3-0955-cd8b-3d01-ca12998cae28,f036f8d8-aabb-c5f2-49c9-18dac19f41ea".to_string()
     });
     let keep: HashSet<String> = keep_raw
         .split(',')

@@ -8,13 +8,37 @@ For a dated, command-verified snapshot of interfaces, Incus devices, listeners, 
 
 Re-verify that file against the host before topology-changing work (new proxies, prom/graf exposure, socket migrations).
 
+## Do not change this back (owner, 2026-11-02)
+
+Containers attach by **socket, not by a NIC**. A container with no interface is correct. One looks missing because it was removed. Do not put a NIC, a veth, or an address back to fill that gap. The host link list this morning had one veth, `mesh-ovs`. That is the one container NIC. It stays. The others do not come back.
+
+This replaced per-container NICs when the container became the identity. gRPC for those containers is the shared socket the bridge already serves. A NIC would make the container a second network hop again. WireGuard for identity ends at the decoy. This host has no WireGuard interface. Do not add one. OpenFlow tag routing is the later path that puts a container on the fabric. Nothing is listening on `6653` today. Do not install NICs while waiting for it, and do not start the controller just because the socket already works.
+
+Checked on the host the morning of 2026-11-02. Incus itself was not readable from this user, so container names were not re-listed.
+
+| What | Live, do not revert |
+| --- | --- |
+| gRPC door | `10.0.0.2:8090` |
+| UI | `10.0.0.2:8080` |
+| `ovsbr0` addresses | `10.0.0.2/32`, `10.200.0.1/24`, `100.96.0.3/32` |
+| Public | `pub0` `188.68.58.237/22`. `eth0` is up and unaddressed |
+| Shared container socket | `/run/ghostbridge/container.sock` |
+| Host gRPC socket | `/run/opdbus/grpc.sock` |
+| Lungs | `/run/opdbus/lungs/lungs.sock` |
+| Container egress | `/run/ghostbridge/xray/egress-http.sock` |
+| Qdrant | `127.0.0.1:6333` and `:6334` only |
+| WireGuard | no interface on this host |
+| OpenFlow | `ovs-vswitchd` is up. No listener on `6653` |
+
+Do not restore `svc0` at `10.200.0.2`, a host `3tched` WireGuard interface, or a NIC on a socket-attached container. `10.200.0.2:6334` does not answer. The older paragraphs below that still name those are the layout that was changed. This section wins until a new check replaces it.
+
 ## Model in one paragraph
 
-One OVS bridge (`ovsbr0`) carries the private fabric. Physical uplink (`eth0`) is enslaved and unaddressed; host L3 lives on OVS internal ports **`pub0`** (public) and **`svc0`** (`10.200.0.2/24`). The **xray** container is the only instance with a NIC on the bridge (`10.200.0.1`). WireGuard mesh interface **`3tched`** (`100.69.0.254/16`) is separate L3 and must never be routed via `ovsbr0`.
+One OVS bridge (`ovsbr0`) carries the private fabric. Physical uplink (`eth0`) is enslaved and unaddressed. Host addresses observed on 2026-11-02 are on `ovsbr0` and `pub0`, as in the table above. Container attachment for identity and gRPC is the shared socket, not a bridge port.
 
-**Shared socket fabric:** `op-grpc-bridge` dual-listens on host UDS `/run/opdbus/grpc.sock` and shared container UDS `/run/ghostbridge/container.sock` (same gRPC routes). NIC-less containers bind-mount `/run/ghostbridge`. Some services still use Incus TCP proxies / mesh `fwd-*` (migration is incremental).
+**Shared socket fabric:** `op-grpc-bridge` listens on host UDS `/run/opdbus/grpc.sock` and shared container UDS `/run/ghostbridge/container.sock` (same gRPC routes). NIC-less containers bind-mount `/run/ghostbridge`. Some services still use Incus TCP proxies / mesh `fwd-*` (migration is incremental). Do not delete those proxies as if they were the missing NIC, and do not add a NIC beside them.
 
-**OpenFlow** (`op-of-controller` on `127.0.0.1:6653`) is intentionally NORMAL/standalone today — reserved for **future tag routing**, not a current blocker for the socket fabric.
+**OpenFlow** is reserved for **future tag routing**. It is not how a container gets onto the network today, and it is not a reason to give the container an address.
 
 ## Boot order (runit)
 
@@ -50,7 +74,8 @@ Client DNS (NextDNS) → Oracle decoy → WireGuard mesh → host `fwd-8444` →
 - **Do** check `sudo incus config device show <name>` before assuming UDS-only or proxy-only.
 - **Do** keep mesh routes on `3tched`; strip accidental `100.69.0.0/16` via `ovsbr0`.
 - **Do** treat the [Netmaker ACL helper](host-socket-topology-live.md#break-glass-netmaker-acl-recovery) as break-glass recovery; it enables wildcard all-node traffic and bypasses the normal D-Bus path.
-- **Do not** put `10.200.0.1` on the host.
+- **Do not** add a NIC to a container that has none. The missing interface is the socket attachment. See the 2026-11-02 section above.
+- **Do not** add a WireGuard interface on this host. Identity WireGuard ends at the decoy.
 - **Do not** point live xray at `/etc/xray/config.json`.
 - **Do not** expose Prometheus/Grafana from the netmaker container until the live topology doc is current and the path (mesh vs SNI vs loopback) is chosen.
 

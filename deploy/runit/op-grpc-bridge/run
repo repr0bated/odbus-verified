@@ -170,9 +170,9 @@ else
 fi
 # The singleton control-plane chatbot's service identity. These are public
 # selectors, not credentials; this identity belongs only to that chatbot.
-export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=}"
-export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}"
-export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
+export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-14jaB7DtdCPS3jXAPkFiUfDfF3i5iMcFqg6TeS3qRF4=}"
+export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-51aa3321-7467-62e1-5599-d63a9ff90e1}"
+export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-d977fad4-324d-ee08-31ab-bd999410e1}"
 # Local interactive clients, including Codex, authenticate as the existing
 # human WireGuard principal. The MutationEngine mints SID1 into this same sled;
 # there is deliberately no Codex-specific service identity.

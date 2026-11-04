@@ -46,8 +46,8 @@ pub struct EmbeddingModelState {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "mut.service.embedding-model.endpoint@v1"))]
     pub endpoint: String,
-    /// Shared output dimensionality of the embedding space. The voyage-4 trio
-    /// all emit 1024-dim vectors into one Qdrant collection; one dim per space.
+    /// Width of the existing shared collection. The voyage-4 series is one
+    /// space across lengths; 1024 is the stored width, not the compatibility test.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "mut.service.embedding-model.dimensions@v1"))]
     pub dimensions: u32,
@@ -71,11 +71,13 @@ pub struct EmbeddingModelState {
 
 /// Interchangeable Voyage-4 embedding models — the canonical Voyage catalog.
 ///
-/// `voyage-4-large`, `voyage-4` and `voyage-4-lite` share **one** embedding
-/// space: vectors from any of the three are directly comparable, so all three
-/// write to the *same* Qdrant collection at the *same* dimensionality
-/// ([`VoyageModel::SHARED_EMBEDDING_DIMS`]). Switching models is a quality/cost
-/// tradeoff only — it never requires re-vectorizing existing data.
+/// The voyage-4 series is four models, not three: `voyage-4-large`,
+/// `voyage-4`, `voyage-4-lite`, and `voyage-4-nano`. Owner, 2026-11-02: every
+/// embedding in this series is compatible with the others, including when the
+/// lengths differ (256, 512, 1024, 2048). A different length is not a
+/// different space, and it is not a reason to re-vectorize. The collections
+/// already stored were written at [`VoyageModel::SHARED_EMBEDDING_DIMS`], and
+/// the request path still asks for that width so a query fits them.
 ///
 /// This legacy catalog remains the compatibility set for the existing shared
 /// collection. The generic dispatcher accepts other configured models without
@@ -89,25 +91,28 @@ pub enum VoyageModel {
     Voyage4,
     #[serde(rename = "voyage-4-lite")]
     Voyage4Lite,
+    #[serde(rename = "voyage-4-nano")]
+    Voyage4Nano,
 }
 
 impl Default for VoyageModel {
     fn default() -> Self {
-        // POC target; cheapest of the shared-space trio.
+        // POC target; a cheaper model in the shared voyage-4 series.
         VoyageModel::Voyage4Lite
     }
 }
 
 impl VoyageModel {
-    /// The single shared embedding dimensionality for the interchangeable
-    /// voyage-4 trio. One collection, no re-index across models.
+    /// Width of the stored voyage-4 collections. Same series stays compatible
+    /// at other lengths; this constant is the width those collections use.
     pub const SHARED_EMBEDDING_DIMS: u32 = 1024;
 
-    /// The interchangeable models, all in the shared embedding space.
-    pub const SHARED_SPACE: [VoyageModel; 3] = [
+    /// The whole voyage-4 series. All four share one space.
+    pub const SHARED_SPACE: [VoyageModel; 4] = [
         VoyageModel::Voyage4Large,
         VoyageModel::Voyage4,
         VoyageModel::Voyage4Lite,
+        VoyageModel::Voyage4Nano,
     ];
 
     /// Canonical Voyage API model id.
@@ -116,11 +121,12 @@ impl VoyageModel {
             VoyageModel::Voyage4Large => "voyage-4-large",
             VoyageModel::Voyage4 => "voyage-4",
             VoyageModel::Voyage4Lite => "voyage-4-lite",
+            VoyageModel::Voyage4Nano => "voyage-4-nano",
         }
     }
 
-    /// Output dimensionality. Identical across the trio so their vectors fuse
-    /// and compare in the same Qdrant collection.
+    /// Width requested so a query matches the stored 1024-wide collections.
+    /// Other lengths in this series are still the same space.
     pub fn dimensions(&self) -> u32 {
         Self::SHARED_EMBEDDING_DIMS
     }
@@ -371,6 +377,11 @@ mod tests {
         state.dimensions = 512;
         assert!(legacy_voyage_model(&state).is_none());
         state.dimensions = 1024;
+        state.model_id = "voyage-4-nano".into();
+        assert_eq!(
+            legacy_voyage_model(&state).as_deref(),
+            Some("voyage-4-nano")
+        );
         state.model_id = "different-vector-space".into();
         assert!(legacy_voyage_model(&state).is_none());
     }
