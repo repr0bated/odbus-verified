@@ -707,6 +707,7 @@ Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff
 The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
 
 ## Active work
+| Grok — RECORDED: SNOWBALL IS A SESSION LEDGER | `snowball-session-ledger-20261102` | Docs only: `AGENTS.md`, `HANDOFF.md`, `SIGNALS.md`. No snowball code change. | 2026-11-02 | Owner: a snowball appends a session ledger and is vectorized at session end. Snapshot methods stay until a replacement is requested. |
 | Grok — DONE: HACKATHON CONVERSATION ARCHIVE | `hackathon-conversations-20261026` | 854 files, 633484483 bytes, in gitignored `/srv/git/odbus-verified/hackathon2026/`. Window starts 2026-10-26T00:00:00Z. Index `manifest.jsonl` and `summary.json`. | 2026-11-01 | Not committed. Root and `/home/3tched` stores were not readable. OpenCode and Kilo had no session updated in the window. NotebookLM `.local-capture` (30GB) was not duplicated. |
 | Grok — ACTIVE: COMPLIANCE CORPUS VECTORIZE | `compliance-vectorize-20261101` | Runner `/srv/git/compliance/vectorize_compliance.py`. Context-4 first, then large, 4, lite. Qdrant gRPC 6334. Cozo required in the same commit. | 2026-11-01 | Resume from journal.jsonl. Do not use port 6333 or the Voyage Batch API. |
 | Codex /root — ROUTING CODE COLLECTED | `schema-tag-routing-recovery-20261101` | Own SCHEMA-TAG-ROUTING-CODE.md and this task's shared notes; provenance worker finished read-only. | 2026-11-01 | Single Markdown contains 100 indexed file versions, 67 full source blocks, historical patches and provenance. All embedded source bytes verified. No application/runtime/build/test changes. |
@@ -1074,6 +1075,10 @@ Manually reviewed text files across all 39 directories under `crates/`, replacin
 | Claude (cloud) | OD-94 built and pushed at `d57c497`. Owner asked Grok to finish the uncommitted `set_model_profile` edits in place | branch `claude/amazing-carson-8bg4yr` | 2026-09-29 | Gallery files still Claude's: `json_render_gallery.rs`, `json_render_chat_canvas*.rs` |
 
 ## Handoffs
+
+### 2026-11-02 · Grok (Cursor cloud: snowball is a ledger)
+
+Owner correction. A snowball appends a session ledger and is vectorized once at the end of the session. It does not take snapshots and it does not roll back through a snapshot set. Release btrfs send/receive is unchanged. Recorded in `AGENTS.md` and `SIGNALS.md`. The plugin still exposes `create_snapshot`, `list_snapshots`, `get_snapshot`, and `rollback`; those methods were not removed. Next: replace that surface with the ledger and end-of-session vectorization when that work is requested. Docs only. No build, tests, or deployment.
 
 ### 2026-10-30 · Codex — all PR deliveries reconciled to newer source
 
