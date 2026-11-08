@@ -414,3 +414,11 @@ For non-Cargo delegation, choose the appropriate agent role:
 - Smoke checks and tests are manual/on-request under the owner's policy. Do not run them automatically or treat the general `/verify` guidance above as authorization. When requested, `sh scripts/check-workspace.sh smoke` runs `cargo check --locked --workspace`, then `op-core` and `op-plugins` library tests. `verify` is the full fmt, Clippy, and workspace test gate and also requires an explicit request.
 - The Cloud Agent kernel has no `btrfs` filesystem and no `/lib/modules`. Snowball is a session ledger vectorized at the end of the session, so do not add a btrfs fixture to satisfy snapshot tests. These `op-plugins` tests still call `btrfs subvolume create` and fail here: `failed_unknown_rollback_preserves_state_and_retained_snapshots_after_reopen`, `rejects_missing_invalid_and_unsafe_requests`, and `seven_methods_use_persistent_snapshot_state`. Leave them in place until the ledger model replaces that surface.
 - Do not start the control plane here. `op-web`, the gRPC bridge, OVS, catalog seal, and runit need the Artix host, the sealed blob catalog, and identity state. `op-plugin-lint` can read plugin source without those services.
+
+## Branch policy (owner, 2026-11-08)
+
+Only two branches may be used: `main` and `dev`. Do not create, commit to, or push any other branch.
+Before starting work, run `scripts/branch-policy.sh`. If it reports a violation, stop and report it
+instead of working around it. Archiving a branch to a tag is safe, but deleting a branch in use by a
+worktree, or any remote branch, needs an explicit owner approval. The `.githooks` directory refuses
+commits and pushes to other branches; `git config core.hooksPath .githooks` must be set in the clone.
