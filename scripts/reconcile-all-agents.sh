@@ -50,8 +50,8 @@ if [ "$mode" = owner ]; then
   for r in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin); do
     name=${r#origin/}; [ "$name" = HEAD ] && continue; [ "$name" = origin ] && continue
     on_policy "$name" && continue
-    git tag -f "archive/origin/$name" "origin/$name" >/dev/null
-    if git push -q origin --delete "$name"; then echo "deleted origin/$name (saved as archive/origin/$name)"; else echo "FAILED origin/$name"; fi
+    flat=$(echo "$name" | tr "/" "_"); git tag -f "archive/remote-$flat" "origin/$name" >/dev/null
+    if git push -q origin --delete "$name"; then echo "deleted origin/$name (saved as archive/remote-$flat)"; else echo "FAILED origin/$name"; fi
   done
 fi
 
