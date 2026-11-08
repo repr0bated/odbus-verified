@@ -247,30 +247,34 @@ async fn query_manager_state() -> Result<Vec<DnsItem>> {
         .context("read resolve1 DNS property")?;
     let servers: Vec<String> = dns
         .into_iter()
-        .filter_map(|(_, family, address)| {
-            let ip = match (family, address.as_slice()) {
-                (2, [a, b, c, d]) => std::net::Ipv4Addr::new(*a, *b, *c, *d).to_string(),
-                (10, bytes) if bytes.len() == 16 => {
-                    let mut octets = [0u8; 16];
-                    octets.copy_from_slice(bytes);
-                    std::net::Ipv6Addr::from(octets).to_string()
-                }
-                _ => return None,
-            };
-            Some(ip)
+        .map(|(_, family, address)| match (family, address.as_slice()) {
+            (2, [a, b, c, d]) => Ok(std::net::Ipv4Addr::new(*a, *b, *c, *d).to_string()),
+            (10, bytes) if bytes.len() == 16 => {
+                let mut octets = [0u8; 16];
+                octets.copy_from_slice(bytes);
+                Ok(std::net::Ipv6Addr::from(octets).to_string())
+            }
+            _ => anyhow::bail!("resolve1 returned a malformed DNS address"),
         })
-        .collect();
-    Ok(if servers.is_empty() {
-        Vec::new()
-    } else {
-        vec![DnsItem {
-            id: "manager".into(),
-            mode: Mode::ObserveOnly,
-            servers,
-            search: None,
-            options: None,
-        }]
-    })
+        .collect::<Result<_>>()?;
+    let domains: Vec<(i32, String, bool)> = manager
+        .get_property("Domains")
+        .await
+        .context("read resolve1 Domains property")?;
+    Ok(vec![DnsItem {
+        id: "manager".into(),
+        mode: Mode::ObserveOnly,
+        servers,
+        search: Some(domains.into_iter()
+            .filter_map(|(_, domain, route_only)| (!route_only).then_some(domain))
+            .collect()),
+        options: None,
+    }])
+}
+
+/// Aggregate provider observation; callers preserve unrelated declared items.
+pub async fn observe_dnsresolver_manager() -> Result<Vec<DnsItem>> {
+    query_manager_state().await
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, zbus::zvariant::Type)]

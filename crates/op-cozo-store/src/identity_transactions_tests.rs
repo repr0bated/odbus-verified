@@ -2080,3 +2080,113 @@ fn clean_provision_accepts_only_explicit_deletion_tombstone() {
         IdentityIntent::CleanProvision(Box::new(rejected))).is_err());
     assert_eq!(store.read_identity_revision(&sid).unwrap(), tombstone);
 }
+
+fn container_rename_fixture(store: &CozoGraphShuttle) -> (IdentityRevision, ContainerRenameRequest, String, String) {
+    let (mut record, genesis, _) = legacy_credential_fixture();
+    record.principal_kind = Some("service".into());
+    let native_uuid = "00000000-0000-4000-8000-000000000077";
+    let config = serde_json::json!({
+        "volatile.uuid": native_uuid,
+        "user.opdbus.session_id": record.session_id,
+        "user.opdbus.wireguard_public_key": record.wireguard_pubkey,
+        "security.privileged": "true"
+    });
+    let native = serde_json::json!({
+        "name":"CockpitBot3tched", "type":"container", "status":"Stopped", "status_code":102,
+        "config":config, "expanded_config":config, "devices":[{"name":"persist","device":{"source":"/retained/old-name.img"}}]
+    });
+    record.instance_json = native.to_string();
+    record.btrfs_device_json = serde_json::json!({"device_path":"/retained/old-name.img","btrfs_uuid":"retained-fsid"}).to_string();
+    let request = ContainerRenameRequest {
+        operation_id: "00000000-0000-4000-8000-000000000078".into(),
+        session_id: record.session_id.clone(), native_uuid: native_uuid.into(),
+        old_name: "CockpitBot3tched".into(), new_name: CONTROL_PLANE_NATIVE_NAME.into(),
+        actor_id:"existing-owner".into(), caller_session:"owner-session".into(), caller_genesis:"owner-genesis".into(),
+        schema_hash:"a".repeat(64),
+    };
+    let expected = put(store, &request.session_id, "before-rename", record, Some(genesis));
+    let mut after = native.clone();
+    after["name"] = request.new_name.clone().into();
+    for field in ["config", "expanded_config"] {
+        after[field]["volatile.apply_template"] = "rename".into();
+        after[field]["volatile.cloud-init.instance-id"] = "00000000-0000-4000-8000-000000000079".into();
+    }
+    (expected, request, native.to_string(), after.to_string())
+}
+
+#[test]
+fn container_rename_persists_one_post_permission_and_preserves_identity() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("identity");
+    let (original, request, before, after, completed) = {
+        let store = CozoGraphShuttle::new_persistent_private(path.clone()).unwrap();
+        let (expected, request, before, after) = container_rename_fixture(&store);
+        let names = vec![request.old_name.clone()];
+        let (intent, fresh) = store.begin_container_rename(request.clone(), &expected, before.clone(), &names).unwrap();
+        assert!(fresh);
+        assert!(store.container_rename_name_reserved(&request.old_name).unwrap());
+        assert!(store.container_rename_name_reserved(&request.new_name).unwrap());
+        assert_eq!(store.begin_container_rename(request.clone(), &expected, before.clone(), &names).unwrap(), (intent.clone(), false));
+        assert!(store.apply_identity_intent(&request.session_id, "unrelated",
+            IdentityIntent::AdvanceMutationIndex { event_id:100 }).is_err());
+        let mut other_owner = request.clone();
+        other_owner.caller_genesis = "other".into();
+        assert!(store.begin_container_rename(other_owner, &expected, before.clone(), &names).is_err());
+        let mut wrong: Value = serde_json::from_str(&after).unwrap();
+        wrong["config"]["volatile.uuid"] = "00000000-0000-4000-8000-000000000080".into();
+        let operation = format!("rename-{}", request.operation_id);
+        assert!(store.apply_identity_intent(&request.session_id, &operation,
+            IdentityIntent::RenameContainer { journal: Box::new(intent.clone()), native_after_json: wrong.to_string() }).is_err());
+        assert_eq!(store.read_container_rename(&request.session_id).unwrap(), Some(intent.clone()));
+        inject("before_commit");
+        assert!(store.apply_identity_intent(&request.session_id, &operation,
+            IdentityIntent::RenameContainer { journal: Box::new(intent.clone()), native_after_json: after.clone() }).is_err());
+        assert_eq!(store.read_identity_revision(&request.session_id).unwrap(), expected);
+        assert_eq!(store.read_container_rename(&request.session_id).unwrap(), Some(intent.clone()));
+        let committed = store.apply_identity_intent(&request.session_id, &operation,
+            IdentityIntent::RenameContainer { journal: Box::new(intent), native_after_json: after.clone() }).unwrap().current;
+        let mut unchanged = expected.record.clone().unwrap();
+        unchanged.instance_json = after.clone();
+        unchanged.mutation_index += 1;
+        assert_eq!(committed.record.as_ref(), Some(&unchanged));
+        assert_eq!(committed.genesis, expected.genesis);
+        assert_eq!(store.identity_instance_with_current_name(&request.session_id, &before).unwrap(), after);
+        let mut rollback = unchanged;
+        rollback.instance_json = before.clone();
+        assert!(store.apply_identity_intent(&request.session_id, "unowned-name-edit",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: committed.clone(), record:Some(rollback), genesis:committed.genesis.clone()
+            }))).is_err());
+        (expected, request, before, after, committed)
+    };
+    let store = reopen(&path);
+    let intent = store.read_container_rename(&request.session_id).unwrap().unwrap();
+    assert_eq!(intent.native_before_json, before);
+    assert_eq!(intent.native_after_json, after);
+    assert_eq!(intent.committed_revision, completed.revision);
+    assert_eq!(store.read_identity_revision(&request.session_id).unwrap(), completed);
+    let (_, fresh) = store.begin_container_rename(request, &original, before, &[]).unwrap();
+    assert!(!fresh, "reopen cannot authorize another native POST");
+}
+
+#[test]
+fn container_rename_native_proof_pins_identity_and_storage() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = CozoGraphShuttle::new_persistent_private(dir.path().join("identity")).unwrap();
+    let (_, request, before, after) = container_rename_fixture(&store);
+    assert!(container_rename_native_matches(&before, &after, &request.new_name));
+    for (field, key) in [
+        ("config", "volatile.uuid"), ("config", "user.opdbus.session_id"),
+        ("config", "user.opdbus.wireguard_public_key"), ("expanded_config", "security.privileged"),
+    ] {
+        let mut wrong: Value = serde_json::from_str(&after).unwrap();
+        wrong[field][key] = "changed".into();
+        assert!(!container_rename_native_matches(&before, &wrong.to_string(), &request.new_name));
+    }
+    let mut wrong: Value = serde_json::from_str(&after).unwrap();
+    wrong["devices"][0]["device"]["source"] = "/replacement.img".into();
+    assert!(!container_rename_native_matches(&before, &wrong.to_string(), &request.new_name));
+    let mut wrong: Value = serde_json::from_str(&after).unwrap();
+    wrong["config"]["volatile.apply_template"] = "copy".into();
+    assert!(!container_rename_native_matches(&before, &wrong.to_string(), &request.new_name));
+}

@@ -1,6 +1,7 @@
 //! Embedded cognitive runtime for `op-grpc-bridge`.
 //!
-//! A specialized MCP server for cognitive memory and dynamic content loading.
+//! A native library for cognitive memory and dynamic content loading. The
+//! bridge supplies caller authorization; this library opens no public transport.
 //! Provides tools for:
 //! - Memory storage and retrieval
 //! - Dynamic content loading

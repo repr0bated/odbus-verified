@@ -6,6 +6,30 @@ use crate::identity_receiver::VerifiedSid1;
 use op_state_store::{MethodDecl, PluginSchema};
 use std::path::{Path, PathBuf};
 
+/// Read the materializer's protected authority document, never a caller path.
+/// The held descriptor prevents a pathname swap after the ownership check.
+pub(crate) fn read_grant_document() -> anyhow::Result<serde_json::Value> {
+    use std::io::Read as _;
+    use std::os::unix::{fs::{MetadataExt as _, OpenOptionsExt as _}, fs::PermissionsExt as _};
+    let path = std::env::var_os("OP_GRANTS_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| "/dev/shm/opdbus/capability-grants.json".into());
+    let file = std::fs::OpenOptions::new().read(true)
+        .custom_flags(nix::libc::O_NOFOLLOW | nix::libc::O_NONBLOCK).open(path)?;
+    let metadata = file.metadata()?;
+    anyhow::ensure!(
+        metadata.is_file() && metadata.uid() == 0 && metadata.permissions().mode() & 0o022 == 0,
+        "grant projection is not a protected root-owned file"
+    );
+    const MAX_BYTES: u64 = 8 * 1024 * 1024;
+    anyhow::ensure!(metadata.len() <= MAX_BYTES, "grant projection exceeds its byte bound");
+    let mut bytes = Vec::with_capacity(metadata.len() as usize);
+    file.take(MAX_BYTES + 1).read_to_end(&mut bytes)?;
+    anyhow::ensure!(bytes.len() as u64 <= MAX_BYTES, "grant projection grew beyond its byte bound");
+    crate::grant_document::validate_grant_document(&bytes).map_err(anyhow::Error::msg)?;
+    Ok(serde_json::from_slice(&bytes)?)
+}
+
 /// Require the sealed method's exact capability and the principal's exact grant.
 /// The grant document must come from the protected grant projection, never a caller.
 pub(crate) fn require_method_grant(
@@ -93,14 +117,11 @@ pub async fn check_sid1_method_grant(
     let catalog_dir = std::env::var_os("OP_BLOB_CATALOG_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(op_blob::catalog::DEFAULT_SHM_DIR));
-    let grants_path = std::env::var_os("OP_GRANTS_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/dev/shm/opdbus/capability-grants.json"));
     let plugin_id = plugin_id.to_owned();
     let canonical_method = canonical_method.to_owned();
     let requested_capability = requested_capability.map(str::to_owned);
     tokio::task::spawn_blocking(move || {
-        let grants: serde_json::Value = serde_json::from_slice(&std::fs::read(grants_path)?)?;
+        let grants = read_grant_document()?;
         let (method, hash) = require_method_grant(
             &identity,
             &catalog_dir,

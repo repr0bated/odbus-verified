@@ -438,6 +438,7 @@ pub async fn subscribe_protocol(
     monitor_id: &str,
     method: &str,
     requests: Value,
+    admission: Option<&super::NativeAdmission>,
 ) -> Result<MonitorSubscription> {
     ensure!(database == "Open_vSwitch", "unsupported OVSDB database");
     validate_identifier(monitor_id, "monitor ID")?;
@@ -449,7 +450,7 @@ pub async fn subscribe_protocol(
     bounded_json(&requests)?;
     let (mut connection, selection, initial) = tokio::time::timeout(
         HANDSHAKE_TIMEOUT,
-        connect_protocol(address, database, monitor_id, method, requests, version),
+        connect_protocol(address, database, monitor_id, method, requests, version, admission),
     )
     .await
     .context("OVSDB protocol monitor handshake timed out")??;
@@ -520,6 +521,7 @@ async fn connect_protocol(
     method: &str,
     requests: Value,
     version: ProtocolVersion,
+    admission: Option<&super::NativeAdmission>,
 ) -> Result<(Connection, ProtocolSelection, Value)> {
     let address: Address = address.parse().context("invalid OVSDB transport address")?;
     ensure!(
@@ -530,6 +532,7 @@ async fn connect_protocol(
     let schema_id = connection.next_id();
     let raw_schema = request(&mut connection, schema_id, "get_schema", json!([database])).await?;
     let selection = validate_protocol_requests(&raw_schema, &requests, version)?;
+    if let Some(admission) = admission { admission().await?; }
     let monitor_request_id = connection.next_id();
     let initial = request(
         &mut connection,

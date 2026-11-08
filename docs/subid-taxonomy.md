@@ -19,7 +19,7 @@ rules.
 ```
 
 - `category` — one of `src`, `prj`, `sch`, `mut`, `obs`, `evt`, `exp`.
-- `component-type` — OSCAL vocabulary: `service`, `software`, `network`, etc.
+- `component-type` — an OSCAL noun, or one local noun. OSCAL: `this-system`, `system`, `interconnection`, `software`, `hardware`, `service`, `policy`, `physical`, `process-procedure`, `plan`, `guidance`, `standard`, `validation`. Local: `network`, `agent`, `container`, `data`, `privacy`, `security`, `storage`. Aliases `ui`, `llm`, and `agents` stand for `software`, `service`, and `software`.
 - `subject` — lowercase hyphenated noun (e.g. `xray`, `cognitive`).
 - `verb` — lowercase hyphenated action (e.g. `serve`, `route`, `monitor`).
 - `facet` — optional qualifier for routing variants.
@@ -34,15 +34,15 @@ Tags used by the host consolidation:
 
 | tag | purpose | primary subid | backend |
 |---|---|---|---|
-| `xray-tls` | xray TLS ingress on 443 | `src.network.xray-serve@v1` | ingress |
-| `xray-reality` | xray REALITY ingress on 8443 | `src.network.xray-serve@v1` | ingress |
-| `grpc-bridge` | zeroclaw gateway on 127.0.0.1:8090 | `exp.service.zeroclaw-serve@v1` | gRPC |
+| `xray-tls` | xray TLS ingress on 443 | `src.network.xray.serve@v1` | ingress |
+| `xray-reality` | xray REALITY ingress on 8443 | `src.network.xray.serve@v1` | ingress |
+| `grpc-bridge` | zeroclaw gateway on 127.0.0.1:8090 | `exp.service.zeroclaw.serve@v1` | gRPC |
 | `cognitive` | embedded runtime in `op-grpc-bridge`; no separate listener | plugin-owned cognitive operation subids | bridge MCP / gRPC |
-| `qdrant` | qdrant vector store on 127.0.0.1:6334 | `src.service.qdrant-serve@v1` | TCP |
-| `netmaker-api` | Netmaker REST API on 127.0.0.1:28081 | `src.service.netmaker-api-serve@v1` | TCP |
-| `netmaker-mq` | Netmaker message broker on 127.0.0.1:21883 | `src.service.netmaker-mq-serve@v1` | TCP |
-| `netmaker-ui` | Netmaker dashboard on 127.0.0.1:28082 | `exp.service.netmaker-ui-serve@v1` | TCP |
-| `nextdns` | local NextDNS resolver on 127.0.0.1:53 | `src.service.nextdns-serve@v1` | DNS redirect |
+| `qdrant` | qdrant vector store on 127.0.0.1:6334 | `src.service.qdrant.serve@v1` | TCP |
+| `netmaker-api` | Netmaker REST API on 127.0.0.1:28081 | `src.service.netmaker-api.serve@v1` | TCP |
+| `netmaker-mq` | Netmaker message broker on 127.0.0.1:21883 | `src.service.netmaker-mq.serve@v1` | TCP |
+| `netmaker-ui` | Netmaker dashboard on 127.0.0.1:28082 | `exp.service.netmaker-ui.serve@v1` | TCP |
+| `nextdns` | local NextDNS resolver on 127.0.0.1:53 | `src.service.nextdns.serve@v1` | DNS redirect |
 
 ## Subid → tag → xray rule
 

@@ -48,7 +48,7 @@ pub struct PluginCtx<'a> {
 }
 
 impl PluginCtx<'_> {
-    /// Shared state store (used by e.g. the `mcp` plugin).
+    /// Shared state store supplied to plugin factories.
     pub fn state_store(&self) -> Arc<dyn StateStore> {
         self.reg.state_store.clone()
     }
@@ -387,53 +387,6 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn test_loadable_plugins_publish_schema() {
-        let store = Arc::new(MemoryStore::new());
-        let registry = DefaultPluginRegistry::new(store);
-        let plugin_names = vec![
-            "mcp",
-            "config",
-            "systemd",
-            "dinit",
-            "incus",
-            "net",
-            "openflow",
-            "hardware",
-            "software",
-            "users",
-            "gcloud_adc",
-            "keypair",
-            "service",
-            "wireguard",
-            "agent_config",
-            "ovsdb_bridge",
-            "procfs",
-            "rtnetlink",
-            "sess_decl",
-            "adc",
-            "endpoint",
-            "proxy_server",
-            "web_ui",
-        ];
-
-        let mut missing = Vec::new();
-        for plugin_name in plugin_names {
-            let plugin = registry
-                .load_plugin(plugin_name)
-                .await
-                .unwrap_or_else(|error| panic!("failed to load {}: {}", plugin_name, error));
-            if plugin.schema().is_none() {
-                missing.push(plugin_name.to_string());
-            }
-        }
-
-        assert!(
-            missing.is_empty(),
-            "loadable plugins missing schema(): {:?}",
-            missing
-        );
-    }
 
     #[tokio::test]
     async fn test_auto_load_config_does_not_control_registration() {
@@ -447,11 +400,9 @@ mod tests {
         let registry = DefaultPluginRegistry::with_config(store, config);
 
         assert!(registry.is_auto_load("service"));
-        assert!(!registry.is_auto_load("mcp"));
         assert!(!registry.is_auto_load("config"));
 
         let plugins = registry.load_default_plugins().await.unwrap();
-        assert!(plugins.iter().any(|plugin| plugin.name() == "mcp"));
         assert!(plugins.iter().any(|plugin| plugin.name() == "config"));
     }
 

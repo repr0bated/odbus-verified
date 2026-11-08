@@ -21,6 +21,7 @@ pub use identity_inventory::{
     IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
 };
 pub use identity_transactions::{
+    ContainerRenameJournal, ContainerRenameRequest, CONTROL_PLANE_NATIVE_NAME, container_rename_native_matches,
     NativeCreationRequest, NativeCreationRecord, is_numbered_native_name,
     CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
     IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
@@ -252,8 +253,9 @@ impl CozoGraphShuttle {
     /// Open a credential-bearing store beneath service-only root/data
     /// directories. Restricts their held, nofollow-validated descriptors to
     ///0700 before Cozo can create/read its files; never changes process umask
-    /// or generic store permissions. Custom options that could redirect data
-    /// outside this private boundary are rejected before opening Cozo.
+    /// or generic store permissions. An owned RocksDB options file disables
+    /// preallocation without changing WAL/data locations or durability.
+    /// Unverified custom options are rejected before opening Cozo.
     pub fn new_persistent_private(path: PathBuf) -> std::result::Result<Self, CozoError> {
         Self::open_persistent(path, true)
     }
@@ -268,7 +270,8 @@ impl CozoGraphShuttle {
         } else {
             identity_transactions::PersistentIdentityBoundary::open(&path)?
         };
-        // RocksDB is the durable storage engine beneath CozoDB.
+        // The held boundary installs the native allocation options before
+        // opening RocksDB; Cozo0.7.6 ignores JSON options for this engine.
         let db = DbInstance::new("rocksdb", &ps, Default::default())
             .map_err(|e| CozoError::Other(format!("failed to open CozoDB at {ps}: {e}")))?;
         directory.verify()?;
@@ -527,6 +530,10 @@ impl CozoGraphShuttle {
                 session_id: String => revision: Int,
                 operation_id: String, intent_kind: String, intent_value: Int,
                 principal_kind: String default ""
+            }"#,
+            // Private same-UUID name cutover; native POST permission is never replayed.
+            r#":create identity_container_renames {
+                session_id: String => document: String
             }"#,
             // Private one-row-per-session repair fence in this same Cozo DB.
             // Ordinary session events cannot create, overwrite or truncate it.
@@ -1026,6 +1033,22 @@ impl CozoGraphShuttle {
         p.insert("ts".into(), DataValue::Str(now_rfc3339().into()));
         cozo_run(&self.db, query, p)
             .map_err(|e| CozoError::Other(format!("append audit event: {e}")))?;
+        Ok(())
+    }
+
+    /// Remove all rows from a set of relations. Used to clean up on deny/delete.
+    pub fn clear_relations(
+        &self,
+        names: &[String],
+    ) -> std::result::Result<(), CozoError> {
+        if names.is_empty() {
+            return Ok(());
+        }
+        for name in names {
+            let query = format!("DELETE * FROM {name}", name = name);
+            cozo_run(&self.db, &query, BTreeMap::new())
+                .map_err(|e| CozoError::Other(format!("clear_relations {name}: {e}")))?;
+        }
         Ok(())
     }
 

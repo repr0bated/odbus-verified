@@ -1,10 +1,12 @@
 use anyhow::{Context, Result, bail};
-use super::{boot, inventory, loggers, model::*, mounts, preserve, services, transfer};
+use super::{boot, inventory, loggers, model::*, mounts, preserve, reset, services, transfer};
 
 pub fn report_failure(state: &mut State, error: &anyhow::Error) -> Result<()> {
-    let stop_result = if state.journal.as_ref().is_some_and(|j| j.operation == "activate") {
-        services::down(state)
-    } else { Ok(()) };
+    let stop_result = match state.journal.as_ref().map(|j| j.operation.as_str()) {
+        Some("activate") => services::down(state),
+        Some("reset") => services::quiesce_reset(state),
+        _ => Ok(()),
+    };
     let catalog = (|| -> Result<String> {
         super::fs::hash_file(&mut super::fs::secure_absolute(
             &std::path::Path::new(PERSISTED).join(".manifest.json"), libc::O_RDONLY)?)
@@ -32,6 +34,13 @@ pub fn revert_activation(state: &mut State, resolve_stacks: bool) -> Result<()> 
         services::reload_loggers(state)?;
         loggers::cleanup_created(state)?;
         services::restore(state, &inventory)?;
+    } else if state.journal.as_ref().unwrap().retained_bootstrap {
+        // This is an empty reset bootstrap, not the original pre-install host.
+        // Keep its stubs/backups and original wanted intent; no deleted release
+        // can supply a rollback catalog or be restarted. Any reconciled catalog
+        // is inert until the next successful publication and activation.
+        services::reload_loggers(state)?;
+        loggers::cleanup_created(state)?;
     } else {
         preserve::restore(state, preserve::RestorePhase::Content)?;
         preserve::restore(state, preserve::RestorePhase::Hooks)?;
@@ -49,6 +58,7 @@ pub fn recover(state: &mut State) -> Result<()> {
         "provision" => transfer::provision_resume(state),
         "deploy" => transfer::recover_transfer(state),
         "activate" => revert_activation(state, true),
+        "reset" => reset::resume(state),
         _ => bail!("unknown transaction operation {operation}"),
     };
     if let Err(error) = result { report_failure(state, &error)?; return Err(error); }

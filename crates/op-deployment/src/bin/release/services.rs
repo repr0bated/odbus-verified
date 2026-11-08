@@ -76,6 +76,31 @@ fn visit(name: &str, services: &BTreeMap<String, Service>, selected: &BTreeSet<S
     visiting.remove(name); done.insert(name.into()); order.push(name.into()); Ok(())
 }
 pub fn plan(old: Option<&Inventory>, new: &Inventory, approve_links: &BTreeSet<String>) -> Result<Plan> {
+    plan_with_baseline(old, new, approve_links, None)
+}
+pub(super) fn plan_after_reset(new: &Inventory, baseline: &ResetBaseline) -> Result<Plan> {
+    let names: BTreeSet<_> = new.services.iter().filter(|(_,s)| s.release_owned).map(|(n,_)| n.as_str()).collect();
+    ensure!(names == baseline.plan.order.iter().map(String::as_str).collect(),
+        "service-set changes after reset require approved fixed-stub migration");
+    plan_with_baseline(None, new, &BTreeSet::new(), Some(&baseline.plan))
+}
+fn retained_wanted(name: &str, actual: Wanted, baseline: Option<&Plan>) -> Result<Wanted> {
+    let Some(baseline) = baseline else { return Ok(actual); };
+    let Some(wanted) = baseline.wanted.get(name) else {
+        ensure!(!actual.linked && actual.pid == 0 && actual.state == 0,
+            "unrecorded live service after reset: {name}");
+        return Ok(actual);
+    };
+    // A reboot recreates runsv's transient want-up state, but the retained
+    // fixed stubs are gated by readiness=none. Normal activation stops linked
+    // supervisors again before placement; it must restore the pre-reset intent,
+    // not mistake the reboot's stub retry loop for a new owner decision.
+    ensure!(actual.down == wanted.down && actual.linked == wanted.linked && !actual.paused
+        && (actual.linked || (actual.pid == 0 && actual.state == 0)),
+        "reset service link/down state or unlinked quiescence differs: {name}");
+    Ok(wanted.clone())
+}
+fn plan_with_baseline(old: Option<&Inventory>, new: &Inventory, approve_links: &BTreeSet<String>, baseline: Option<&Plan>) -> Result<Plan> {
     let mut services = new.services.clone();
     if let Some(old) = old { for (n,s) in &old.services { services.entry(n.clone()).or_insert_with(|| s.clone()); } }
     let mut changed = BTreeSet::new();
@@ -104,7 +129,7 @@ pub fn plan(old: Option<&Inventory>, new: &Inventory, approve_links: &BTreeSet<S
     }
     let mut wanted = BTreeMap::new();
     for name in &selected {
-        let state = status(name, approve_links.contains(name))?;
+        let state = retained_wanted(name, status(name, approve_links.contains(name))?, baseline)?;
         ensure!(!state.paused, "paused release consumer {name}; no mutation performed");
         wanted.insert(name.clone(), state);
         let log = format!("{name}/log");
@@ -119,6 +144,7 @@ pub fn plan(old: Option<&Inventory>, new: &Inventory, approve_links: &BTreeSet<S
             } else {
                 read_status(&service_path(&log), wanted[name].linked, approve_links.contains(name))?
             };
+            let logger = retained_wanted(&log, logger, baseline)?;
             ensure!(!logger.paused, "paused logger for release consumer {name}; no mutation performed");
             wanted.insert(log, logger);
         }
@@ -137,6 +163,77 @@ pub fn plan(old: Option<&Inventory>, new: &Inventory, approve_links: &BTreeSet<S
     let mut order = Vec::new(); let mut visiting = BTreeSet::new(); let mut done = BTreeSet::new();
     for name in &selected { visit(name, &services, &selected, &mut visiting, &mut done, &mut order)?; }
     Ok(Plan { changed, order, wanted })
+}
+
+/// Select every declared release consumer, not just changed files. External
+/// dependencies are neither stopped nor required to be up for a teardown.
+pub(super) fn plan_reset(inventories: &[Inventory]) -> Result<Plan> {
+    let mut services: BTreeMap<String, Service> = BTreeMap::new();
+    for inventory in inventories {
+        for (name, service) in &inventory.services {
+            if let Some(prior) = services.get_mut(name) {
+                ensure!(prior.release_owned == service.release_owned,
+                    "release service ownership changed between slots: {name}");
+                for dep in &service.deps { if !prior.deps.contains(dep) { prior.deps.push(dep.clone()); } }
+                for dep in &service.starts { if !prior.starts.contains(dep) { prior.starts.push(dep.clone()); } }
+            } else { services.insert(name.clone(), service.clone()); }
+        }
+    }
+    let selected: BTreeSet<_> = services.iter().filter(|(_,s)| s.release_owned).map(|(n,_)| n.clone()).collect();
+    let mut wanted = BTreeMap::new();
+    for name in &selected {
+        let current = status(name, false)?;
+        ensure!(!current.paused, "paused release consumer {name}; reset not admitted");
+        for member in ["log", ".op-release-disabled-log"] {
+            let logger = format!("{name}/{member}");
+            if service_path(&logger).try_exists()? {
+                let logger_state = read_status(&service_path(&logger), member == "log" && current.linked, false)?;
+                ensure!(!logger_state.paused, "paused release logger {logger}; reset not admitted");
+                wanted.insert(logger, logger_state);
+            }
+        }
+        wanted.insert(name.clone(), current);
+    }
+    let mut order = Vec::new();
+    let mut visiting = BTreeSet::new();
+    let mut done = BTreeSet::new();
+    for name in &selected { visit(name, &services, &selected, &mut visiting, &mut done, &mut order)?; }
+    Ok(Plan { changed: selected, order, wanted })
+}
+
+pub(super) fn quiesce_reset(state: &mut State) -> Result<()> {
+    let journal = state.journal.as_ref().context("reset stop without journal")?;
+    ensure!(journal.operation == "reset", "reset stop requires reset intent");
+    let plan = journal.plan.clone();
+    for main in plan.order.iter().rev() {
+        let expected = &plan.wanted[main];
+        ensure!(linked(main)? == expected.linked, "enable link changed during reset: {main}");
+        for name in [main.clone(), format!("{main}/log"), format!("{main}/.op-release-disabled-log")] {
+            let Some(wanted) = plan.wanted.get(&name) else {
+                ensure!(!service_path(&name).try_exists()?, "unrecorded reset consumer appeared: {name}");
+                continue;
+            };
+            ensure!(service_path(&name).join("down").try_exists()? == wanted.down,
+                "down marker changed during reset: {name}");
+            let observed = read_status(&service_path(&name), wanted.linked, false)?;
+            if supervisor_identity(&name)?.is_some() {
+                if observed.pid == 0 && observed.state == 0 && observed.want == b'd' { continue; }
+                state.intent(format!("reset-service-down:{name}"))?;
+                sv("down", &name)?;
+                let deadline = Instant::now() + Duration::from_secs(30);
+                loop {
+                    let observed = read_status(&service_path(&name), wanted.linked, false)?;
+                    if observed.pid == 0 && observed.state == 0 && observed.want == b'd' { break; }
+                    ensure!(Instant::now() < deadline, "reset consumer did not stop: {name}");
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            } else {
+                ensure!(!wanted.linked && observed.pid == 0 && observed.state == 0,
+                    "reset consumer has no supervisor proving it stopped: {name}");
+            }
+        }
+    }
+    state.intent("reset-consumers-quiescent")
 }
 fn sv(action: &str, name: &str) -> Result<()> {
     fs::secure_absolute(Path::new("/usr/bin/sv"), libc::O_RDONLY)?;
@@ -607,4 +704,72 @@ pub fn restore_boot_lost_shm(state: &mut State, expected: &str) -> Result<()> {
     let shm = fs::hash_file(&mut fs::secure_absolute(&Path::new(SHM).join(".manifest.json"), libc::O_RDONLY)?)?;
     ensure!(shm == expected, "restaged original SHM catalog differs");
     state.intent("original-shm-restored")
+}
+
+pub(super) fn check_reset_catalog_admission(plan: &ResetPlan, has_bootstrap: bool) -> Result<()> {
+    for (key, path) in [("persisted", Path::new(PERSISTED)), ("shm", Path::new(SHM))] {
+        if catalog_open(path)?.is_some() {
+            ensure!(has_bootstrap && plan.catalogs.contains_key(key),
+                "present reset catalog requires native consumer authority and an explicit digest: {}", path.display());
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn plan_reset_catalogs(state: &State) -> Result<Vec<CatalogRemoval>> {
+    let approval = state.journal.as_ref().and_then(|j| j.reset_plan.as_ref())
+        .context("catalog retirement has no explicit native reset plan")?;
+    let mut records = Vec::with_capacity(2);
+    for (key, path) in [("persisted", Path::new(PERSISTED)), ("shm", Path::new(SHM))] {
+        if let Some(root) = catalog_open(path)? {
+            let parent = fs::secure_absolute(path.parent().unwrap(), libc::O_RDONLY | libc::O_DIRECTORY)?;
+            verify_catalog_child(&parent, &root)?;
+            let record = catalog_snapshot(path, &root, false)?;
+            let hash = catalog_manifest(&record)?;
+            let expected = approval.catalogs.get(key).context("present catalog is absent from explicit reset approval")?;
+            ensure!(hash == expected.as_str(), "catalog manifest differs from explicit reset approval: {}", path.display());
+            records.push(record);
+        }
+    }
+    Ok(records)
+}
+
+pub(super) fn retire_reset_catalogs(state: &mut State) -> Result<()> {
+    let journal = state.journal.as_ref().context("catalog retirement without journal")?;
+    ensure!(journal.operation == "reset", "catalog retirement requires reset intent");
+    let records = journal.catalog_removals.clone();
+    for record in &records {
+        ensure!([Path::new(PERSISTED), Path::new(SHM)].contains(&record.path.as_path()),
+            "reset catalog is outside owned publication paths");
+        let Some(root) = catalog_open(&record.path)? else { continue; };
+        let parent = fs::secure_absolute(record.path.parent().unwrap(), libc::O_RDONLY | libc::O_DIRECTORY)?;
+        verify_catalog_child(&parent, &root)?;
+        ensure!(same_catalog_directory(&catalog_identity(&record.path, &root)?, record),
+            "reset catalog directory identity changed: {}", record.path.display());
+        verify_catalog_entries(&catalog_entries(&root)?, &record.entries, false, true)?;
+        state.intent(format!("reset-catalog-retire:{}", record.path.display()))?;
+        for entry in &record.entries {
+            let mut file = match fs::open_beneath(root.as_fd(), Path::new(&entry.name), libc::O_RDONLY | libc::O_NONBLOCK) {
+                Ok(file) => file,
+                Err(error) if absent(&error) => continue,
+                Err(error) => return Err(error),
+            };
+            let metadata = file.metadata()?;
+            ensure!(metadata.is_file() && metadata.ino() == entry.inode
+                && metadata.uid() == entry.uid && metadata.gid() == entry.gid
+                && metadata.mode() == entry.mode && fs::mount_id(file.as_fd())? == fs::mount_id(root.as_fd())?
+                && fs::hash_file(&mut file)? == entry.sha256,
+                "reset catalog entry changed: {}", entry.name);
+            drop(file);
+            fs::remove_at(root.as_fd(), Path::new(&entry.name), false)?;
+        }
+        let current = catalog_open(&record.path)?.context("reset catalog path disappeared")?;
+        ensure!(same_catalog_directory(&catalog_identity(&record.path, &current)?, record),
+            "reset catalog path was replaced");
+        fs::remove_at(parent.as_fd(), Path::new(record.path.file_name().unwrap()), true)?;
+    }
+    for path in [Path::new(PERSISTED), Path::new(SHM)] {
+        ensure!(catalog_open(path)?.is_none(), "unrecorded catalog appeared during reset: {}", path.display());
+    }
+    state.intent("reset-catalogs-retired")
 }

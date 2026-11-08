@@ -44,7 +44,7 @@ use op_plugins::state_plugins::snowball_plugin::{
     AuditEventRecord, QueryEventsInput, QueryEventsOutput, VerifyChainInput, VerifyChainOutput,
 };
 use op_snowball::{OptimizedSnowball, PluginFootprint, SnapshotInterval, StreamingSnowball};
-use op_state_store::{ChainEvent, Decision, EventChain, OperationType};
+use op_execution_tracker::ExecutionTracker;
 
 /// Default on-disk location of the streaming snowball that backs the durable
 /// audit trail, when `$OPDBUS_SNOWBALL_PATH` is unset. Matches
@@ -358,7 +358,8 @@ pub struct MutationEngine {
     /// Last time a principal presented its own credential. Host-service calls
     /// do not update this. A disconnect that hangs leaves the stamp behind,
     /// and the unattended pass uses its age.
-    principal_logins: Arc<RwLock<HashMap<String, i64>>>,
+    /// Execution tracker for bridge-level tool execution auditing.
+    execution_tracker: OnceCell<ExecutionTracker>,
 }
 
 enum AuditSink {
@@ -1180,12 +1181,20 @@ impl MutationEngine {
             mail_projection: Arc::new(Mutex::new(())),
             decoy_network_projection: Arc::new(Mutex::new(())),
             sessions: Arc::new(RwLock::new(HashMap::new())),
-            principal_logins: Arc::new(RwLock::new(HashMap::new())),
+            execution_tracker: OnceCell::new(),
         }
     }
 
     pub fn chain_tx(&self) -> &broadcast::Sender<ChainEvent> {
         &self.chain_tx
+    }
+
+    /// Configure the shared execution tracker after construction so tests can
+    /// create an engine before the tracker is available.
+    pub fn configure_execution_tracker(&self) -> Result<(), &'static str> {
+        self.execution_tracker
+            .set(ExecutionTracker::new(1024))
+            .map_err(|_| "execution tracker already configured")
     }
 
     #[cfg(test)]

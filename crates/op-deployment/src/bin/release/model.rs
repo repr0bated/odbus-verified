@@ -10,6 +10,8 @@ pub const APPROVAL: &str = "/var/lib/opdbus-release/first-activation.json";
 pub const RELEASE_BASE: &str = "/var/lib/opdbus-release/base";
 pub const GOLDEN: &str = "/opt/op-dbus/golden";
 pub const SEND: &str = "/opt/op-dbus/release-send";
+pub const SEND_ORPHANED: &str = "/opt/op-dbus/release-send-orphaned";
+pub const RESET_PLAN: &str = "/var/lib/opdbus-release/reset-plan.json";
 pub const FSID: &str = "d53eeac0-949b-499c-b051-9fecf8678f59";
 pub const OPT_ID: u64 = 271;
 pub const GRAPH: &str = "usr/share/op-dbus/graphs/release.json";
@@ -59,6 +61,33 @@ pub struct Wanted {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Plan { pub changed: BTreeSet<String>, pub order: Vec<String>, pub wanted: BTreeMap<String, Wanted> }
+
+/// Bootstrap retained across a release reset, not an active release or rollback.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResetBaseline { pub targets: Vec<Target>, pub plan: Plan }
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ResetPhase { Quiescing, Detaching, Retiring, Finalizing }
+
+/// Explicit native reset authority, independent of historical slot bookkeeping.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResetSource {
+    pub parent: String, pub name: String, pub id: u64, pub native_uuid: String,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResetReceived {
+    pub slot: Option<Slot>, pub name: String, pub id: u64,
+    pub native_uuid: String, pub received_uuid: String, pub source: ResetSource,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResetPlan {
+    pub version: u32, pub mounted: Option<Slot>, pub received: Vec<ResetReceived>,
+    pub sources: Vec<ResetSource>, pub catalogs: BTreeMap<String, String>,
+}
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Preserved {
@@ -119,6 +148,14 @@ pub struct Journal {
     pub catalog_publication: Option<CatalogPublication>,
     pub hooks: Vec<HookChange>,
     pub loggers: Vec<LoggerChange>,
+    #[serde(default)]
+    pub reset_phase: Option<ResetPhase>,
+    #[serde(default)]
+    pub retained_bootstrap: bool,
+    #[serde(default)]
+    pub reset_plan: Option<ResetPlan>,
+    #[serde(default)]
+    pub reset_releases: BTreeMap<Slot, Release>,
 }
 impl Journal {
     pub fn new(operation: &str, from: Option<Slot>, to: Option<Slot>) -> Self {
@@ -127,7 +164,9 @@ impl Journal {
             moved: BTreeSet::new(), stacked: BTreeSet::new(), allowed: BTreeSet::new(),
             error: None, timings_ms: BTreeMap::new(), stream_bytes: 0, incremental: false,
             evicted: None, removals: Vec::new(), aborting: false, catalog_removals: Vec::new(),
-            catalog_publication: None, hooks: Vec::new(), loggers: Vec::new() }
+            catalog_publication: None, hooks: Vec::new(), loggers: Vec::new(),
+            reset_phase: None, retained_bootstrap: false,
+            reset_plan: None, reset_releases: BTreeMap::new() }
     }
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -138,11 +177,14 @@ pub struct State {
     pub last_timings_ms: BTreeMap<String, u128>, pub last_stream_bytes: u64,
     pub first_activation_originals: Vec<Preserved>,
     pub golden_original: Option<serde_json::Value>,
+    #[serde(default)]
+    pub reset_baseline: Option<ResetBaseline>,
 }
 impl Default for State {
     fn default() -> Self { Self { version: 1, active: None, previous: None,
         slots: [(Slot::A, None), (Slot::B, None)].into(), journal: None,
-        last_timings_ms: BTreeMap::new(), last_stream_bytes: 0, first_activation_originals: Vec::new(), golden_original: None } }
+        last_timings_ms: BTreeMap::new(), last_stream_bytes: 0, first_activation_originals: Vec::new(),
+        golden_original: None, reset_baseline: None } }
 }
 impl State {
     pub fn load() -> Result<Self> {

@@ -17,7 +17,7 @@ use tched_fs::threetched_surface;
 
 use std::fs;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use clap::{Args, Parser, Subcommand};
@@ -108,6 +108,9 @@ enum Command {
         mount: Option<PathBuf>,
         #[arg(long, requires = "mount")]
         expected_session: Option<String>,
+        /// Require the guest's kernel-bound mount; never select a host session.
+        #[arg(long, requires = "mount", conflicts_with = "expected_session")]
+        guest_kernel: bool,
         /// JSON argument object, or '-' to read stdin.
         #[arg(long, conflicts_with = "args_file", default_value = "{}")]
         args: String,
@@ -128,6 +131,9 @@ enum Command {
         mount: PathBuf,
         #[arg(long)]
         expected_session: Option<String>,
+        /// Require the guest's kernel-bound mount; never select a host session.
+        #[arg(long, conflicts_with = "expected_session")]
+        guest_kernel: bool,
         #[arg(long, conflicts_with = "args_file", default_value = "{}")]
         args: String,
         #[arg(long)]
@@ -139,8 +145,11 @@ enum Command {
     Describe {
         #[arg(long, conflicts_with = "store")]
         mount: PathBuf,
-        #[arg(long)]
-        expected_session: String,
+        #[arg(long, required_unless_present = "guest_kernel")]
+        expected_session: Option<String>,
+        /// Discover only through this guest's kernel-bound namespace.
+        #[arg(long, conflicts_with = "expected_session")]
+        guest_kernel: bool,
         #[arg(long)]
         plugin: Option<String>,
     },
@@ -331,6 +340,18 @@ enum SnapshotCommand {
     List,
 }
 
+fn open_mounted_namespace(
+    path: &Path,
+    expected_session: Option<&str>,
+    guest_kernel: bool,
+) -> Result<mounted::MountedNamespace> {
+    if guest_kernel {
+        mounted::MountedNamespace::open_for_mode(path, &namespace::MountIdentity::GuestKernel)
+    } else {
+        mounted::MountedNamespace::open(path, expected_session)
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -338,15 +359,17 @@ async fn main() -> Result<()> {
     if let Command::Describe {
         mount,
         expected_session,
+        guest_kernel,
         plugin,
     } = &cli.command
     {
-        let namespace = mounted::MountedNamespace::open(mount, Some(expected_session))?;
+        let namespace = open_mounted_namespace(mount, expected_session.as_deref(), *guest_kernel)?;
         return print_json(&namespace.describe(plugin.as_deref())?);
     }
     if let Command::Call {
         mount: Some(path),
         expected_session,
+        guest_kernel,
         plugin,
         method,
         args,
@@ -355,7 +378,7 @@ async fn main() -> Result<()> {
         ..
     } = &cli.command
     {
-        let namespace = mounted::MountedNamespace::open(path, expected_session.as_deref())?;
+        let namespace = open_mounted_namespace(path, expected_session.as_deref(), *guest_kernel)?;
         let decl = namespace.method_decl(plugin, method)?;
         if decl.side_effect != model::SideEffect::Read && !confirm_side_effects {
             bail!("operation requires --confirm-side-effects");
@@ -367,12 +390,13 @@ async fn main() -> Result<()> {
         path,
         mount,
         expected_session,
+        guest_kernel,
         args,
         args_file,
         confirm_side_effects,
     } = &cli.command
     {
-        let namespace = mounted::MountedNamespace::open(mount, expected_session.as_deref())?;
+        let namespace = open_mounted_namespace(mount, expected_session.as_deref(), *guest_kernel)?;
         let arguments = input_json(Some(args), args_file.as_ref())?;
         return print_json(&namespace.invoke(path, arguments, *confirm_side_effects)?);
     }
@@ -548,6 +572,7 @@ async fn main() -> Result<()> {
             confirm_side_effects,
             mount: _,
             expected_session: _,
+            guest_kernel: _,
         } => {
             let target = resolve_target(&store, &target)?;
             let arguments = input_json(Some(&args), args_file.as_ref())?;
@@ -752,6 +777,40 @@ fn print_json(value: &impl Serialize) -> Result<()> {
 #[cfg(test)]
 mod cli_tests {
     use super::*;
+
+    #[test]
+    fn guest_mounted_commands_reject_host_identity_and_direct_transport() {
+        for command in [
+            vec!["3tched-fs", "call", "demo", "get_status"],
+            vec!["3tched-fs", "invoke", "plugins/demo/operations/get_status/call"],
+            vec!["3tched-fs", "describe"],
+        ] {
+            let mut missing_mount = command.clone();
+            missing_mount.push("--guest-kernel");
+            assert!(Cli::try_parse_from(missing_mount).is_err());
+            let mut args = command;
+            args.extend(["--mount", "/run/mounts/3tchedFS", "--guest-kernel"]);
+            let parsed = Cli::try_parse_from(&args).unwrap();
+            assert!(matches!(parsed.command,
+                Command::Call { guest_kernel: true, .. }
+                | Command::Invoke { guest_kernel: true, .. }
+                | Command::Describe { guest_kernel: true, .. }));
+            for alternate in [
+                ["--expected-session", "host"],
+                ["--bus-address", "unix:path=/alternate"],
+                ["--lungs-credential", "/alternate"],
+                ["--lungs-socket", "/alternate"],
+                ["--store", "/alternate"],
+            ] {
+                let mut conflicting = args.clone();
+                conflicting.extend(alternate);
+                assert!(Cli::try_parse_from(conflicting).is_err());
+            }
+        }
+        assert!(Cli::try_parse_from([
+            "3tched-fs", "describe", "--mount", "/run/mounts/3tchedFS"
+        ]).is_err());
+    }
 
     #[test]
     fn mounted_commands_preserve_identity_and_reject_transport_fallback() {

@@ -1,15 +1,54 @@
 #!/bin/sh
-# Readiness is observational: never widen a service-owned socket's mode.
+# Observe the initialized production runtime and its real identity gate.
 set -eu
+# runit's check runner may close stdout; keep command finalization well-defined.
+exec >/dev/null
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 set +a
-# The native bridge publishes this only after replay and listener binding.
-[ -f "${OPDBUS_READY_PATH:-/run/opdbus/runit-ready/op-grpc-bridge}" ] || exit 1
-[ -S "${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}" ] || exit 1
-status=$(curl --noproxy '*' --silent --show-error --connect-timeout 1 --max-time 3 \
-    --cacert "${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
-    --output /dev/null --write-out '%{http_code}' \
-    https://10.0.0.2:8090/mcp) || exit 1
-# An unauthenticated request must reach the active identity gate.
-[ "$status" = 401 ]
+# A stale file or another process listening on the door is not readiness.
+ready=${OPDBUS_READY_PATH:-/run/opdbus/runit-ready/op-grpc-bridge}
+lungs=${OPDBUS_LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
+[ ! -L "$ready" ] && [ -f "$ready" ] || exit 1
+[ "$(stat -c %u:%a "$ready")" = 0:600 ] || exit 1
+process=$(jq -er --arg lungs "$lungs" '
+    select(.schema == "opdbus.bridge-ready.v1"
+        and .listen_addr == "10.0.0.2:8090" and .transport == "tls"
+        and .runtime_ready == true and .lungs_ready == true
+        and .lungs_socket == $lungs
+        and .exhook_ready == true and .exhook_addr == "127.0.0.1:9000")
+    | [.pid, .start_time_ticks]
+    | select(all(.[]; type == "number" and . > 0 and . == floor))
+    | @tsv
+' "$ready") || exit 1
+set -- $process
+[ "$#" -eq 2 ] || exit 1
+pid=$1
+start_time_ticks=$2
+kill -0 "$pid" 2>/dev/null || exit 1
+[ "/proc/$pid/exe" -ef /usr/local/libexec/op-dbus/bin/op-grpc-bridge ] || exit 1
+actual_start=$(awk '{ sub(/^.*\) /, ""); print $20 }' "/proc/$pid/stat") || exit 1
+[ "$actual_start" = "$start_time_ticks" ] || exit 1
+[ ! -L "$lungs" ] && [ -S "$lungs" ] || exit 1
+
+# An empty protobuf message is valid CallMethod input. Without identity
+# metadata it must reach the actual service and return UNAUTHENTICATED (16),
+# not an HTTP-only liveness handler, an absent MCP route, or UNIMPLEMENTED.
+headers=$(printf '\000\000\000\000\000' |
+    curl --noproxy '*' --http1.1 --silent --show-error --connect-timeout 1 --max-time 3 \
+        --cacert "${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
+        --header 'content-type: application/grpc-web+proto' \
+        --header 'x-grpc-web: 1' \
+        --data-binary @- --output /dev/null --dump-header - \
+        https://10.0.0.2:8090/operation.v1.PluginService/CallMethod) || exit 1
+printf '%s\n' "$headers" | awk '
+    { sub(/\r$/, "") }
+    /^HTTP\// { status = $2; grpc_status = ""; content_type = "" }
+    tolower($1) == "grpc-status:" { grpc_status = $2 }
+    tolower($1) == "content-type:" { content_type = $2 }
+    END {
+        if (status == 200 && grpc_status == "16" && content_type == "application/grpc-web+proto") exit 0
+        exit 1
+    }
+' || exit 1
+kill -0 "$pid" 2>/dev/null

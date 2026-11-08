@@ -23,7 +23,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
 use op_plugins::state_plugins::model_registry::{
-    DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
+    DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput,
     ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
     MaintainCredentialsInput, MaintainCredentialsOutput, ModelListFormat, ModelRecord,
     ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh, ProviderStatus, ProvidersFile,
@@ -31,14 +31,9 @@ use op_plugins::state_plugins::model_registry::{
     bounded_error, page_limit, parse_models_response, parse_providers_toml, valid_model_id,
     valid_provider_id, validate_list_models, validate_set_model_profile,
 };
-use op_state_store::PluginSchema;
 use serde_json::Value;
 
-use crate::{
-    interceptor::load_capability_grants, method_contract_admission, mutation_engine::MutationEngine,
-};
 
-const PLUGIN: &str = "model_registry";
 const FETCH_TIMEOUT: Duration = Duration::from_secs(30);
 // Bound provider response/parse working sets independently of the list size.
 const MAX_CONCURRENT_MODEL_LISTS: usize = 4;
@@ -735,33 +730,8 @@ pub(crate) async fn set_model_profile(
     Ok(SetModelProfileOutput { model, revision })
 }
 
-fn required_capability<'a>(schema: &'a PluginSchema, method: &str) -> Result<&'a str> {
-    schema
-        .methods
-        .get(method)
-        .with_context(|| format!("admitted {PLUGIN}.{method} declaration is absent"))?
-        .required_capability
-        .as_deref()
-        .context("admitted model_registry method has no exact capability")
-}
 
-/// Catalog authority for the separately admitted native binding reflection.
-/// This helper reads no native configuration and grants no native authority.
-pub(crate) async fn catalog_binding_target(
-    engine: &MutationEngine,
-    provider_id: &str,
-    model_id: &str,
-    ) -> Result<crate::chat_router_catalog_binding::BindingTarget> {
-    binding_target_from(
-        &Environment::from_env(),
-        engine.model_registry_cozo().await?,
-        provider_id,
-        model_id,
-    )
-    .await
-}
-
-async fn binding_target_from(
+pub(crate) async fn binding_target_from(
     env: &Environment,
     store: Arc<CozoGraphShuttle>,
     provider_id: &str,
@@ -852,9 +822,6 @@ async fn binding_target_from(
     })
 }
 
-fn args<T: serde::de::DeserializeOwned>(args: &Value) -> Result<T> {
-    serde_json::from_value(args.clone()).context("invalid model_registry arguments")
-}
 
 /// Apply gate-class operations to the provider TOML itself (the one
 /// governed provider file; no invented line format). Each operation names
@@ -866,7 +833,7 @@ fn args<T: serde::de::DeserializeOwned>(args: &Value) -> Result<T> {
 /// The file stays value-free (no credential value passes through), the
 /// write is atomic (temp file + rename, mode preserved), and every applied
 /// operation is verified by re-parsing the complete file before admission.
-async fn maintain_credentials(
+pub(crate) async fn maintain_credentials(
     env: &Environment,
     input: MaintainCredentialsInput,
 ) -> Result<MaintainCredentialsOutput> {
@@ -1018,61 +985,3 @@ async fn maintain_credentials(
     })
 }
 
-pub(crate) async fn dispatch(
-    engine: &MutationEngine,
-    method: &str,
-    arguments: &Value,
-    actor: &str,
-    session: Option<&str>,
-    admitted: &PluginSchema,
-) -> Result<Value> {
-    ensure!(
-        session.is_some_and(|session| !session.is_empty()),
-        "a verified session is required"
-    );
-    let required = required_capability(admitted, method)?;
-    ensure!(
-        load_capability_grants(actor).contains(required),
-        "current exact {required} grant is required"
-    );
-    let env = Environment::from_env();
-    let store = engine.model_registry_cozo().await?;
-    let output = match method {
-        "list_providers" => {
-            let _: ListProvidersInput = args(arguments)?;
-            serde_json::to_value(list_providers(&env, store).await?)?
-        }
-        "list_models" => serde_json::to_value(list_models(&env, store, args(arguments)?).await?)?,
-        "native_list_providers" => {
-            let _: op_plugins::state_plugins::model_registry::NativeListProvidersInput =
-                args(arguments)?;
-            let runtime = crate::chat_router_runtime::ChatRouterRuntimeClient::from_env();
-            let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
-                &crate::sealed_schema_reader::blob_catalog_dir_from_env(),
-                "chat_router",
-            )?;
-            let secrets = crate::chat_router_config_engine::pinned_config_secrets(&pinned)?;
-            let providers = runtime.native_providers_inventory(&secrets).await?;
-            serde_json::to_value(
-                op_plugins::state_plugins::model_registry::NativeListProvidersOutput { providers },
-            )?
-        }
-        "maintain_credentials" => {
-            serde_json::to_value(maintain_credentials(&env, args(arguments)?).await?)?
-        }
-        "set_model_profile" => {
-            serde_json::to_value(set_model_profile(&env, store, args(arguments)?).await?)?
-        }
-        "refresh" => {
-            serde_json::to_value(refresh(&env, &HttpLister, store, args(arguments)?).await?)?
-        }
-        other => bail!("{PLUGIN} has no method {other}"),
-    };
-    let declaration = admitted
-        .methods
-        .get(method)
-        .with_context(|| format!("admitted {PLUGIN}.{method} declaration is absent"))?;
-    method_contract_admission::validate_admitted_output(declaration, &output)
-        .context("model_registry output does not conform to the admitted sealed contract")?;
-    Ok(output)
-}

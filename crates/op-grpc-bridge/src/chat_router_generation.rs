@@ -55,6 +55,10 @@ pub(crate) trait NativeGenerationAdmission: Send + Sync {
         None
     }
 
+    fn trace_id(&self) -> Option<&str> {
+        None
+    }
+
     fn check(&self)
     -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>>;
 }
@@ -221,6 +225,10 @@ async fn run_native(
         handshake
             .headers_mut()
             .insert("x-opdbus-sealed-id-bin", header);
+    }
+    if let Some(trace_id) = request.before_prompt.trace_id() {
+        let header = trace_id.parse().map_err(|_| NativeGenerationError::InvalidRequest("invalid trace metadata"))?;
+        handshake.headers_mut().insert("x-ghostbridge-trace-id", header);
     }
     let config = WebSocketConfig {
         max_message_size: Some(MAX_FRAME_BYTES),

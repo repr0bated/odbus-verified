@@ -71,24 +71,19 @@ impl CognitiveServer {
             return Err("a durable CognitiveServer requires a persistent Cozo path".into());
         }
         let cozo_shuttle = Arc::new(CozoGraphShuttle::new_persistent(PathBuf::from(db_path))?);
-        let server = Self::new_with_shuttle(cozo_shuttle).await?;
-        // Owner decision 2026-09-19: the semantic shuttle is not optional on
-        // the durable path. Every Cozo write is vectorized; a runtime that
-        // could write memory it cannot embed would silently split the truth.
-        // Fail closed here — the bridge reports Unavailable for cognitive
-        // methods until Qdrant and the embedder are reachable.
-        if server.qdrant_shuttle.is_none() {
-            return Err(
-                "durable CognitiveServer requires the Qdrant semantic shuttle (COGNITIVE_QDRANT_URL reachable and a Voyage key); refusing to serve memory without vectors"
-                    .into(),
-            );
-        }
-        Ok(server)
+        Self::build(cozo_shuttle, true).await
     }
 
     /// Create a Cognitive server with a pre-configured CozoGraphShuttle.
     pub async fn new_with_shuttle(
         cozo_shuttle: Arc<CozoGraphShuttle>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::build(cozo_shuttle, false).await
+    }
+
+    async fn build(
+        cozo_shuttle: Arc<CozoGraphShuttle>,
+        require_semantic: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let memory_store = Arc::new(CognitiveMemoryStore::new(cozo_shuttle.clone()).await?);
 
@@ -104,6 +99,15 @@ impl CognitiveServer {
                 None
             }
         };
+        // Fail before starting any task that retains the native store. A
+        // failed durable open must not leave a monitoring task holding its
+        // RocksDB lock and make the next invocation permanently unavailable.
+        if require_semantic && qdrant_shuttle.is_none() {
+            return Err(
+                "durable CognitiveServer requires the Qdrant semantic shuttle (COGNITIVE_QDRANT_URL reachable and a Voyage key); refusing to serve memory without vectors"
+                    .into(),
+            );
+        }
 
         let session_manager = Arc::new(SessionManager::with_defaults());
         let quota_manager = Arc::new(QuotaManager::with_defaults());
@@ -146,7 +150,6 @@ impl CognitiveServer {
             memory_store.clone(),
             rag_pipeline.clone(),
         ));
-        context_engine.clone().start_monitoring();
 
         if let Some(rag) = &rag_pipeline {
             let n = register_code_tools(
@@ -158,6 +161,7 @@ impl CognitiveServer {
             .await?;
             tracing::info!(registered = n, "Registered code-context tools");
         }
+        context_engine.clone().start_monitoring();
 
         Ok(Self {
             memory_store,

@@ -474,6 +474,15 @@ async fn dispatch_packagekit_on_connection_with_deadline(
     let mut package_ids = Vec::new();
     let mut package_details = Vec::new();
     match method {
+        "get_packages" => {
+            let input: GetUpdatesInput = serde_json::from_value(args.clone())?;
+            tokio::time::timeout(
+                deadline,
+                tx.call::<_, _, ()>("GetPackages", &(input.filter,)),
+            )
+            .await
+            .context("PackageKit GetPackages timeout")??;
+        }
         "resolve" => {
             let input: ResolvePackagesInput = serde_json::from_value(args.clone())?;
             tokio::time::timeout(
@@ -608,6 +617,20 @@ pub async fn dispatch_packagekit_method(
     Ok(serde_json::to_value(
         dispatch_packagekit_on_connection(&connection, method, args).await?,
     )?)
+}
+
+/// Full installed-package readback through the same native transaction owner.
+/// This is an observation helper, not an additional sealed callable method.
+pub async fn installed_package_inventory() -> Result<PackageKitResult> {
+    let connection = zbus::Connection::system()
+        .await
+        .context("connect to PackageKit system bus")?;
+    dispatch_packagekit_on_connection(
+        &connection,
+        "get_packages",
+        &serde_json::json!({"filter": 1u64 << 2}),
+    )
+    .await
 }
 
 pub(crate) fn packagekit_schema() -> PluginSchema {

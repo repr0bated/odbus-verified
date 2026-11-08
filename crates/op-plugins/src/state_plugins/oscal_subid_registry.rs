@@ -158,6 +158,7 @@ pub enum OscalComponentType {
     Guidance,
     Standard,
     Validation,
+    /// Local noun. OSCAL has no `network` component type. Issued subids use it.
     Network,
 }
 

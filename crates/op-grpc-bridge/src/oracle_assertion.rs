@@ -430,6 +430,7 @@ struct DurableReplayState {
 enum ReplayBackend {
     Memory(Mutex<HashMap<ReplayKey, i64>>),
     Durable(Mutex<DurableReplayState>),
+    #[cfg(test)]
     Unavailable(String),
 }
 
@@ -544,6 +545,7 @@ impl AssertionReplayCache {
         })
     }
 
+    #[cfg(test)]
     fn unavailable(error: impl Into<String>, leeway_secs: i64) -> Self {
         Self {
             backend: ReplayBackend::Unavailable(error.into()),
@@ -589,6 +591,7 @@ impl AssertionReplayCache {
                 }
                 Ok(active(&state.seen))
             }
+            #[cfg(test)]
             ReplayBackend::Unavailable(error) => Err(ReplayStoreError(error.clone())),
         }
     }
@@ -649,6 +652,7 @@ impl AssertionReplayCache {
                 state.seen.insert(key, expires_at);
                 Ok(true)
             }
+            #[cfg(test)]
             ReplayBackend::Unavailable(error) => Err(ReplayStoreError(error.clone())),
         }
     }
@@ -674,6 +678,7 @@ impl AssertionReplayCache {
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .seen
                 .len(),
+            #[cfg(test)]
             ReplayBackend::Unavailable(_) => 0,
         }
     }
@@ -750,22 +755,26 @@ impl AssertionValidator {
     /// selector. Missing or unknown `OP_ORACLE_ASSERTION_SOURCE_BINDING` uses
     /// `trusted-decoy-signature` (the live fabric binding). `exact-peer-ip`
     /// remains available as an explicit legacy opt-in.
-    pub fn from_env(trust_store: DecoyTrustStore) -> Self {
+    ///
+    /// Durable replay initialization must succeed before any ingress is ready.
+    /// Never replace an unavailable or corrupt replay history with an empty store.
+    pub fn from_env(trust_store: DecoyTrustStore) -> Result<Self, ReplayStoreError> {
         let path = std::env::var(AUTH_REPLAY_DB_PATH_ENV)
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from(DEFAULT_AUTH_REPLAY_DB_PATH));
-        let replay_cache = match AssertionReplayCache::persistent(&path, CLOCK_LEEWAY_SECS) {
-            Ok(cache) => cache,
-            Err(error) => {
-                tracing::error!(path = %path.display(), %error, "durable auth replay store unavailable");
-                AssertionReplayCache::unavailable(error.to_string(), CLOCK_LEEWAY_SECS)
-            }
-        };
-        let mut validator = Self::new(trust_store)
-            .with_replay_cache(replay_cache)
-            .with_source_binding(AssertionSourceBinding::from_env());
-        validator.browser_binding = BrowserBindingPolicy::from_env();
-        validator
+        Self::from_persistent_store(trust_store, &path)
+    }
+
+    fn from_persistent_store(trust_store: DecoyTrustStore, path: &Path) -> Result<Self, ReplayStoreError> {
+        let replay_cache = AssertionReplayCache::persistent(path, CLOCK_LEEWAY_SECS)?;
+        Ok(Self {
+            trust_store,
+            replay_cache,
+            leeway_secs: CLOCK_LEEWAY_SECS,
+            max_lifetime_secs: MAX_LIFETIME_SECS as i64,
+            source_binding: AssertionSourceBinding::from_env(),
+            browser_binding: BrowserBindingPolicy::from_env(),
+        })
     }
 
     pub fn with_source_binding(mut self, source_binding: AssertionSourceBinding) -> Self {
@@ -1847,6 +1856,51 @@ pub mod tests {
                 0o600
             );
         }
+    }
+
+    #[test]
+    fn production_validator_rejects_unavailable_replay_store() {
+        let issuer = test_issuer();
+        let blocker = tempfile::NamedTempFile::new().expect("blocking file");
+        let path = blocker.path().join("auth-replay.db");
+        let error = AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
+            .expect_err("production construction requires a usable durable replay store");
+        assert!(error.to_string().contains("create replay-store parent"));
+    }
+
+    #[test]
+    fn production_validator_rejects_corrupt_replay_store_without_replacing_it() {
+        let issuer = test_issuer();
+        let dir = tempfile::tempdir().expect("replay dir");
+        let path = dir.path().join("auth-replay.db");
+        let corrupt = b"{\"envelope_kind\":";
+        std::fs::write(&path, corrupt).expect("write interrupted journal");
+        let error = AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
+            .expect_err("corrupt replay history cannot become an empty store");
+        assert!(error.to_string().contains("parse replay store"));
+        assert_eq!(std::fs::read(&path).unwrap().as_slice(), corrupt);
+    }
+
+    #[test]
+    fn production_validator_reopens_consumed_nonces() {
+        let issuer = test_issuer();
+        let dir = tempfile::tempdir().expect("replay dir");
+        let path = dir.path().join("auth-replay.db");
+        let now = 1_700_000_100;
+        {
+            let validator =
+                AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
+                    .expect("production replay store");
+            assert!(validator.replay_cache()
+                .check_and_insert_for_issuer("decoy-key-1", [0x6C; 16], now + 60, now)
+                .expect("durably consume nonce"));
+        }
+        let reopened =
+            AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
+                .expect("reopen production replay store");
+        assert!(reopened.replay_cache()
+            .contains("decoy-key-1", [0x6C; 16], now)
+            .expect("recovered nonce"));
     }
 
     #[tokio::test(flavor = "multi_thread")]

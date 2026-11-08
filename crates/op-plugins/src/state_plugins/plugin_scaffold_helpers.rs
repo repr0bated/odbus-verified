@@ -26,6 +26,7 @@ pub(crate) use super::identity_sled::identity_sled_schema as identity_sled_plugi
 pub(crate) use super::incus::incus_schema as incus_plugin_schema;
 pub(crate) use super::json_render::json_render_schema as json_render_plugin_schema;
 pub(crate) use super::keypair::keypair_schema as keypair_plugin_schema;
+pub(crate) use super::lxd::lxd_schema as lxd_plugin_schema;
 pub(crate) use super::mail_server::mail_server_schema as mail_server_plugin_schema;
 pub(crate) use super::memory_plugin::memory_schema as memory_plugin_schema;
 pub(crate) use super::net::net_schema as net_plugin_schema;
@@ -58,7 +59,6 @@ pub(crate) use super::dnsresolver::dnsresolver_schema as dnsresolver_plugin_sche
 pub(crate) use super::gemma_brain::gemma_brain_schema as gemma_brain_plugin_schema;
 pub(crate) use super::large_language_model::large_language_model_schema as large_language_model_plugin_schema;
 pub(crate) use super::login1::login1_schema as login1_plugin_schema;
-pub(crate) use super::mcp::mcp_schema as mcp_plugin_schema;
 pub(crate) use super::notebooklm::notebooklm_schema as notebooklm_plugin_schema;
 pub(crate) use super::snowball_plugin::snowball_schema as snowball_plugin_schema;
 // pub(crate) use super::packagekit::packagekit_schema as packagekit_plugin_schema;

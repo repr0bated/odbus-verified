@@ -132,6 +132,13 @@ impl RuntimeDocuments {
         }
     }
 
+    /// Share this process's native owner with identity recovery and domain
+    /// adapters. Opening the same persistent directory again would create a
+    /// competing RocksDB owner rather than another view of this handle.
+    pub fn shared_store(&self) -> Arc<CozoGraphShuttle> {
+        Arc::clone(&self.store)
+    }
+
     pub async fn read(&self, plugin_id: &str) -> Result<Option<RuntimeDocument>> {
         let store = self.store.clone();
         let id = plugin_id.to_string();

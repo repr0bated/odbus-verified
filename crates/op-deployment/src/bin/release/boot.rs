@@ -27,6 +27,9 @@ pub fn complete(state: &State) -> Result<()> {
 pub fn run(state: &State) -> Result<()> {
     let cmdline = std::fs::read_to_string("/proc/cmdline")?;
     if cmdline.split_whitespace().any(|s| s == "opdbus.release=off") { return ready("disabled\n"); }
+    if state.journal.as_ref().is_some_and(|j| j.operation == "reset") {
+        return pending("reset-in-progress; invoke reset to resume");
+    }
     let Some(slot) = state.active else { return if state.journal.is_some() { pending("journal-present-no-committed-release") } else { ready("none\n") }; };
     pending("boot-mounting-committed-set")?;
     ensure!(std::fs::read_to_string("/proc/filesystems")?.lines().any(|l| l.split_whitespace().last() == Some("overlay")), "overlay module is not preloaded; boot will not autoload it");

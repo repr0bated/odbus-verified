@@ -30,7 +30,10 @@ pub(crate) trait FlowOwner: Send + Sync {
     ) -> Result<()>;
 }
 
-pub(crate) struct NativeFlowOwner;
+pub(crate) struct NativeFlowOwner {
+    pub(crate) authority: crate::openflow_permit::OpenFlowPermitAuthority,
+    pub(crate) admission: crate::openflow_permit::FinalAdmission,
+}
 #[async_trait]
 impl FlowOwner for NativeFlowOwner {
     async fn matches(&self, bridge: &str, flow: &FlowEntry, absent: bool) -> Result<bool> {
@@ -69,36 +72,21 @@ impl FlowOwner for NativeFlowOwner {
         expected: Option<&FlowEntry>,
         remove: bool,
     ) -> Result<()> {
-        let bus = tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            zbus::Connection::system(),
-        )
-        .await
-        .context("OpenFlow owner bus connection timed out")??;
-        let proxy = tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            zbus::Proxy::new(
-                &bus,
-                "org.opdbus.v1.plugins.openflow",
-                "/org/opdbus/v1/plugins/openflow",
-                "org.opdbus.v1.plugins.openflow",
-            ),
-        )
-        .await
-        .context("OpenFlow owner proxy connection timed out")??;
-        let expected = expected
-            .map(serde_json::to_string)
-            .transpose()?
-            .unwrap_or_default();
+        let desired = serde_json::to_string(flow)?;
+        let expected = expected.map(serde_json::to_string).transpose()?.unwrap_or_default();
+        let permit = self.authority.issue(
+            bridge, &desired, &expected, remove, self.admission.clone(),
+        ).await?;
+        let proxy = zbus::Proxy::new(
+            self.authority.connection(), permit.controller.as_str(),
+            "/org/opdbus/v1/plugins/openflow", "org.opdbus.v1.plugins.openflow",
+        ).await?;
         let result: String = tokio::time::timeout(
             std::time::Duration::from_secs(45),
-            proxy.call(
-                "CompareExchangeFlow",
-                &(bridge, serde_json::to_string(flow)?, expected, remove),
-            ),
-        )
-        .await
-        .context("OpenFlow owner timeout; reconcile before retry")??;
+            proxy.call("CompareExchangeFlowAttributed", &(
+                permit.id.as_str(), bridge, desired.as_str(), expected.as_str(), remove,
+            )),
+        ).await.context("OpenFlow owner timeout; reconcile before retry")??;
         let result: Value = serde_json::from_str(&result)?;
         ensure!(
             result.get("verified") == Some(&Value::Bool(true))
@@ -155,10 +143,11 @@ impl ObfuscationMethods {
         }
     }
 
-    pub(crate) async fn dispatch(
+    pub(crate) async fn dispatch_with_admission(
         &self,
         method: &str,
         args: Value,
+        admission: crate::openflow_permit::FinalAdmission,
     ) -> Result<(Value, ObfuscationState)> {
         let _operation = self.operation.lock().await;
         let row = self.documents.read_durable(PLUGIN).await?;
@@ -195,7 +184,8 @@ impl ObfuscationMethods {
                 pending.method,
                 pending.flow_id
             );
-            return self.finish(document, document_revision).await;
+            admission().await?;
+            return self.finish(document, document_revision, true).await;
         }
         let revision = document.revision;
         let flows = &document.flows;
@@ -213,6 +203,10 @@ impl ObfuscationMethods {
                     flows.len() < 1024 || flows.contains_key(&flow_id),
                     "obfuscation flow count limit"
                 );
+                if !flows.contains_key(&flow_id) {
+                    ensure!(self.owner.matches(&record.bridge, &record.flow, true).await?,
+                        "normalization refuses to adopt an unowned native flow");
+                }
                 (flow_id, record, true)
             }
             "deobfuscate_flow" => {
@@ -242,8 +236,9 @@ impl ObfuscationMethods {
         });
         // Persist the exact intent before touching the switch. A process loss
         // leaves enough information to reconcile without inventing a receipt.
+        admission().await?;
         document_revision = self.persist(&document, document_revision).await?;
-        self.finish(document, document_revision).await
+        self.finish(document, document_revision, false).await
     }
 
     async fn persist(&self, document: &DurableFlows, revision: u64) -> Result<u64> {
@@ -260,6 +255,7 @@ impl ObfuscationMethods {
         &self,
         mut document: DurableFlows,
         revision: u64,
+        reconcile_only: bool,
     ) -> Result<(Value, ObfuscationState)> {
         let pending = document
             .pending
@@ -269,24 +265,14 @@ impl ObfuscationMethods {
             .flows
             .get(&pending.flow_id)
             .map(|record| &record.flow);
-        if !self
-            .owner
-            .matches(
-                &pending.record.bridge,
-                &pending.record.flow,
-                !pending.installed,
-            )
-            .await?
-            && let Err(error) = self
-                .owner
-                .exchange(
-                    &pending.record.bridge,
-                    &pending.record.flow,
-                    prior,
-                    !pending.installed,
-                )
-                .await
-        {
+        if reconcile_only {
+            ensure!(
+                self.owner.matches(&pending.record.bridge, &pending.record.flow, !pending.installed).await?,
+                "pending normalization outcome is not confirmed; mutation is not replayed"
+            );
+        } else if let Err(error) = self.owner.exchange(
+            &pending.record.bridge, &pending.record.flow, prior, !pending.installed,
+        ).await {
             // A proven unchanged switch permits clearing a failed intent.
             // Transport uncertainty preserves it for an exact retry.
             let prior_matches = match prior {
@@ -340,6 +326,13 @@ impl ObfuscationMethods {
                 flows: document.flows,
             },
         ))
+    }
+}
+
+#[cfg(test)]
+impl ObfuscationMethods {
+    async fn dispatch(&self, method: &str, args: Value) -> Result<(Value, ObfuscationState)> {
+        self.dispatch_with_admission(method, args, Arc::new(|| Box::pin(async { Ok(()) }))).await
     }
 }
 
@@ -505,9 +498,26 @@ mod tests {
                 .is_err()
         );
         *owner.0.lock().await = Some(installed);
+        assert!(service.dispatch("deobfuscate_flow", removal.clone()).await.is_err());
+        assert!(owner.0.lock().await.is_some(), "pending mutations must never be replayed");
+        // A separately confirmed native absence may reconcile the retained intent.
+        *owner.0.lock().await = None;
         let (reply, state) = service.dispatch("deobfuscate_flow", removal).await.unwrap();
         assert_eq!(reply["installed"], false);
         assert!(state.flows.is_empty());
         assert!(owner.0.lock().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn refuse_adopting_an_unowned_identical_flow() {
+        let owner = Arc::new(Switch::default());
+        let docs = Arc::new(RuntimeDocuments::new(
+            op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap(),
+        ));
+        let record = normalize(serde_json::from_value(input()).unwrap()).unwrap();
+        *owner.0.lock().await = Some(record.flow);
+        let service = ObfuscationMethods::new(docs.clone(), owner);
+        assert!(service.dispatch("obfuscate_flow", input()).await.is_err());
+        assert!(docs.read_durable(PLUGIN).await.unwrap().is_none());
     }
 }

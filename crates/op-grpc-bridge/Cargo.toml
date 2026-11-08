@@ -64,8 +64,9 @@ op-cozo-store = { path = "../op-cozo-store" }
 op-mcp.workspace = true
 op-cognitive = { path = "../op-cognitive" }
 op-agents = { path = "../op-agents" }
-op-llm = { path = "../op-llm" }
+op-execution-tracker = { workspace = true }
 op-xray-daemon = { path = "../op-xray-daemon" }
+tched-fs = { path = "../threetched-fs" }
 nix = { version = "0.28", features = ["fs", "signal", "user"] }
 socket2 = "0.6"
 
@@ -92,6 +93,7 @@ async-stream = "0.3"
 base64 = "0.21"
 qdrant-client = "1.17"
 rcgen = "0.13"
+op-llm = { path = "../op-llm" }
 
 [build-dependencies]
 tonic-build = { workspace = true }

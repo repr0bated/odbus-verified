@@ -37,21 +37,21 @@ pub fn is_numbered_native_name(name: &str) -> bool {
 }
 
 fn is_chatbot_reservation(request: &NativeCreationRequest) -> bool {
-    request.reserved_name.as_deref() == Some("3tchedCtlChatbot")
+    matches!(request.reserved_name.as_deref(), Some("3tchedCtlChatbot" | CONTROL_PLANE_NATIVE_NAME))
         && request.owner_kind == "identity"
         && request.logical_target == "b0c777e3-0955-cd8b-3d01-ca12998cae28"
 }
 
-fn records(tx: &MultiTransaction) -> std::result::Result<Vec<NativeCreationRecord>, CozoError> {
+pub(super) fn records(tx: &MultiTransaction) -> std::result::Result<Vec<NativeCreationRecord>, CozoError> {
     query(tx, "?[document,operation_id] := *native_container_creations{document,operation_id}", Params::new())?
         .rows.iter().map(|row| {
-            let record: NativeCreationRecord = serde_json::from_str(&string(row, 0)?)?;
+            let mut record: NativeCreationRecord = serde_json::from_str(&string(row, 0)?)?;
             if string(row, 1)? != record.request.operation_id
                 || record.request.schema_hash.is_empty()
                 || !valid_root_repair_digest(&record.request.request_digest)
                 || (if record.request.reserved_name.is_some() {
                     !is_chatbot_reservation(&record.request)
-                        || record.number != 0 || record.name != "3tchedCtlChatbot"
+                        || record.number != 0 || Some(record.name.as_str()) != record.request.reserved_name.as_deref()
                 } else {
                     record.number <= 0 || record.name != format!("ID-{}", record.number)
                 })
@@ -60,6 +60,9 @@ fn records(tx: &MultiTransaction) -> std::result::Result<Vec<NativeCreationRecor
                     .map_or(true, |id| id.to_string() != record.native_uuid))
             {
                 return Err(err("native creation journal is corrupt"));
+            }
+            if let Some(name) = container_rename::creation_name(tx, &record)? {
+                record.name = name;
             }
             Ok(record)
         }).collect()
@@ -161,13 +164,23 @@ impl CozoGraphShuttle {
             if rows.iter().any(|row| is_chatbot_reservation(&row.request)) {
                 return Err(err("reserved chatbot creation already used; reconcile its original operation"));
             }
-            (0, "3tchedCtlChatbot".to_owned())
+            if request.reserved_name.as_deref() != Some(CONTROL_PLANE_NATIVE_NAME) {
+                return Err(err("new reservations require the current configured chatbot name"));
+            }
+            (0, CONTROL_PLANE_NATIVE_NAME.to_owned())
         } else {
             next.checked_add(1).ok_or_else(|| err("native name sequence exhausted"))?;
             (next, format!("ID-{next}"))
         };
         let record = NativeCreationRecord { request, number, name, phase: "intent".into(), native_uuid: String::new() };
         if observed_names.contains(&record.name) { return Err(err("native name collision")); }
+        let renames = query(&tx, "?[document] := *identity_container_renames{document}", Params::new())?;
+        for row in &renames.rows {
+            let rename: ContainerRenameJournal = serde_json::from_str(&string(row, 0)?)?;
+            if rename.request.new_name == record.name {
+                return Err(err("native name is reserved by an identity rename"));
+            }
+        }
         put(&tx, &record)?;
         put_sequence(&tx, next, &record.request.operation_id)?;
         commit_checked(&tx)?;

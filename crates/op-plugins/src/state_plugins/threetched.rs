@@ -337,12 +337,16 @@ fn prepare_command(method: &str, value: &Value, source: &ThreetchedState) -> Res
             "threetched dispatch must run as its configured service owner");
         Command::new(surface.binary_path())
     };
+    // The selected directory is part of the sealed contract, not a caller or
+    // environment setting. Supply it explicitly when the request omitted it.
+    if !config_spellings.iter().any(|spelling| value.get(*spelling).is_some()) {
+        command.arg("--config-dir").arg(&config_dir);
+    }
     command.args(argv)
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", config_dir.join("home"))
         .env("USER", "jeremy")
-        .env("THREETCHED_CONFIG_DIR", config_dir)
         .env("LANGUAGE", "en")
         .env("LC_ALL", "C")
         .env("LANG", "C")

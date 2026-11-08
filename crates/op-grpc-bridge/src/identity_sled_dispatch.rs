@@ -1635,13 +1635,41 @@ async fn adopt_reserved_chatbot_container(
         return Ok(Some(sled));
     }
     let native = op_plugins::state_plugins::incus::IncusRootRepairBackend::local();
-    let Ok((metadata, _)) = native.instance(RESERVED_CHATBOT_CONTAINER).await else {
+    // The reserved name is tried first for continuity, but the identity's
+    // container may carry any native name (e.g. a cockpit container sprouted
+    // from the seed rootfs). Adoption is authorized only by the exact
+    // configured session/key binding in the instance's own config, never by
+    // the label; an ambiguous or absent candidate adopts nothing.
+    let mut candidates: Vec<IncusInstance> = Vec::new();
+    if let Ok((metadata, _)) = native.instance(RESERVED_CHATBOT_CONTAINER).await {
+        if let Ok(reserved) = IncusPlugin::instance_from_native_metadata(metadata) {
+            if crate::identity_binding::configured_chatbot_instance_matches(&sled, &reserved) {
+                candidates.push(reserved);
+            }
+        }
+    }
+    if candidates.is_empty() {
+        let Ok(state) = native.default_project_state().await else {
+            return Ok(None);
+        };
+        candidates = state
+            .instances
+            .into_iter()
+            .filter(|instance| {
+                crate::identity_binding::configured_chatbot_instance_matches(&sled, instance)
+            })
+            .collect();
+    }
+    if candidates.len() != 1 {
+        if candidates.len() > 1 {
+            tracing::warn!(%session_id, "multiple containers claim the chatbot identity; not adopted");
+        }
         return Ok(None);
-    };
-    let current = IncusPlugin::instance_from_native_metadata(metadata)?;
+    }
+    let current = candidates.remove(0);
     sled.instance = Some(current.clone());
-    if !identity_instance_matches(&sled, &current) || current.name != RESERVED_CHATBOT_CONTAINER {
-        tracing::warn!(%session_id, "reserved chatbot container does not match its identity; not adopted");
+    if !identity_instance_matches(&sled, &current) {
+        tracing::warn!(%session_id, "chatbot container does not match its identity; not adopted");
         return Ok(None);
     }
     let adopted = commit_sled_update(

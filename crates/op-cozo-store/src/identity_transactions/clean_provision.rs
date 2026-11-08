@@ -151,7 +151,7 @@ pub(super) fn validate(
         || device["attached"] != true
         || instance["status"] != "Stopped"
         || instance["type"] != "container"
-        || !(instance["name"] == "3tchedChatbot" || instance["name"] == "3tchedCtlChatbot"
+        || !(instance["name"] == "3tchedChatbot" || instance["name"] == CONTROL_PLANE_NATIVE_NAME
             || instance["name"].as_str().is_some_and(is_numbered_native_name))
         || !(provenance["version"] == if explicitly_deleted { 3 } else { 2 }
             || (provenance["version"] == 4 && (fresh_partitioned || explicitly_deleted)))
@@ -344,9 +344,10 @@ pub(super) fn validate_cas(
         .as_object_mut()
         .ok_or_else(|| err("invalid clean device"))?
         .remove("attached");
+    let pinned = container_rename::current_instance(tx, &previous.session_id, &receipt.instance_json)?;
     if previous.revision < receipt.committed_revision
         || old_device != new_device
-        || !clean_provision_instance_binding_matches(&receipt.instance_json, &next.instance_json)
+        || !clean_provision_instance_binding_matches(&pinned, &next.instance_json)
     {
         return Err(err("completed clean provision binding is immutable"));
     }

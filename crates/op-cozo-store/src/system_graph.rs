@@ -239,9 +239,9 @@ fn canonical(snapshot: &GraphSnapshot) -> GraphResult<GraphSnapshot> {
     }
     chrono::DateTime::parse_from_rfc3339(&provenance.generated_at)
         .map_err(|_| error("system graph generation time must be RFC3339"))?;
-    if provenance.inputs.len() > 256
-        || provenance.coverage.len() > 256
-        || provenance.limitations.len() > 256
+    if provenance.inputs.len() > 4096
+        || provenance.coverage.len() > 4096
+        || provenance.limitations.len() > 4096
     {
         return Err(error("system graph provenance exceeds bounds"));
     }

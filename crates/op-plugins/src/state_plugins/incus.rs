@@ -308,7 +308,7 @@ impl IncusPlugin {
         let (_, body) = Self::identity_session_power_request(session_id, state)?;
         if instance_name != session_id
             && !numbered_native_name(instance_name)
-            && !(matches!(instance_name, "3tchedChatbot" | "3tchedCtlChatbot")
+            && !(instance_name == op_cozo_store::CONTROL_PLANE_NATIVE_NAME
                 && session_id == "b0c777e3-0955-cd8b-3d01-ca12998cae28")
         {
             anyhow::bail!("native identity power target is not canonical or the pinned chatbot");
@@ -1216,21 +1216,21 @@ mod tests {
         let sid = "b0c777e3-0955-cd8b-3d01-ca12998cae28";
         let (path, body) = IncusPlugin::bound_identity_session_power_request(
             sid,
-            "3tchedChatbot",
+            "3tchedCockpitBot",
             IdentitySessionPowerState::Running,
         )
         .unwrap();
-        assert_eq!(path, "/1.0/instances/3tchedChatbot/state");
+        assert_eq!(path, "/1.0/instances/3tchedCockpitBot/state");
         assert_eq!(body, r#"{"action":"start"}"#);
         let (_, body) = IncusPlugin::bound_identity_session_power_request(
             sid,
-            "3tchedChatbot",
+            "3tchedCockpitBot",
             IdentitySessionPowerState::Stopped,
         )
         .unwrap();
         assert_eq!(body, r#"{"action":"stop"}"#);
         for (session, name) in [
-            ("00000000-0000-4000-8000-000000000001", "3tchedChatbot"),
+            ("00000000-0000-4000-8000-000000000001", "3tchedCockpitBot"),
             (sid, "Chatbot3tched"),
             (sid, "another-container"),
             (sid, "../../host?project=default"),
@@ -1446,7 +1446,7 @@ pub fn native_creation_body(input: &CreateInstanceInput) -> Result<serde_json::V
 /// belong to MutationEngine; no plugin method dispatches here directly.
 pub async fn create_reserved_native(body: &serde_json::Value) -> Result<()> {
     let name = body["name"].as_str().context("allocated native name missing")?;
-    let reserved_chatbot = name == "3tchedCtlChatbot"
+    let reserved_chatbot = name == op_cozo_store::CONTROL_PLANE_NATIVE_NAME
         && body["type"] == "container"
         && body["config"]["user.opdbus.session_id"] == "b0c777e3-0955-cd8b-3d01-ca12998cae28"
         && std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY").ok()
@@ -1909,6 +1909,24 @@ impl IncusRootRepairBackend {
             .api
             .call("POST", &instance_path(name)?, Some(&body.to_string()), None)
             .await?;
+        Ok(())
+    }
+
+    /// One stopped, same-instance native rename. Admission, UUID ownership and
+    /// the durable one-POST fence belong to the identity owner.
+    pub async fn rename_stopped_identity(&self, old_name: &str, new_name: &str,
+        native_uuid: &str, expected_etag: &str) -> Result<()> {
+        validate_segment(old_name, "old instance name")?;
+        validate_segment(new_name, "new instance name")?;
+        anyhow::ensure!(old_name != new_name && !expected_etag.is_empty(),
+            "native rename requires distinct names and an ETag");
+        let (current, etag) = self.instance(old_name).await?;
+        anyhow::ensure!(etag == expected_etag && current["name"] == old_name
+            && current["type"] == "container" && current["status"] == "Stopped"
+            && current["status_code"] == 102 && current["config"]["volatile.uuid"] == native_uuid,
+            "stopped native rename binding or ETag changed");
+        let body = serde_json::json!({"name":new_name, "migration":false});
+        self.api.call("POST", &instance_path(old_name)?, Some(&body.to_string()), Some(expected_etag)).await?;
         Ok(())
     }
 
@@ -2421,6 +2439,26 @@ pub struct IncusMethodObservation {
     pub state: Option<IncusState>,
 }
 
+/// The provider completed, but its readback did not confirm the method receipt.
+/// The observed state remains authoritative even though the outcome is unknown.
+#[derive(Debug)]
+pub struct IncusMethodObservationError {
+    pub state: IncusState,
+    cause: anyhow::Error,
+}
+
+impl std::fmt::Display for IncusMethodObservationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "Incus authoritative state did not confirm the completed method receipt: {}", self.cause)
+    }
+}
+
+impl std::error::Error for IncusMethodObservationError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(self.cause.as_ref())
+    }
+}
+
 fn method_changes_observed_state(method: &str) -> bool {
     matches!(
         method,
@@ -2467,11 +2505,9 @@ async fn dispatch_incus_with_api_observed(
                 "Incus {method} completed but its authoritative state readback failed; reconciliation is required"
             )
         })?;
-        validate_method_observation(method, args, &result, &state).with_context(|| {
-            format!(
-                "Incus {method} completed but its authoritative state did not confirm the receipt; reconciliation is required"
-            )
-        })?;
+        if let Err(cause) = validate_method_observation(method, args, &result, &state) {
+            return Err(IncusMethodObservationError { state, cause }.into());
+        }
         Some(state)
     } else {
         None

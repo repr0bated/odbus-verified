@@ -10,7 +10,16 @@ use std::sync::Arc;
 
 #[path = "private_document_publication.rs"]
 mod publication;
-pub use publication::{PrivateDocumentCommit, PrivateDocumentPublication};
+pub use publication::{
+    PrivateDocumentCommit, PrivateDocumentPublication, pending_projection_publication_in,
+};
+
+#[path = "projection_batch_publication.rs"]
+mod batch_publication;
+pub use batch_publication::{
+    ProjectionBatchCommit, ProjectionBatchPublication, ProjectionDocuments,
+    commit_projection_batch_durable_in, recover_projection_batch_in,
+};
 
 #[derive(Clone)]
 pub struct PrivateProjectionDirectory {

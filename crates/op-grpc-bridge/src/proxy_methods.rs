@@ -1,4 +1,4 @@
-//! MutationEngine-owned, event-driven fixed-destination TCP relays.
+//! Runtime-owned, event-driven fixed-destination TCP relays.
 //! Cozo owns configuration; live listener handles own running state. A restart
 //! retains configuration and requires an explicit start, never a fabricated
 //! persisted `running` flag. No subprocess or independent control listener.
@@ -86,12 +86,18 @@ impl ProxyMethods {
         Ok(snapshot(revision, configs, &listeners))
     }
 
-    /// Caller holds the engine's operation lock through SHM publication.
-    /// The enclosing owned method task survives transport cancellation.
-    pub(crate) async fn dispatch(
+    pub(crate) async fn shutdown(&self) {
+        let listeners = std::mem::take(&mut *self.listeners.lock().await);
+        for (_, listener) in listeners { listener.stop().await; }
+    }
+
+    /// Caller retains the runtime operation guard through canonical publication.
+    /// Revalidate after durable reads and immediately before listener effects.
+    pub(crate) async fn dispatch_with_admission(
         &self,
         method: &str,
         args: Value,
+        admission: crate::openflow_permit::FinalAdmission,
     ) -> Result<(Value, ProxyServerState)> {
         let mut listeners = self.listeners.lock().await;
         let previous = self.documents.read_durable(PLUGIN).await?;
@@ -155,6 +161,7 @@ impl ProxyMethods {
                         .context("new proxy requires upstream")?,
                 };
                 let (bind, _) = addresses(&config)?;
+                admission().await?;
                 if config.enabled
                     && listeners
                         .get(&name)
@@ -179,6 +186,7 @@ impl ProxyMethods {
                     config.port = port;
                 }
                 let (bind, _) = addresses(config)?;
+                admission().await?;
                 if !listeners
                     .get(&name)
                     .is_some_and(|v| v.running.load(Ordering::Acquire) && v.bound == bind)
@@ -188,6 +196,7 @@ impl ProxyMethods {
             }
             "stop_proxy" => {
                 ensure!(configs.proxies.contains_key(&name), "unknown proxy");
+                admission().await?;
             }
             _ => unreachable!(),
         }
@@ -204,6 +213,9 @@ impl ProxyMethods {
                 .0
                 .revision
         };
+        // A durable write may wait on the owner store. Recheck the original
+        // authority immediately before touching an existing live relay.
+        admission().await?;
         let config = configs
             .proxies
             .get(&name)
@@ -249,6 +261,13 @@ impl ProxyMethods {
             status: state.proxies[&name].clone(),
         };
         Ok((serde_json::to_value(output)?, state))
+    }
+}
+
+#[cfg(test)]
+impl ProxyMethods {
+    async fn dispatch(&self, method: &str, args: Value) -> Result<(Value, ProxyServerState)> {
+        self.dispatch_with_admission(method, args, Arc::new(|| Box::pin(async { Ok(()) }))).await
     }
 }
 

@@ -38,6 +38,30 @@ pub const RECORD_FORMAT: u32 = 3;
 pub const SCHEMA_CONTENT_HASH: &str =
     include_str!(concat!(env!("OUT_DIR"), "/identity_sled_schema_hash.txt"));
 
+/// Administrative same-instance rename, fenced by a stable caller operation id.
+/// It never accepts native config, storage, credentials or replacement identity.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RenameContainerInput {
+    pub operation_id: String,
+    pub session_id: String,
+    pub native_uuid: String,
+    pub old_name: String,
+    pub new_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct RenameContainerOutput {
+    pub operation_id: String,
+    pub session_id: String,
+    pub native_uuid: String,
+    pub old_name: String,
+    pub name: String,
+    pub phase: String,
+    pub committed_revision: u64,
+    pub replayed: bool,
+}
+
 /// One container's identity sled. The container is the sled is the identity:
 /// `session_id` == container name == derived session identity.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -237,6 +261,8 @@ impl StatePlugin for IdentitySledPlugin {
         "identity_sled"
     }
 
+    // v4.9 adds a durable identity-bound same-container native-name cutover.
+    // v4.8 returns the exact same-owner refreshed SID1 on the authorized result.
     // v4.5 adopts an externally prepared fresh container with same-key CAS.
     // v4.4.1 corrects storage lifecycle documentation: attachment is logical;
     // start/stop never mutates Btrfs membership. Wire fields are unchanged.
@@ -245,7 +271,7 @@ impl StatePlugin for IdentitySledPlugin {
     // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "4.7.0"
+        "4.9.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -297,7 +323,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "4.7.0",
+        "4.9.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -350,6 +376,9 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         pub refreshed: bool,
         pub session_id: String,
         pub transport_scope: String,
+        /// Exact SID1 authored by this same-owner refresh and committed by the
+        /// identity owner; disclosed only to the still-authorized caller.
+        pub sealed_id: String,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -530,6 +559,13 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         method_decl_from_schemars_with_output::<PrepareContainerInput, PrepareContainerOutput>(
             "prepare_container", SideEffect::Mutation, true,
             "identity_sled.write", "mut.service.identity-sled.container.prepare@v1",
+        ),
+    );
+    schema.methods.insert(
+        "rename_container".to_string(),
+        method_decl_from_schemars_with_output::<RenameContainerInput, RenameContainerOutput>(
+            "rename_container", SideEffect::Mutation, true,
+            "identity_sled.write", "mut.service.identity-sled.container.rename@v1",
         ),
     );
     schema.methods.insert(
@@ -758,6 +794,24 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
 mod tests {
     use super::*;
     #[test]
+    fn refresh_returns_the_required_authored_credential_without_a_target_selector() {
+        let schema = identity_sled_schema();
+        let method = &schema.methods["refresh_credential"];
+        let args = serde_json::to_value(&method.args).unwrap();
+        let args = jsonschema::Validator::new(&args).unwrap();
+        assert!(args.validate(&serde_json::json!({})).is_ok());
+        assert!(args.validate(&serde_json::json!({"session_id":"other"})).is_err());
+        let output = serde_json::to_value(method.returns.as_ref().unwrap()).unwrap();
+        let output = jsonschema::Validator::new(&output).unwrap();
+        let mut value = serde_json::json!({
+            "refreshed":true, "session_id":"own-session",
+            "transport_scope":"dbus,grpc,mcp,mqtt", "sealed_id":"sid1:authored"
+        });
+        assert!(output.validate(&value).is_ok());
+        value.as_object_mut().unwrap().remove("sealed_id");
+        assert!(output.validate(&value).is_err());
+    }
+    #[test]
     fn get_own_identity_is_empty_input_separately_granted_and_reuses_typed_output() {
         let schema = identity_sled_schema();
         let own = &schema.methods["get_own_identity"];
@@ -864,13 +918,14 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "4.7.0");
+        assert_eq!(schema.version, "4.9.0");
         for method in [
             "get_identity",
             "get_own_identity",
             "inspect_identity_inventory",
             "inspect_own_root_repair_preflight",
             "write_identity",
+            "rename_container",
             "refresh_credential",
             "provision_container",
             "repair_own_root",
@@ -917,6 +972,27 @@ mod tests {
                 .validate(&serde_json::json!({"session_id":"caller-selected"}))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn container_rename_uses_existing_write_grant_and_rejects_identity_inputs() {
+        let schema = identity_sled_schema();
+        let method = &schema.methods["rename_container"];
+        assert_eq!(method.required_capability.as_deref(), Some("identity_sled.write"));
+        assert_eq!(method.side_effect, op_state_store::SideEffect::Mutation);
+        assert!(method.idempotent);
+        let args_schema = serde_json::to_value(&method.args).unwrap();
+        let validator = jsonschema::Validator::new(&args_schema).unwrap();
+        let mut args = serde_json::json!({
+            "operation_id":"00000000-0000-4000-8000-000000000001",
+            "session_id":"b0c777e3-0955-cd8b-3d01-ca12998cae28",
+            "native_uuid":"d09a6200-6ff1-4dc0-922f-27ebdaa0861a",
+            "old_name":"CockpitBot3tched", "new_name":"3tchedCockpitBot"
+        });
+        assert!(validator.validate(&args).is_ok());
+        args["sealed_id"] = "caller-supplied".into();
+        assert!(validator.validate(&args).is_err());
+        assert!(serde_json::from_value::<RenameContainerInput>(args).is_err());
     }
 
     #[test]

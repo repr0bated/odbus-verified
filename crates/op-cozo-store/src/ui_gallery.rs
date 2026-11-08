@@ -27,6 +27,8 @@ pub struct UiCandidateRecord {
     pub spec_hash: String,
     pub promoted_entry_id: Option<String>,
     pub candidate: Value,
+    /// Staged CMS rows. Empty until save. Applied only inside promote.
+    pub backend_relations: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -132,6 +134,11 @@ fn validate_candidate(row: &UiCandidateRecord) -> std::result::Result<(), CozoEr
             "ui gallery candidate document differs from its durable key",
         ));
     }
+    if row.backend_relations.len() > MAX_UI_GALLERY_DOCUMENT_BYTES
+        || row.backend_relations.chars().any(char::is_control)
+    {
+        return Err(error("staged backend relations are invalid"));
+    }
     Ok(())
 }
 
@@ -190,6 +197,7 @@ fn candidate_rows(
                 promoted_entry_id: (!promoted.is_empty()).then(|| promoted.to_string()),
                 candidate: serde_json::from_str(json)
                     .map_err(|_| error("corrupt ui gallery candidate JSON"))?,
+                backend_relations: String::new(),
             };
             validate_candidate(&record)?;
             Ok(record)
@@ -249,7 +257,10 @@ fn get_candidate(
         values,
         "candidate read",
     )?;
-    Ok(candidate_rows(rows, principal_id)?.pop())
+    candidate_rows(rows, principal_id)?
+        .pop()
+        .map(|record| attach_backend(tx, record))
+        .transpose()
 }
 
 fn write_candidate(
@@ -273,7 +284,156 @@ fn write_candidate(
         values,
         "candidate write",
     )?;
+    write_backend(tx, row)?;
     Ok(())
+}
+
+fn attach_backend(
+    tx: &MultiTransaction,
+    mut record: UiCandidateRecord,
+) -> std::result::Result<UiCandidateRecord, CozoError> {
+    record.backend_relations = read_backend(tx, &record.principal_id, &record.candidate_id)?;
+    Ok(record)
+}
+
+fn read_backend(
+    tx: &MultiTransaction,
+    principal_id: &str,
+    candidate_id: &str,
+) -> std::result::Result<String, CozoError> {
+    let rows = run(
+        tx,
+        "?[relations_json] := *ui_candidate_backends{principal_id, candidate_id, relations_json}, principal_id = $principal, candidate_id = $candidate",
+        BTreeMap::from([
+            ("principal".into(), text(principal_id)),
+            ("candidate".into(), text(candidate_id)),
+        ]),
+        "backend read",
+    )?;
+    match rows.rows.as_slice() {
+        [] => Ok(String::new()),
+        [row] => match row.as_slice() {
+            [DataValue::Str(script)] => Ok(script.to_string()),
+            _ => Err(error("corrupt staged backend row")),
+        },
+        _ => Err(error("corrupt staged backend row")),
+    }
+}
+
+fn write_backend(
+    tx: &MultiTransaction,
+    row: &UiCandidateRecord,
+) -> std::result::Result<(), CozoError> {
+    run(
+        tx,
+        "?[principal_id, candidate_id, relations_json] <- [[$principal, $candidate, $relations]] :put ui_candidate_backends {principal_id, candidate_id => relations_json}",
+        BTreeMap::from([
+            ("principal".into(), text(&row.principal_id)),
+            ("candidate".into(), text(&row.candidate_id)),
+            ("relations".into(), text(&row.backend_relations)),
+        ]),
+        "backend stage",
+    )?;
+    Ok(())
+}
+
+fn delete_backend(
+    tx: &MultiTransaction,
+    principal_id: &str,
+    candidate_id: &str,
+) -> std::result::Result<(), CozoError> {
+    run(
+        tx,
+        "?[principal_id, candidate_id] <- [[$principal, $candidate]] :rm ui_candidate_backends {principal_id, candidate_id}",
+        BTreeMap::from([
+            ("principal".into(), text(principal_id)),
+            ("candidate".into(), text(candidate_id)),
+        ]),
+        "backend delete",
+    )?;
+    Ok(())
+}
+
+fn apply_backend(
+    tx: &MultiTransaction,
+    candidate_id: &str,
+    relations: &str,
+) -> std::result::Result<(), CozoError> {
+    if relations.is_empty() || relations == "null" {
+        return Ok(());
+    }
+    let value: Value = serde_json::from_str(relations)
+        .map_err(|_| error("staged backend is not JSON"))?;
+    let Some(relations) = value.as_object() else {
+        return Err(error("staged backend is not a relation map"));
+    };
+    for (name, body) in relations {
+        if !valid_relation_name(name) {
+            return Err(error("staged backend relation name is invalid"));
+        }
+        let Some(rows) = body.as_array() else {
+            return Err(error("staged backend relation is not a row list"));
+        };
+        let Some(header) = rows.first().and_then(Value::as_array) else {
+            return Err(error("staged backend relation has no header"));
+        };
+        let columns = header
+            .iter()
+            .map(|column| {
+                column
+                    .as_str()
+                    .filter(|name| valid_relation_name(name))
+                    .map(str::to_string)
+                    .ok_or_else(|| error("staged backend column name is invalid"))
+            })
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        if columns.is_empty() || columns.len() > 32 {
+            return Err(error("staged backend header is empty or too wide"));
+        }
+        let keys = columns.join(", ");
+        for row in rows.iter().skip(1) {
+            let Some(cells) = row.as_array() else {
+                return Err(error("staged backend data row is not a list"));
+            };
+            if cells.len() != columns.len() {
+                return Err(error("staged backend data row width does not match its header"));
+            }
+            let mut params = BTreeMap::new();
+            let mut placeholders = Vec::new();
+            for (index, cell) in cells.iter().enumerate() {
+                let key = format!("c{index}");
+                let text_cell = match cell {
+                    Value::String(value) => value.clone(),
+                    other => other.to_string(),
+                };
+                if text_cell.len() > MAX_UI_GALLERY_DOCUMENT_BYTES
+                    || text_cell.chars().any(char::is_control)
+                {
+                    return Err(error("staged backend cell is invalid"));
+                }
+                params.insert(key.clone(), text(&text_cell));
+                placeholders.push(format!("${key}"));
+            }
+            let _ = candidate_id;
+            run(
+                tx,
+                &format!(
+                    "?[{keys}] <- [[{}]] :put {name} {{ {keys} }}",
+                    placeholders.join(", ")
+                ),
+                params,
+                "backend publish",
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn valid_relation_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    matches!(chars.next(), Some(first) if first.is_ascii_lowercase())
+        && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+        && name.len() <= 64
 }
 
 fn candidate_count(
@@ -455,6 +615,19 @@ impl CozoGraphShuttle {
                 key: String
                 => revision: Int, active_count: Int, total_count: Int
             }"#,
+            r#":create ui_candidate_backends {
+                principal_id: String,
+                candidate_id: String
+                =>
+                relations_json: String
+            }"#,
+            r#":create cms_surface {
+                candidate_id: String,
+                element_id: String
+                =>
+                element_type: String,
+                props_json: String
+            }"#,
         ] {
             if let Err(error) =
                 self.db
@@ -477,6 +650,8 @@ impl CozoGraphShuttle {
             "?[entry_id, name, status, spec_hash, from_principal, from_candidate_id, entry_json] := *ui_catalog_entries{entry_id, name, status, spec_hash, from_principal, from_candidate_id, entry_json} :limit 0",
             "?[name, entry_id] := *ui_catalog_names{name, entry_id} :limit 0",
             "?[key, revision, active_count, total_count] := *ui_catalog_state{key, revision, active_count, total_count} :limit 0",
+            "?[principal_id, candidate_id, relations_json] := *ui_candidate_backends{principal_id, candidate_id, relations_json} :limit 0",
+            "?[candidate_id, element_id, element_type, props_json] := *cms_surface{candidate_id, element_id, element_type, props_json} :limit 0",
         ] {
             self.db
                 .run_script(probe, BTreeMap::new(), ScriptMutability::Immutable)
@@ -603,6 +778,7 @@ impl CozoGraphShuttle {
                 ]),
                 "candidate delete",
             )?;
+            delete_backend(tx, principal_id, candidate_id)?;
             let count = candidate_count(tx, principal_id)?
                 .checked_sub(1)
                 .ok_or_else(|| error("ui gallery candidate count is inconsistent"))?;
@@ -641,7 +817,7 @@ impl CozoGraphShuttle {
             if name_owner(tx, &entry.name)?.is_some() {
                 return Err(error("an active catalog entry already has this name"));
             }
-            write_entry(tx, &entry)?;
+            apply_backend(tx, &candidate.candidate_id, &candidate.backend_relations)?;
             run(
                 tx,
                 "?[name, entry_id] <- [[$name, $entry]] :put ui_catalog_names {name => entry_id}",
@@ -794,6 +970,7 @@ mod tests {
             spec_hash: hash.clone(),
             promoted_entry_id: None,
             candidate: json!({"principal_id": principal, "candidate_id": id(n), "spec_hash": hash, "title": format!("c{n}")}),
+            backend_relations: String::new(),
         }
     }
 

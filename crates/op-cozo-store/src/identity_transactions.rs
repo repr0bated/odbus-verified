@@ -5,6 +5,8 @@ use super::*;
 mod physical_root;
 mod clean_provision;
 mod native_creation;
+#[path = "identity_transactions/container_rename.rs"] mod container_rename;
+pub use container_rename::{ContainerRenameJournal, ContainerRenameRequest, CONTROL_PLANE_NATIVE_NAME, container_rename_native_matches};
 pub use native_creation::{NativeCreationRequest, NativeCreationRecord, is_numbered_native_name};
 pub use clean_provision::{CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches};
 use cozo::{MultiTransaction, TransactionPayload};
@@ -15,6 +17,7 @@ pub use physical_root::{
 };
 use std::{
     fs::File,
+    io::{Read, Write},
     os::{
         fd::{AsRawFd, FromRawFd},
         unix::fs::{MetadataExt, PermissionsExt},
@@ -41,6 +44,10 @@ pub enum IdentityIntent {
     CleanProvision(Box<IdentityCleanProvision>),
     CompareExchange(Box<IdentityCompareExchange>),
     MigratePhysicalRoot(Box<IdentityPhysicalRootMigration>),
+    RenameContainer {
+        journal: Box<ContainerRenameJournal>,
+        native_after_json: String,
+    },
     /// A narrowly bounded credential refresh authored by the identity owner.
     /// The journal kind remains `transport-refresh` for compatibility; it now
     /// also permits an anchored NextDNS profile/device assignment to change.
@@ -296,8 +303,8 @@ pub(super) fn verify_persistent_directory(
 
 /// Cozo0.7.6 stores its manifest in root and its default RocksDB/WAL in
 /// root/data. Hold both actual directories, including separate mount points.
-/// Custom root/options may redirect WAL/data paths; generic Cozo can open it,
-/// but these stronger identity commits refuse that unverified layout.
+/// The owned allocation policy preserves that layout. Other options files
+/// may redirect WAL/data and are refused by private stores and identity commits.
 pub(super) struct PersistentIdentityBoundary {
     path: PathBuf,
     root: File,
@@ -306,16 +313,66 @@ pub(super) struct PersistentIdentityBoundary {
     private: bool,
 }
 
-fn has_custom_options(root: &File) -> std::result::Result<bool, CozoError> {
-    match nix::sys::stat::fstatat(
+// Cozo's JSON constructor options do not configure RocksDB. Its root/options
+// file does, but replaces cozorocks defaults rather than merging with them.
+// Preserve the pinned cozorocks0.1.7 defaults; change only file preallocation.
+const SPARSE_ROCKSDB_OPTIONS: &[u8] = b"\
+[Version]\n\
+options_file_version=1.1\n\
+[DBOptions]\n\
+allow_fallocate=false\n\
+max_background_jobs=6\n\
+bytes_per_sync=1048576\n\
+[CFOptions \"default\"]\n\
+bottommost_compression=kZSTD\n\
+compression=kLZ4Compression\n\
+level_compaction_dynamic_level_bytes=true\n\
+compaction_pri=kMinOverlappingRatio\n";
+
+fn create_sparse_options(root: &File) -> std::result::Result<(), CozoError> {
+    let raw = match nix::fcntl::openat(
         Some(root.as_raw_fd()),
         "options",
-        nix::fcntl::AtFlags::AT_SYMLINK_NOFOLLOW,
+        OFlag::O_WRONLY | OFlag::O_CREAT | OFlag::O_EXCL | OFlag::O_NOFOLLOW | OFlag::O_CLOEXEC,
+        Mode::from_bits_truncate(0o600),
     ) {
-        Ok(_) => Ok(true),
-        Err(nix::errno::Errno::ENOENT) => Ok(false),
-        Err(error) => Err(native(error)),
+        Ok(raw) => raw,
+        Err(nix::errno::Errno::EEXIST) => return Ok(()),
+        Err(error) => return Err(native(error)),
+    };
+    // SAFETY: openat returned a newly owned descriptor.
+    let mut options = unsafe { File::from_raw_fd(raw) };
+    options.write_all(SPARSE_ROCKSDB_OPTIONS).map_err(native)?;
+    options.sync_all().map_err(native)?;
+    root.sync_all().map_err(native)?;
+    Ok(())
+}
+
+fn has_custom_options(root: &File) -> std::result::Result<bool, CozoError> {
+    let raw = match nix::fcntl::openat(
+        Some(root.as_raw_fd()),
+        "options",
+        OFlag::O_RDONLY | OFlag::O_NOFOLLOW | OFlag::O_NONBLOCK | OFlag::O_CLOEXEC,
+        Mode::empty(),
+    ) {
+        Ok(raw) => raw,
+        Err(nix::errno::Errno::ELOOP) => return Ok(true),
+        Err(error) => return Err(native(error)),
+    };
+    // SAFETY: openat returned a newly owned descriptor.
+    let mut options = unsafe { File::from_raw_fd(raw) };
+    let metadata = options.metadata().map_err(native)?;
+    if !metadata.is_file()
+        || metadata.uid() != nix::unistd::geteuid().as_raw()
+        || metadata.mode() & 0o022 != 0
+        || metadata.nlink() != 1
+        || metadata.len() != SPARSE_ROCKSDB_OPTIONS.len() as u64
+    {
+        return Ok(true);
     }
+    let mut contents = [0; SPARSE_ROCKSDB_OPTIONS.len()];
+    options.read_exact(&mut contents).map_err(native)?;
+    Ok(contents != SPARSE_ROCKSDB_OPTIONS)
 }
 
 impl PersistentIdentityBoundary {
@@ -341,6 +398,7 @@ impl PersistentIdentityBoundary {
         if private {
             restrict_directory(&data)?;
         }
+        create_sparse_options(&root)?;
         let custom_options = has_custom_options(&root)?;
         if private && custom_options {
             return Err(err(
@@ -754,6 +812,55 @@ impl CozoGraphShuttle {
         })
     }
 
+    /// Stream a coherent, contiguous append ledger with bounded row allocation.
+    /// One native barrier and indexed point reads avoid sorting the remaining
+    /// history for each event. The visitor must not reenter this Cozo owner.
+    pub fn visit_session_events_durable(
+        &self,
+        session_id: &str,
+        mut visit: impl FnMut(SessionEventRecord) -> std::result::Result<(), CozoError>,
+    ) -> std::result::Result<(), CozoError> {
+        if session_id.is_empty() {
+            return Err(err("invalid durable session event identity"));
+        }
+        let _guard = self.identity_transaction.lock()
+            .map_err(|_| err("identity transaction owner is poisoned"))?;
+        self.sync_identity_store()?;
+        let tx = self.db.multi_transaction(false);
+        let bounds = query(&tx,
+            "?[min(seq),max(seq)] := *session_events[session_id,seq,kind,subid,content,created_at], session_id = $sid",
+            sid_params(session_id))?;
+        let last = match bounds.rows.as_slice() {
+            [] => None,
+            [row] if row.as_slice() == [DataValue::Null, DataValue::Null] => None,
+            [row] if row.len() == 2 => {
+                let first = integer(row, 0)?;
+                let last = integer(row, 1)?;
+                if first != 0 || last < 0 {
+                    return Err(err("corrupt append ledger sequence bounds"));
+                }
+                Some(last)
+            }
+            _ => return Err(err("corrupt append ledger bounds result")),
+        };
+        if let Some(last) = last {
+            for seq in 0..=last {
+                let mut params = sid_params(session_id);
+                params.insert("seq".into(), dv_int(seq));
+                let rows = query(&tx,
+                    "?[session_id,seq,kind,subid,content,created_at] := \
+                     *session_events[session_id,seq,kind,subid,content,created_at], \
+                     session_id = $sid, seq = $seq", params)?;
+                let [row] = rows.rows.as_slice() else {
+                    return Err(err("append ledger has a missing or duplicate sequence"));
+                };
+                visit(decode_event(row)?)?;
+            }
+        }
+        commit_checked(&tx)?;
+        Ok(())
+    }
+
     pub(super) fn append_session_event_durable(
         &self,
         session_id: &str,
@@ -1158,6 +1265,7 @@ impl CozoGraphShuttle {
         }
         let tx = self.db.multi_transaction(true);
         let (previous, metadata) = read_one(&tx, session_id)?;
+        container_rename::check_fence(&tx, &previous, &intent)?;
         if let IdentityIntent::CompareExchange(exchange) = &intent {
             clean_provision::validate_cas(&tx, &previous, exchange.record.as_ref())?;
         }
@@ -1229,6 +1337,11 @@ impl CozoGraphShuttle {
             }
         }
         let (record, genesis, kind, value, replayed) = match intent {
+            IdentityIntent::RenameContainer { journal, native_after_json } => {
+                let value = i64::try_from(journal.expected_revision).map_err(native)?;
+                let record = container_rename::complete(&tx, &previous, operation_id, &journal, &native_after_json)?;
+                (Some(record), previous.genesis.clone(), "container-rename", value, false)
+            }
             IdentityIntent::CleanProvision(provision) => {
                 clean_provision::validate(&tx, session_id, operation_id, &previous, &metadata, &provision)?;
                 let replayed = previous.operation_id == operation_id;
@@ -1537,7 +1650,7 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
         || !matches!(
             kind.as_str(),
-            "cas" | "advance" | "transport-refresh" | "physical-migrate" | "clean-provision"
+            "cas" | "advance" | "transport-refresh" | "physical-migrate" | "clean-provision" | "container-rename"
         )
         || value < 0
         || !matches!(principal_kind.as_str(), "" | "human" | "service")

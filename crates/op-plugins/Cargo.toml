@@ -45,7 +45,7 @@ futures = { workspace = true }
 zbus = { workspace = true, features = ["p2p"] }
 chrono = { workspace = true }
 log = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["multipart", "rustls-tls"] }
 # Incus's privileged Unix socket needs the native UDS transport added in 0.12.
 # Keep other plugin adapters on their existing workspace client.
 reqwest-unix = { package = "reqwest", version = "=0.12.28", default-features = false }
@@ -56,6 +56,7 @@ serde-pickle = "1.2"
 udev = "0.9.3"
 regex = { workspace = true }
 sha2 = { workspace = true }
+url = "2"
 base64 = { workspace = true }
 md5 = { workspace = true }
 uuid = { workspace = true }
@@ -67,6 +68,7 @@ xattr = "1.6.1"
 
 [build-dependencies]
 sha2 = { workspace = true }
+url = "2"
 
 [dev-dependencies]
 # Isolated protocol fixtures use paired sockets, never the host's system bus.

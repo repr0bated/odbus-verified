@@ -15,6 +15,8 @@
 # claim. No generated manifest, fallback, or live installation is performed here.
 # Existing receiver.json, first-activation.json and native lifetime gates remain
 # separate authorities; this kit neither creates nor relaxes them.
+# `reset` admits exact native slots/incoming/sources from root-owned reset-plan.json,
+# then resumes only its journal. It retains bootstrap controls/current wanted states.
 set -eu
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 LC_ALL=C
@@ -23,11 +25,12 @@ umask 077
 base=/usr/local/libexec/opdbus-release
 state=/var/lib/opdbus-release
 runtime=/run/opdbus-release
-[ "$#" -gt 0 ] || { echo 'usage: op-release-launch {release|deploy|provision-slots|status|activate a|b|rollback|abort|boot}' >&2; exit 2; }
+[ "$#" -gt 0 ] || { echo 'usage: op-release-launch {release|deploy|provision-slots|status|activate a|b|rollback|reset|abort [name received-id received-uuid source-id source-uuid]|boot}' >&2; exit 2; }
 verb=$1
 case "$verb" in
   activate) [ "$#" -eq 2 ] && { [ "$2" = a ] || [ "$2" = b ]; } || exit 2 ;;
-  release|deploy|provision-slots|status|rollback|abort|boot) [ "$#" -eq 1 ] || exit 2 ;;
+  abort) [ "$#" -eq 1 ] || [ "$#" -eq 6 ] || exit 2 ;;
+  release|deploy|provision-slots|status|rollback|reset|boot) [ "$#" -eq 1 ] || exit 2 ;;
   *) echo 'unsupported release verb; host/Incus provisioning belongs to its existing owner' >&2; exit 2 ;;
 esac
 # Independently authored, read-only release-kit verifier. It intentionally has

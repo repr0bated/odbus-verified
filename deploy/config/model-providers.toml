@@ -43,6 +43,20 @@
 # model which of its provider's profiles it needs (model_registry
 # set_model_profile).
 
+# Meta Model API (Muse Code).
+[[providers]]
+id = "muse_code"
+native_provider_id = "custom.muse_code"
+inference_url_prefix = "https://api.meta.ai/v1"
+name = "Muse Code"
+models_url = "https://api.meta.ai/v1/models"
+format = "openai"
+auth = "bearer"
+key_file = "/etc/op-dbus/secrets/meta-model-api-key"
+key_env = "MODEL_API_KEY"
+credential = "key"
+control_plane = { profile = "custom.muse_code_control_plane" }
+
 # OpenCode Go. Its key is not in ~/.bash_secrets; it is installed directly as
 # /etc/op-dbus/secrets/opencode-api-key (the router already requires it).
 # Slot = key_file.

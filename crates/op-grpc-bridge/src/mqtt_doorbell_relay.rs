@@ -19,6 +19,7 @@ use tokio::net::TcpStream;
 use tokio::sync::OnceCell;
 use tokio_rustls::{TlsConnector, rustls};
 use tokio_tungstenite::{WebSocketStream, tungstenite, tungstenite::protocol::WebSocketConfig};
+use crate::tls_door::ConnectionShutdown;
 
 pub(crate) const PUBLIC_LISTENER: &str = "wss://10.0.0.2:8090/mqtt";
 const BROKER_HOST: &str = op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_HOST;
@@ -53,6 +54,7 @@ pub(crate) async fn upgrade(
     ws: WebSocketUpgrade,
     headers: HeaderMap,
     Extension(permit): Extension<Arc<tokio::sync::OwnedSemaphorePermit>>,
+    Extension(shutdown): Extension<ConnectionShutdown>,
 ) -> Response {
     if !allowed_origin(&headers) || !mqtt_subprotocol(&headers) {
         return StatusCode::FORBIDDEN.into_response();
@@ -61,7 +63,7 @@ pub(crate) async fn upgrade(
         Ok(Ok(broker)) => broker,
         _ => return StatusCode::BAD_GATEWAY.into_response(),
     };
-    accept_upgrade(ws, broker, Some(permit))
+    accept_upgrade(ws, broker, Some(permit), Some(shutdown))
 }
 
 /// Same-origin entrypoint for op-web's `/mqtt` proxy: the page's own origin
@@ -76,12 +78,13 @@ pub async fn proxy_browser_upgrade(ws: WebSocketUpgrade, headers: HeaderMap) -> 
         Ok(Ok(broker)) => broker,
         _ => return StatusCode::BAD_GATEWAY.into_response(),
     };
-    accept_upgrade(ws, broker, None)
+    accept_upgrade(ws, broker, None, None)
 }
 fn accept_upgrade<S>(
     ws: WebSocketUpgrade,
     broker: WebSocketStream<S>,
     permit: Option<Arc<tokio::sync::OwnedSemaphorePermit>>,
+    shutdown: Option<ConnectionShutdown>,
 ) -> Response
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
@@ -91,7 +94,7 @@ where
         .max_frame_size(MAX_FRAME_BYTES)
         .on_upgrade(move |browser| async move {
             let _permit = permit;
-            relay(browser, broker).await;
+            relay(browser, broker, shutdown).await;
         })
         .into_response()
 }
@@ -146,7 +149,11 @@ async fn connect_broker()
     Ok(socket)
 }
 
-async fn relay<S>(browser: WebSocket, broker: WebSocketStream<S>)
+async fn relay<S>(
+    browser: WebSocket,
+    broker: WebSocketStream<S>,
+    mut shutdown: Option<ConnectionShutdown>,
+)
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
@@ -162,6 +169,12 @@ where
             },
             async {
                 tokio::select! {
+                    _ = async {
+                        match shutdown.as_mut() {
+                            Some(shutdown) => shutdown.cancelled().await,
+                            None => std::future::pending().await,
+                        }
+                    } => RelayEvent::Shutdown,
                     from_browser = browser_recv.next() => RelayEvent::Browser(from_browser),
                     from_broker = broker_recv.next() => RelayEvent::Broker(from_broker),
                 }
@@ -216,6 +229,7 @@ where
 }
 
 enum RelayEvent {
+    Shutdown,
     Browser(Option<Result<BrowserMessage, axum::Error>>),
     Broker(Option<Result<tungstenite::Message, tungstenite::Error>>),
 }
@@ -250,7 +264,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn axum_upgrade_relays_binary_and_closes_both_ends() {
+    async fn axum_upgrade_relays_binary_and_drains_both_ends_on_shutdown() {
         let broker_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let broker_addr = broker_listener.local_addr().unwrap();
         let broker = tokio::spawn(async move {
@@ -266,12 +280,14 @@ mod tests {
         });
         let app = Router::new().route(
             "/mqtt",
-            get(move |ws: WebSocketUpgrade| async move {
+            get(move |ws: WebSocketUpgrade,
+                      Extension(permit): Extension<Arc<tokio::sync::OwnedSemaphorePermit>>,
+                      Extension(shutdown): Extension<ConnectionShutdown>| async move {
                 let (upstream, _) =
                     tokio_tungstenite::connect_async(format!("ws://{broker_addr}/mqtt"))
                         .await
                         .unwrap();
-                accept_upgrade(ws, upstream, None)
+                accept_upgrade(ws, upstream, Some(permit), Some(shutdown))
             }),
         );
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -282,9 +298,11 @@ mod tests {
             certificate.key_pair.serialize_pem(),
         );
         let server_tls = identity.server_config().unwrap();
+        let (stop, stopped) = tokio::sync::oneshot::channel();
         let server = tokio::spawn(async move {
-            crate::tls_door::serve_upgradeable_tcp(listener, server_tls, app)
-                .await
+            crate::tls_door::serve_upgradeable_tcp_with_shutdown(
+                listener, server_tls, app, async { let _ = stopped.await; },
+            ).await
                 .unwrap();
         });
         let mut roots = rustls::RootCertStore::empty();
@@ -320,11 +338,17 @@ mod tests {
             client.next().await.unwrap().unwrap(),
             tungstenite::Message::Binary(vec![0x20, 0x02, 0, 0])
         );
-        client.close(None).await.unwrap();
+        stop.send(()).unwrap();
+        assert!(matches!(
+            tokio::time::timeout(Duration::from_secs(3), client.next())
+                .await.unwrap().unwrap().unwrap(),
+            tungstenite::Message::Close(_),
+        ));
         tokio::time::timeout(Duration::from_secs(3), broker)
             .await
             .unwrap()
             .unwrap();
-        server.abort();
+        tokio::time::timeout(Duration::from_secs(3), server)
+            .await.unwrap().unwrap();
     }
 }

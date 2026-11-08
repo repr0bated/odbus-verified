@@ -87,12 +87,18 @@ pub fn gaps_from_surface_json_for_plugin(
                 || p.starts_with("flag.")
                 || p.contains("Commands.")
                 || p.contains(".Commands.")
+                || is_openapi_operation_path(p)
         })
         .cloned()
         .collect();
     let missing_config: Vec<String> = missing
         .iter()
-        .filter(|p| p.contains("zeroclaw_config") || p.contains(".config."))
+        .filter(|p| {
+            p.contains("zeroclaw_config")
+                || p.contains(".config.")
+                || is_openapi_schema_field_path(p)
+                || is_device_disk_config_path(p)
+        })
         .cloned()
         .collect();
 
@@ -225,6 +231,116 @@ fn is_signal(p: &str) -> bool {
         || p.contains("zeroclaw_config")
         || p.contains("antigravity")
         || p.contains("Commands.")
+        // LXD/Incus OpenAPI + metadata configuration (directory-shifted doc packs).
+        || is_openapi_operation_path(p)
+        || is_openapi_schema_field_path(p)
+        || is_device_disk_config_path(p)
+}
+
+/// OpenAPI operation leaf: `openapi.*.paths.<route>.<verb>.operationId`
+/// File key depends on Repomix start root (`rest-api` from doc/, `doc.rest-api` from repo root).
+fn is_openapi_operation_path(p: &str) -> bool {
+    openapi_operation_method_name(p).is_some()
+}
+
+/// Route+verb slug used for coverage / method naming (start-root agnostic after `.paths.`).
+fn openapi_operation_method_name(p: &str) -> Option<String> {
+    if !p.starts_with("openapi.") || p.contains(".devlxd-api.") {
+        return None;
+    }
+    let before = p.strip_suffix(".operationId")?;
+    let (head, verb) = before.rsplit_once('.')?;
+    if !matches!(
+        verb,
+        "get" | "post" | "put" | "patch" | "delete" | "head" | "options"
+    ) || !head.contains(".paths.")
+    {
+        return None;
+    }
+    let route = head.split(".paths.").nth(1)?;
+    let mut slug = route.trim_start_matches('/');
+    if let Some(rest) = slug.strip_prefix("1.0/") {
+        slug = rest;
+    } else if let Some(rest) = slug.strip_prefix("1.0?") {
+        slug = rest;
+    } else if slug == "1.0" {
+        slug = "server";
+    } else if slug.is_empty() {
+        slug = "api_root";
+    }
+    let slug = slug
+        .replace('{', "")
+        .replace('}', "")
+        .replace('/', "_")
+        .replace('?', "_")
+        .replace('=', "_")
+        .replace('&', "_")
+        .replace('.', "_")
+        .replace('-', "_");
+    Some(format!("{slug}_{verb}"))
+}
+
+/// OpenAPI schema property leaf under definitions/components.
+/// Keep Instance / device-oriented objects; skip descriptions/examples/x-go-* noise.
+fn is_openapi_schema_field_path(p: &str) -> bool {
+    if !p.starts_with("openapi.") || p.contains(".devlxd-api.") {
+        return false;
+    }
+    if !(p.contains(".definitions.") || p.contains(".components.schemas.")) {
+        return false;
+    }
+    if !p.contains(".properties.") {
+        return false;
+    }
+    // Drop OpenAPI example/annotation noise (including `example[*]` leaves).
+    let pl_check = p.to_ascii_lowercase();
+    if pl_check.contains(".example.")
+        || pl_check.contains(".example[")
+        || pl_check.ends_with(".example")
+        || pl_check.contains(".x-go-")
+    {
+        return false;
+    }
+    // Only terminal property names (not nested description/type/example).
+    let leaf = p.rsplit('.').next().unwrap_or("");
+    let leaf_base = leaf.split('[').next().unwrap_or(leaf);
+    if matches!(
+        leaf_base,
+        "description"
+            | "type"
+            | "example"
+            | "format"
+            | "items"
+            | "additionalProperties"
+            | "required"
+            | "default"
+            | "enum"
+            | "title"
+            | "operationId"
+            | "x-go-name"
+            | "x-go-package"
+            | "$ref"
+    ) {
+        return false;
+    }
+    // Focus the huge LXD surface on instance/disk/storage objects for subsidiary work.
+    let pl = p.to_ascii_lowercase();
+    pl.contains(".instance")
+        || pl.contains(".devicesmap")
+        || pl.contains(".storagevolume")
+        || pl.contains("device")
+        || pl.contains("disk")
+}
+
+/// Live metadata keys for Incus/LXD disk devices.
+fn is_device_disk_config_path(p: &str) -> bool {
+    let pl = p.to_ascii_lowercase();
+    (pl.contains("device-disk") || pl.contains("devices.disk") || pl.contains("device_disk"))
+        && (pl.contains(".keys.") || pl.contains("keys[*]."))
+        && !matches!(
+            pl.rsplit('.').next().unwrap_or(""),
+            "longdesc" | "shortdesc" | "defaultdesc" | "condition" | "required" | "type"
+        )
 }
 
 fn group_of(p: &str) -> String {
@@ -234,6 +350,12 @@ fn group_of(p: &str) -> String {
         "cli_flags".into()
     } else if p.contains("Commands.") || p.contains(".Commands.") {
         "cli_commands".into()
+    } else if is_openapi_operation_path(p) {
+        "openapi_operations".into()
+    } else if is_openapi_schema_field_path(p) {
+        "openapi_schema".into()
+    } else if is_device_disk_config_path(p) {
+        "device_disk".into()
     } else if p.contains("zeroclaw_config") {
         "zeroclaw_config".into()
     } else if p.starts_with("py.") {
@@ -254,9 +376,19 @@ fn surface_covered(
     plugin_leaves: &BTreeSet<String>,
     method_snakes: &BTreeSet<String>,
 ) -> bool {
+    // OpenAPI operation leaves are always `operationId`; match on route+verb slug instead.
+    if let Some(name) = openapi_operation_method_name(path) {
+        if method_snakes.contains(&name) {
+            return true;
+        }
+    }
     let leaf = path.rsplit('.').next().unwrap_or(path);
     let leaf_l = leaf.to_ascii_lowercase();
     let snake = camel_to_snake(leaf);
+    // Never treat the shared OpenAPI leaf token as a field/method hit.
+    if leaf_l == "operationid" {
+        return false;
+    }
     if plugin_leaves.contains(&leaf_l) || plugin_leaves.contains(&snake) {
         return true;
     }

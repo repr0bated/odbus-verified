@@ -43,7 +43,7 @@ live state.
   exact handle and inode, while I/O retains opener UID checks. An operation
   rejected before dispatch remains terminal on that descriptor, including close.
 - Atomic store publication with locking, `fsync`, and rename.
-- Plugin operations dispatched only through `org.opdbus.v1.PluginV1.Call`.
+- Plugin operations dispatched only through `org.opdbus.v1.PluginV1.CallWithOperationId`.
 - Explicit confirmation required for non-read operations.
 
 The default store is `/dev/shm/3tchedfs`, so it is intentionally ephemeral
@@ -60,6 +60,27 @@ is `3tched-fs` (Cargo package `tched-fs`); the upstream executable remains
 `/run/mounts/3tchedFS` from the upstream integration plugins at
 `/run/mounts/threetched`, using `capture --exclude-plugin` and
 `capture --include-plugin` with the same sealed catalog pin.
+
+The bridge does not start an embedded global FUSE mount. The strict host
+`mount.fuse.3tchedFS` adapter owns the existing identity namespace, reading
+root-protected `/etc/op-dbus/human-lungs-session` and
+`/etc/op-dbus/human-lungs-call-owner-uid` selectors. Guest mount services bind
+their own container identity without an identity argument. The library's
+`existing_identity_mount()` inspects the already-mounted host view and rejects
+wrong identities, caller UIDs, filesystem sources and stale catalog pins; it
+does not mount, capture, repair or fall back to a read-only global view.
+
+The new bridge listens on `OPDBUS_LUNGS_SOCKET` (default
+`/run/opdbus/lungs/lungs.sock`). `LungsV1.Bind` requires host root in the bridge's
+user and PID namespaces; `BindCurrentContainer` instead resolves the peer to
+exactly one active committed Incus identity. Original-peer pidfds, held
+namespace descriptors, native instance UUID/init PID and the active principal
+registry are rechecked for operations. The canonical runtime performs exact
+sealed-method and grant admission and owns durable attempt/terminal receipts.
+Lost replies and cancellation never imply that retrying is safe; recover the
+operation through the declared `tched_fs.get_method_receipt` method under the
+same principal and session. Mount presence is not bridge startup readiness,
+method authorization or evidence of backend completion.
 
 Calls use the identity-bound lungs connection, canonical method admission,
 exact per-command capabilities and the existing operation receipt. Queued calls
@@ -378,7 +399,6 @@ been run for this integration while the owner's build hold is in effect.
    export THREETCHED_CAPTURE_MANIFEST="$PWD/target/threetched-artifacts/tched-router/manifest.json"
    export THREETCHED_BIN=/usr/bin/threetched
    export THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json
-   export TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router
    export COGNITIVE_QDRANT_URL=http://10.200.0.2:6334
    ```
 

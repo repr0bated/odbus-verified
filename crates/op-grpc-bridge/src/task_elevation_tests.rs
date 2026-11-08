@@ -1,225 +1,103 @@
-//! Per-task sudo elevation through the canonical MutationEngine path: the
-//! choke point refuses a protected call without its ticket, a ticket needs
-//! the root password without a user map, is bound to the exact call and is used once,
-//! failures lock out, and the password never reaches the chain.
-
+//! Isolated ticket, expiry, lockout and audit-redaction boundaries. These do not
+//! invoke PAM or the retired MutationEngine/gallery integration fixture.
+use super::*;
 use serde_json::json;
 
-use crate::json_render_gallery_dispatch::tests::{
-    SUDO_PASSWORD, authorize, call, call_unelevated, error_of, fixture, save,
-};
+fn clock() -> DateTime<Utc> {
+    DateTime::from_timestamp(1_700_000_000, 0).unwrap()
+}
+
+fn input(candidate: usize) -> AuthorizeTaskInput {
+    AuthorizeTaskInput {
+        plugin: "json_render".into(),
+        method: "promote_candidate".into(),
+        args: json!({"candidate_id": candidate, "name": "Status", "description": ""}),
+        password: "fixture-password".into(),
+    }
+}
 
 #[test]
-fn pam_elevation_cannot_select_a_callers_unix_account() {
-    use crate::task_elevation::{PamSudoAuthority, SudoAuthority};
-
-    // Refused before PAM is invoked; no real password or host account check.
-    let error = PamSudoAuthority.verify("jeremy", "fixture").unwrap_err();
-    assert!(error.to_string().contains("only the root password"));
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn a_protected_call_needs_its_own_one_time_ticket() {
-    let fixture = fixture().await;
-    let candidate = save(&fixture, &fixture.alice, "Status").await;
-    let args =
-        json!({"candidate_id": candidate["candidate_id"], "name": "Status", "description": ""});
-
-    let refused = error_of(
-        call_unelevated(&fixture, &fixture.alice, "promote_candidate", args.clone()).await,
-    );
-    assert!(refused.contains("needs sudo elevation"), "{refused}");
-
-    // A ticket for different arguments does not cover this call.
-    let other =
-        json!({"candidate_id": candidate["candidate_id"], "name": "Other", "description": ""});
-    authorize(
-        &fixture,
-        &fixture.alice,
-        "json_render",
-        "promote_candidate",
-        &other,
-        SUDO_PASSWORD,
-    )
-    .await
-    .unwrap();
-    let mismatched = error_of(
-        call_unelevated(&fixture, &fixture.alice, "promote_candidate", args.clone()).await,
-    );
-    assert!(mismatched.contains("needs sudo elevation"), "{mismatched}");
-
-    let ticket = authorize(
-        &fixture,
-        &fixture.alice,
-        "json_render",
-        "promote_candidate",
-        &args,
-        SUDO_PASSWORD,
-    )
-    .await
-    .unwrap();
-    assert_eq!(ticket["action_id"], "org.opdbus.v1.catalog.promote");
-    chrono::DateTime::parse_from_rfc3339(ticket["expires_at"].as_str().unwrap()).unwrap();
-    call_unelevated(&fixture, &fixture.alice, "promote_candidate", args.clone())
-        .await
-        .unwrap();
-    // Used once: the same call again needs a new ticket.
-    let reused =
-        error_of(call_unelevated(&fixture, &fixture.alice, "promote_candidate", args).await);
-    assert!(reused.contains("needs sudo elevation"), "{reused}");
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn a_ticket_is_bound_to_its_session_and_principal() {
-    let fixture = fixture().await;
-    let alices = save(&fixture, &fixture.alice, "Alice").await;
-    let args = json!({"candidate_id": alices["candidate_id"], "name": "Alice", "description": ""});
-    // Bob holds a ticket for exactly these arguments; it is not Alice's.
-    authorize(
-        &fixture,
-        &fixture.bob,
-        "json_render",
-        "promote_candidate",
-        &args,
-        SUDO_PASSWORD,
-    )
-    .await
-    .unwrap();
-    let refused =
-        error_of(call_unelevated(&fixture, &fixture.alice, "promote_candidate", args).await);
-    assert!(refused.contains("needs sudo elevation"), "{refused}");
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn wrong_passwords_are_refused_and_lock_out() {
-    let fixture = fixture().await;
-    let args = json!({"entry_id": uuid::Uuid::now_v7().to_string(), "reason": ""});
-    for _ in 0..5 {
-        let wrong = error_of(
-            authorize(
-                &fixture,
-                &fixture.alice,
-                "json_render",
-                "retire_catalog_entry",
-                &args,
-                "guess",
-            )
-            .await,
-        );
-        assert!(wrong.contains("not accepted"), "{wrong}");
+fn exact_owner_session_method_and_arguments_are_required_without_spending_the_ticket() {
+    let elevation = TaskElevation::default();
+    let input = input(1);
+    let now = clock();
+    elevation.issue("alice", "session-a", &input, now).unwrap();
+    for (principal, session, method, args) in [
+        ("bob", Some("session-a"), input.method.as_str(), input.args.clone()),
+        ("alice", Some("session-b"), input.method.as_str(), input.args.clone()),
+        ("alice", None, input.method.as_str(), input.args.clone()),
+        ("alice", Some("session-a"), "retire_catalog_entry", input.args.clone()),
+        ("alice", Some("session-a"), input.method.as_str(), json!({"candidate_id": 2})),
+    ] {
+        assert!(elevation.consume_at(principal, session, &input.plugin, method, &args, now).is_err());
     }
-    let locked = error_of(
-        authorize(
-            &fixture,
-            &fixture.alice,
-            "json_render",
-            "retire_catalog_entry",
-            &args,
-            SUDO_PASSWORD,
-        )
-        .await,
-    );
-    assert!(locked.contains("too many failed"), "{locked}");
-    // Another principal is not locked out.
-    authorize(
-        &fixture,
-        &fixture.bob,
-        "json_render",
-        "retire_catalog_entry",
-        &args,
-        SUDO_PASSWORD,
-    )
-    .await
-    .unwrap();
+    // Canonical argument order does not change the authorized call.
+    let reordered = json!({"description": "", "name": "Status", "candidate_id": 1});
+    elevation.consume_at("alice", Some("session-a"), &input.plugin, &input.method, &reordered, now).unwrap();
+    assert!(elevation.consume_at("alice", Some("session-a"), &input.plugin, &input.method, &input.args, now).is_err());
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn root_password_needs_no_user_map_but_still_requires_grants_and_a_protected_task() {
-    let fixture = fixture().await;
-    let args = json!({"entry_id": uuid::Uuid::now_v7().to_string(), "reason": ""});
-    let ungranted = error_of(
-        authorize(
-            &fixture,
-            &fixture.carol,
-            "json_render",
-            "retire_catalog_entry",
-            &args,
-            SUDO_PASSWORD,
-        )
-        .await,
-    );
-    assert!(ungranted.contains("elevation.authorize"), "{ungranted}");
-    let unprotected = error_of(
-        authorize(
-            &fixture,
-            &fixture.alice,
-            "json_render",
-            "list_catalog",
-            &json!({}),
-            SUDO_PASSWORD,
-        )
-        .await,
-    );
-    assert!(
-        unprotected.contains("not a protected task"),
-        "{unprotected}"
-    );
-    // The control plane's model is protected; the Personal selection is not.
-    let control_plane = authorize(
-        &fixture,
-        &fixture.alice,
-        "chat_router",
-        "config_set",
-        &json!({"path": "agents.control_plane.model_provider", "value": "opencode.go_cp_route_grok_47"}),
-        SUDO_PASSWORD,
-    )
-    .await
-    .unwrap();
-    assert_eq!(
-        control_plane["action_id"],
-        "org.opdbus.v1.control-plane.configure"
-    );
+#[test]
+fn tickets_expire_at_the_deadline_not_after_it() {
+    let elevation = TaskElevation::default();
+    let input = input(1);
+    let now = clock();
+    let expires = elevation.issue("alice", "session-a", &input, now).unwrap();
+    assert_eq!(expires, now + Duration::seconds(TICKET_TTL_SECONDS));
+    assert!(elevation.consume_at("alice", Some("session-a"), &input.plugin, &input.method, &input.args, expires).is_err());
+    elevation.issue("alice", "session-a", &input, now).unwrap();
+    elevation.consume_at("alice", Some("session-a"), &input.plugin, &input.method, &input.args,
+        expires - Duration::nanoseconds(1)).unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn the_password_never_reaches_the_chain() {
-    let fixture = fixture().await;
-    let args = json!({"entry_id": uuid::Uuid::now_v7().to_string(), "reason": ""});
-    authorize(
-        &fixture,
-        &fixture.alice,
-        "json_render",
-        "retire_catalog_entry",
-        &args,
-        SUDO_PASSWORD,
-    )
-    .await
-    .unwrap();
-    let _ = authorize(
-        &fixture,
-        &fixture.alice,
-        "json_render",
-        "retire_catalog_entry",
-        &args,
-        "wrong",
-    )
-    .await;
-    let _ = call(&fixture, &fixture.alice, "list_catalog", json!({})).await;
-    let chain = fixture.engine.event_chain.try_read().unwrap();
-    let recorded: Vec<_> = chain
-        .events()
-        .iter()
-        .filter(|event| event.plugin_id == "elevation")
-        .collect();
-    assert_eq!(
-        recorded.len(),
-        2,
-        "every authorization attempt is on the chain"
-    );
-    for event in recorded {
-        let text = serde_json::to_string(event).unwrap();
-        assert!(!text.contains("SUDO-PASSWORD-SENTINEL"), "{text}");
-        assert!(!text.contains("wrong"), "{text}");
-        assert!(!text.contains("request_hash"), "{text}");
+#[test]
+fn failure_lockout_is_per_principal_and_resets_at_its_deadline() {
+    let elevation = TaskElevation::default();
+    let now = clock();
+    for _ in 0..MAX_FAILURES - 1 {
+        elevation.record_failure("alice", now);
+        elevation.check_lockout("alice", now).unwrap();
     }
+    elevation.record_failure("alice", now);
+    assert!(elevation.check_lockout("alice", now).is_err());
+    elevation.check_lockout("bob", now).unwrap();
+    let deadline = now + Duration::minutes(LOCKOUT_MINUTES);
+    assert!(elevation.check_lockout("alice", deadline - Duration::nanoseconds(1)).is_err());
+    elevation.check_lockout("alice", deadline).unwrap();
+    elevation.record_failure("alice", deadline);
+    elevation.check_lockout("alice", deadline).unwrap();
+}
+
+#[test]
+fn outstanding_ticket_bound_is_per_principal_and_reclaims_consumed_and_expired_entries() {
+    let elevation = TaskElevation::default();
+    let now = clock();
+    for index in 0..MAX_TICKETS_PER_PRINCIPAL {
+        elevation.issue("alice", "session-a", &input(index), now).unwrap();
+    }
+    let extra = input(MAX_TICKETS_PER_PRINCIPAL);
+    assert!(elevation.issue("alice", "session-a", &extra, now).is_err());
+    elevation.issue("bob", "session-b", &extra, now).unwrap();
+    let first = input(0);
+    elevation.consume_at("alice", Some("session-a"), &first.plugin, &first.method, &first.args, now).unwrap();
+    elevation.issue("alice", "session-a", &extra, now).unwrap();
+    let after_expiry = now + Duration::seconds(TICKET_TTL_SECONDS);
+    elevation.issue("alice", "session-a", &input(MAX_TICKETS_PER_PRINCIPAL + 1), after_expiry).unwrap();
+}
+
+#[test]
+fn audit_allowlist_excludes_passwords_nested_payloads_and_request_hashes() {
+    let args = json!({
+        "plugin": "json_render",
+        "method": "promote_candidate",
+        "password": "SUDO-PASSWORD-SENTINEL",
+        "args": {"token": "NESTED-SECRET"},
+        "request_hash": "PASSWORD-DERIVED-HASH"
+    });
+    assert_eq!(audit_arguments(&args), json!({
+        "plugin": "json_render", "method": "promote_candidate", "redacted": true
+    }));
+    assert_eq!(audit_arguments(&json!({
+        "plugin": {"password": "MALFORMED-SECRET"}, "method": ["MALFORMED-SECRET"]
+    })), json!({"plugin": null, "method": null, "redacted": true}));
 }

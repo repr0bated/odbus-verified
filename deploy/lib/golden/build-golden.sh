@@ -11,7 +11,8 @@
 #   target/release/                 CXXFLAGS="-include cstdint" cargo build --workspace --release
 #   $OP_PERSISTED_CATALOG_SOURCE    sealed catalog from `opblob seal-shm && opblob persist`
 #                                   (default /var/lib/opdbus/plugin-blobs, never modified here)
-#   target/threetched-artifacts/    pinned threetched binary + provenance manifest
+#   $OP_THREETCHED_ARTIFACT_DIR     pinned threetched binary + manifest
+#                                   (default target/threetched-artifacts/tched-router).
 #   /srv/git/3tched.com             the UI repository itself — Svelte/SvelteKit only.
 #                                   There is no vendored UI archive; assets are built
 #                                   from this repo (overridable with OP_UI_REPO).
@@ -61,7 +62,7 @@ esac
 UI_REPO=${OP_UI_REPO:-/srv/git/3tched.com}
 UI_REPO=$(realpath -e -- "$UI_REPO")
 UI_DIST="$UI_REPO/dist"
-THREETCHED_ARTIFACT_DIR="$PROJECT_ROOT/target/threetched-artifacts/tched-router"
+THREETCHED_ARTIFACT_DIR=$(realpath -e -- "${OP_THREETCHED_ARTIFACT_DIR:-"$PROJECT_ROOT/target/threetched-artifacts/tched-router"}")
 THREETCHED_BIN="$THREETCHED_ARTIFACT_DIR/threetched"
 THREETCHED_MANIFEST="$THREETCHED_ARTIFACT_DIR/manifest.json"
 TCHED_ROUTER_SOURCE_PIN="$PROJECT_ROOT/vendor/tched-router/source.pin"
@@ -207,7 +208,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --golden-only) ;;
         --dry-run) DRY_RUN=1 ;;
-        --system) die "--system is retired; the base-system payload is staged by its own owner" ;;
+        --system) ;;
         --live-only) die "--live-only is retired; deploy only with btrfs send/receive of a prepared snapshot" ;;
         --no-restart) die "--no-restart is retired because this script never installs or restarts live services" ;;
         -h|--help) sed -n '2,34p' "$SCRIPT_PATH"; exit 0 ;;

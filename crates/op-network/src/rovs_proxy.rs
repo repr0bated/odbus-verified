@@ -29,6 +29,13 @@ mod native_tests;
 /// `ovs_capabilities.rs`'s `ovsdb_socket_path`.
 const DEFAULT_OVSDB_ADDR: &str = "unix:/var/run/openvswitch/db.sock";
 
+/// The canonical operation owner supplies this callback; the native client
+/// neither invents grants nor retains caller authority in long-lived sessions.
+pub type NativeAdmission = Arc<
+    dyn Fn() -> std::pin::Pin<Box<dyn Future<Output = Result<()>> + Send>>
+        + Send + Sync,
+>;
+
 /// High-level OVSDB client — wraps the real vendor `rovs_ovsdb::Client`
 /// (crates.io `rovs-ovsdb`, already a workspace dependency and already used
 /// natively — no D-Bus hop — by `op-network::openflow` via `rovs_openflow`/
@@ -41,6 +48,7 @@ pub struct OvsdbDbusClient {
     client: Arc<tokio::sync::Mutex<Option<rovs_ovsdb::Client>>>,
     locks: Arc<tokio::sync::Mutex<HashMap<(String, String), LockSession>>>,
     monitors: Arc<tokio::sync::Mutex<HashMap<(String, String), monitor::MonitorSubscription>>>,
+    admission: Option<NativeAdmission>,
 }
 
 struct LockSession {
@@ -109,6 +117,11 @@ fn retained_key(owner: &str, id: &str) -> (String, String) {
     (owner.to_owned(), id.to_owned())
 }
 
+fn transaction_has_effect(operation: &serde_json::Value) -> bool {
+    !matches!(operation.get("op").and_then(serde_json::Value::as_str),
+        Some("select" | "wait" | "comment" | "assert"))
+}
+
 impl OvsdbDbusClient {
     /// Kept sync to preserve the existing construction call sites; the vendor
     /// client connects lazily on first use.
@@ -117,39 +130,58 @@ impl OvsdbDbusClient {
             client: Arc::new(tokio::sync::Mutex::new(None)),
             locks: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             monitors: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            admission: None,
         }
     }
 
-    /// Run `f` against a connected client, reconnecting once on failure (the
-    /// socket may have been idle-closed by `ovsdb-server` between calls).
-    async fn with_client<T, F>(&self, f: F) -> Result<T>
+    /// Share native handles for one admitted operation, never a new authority.
+    pub fn admitted(&self, admission: NativeAdmission) -> Self {
+        Self {
+            client: self.client.clone(), locks: self.locks.clone(),
+            monitors: self.monitors.clone(), admission: Some(admission),
+        }
+    }
+
+    async fn admit(&self) -> Result<()> {
+        if let Some(admission) = &self.admission { admission().await?; }
+        Ok(())
+    }
+
+    /// Close only this owner's retained transport sessions during shutdown.
+    pub async fn close_sessions(&self) {
+        self.monitors.lock().await.clear();
+        self.locks.lock().await.clear();
+        self.client.lock().await.take();
+    }
+
+    /// Execute once. A disconnected request may already have committed in
+    /// ovsdb-server; reconnect only on the next explicitly admitted operation.
+    async fn with_client<T, F>(&self, mutating: bool, f: F) -> Result<T>
     where
-        F: for<'a> Fn(
+        F: for<'a> FnOnce(
             &'a mut rovs_ovsdb::Client,
         ) -> std::pin::Pin<
-            Box<dyn std::future::Future<Output = Result<T>> + Send + 'a>,
+            Box<dyn Future<Output = Result<T>> + Send + 'a>,
         >,
     {
         let addr =
             std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_string());
         let mut guard = self.client.lock().await;
-        if guard.is_none() {
-            let client = rovs_ovsdb::Client::connect(&addr)
-                .await
-                .with_context(|| format!("failed to connect to OVSDB at {addr}"))?;
+        // Remove ownership while a request is in flight. Cancellation drops the
+        // possibly half-consumed connection rather than lending it to a later call.
+        let mut client = match guard.take() {
+            Some(client) => client,
+            None => tokio::time::timeout(RPC_TIMEOUT, rovs_ovsdb::Client::connect(&addr))
+                .await.context("OVSDB connection timed out before request submission")?
+                .with_context(|| format!("failed to connect to OVSDB at {addr}"))?,
+        };
+        if mutating { self.admit().await?; }
+        let result = tokio::time::timeout(RPC_TIMEOUT, f(&mut client))
+            .await.context("OVSDB request timed out; outcome requires reconciliation")?;
+        if result.is_ok() {
             *guard = Some(client);
         }
-        match f(guard.as_mut().expect("just ensured Some")).await {
-            Ok(val) => Ok(val),
-            Err(_first_err) => {
-                // Reconnect once and retry — covers idle-closed sockets.
-                let client = rovs_ovsdb::Client::connect(&addr)
-                    .await
-                    .with_context(|| format!("failed to reconnect to OVSDB at {addr}"))?;
-                *guard = Some(client);
-                f(guard.as_mut().expect("just ensured Some")).await
-            }
-        }
+        result
     }
 
     // ── Internal: build & send a transact ───────────────────────────────
@@ -158,9 +190,9 @@ impl OvsdbDbusClient {
         // rovs_ovsdb::Client::transact() prepends the configured database name
         // itself, so operations here are passed WITHOUT it (unlike the raw
         // JSON-RPC ["Open_vSwitch", op, ...] wire shape).
+        let mutating = transaction_has_effect(&op);
         let result = self
-            .with_client(move |client| {
-                let op = op.clone();
+            .with_client(mutating, move |client| {
                 Box::pin(async move {
                     client
                         .transact(serde_json::Value::Array(vec![op]))
@@ -182,8 +214,8 @@ impl OvsdbDbusClient {
     }
 
     async fn transact_many(&self, ops: Vec<serde_json::Value>) -> Result<serde_json::Value> {
-        self.with_client(move |client| {
-            let ops = ops.clone();
+        let mutating = ops.iter().any(transaction_has_effect);
+        self.with_client(mutating, move |client| {
             Box::pin(async move {
                 client
                     .transact(serde_json::Value::Array(ops))
@@ -194,12 +226,20 @@ impl OvsdbDbusClient {
         .await
     }
 
+    /// Native transaction entrypoint for already-admitted bridge backends.
+    /// Each transaction is submitted once; operation errors are not retried.
+    pub async fn transact(&self, operations: Vec<serde_json::Value>) -> Result<serde_json::Value> {
+        let result = self.transact_many(operations).await?;
+        Self::check_errors(&result)?;
+        Ok(result)
+    }
+
     // ── Read helpers ──────────────────────────────────────────────────────
 
     /// Return `true` if the daemon (and OVSDB) is reachable.
     pub async fn list_dbs(&self) -> Result<Vec<String>> {
         let val = self
-            .with_client(|client| {
+            .with_client(false, |client| {
                 Box::pin(async move { client.list_dbs().await.context("OVSDB list_dbs failed") })
             })
             .await?;
@@ -208,7 +248,7 @@ impl OvsdbDbusClient {
 
     /// Return the schema cached by the connected vendor client.
     pub async fn get_schema(&self) -> Result<serde_json::Value> {
-        self.with_client(|client| {
+        self.with_client(false, |client| {
             Box::pin(async move {
                 let schema = client
                     .schema()
@@ -834,6 +874,7 @@ impl OvsdbDbusClient {
             .await
             .context("connect to OVSDB native RPC endpoint")?;
         let mut connection = rovs_jsonrpc::Connection::new(stream);
+        if !matches!(method, "echo" | "list_dbs" | "get_schema") { self.admit().await?; }
         tokio::time::timeout(RPC_TIMEOUT, connection.transact(method, params))
             .await
             .context("OVSDB native RPC timed out")?
@@ -864,6 +905,7 @@ impl OvsdbDbusClient {
             .context("connect to OVSDB lock endpoint timed out")?
             .context("connect to OVSDB lock endpoint")?;
         let mut connection = rovs_jsonrpc::Connection::new(stream);
+        self.admit().await?;
         let result = tokio::time::timeout(
             RPC_TIMEOUT,
             connection.transact("lock", serde_json::json!([lock_id])),
@@ -922,6 +964,7 @@ impl OvsdbDbusClient {
             .context("connect to OVSDB steal endpoint timed out")?
             .context("connect to OVSDB steal endpoint")?;
         let mut connection = rovs_jsonrpc::Connection::new(stream);
+        self.admit().await?;
         let result = tokio::time::timeout(
             RPC_TIMEOUT,
             connection.transact("steal", serde_json::json!([lock_id])),
@@ -961,12 +1004,11 @@ impl OvsdbDbusClient {
     pub async fn unlock(&self, owner: &str, lock_id: &str) -> Result<UnlockReceipt> {
         validate_lock_key(owner, lock_id)?;
         let key = retained_key(owner, lock_id);
-        let mut session = self
-            .locks
-            .lock()
-            .await
-            .remove(&key)
-            .ok_or_else(|| anyhow::anyhow!("OVSDB lock '{lock_id}' is not held"))?;
+        let mut locks = self.locks.lock().await;
+        anyhow::ensure!(locks.contains_key(&key), "OVSDB lock '{lock_id}' is not held");
+        self.admit().await?;
+        let mut session = locks.remove(&key).expect("lock checked while retaining owner mutex");
+        drop(locks);
         let result = tokio::time::timeout(
             RPC_TIMEOUT,
             session
@@ -1040,8 +1082,9 @@ impl OvsdbDbusClient {
         }
         let address =
             std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_owned());
-        let subscription =
-            monitor::subscribe_protocol(&address, database, monitor_id, method, requests).await?;
+        let subscription = monitor::subscribe_protocol(
+            &address, database, monitor_id, method, requests, self.admission.as_ref(),
+        ).await?;
         let initial = match subscription.receiver.borrow().clone() {
             monitor::ProtocolObservation::Snapshot(snapshot) => snapshot,
             monitor::ProtocolObservation::Unavailable(reason) => {
@@ -1065,14 +1108,12 @@ impl OvsdbDbusClient {
     /// Cancel a retained monitor through monitor_cancel on its owning session.
     pub async fn cancel_monitor(&self, owner: &str, monitor_id: &str) -> Result<serde_json::Value> {
         validate_session_key(owner, monitor_id)?;
-        let subscription = self
-            .monitors
-            .lock()
-            .await
-            .remove(&retained_key(owner, monitor_id))
-            .ok_or_else(|| {
-                anyhow::anyhow!("OVSDB monitor '{monitor_id}' is not active for this caller")
-            })?;
+        let mut monitors = self.monitors.lock().await;
+        let key = retained_key(owner, monitor_id);
+        anyhow::ensure!(monitors.contains_key(&key), "OVSDB monitor '{monitor_id}' is not active for this caller");
+        self.admit().await?;
+        let subscription = monitors.remove(&key).expect("monitor checked while retaining owner mutex");
+        drop(monitors);
         subscription.cancel().await
     }
 

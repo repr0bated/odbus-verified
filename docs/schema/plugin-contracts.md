@@ -52,3 +52,24 @@ On mutation apply:
 - If payload is non-contract, plugin schema template is generated and merged.
 
 This enforces schema/plugin coupling at runtime.
+
+## Native Platform Method Observations
+
+The fresh bridge's `runtime_platform.rs` uses an explicit `(plugin, method)`
+inventory and retained typed native adapters; a schema declaration alone does
+not make a method executable. `config`, `endpoint`, `agent_config`, and embedding
+configuration share the parent-owned `RuntimeDocuments` handle. Publication
+reads the committed document, not the submitted arguments.
+
+Hardware, process, container, and service methods return native observations.
+The bridge preserves unrelated parent fields and children, replaces complete
+observed collections so deletions survive, and scopes platform observations to
+the verified principal and session. Identity-managed native targets remain
+behind the identity lifecycle/provenance owner, never generic container control.
+
+A mutation failure with an unproven outcome is reported as unknown without
+retrying the effect. A completed container receipt that disagrees with readback
+carries the genuine observed state alongside that failure. Missing native
+owners are not replaced with synthetic success, empty inventories, or a second
+durable store. Integration/build and deployment evidence remain separate from
+these source-level contracts.

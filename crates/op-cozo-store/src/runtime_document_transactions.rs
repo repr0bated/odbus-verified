@@ -245,7 +245,10 @@ impl CozoGraphShuttle {
         Ok(())
     }
 
-    pub(crate) fn sync_runtime_document_store(&self) -> std::result::Result<(), CozoError> {
+    /// Complete the native persistence barrier on this already-open store.
+    /// Domain adapters use this before acknowledging writes made through the
+    /// same handle; a failed barrier leaves their operation outcome uncertain.
+    pub fn sync_runtime_document_store(&self) -> std::result::Result<(), CozoError> {
         #[cfg(test)]
         tests::checkpoint("barrier")?;
         if let Some(directory) = &self.identity_directory {

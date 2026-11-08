@@ -29,6 +29,9 @@ use std::{
 mod private_directory;
 pub use private_directory::{
     PrivateDocumentCommit, PrivateDocumentPublication, PrivateProjectionDirectory,
+    pending_projection_publication_in,
+    ProjectionBatchCommit, ProjectionBatchPublication, ProjectionDocuments,
+    commit_projection_batch_durable_in, recover_projection_batch_in,
 };
 
 const LOCK_NAME: &str = ".projection.lock";
@@ -67,6 +70,10 @@ struct Manifest {
 pub struct PendingDocumentPublication {
     pub plugin_id: String,
     pub operation_id: String,
+    /// Additional IDs gated by an atomic multi-file publication. Empty retains
+    /// the original single-document wire format and identity-owner behavior.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub plugin_ids: Vec<String>,
 }
 
 /// A commit gate in the existing manifest, never a credential or identity store.
@@ -83,7 +90,8 @@ impl Manifest {
             !self
                 .document_pending
                 .as_ref()
-                .is_some_and(|pending| pending.plugin_id == plugin_id),
+                .is_some_and(|pending| pending.plugin_id == plugin_id
+                    || pending.plugin_ids.iter().any(|id| id == plugin_id)),
             "private document publication is pending; exact-operation durable recovery is required"
         );
         ensure!(

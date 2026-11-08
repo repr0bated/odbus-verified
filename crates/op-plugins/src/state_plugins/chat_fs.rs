@@ -333,9 +333,10 @@ pub fn dispatch(method: &str, arguments: &serde_json::Value) -> Result<serde_jso
     }
 }
 
-inventory::submit! {
-    crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(ThreeTchedFsPlugin))
-}
+// Replaced by unified `fuse` plugin (libfuse schema + FS projection).
+// inventory::submit! {
+//     crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(ThreeTchedFsPlugin))
+// }
 
 #[cfg(test)]
 mod tests {

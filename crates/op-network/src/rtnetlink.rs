@@ -32,6 +32,16 @@ pub struct InterfaceAddress {
 
 /// List all network interfaces with their details
 pub async fn list_interfaces() -> Result<Vec<NetworkInterface>> {
+    list_interfaces_with_address_policy(false).await
+}
+
+/// Complete kernel inventory for authoritative publication. Unlike a
+/// best-effort diagnostic listing, one failed address dump fails the snapshot.
+pub async fn list_interfaces_strict() -> Result<Vec<NetworkInterface>> {
+    list_interfaces_with_address_policy(true).await
+}
+
+async fn list_interfaces_with_address_policy(strict: bool) -> Result<Vec<NetworkInterface>> {
     let (connection, handle, _) = new_connection()?;
     tokio::spawn(connection);
 
@@ -84,6 +94,9 @@ pub async fn list_interfaces() -> Result<Vec<NetworkInterface>> {
         // Get addresses for this interface
         let addresses = match get_interface_addresses(&handle, index).await {
             Ok(addrs) => addrs,
+            Err(error) if strict => {
+                return Err(error).with_context(|| format!("read addresses for interface {name}"));
+            }
             Err(e) => {
                 log::warn!("Failed to get addresses for interface {}: {}", name, e);
                 Vec::new()

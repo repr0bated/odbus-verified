@@ -306,6 +306,29 @@ pub async fn dispatch_keyring_method(
     }
 }
 
+/// Observe a complete Secret Service metadata state on one native connection.
+pub async fn dispatch_keyring_method_observed(
+    method: &str,
+    _args: &serde_json::Value,
+) -> Result<(serde_json::Value, KeyringState)> {
+    anyhow::ensure!(
+        matches!(method, "list_collections" | "get_default_collection"),
+        "unknown keyring method: {method}"
+    );
+    let plugin = KeyringPlugin {
+        connection: Some(Connection::session().await?),
+    };
+    let state = KeyringState {
+        collections: plugin.get_collections().await?,
+        default_collection: plugin.get_default_collection().await?,
+    };
+    let result = match method {
+        "list_collections" => serde_json::json!({"collections": state.collections}),
+        _ => serde_json::json!({"default_collection": state.default_collection}),
+    };
+    Ok((result, state))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

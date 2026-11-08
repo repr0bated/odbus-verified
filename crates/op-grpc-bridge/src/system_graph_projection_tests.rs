@@ -184,15 +184,7 @@ fn incus_typed_effective_devices_and_mail_container_references_are_projected() {
 fn current_incus_public_policy_yields_aggregate_counts_without_private_names() {
     use op_plugins::state_plugins::incus::{IncusInstance, IncusPlugin, IncusState};
     use op_state::StatePlugin;
-    let root = tempfile::tempdir().unwrap();
-    let catalog = root.path().join("catalog");
-    let state = root.path().join("state");
     let schema = IncusPlugin::new().schema().unwrap();
-    let blob = op_blob::blobify_plugin_schema("incus", schema);
-    op_blob::BlobStore::open(&catalog)
-        .unwrap()
-        .write(&blob)
-        .unwrap();
     let instances = [
         ("Running", "container"),
         ("Stopped", "container"),
@@ -211,14 +203,18 @@ fn current_incus_public_policy_yields_aggregate_counts_without_private_names() {
         ..IncusInstance::default()
     })
     .collect();
-    let bytes = serde_json::to_vec(&IncusState { instances }).unwrap();
-    op_core::projection_shm::update_projection_in(state.to_str().unwrap(), "incus", |_| {
-        Ok(Some(bytes))
-    })
-    .unwrap();
-    let graph =
-        crate::system_graph_dispatch::committed_system_graph(&catalog, state.to_str().unwrap())
-            .unwrap();
+    // The fresh collector consumes core's policy-filtered public snapshots.
+    // Exercise that same policy and projection directly: this is a privacy
+    // behavior fixture, not an assertion about an obsolete SHM collector.
+    let state = simd_json::serde::to_owned_value(IncusState { instances }).unwrap();
+    let public = schema.project_public_state(&state).unwrap().unwrap();
+    let public = crate::state_reader::public_plugin_value("incus", &public);
+    let mut input = fixture("incus", Some(serde_json::to_value(public).unwrap()));
+    input.schema = schema;
+    let graph = project_system_graph(
+        &BTreeMap::from([("incus".to_owned(), input)]),
+        provenance(),
+    );
     let summary = &node(&graph, "plugin", "incus").attributes["instance_summary"];
     assert_eq!(summary["total"], 3);
     assert_eq!(
@@ -250,7 +246,6 @@ fn current_incus_public_policy_yields_aggregate_counts_without_private_names() {
         !encoded.contains("private-identity-sentinel")
             && !encoded.contains("private-config-sentinel")
     );
-    assert_eq!(graph.provenance.inputs["shm_generation"], "1");
     system_graph_snapshot_digest(&graph).unwrap();
 }
 

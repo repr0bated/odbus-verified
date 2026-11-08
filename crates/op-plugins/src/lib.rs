@@ -94,12 +94,12 @@ pub mod prelude {
     pub use super::state_plugins::{
         AdcPlugin, AgentConfigPlugin, AntigravityChatPlugin, AntigravityPlugin, BtrfsPlugin,
         CognitivePlugin, ConfigPlugin, CronPlugin, CtlPlaneChatbotPlugin, DnsResolverPlugin,
-        EndpointPlugin, ExecutionResult, Fail2banPlugin, FreeDesktopPlugin, FullSystemPlugin,
+        EndpointPlugin, Fail2banPlugin, FreeDesktopPlugin, FullSystemPlugin,
         GcloudAdcPlugin, HardwarePlugin, IncusPlugin, KeypairPlugin, KeyringPlugin, Login1Plugin,
-        MailServerPlugin, McpStatePlugin, MemoryPlugin, NetStatePlugin, OpenFlowObfuscationPlugin,
+        MailServerPlugin, MemoryPlugin, NetStatePlugin, OpenFlowObfuscationPlugin,
         OpenFlowPlugin, OvsBridgePlugin, PackageKitPlugin, PciDeclPlugin, ProcfsPlugin,
         ProxyServerPlugin, RovsCommandsPlugin, RtnetlinkPlugin, SchemaRendererPlugin,
-        ServicePlugin, SessDeclPlugin, SoftwarePlugin, ChatRouterPlugin, ToolDefinition,
+        ServicePlugin, SessDeclPlugin, SoftwarePlugin, ChatRouterPlugin,
         UnixSocketPlugin, UsersPlugin, WebUiPlugin, WgOpdbusPlugin, WireGuardPlugin,
         WorkflowsPlugin,
     };

@@ -1,0 +1,177 @@
+# CI pipeline â€” install notes
+
+Seven files, all written for the repo root. Run this from the repository root:
+
+```sh
+mkdir -p .github/workflows scripts/ci
+
+cp workflow-ci.yml             .github/workflows/ci.yml
+cp workflow-architecture.yml   .github/workflows/architecture.yml
+cp workflow-supply-chain.yml   .github/workflows/supply-chain.yml
+
+cp check-manifest.sh           scripts/ci/check-manifest.sh
+cp check-services.sh           scripts/ci/check-services.sh
+cp check-architecture.sh       scripts/ci/check-architecture.sh
+cp deny.toml                   deny.toml
+cp LICENSE                     LICENSE
+
+chmod +x scripts/ci/*.sh
+git add .github scripts/ci deny.toml LICENSE
+git commit -m "ci: build/test gate plus architecture and supply-chain invariants"
+```
+
+Run the architecture checks locally before pushing â€” they are the ones most
+likely to fail on first contact, and each failure is a real finding:
+
+```sh
+sh scripts/ci/check-manifest.sh
+sh scripts/ci/check-services.sh
+sh scripts/ci/check-architecture.sh
+```
+
+## What runs where
+
+| Workflow | Trigger | Jobs |
+|---|---|---|
+| `ci.yml` | every push, every PR, manual | `rustfmt`, `cargo check --all-targets`, `cargo test --workspace`, `clippy` (report-only), `release-gate` (main + PRs to main) |
+| `architecture.yml` | every push, every PR, manual | manifest/docs drift, runit service validity, native-protocol + single-writer invariants |
+| `supply-chain.yml` | main, PRs touching manifests, weekly cron | `cargo-deny` advisories/licenses/bans/sources, `[patch.crates-io]` justifications |
+
+Build env details that matter, already set in the workflows:
+
+- `CXXFLAGS="-include cstdint"` â€” required by the vendored RocksDB, per the note in `Cargo.toml`. Without it the build fails on modern libstdc++.
+- `--locked` everywhere, so CI builds the committed `Cargo.lock` and a stale lockfile fails loudly instead of silently resolving.
+- Runner is `ubuntu-24.04` with `libfuse3-dev` (3tchedFS), `clang`/`libclang-dev` (RocksDB bindgen), `protobuf-compiler` (gRPC bridge).
+- `Swatinem/rust-cache` with per-job `shared-key` so `check`, `test`, `clippy` and `release` do not evict each other.
+
+## Deliberate limits â€” read these
+
+**`check-workspace.sh verify` is not in CI, on purpose.** That stage needs a
+provisioned host: sealed plugin catalog, identity state, and runit supervising
+real services. A GitHub runner has none of that, so a `verify` job would either
+fail always or be a no-op that suggests coverage it does not have. CI runs
+`preflight` and `smoke`; `verify` stays on the deployment path.
+
+**Two jobs start as `continue-on-error: true`** â€” `clippy` and `cargo-deny`.
+A 38-crate tree that has never been linted or audited will not be clean on the
+first run. They report from day one; flip the flag once the baseline is quiet so
+new warnings cannot hide in the old ones.
+
+**The architecture checks are greps, not analysis.** They enforce specific,
+written-down rules cheaply:
+
+- no `Command::new()` against `systemctl`, `ovs-vsctl`, `ovs-ofctl`,
+  `ovs-appctl`, `nmcli`, `netplan` â€” the design replaces these with OVSDB
+  JSON-RPC and Generic Netlink (`README.md`, "Key Principles")
+- `MutationEngine::new` appears only under `crates/op-state-store/` â€” the single
+  writer rule in `AGENTS.md`
+- `crates/op-grpc-bridge` still references the `operations/` namespace and
+  emits receipts â€” the admission path
+- no MCP server code outside the retired MCP crates â€” `AGENTS.md`: "MCP retired"
+- every crate in `crates/` appears in `README.md` or `AGENTS.md`, and no crate's
+  declared `name` disagrees with its directory
+
+Annotate a genuine exception with `// ci-allow-shell: <reason>` on the line or
+the line above, and the check reports it as an allowed exception instead of
+failing.
+
+## First-run expectations
+
+`check-manifest.sh` will almost certainly fail once, and that is the point: it
+is looking straight at the contradictions from the architecture memo â€” MCP
+crates still in the workspace while the docs call MCP retired, and crates the
+README never mentions. Triage as you prefer: delete the dead crates, or record
+the retirement in `AGENTS.md`. Both leave the repo consistent; leaving it
+inconsistent is the only wrong answer.
+
+`check-services.sh` assumes `deploy/runit/<service>/run` is executable with a
+shebang and an `exec`. If a service intentionally does not `exec` (a `chpst`-style
+supervisor wrapper), loosen that one check rather than the whole script.# CI pipeline â€” install notes
+
+Seven files, all written for the repo root. Run this from the repository root:
+
+```sh
+mkdir -p .github/workflows scripts/ci
+
+cp workflow-ci.yml             .github/workflows/ci.yml
+cp workflow-architecture.yml   .github/workflows/architecture.yml
+cp workflow-supply-chain.yml   .github/workflows/supply-chain.yml
+
+cp check-manifest.sh           scripts/ci/check-manifest.sh
+cp check-services.sh           scripts/ci/check-services.sh
+cp check-architecture.sh       scripts/ci/check-architecture.sh
+cp deny.toml                   deny.toml
+cp LICENSE                     LICENSE
+
+chmod +x scripts/ci/*.sh
+git add .github scripts/ci deny.toml LICENSE
+git commit -m "ci: build/test gate plus architecture and supply-chain invariants"
+```
+
+Run the architecture checks locally before pushing â€” they are the ones most
+likely to fail on first contact, and each failure is a real finding:
+
+```sh
+sh scripts/ci/check-manifest.sh
+sh scripts/ci/check-services.sh
+sh scripts/ci/check-architecture.sh
+```
+
+## What runs where
+
+| Workflow | Trigger | Jobs |
+|---|---|---|
+| `ci.yml` | every push, every PR, manual | `rustfmt`, `cargo check --all-targets`, `cargo test --workspace`, `clippy` (report-only), `release-gate` (main + PRs to main) |
+| `architecture.yml` | every push, every PR, manual | manifest/docs drift, runit service validity, native-protocol + single-writer invariants |
+| `supply-chain.yml` | main, PRs touching manifests, weekly cron | `cargo-deny` advisories/licenses/bans/sources, `[patch.crates-io]` justifications |
+
+Build env details that matter, already set in the workflows:
+
+- `CXXFLAGS="-include cstdint"` â€” required by the vendored RocksDB, per the note in `Cargo.toml`. Without it the build fails on modern libstdc++.
+- `--locked` everywhere, so CI builds the committed `Cargo.lock` and a stale lockfile fails loudly instead of silently resolving.
+- Runner is `ubuntu-24.04` with `libfuse3-dev` (3tchedFS), `clang`/`libclang-dev` (RocksDB bindgen), `protobuf-compiler` (gRPC bridge).
+- `Swatinem/rust-cache` with per-job `shared-key` so `check`, `test`, `clippy` and `release` do not evict each other.
+
+## Deliberate limits â€” read these
+
+**`check-workspace.sh verify` is not in CI, on purpose.** That stage needs a
+provisioned host: sealed plugin catalog, identity state, and runit supervising
+real services. A GitHub runner has none of that, so a `verify` job would either
+fail always or be a no-op that suggests coverage it does not have. CI runs
+`preflight` and `smoke`; `verify` stays on the deployment path.
+
+**Two jobs start as `continue-on-error: true`** â€” `clippy` and `cargo-deny`.
+A 38-crate tree that has never been linted or audited will not be clean on the
+first run. They report from day one; flip the flag once the baseline is quiet so
+new warnings cannot hide in the old ones.
+
+**The architecture checks are greps, not analysis.** They enforce specific,
+written-down rules cheaply:
+
+- no `Command::new()` against `systemctl`, `ovs-vsctl`, `ovs-ofctl`,
+  `ovs-appctl`, `nmcli`, `netplan` â€” the design replaces these with OVSDB
+  JSON-RPC and Generic Netlink (`README.md`, "Key Principles")
+- `MutationEngine::new` appears only under `crates/op-state-store/` â€” the single
+  writer rule in `AGENTS.md`
+- `crates/op-grpc-bridge` still references the `operations/` namespace and
+  emits receipts â€” the admission path
+- no MCP server code outside the retired MCP crates â€” `AGENTS.md`: "MCP retired"
+- every crate in `crates/` appears in `README.md` or `AGENTS.md`, and no crate's
+  declared `name` disagrees with its directory
+
+Annotate a genuine exception with `// ci-allow-shell: <reason>` on the line or
+the line above, and the check reports it as an allowed exception instead of
+failing.
+
+## First-run expectations
+
+`check-manifest.sh` will almost certainly fail once, and that is the point: it
+is looking straight at the contradictions from the architecture memo â€” MCP
+crates still in the workspace while the docs call MCP retired, and crates the
+README never mentions. Triage as you prefer: delete the dead crates, or record
+the retirement in `AGENTS.md`. Both leave the repo consistent; leaving it
+inconsistent is the only wrong answer.
+
+`check-services.sh` assumes `deploy/runit/<service>/run` is executable with a
+shebang and an `exec`. If a service intentionally does not `exec` (a `chpst`-style
+supervisor wrapper), loosen that one check rather than the whole script.

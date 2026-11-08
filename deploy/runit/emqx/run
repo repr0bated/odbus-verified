@@ -60,7 +60,7 @@ attempt=0
 until ss -H -lnt 2>/dev/null | awk '
     $4 == "127.0.0.1:1883" { mqtt = 1 }
     $4 == "127.0.0.1:18083" { api = 1 }
-    END { exit(mqtt && api ? 0 : 1) }
+    END { if (mqtt && api) exit 0; exit 1 }
 '; do
     attempt=$((attempt + 1))
     if ! kill -0 "$emqx_pid" 2>/dev/null; then

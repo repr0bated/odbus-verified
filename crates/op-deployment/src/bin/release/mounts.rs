@@ -174,3 +174,87 @@ pub fn revert(state: &mut State, resolve_stacks: bool) -> Result<()> {
     ensure!(!unresolved_stack, "stacked target retained with visible old top; other moved targets reverted; explicit recovery required");
     Ok(())
 }
+
+fn reset_empty_target(target: &Target) -> Result<()> {
+    let parent = verify_parent(target)?;
+    let root = fs::secure_absolute(&target.path, libc::O_RDONLY | libc::O_DIRECTORY)?;
+    ensure!(fs::mount_id(root.as_fd())? == parent.mount_id && root.metadata()?.dev() == parent.device,
+        "reset target is not on its registered parent: {}", target.path.display());
+    ensure!(std::fs::read_dir(&target.path)?.next().is_none(),
+        "unmounted reset target contains unrecorded content: {}", target.path.display());
+    Ok(())
+}
+
+pub(super) fn check_reset(releases: &std::collections::BTreeMap<Slot, Release>, mounted: Option<Slot>, baseline: Option<&ResetBaseline>) -> Result<()> {
+    let mounts = table()?;
+    let Some(baseline) = baseline else {
+        ensure!(mounts.iter().all(|m| !m.source.starts_with("opdbus-release:")),
+            "release mounts exist without a registered reset bootstrap");
+        return Ok(());
+    };
+    inventory::validate_targets(&baseline.targets)?;
+    let active = mounted.map(|slot| releases.get(&slot).map(|release| (slot, release))
+        .context("reset native mount owner is missing")).transpose()?;
+    if let Some((_, release)) = active {
+        ensure!(release.targets == baseline.targets, "reset target baseline differs from active release");
+    }
+    for mount in &mounts {
+        if mount.source.starts_with("opdbus-release:") {
+            let owned = active.is_some_and(|(slot, release)| release.targets.iter().enumerate()
+                .any(|(index, target)| mount.path == target.path && mount.source == release.tag(slot, index)));
+            ensure!(owned, "unexpected release mount during reset: {}", mount.path.display());
+        }
+    }
+    for (index, target) in baseline.targets.iter().enumerate() {
+        verify_parent(target)?;
+        let at: Vec<_> = mounts.iter().filter(|m| m.path == target.path).collect();
+        ensure!(at.len() <= 1, "reset refuses a stacked mount at {}", target.path.display());
+        ensure!(!mounts.iter().any(|m| m.path != target.path && m.path.starts_with(&target.path)),
+            "reset target has a nested mount: {}", target.path.display());
+        if let Some(mount) = at.first() {
+            let (slot, release) = active.context("mounted reset target has no active owner")?;
+            ensure!(mount.source == release.tag(slot, index)
+                && visible(target)?.as_deref() == Some(mount.source.as_str()),
+                "reset target is not the exact owned read-only overlay: {}", target.path.display());
+        } else { reset_empty_target(target)?; }
+    }
+    Ok(())
+}
+
+pub(super) fn detach_reset(state: &mut State) -> Result<()> {
+    let journal = state.journal.as_ref().context("reset unmount without journal")?;
+    check_reset(&journal.reset_releases, journal.from, state.reset_baseline.as_ref())?;
+    let targets = state.reset_baseline.as_ref().map(|b| b.targets.clone()).unwrap_or_default();
+    for (index, target) in targets.iter().enumerate().rev() {
+        if let Some(tag) = visible(target)? {
+            let journal = state.journal.as_ref().context("reset unmount without journal")?;
+            let slot = journal.from.context("reset unmount without approved native owner")?;
+            ensure!(tag == journal.reset_releases.get(&slot).context("native reset owner missing")?.tag(slot, index),
+                "reset mount ownership changed");
+            state.intent(format!("reset-unmount:{index}"))?;
+            verify_parent(target)?;
+            ensure!(visible(target)?.as_deref() == Some(tag.as_str()), "reset mount changed before unmount");
+            // No O_PATH/root fd is kept across this ordinary unmount: an open
+            // mount fd would itself make it busy. The fixed root-owned pathname
+            // is checked under the launcher lock; UMOUNT_NOFOLLOW rejects links.
+            // Never use detach_old/fs::detach here: reset forbids lazy unmounts.
+            fs::unmount(&target.path)?;
+        }
+        reset_empty_target(target)?;
+    }
+    state.intent("reset-targets-unmounted")
+}
+
+pub(super) fn check_reset_detached(state: &State) -> Result<()> {
+    let mounts = table()?;
+    ensure!(mounts.iter().all(|m| !m.source.starts_with("opdbus-release:")),
+        "release overlay remains attached during reset retirement");
+    if let Some(baseline) = &state.reset_baseline {
+        for target in &baseline.targets {
+            ensure!(!mounts.iter().any(|m| m.path.starts_with(&target.path)),
+                "foreign or nested mount appeared at reset target {}", target.path.display());
+            reset_empty_target(target)?;
+        }
+    }
+    Ok(())
+}

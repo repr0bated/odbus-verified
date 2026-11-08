@@ -61,11 +61,12 @@ fn pinned_identity(dir: &Path) -> anyhow::Result<crate::catalog::PluginEntry> {
     Ok(pinned)
 }
 
-fn committed_session(
+/// Read the same validated private identity projection used by SID1 admission.
+/// Native peer discovery must not consult the public projection or a fallback DB.
+pub(crate) fn committed_sessions_in(
     catalog_dir: &Path,
     state_dir: &str,
-    session_id: &str,
-) -> anyhow::Result<Option<ContainerIdentitySled>> {
+) -> anyhow::Result<Vec<ContainerIdentitySled>> {
     let before = pinned_identity(catalog_dir)?;
     let bytes =
         op_core::projection_shm::read_credential_projection_bytes_in(state_dir, "identity_sled")?
@@ -101,8 +102,15 @@ fn committed_session(
             "duplicate identity event in SHM"
         );
     }
-    Ok(state
-        .sleds
+    Ok(state.sleds)
+}
+
+fn committed_session(
+    catalog_dir: &Path,
+    state_dir: &str,
+    session_id: &str,
+) -> anyhow::Result<Option<ContainerIdentitySled>> {
+    Ok(committed_sessions_in(catalog_dir, state_dir)?
         .into_iter()
         .find(|sled| sled.session_id == session_id))
 }
@@ -149,6 +157,27 @@ pub(crate) fn bound_session_for_key_in(
     Ok(BoundSid1(claims))
 }
 
+/// Resolve a kernel-authenticated native binding to its exact authored SID1.
+/// The caller must independently prove the selected host/container binding.
+pub(crate) fn bound_session_for_id_in(
+    catalog_dir: &Path,
+    state_dir: &str,
+    session_id: &str,
+    now: i64,
+) -> anyhow::Result<BoundSid1> {
+    let sled = committed_session(catalog_dir, state_dir, session_id)?
+        .ok_or_else(|| anyhow::anyhow!("native peer has no committed identity session"))?;
+    let encoded = sled
+        .sealed_id
+        .as_deref()
+        .and_then(|value| value.strip_prefix(op_identity::sealed_id::INLINE_PREFIX))
+        .ok_or_else(|| anyhow::anyhow!("committed identity credential is unavailable"))?;
+    let wire = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(encoded)?;
+    let claims = crate::sid1_checks::match_bound_session(&wire, &sled, "dbus", now)
+        .map_err(anyhow::Error::msg)?;
+    Ok(BoundSid1(claims))
+}
+
 fn verify_registered(
     bound: BoundSid1,
     record: Option<op_cozo_store::HumanPrincipalRecord>,
@@ -169,7 +198,11 @@ pub(crate) async fn verify_bound_registry(bound: BoundSid1) -> anyhow::Result<Ve
         crate::human_principal_registry::resolve_key_for_assertion(&bound.0.wireguard_pubkey)
             .await
             .map_err(|_| anyhow::anyhow!("human principal registry unavailable"))?;
-    verify_registered(bound, record)
+    let identity = verify_registered(bound, record)?;
+    anyhow::ensure!(identity.claims().expires_at == 0
+        || identity.claims().expires_at > chrono::Utc::now().timestamp(),
+        "identity expired during principal verification");
+    Ok(identity)
 }
 
 #[cfg(test)]
@@ -201,6 +234,36 @@ pub async fn verify_sid1(wire: &[u8], transport: &str) -> anyhow::Result<Verifie
     })
     .await??;
     verify_bound_registry(bound).await
+}
+
+/// Forward only the exact SID1 bytes authored by the identity owner. This
+/// rechecks committed private state and the live registry; it never reconstructs
+/// or reseals an envelope from claims. Native downstream transports use gRPC.
+pub(crate) async fn authored_transport_wire(identity: &VerifiedSid1) -> anyhow::Result<Vec<u8>> {
+    let catalog_dir = std::env::var_os("OP_BLOB_CATALOG_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(op_blob::catalog::DEFAULT_SHM_DIR));
+    let state_dir = op_core::projection_shm::shm_state_dir();
+    let expected = identity.claims().clone();
+    let (bound, wire) = tokio::task::spawn_blocking(move || {
+        let sled = committed_session(&catalog_dir, &state_dir, &expected.session_id)?
+            .ok_or_else(|| anyhow::anyhow!("forwarded identity session is unavailable"))?;
+        // Match receiver authentication policy: parked power state is not a
+        // credential revocation. Native guest namespace admission is separate.
+        let encoded = sled
+            .sealed_id
+            .as_deref()
+            .and_then(|value| value.strip_prefix(op_identity::sealed_id::INLINE_PREFIX))
+            .ok_or_else(|| anyhow::anyhow!("authored identity credential is unavailable"))?;
+        let wire = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(encoded)?;
+        let current = crate::sid1_checks::match_bound_session(
+            &wire, &sled, "grpc", chrono::Utc::now().timestamp(),
+        ).map_err(anyhow::Error::msg)?;
+        anyhow::ensure!(current == expected, "forwarded identity term changed");
+        Ok::<_, anyhow::Error>((BoundSid1(current), wire))
+    }).await??;
+    verify_bound_registry(bound).await?;
+    Ok(wire)
 }
 
 #[cfg(test)]
@@ -449,10 +512,45 @@ mod tests {
         )
         .unwrap();
         assert!(verify_in(&catalog_dir, state_dir, &wire, "grpc", 150).is_ok());
+        // Only the exact currently committed replacement authenticates. The
+        // previous SID1 and a subsequently replaced SID1 must both fail, even
+        // though their immutable owner claims are unchanged.
+        let mut replacement = claims.clone();
+        replacement.transport_scope = "dbus,grpc,mcp,mqtt".into();
+        let replacement_wire = replacement.seal().unwrap();
+        state["sleds"][0]["sealed_id"] = serde_json::json!(replacement.to_inline_ref().unwrap());
+        op_core::projection_shm::update_projection_with_credentials_in(
+            state_dir, "identity_sled", nix::unistd::getgid().as_raw(), |_| {
+                Ok(Some((br#"{"sleds":[],"events":[]}"#.to_vec(), serde_json::to_vec(&state)?)))
+            },
+        ).unwrap();
+        assert!(verify_in(&catalog_dir, state_dir, &wire, "grpc", 150).is_err());
+        assert_eq!(verify_registered(
+            verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).unwrap(),
+            Some(record.clone()),
+        ).unwrap().claims(), &replacement);
+        let mut revoked = record.clone();
+        revoked.revoked_at = 151;
+        assert!(verify_registered(
+            verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).unwrap(),
+            Some(revoked),
+        ).is_err());
+        replacement.nextdns = Some(op_identity::sealed_id::NextDnsContext {
+            profile_id: "abcdef".into(), device_name: "replacement".into(),
+        });
+        let unrelated_wire = replacement.seal().unwrap();
+        state["sleds"][0]["sealed_id"] = serde_json::json!(replacement.to_inline_ref().unwrap());
+        op_core::projection_shm::update_projection_with_credentials_in(
+            state_dir, "identity_sled", nix::unistd::getgid().as_raw(), |_| {
+                Ok(Some((br#"{"sleds":[],"events":[]}"#.to_vec(), serde_json::to_vec(&state)?)))
+            },
+        ).unwrap();
+        assert!(verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).is_err());
+        assert!(verify_in(&catalog_dir, state_dir, &unrelated_wire, "grpc", 150).is_ok());
         schema.version.push_str("-drift");
         catalog
             .write(&op_blob::blobify_plugin_schema("identity_sled", schema))
             .unwrap();
-        assert!(verify_in(&catalog_dir, state_dir, &wire, "grpc", 150).is_err());
+        assert!(verify_in(&catalog_dir, state_dir, &unrelated_wire, "grpc", 150).is_err());
     }
 }

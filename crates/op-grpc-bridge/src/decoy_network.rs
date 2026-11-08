@@ -176,7 +176,7 @@ impl DecoyNativeService {
                 .state_schema_hashes
                 .insert(state_plugin.clone(), pin.schema_hash);
         }
-        // The trusted bridge remains the sole MutationEngine/SHM publisher.
+        // The trusted bridge remains the sole canonical receipt/SHM publisher.
         // The decoy returns observations, never a second schema/state catalog.
         serde_json::to_string(&receipt).map_err(Into::into)
     }
@@ -336,45 +336,25 @@ impl TransportFiles {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) async fn dispatch(
-    engine: &crate::mutation_engine::MutationEngine,
-    plugin: &'static str,
+    ctx: &crate::runtime::BackendContext<'_>,
+    plugin: &str,
     method: &str,
     arguments: &Value,
-    admitted: &PluginSchema,
-    caller: &crate::chat_router_admission::RouterCaller,
+    admission: crate::openflow_permit::FinalAdmission,
 ) -> Result<NativeNetworkReceipt> {
-    let pinned =
-        crate::chat_router_admission::readmit_call(engine, admitted, plugin, method, caller)
-            .await?;
-    let session = caller
-        .session
-        .as_deref()
-        .context("decoy call requires verified session")?;
-    let sled = crate::identity_sled_dispatch::stored_session(engine, session)
-        .await?
-        .context("identity owner has no session credential")?;
-    let inline = sled
-        .sealed_id
-        .as_deref()
-        .context("identity owner has not authored SID1")?;
-    let encoded = inline
-        .strip_prefix(op_identity::sealed_id::INLINE_PREFIX)
-        .context("identity credential is not SID1")?;
-    ensure!(encoded.len() <= 24 * 1024, "stored SID1 exceeds wire limit");
-    let identity = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(encoded)?;
+    let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
+        ctx.runtime.catalog_dir(), plugin,
+    )?;
+    crate::method_contract_admission::admit_compiled_state_contract(&pinned, plugin)?;
+    let identity = ctx.runtime.identity_wire(ctx.caller).await?;
+    let claims = op_identity::sealed_id::SealedId::open(&identity)?;
     ensure!(
-        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&identity) == encoded,
-        "stored SID1 base64 is not canonical"
-    );
-    let claims = crate::identity_sled_dispatch::authenticate_sid1_wire(engine, &identity, "dbus")
-        .await
-        .map_err(anyhow::Error::msg)?;
-    ensure!(
-        claims.principal_id == caller.actor
-            && claims.session_genesis == caller.genesis.as_deref().unwrap_or(""),
-        "decoy metadata differs from the verified caller"
+        claims.principal_id == ctx.caller.principal_id
+            && claims.session_id == ctx.caller.session_id
+            && claims.session_genesis == ctx.caller.session_genesis
+            && claims.transport_scope.split(',').any(|scope| scope.trim() == "dbus"),
+        "decoy credential differs from the verified caller or lacks D-Bus scope"
     );
     let address: SocketAddr = std::env::var("OP_DECOY_NATIVE_ADDRESS")
         .context("OP_DECOY_NATIVE_ADDRESS is required; server has no local WireGuard fallback")?
@@ -395,10 +375,11 @@ pub(crate) async fn dispatch(
     )
     .await
     .context("decoy D-Bus proxy negotiation timed out")??;
-    let capability = caller
-        .capability
-        .as_deref()
-        .context("decoy method capability is required")?;
+    let capability = ctx.declaration.required_capability.as_deref()
+        .context("decoy method omitted its required capability")?;
+    let arguments = serde_json::to_string(arguments)?;
+    ensure!(arguments.len() <= MAX_ARGUMENT_BYTES, "decoy method arguments exceed limit");
+    admission().await?;
     let result: String = tokio::time::timeout(
         Duration::from_secs(60),
         proxy.call(
@@ -406,7 +387,7 @@ pub(crate) async fn dispatch(
             &(
                 plugin,
                 method,
-                serde_json::to_string(arguments)?,
+                arguments,
                 DecoyCallMetadata {
                     capability: capability.to_string(),
                     schema_hash: pinned.schema_hash,
@@ -433,7 +414,7 @@ pub(crate) async fn dispatch(
             "decoy returned an unrelated state"
         );
         let pin = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
-            &crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+            ctx.runtime.catalog_dir(),
             state_plugin,
         )?;
         crate::method_contract_admission::admit_compiled_state_contract(&pin, state_plugin)?;

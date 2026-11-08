@@ -210,7 +210,7 @@ previously missing activation contract, not a new deployment script.
 The workspace has **37 member crates under `crates/`, plus the root `op-dbus`
 package** (38 workspace packages total). The root package has no application
 binary. Binary targets live in members: for example `op-grpc-bridge` and
-`op-grants-materializer` in `op-grpc-bridge`, `op-web-server` and `opdbus` in
+`op-grants-materializer` in `op-grpc-bridge`, `op-web-server` in
 `op-web`, `opblob` in `op-plugins`, `3tched-fs` (our 3tchedFS schema filesystem,
 package `tched-fs`, Rust 2024 edition) in the retained `crates/threetched-fs` directory, and `op-runit-systemctl`/`svd` in
 `op-runit-systemctl`. A binary target or runit directory is source inventory,

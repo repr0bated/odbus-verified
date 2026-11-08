@@ -491,7 +491,7 @@ struct EmbeddingService {
 
 impl EmbeddingService {
     async fn config(&self) -> Result<ConfigOutput> {
-        let row = self.store.read(PLUGIN_ID).await?;
+        let row = self.store.read_durable(PLUGIN_ID).await?;
         let (config, revision) = match row {
             Some(row) => (
                 serde_json::from_value::<EmbeddingConfig>(row.document)?.normalized()?,
@@ -787,6 +787,23 @@ pub async fn dispatch_embedding_model_method(method: &str, args: &Value) -> Resu
     }
     .dispatch(method, args)
     .await
+}
+
+/// Execute against the bridge's shared document owner, then observe the durable
+/// nonsecret configuration without constructing another provider client.
+pub async fn dispatch_embedding_model_method_observed(
+    store: Arc<RuntimeDocuments>,
+    method: &str,
+    args: &Value,
+) -> Result<(Value, EmbeddingModelState)> {
+    let service = EmbeddingService {
+        store,
+        bootstrap: EmbeddingConfig::from_environment()?,
+        http: EmbeddingHttp::from_environment()?,
+    };
+    let result = service.dispatch(method, args).await?;
+    let current = service.config().await?;
+    Ok((result, current.config.state(current.revision)))
 }
 
 /// Nonsecret publication payload for the bridge after a committed config write.

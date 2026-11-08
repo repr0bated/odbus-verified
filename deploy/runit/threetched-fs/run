@@ -3,7 +3,7 @@
 set -eu
 exec 2>&1
 
-THREETCHED=/opt/op-dbus/current/bin/threetched-fs
+THREETCHED=/usr/local/libexec/op-dbus/bin/3tched-fs
 catalog=/opt/op-dbus/current/var/lib/opdbus/plugin-blobs
 session_file=/etc/op-dbus/human-lungs-session
 [ -x "$THREETCHED" ] || { echo "missing $THREETCHED" >&2; exit 1; }

@@ -12,8 +12,14 @@ mounted read-write at its Btrfs top level. It requires host root, refuses an
 existing metadata target, and does not adopt or delete prior contents. It also
 ensures ordinary root-owned mode-0755 directories at `@/run/mount/3tchedfs`
 and `@/run/opdbus/lungs`, refusing symlink or non-directory components while
-retaining contents of existing directories. The provenance JSON must contain
-exactly these fields:
+retaining contents of existing directories.
+
+That path belongs to the existing immutable base metadata contract; do not
+rewrite a retained seed's metadata to rename a runtime mount. The current
+client units create the two runtime paths below after the guest's `/run`
+tmpfs is available.
+
+The provenance JSON must contain exactly these fields:
 
 ```json
 {
@@ -31,20 +37,21 @@ The caller is responsible for downloading and verifying those artifacts before
 calling `prepare`. The helper records the downloaded archive's provenance;
 it does not claim to perform the signature or archive verification itself.
 
-Before metadata preparation, `prepare-lungs-client TOP READ_ONLY_RELEASE`
+Before metadata preparation, `prepare-lungs-client.sh TOP READ_ONLY_RELEASE`
 installs the release's `3tched-fs` client and two public schema-only views in
 the already writable offline base. Both mounts run that same binary, as two
 separately supervised processes. It requires a root-controlled read-only
 release under `/opt/op-dbus/releases` or `/opt/op-dbus/release-send` and reads
 the catalog at `usr/share/op-dbus/plugin-blobs`. The receipt distinguishes a
 retained received release from a native source snapshot; a source snapshot is
-not evidence of receipt or activation. It refuses existing client/view targets and never
-captures live SHM or credentials. The enabled `3tchedfs.service` and
-`threetchedfs.service` mount `/run/mount/3tchedfs` and `/run/mount/threetched`:
+not evidence of receipt or activation. It refuses a base whose immutable image
+metadata already exists, existing client/view targets, and never captures live
+SHM or credentials. The enabled `3tchedfs.service` and
+`threetchedfs.service` mount `/run/mounts/3tchedFS` and `/run/mounts/threetched`:
 
 ```fstab
-3tchedFS /run/mount/3tchedfs fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
-threetched /run/mount/threetched fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
+3tchedFS /run/mounts/3tchedFS fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
+threetched /run/mounts/threetched fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
 ```
 
 `noauto` prevents competing early-boot mounts; each enabled service starts
@@ -60,14 +67,141 @@ Runtime prerequisites remain `/dev/fuse`, the lungs socket, sealed catalog,
 schema-only views and empty state directory. Offline configuration checks do
 not prove an identity-bound operation or a successful boot.
 
-Host agents use a separate projection of the same blobs; no copied schema or
-synchronization layer is required. A guest may also serve its MCP clients with:
+## Existing private Incus root maintenance
+
+Do not use the offline-image command on a retained shared seed to update an
+existing container. The same helper has a separate maintenance mode:
 
 ```sh
-3tched-fs --store /usr/share/op-dbus/lungs-view mcp \
-  --state /usr/share/op-dbus/lungs-empty-state \
-  --lungs-socket /run/3tched-lungs.socket --all
+sudo deploy/workspace-image/prepare-lungs-client.sh --container \
+  "$INSTANCE" "$NATIVE_UUID" "$ROOT_SUBVOLUME_UUID" "$OLD_CLIENT_SHA256" \
+  "$READ_ONLY_RELEASE"
 ```
+
+The pins are mandatory, not names inferred from an identity or replacement
+storage. `OLD_CLIENT_SHA256` is the inspected existing client digest, or the
+literal `absent` when no client exists. The release must be the freshly built
+native client's read-only received release or source snapshot, not `target/`,
+the mutable golden tree, or a live executable overlay. Compare its client
+digest with the selected fresh build receipt before delivery.
+
+This mode supports the local daemon's `default` project and its existing
+native Btrfs container root. It verifies a stopped container, its native UUID,
+session/key configuration presence, exclusive root volume, exact root
+subvolume UUID, writable filesystem/property, and root-owned private paths.
+An idmapped root whose inspected ownership is not host `0:0` fails closed;
+do not change its idmap or privilege to get past that check. Raw LXC overrides,
+attached disks overlapping `/usr` or `/etc`, live mounts under the private
+root, symlinks, hard-linked target files, and group/other-writable targets
+are rejected. The existing container configuration is pinned for the entire
+delivery, not rewritten.
+
+Only the bounded client payload is staged in a private temporary directory:
+the client, two schema views, empty state directory, sealed catalog, mount
+assets, fstab additions and receipt. Incus 7's native `file create`/`file push`
+operations deliver it while the instance remains stopped; host root access
+to Incus-owned storage is **read-only inspection**, never installation.
+Existing client replacement requires the explicit digest pin. Other existing
+payload targets, fstab entries and service overrides are refused rather than
+overwritten. Payload bytes and service links are read back before publishing
+`/usr/share/op-dbus/lungs-client.json`; the receipt records native and root
+UUIDs separately. A partial delivery leaves the guest stopped and refuses
+blind replay. Inspect the reported exact target rather than deleting a root
+or running provisioning again.
+
+The helper does not start the container, change profiles/devices, install OS
+packages, alter grants, copy credentials, update identity records, or modify
+base image metadata. Before delivery, rename the retained configured service
+through the fresh sealed `identity_sled.rename_container` method, using its
+existing `identity_sled.write` grant. From the inspected existing session,
+UUID and current committed/native name, construct the input once and retain it:
+
+```sh
+read -r RENAME_OPERATION_ID < /proc/sys/kernel/random/uuid
+RENAME_ARGS=$(jq -cn --arg operation "$RENAME_OPERATION_ID" \
+  --arg session "$TARGET_SESSION" --arg uuid "$NATIVE_UUID" --arg old "$CURRENT_NAME" \
+  '{operation_id:$operation,session_id:$session,native_uuid:$uuid,
+    old_name:$old,new_name:"3tchedCockpitBot"}')
+```
+
+Invoke it as the existing host mount's declared local call owner, through
+`3tched-fs call identity_sled rename_container --mount /run/mounts/3tchedFS
+--expected-session "$HOST_SESSION" --confirm-side-effects --args "$RENAME_ARGS"`.
+The owner verifies the configured key/session, anchored credential, native
+UUID, stopped default-project instance, original storage receipts, current
+revision and sealed schema. A private durable intent permits exactly one
+native rename POST; the final name binding and receipt commit through the
+existing paired identity publication. No credentials or grants are reminted.
+Current name reservations follow that exact UUID while original creation
+and storage receipts remain unchanged.
+
+Repeat only the **same** input to reconcile a lost reply. A pending intent
+with the UUID still at its old name is unknown, not permission for another
+POST. Neither a new operation UUID nor `incus move` is a recovery mechanism.
+Other native lifecycle effects are fenced until the original intent commits.
+Completed replays verify the current UUID/name and may observe an already
+running container. A retained legacy storage plan which derives its native
+name from the immutable session id fails before the rename; this method does
+not rewrite that storage layout.
+
+Incus 7's rename additionally queues its `rename` template when no template
+is pending and regenerates `volatile.cloud-init.instance-id`. The receipt
+accepts exactly those daemon-owned outputs; `volatile.uuid`, identity keys,
+session, devices and storage sources remain pinned. Cloud-init can rerun on
+the next boot if installed; this helper does not disable it or modify its
+configuration. Persistent device source filenames keep their old names.
+
+After the completed rename receipt and bounded file delivery, start through
+the existing admitted `identity_sled.touch_session` method with
+`--args "$(jq -cn --arg sid "$TARGET_SESSION" '{session_id:$sid}')"`
+and `--confirm-side-effects`.
+It retains the existing storage/start guards and commits the observed Running
+binding. Do not substitute an unowned raw Incus start after a guard refusal.
+
+Host preparation requires Bash, Incus 7 native file commands, `btrfs-progs`,
+`findmnt`, `flock`, `jq`, findutils and coreutils. The existing guest needs
+the fresh client's compatible ELF loader/shared libraries, systemd,
+`mount`/`findmnt`, `fusermount3`, coreutils/findutils, `/dev/fuse`, and the
+already-approved read-only socket-directory attachment. Check the actual
+guest OS/ABI; retaining an existing guest is not authorization to reimage it.
+Host services remain runit-owned. Guest units are started by the guest's
+existing init on the next authorized Incus start.
+
+After start, check both kernel mount entries, their distinct sources, the
+`guest_kernel` marker in `.3tchedfs.json`, and the same catalog hash/generation
+and complete plugin partition in `view.json`. A successful mount is not
+backend readiness. Perform a granted read through each mounted namespace and
+retain its completed, attributed operation receipt. No SID1 file or host
+`--lungs-session` is used:
+
+```sh
+incus --force-local --project default exec "$INSTANCE" -- \
+  /usr/local/bin/3tched-fs describe --mount /run/mounts/3tchedFS --guest-kernel
+incus --force-local --project default exec "$INSTANCE" -- \
+  /usr/local/bin/3tched-fs call tched_fs get_protocol \
+  --mount /run/mounts/3tchedFS --guest-kernel --args '{}'
+incus --force-local --project default exec "$INSTANCE" -- \
+  /usr/local/bin/3tched-fs describe --mount /run/mounts/threetched --guest-kernel
+incus --force-local --project default exec "$INSTANCE" -- \
+  /usr/local/bin/3tched-fs call tched_router GetState \
+  --mount /run/mounts/threetched --guest-kernel --args '{}'
+```
+
+`--guest-kernel` is available on `describe`, `call`, and `invoke`. It requires
+the explicit kernel-bound mode and conflicts with `--expected-session`;
+the existing host-session checks remain unchanged. Transport alternatives
+are still forbidden with mounted invocation. Discover the external view's
+actual sealed methods and arguments before calling them. A denial, missing
+native owner, unsupported method, or unknown outcome is not readiness and
+does not authorize a grant change, alternate transport, or blind retry.
+
+## Identity and runtime boundaries
+
+
+Host agents use a separate projection of the same blobs. Both host and guest
+operations use their identity-bound mounted operation files. MCP is retired;
+the presence of a historical CLI subcommand does not make it a supported
+guest interface.
 
 Omitting `--lungs-session` selects `BindCurrentContainer`; the bridge derives
 the caller from its kernel peer process and the committed native container.
@@ -120,8 +254,8 @@ manifest's critical hash inventory is deliberately limited to `/etc/os-release`,
 `/etc/fstab`, the systemd executable, and `/usr/sbin/init`; it excludes
 hostname, machine ID, SSH keys, credentials, agent data, persistence contents,
 and runtime state. `@agent_user/persist` is an ordinary directory, not another
-subvolume. The guest-owned `/run/mount/3tchedfs` FUSE mount and per-boot
-private state under `/dev/shm` are runtime mounts, not seed contents. The
+subvolume. The guest-owned `/run/mounts/3tchedFS` and `/run/mounts/threetched`
+FUSE views and per-boot private state under `/dev/shm` are runtime mounts, not seed contents. The
 `3tched-lungs` Incus profile supplies `/run` as tmpfs and mounts the host's
 dedicated `/run/opdbus/lungs` directory read-only at the same guest path.
 Socket permissions and per-connection identity authentication remain the

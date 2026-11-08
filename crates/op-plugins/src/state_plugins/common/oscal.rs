@@ -30,7 +30,6 @@ pub const OSCAL_COMPONENT_TYPES: &[&str] = &[
     "guidance",
     "standard",
     "validation",
-    "network",
 ];
 
 /// Categories local to this system, deliberately kept separate from the OSCAL
@@ -43,12 +42,14 @@ pub const OSCAL_COMPONENT_TYPES: &[&str] = &[
 ///
 /// Each entry below is already in use by a plugin that declares or derives it.
 pub const INTERNAL_CATEGORIES: &[&str] = &[
+    "network",   // local; OSCAL has no network component type. `src.network.xray.serve@v1`
     "agent",     // persona
     "container", // oci — `mut.container.oci.run@v1` and friends
     "data",      // cozo
     "privacy",   // privacy — `mut.privacy.data.mask@v1` and friends
     "security",  // fail2ban
     "storage",   // btrfs
+    "lxd",       // Muse LXD plugin — `obs.lxd.instances.get_instance@v1` and friends
 ];
 
 /// Category aliases: a readable name a surface may declare, paired with the
@@ -109,7 +110,9 @@ pub fn is_component_type(candidate: &str) -> bool {
 pub fn subid_regex() -> &'static str {
     static PATTERN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     PATTERN.get_or_init(|| {
-        let segment = r"[a-z0-9]+(?:-[a-z0-9]+)*";
+        // Hyphen is preferred; underscore is accepted for Muse-generated method verbs
+        // (e.g. fuse `forget_multi`, lxd `create_instance`).
+        let segment = r"[a-z0-9]+(?:[-_][a-z0-9]+)*";
         let types: Vec<&str> = component_types().collect();
         format!(
             r"^({})\.({})\.{segment}\.{segment}(?:\.{segment}){{0,2}}(?:@v[1-9][0-9]*)?$",

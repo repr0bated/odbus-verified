@@ -204,10 +204,19 @@ Incus owns its managed-volume lifecycle.
 ## Official references
 
 Consult the version matching the installed daemon where behavior differs.
-These upstream pages were reviewed for this skill on 2026-10-19:
+These upstream pages were reviewed for this skill on 2026-11-05:
 
+- [About storage pools, volumes and buckets](https://linuxcontainers.org/incus/docs/main/explanation/storage)
+- [Storage drivers](https://linuxcontainers.org/incus/docs/main/reference/storage_drivers)
+- [Btrfs storage driver](https://linuxcontainers.org/incus/docs/main/reference/storage_btrfs/)
+- [Directory storage driver](https://linuxcontainers.org/incus/docs/main/reference/storage_dir/)
+- [How to manage storage pools](https://linuxcontainers.org/incus/docs/main/howto/storage_pools/)
+- [How to manage storage volumes](https://linuxcontainers.org/incus/docs/main/howto/storage_volumes/)
+- [How to create an instance in a specific storage pool](https://linuxcontainers.org/incus/docs/main/howto/storage_create_instance/)
+- [How to configure storage for a cluster](https://linuxcontainers.org/incus/docs/main/howto/cluster_config_storage/)
 - [Instance configuration](https://linuxcontainers.org/incus/docs/main/explanation/instance_config/)
 - [Profiles and inheritance](https://linuxcontainers.org/incus/docs/main/profiles/)
 - [Disk devices](https://linuxcontainers.org/incus/docs/main/reference/devices_disk/)
-- [Btrfs storage driver](https://linuxcontainers.org/incus/docs/main/reference/storage_btrfs/)
 - [Storage volume creation, attachment and content-type restrictions](https://linuxcontainers.org/incus/docs/main/howto/storage_volumes/)
+- [Incus initialization](https://linuxcontainers.org/incus/docs/main/howto/initialize/)
+- [incus admin init](https://linuxcontainers.org/incus/docs/main/reference/manpages/incus/admin/init/)

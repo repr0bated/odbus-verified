@@ -353,8 +353,8 @@ pub fn recover_transfer(state: &mut State) -> Result<()> {
 fn removal_parent(top: &File, kind: &str) -> Result<File> {
     match kind {
         "slot" | "incoming" => fs::directory(top.as_fd()),
-        "source" => {
-            let parent = fs::secure_absolute(Path::new(SEND), libc::O_RDONLY | libc::O_DIRECTORY)?;
+        "source" | "source-orphaned" => {
+            let parent = fs::secure_absolute(reset_source_path(kind)?, libc::O_RDONLY | libc::O_DIRECTORY)?;
             check_private(&parent)?;
             ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == FSID
                 && subvolume::subvolume_info(parent.as_fd())?.id == OPT_ID, "source parent identity changed");
@@ -373,7 +373,17 @@ fn remove_root(state: &mut State, top: &File, removal: RootRemoval) -> Result<()
         ensure!(removal.id != active.id && removal.id != active.source_id, "cannot remove active backing/source root");
     }
     let journal = state.journal.as_mut().context("cleanup without journal")?;
-    if !journal.aborting {
+    ensure!(removal.parent != "source-orphaned" || journal.operation == "reset",
+        "historical source parent requires explicit native reset admission");
+    if journal.operation == "reset" {
+        ensure!(journal.reset_phase == Some(ResetPhase::Retiring)
+            && journal.to.is_none() && journal.candidate.is_none() && !journal.aborting,
+            "reset deletion outside its forward-only retirement phase");
+        ensure!(journal.removals.iter().any(|r| r.id == removal.id
+            && r.native_uuid == removal.native_uuid && r.received_uuid == removal.received_uuid
+            && r.parent == removal.parent && r.name == removal.name),
+            "reset deletion was not admitted in the complete identity plan");
+    } else if !journal.aborting {
         let candidate = journal.candidate.as_ref().context("cleanup before incoming verification")?;
         ensure!(removal.id != candidate.id && removal.id != candidate.source_id, "cannot remove incoming candidate during installation");
     }
@@ -410,9 +420,11 @@ fn remove_root(state: &mut State, top: &File, removal: RootRemoval) -> Result<()
     match lifetime::destroy(top.as_fd(), FSID.parse()?, removal.id,
         removal.native_uuid.parse()?, removal.received_uuid.parse()?) {
         Ok(()) => {},
-        // ENOENT from a linked-root lookup is not lifetime-zero evidence:
-        // orphaned roots can still retain detached aliases. Only a successful
-        // checked operation authorizes cleaner/rename progression.
+        // Only ENOENT returned by this exact checked ABI proves absence across
+        // the native lifetime registry, including orphaned objects. Replaying a
+        // successful unlink after a crash therefore remains resumable; a missing
+        // pathname or ordinary subvolume lookup is never accepted as proof.
+        Err(error) if error.raw_os_error() == Some(libc::ENOENT) => {},
         Err(error) => {
             if matches!(error.raw_os_error(), Some(libc::EBUSY | libc::ESTALE | libc::EINVAL | libc::EROFS | libc::ENOTTY)) {
                 state.journal.as_mut().unwrap().removals[index].rejected = true;
@@ -431,6 +443,75 @@ fn remove_root(state: &mut State, top: &File, removal: RootRemoval) -> Result<()
         "cleanup name remains or was reused after cleaner synchronization");
     state.journal.as_mut().unwrap().removals[index].cleaned = true;
     state.intent(format!("root-cleaned:{}", removal.id))
+}
+
+/// Explicit operator recovery for a completed receive whose journal was lost.
+/// Admission records exact identities; all deletion stays on the normal
+/// journaled, kernel-quiescent abort path.
+pub fn abort_orphan(
+    state: &mut State, name: &str, received_id: u64, received_uuid: uuid::Uuid,
+    source_id: u64, source_uuid: uuid::Uuid,
+) -> Result<()> {
+    ensure!(state.journal.is_none(), "orphan admission requires no pending transaction");
+    let suffix = name.strip_prefix("release-").context("not a reserved incoming release name")?;
+    uuid::Uuid::parse_str(suffix).context("invalid incoming release name")?;
+    ensure!(received_id > OPT_ID && source_id > OPT_ID && received_id != source_id,
+        "invalid orphan root IDs");
+    let active = state.active.context("orphan cleanup requires a retained active release")?;
+    let slot = active.other();
+    ensure!(state.slots.get(&slot).and_then(Option::as_ref).is_none(),
+        "orphan cleanup requires an empty inactive slot");
+    for retained in state.slots.values().flatten() {
+        ensure!(retained.name != name
+            && ![retained.id, retained.source_id].contains(&received_id)
+            && ![retained.id, retained.source_id].contains(&source_id),
+            "orphan request aliases a retained release");
+    }
+    let candidate = {
+        let top = top()?;
+        let retained = open_child(&top, Path::new(active.root()))?.context("active backing is missing")?;
+        verify_root(&retained, state.release(active)?)?;
+        ensure!(open_child(&top, Path::new(slot.root()))?.is_none(),
+            "unrecorded inactive slot exists; refusing orphan cleanup");
+        let send = removal_parent(&top, "source")?;
+        let source = open_child(&send, Path::new(name))?.context("orphan source is missing")?;
+        let source_info = subvolume::subvolume_info(source.as_fd())?;
+        ensure!(source.metadata()?.ino() == 256
+            && filesystem_info(source.as_fd())?.uuid.to_string() == FSID
+            && source_info.parent_id == OPT_ID && source_info.id == source_id
+            && source_info.uuid == source_uuid && source_info.received_uuid.is_nil()
+            && subvolume::subvolume_flags_get(source.as_fd())?.contains(SubvolumeFlags::RDONLY),
+            "orphan source does not match the explicit read-only identity");
+        let received = open_child(&top, Path::new(name))?.context("orphan receive is missing")?;
+        let info = subvolume::subvolume_info(received.as_fd())?;
+        ensure!(received.metadata()?.ino() == 256
+            && filesystem_info(received.as_fd())?.uuid.to_string() == FSID
+            && info.parent_id == 5 && info.id == received_id && info.uuid == received_uuid
+            && info.received_uuid == source_uuid
+            && subvolume::subvolume_flags_get(received.as_fd())?.contains(SubvolumeFlags::RDONLY),
+            "orphan receive does not match the explicit read-only identity");
+        let original = inventory::load(&source)?;
+        let observed = inventory::load(&received)?;
+        ensure!(original.tree_sha256 == observed.tree_sha256
+            && original.graph_sha256 == observed.graph_sha256
+            && original.catalog_sha256 == observed.catalog_sha256,
+            "orphan source and receive inventories differ");
+        Release {
+            name: name.into(), id: info.id, native_uuid: info.uuid.to_string(),
+            received_uuid: info.received_uuid.to_string(), source_id: source_info.id,
+            source_uuid: source_info.uuid.to_string(), graph_sha256: observed.graph_sha256,
+            tree_sha256: observed.tree_sha256, catalog_sha256: observed.catalog_sha256,
+            targets: observed.targets, devices: [received.metadata()?.dev()].into(),
+        }
+    }; // Drop every target-root descriptor before the kernel reference census.
+    let mut journal = Journal::new("deploy", state.active, Some(slot));
+    journal.source_name = Some(candidate.name.clone());
+    journal.source_uuid = Some(candidate.source_uuid.clone());
+    journal.candidate = Some(candidate);
+    journal.aborting = true;
+    state.journal = Some(journal);
+    state.intent("admit-verified-orphan-abort")?;
+    abort_transfer(state)
 }
 
 pub fn abort_transfer(state: &mut State) -> Result<()> {
@@ -458,6 +539,10 @@ pub fn abort_transfer(state: &mut State) -> Result<()> {
             ensure!(root.metadata()?.ino() == 256 && info.parent_id == OPT_ID && info.received_uuid.is_nil(),
                 "unexpected source snapshot in abort");
             if let Some(expected) = &journal.source_uuid { ensure!(&info.uuid.to_string() == expected, "abort source UUID changed"); }
+            if let Some(candidate) = &journal.candidate {
+                ensure!(info.id == candidate.source_id && info.uuid.to_string() == candidate.source_uuid,
+                    "abort source root differs from the verified candidate");
+            }
             Some(RootRemoval { id: info.id, native_uuid: info.uuid.to_string(), received_uuid: info.received_uuid.to_string(),
                 parent: "source".into(), name: name.into(), cleaned: false, rejected: false })
         } else { None }
@@ -506,4 +591,215 @@ pub fn abort_transfer(state: &mut State) -> Result<()> {
     let pending = state.journal.take().unwrap();
     if let Err(error) = state.save() { state.journal = Some(pending); return Err(error); }
     super::boot::complete(state)
+}
+
+fn reset_source_path(kind: &str) -> Result<&'static Path> {
+    match kind {
+        "source" => Ok(Path::new(SEND)),
+        "source-orphaned" => Ok(Path::new(SEND_ORPHANED)),
+        _ => bail!("reset source parent is outside the two approved directories"),
+    }
+}
+
+fn reset_source_parent(kind: &str) -> Result<Option<File>> {
+    let parent = match fs::secure_absolute(reset_source_path(kind)?, libc::O_RDONLY | libc::O_DIRECTORY) {
+        Ok(parent) => parent,
+        Err(error) if error.downcast_ref::<io::Error>().is_some_and(|e| e.kind() == io::ErrorKind::NotFound) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    check_private(&parent)?;
+    ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == FSID
+        && subvolume::subvolume_info(parent.as_fd())?.id == OPT_ID, "reset source parent identity changed");
+    Ok(Some(parent))
+}
+
+fn reset_release_name(name: &str) -> Result<()> {
+    inventory::normalized(Path::new(name), false)?;
+    ensure!(Path::new(name).components().count() == 1, "reset release name is not a basename");
+    uuid::Uuid::parse_str(name.strip_prefix("release-").context("not a reserved release artifact name")?)?;
+    Ok(())
+}
+
+fn reset_source_record(source: &ResetSource) -> Result<RootRemoval> {
+    reset_source_path(&source.parent)?;
+    reset_release_name(&source.name)?;
+    Ok(RootRemoval { id: source.id, native_uuid: source.native_uuid.parse::<uuid::Uuid>()?.to_string(),
+        received_uuid: uuid::Uuid::nil().to_string(), parent: source.parent.clone(), name: source.name.clone(),
+        cleaned: false, rejected: false })
+}
+
+fn reset_records(plan: &ResetPlan) -> Result<Vec<RootRemoval>> {
+    ensure!(plan.version == 1 && plan.received.len() + plan.sources.len() <= 128,
+        "unsupported or oversized native reset plan");
+    let mut records = Vec::with_capacity(plan.received.len() * 2 + plan.sources.len());
+    let mut slots = std::collections::BTreeSet::new();
+    for received in &plan.received {
+        let parent = if let Some(slot) = received.slot {
+            ensure!(slots.insert(slot) && received.name == slot.root(), "reset slot name/uniqueness differs");
+            "slot"
+        } else {
+            reset_release_name(&received.name)?;
+            ensure!(received.name == received.source.name, "incoming/source basenames differ");
+            "incoming"
+        };
+        let native: uuid::Uuid = received.native_uuid.parse()?;
+        let source: uuid::Uuid = received.source.native_uuid.parse()?;
+        ensure!(received.received_uuid.parse::<uuid::Uuid>()? == source,
+            "reset received UUID is not its explicitly paired source UUID");
+        records.push(RootRemoval { id: received.id, native_uuid: native.to_string(), received_uuid: source.to_string(),
+            parent: parent.into(), name: received.name.clone(), cleaned: false, rejected: false });
+        records.push(reset_source_record(&received.source)?);
+    }
+    for source in &plan.sources { records.push(reset_source_record(source)?); }
+    ensure!(plan.mounted.is_none_or(|slot| slots.contains(&slot)), "mounted reset owner is not an admitted slot");
+    for (name, hash) in &plan.catalogs {
+        ensure!(matches!(name.as_str(), "persisted" | "shm")
+            && hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
+            "invalid exact reset catalog name/digest");
+    }
+    let mut ids = std::collections::BTreeSet::new();
+    let mut uuids = std::collections::BTreeSet::new();
+    let mut locations = std::collections::BTreeSet::new();
+    for record in &records {
+        let native: uuid::Uuid = record.native_uuid.parse()?;
+        ensure!(record.id > OPT_ID && ids.insert(record.id) && !native.is_nil() && uuids.insert(native)
+            && locations.insert((record.parent.as_str(), record.name.as_str())),
+            "invalid or aliased native reset identity/location");
+    }
+    Ok(records)
+}
+
+fn verify_reset_root(root: &File, record: &RootRemoval) -> Result<()> {
+    let parent_id = match record.parent.as_str() {
+        "slot" | "incoming" => 5,
+        "source" | "source-orphaned" => OPT_ID,
+        _ => bail!("invalid native reset root parent"),
+    };
+    let info = subvolume::subvolume_info(root.as_fd())?;
+    ensure!(root.metadata()?.ino() == 256 && filesystem_info(root.as_fd())?.uuid.to_string() == FSID
+        && info.parent_id == parent_id && info.id == record.id
+        && info.uuid.to_string() == record.native_uuid && info.received_uuid.to_string() == record.received_uuid
+        && subvolume::subvolume_flags_get(root.as_fd())?.contains(SubvolumeFlags::RDONLY),
+        "reset name does not denote its exact approved immutable native root: {}", record.name);
+    Ok(())
+}
+
+fn check_reset_namespace(top: &File, records: &[RootRemoval], require_present: bool) -> Result<()> {
+    for entry in std::fs::read_dir(format!("/proc/self/fd/{}", top.as_raw_fd()))? {
+        let name = entry?.file_name();
+        if name.as_encoded_bytes().starts_with(b"release-") || name.as_encoded_bytes().starts_with(b"@release-") {
+            ensure!(records.iter().any(|r| matches!(r.parent.as_str(), "slot" | "incoming")
+                && name == std::ffi::OsStr::new(&r.name)), "reserved release root is absent from the explicit reset plan");
+        }
+    }
+    let parents = [("source", reset_source_parent("source")?), ("source-orphaned", reset_source_parent("source-orphaned")?)];
+    for (kind, parent) in &parents {
+        if let Some(parent) = parent {
+            for entry in std::fs::read_dir(format!("/proc/self/fd/{}", parent.as_raw_fd()))? {
+                let name = entry?.file_name();
+                // Historical source parents can also contain identity/guest
+                // inputs. Non-release names are outside reset authority and are
+                // not traversed, adopted, renamed or deleted.
+                if name.as_encoded_bytes().starts_with(b"release-") {
+                    ensure!(records.iter().any(|r| r.parent == *kind && name == std::ffi::OsStr::new(&r.name)),
+                        "reserved release source is absent from the explicit reset plan");
+                }
+            }
+        }
+    }
+    for record in records {
+        let parent = if matches!(record.parent.as_str(), "slot" | "incoming") { top } else {
+            parents.iter().find(|(kind,_)| *kind == record.parent)
+                .and_then(|(_,parent)| parent.as_ref()).context("approved reset source parent is missing")?
+        };
+        if let Some(root) = open_child(parent, Path::new(&record.name))? {
+            ensure!(!record.cleaned, "a cleaned reset name has reappeared: {}", record.name);
+            verify_reset_root(&root, record)?;
+        } else { ensure!(!require_present, "approved reset root is absent before admission: {}", record.name); }
+    }
+    Ok(())
+}
+
+pub(super) struct ResetAdmission {
+    pub plan: ResetPlan, pub removals: Vec<RootRemoval>,
+    pub releases: std::collections::BTreeMap<Slot, Release>, pub inventories: Vec<inventory::Inventory>,
+}
+
+/// Read explicit native authority; slots.json is deliberately not an input.
+pub(super) fn plan_reset() -> Result<ResetAdmission> {
+    let mut approval = fs::secure_absolute(Path::new(RESET_PLAN), libc::O_RDONLY)?;
+    let metadata = approval.metadata()?;
+    ensure!(metadata.is_file() && metadata.uid() == 0 && metadata.gid() == 0
+        && metadata.mode() & 0o7777 == 0o600 && metadata.nlink() == 1,
+        "native reset plan must be a root:root 0600 single-link regular file");
+    let plan: ResetPlan = serde_json::from_slice(&fs::read_bounded(&mut approval, 1024 * 1024)?)?;
+    let records = reset_records(&plan)?;
+    let top = top()?;
+    check_reset_namespace(&top, &records, true)?;
+    let mut inventories = Vec::with_capacity(plan.received.len() + plan.sources.len());
+    let mut releases = std::collections::BTreeMap::new();
+    for received in &plan.received {
+        let record = records.iter().find(|r| r.id == received.id).context("reset receive record missing")?;
+        let root = open_child(&top, Path::new(&record.name))?.context("approved received root disappeared")?;
+        verify_reset_root(&root, record)?;
+        let observed = inventory::load(&root)?;
+        let source_record = records.iter().find(|r| r.id == received.source.id).context("reset source record missing")?;
+        let parent = removal_parent(&top, &source_record.parent)?;
+        let source = open_child(&parent, Path::new(&source_record.name))?.context("approved source root disappeared")?;
+        verify_reset_root(&source, source_record)?;
+        let original = inventory::load(&source)?;
+        ensure!(observed.graph_sha256 == original.graph_sha256 && observed.tree_sha256 == original.tree_sha256
+            && observed.catalog_sha256 == original.catalog_sha256, "native reset source/received inventories differ");
+        if let Some(slot) = received.slot {
+            releases.insert(slot, Release { name: source_record.name.clone(), id: record.id,
+                native_uuid: record.native_uuid.clone(), received_uuid: record.received_uuid.clone(),
+                source_id: source_record.id, source_uuid: source_record.native_uuid.clone(),
+                graph_sha256: observed.graph_sha256.clone(), tree_sha256: observed.tree_sha256.clone(),
+                catalog_sha256: observed.catalog_sha256.clone(), targets: observed.targets.clone(),
+                devices: [root.metadata()?.dev()].into() });
+        }
+        inventories.push(observed);
+    }
+    for source in &plan.sources {
+        let record = records.iter().find(|r| r.id == source.id).context("standalone source record missing")?;
+        let parent = removal_parent(&top, &record.parent)?;
+        let root = open_child(&parent, Path::new(&record.name))?.context("approved standalone source disappeared")?;
+        verify_reset_root(&root, record)?;
+        inventories.push(inventory::load(&root)?);
+    }
+    Ok(ResetAdmission { plan, removals: records, releases, inventories })
+}
+
+pub(super) fn check_reset_roots(state: &State) -> Result<()> {
+    let journal = state.journal.as_ref().context("reset root check without journal")?;
+    ensure!(journal.operation == "reset", "not a reset root plan");
+    let plan = journal.reset_plan.as_ref().context("reset has no explicit native admission plan")?;
+    let expected = reset_records(plan)?;
+    ensure!(expected.len() == journal.removals.len() && expected.iter().all(|r| journal.removals.iter().any(|known|
+        known.id == r.id && known.native_uuid == r.native_uuid && known.received_uuid == r.received_uuid
+            && known.parent == r.parent && known.name == r.name)), "reset removals differ from the admitted native plan");
+    ensure!(journal.from == plan.mounted
+        && journal.reset_releases.len() == plan.received.iter().filter(|r| r.slot.is_some()).count(),
+        "reset native mount owner set differs from admission");
+    for received in &plan.received {
+        if let Some(slot) = received.slot {
+            let release = journal.reset_releases.get(&slot).context("admitted native slot receipt missing")?;
+            ensure!(release.id == received.id
+                && release.native_uuid.parse::<uuid::Uuid>()? == received.native_uuid.parse::<uuid::Uuid>()?
+                && release.received_uuid.parse::<uuid::Uuid>()? == received.received_uuid.parse::<uuid::Uuid>()?
+                && release.source_id == received.source.id
+                && release.source_uuid.parse::<uuid::Uuid>()? == received.source.native_uuid.parse::<uuid::Uuid>()?
+                && release.name == received.source.name, "native reset slot receipt differs from admission");
+        }
+    }
+    check_reset_namespace(&top()?, &journal.removals, false)
+}
+
+pub(super) fn retire_reset_roots(state: &mut State) -> Result<()> {
+    check_reset_roots(state)?;
+    ensure!(state.active.is_none() && state.previous.is_none(), "reset still selects a release");
+    let records = state.journal.as_ref().unwrap().removals.clone();
+    let top = top()?;
+    for record in records { remove_root(state, &top, record)?; }
+    check_reset_roots(state)
 }

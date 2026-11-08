@@ -390,6 +390,19 @@ impl GenerationMethods {
         Self { documents }
     }
 
+    /// Read the durable generation document without changing active jobs.
+    /// Recovery is a separate admitted transition and must not run on reads.
+    pub async fn snapshot(&self, owner: &GenerationOwner) -> Result<Option<GenerationState>> {
+        let Some(row) = self.documents.read_durable(&owner.document_id()).await? else {
+            return Ok(None);
+        };
+        let stored = StoredGenerations::decode(owner, row.document)?;
+        Ok(Some(GenerationState {
+            generation_revision: row.revision,
+            generation_jobs: stored.jobs,
+        }))
+    }
+
     pub async fn recover(&self, owner: &GenerationOwner) -> Result<Option<GenerationState>> {
         let Some(row) = self.documents.read_durable(&owner.document_id()).await? else {
             return Ok(None);

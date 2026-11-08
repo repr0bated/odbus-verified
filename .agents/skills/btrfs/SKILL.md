@@ -21,7 +21,7 @@ triggerPhrases:
 globs:
   - "**/fstab"
   - "**/etc/fstab"
-last_verified: "unverified"
+last_verified: "2026-11-05"
 ---
 
 ## Identity

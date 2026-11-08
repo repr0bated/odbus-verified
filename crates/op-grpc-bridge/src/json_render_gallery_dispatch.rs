@@ -232,6 +232,7 @@ async fn save(
         title: input.title,
         mode: input.mode,
         prompt: input.prompt,
+        cozo_relations: input.cozo_relations,
         spec_hash: spec_hash(&input.spec),
         spec: input.spec,
         profile_sha256: seal.profile_sha256.clone(),
@@ -245,6 +246,13 @@ async fn save(
         spec_hash: candidate.spec_hash.clone(),
         promoted_entry_id: None,
         candidate: serde_json::to_value(&candidate)?,
+        backend_relations: candidate
+            .cozo_relations
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()
+            .context("cozo relations could not be staged")?
+            .unwrap_or_default(),
     };
     blocking(move || store.insert_ui_candidate(&row).map_err(cozo)).await?;
     Ok(serde_json::to_value(CandidateOutput { candidate })?)
@@ -295,7 +303,7 @@ async fn promote(
     let candidate_id = input.candidate_id.clone();
     // The candidate is re-read and re-validated inside the promotion
     // transaction; a canvas the current profile rejects is not promoted.
-    let validator_check = {
+    let (validator_check, cozo_relations) = {
         let row = {
             let store = store.clone();
             let principal = principal.clone();
@@ -312,11 +320,12 @@ async fn promote(
         seal.validator.validate(&candidate.spec).context(
             "the candidate's canvas no longer passes the sealed chat Canvas profile; it cannot be promoted",
         )?;
-        candidate.spec_hash
+        (candidate.spec_hash, candidate.cozo_relations.clone())
     };
     let entry_id = uuid::Uuid::now_v7().to_string();
     let promoted_at = chrono::Utc::now().to_rfc3339();
     let profile_sha256 = seal.profile_sha256.clone();
+
     let (record, _) = blocking(move || {
         let build = |row: &UiCandidateRecord| -> std::result::Result<UiCatalogRecord, CozoError> {
             let candidate = decode_candidate(row, &principal)
@@ -340,12 +349,19 @@ async fn promote(
                 retired_at: None,
                 retired_by: None,
                 retire_reason: None,
+                cozo_relations: candidate.cozo_relations.clone(),
             };
             entry_record(&entry).map_err(|error| CozoError::Other(error.to_string()))
         };
-        store
+        let record = store
             .promote_ui_candidate(&principal, &candidate_id, &build)
-            .map_err(cozo)
+            .map_err(cozo)?;
+        // Import cozo relations atomically after the promotion; reject the publish on failure.
+        if let Some(relations) = &cozo_relations {
+            store.import_relations(relations)
+                .map_err(|e| CozoError::Other(format!("cozo import failed: {e}")))?;
+        }
+        record
     })
     .await?;
     Ok(serde_json::to_value(CatalogEntryOutput {

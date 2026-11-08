@@ -77,6 +77,32 @@ pub(super) fn stub(service: &str, member: &str) -> String {
     } else { String::new() };
     format!("#!/bin/sh\n{gate}exec {SERVICE_TARGET}/{service}/{member} \"$@\"\n")
 }
+/// Reusing a reset bootstrap must not preserve the controller's own stubs as
+/// new \"originals\" or silently accept an externally replaced run entry point.
+pub(super) fn verify_reset_bootstrap(baseline: &ResetBaseline) -> Result<()> {
+    for name in &baseline.plan.order {
+        super::inventory::service_name(name)?;
+        for member in ["run", "check", "finish", "log/run", ".op-release-disabled-log/run"] {
+            let path = Path::new(SERVICES).join(name).join(member);
+            let metadata = match stdfs::symlink_metadata(&path) {
+                Ok(metadata) => metadata,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    ensure!(member != "run" || !baseline.plan.wanted[name].linked,
+                        "linked reset consumer has no fixed run stub: {name}");
+                    continue;
+                },
+                Err(error) => return Err(error.into()),
+            };
+            let stub_member = if member == ".op-release-disabled-log/run" { "log/run" } else { member };
+            ensure!(metadata.is_file() && metadata.mode() & 0o777 == 0o755,
+                "reset bootstrap hook is not a fixed executable: {}", path.display());
+            let expected = format!("{:x}", Sha256::digest(stub(name, stub_member).as_bytes()));
+            ensure!(fs::hash_file(&mut fs::secure_absolute(&path, libc::O_RDONLY)?)? == expected,
+                "reset bootstrap hook changed outside the controller: {}", path.display());
+        }
+    }
+    Ok(())
+}
 pub fn plan_hooks(state: &mut State, inventory: &Inventory) -> Result<()> {
     let names = state.journal.as_ref().context("hook plan without journal")?.plan.order.clone();
     for name in names {

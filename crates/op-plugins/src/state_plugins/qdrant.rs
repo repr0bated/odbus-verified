@@ -451,9 +451,9 @@ pub async fn current_state() -> Result<QdrantState> {
     }
 
     Ok(QdrantState {
-        version: root["version"].as_str().unwrap_or_default().to_string(),
-        title: root["title"].as_str().unwrap_or_default().to_string(),
-        commit: root["commit"].as_str().unwrap_or_default().to_string(),
+        version: root["version"].as_str().context("Qdrant root info omitted version")?.to_owned(),
+        title: root["title"].as_str().context("Qdrant root info omitted title")?.to_owned(),
+        commit: root["commit"].as_str().context("Qdrant root info omitted commit")?.to_owned(),
         http_endpoint: QdrantPlugin::http_endpoint(),
         grpc_endpoint: QdrantPlugin::grpc_endpoint(),
         collections,

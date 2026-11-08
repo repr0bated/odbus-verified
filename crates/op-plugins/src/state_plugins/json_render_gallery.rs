@@ -208,6 +208,9 @@ pub struct CatalogEntry {
     pub retired_by: Option<String>,
     #[serde(default)]
     pub retire_reason: Option<String>,
+    /// Cozo relations imported atomically with this entry's spec.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cozo_relations: Option<std::collections::BTreeMap<String, Vec<Value>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]

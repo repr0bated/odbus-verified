@@ -66,6 +66,19 @@ impl VerifiedOracle {
         self.revalidate_in(&catalog_dir, &state_dir, chrono::Utc::now().timestamp())
             .await
     }
+
+    /// Retain the already-consumed assertion and its original expiry. Only the
+    /// exact native-owned same-identity refresh may replace its bound SID1.
+    pub(crate) async fn refreshed(&self, refresh: &crate::runtime_identity::CredentialRefresh)
+        -> anyhow::Result<Self> {
+        anyhow::ensure!(self.identity.claims() == refresh.previous(),
+            "refresh original oracle authority differs");
+        let refreshed = Self {
+            identity: refresh.identity().clone(), assertion_expires_at: self.assertion_expires_at,
+        };
+        refreshed.revalidate().await?;
+        Ok(refreshed)
+    }
 }
 
 impl std::fmt::Debug for VerifiedOracle {

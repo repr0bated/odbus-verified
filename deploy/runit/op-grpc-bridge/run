@@ -1,8 +1,9 @@
 #!/bin/sh
 # op-dbus-release: application
 # The controller publishes these shipped bytes to the canonical SHM catalog.
-# SchemaLoader (server.rs GetSchema) caches them until bridge restart/reload.
+# The fresh runtime consumes this sealed catalog without resealing at startup.
 # op-dbus-consumes: /usr/share/op-dbus/plugin-blobs
+set -eu
 exec 2>&1
 
 startup_phase() {
@@ -109,9 +110,9 @@ export TCHED_ROUTER_RUNTIME_TOKEN
 export OPDBUS_READY_PATH="${OPDBUS_READY_PATH:-$DEFAULT_READY_PATH}"
 rm -f -- "$OPDBUS_READY_PATH"
 
-# Exact browser origins allowed to reach gRPC-Web and MCP HTTP on this door
-# (the 3tched.com UI served by op-web on :8080, plus its Vite dev server).
-# Fails closed: an origin not listed here gets no CORS preflight answer.
+# Exact browser origins allowed to reach gRPC-Web on this door. The historical
+# setting name is retained for deployed configuration, not an MCP endpoint.
+# No wildcard, reflected origin, or plaintext fallback is permitted.
 export OP_MCP_ALLOWED_ORIGINS="${OP_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080,http://10.0.0.1:8080,http://10.0.0.2:8080,http://10.0.0.3:8080,http://10.0.0.4:8080,http://dashboard.ghostbridge.tech:8080,http://127.0.0.1:5173,http://localhost:5173}"
 
 
@@ -122,7 +123,7 @@ has_local_ipv4() {
             split($4, parts, "/")
             if (parts[1] == wanted) found = 1
         }
-        END { exit(found ? 0 : 1) }
+        END { if (found) exit 0; exit 1 }
     '
 }
 
@@ -143,15 +144,17 @@ until has_local_ipv4 10.0.0.2; do
 done
 startup_phase private-door-address-ready
 
-# `:8090` is tonic on 10.0.0.2, with the internal certificate.
-# The unix socket serves the same fabric.
+# The fresh runtime's only ingress is TLS at the existing private door.
+# Local filesystem callers use OPDBUS_LUNGS_SOCKET, not a second gRPC listener.
 FABRIC_BIND="10.0.0.2:8090"
-export TCHED_ROUTER_BIND_ADDR="$FABRIC_BIND"
-export GRPC_BIND="$FABRIC_BIND"
-export TCHED_ROUTER_UNIX_SOCKET="${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}"
+export OP_GRPC_BRIDGE_LISTEN="$FABRIC_BIND"
+unset OP_DBUS_GRPC_LISTEN TCHED_ROUTER_BIND_ADDR GRPC_BIND TCHED_ROUTER_UNIX_SOCKET
 export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
 unset TCHED_ROUTER_BROWSER_TLS_BIND_ADDR TCHED_ROUTER_BROWSER_TLS_CERT_FILE TCHED_ROUTER_BROWSER_TLS_KEY_FILE
+# EMQX starts after this bridge: do not wait for the broker here. The bridge
+# must bind its authenticated private ExHook backend before publishing ready.
+# The retained /mqtt route then relays to EMQX's verified loopback WSS backend.
 startup_phase emqx-prepare
 /usr/local/libexec/op-dbus/helpers/emqx-prepare
 export OP_EMQX_EXHOOK_ENABLE=1
@@ -174,8 +177,6 @@ export OP_DBUS_CACHE_DIR="${OP_DBUS_CACHE_DIR:-/var/lib/opdbus/cache}"
 export OPDBUS_CACHE_PLACEMENT="${OPDBUS_CACHE_PLACEMENT:-local}"
 export OPDBUS_CACHE_MEMORY_POLICY="${OPDBUS_CACHE_MEMORY_POLICY:-default}"
 export OPDBUS_NUMA_POLICY="${OPDBUS_NUMA_POLICY:-localalloc}"
-export OP_MCP_AUDIENCE_POLICY_PATH=/usr/share/op-dbus/etc/opdbus/mcp-audience-policy.json
-export OP_MCP_TOOLSETS_PATH="${OP_MCP_TOOLSETS_PATH:-/etc/opdbus/mcp-toolsets.json}"
 export OP_IDENTITY_PROJECTION_GROUP="${OP_IDENTITY_PROJECTION_GROUP:-secrets}"
 # jacob-bd nlm lives on the base system (deploy/notebooklm/install-base.sh), not in
 # the release. Never put NOTEBOOKLM_COOKIES in this

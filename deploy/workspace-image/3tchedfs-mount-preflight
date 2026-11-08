@@ -1,6 +1,6 @@
 #!/bin/sh
-# The guest owns two 3tchedFS mounts (3tchedfs, threetched); a host disk at either path is drift.
-mountpoint=${1:-/run/mount/3tchedfs}
+# The guest owns both filesystem views; a host disk at either path is drift.
+mountpoint=${1:-/run/mounts/3tchedFS}
 store=${2:-/usr/share/op-dbus/lungs-view}
 set -eu
 fail() { printf '3tchedfs-mount-preflight: %s\n' "$*" >&2; exit 1; }
@@ -19,7 +19,7 @@ case "$(stat -c %a -- /run)" in
     755) ;;
     *) exit 1 ;;
 esac
-for path in /run /run/mount "$mountpoint"; do
+for path in /run /run/mounts "$mountpoint"; do
     if [ -e "$path" ] || [ -L "$path" ]; then
         [ -d "$path" ] && [ ! -L "$path" ] || exit 1
     else

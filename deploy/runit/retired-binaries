@@ -1,6 +1,8 @@
 # Standalone network/control-plane executables replaced by bridge-owned,
 # in-process dispatch. Their crates may remain as libraries or admin tooling,
 # but golden preparation must not stage these listener binaries.
+# Fixture-only unsealed/plaintext bridge; production uses op-grpc-bridge.
+opdbus
 # Daemon and companion retired with the host network owner on 2026-10-19.
 rust-network-mgr
 rust-network-mgr-mcp

@@ -1045,7 +1045,7 @@ struct NativeNetBackend;
 #[async_trait]
 impl NetOperationBackend for NativeNetBackend {
     async fn inspect_interface(&self, name: &str) -> Result<Option<ObservedInterface>> {
-        let interface = op_network::rtnetlink::list_interfaces()
+        let interface = op_network::rtnetlink::list_interfaces_strict()
             .await?
             .into_iter()
             .find(|interface| interface.name == name);

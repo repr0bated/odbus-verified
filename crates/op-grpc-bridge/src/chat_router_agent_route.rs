@@ -49,8 +49,11 @@ fn safe_uri(uri: &str) -> Result<()> {
 }
 
 pub(crate) fn project(mode: ChatMode, config: &Value) -> Result<GetOwnAgentRouteOutput> {
-    let alias = crate::chat_mode_routing::dedicated_alias(mode)
-        .context("own agent route requires a selected dedicated chat mode")?;
+    let alias = match mode {
+        ChatMode::ControlPlane => "control_plane",
+        ChatMode::Accountability => "accountability",
+        _ => anyhow::bail!("own agent route requires a selected dedicated chat mode"),
+    };
     let agent = config
         .get("agents")
         .and_then(|agents| agents.get(alias))

@@ -38,9 +38,8 @@ pub(crate) fn capture_surface_with_config(
         anyhow::ensure!(config_dir.is_absolute(), "capture config directory must be absolute");
         command.env_clear()
             .env("PATH", "/usr/bin:/bin")
-            .env("HOME", config_dir.join("home"))
-            .env("THREETCHED_CONFIG_DIR", config_dir)
-            .env("ZEROCLAW_CONFIG_DIR", config_dir);
+            .env("HOME", config_dir.join("home"));
+        command.arg("--config-dir").arg(config_dir);
     }
     command
         .args(args)
@@ -417,12 +416,14 @@ mod tests {
 
     #[test]
     fn configured_capture_uses_selected_config_home_and_clean_path() {
+        use std::os::unix::fs::PermissionsExt;
         let directory = tempfile::tempdir().unwrap();
-        let text = capture_surface_with_config(Path::new("/bin/sh"), &[
-            "-c", "printf '%s' \"$THREETCHED_CONFIG_DIR|$ZEROCLAW_CONFIG_DIR|$HOME|$PATH|$LANGUAGE\"",
-        ], Some(directory.path())).unwrap();
-        assert_eq!(text, format!("{}|{}|{}|/usr/bin:/bin|en", directory.path().display(),
-            directory.path().display(), directory.path().join("home").display()));
+        let script = directory.path().join("capture");
+        std::fs::write(&script, "#!/bin/sh\nprintf '%s' \"$1|$2|$HOME|$PATH|$LANGUAGE\"\n").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let text = capture_surface_with_config(&script, &[], Some(directory.path())).unwrap();
+        assert_eq!(text, format!("--config-dir|{}|{}|/usr/bin:/bin|en", directory.path().display(),
+            directory.path().join("home").display()));
     }
 
     #[test]

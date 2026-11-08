@@ -10,44 +10,105 @@
 
 pub const CATEGORIES: &[&str] = &["src", "prj", "sch", "mut", "obs", "evt", "exp"];
 
-/// OSCAL component-type vocabulary accepted in position 2.
-pub const COMPONENT_TYPES: &[&str] = &[
-    "service",
+/// OSCAL component types. Keep this list identical to
+/// `op-plugins` `OSCAL_COMPONENT_TYPES`. Local types go in
+/// [`INTERNAL_COMPONENT_TYPES`].
+pub const OSCAL_COMPONENT_TYPES: &[&str] = &[
+    "this-system",
+    "system",
+    "interconnection",
     "software",
-    "network",
     "hardware",
-    "data",
+    "service",
     "policy",
-    "process",
+    "physical",
+    "process-procedure",
     "plan",
     "guidance",
     "standard",
     "validation",
-    "system",
-    "interconnection",
 ];
 
+/// Local component types. `network` is not an OSCAL noun; issued keys use it.
+pub const INTERNAL_COMPONENT_TYPES: &[&str] = &[
+    "network",
+    "agent",
+    "container",
+    "data",
+    "privacy",
+    "security",
+    "storage",
+    "lxd",
+];
+
+/// Readable names accepted in position 2, each standing for an OSCAL type.
+pub const COMPONENT_TYPE_ALIASES: &[(&str, &str)] = &[
+    ("ui", "software"),
+    ("llm", "service"),
+    ("agents", "software"),
+];
+
+/// Every value accepted in position 2. Retained for callers that only need the flat set.
+pub const COMPONENT_TYPES: &[&str] = &[
+    "this-system",
+    "system",
+    "interconnection",
+    "software",
+    "hardware",
+    "service",
+    "policy",
+    "physical",
+    "process-procedure",
+    "plan",
+    "guidance",
+    "standard",
+    "validation",
+    "network",
+    "agent",
+    "container",
+    "data",
+    "privacy",
+    "security",
+    "storage",
+    "lxd",
+    "ui",
+    "llm",
+    "agents",
+];
+
+fn hyphenated(segment: &str) -> bool {
+    // Prefer hyphen; allow underscore for Muse-generated method verbs.
+    let mut parts = segment.split(|c| c == '-' || c == '_');
+    match parts.next() {
+        Some(first) if !first.is_empty() && first.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) => {}
+        _ => return false,
+    }
+    parts.all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()))
+}
+
 pub fn validate_subid(subid: &str) -> Result<(), String> {
+    let expected = "<category>.<component-type>.<subject>.<verb>[.<facet>][@vN]";
     let (base, version) = match subid.split_once('@') {
-        Some((b, v)) => (b, Some(v)),
+        Some((base, version)) => (base, Some(version)),
         None => (subid, None),
     };
-
-    if let Some(v) = version {
-        let ok = v.len() >= 2 && v.starts_with('v') && v[1..].chars().all(|c| c.is_ascii_digit());
+    if let Some(version) = version {
+        let ok = version.len() >= 2
+            && version.starts_with('v')
+            && version.as_bytes()[1].is_ascii_digit()
+            && version.as_bytes()[1] != b'0'
+            && version[2..].chars().all(|c| c.is_ascii_digit());
         if !ok {
-            return Err(format!("{subid}: version must be @vN, got @{v}"));
+            return Err(format!("{subid}: version must be @vN, got @{version}"));
         }
     }
-
     let segments: Vec<&str> = base.split('.').collect();
-    if segments.len() < 4 || segments.len() > 5 {
+    if !(4..=6).contains(&segments.len()) {
         return Err(format!(
-            "{subid}: expected category.component-type.subject.verb[.facet], got {} segments",
+            "{subid}: expected {expected}, got {} segments",
             segments.len()
         ));
     }
-
     if !CATEGORIES.contains(&segments[0]) {
         return Err(format!(
             "{subid}: category {:?} not one of {CATEGORIES:?}",
@@ -56,20 +117,14 @@ pub fn validate_subid(subid: &str) -> Result<(), String> {
     }
     if !COMPONENT_TYPES.contains(&segments[1]) {
         return Err(format!(
-            "{subid}: component-type {:?} not in OSCAL vocabulary",
+            "{subid}: component-type {:?} is not in the taxonomy",
             segments[1]
         ));
     }
-    for seg in &segments[2..] {
-        let ok = !seg.is_empty()
-            && seg
-                .chars()
-                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-            && !seg.starts_with('-')
-            && !seg.ends_with('-');
-        if !ok {
+    for segment in &segments[2..] {
+        if !hyphenated(segment) {
             return Err(format!(
-                "{subid}: segment {seg:?} must be lowercase hyphenated [a-z0-9-]"
+                "{subid}: segment {segment:?} must be lowercase hyphenated [a-z0-9-]"
             ));
         }
     }
@@ -86,11 +141,17 @@ mod tests {
         assert!(validate_subid("mut.service.state-sync.apply-patch@v1").is_ok());
         assert!(validate_subid("exp.software.cognitive-memory.render").is_ok());
         assert!(validate_subid("obs.service.plugin-projection.query").is_ok());
-        assert!(validate_subid("sch.network.plugin.wireguard.schema@v1").is_ok()); // 5-segment facet form
+        assert!(validate_subid("sch.network.plugin.wireguard.schema@v1").is_ok());
+        assert!(validate_subid("src.network.xray.serve@v1").is_ok());
+        assert!(validate_subid("sch.process-procedure.router.user-container.schema@v1").is_ok());
+        assert!(validate_subid("mut.this-system.host.describe@v1").is_ok());
+        assert!(validate_subid("src.network.xray-serve@v1").is_err());
+        assert!(validate_subid("mut.process.foo.bar").is_err());
         assert!(validate_subid("bad-category.software.foo.bar").is_err());
         assert!(validate_subid("mut.bad-type.foo.bar").is_err());
-        assert!(validate_subid("mut.software.foo").is_err()); // too few segments
-        assert!(validate_subid("mut.software.foo.bar@x2").is_err()); // bad version
-        assert!(validate_subid("mut.software.Foo.bar").is_err()); // uppercase subject
+        assert!(validate_subid("mut.software.foo").is_err());
+        assert!(validate_subid("mut.software.foo.bar@x2").is_err());
+        assert!(validate_subid("mut.software.foo.bar@v0").is_err());
+        assert!(validate_subid("mut.software.Foo.bar").is_err());
     }
 }

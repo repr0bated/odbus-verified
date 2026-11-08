@@ -1,4 +1,4 @@
-//! Per-task root-password elevation at MutationEngine's dispatch choke point.
+//! Per-task root-password elevation at the shared authenticated dispatch boundary.
 //!
 //! A protected call (the `elevation` plugin's policy) needs, besides the
 //! caller's verified session and exact grant, a one-time ticket issued by
@@ -32,9 +32,7 @@ use op_plugins::state_plugins::{
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-use crate::{
-    interceptor::load_capability_grants, mutation_engine::MutationEngine, project_dispatch,
-};
+use crate::runtime::{Runtime, VerifiedCaller};
 
 pub(crate) const PAM_SERVICE: &str = "op-dbus-elevate";
 const TICKET_DOMAIN: &str = "opdbus.elevation.ticket.v1";
@@ -109,6 +107,18 @@ impl TaskElevation {
         method: &str,
         args: &Value,
     ) -> Result<()> {
+        self.consume_at(principal_id, session_id, plugin, method, args, Utc::now())
+    }
+
+    fn consume_at(
+        &self,
+        principal_id: &str,
+        session_id: Option<&str>,
+        plugin: &str,
+        method: &str,
+        args: &Value,
+        now: DateTime<Utc>,
+    ) -> Result<()> {
         let Some(action) = protected_action(plugin, method, args) else {
             return Ok(());
         };
@@ -116,7 +126,6 @@ impl TaskElevation {
             .filter(|session| !session.is_empty())
             .with_context(|| format!("protected task {action} requires a verified session"))?;
         let key = ticket_key(principal_id, session, plugin, method, args);
-        let now = Utc::now();
         let mut tickets = lock(&self.tickets);
         tickets.retain(|_, ticket| ticket.expires_at > now);
         match tickets.remove(&key) {
@@ -186,54 +195,53 @@ impl TaskElevation {
     }
 }
 
+/// Audit the declared target, never the password or arbitrary nested arguments.
+pub(crate) fn audit_arguments(args: &Value) -> Value {
+    serde_json::json!({
+        "plugin": args.get("plugin").and_then(Value::as_str),
+        "method": args.get("method").and_then(Value::as_str),
+        "redacted": true,
+    })
+}
+
 pub(crate) async fn dispatch(
-    engine: &MutationEngine,
+    runtime: &Runtime,
+    caller: &VerifiedCaller,
     method: &str,
     args: &Value,
-    actor: &str,
-    session: Option<&str>,
-    genesis: Option<&str>,
 ) -> Result<Value> {
     match method {
         "list_protected_actions" => Ok(serde_json::to_value(ListProtectedActionsOutput {
             actions: protected_actions(),
             ticket_ttl_seconds: TICKET_TTL_SECONDS,
         })?),
-        "authorize_task" => authorize(engine, args, actor, session, genesis).await,
+        "authorize_task" => authorize(runtime, caller, args).await,
         other => bail!("unknown elevation method {other}"),
     }
 }
 
-async fn authorize(
-    engine: &MutationEngine,
-    args: &Value,
-    actor: &str,
-    session: Option<&str>,
-    genesis: Option<&str>,
-) -> Result<Value> {
-    project_dispatch::verified_session(engine, actor, session, genesis).await?;
-    let session = session.context("verified session is required")?.to_string();
-    ensure!(
-        load_capability_grants(actor).contains(AUTHORIZE_CAPABILITY),
-        "current exact {AUTHORIZE_CAPABILITY} grant is required"
-    );
+async fn authorize(runtime: &Runtime, caller: &VerifiedCaller, args: &Value) -> Result<Value> {
+    runtime.require_capability(caller, AUTHORIZE_CAPABILITY).await?;
     let mut input: AuthorizeTaskInput =
         serde_json::from_value(args.clone()).context("invalid authorize_task arguments")?;
     let action = validate_authorize_input(&input)?;
-    let elevation = engine.task_elevation();
+    // A password cannot grant an operation that the original principal lacks.
+    runtime.authorize_nested(caller, &input.plugin, &input.method).await?;
+    let elevation = runtime.task_elevation();
     let now = Utc::now();
-    elevation.check_lockout(actor, now)?;
+    elevation.check_lockout(&caller.principal_id, now)?;
     let password = zeroize::Zeroizing::new(std::mem::take(&mut input.password));
     let authority = elevation.authority();
     let accepted = tokio::task::spawn_blocking(move || authority.verify("root", &password))
-        .await
-        .context("root password check worker failed")??;
+        .await.context("root password check worker failed")??;
     if !accepted {
-        elevation.record_failure(actor, now);
+        elevation.record_failure(&caller.principal_id, now);
         bail!("root password was not accepted");
     }
-    lock(&elevation.failures).remove(actor);
-    let expires_at = elevation.issue(actor, &session, &input, now)?;
+    runtime.require_capability(caller, AUTHORIZE_CAPABILITY).await?;
+    runtime.authorize_nested(caller, &input.plugin, &input.method).await?;
+    lock(&elevation.failures).remove(&caller.principal_id);
+    let expires_at = elevation.issue(&caller.principal_id, &caller.session_id, &input, Utc::now())?;
     Ok(serde_json::to_value(AuthorizeTaskOutput {
         action_id: action.to_string(),
         expires_at: expires_at.to_rfc3339(),

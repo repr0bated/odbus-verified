@@ -5,8 +5,8 @@ set -eu
 fail() { printf 'mount.fuse.3tchedFS: %s\n' "$*" >&2; exit 1; }
 [ "$#" = 4 ] && [ "$3" = -o ] || fail 'expected an /etc/fstab fuse.3tchedFS entry'
 case "$1:$2" in
-    3tchedFS:/run/mount/3tchedfs) store=/usr/share/op-dbus/lungs-view ;;
-    threetched:/run/mount/threetched) store=/usr/share/op-dbus/threetched-view ;;
+    3tchedFS:/run/mounts/3tchedFS) store=/usr/share/op-dbus/lungs-view ;;
+    threetched:/run/mounts/threetched) store=/usr/share/op-dbus/threetched-view ;;
     *) fail "unsupported 3tchedFS source/mountpoint: $1 $2" ;;
 esac
 # The client enforces these fixed kernel options; never silently accept others.

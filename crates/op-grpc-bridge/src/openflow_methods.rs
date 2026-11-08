@@ -26,36 +26,24 @@ pub struct OpenFlowMethodReceipt {
     pub bridge: String,
 }
 
-pub(crate) struct OpenFlowProjectionChange {
-    pub object_path: String,
-    pub change_type: crate::mutation_engine::ChangeType,
-    pub before: Option<FlowEntry>,
-    pub value: op_plugins::state_plugins::openflow::FlowObservation,
-}
-
-pub(crate) fn projection_change(
-    receipt: &OpenFlowMethodReceipt,
-) -> Result<OpenFlowProjectionChange> {
+/// Merge only the native observation member. Authored bridge configuration and
+/// observations for other bridges remain owned by the canonical state tree.
+pub(crate) fn projection_patch(receipt: &OpenFlowMethodReceipt) -> Result<Value> {
     let observed = receipt
         .after
         .as_ref()
         .or(receipt.before.as_ref())
         .context("OpenFlow receipt omitted both member revisions")?;
-    let identity = canonical_flow_identity(observed);
-    Ok(OpenFlowProjectionChange {
-        object_path: format!(
-            "{}/observed_flows/{}/{}",
-            op_plugins::canonical::plugin_path("openflow"),
-            receipt.bridge,
-            identity
-        ),
-        change_type: crate::mutation_engine::ChangeType::ObjectAdded,
-        before: receipt.before.clone(),
-        value: op_plugins::state_plugins::openflow::FlowObservation {
-            flow: observed.clone(),
-            installed: receipt.after.is_some(),
-        },
-    })
+    Ok(serde_json::json!({
+        "observed_flows": {
+            (receipt.bridge.as_str()): {
+                (canonical_flow_identity(observed)): {
+                    "flow": observed,
+                    "installed": receipt.after.is_some()
+                }
+            }
+        }
+    }))
 }
 
 fn canonical_flow_identity(flow: &FlowEntry) -> String {
@@ -94,6 +82,7 @@ pub async fn dispatch_openflow_flow_method_attributed(
     ).await.context("OpenFlow attributed compare/exchange timed out; outcome requires reconciliation, no automatic retry")?
 }
 
+#[cfg(test)]
 pub(crate) async fn dispatch_openflow_flow_method_on(
     connection: &Connection,
     method: &str,
@@ -301,12 +290,6 @@ fn validate_flow(flow: &FlowEntry) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        mutation_engine::ChangeType,
-        state_tree_fold::{StateTreeFold, fold_plugin_state},
-    };
-    use simd_json::json as simd_json_value;
-    use simd_json::prelude::*;
     use std::collections::HashMap;
 
     fn flow(actions: Vec<FlowAction>) -> FlowEntry {
@@ -379,91 +362,27 @@ mod tests {
     }
 
     #[test]
-    fn observed_member_fold_preserves_authored_config_and_unrelated_bridges() {
-        let before = flow(vec![FlowAction::Normal]);
-        let after = flow(vec![FlowAction::Output {
-            port: "LOCAL".into(),
-        }]);
-        let add = projection_change(&OpenFlowMethodReceipt {
+    fn observed_member_patch_never_replaces_authored_configuration() {
+        let flow = flow(vec![FlowAction::Normal]);
+        let identity = canonical_flow_identity(&flow);
+        let patch = projection_patch(&OpenFlowMethodReceipt {
             output: Value::Null,
             before: None,
-            after: Some(before.clone()),
+            after: Some(flow.clone()),
             bridge: "ovsbr0".into(),
-        })
-        .unwrap();
-        let initial = simd_json_value!({
-            "bridges":[{"name":"configured","flows":[],"socket_ports":null}],
-            "controller_endpoint":"tcp:127.0.0.1:6653",
-            "auto_discover_containers":false,
-            "enable_security_flows":true,
-            "obfuscation_level":1,
-            "observed_flows":{"other":{"keep":{"installed":true,"flow":{"table":1,"priority":1,"match_fields":{},"actions":[{"type":"normal"}],"idle_timeout":0,"hard_timeout":0}}}}
-        });
-        let StateTreeFold::Present(added) = fold_plugin_state(
-            Some(&initial),
-            "openflow",
-            &add.object_path,
-            add.change_type,
-            None,
-            &simd_json::serde::to_owned_value(add.value).unwrap(),
-        )
-        .unwrap() else {
-            panic!("add must produce state")
-        };
-        assert_eq!(added["bridges"], initial["bridges"]);
-        assert_eq!(
-            added["observed_flows"]["other"],
-            initial["observed_flows"]["other"]
-        );
-
-        let modify = projection_change(&OpenFlowMethodReceipt {
+        }).unwrap();
+        assert_eq!(patch.as_object().unwrap().len(), 1);
+        assert_eq!(patch["observed_flows"].as_object().unwrap().len(), 1);
+        assert_eq!(patch["observed_flows"]["ovsbr0"][&identity]["installed"], true);
+        let removed = projection_patch(&OpenFlowMethodReceipt {
             output: Value::Null,
-            before: Some(before),
-            after: Some(after.clone()),
-            bridge: "ovsbr0".into(),
-        })
-        .unwrap();
-        assert_eq!(add.object_path, modify.object_path);
-        let StateTreeFold::Present(modified) = fold_plugin_state(
-            Some(&added),
-            "openflow",
-            &modify.object_path,
-            ChangeType::ObjectAdded,
-            None,
-            &simd_json::serde::to_owned_value(modify.value).unwrap(),
-        )
-        .unwrap() else {
-            panic!("modify must produce state")
-        };
-        let identity = canonical_flow_identity(&after);
-        assert_eq!(
-            modified["observed_flows"]["ovsbr0"][identity.as_str()]["flow"]["actions"][0]["type"],
-            "output"
-        );
-
-        let delete = projection_change(&OpenFlowMethodReceipt {
-            output: Value::Null,
-            before: Some(after),
+            before: Some(flow.clone()),
             after: None,
             bridge: "ovsbr0".into(),
-        })
-        .unwrap();
-        let StateTreeFold::Present(deleted) = fold_plugin_state(
-            Some(&modified),
-            "openflow",
-            &delete.object_path,
-            delete.change_type,
-            None,
-            &simd_json::serde::to_owned_value(delete.value).unwrap(),
-        )
-        .unwrap() else {
-            panic!("delete must retain the plugin state")
-        };
-        assert_eq!(
-            deleted["observed_flows"]["ovsbr0"][identity.as_str()]["installed"],
-            false
-        );
-        assert_eq!(deleted["bridges"], initial["bridges"]);
-        assert!(deleted["observed_flows"]["other"]["keep"].is_object());
+        }).unwrap();
+        assert_eq!(removed["observed_flows"]["ovsbr0"][&identity]["installed"], false);
+        assert_eq!(removed["observed_flows"]["ovsbr0"][&identity]["flow"],
+            serde_json::to_value(flow).unwrap());
+        assert!(removed.get("bridges").is_none());
     }
 }

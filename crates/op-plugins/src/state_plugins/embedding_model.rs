@@ -13,7 +13,8 @@ use simd_json::OwnedValue as Value;
 #[path = "embedding_model_methods.rs"]
 pub mod methods;
 pub use methods::{
-    dispatch_embedding_model_method, embedding_model_state, restored_embedding_state,
+    dispatch_embedding_model_method, dispatch_embedding_model_method_observed,
+    embedding_model_state, restored_embedding_state,
 };
 
 /// Default public Voyage AI endpoint. The only copy of this constant — consumers

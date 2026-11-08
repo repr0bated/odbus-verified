@@ -1,9 +1,9 @@
 //! Prior name: tched_config_dispatch.
 //! Native read adapter for the chat_router v0.8.4 config surface.
 //!
-//! MutationEngine performs sealed admission and pins/rechecks the exact plugin
-//! schema around this helper. This module only maps an already-admitted method
-//! to the shared loopback runtime; it is not plugin-existence authority.
+//! Runtime performs sealed admission and pins/rechecks the exact plugin schema
+//! around this helper. This module only maps an already-admitted method to the
+//! shared loopback runtime; it is not plugin-existence authority.
 
 use anyhow::Context;
 use op_plugins::state_plugins::chat_router::{
@@ -42,7 +42,7 @@ pub fn config_method_backing(method: &str) -> Option<ConfigMethodBacking> {
 
 pub(crate) enum ConfigReadDispatch {
     Handled(Value),
-    /// MutationEngine must read, commit, and return from one masked native
+    /// Runtime must read, commit, and return from one masked native
     /// configuration image under the exact seal pin.
     NativeConfig {
         section: Option<&'static str>,

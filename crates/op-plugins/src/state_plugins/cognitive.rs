@@ -5,8 +5,8 @@
 //! `/org/opdbus/v1/plugins/cognitive`; there is no separately supervised
 //! cognitive service or plugin-owned listener configuration.
 //!
-//! The canonical schema (every gRPC method, every MCP tool, every
-//! request/response field) lives in the `cognitive_schema()` function below.
+//! The canonical schema (every sealed method and request/response field)
+//! lives in the `cognitive_schema()` function below.
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -24,7 +24,7 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "cognitive";
-const PLUGIN_VERSION: &str = "4.1.0";
+const PLUGIN_VERSION: &str = "5.0.0";
 const PLUGIN_CATEGORY: &str = "service";
 const PLUGIN_DESCRIPTION: &str = "Bridge-owned cognitive tools — memory, code context, and grounded query capabilities compiled into op-grpc-bridge. THE PLUGIN IS THE SCHEMA: every method, tool, property, and field is declared here. Downstream inherits.";
 const PLUGIN_DISPLAY_NAME: &str = "GB.Cognitive";
@@ -668,21 +668,6 @@ pub use super::workflows_plugin::{
     QueryWorkflowsInput as WorkflowQueryInput, StartWorkflowInput as WorkflowRunInput,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum ToolsetsOperation {
-    List,
-    Select,
-}
-
-/// Stateless HOT toolset operation. Selection is returned to the client and
-/// must be repeated in request `_meta`; it never changes server-side grants.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct ToolsetsInput {
-    pub operation: ToolsetsOperation,
-    #[schemars(description = "Required only for the select operation")]
-    pub toolset_id: Option<String>,
-}
 
 /// Read one exact manifest-pinned PluginSchema from the sealed blob store.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -870,15 +855,6 @@ pub use super::workflows_plugin::{
     QueryWorkflowsOutput as WorkflowQueryOutput, StartWorkflowOutput as WorkflowRunOutput,
 };
 
-/// Public shape of the local toolset response. Detailed set entries and the
-/// canonical selector are emitted by the bridge after MutationEngine admission.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct ToolsetsOutput {
-    pub operation: String,
-    pub toolset_generation: u64,
-    pub relist_required: bool,
-    pub result: serde_json::Value,
-}
 
 /// Exact sealed schema document returned by the bridge-owned blob reader.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -1090,7 +1066,7 @@ pub struct CognitiveState {
     pub notebook_count: i64,
     #[schemars(description = "R12: Gemini fallback query (requires GEMINI_API_KEY)", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.gemini-query-request@v1"))]
     pub gemini_query_request: Option<GeminiQueryRequest>,
-    #[schemars(description = "MCP MemoryTool: key-value memory store with operations store/retrieve/query/delete/list_namespaces/stats", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.memory-tool@v1"))]
+    #[schemars(description = "Key-value memory store with operations store/retrieve/query/delete/list_namespaces/stats", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.memory-tool@v1"))]
     pub memory_tool: Option<MemoryToolInput>,
     #[schemars(description = "Citation sub-object: text, source, page. Inherited by grounded query responses.", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.citation@v1"))]
     pub citation: Option<Citation>,
@@ -1109,9 +1085,8 @@ pub struct CognitiveState {
 // =============================================================================
 
 // Handler audit — where each method is actually backed:
-// get_health              → op-grpc-bridge/mutation_engine.rs in-process runtime and quota
-// list_tools              → op-grpc-bridge/mutation_engine.rs in-process ToolRegistry
-//                           (stub — no dynamic tool-registration mechanism exists yet)
+// get_health              → fresh runtime_cognitive native runtime and quota
+// list_tools              → fresh runtime_cognitive sealed method inventory
 // memory_store            → embedded op_cognitive::cognitive_tools::MemoryTool::op_store
 // memory_retrieve         → embedded op_cognitive::cognitive_tools::MemoryTool::op_retrieve
 // memory_query            → embedded op_cognitive::cognitive_tools::MemoryTool::op_query
@@ -1121,12 +1096,11 @@ pub struct CognitiveState {
 // code_index              → embedded op_cognitive::code_tools::CodeIndexTool
 // code_context            → embedded op_cognitive::code_tools::CodeContextTool
 // gemini_query            → embedded op_cognitive::cognitive_tools::GeminiQueryTool
-// invoke_tool             → op-grpc-bridge/mutation_engine.rs in-process ToolRegistry
+// invoke_tool             → fresh runtime's exact nested method admission
 // memory_recall           → cognitive_memory query operation (HOT facade)
 // workflow_query          → workflows.query_workflows (HOT facade)
 // workflow_run            → workflows.start_workflow (HOT facade)
 // rust_pro                → eagerly registered agent_rust_pro_<operation> tool (HOT)
-// toolsets                → bridge-local deterministic projection policy (HOT)
 // schema_read             → exact manifest-pinned sealed PluginSchema (HOT)
 // oscal_subids            → cross-blob OSCAL routing-tag index (HOT)
 pub(crate) fn cognitive_schema() -> PluginSchema {
@@ -1357,16 +1331,6 @@ pub(crate) fn cognitive_schema() -> PluginSchema {
         ),
     );
     schema.methods.insert(
-        "toolsets".to_string(),
-        method_decl_from_schemars_with_output::<ToolsetsInput, ToolsetsOutput>(
-            "toolsets",
-            SideEffect::Read,
-            true,
-            "cognitive.read",
-            "obs.service.cognitive.toolset.project@v1",
-        ),
-    );
-    schema.methods.insert(
         "schema_read".to_string(),
         method_decl_from_schemars_with_output::<SchemaReadInput, SchemaReadOutput>(
             "schema_read",
@@ -1585,43 +1549,6 @@ mod tests {
             );
         }
 
-        let expected_methods = [
-            "get_health",
-            "list_tools",
-            "memory_store",
-            "memory_recall",
-            "memory_retrieve",
-            "memory_query",
-            "memory_delete",
-            "memory_list_namespaces",
-            "code_search",
-            "code_index",
-            "code_context",
-            "rust_pro",
-            "workflow_query",
-            "workflow_run",
-            "toolsets",
-            "schema_read",
-            "oscal_subids",
-            "gemini_query",
-            "invoke_tool",
-            // 2026-09-19: semantic recall, hot executors/workflow agents and the
-            // dynamically assembled specialist (static advisors are not methods).
-            "memory_semantic_query",
-            "python_pro",
-            "typescript_pro",
-            "sequential_thinking",
-            "context_manager",
-            "code_review_orchestrator",
-            "specialist",
-        ];
-        let catalog_methods: Vec<_> = cognitive_agents::catalog_agent_methods().collect();
-        assert!(!schema.methods.contains_key("register_tool"));
-        assert_eq!(
-            schema.methods.len(),
-            expected_methods.len() + catalog_methods.len(),
-            "sealed bridge-owned cognitive method inventory drifted"
-        );
         for retired_static_advisor in [
             "debugger",
             "dbus_expert",
@@ -1631,19 +1558,6 @@ mod tests {
             assert!(
                 !schema.methods.contains_key(retired_static_advisor),
                 "static advisor persona {retired_static_advisor} must not be a schema method"
-            );
-        }
-        for method in expected_methods {
-            assert!(
-                schema.methods.contains_key(method),
-                "bridge-owned cognitive method {method} must remain sealed"
-            );
-        }
-        for method in catalog_methods {
-            assert!(
-                schema.methods.contains_key(&method.declaration.name),
-                "catalog method {} must remain sealed",
-                method.declaration.name
             );
         }
 

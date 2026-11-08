@@ -88,15 +88,61 @@ impl PrivateProjectionDirectory {
         operation_id: &str,
         commit: impl FnOnce(Option<&[u8]>) -> Result<PrivateDocumentCommit<T>>,
     ) -> Result<PrivateDocumentPublication<T>> {
-        let name = filename(plugin_id)?;
-        ensure!(
-            plugin_id != "identity_sled",
-            "identity uses its dedicated paired projection"
-        );
-        identity_transaction::validate_operation_id(operation_id)?;
         require_private(&self.directory, true)?;
         let locked = LockedDirectory::from_directory(self.directory.try_clone()?, true)?
             .context("private namespace lock missing")?;
+        commit_locked(&locked, plugin_id, operation_id, commit)
+    }
+
+    /// Exact-operation recovery invokes the authoritative durable reader. It
+    /// never passes potentially mixed SHM bytes to the callback and has no
+    /// clear-marker/old-state rollback alternative.
+    pub fn recover_document<T>(
+        &self,
+        plugin_id: &str,
+        operation_id: &str,
+        load_durable: impl FnOnce() -> Result<(Option<Vec<u8>>, T)>,
+    ) -> Result<PrivateDocumentPublication<T>> {
+        self.recover_document_with_decision(plugin_id, operation_id, || {
+            load_durable()
+                .map(|(current, durable)| PrivateDocumentCommit::Publish { current, durable })
+        })
+    }
+
+    /// Keep a recovered durable receipt even when current admission prevents
+    /// publication. Only Publish may clear the exact pending operation.
+    pub fn recover_document_with_decision<T>(
+        &self,
+        plugin_id: &str,
+        operation_id: &str,
+        load_durable: impl FnOnce() -> Result<PrivateDocumentCommit<T>>,
+    ) -> Result<PrivateDocumentPublication<T>> {
+        require_private(&self.directory, true)?;
+        let locked = LockedDirectory::from_directory(self.directory.try_clone()?, true)?
+            .context("private namespace lock missing")?;
+        recover_locked(&locked, plugin_id, operation_id, load_durable)
+    }
+}
+
+/// Pending non-identity raw-state publication in the canonical manifest.
+pub fn pending_projection_publication_in(
+    state_dir: &str,
+) -> Result<Option<PendingDocumentPublication>> {
+    let Some(locked) = LockedDirectory::open(state_dir, false)? else {
+        return Ok(None);
+    };
+    Ok(locked.manifest()?.and_then(|(manifest, _)| manifest.document_pending))
+}
+
+fn commit_locked<T>(
+    locked: &LockedDirectory,
+    plugin_id: &str,
+    operation_id: &str,
+    commit: impl FnOnce(Option<&[u8]>) -> Result<PrivateDocumentCommit<T>>,
+) -> Result<PrivateDocumentPublication<T>> {
+        let name = filename(plugin_id)?;
+        ensure!(plugin_id != "identity_sled", "identity uses its dedicated paired projection");
+        identity_transaction::validate_operation_id(operation_id)?;
         let old = locked.manifest()?;
         let had_manifest = old.is_some();
         let mut manifest = old.map_or_else(Manifest::default, |(manifest, _)| manifest);
@@ -117,6 +163,7 @@ impl PrivateProjectionDirectory {
         manifest.document_pending = Some(PendingDocumentPublication {
             plugin_id: plugin_id.into(),
             operation_id: operation_id.into(),
+            plugin_ids: Vec::new(),
         });
         write_file(
             &locked.directory,
@@ -166,42 +213,17 @@ impl PrivateProjectionDirectory {
                 error,
             }),
         }
-    }
+}
 
-    /// Exact-operation recovery invokes the authoritative durable reader. It
-    /// never passes potentially mixed SHM bytes to the callback and has no
-    /// clear-marker/old-state rollback alternative. On process activation an
-    /// owner must recover/reconcile durability before enabling private reads;
-    /// volatile SHM cannot retain markers across machine reboot.
-    pub fn recover_document<T>(
-        &self,
-        plugin_id: &str,
-        operation_id: &str,
-        load_durable: impl FnOnce() -> Result<(Option<Vec<u8>>, T)>,
-    ) -> Result<PrivateDocumentPublication<T>> {
-        self.recover_document_with_decision(plugin_id, operation_id, || {
-            load_durable()
-                .map(|(current, durable)| PrivateDocumentCommit::Publish { current, durable })
-        })
-    }
-
-    /// Keep a recovered durable receipt even when current admission prevents
-    /// publication. Only Publish may clear the exact pending operation.
-    pub fn recover_document_with_decision<T>(
-        &self,
-        plugin_id: &str,
-        operation_id: &str,
-        load_durable: impl FnOnce() -> Result<PrivateDocumentCommit<T>>,
-    ) -> Result<PrivateDocumentPublication<T>> {
+fn recover_locked<T>(
+    locked: &LockedDirectory,
+    plugin_id: &str,
+    operation_id: &str,
+    load_durable: impl FnOnce() -> Result<PrivateDocumentCommit<T>>,
+) -> Result<PrivateDocumentPublication<T>> {
         let name = filename(plugin_id)?;
-        ensure!(
-            plugin_id != "identity_sled",
-            "identity uses its dedicated paired projection"
-        );
+        ensure!(plugin_id != "identity_sled", "identity uses its dedicated paired projection");
         identity_transaction::validate_operation_id(operation_id)?;
-        require_private(&self.directory, true)?;
-        let locked = LockedDirectory::from_directory(self.directory.try_clone()?, true)?
-            .context("private namespace lock missing")?;
         let (manifest, _) = locked
             .manifest()?
             .context("private recovery requires a commit manifest")?;
@@ -210,7 +232,9 @@ impl PrivateProjectionDirectory {
                 .document_pending
                 .as_ref()
                 .is_some_and(|pending| pending.plugin_id == plugin_id
-                    && pending.operation_id == operation_id),
+                    && pending.operation_id == operation_id
+                    && (pending.plugin_ids.is_empty()
+                        || (pending.plugin_ids.len() == 1 && pending.plugin_ids[0] == plugin_id))),
             "private recovery requires the exact pending plugin and operation"
         );
         manifest
@@ -253,7 +277,6 @@ impl PrivateProjectionDirectory {
                 error,
             }),
         }
-    }
 }
 
 #[allow(clippy::too_many_arguments)] // Explicit old/new document and durable receipt remain paired.

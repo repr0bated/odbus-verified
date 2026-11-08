@@ -2,8 +2,8 @@
 Description=Process designated chat response turn %i
 Requires=3tchedfs.service threetchedfs.service
 After=3tchedfs.service threetchedfs.service
-ConditionPathIsMountPoint=/run/mount/3tchedfs
-ConditionPathIsMountPoint=/run/mount/threetched
+ConditionPathIsMountPoint=/run/mounts/3tchedFS
+ConditionPathIsMountPoint=/run/mounts/threetched
 
 [Service]
 Type=oneshot

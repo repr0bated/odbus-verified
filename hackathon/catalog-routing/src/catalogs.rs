@@ -8,4 +8,5 @@ pub mod compliance;
 pub mod models;
 pub mod projection;
 pub mod specgen;
+pub mod staged;
 pub mod ui;

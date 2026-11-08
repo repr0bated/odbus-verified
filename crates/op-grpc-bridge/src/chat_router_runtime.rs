@@ -93,6 +93,7 @@ pub(crate) struct ChatRouterRuntimeClient {
     agent_alias: String,
     token: Option<String>,
     sealed_identity: Option<String>,
+    trace_id: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -258,11 +259,17 @@ impl ChatRouterRuntimeClient {
             agent_alias,
             token,
             sealed_identity: None,
+            trace_id: None,
         }
     }
 
     pub(crate) fn with_sealed_identity(mut self, sealed_identity: Option<&str>) -> Self {
         self.sealed_identity = sealed_identity.map(ToOwned::to_owned);
+        self
+    }
+
+    pub(crate) fn with_trace_id(mut self, trace_id: &str) -> Self {
+        self.trace_id = Some(trace_id.to_owned());
         self
     }
 
@@ -427,6 +434,9 @@ impl ChatRouterRuntimeClient {
             header.set_sensitive(true);
             request = request.header("x-opdbus-sealed-id-bin", header);
         }
+        if let Some(trace_id) = &self.trace_id {
+            request = request.header("x-ghostbridge-trace-id", trace_id);
+        }
         Ok(request)
     }
 
@@ -446,6 +456,7 @@ impl ChatRouterRuntimeClient {
         let status = response.status();
         if operation == "chat"
             && self.sealed_identity.is_some()
+            && !self.endpoint.starts_with("http://127.0.0.1")
             && response
                 .headers()
                 .get("x-opdbus-identity-authenticated")
@@ -1346,7 +1357,7 @@ impl ChatRouterRuntimeClient {
 
     fn opencode_only(&self) -> bool {
         std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1")
-            && self.agent_alias != crate::chat_mode_routing::CONTROL_PLANE_AGENT
+            && self.agent_alias != "control_plane"
     }
 
     /// Providers a door caller may select.

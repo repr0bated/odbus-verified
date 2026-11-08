@@ -3,7 +3,7 @@
   "entries": [
     {
       "uuid": "2f834f7b-bba8-4bef-be24-6b5210fd582d",
-      "subid": "src.network.xray-serve@v1",
+      "subid": "src.network.xray.serve@v1",
       "category": "src",
       "component_type": "network",
       "subject": "xray",
@@ -27,7 +27,7 @@
     },
     {
       "uuid": "e6c51396-649e-471e-95de-ee17224b1afb",
-      "subid": "exp.service.zeroclaw-serve@v1",
+      "subid": "exp.service.zeroclaw.serve@v1",
       "category": "exp",
       "component_type": "service",
       "subject": "zeroclaw",
@@ -53,7 +53,7 @@
     },
     {
       "uuid": "99204d8e-35ac-448a-b09e-b5fb648da3aa",
-      "subid": "exp.service.cognitive-mcp-serve@v1",
+      "subid": "exp.service.cognitive-mcp.serve@v1",
       "category": "exp",
       "component_type": "service",
       "subject": "cognitive-mcp",
@@ -77,7 +77,7 @@
     },
     {
       "uuid": "ab97d8a6-c630-4cff-8fa9-aaaa894e8015",
-      "subid": "src.service.qdrant-serve@v1",
+      "subid": "src.service.qdrant.serve@v1",
       "category": "src",
       "component_type": "service",
       "subject": "qdrant",
@@ -101,7 +101,7 @@
     },
     {
       "uuid": "54513fa8-ab1f-40e6-911e-8b237c8caa12",
-      "subid": "src.service.netmaker-api-serve@v1",
+      "subid": "src.service.netmaker-api.serve@v1",
       "category": "src",
       "component_type": "service",
       "subject": "netmaker-api",
@@ -125,7 +125,7 @@
     },
     {
       "uuid": "570dc5ce-526a-475d-bb5b-908f48470b61",
-      "subid": "src.service.netmaker-mq-serve@v1",
+      "subid": "src.service.netmaker-mq.serve@v1",
       "category": "src",
       "component_type": "service",
       "subject": "netmaker-mq",
@@ -149,7 +149,7 @@
     },
     {
       "uuid": "8d8d8d49-ac19-44e2-8118-651b31dbc003",
-      "subid": "exp.service.netmaker-ui-serve@v1",
+      "subid": "exp.service.netmaker-ui.serve@v1",
       "category": "exp",
       "component_type": "service",
       "subject": "netmaker-ui",
@@ -173,7 +173,7 @@
     },
     {
       "uuid": "a4b64253-c9d5-4153-ae50-69a842d89c72",
-      "subid": "src.service.nextdns-serve@v1",
+      "subid": "src.service.nextdns.serve@v1",
       "category": "src",
       "component_type": "service",
       "subject": "nextdns",

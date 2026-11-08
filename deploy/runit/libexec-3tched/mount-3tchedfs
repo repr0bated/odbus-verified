@@ -32,7 +32,7 @@ case "$fs_name:$mount_path" in
     threetched:/run/mounts/threetched) selection=--include-plugin ;;
     *) fail 'unexpected mount source or target' ;;
 esac
-upstream_plugins=threetched,tched_router
+upstream_plugins=threetched
 catalog=/usr/share/op-dbus/plugin-blobs
 options=$4
 while [ -n "$options" ]; do

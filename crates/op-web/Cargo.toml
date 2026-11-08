@@ -1,5 +1,6 @@
 [package]
 name = "op-web"
+autobins = false
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

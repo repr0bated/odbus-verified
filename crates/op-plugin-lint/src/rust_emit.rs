@@ -196,6 +196,8 @@ fn candidate_methods(paths: &[String]) -> Vec<(String, String)> {
                 path.rsplit('.').next().unwrap_or(path).to_string()
             } else if let Some((owner, variant)) = command_enum_parts(path) {
                 format!("{owner}_{variant}")
+            } else if let Some((name, _, _)) = openapi_operation_parts(path) {
+                name
             } else if (path.starts_with("ts.")
                 || path.starts_with("go.")
                 || path.starts_with("xml."))
@@ -213,6 +215,48 @@ fn candidate_methods(paths: &[String]) -> Vec<(String, String)> {
             }
         })
         .collect()
+}
+
+/// `openapi.<file>.paths.<route>.<verb>.operationId` → (method_name, verb, route).
+/// Start root is the packed tree (`doc/` → `rest-api`, yaml-only → same); never assume `doc.`.
+fn openapi_operation_parts(path: &str) -> Option<(String, String, String)> {
+    if !path.starts_with("openapi.") || path.contains(".devlxd-api.") {
+        return None;
+    }
+    let before = path.strip_suffix(".operationId")?;
+    let (head, verb) = before.rsplit_once('.')?;
+    if !matches!(
+        verb,
+        "get" | "post" | "put" | "patch" | "delete" | "head" | "options"
+    ) {
+        return None;
+    }
+    let route = head.split(".paths.").nth(1)?;
+    if route.is_empty() {
+        return None;
+    }
+    let mut slug = route.trim_start_matches('/');
+    if let Some(rest) = slug.strip_prefix("1.0/") {
+        slug = rest;
+    } else if let Some(rest) = slug.strip_prefix("1.0?") {
+        // `/1.0?public` — version root with query, not `1.0/<path>`.
+        slug = rest;
+    } else if slug == "1.0" {
+        slug = "server";
+    } else if slug.is_empty() {
+        slug = "api_root";
+    }
+    let slug = slug
+        .replace('{', "")
+        .replace('}', "")
+        .replace('/', "_")
+        .replace('?', "_")
+        .replace('=', "_")
+        .replace('&', "_")
+        .replace('.', "_")
+        .replace('-', "_");
+    let name = format!("{slug}_{verb}");
+    Some((name, verb.to_string(), route.to_string()))
 }
 
 fn command_enum_parts(path: &str) -> Option<(String, String)> {
@@ -241,6 +285,9 @@ fn command_tokens(path: &str) -> Vec<String> {
     }
     if let Some((owner, variant)) = command_enum_parts(path) {
         return vec![cli_token(&owner), cli_token(&variant)];
+    }
+    if let Some((_, verb, route)) = openapi_operation_parts(path) {
+        return vec![verb.to_ascii_uppercase(), route];
     }
     Vec::new()
 }
@@ -278,7 +325,8 @@ fn method_policy(name: &str) -> (&'static str, bool, &'static str, &'static str)
     let leaf = name.rsplit('_').next().unwrap_or(name);
     if matches!(
         leaf,
-        "get" | "info" | "list" | "search" | "show" | "status" | "stats" | "version"
+        "get" | "head" | "options" | "info" | "list" | "search" | "show" | "status" | "stats"
+            | "version"
     ) || name.starts_with("get_")
         || name.starts_with("list_")
     {
@@ -319,10 +367,22 @@ fn rust_ident(raw: &str) -> String {
             out.push('_');
         }
     }
-    while out.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-        out.remove(0);
+    // `/1.0?public` → `1_0_public` must not become `0_public` after one digit strip.
+    loop {
+        let trimmed = out.trim_matches('_');
+        if trimmed.len() == out.len()
+            && !trimmed.chars().next().is_some_and(|c| c.is_ascii_digit())
+        {
+            break;
+        }
+        out = trimmed.to_string();
+        while out.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            out.remove(0);
+        }
     }
-    let out = out.trim_matches('_').to_string();
+    if out.is_empty() {
+        out = "field".into();
+    }
     if is_keyword(&out) {
         format!("{out}_field")
     } else {
@@ -463,5 +523,44 @@ mod tests {
         assert_eq!(got[2].0, "plugin_remove");
         assert_eq!(got[3].0, "install_extension");
         assert_eq!(method_policy("models_list"), ("read", true, "read", "obs"));
+    }
+
+    #[test]
+    fn openapi_paths_use_rest_api_start_root() {
+        let (name, verb, route) = openapi_operation_parts(
+            "openapi.rest-api.paths./1.0/instances/{name}.get.operationId",
+        )
+        .expect("parse");
+        assert_eq!(name, "instances_name_get");
+        assert_eq!(verb, "get");
+        assert_eq!(route, "/1.0/instances/{name}");
+        assert_eq!(method_policy(&name), ("read", true, "read", "obs"));
+        assert_eq!(
+            command_tokens(
+                "openapi.rest-api.paths./1.0/instances/{name}.get.operationId"
+            ),
+            vec!["GET".to_string(), "/1.0/instances/{name}".to_string()]
+        );
+        // Packed from lxd/ (doc.rest-api) still works — start root may differ.
+        let (name2, _, _) = openapi_operation_parts(
+            "openapi.doc.rest-api.paths./1.0/instances.post.operationId",
+        )
+        .expect("doc-prefixed parse");
+        assert_eq!(name2, "instances_post");
+        assert!(
+            openapi_operation_parts(
+                "openapi.devlxd-api.paths./1.0/config.get.operationId"
+            )
+            .is_none()
+        );
+        let (qname, _, _) =
+            openapi_operation_parts("openapi.rest-api.paths./1.0?public.get.operationId")
+                .expect("query root");
+        assert_eq!(rust_ident(&qname), "public_get");
+        assert!(!pascal_case(&rust_ident(&qname))
+            .chars()
+            .next()
+            .unwrap()
+            .is_ascii_digit());
     }
 }

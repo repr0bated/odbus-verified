@@ -51,8 +51,12 @@ impl MemoryMethods {
     /// Create the one process-wide memory service over the bridge's injected
     /// Cozo handle. Both document writes and compaction use this exact handle.
     pub fn from_shared(store: Arc<CozoGraphShuttle>) -> Self {
-        let documents = Arc::new(RuntimeDocuments::from_shared(store.clone()));
-        let compaction_store = store;
+        Self::from_documents(Arc::new(RuntimeDocuments::from_shared(store)))
+    }
+
+    /// Reuse the process-owned document writer as well as its native store.
+    pub fn from_documents(documents: Arc<RuntimeDocuments>) -> Self {
+        let compaction_store = documents.shared_store();
         Self {
             documents,
             compactor: Arc::new(move || {

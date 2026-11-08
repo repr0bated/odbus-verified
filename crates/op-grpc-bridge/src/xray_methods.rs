@@ -1,6 +1,6 @@
 //! Native Xray HandlerService adapter for the plugin-owned typed contract.
 //!
-//! All callers enter through MutationEngine's pinned contract and identity /
+//! All callers enter through Runtime's pinned contract and verified caller /
 //! capability admission. This backing transport does not expose another public
 //! OP-DBUS service. Successful operations modify the running handler only;
 //! /etc/xray/xray_config.json is neither read, written nor reloaded here.
@@ -475,19 +475,27 @@ async fn validate_user_target(
     Ok(())
 }
 
-pub(crate) async fn dispatch_handler_method(method: &str, args: &Value) -> Result<Value> {
-    dispatch_at(
+pub(crate) async fn dispatch_handler_method(
+    method: &str,
+    args: &Value,
+    admission: crate::openflow_permit::FinalAdmission,
+) -> Result<Value> {
+    dispatch_admitted_at(
         commander_client::DEFAULT_API_SOCKET,
         CALL_TIMEOUT,
         method,
         args,
+        admission,
     )
     .await
 }
 
 /// Socket selection is backing configuration, never a caller-controlled method
 /// argument. Fixtures inject an isolated UDS through this private helper.
-async fn dispatch_at(socket: &str, timeout: Duration, method: &str, args: &Value) -> Result<Value> {
+async fn dispatch_admitted_at(
+    socket: &str, timeout: Duration, method: &str, args: &Value,
+    admission: crate::openflow_permit::FinalAdmission,
+) -> Result<Value> {
     let execute = async {
         let _guard = HANDLER_MUTATIONS.lock().await;
         match method {
@@ -502,6 +510,7 @@ async fn dispatch_at(socket: &str, timeout: Duration, method: &str, args: &Value
                 );
                 let mut client = commander_client::handler_client(socket, timeout).await?;
                 validate_user_target(&mut client, &input, timeout).await?;
+                admission().await?;
                 client.alter_inbound(request(handler::AlterInboundRequest { tag: input.inbound_tag.clone(), operation: Some(operation) }, timeout))
                     .await.context("Xray HandlerService.AlterInbound(AddUserOperation) failed; RPC errors may have an uncertain runtime outcome")?;
                 Ok(serde_json::to_value(AddUserOutput {
@@ -523,6 +532,7 @@ async fn dispatch_at(socket: &str, timeout: Duration, method: &str, args: &Value
                     },
                 );
                 let mut client = commander_client::handler_client(socket, timeout).await?;
+                admission().await?;
                 client.alter_inbound(request(handler::AlterInboundRequest { tag: input.inbound_tag.clone(), operation: Some(operation) }, timeout))
                     .await.context("Xray HandlerService.AlterInbound(RemoveUserOperation) failed; RPC errors may have an uncertain runtime outcome")?;
                 Ok(serde_json::to_value(RemoveUserOutput {
@@ -535,6 +545,7 @@ async fn dispatch_at(socket: &str, timeout: Duration, method: &str, args: &Value
                     .context("invalid typed Xray add_inbound input")?;
                 let native = build_inbound(&input)?;
                 let mut client = commander_client::handler_client(socket, timeout).await?;
+                admission().await?;
                 client.add_inbound(request(native, timeout)).await
                     .context("Xray HandlerService.AddInbound failed; RPC errors may have an uncertain runtime outcome")?;
                 Ok(serde_json::to_value(AddInboundOutput {
@@ -557,6 +568,11 @@ async fn dispatch_at(socket: &str, timeout: Duration, method: &str, args: &Value
     tokio::time::timeout(timeout, execute)
         .await
         .context("Xray HandlerService operation timed out; runtime outcome may be uncertain")?
+}
+
+#[cfg(test)]
+async fn dispatch_at(socket: &str, timeout: Duration, method: &str, args: &Value) -> Result<Value> {
+    dispatch_admitted_at(socket, timeout, method, args, Arc::new(|| Box::pin(async { Ok(()) }))).await
 }
 
 #[cfg(test)]
