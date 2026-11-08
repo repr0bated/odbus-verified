@@ -581,9 +581,9 @@ I’ll trace how the control-plane chatbot’s keys are presented and how the re
     - No JSON string payloads — use `google.protobuf.Struct`.
     - Compliance mappings belong in metadata arrays, not inside the `subid` string.
     
-    tched_router context:
+    threetched context:
     
-    - `tched_router` is the OP-DBUS scaffolding for the autonomous `zeroclaw` binary.
+    - `threetched` is the OP-DBUS scaffolding for the autonomous `zeroclaw` binary.
     - `op-grpc-bridge`, not that binary, owns the `:8090` TLS fabric. Cognitive MCP
       is in-process; do not start a standalone cognitive MCP runit service.
     - The factory examples above are historical; verify current methods, input
@@ -594,7 +594,7 @@ I’ll trace how the control-plane chatbot’s keys are presented and how the re
     ## 7. Gallery → Catalog Promotion Pipeline
     
     ```
-    tched_router reads plugin PluginSchema blob
+    threetched reads plugin PluginSchema blob
       ↓ (sealed blob at /dev/shm/opdbus/plugin-blobs/<plugin>.<hash>.blob)
     gemma_brain / op-gallery-gen generates Spec
       ↓
@@ -685,7 +685,7 @@ I’ll trace how the control-plane chatbot’s keys are presented and how the re
     | gRPC client | `src/grpc/client.ts` |
     | json_render plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/json_render.rs` |
     | schema_renderer plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/schema_renderer.rs` |
-    | tched_router plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/tched_router.rs` |
+    | threetched plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/threetched.rs` |
     | Gallery/catalog routes | `/srv/git/odbus/crates/op-web/src/handlers/ui_model.rs` |
     | json-render library | `/srv/git/json-render/packages/core/src/` |
     | json-render.dev docs | https://json-render.dev/docs |
@@ -1069,15 +1069,15 @@ I’ll trace how the control-plane chatbot’s keys are presented and how the re
     
     ### 2026-11-02 · Codex (branch reconciliation correction)
     - Correcting earlier release investigation: `main` and local `restore/devuan-storage-20261013` diverged from `2a6e40e`; the latter was not a descendant of the former. Main contains fresh bridge PR #46, while local restore `967b96d` carries subsequent Nov 1 golden/demo commits and the prior bridge implementation. The live golden MANIFEST identifies `61c2827`, an ancestor of restore but not main; current ready says complete slot b `release-6279b090-6462-4893-9035-ec82188f27e8`. The handoff and SIGNALS on restore record the fresh bridge authentication gap and the release history. Thus the isolated main checkout is not the newer deployed source line; prior inference based on branch timestamps was wrong.
-    - Owner clarified tched-router should be absent and 3tched retained. No source reconciliation, build, seal, activation or service changes have been performed. Do not overwrite shared dirty checkout or automatically merge the divergent bridge histories; inspect changes and reconcile before release.
+    - Owner clarified threetched should be absent and 3tched retained. No source reconciliation, build, seal, activation or service changes have been performed. Do not overwrite shared dirty checkout or automatically merge the divergent bridge histories; inspect changes and reconcile before release.
     
     ### 2026-11-02 · Codex (3tched release clarification)
-    - Owner: tched-router is retired; the component is now 3tched/threetched. Do not build a tched-router component. The live golden already contains a `threetched` executable with provenance v2 (SHA-256 ee56fd315df8f86ba5ffc505082a039ee45b2b0cb8aca2c059be7c7675f29a69), while the old service name and builder paths remain. Preserve 3tched; do not confuse it with the retired router name.
+    - Owner: threetched is retired; the component is now 3tched/threetched. Do not build a threetched component. The live golden already contains a `threetched` executable with provenance v2 (SHA-256 ee56fd315df8f86ba5ffc505082a039ee45b2b0cb8aca2c059be7c7675f29a69), while the old service name and builder paths remain. Preserve 3tched; do not confuse it with the retired router name.
     - Isolated newer-source worktree `/var/tmp/odbus-golden-rebuild-20261102` at main `7475dd0`, no source edits. Rewritten `crates/op-grpc-bridge/src/bin/op-grpc-bridge.rs` serves plaintext by default at 0.0.0.0:50051, reads a JSON file or empty catalog, and creates a core with no registered handlers; identity, sealed SHM, D-Bus dispatch and the 8090 TLS door are not wired in that entry point. The golden builder still requires the old router-named source paths and service. Release builds were cancelled; no successful build, catalog change, snapshot or activation. Running host is untouched. Do not activate the rewrite until its production integration is established.
     
     ### 2026-11-02 · Codex (golden release investigation)
-    - Owner requested golden build/deploy/activation, explicitly overriding the prior golden restriction, then stated mail is no longer on the server and tched-router is deprecated. No live changes, reseal or activation. Existing services remain running.
-    - Current checkout `cursor/cloud-agent-env-760f` at `1182051` has an obsolete builder requiring mail and old router; main `7475dd0` includes hackathon `2a6e40e`, already excludes mail, but still requires threetched and enables the running `tched-router` service. Host uses `/usr/local/libexec/op-dbus` release layout, not this checkout’s documented `/opt/op-dbus/current` layout. Builds on the old checkout were stopped; no artifacts completed. Await owner clarification on the router replacement before preparing or activating a release. Preserve concurrent work.
+    - Owner requested golden build/deploy/activation, explicitly overriding the prior golden restriction, then stated mail is no longer on the server and threetched is deprecated. No live changes, reseal or activation. Existing services remain running.
+    - Current checkout `cursor/cloud-agent-env-760f` at `1182051` has an obsolete builder requiring mail and old router; main `7475dd0` includes hackathon `2a6e40e`, already excludes mail, but still requires threetched and enables the running `threetched` service. Host uses `/usr/local/libexec/op-dbus` release layout, not this checkout’s documented `/opt/op-dbus/current` layout. Builds on the old checkout were stopped; no artifacts completed. Await owner clarification on the router replacement before preparing or activating a release. Preserve concurrent work.
     
     ### 2026-11-02 · Grok (one contract: the chatbot's obligation)
     - **Where:** `hackathon/contracts/ChatResponseObligation.sol`. Working tree, uncommitted. Not deployed. No compiler and no chain key on this host.
@@ -1108,7 +1108,7 @@ I’ll trace how the control-plane chatbot’s keys are presented and how the re
     | 2026-09-19 | Claude Opus 5 | 👁️ OBSERVATION **OD-34 closed at source; `mkdrt` retired.** Read-only inspection of the new decoy (`129.80.64.127`): `op-decoy-issuer --listen 10.0.0.1:51888 --iface wg-opdbus`, key `decoy-20260903` matches `/etc/opdbus/decoy-trust.json`, four `wg-opdbus` peers, healthz ok; the deployed binary is the Sep 3 build without `/identity/self`. The host's `mkdrt` WireGuard peer link into `wg-opdbus` (inside WARP) is removed from runit/enabled/managed lists and nftables and gated in `negative_topology_gates`; the decoy address is updated in `decoy-admin-reverse-ssh` and `xsock-decoy`. Remaining live steps are operator deploys (new issuer binary with `--allow-origin/--door`, `VITE_OPDBUS_ISSUER` in the UI publish, `sv down mkdrt`). | open | → OD-34 |
     | 2026-09-19 | Claude Opus 5 | 👁️ OBSERVATION **The opencode line (`wip/opencode-handoff-2026-09-15` @ `9a618be0`) is ported into the verified repo through the exporter, as a 3-way merge of two exports.** Delta vs the Sep 14 baseline: 32 added (incl. `op-web/handlers/identity_self.rs`, native test modules, decoy/OpenWrt egress scripts, all-methods audit artifacts), 189 deleted (`.bak` files, retired `crates/op-web/ui`, rendered `docs/book`, gate122 logs), 42 modified. Conflicts only in SIGNALS.md (both kept) and `deploy/runit/mkdrt/run` (kept deleted). Two opencode defects surfaced by the gate and fixed: OVSDB lock ids must match RFC 7047 `[_a-zA-Z][_a-zA-Z0-9]*` (`validate_lock_key`; the fixture used `fixture-lock`), and update2 `delete` rows arrive as `null` from ovsdb-server 4.0. `/srv/git/odbus` main's four extra commits (grok_bot, openmausbot, Node toolchain, plugin-lint emitter already present) are intentionally not ported. | open | |
     | 2026-09-19 | Claude Opus 5 | 👁️ OBSERVATION **MCP and vectorization flows tested on the merged head.** op-mcp, op-cognitive-mcp, op-snowball, op-cache, op-chat: 11 suites, 201 passed, 0 failed, 3 ignored (multi-node NUMA); bridge MCP frontend 45/0. The two live probes now run against the running `:8090` door over TLS (trust anchor `OP_DBUS_GRPC_CA_FILE`, default `/etc/op-dbus/tls/tonic-svc0-ca.crt`, SAN `localhost`): reflection advertises 68 services including `operation.plugin.v1.CognitiveMcpPluginMethods`, and `InvokeTool` over tonic-web reaches the identity gate (UNAUTHENTICATED without a credential — served, not unmounted). The probes had been written for the retired plaintext `:50051` and the pre-OD-49 `operation.method.*` naming. Qdrant is not reachable from this host right now (no `:6334` listener, no `/run/ghostbridge/qdrant/*.sock`), so the Voyage/Qdrant e2e legs ran their offline variant; the live vector leg needs `incus-ct-qdrant` up. Drift noted: the deployed bridge still advertises `FactoryPluginMethods`, so the running binary predates the `factory` retirement in `RETIRED_PLUGIN_IDS` — a reseal + redeploy from this source will drop it. | open | |
-    | 2026-09-19 | Claude Opus 5 | ⚠️ CONCERN **The chatbot wrote memory it never read.** `tched_router.Chat` forwarded the UI's messages verbatim: episodes went to Cozo (and Qdrant), user memory sat in namespaces, the context engine's `KnowledgePush`es had no consumer, and only `code_tools` fed activity. Closed at source: `context_bundle::assemble_for_turn` (episodes, namespace memory incl. `agent_pieces`, semantic recall ≤2 s when the shuttle exists, activity signals, pending pushes) is injected as the first system message, bounded to 8 000 chars, with provenance on the episode; `KnowledgeInbox` consumes pushes per session; executor outcomes and chat turns call `record_activity`. Repomix retired from the loop (`rag-ingest` bin gone, `code_index` mode=source only). The memory-store `EntryQuery.namespace_id` field takes the namespace *name*; documented after the new persistence test caught the bridge passing the uuid. | open | → OD-47 |
+    | 2026-09-19 | Claude Opus 5 | ⚠️ CONCERN **The chatbot wrote memory it never read.** `threetched.Chat` forwarded the UI's messages verbatim: episodes went to Cozo (and Qdrant), user memory sat in namespaces, the context engine's `KnowledgePush`es had no consumer, and only `code_tools` fed activity. Closed at source: `context_bundle::assemble_for_turn` (episodes, namespace memory incl. `agent_pieces`, semantic recall ≤2 s when the shuttle exists, activity signals, pending pushes) is injected as the first system message, bounded to 8 000 chars, with provenance on the episode; `KnowledgeInbox` consumes pushes per session; executor outcomes and chat turns call `record_activity`. Repomix retired from the loop (`rag-ingest` bin gone, `code_index` mode=source only). The memory-store `EntryQuery.namespace_id` field takes the namespace *name*; documented after the new persistence test caught the bridge passing the uuid. | open | → OD-47 |
     | 2026-09-19 | Claude Opus 5 | 👁️ OBSERVATION **Static advisor personas were template placeholders; replaced by a dynamically assembled `specialist`.** `PersonaAgent::execute` returns canned "domain guidance (not an LLM completion)", and the legacy catalog builds them from `PERSONA_AGENT.replace("{domain}", …)`. `op_agents::dynamic` breaks the catalog into shared pieces (behaviour, knowledge sections, examples, executor capabilities), merges `agent_pieces` memory entries, and composes a persona per task (lexical scoring, kind/source weighting, char budget, deterministic); `cognitive_mcp.specialist` scopes it to the caller's session, adds memory/activity/pushes, answers through the guarded router path and records activity. The parked `generator` (markdown reader) is reachable again. HOT surface is now 19 names; hot agents are `rust_pro`/`python_pro`/`typescript_pro` (executors) and the three workflow agents; `bash_pro` was deliberately not made hot (its `exec` is a shell). | open | → OD-61 |
     | 2026-09-19 | Claude Opus 5 | 👁️ OBSERVATION **Reactive delivery decided and built as a sled-gated EMQX doorbell (OD-62).** Options weighed with the owner: door-only StateSync, EMQX content-free doorbell, MCP over MQTT for all MCPs, EMQX Cloud "Agents". Decisions: no broker ACL tables, no MCP over MQTT, nothing authoritative on the broker; EMQX Agents is cloud-only (GCP) and off-host — rejected, but its trigger→run→tools→run-record loop is the shape for OD-63 hosted here under agent identity sleds. Built: durable `ctl_plane_chatbot_knowledge` rows sharing the scope revision, `knowledge*` children of the private SHM document (schema v5), `EpisodePublisher::commit_knowledge`, `knowledge_delivery` (sled → scope → commit → wake), `emqx.publish_wake`/`kick_client` methods + declared `wss:wake` listener on `10.0.0.3:8084`, exhook `authenticate`/`authorize` verdicts derived from the presented OIA1/SID1 (`wake_doorbell.rs`), `get_doorbell`/`list_knowledge` reads, and the 3tched.com doorbell client + knowledge strip (`87c7459`). SID1 minting scope now includes `mqtt` (existing sleds need a re-mint for the doorbell). Cheap-worker caveat: the haiku test runner reported "45 passed" twice for a run that was still going; the log showed 1186 passed / 0 failed — always read the worker's log. | open | → OD-62, OD-63 |
     | 2026-09-19 | Claude Opus 5 | 👁️ OBSERVATION **OD-63 landed: event-triggered agent runs under agent identity sleds.** The exhook's `message.publish` now matches sealed `persona` triggers (durable CAS document; filters can never reach `opdbus/` or `$`) and enqueues a bounded run; the run resolves the trigger's `agent_session_id` through the identity sled and `verified_session` (no sled → dropped, model never consulted), composes its persona from the piece pool, completes through the guarded router path, and executes only actions that are in the trigger allow-list AND admitted under the agent's own grants with the sealed contract's capability, each dispatched with the agent's `(principal, session, genesis)`; the run record (`status/queued_ms/duration_ms/tokens/actions[]`) is committed as an episode in the agent's private scope. Tests: sled-gated success with a real `ctl_plane_chatbot.list_knowledge` action, allow-list refusal, ungranted refusal, no-sled drop, timeout, matcher + full-queue drop. Note for test authors: `temp_cozo()` holds the process-global registry lock — one fixture per test, or the second deadlocks (found the hard way). | open | → OD-63 |
@@ -1119,7 +1119,7 @@ I’ll trace how the control-plane chatbot’s keys are presented and how the re
     | 2026-09-22 | Codex | 👁️ OBSERVATION **Public MCP discovery is a curated subset of a much larger installed catalog.** Owner expected over 400 tools and approximately 90 agents. Installed `dbus-agent --list` and isolated `gen-agent-defs` enumerate 99 canonical agents (81 persona, 12 execution, 6 orchestration), with 644 operation entries registered by the cognitive adapter. This inventory does not prove every operation is a complete implementation. Live sealed NotebookLM has 47 methods; generation-7 toolsets include only 10. An authenticated `server_info` probe reported 94 notebooks and refreshed readiness, after which public `tools/list` grew from 42 to 48; the six research entries were previously health-filtered. Public agent access remains six fixed facades plus `specialist`. The user-facing tool count must distinguish catalog inventory, sealed methods and public exposure. Inventories: `/tmp/opdbus-schema-inventory.Vly4VB/{agent-tools,notebooklm-methods}.tsv`. | open | → OD-69 |
     | 2026-09-22 | Codex with Luna | ⚠️ CONCERN **Full registration requires real execution and mode-aware model routing.** Owner forbids placeholder operations. The 81 persona agents returned embedded guidance, workflow validation returned unconditional success, and HOT Python/TypeScript inputs could not express the executor's code/script arguments. Repairs are in progress alongside all 644 canonical agent contracts and 47 NotebookLM methods. The chat mode strip includes Personal, Project, Control Plane, Accountability, NotebookLM and UI render; previously it changed memory/grants but all modes shared dashboard model selection. Owner now specifies the user's selected model for ordinary modes and OpenRouter Auto (`openrouter/auto`) for Control Plane and Accountability. Dedicated native routes must preserve that split without switching dashboard selection. Source changes are not yet built or deployed; full verification remains cancelled. | open | → OD-69 |
     | 2026-09-22 | Codex with Luna | 👁️ OBSERVATION **The expanded catalog needs a supervised execution backend and native stateless compatibility.** Canonical cognitive admission now forwards executor work over D-Bus to `dbus-agent --system --unified-execution` running as `jeremy`; it preserves verified attribution and concrete process status, bounds output, and keeps Python code in a private temporary file. The host's `/srv/git` workspace and user toolchain environment must be available to that service. Public MCP agent deadlines must cover backend process deadlines rather than the former 90-second discovery/default timeout. The pinned native stateless adapter rejected the dashboard's existing boolean `chat_template_kwargs.enable_thinking` option; a strict allowlist repair retains this toggle while continuing to reject message/model/tool overrides. Source and native builds remain in progress; no new live activation has occurred. | open | → OD-69 |
-    | 2026-09-22 | Codex | 👁️ OBSERVATION **Control-plane routing scope changed before activation.** Owner requests Auto-like selection among seven models. The live OpenRouter catalog confirms canonical IDs `x-ai/grok-4.7`, `nvidia/nemotron-3-ultra-550b-a55b`, `deepseek/deepseek-v4.1-flash`, `z-ai/glm-5.3-flash`, `qwen/qwen3-coder-flash`, `openai/gpt-6-astra`, and `anthropic/claude-fable-5.1`. The words “with out 3tched-router” are being clarified before changing the control-plane path. Native 0.8.4 has keyword classification, hint routes and cost filtering; those mechanisms alone do not reproduce OpenRouter's task-specific market ranking. Accountability and ordinary mode decisions remain unchanged. No new live activation. Sources: [model catalog](https://openrouter.ai/api/v1/models), [Auto Router](https://openrouter.ai/docs/guides/routing/routers/auto-router). | open | → OD-69 |
+    | 2026-09-22 | Codex | 👁️ OBSERVATION **Control-plane routing scope changed before activation.** Owner requests Auto-like selection among seven models. The live OpenRouter catalog confirms canonical IDs `x-ai/grok-4.7`, `nvidia/nemotron-3-ultra-550b-a55b`, `deepseek/deepseek-v4.1-flash`, `z-ai/glm-5.3-flash`, `qwen/qwen3-coder-flash`, `openai/gpt-6-astra`, and `anthropic/claude-fable-5.1`. The words “with out 3tched” are being clarified before changing the control-plane path. Native 0.8.4 has keyword classification, hint routes and cost filtering; those mechanisms alone do not reproduce OpenRouter's task-specific market ranking. Accountability and ordinary mode decisions remain unchanged. No new live activation. Sources: [model catalog](https://openrouter.ai/api/v1/models), [Auto Router](https://openrouter.ai/docs/guides/routing/routers/auto-router). | open | → OD-69 |
     | 2026-09-23 | Codex | 👁️ OBSERVATION **Remote browser identity pickup prepared and decoy updated.** The owner's browser uses `http://10.0.0.2:8080` through the decoy/WireGuard path. Its request reaches op-web as shared gateway `10.0.0.1`, which must not be mapped to a human SID1. The old ARM64 issuer returned 404 for `/identity/self`. With the owner's explicit ext4 deployment exception, installed the cross-built ARM64 issuer and exact-origin CORS drop-in, preserving the signing key and rollback binary. Health is 200; an unverified gateway source is correctly refused with 403. UI now has automatic issuer pickup and retry without credential entry; 25 UI tests and 2 issuer tests pass. Updated the pinned UI source/build issuer setting. Artifacts and rollback: `/var/tmp/3tched-browser-auth.DGDReQ/`. Positive pickup must still be checked from the owner's WireGuard peer. | open |
     | 2026-09-23 | Codex | 👁️ OBSERVATION **Browser auth UI activated.** Received read-only release `20260923-browser-auth` is selected by `current`; source UUID matches received UUID. Only UI assets/provenance differ from the prior release. HTTP at `10.0.0.2:8080` serves HTML, JS and CSS matching the tested build byte-for-byte; op-web readiness passes without restart. Five managed subvolumes remain. Previous release retained; obsolete September 20 snapshot archived as a checked compressed btrfs stream. Activation receipt: `/var/tmp/3tched-browser-auth.DGDReQ/activation.json`. Remote peer browser pickup remains to be observed after refresh. | open |
     | 2026-09-23 | Codex | ⚠️ CONCERN **Remote browser reports INTERNAL after successful decoy pickup.** Issuer logs confirm the owner's 10.0.0.5 peer received an OIA1 at 05:43:57 UTC. No corresponding POST trace was found at the bridge; exact-origin gRPC-Web CORS preflight passes from a local probe, and SID1 authentication reaches canonical admission. The frontend wraps fetch failures as INTERNAL via protobuf-ts, so browser console detail is needed to distinguish TLS/network from server status. Independently, the UI reuses an OIA1 across parallel catalog calls while the bridge consumes each nonce once; automatic pickup alone does not complete reusable-session authentication. No authentication checks were weakened. | open |
@@ -1163,25 +1163,25 @@ I’ll trace how the control-plane chatbot’s keys are presented and how the re
     | 2026-09-24 | Codex | ⚠️ CONCERN **Native patch transport and readback produced two distinct failures.** Protobuf Struct serialized integer600 as600.0, which the native integer setter rejects; supported string600 succeeded. The successful compact patch then received a false bridge failure because receipt arrays use compact JSON and config_get uses spaced JSON. Read-only reconciliation verified every applied field; canonical GetConfig committed native state to SHM. Do not replay that mutation. Source now normalizes safely representable integral numbers and compares originally structured values semantically while retaining exact scalar comparison, pending regression tests/release. → OD-83 | open |
     | 2026-09-24 | Codex | ⚠️ CONCERN **OpenCode adapter selector is stringified by native configuration ownership.** Direct live OpenCode GLM completion and ephemeral-session deletion pass, but native Accountability Chat reports Provider and native catalog reports live=false. Masked config shows provider_extra as JSON text; native factory requires an object. Private clone replay of startup's object patch remained byte-identical/string after reload. Changing only the private clone to inline TOML object selects the intended SID1-requiring adapter. Repair the native setter/roundtrip contract, preserve encrypted credentials and Personal model; do not treat another identical live patch as a fix. → OD-83 | open |
     | 2026-09-24 | Codex | ⚠️ CONCERN **Knowledge MQTT currently permits one connection per identity owner key.** Each browser tab encodes the same ownerKey as ClientID; broker session takeover can make two tabs' automatic retries repeatedly disconnect each other. Current live log inspection showed only normal test disconnects, so takeover is a source-supported edge case, not a proven cause of the reported1006. A safe connection discriminator must preserve verified owner binding, exact topic restrictions and revocation of every connection; merely adding a browser suffix would break authentication and the existing single-client revocation kick. Long-lived relay validation should use a distinct already authorized test identity instead of displacing the user's browser. → OD-83 | open |
-    | 2026-09-24 | Codex | 👁️ OBSERVATION **Owner corrected Control Plane routing to support any configured provider.** The earlier OpenCode-only inventory and closed seven-model classifier are not the required role behavior. Control Plane must inherit its dedicated native agent's provider/model, selected by public `TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER=family.alias`; its dashboard model picker stays hidden. Prepared source removes the closed routing policy and exempts only the dedicated Control Plane client from Personal's OpenCode inventory filter. Unknown profile startup fails before migration. Authentication, native ownership, compact tool restrictions and500 profile remain required. Source verification and received-snapshot deployment are pending. → OD-83 | open |
+    | 2026-09-24 | Codex | 👁️ OBSERVATION **Owner corrected Control Plane routing to support any configured provider.** The earlier OpenCode-only inventory and closed seven-model classifier are not the required role behavior. Control Plane must inherit its dedicated native agent's provider/model, selected by public `THREETCHED_CONTROL_PLANE_MODEL_PROVIDER=family.alias`; its dashboard model picker stays hidden. Prepared source removes the closed routing policy and exempts only the dedicated Control Plane client from Personal's OpenCode inventory filter. Unknown profile startup fails before migration. Authentication, native ownership, compact tool restrictions and500 profile remain required. Source verification and received-snapshot deployment are pending. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Provider-choice build space reclaimed from inactive compiled tests only.** Removed22 explicit September19 executables under target/debug/deps after regular-file, single-link, age, inactivity and hash checks; retained receipts `/tmp/opencode/obsolete-test-artifacts.DsD7k1`, `obsolete-dispatch-tests.p12Pw1` and `obsolete-dispatch-tests.DkQBbo`. No Btrfs snapshot, identity storage, source, release or user test process was removed. With concurrent native/test builds, available bytes were24,296,255,488 at16:55 UTC; the16 GiB transfer reserve remains in force. → OD-82 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Control Plane provider selection passes focused tests; received release still pending.** Isolated GNU bridge tests4/4 pass, including a native Anthropic fixture with canonical SID1 forwarding/ACK and no OpenCode inventory endpoint. Private startup proof accepts an existing OpenAI profile, preserves its model/credentials and Personal selection, rejects missing/malformed references before migration, and keeps all ten roles at500. Canonical guarded config_patch changed only the live dedicated OpenCode CP model from nemotron-3-ultra-free to previously proven glm-5.3-flash, with readback; receipt `/tmp/opdbus-cp-model.NXf15k`. Provider-variable code/native marker fix remain under final build and full gates, not yet active. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Provider release reserve recovered from eight more obsolete compiled tests.** Explicit September19 bridge test executables were regular/single-link, confirmed inactive with fuser, recorded with size/time/SHA, then removed from target/debug/deps; receipt `/tmp/opencode/obsolete-bridge-tests.XRr0Es`. All September24 verification artifacts, source, identity storage and Btrfs histories remain. Available space recovered above24 billion bytes while the bridge/native optimized builds continued. → OD-82 | open |
     | 2026-09-24 | Codex | ⚠️ CONCERN **Exact native candidate exposed a real inventory-size failure before activation.** Pinned saved-marker candidate built successfully and privately rejected missing SID1, but authenticated catalog discovery returned live=false/zero models. The live authenticated OpenCode `/provider` response is6,412,752 bytes; the adapter uses a1 MiB response bound for both inventory and generation. Credential hash checks matched the configured server password. A catalog-only16 MiB bound with HTTP regression coverage is being prepared; generation retains1 MiB. Candidate was not activated. Backend release passed and isolated sealing preserved all66 plugin entries; backend Clippy caught one test-only clone, fixed without changing production code. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Control Plane provider variable and native catalog bound deployed and generation proven.** Received RO `20260924-provider-choice` source UUID `6ee8c885-26a2-7d42-af1e-9d2fbcc84f18`, content SHA `e26666290ccbedf856e450bd1ec255c31a24975b910562a876955f3a49974cc3`, activated at19:15:56 UTC. Full GNU verification:2,159 passed/0 failed/21 ignored, fmt/Clippy/release pass. Native exact-artifact private proof returns534 models twice and rejects missing SID1. Live CP and Accountability Chat pass SID1 ACK and restore original mode; canonical config_get confirms CP profile and500. Personal, grants, compact bundle and unrelated service PIDs preserved. First activation correctly rolled back after the operator helper greedily parsed svlogd's PID; the corrected anchored parser passed fixtures and retry. Protected evidence is under `/opt/op-dbus/recovery/20260924-provider-choice`. → OD-83 | open |
-    | 2026-09-24 | Codex | ⚠️ CONCERN **Postactivation aggregate catalog path still passes provider family instead of native alias.** Canonical GetConfig reports `tched_router 'custom' model catalog is empty`, while exact native full-alias catalog and live CP Chat succeed. `project_state`, `set_model` and `set_selection` pass family to native lookup, which requires a configured `family.alias`; multiple aliases must retain their own catalogs and mutation validation. Bounded source/fixture fix is in progress; deployment success does not close this remaining path. Six explicit inactive September19 compiled test executables were recorded in `/tmp/opencode/obsolete-catalog-tests.CQ3oGb` and removed to reserve build/transfer space; no storage history or runtime data was removed. → OD-83 | open |
+    | 2026-09-24 | Codex | ⚠️ CONCERN **Postactivation aggregate catalog path still passes provider family instead of native alias.** Canonical GetConfig reports `threetched 'custom' model catalog is empty`, while exact native full-alias catalog and live CP Chat succeed. `project_state`, `set_model` and `set_selection` pass family to native lookup, which requires a configured `family.alias`; multiple aliases must retain their own catalogs and mutation validation. Bounded source/fixture fix is in progress; deployment success does not close this remaining path. Six explicit inactive September19 compiled test executables were recorded in `/tmp/opencode/obsolete-catalog-tests.CQ3oGb` and removed to reserve build/transfer space; no storage history or runtime data was removed. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Fresh router identity chain passes after the reported browser refusal.** Decoy issuer is listening on wg-opdbus10.0.0.1:51888; router10.0.0.5 still has registered key prefix0I5FNCuH. Through that router, a fresh OIA1 resolved session414fbc56-03fb-20ab-758a-bcc7a7cbdc0e, a separate fresh OIA1 read its existing authored SID1, and that returned SID1 authenticated another context call in Personal mode. Issuer permits both documented HTTP dashboard origins; live bridge binding is trusted-decoy-signature. No identity/grant mutation occurred; temporary credentials were removed. Metadata-only proof SHA `d3043ce7b1786456f4e61adc0da094f2c1808f281dd06938669b4cce251a18aa` is in the provider-choice release recovery directory. Actual browser recovery remains unconfirmed pending its code/detail or retry result; server-side proof does not establish browser success. → OD-83 | open |
-    | 2026-09-24 | Codex | 👁️ OBSERVATION **Dashboard connection gate also depends on the broken model catalog.** Source `ChatOnlyPage` resolves OIA1 to SID1 before awaiting `connectDoorChatAdapter`; that adapter immediately calls ListProviders and ListModels. Fresh authenticated live probes of both methods return ERROR_CODE_INTERNAL `tched_router 'custom' model catalog is empty`, reproducing a post-authentication reason for the connection panel. Protected outputs `/tmp/opdbus-browser-catalog.2pPdo8`. This supports the already frozen V5 alias fix; it does not establish the user's exact displayed error, which remains pending. → OD-83 | open |
+    | 2026-09-24 | Codex | 👁️ OBSERVATION **Dashboard connection gate also depends on the broken model catalog.** Source `ChatOnlyPage` resolves OIA1 to SID1 before awaiting `connectDoorChatAdapter`; that adapter immediately calls ListProviders and ListModels. Fresh authenticated live probes of both methods return ERROR_CODE_INTERNAL `threetched 'custom' model catalog is empty`, reproducing a post-authentication reason for the connection panel. Protected outputs `/tmp/opdbus-browser-catalog.2pPdo8`. This supports the already frozen V5 alias fix; it does not establish the user's exact displayed error, which remains pending. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **V5 verification reserve reclaimed from four obsolete test executables.** At20 GiB free during serial bridge test-harness compilation, four explicit September19 target/debug/deps executables were checked as regular, executable, single-link and inactive, then stat/SHA-recorded and removed (~1.89GB logical). Receipt `/tmp/opencode/obsolete-catalog-reserve.h65IWR`; no September24 build artifact, release, snapshot, source or identity data removed. → OD-82 | open |
-    | 2026-09-24 | Codex | 👁️ OBSERVATION **Latest browser retry correlates with admitted catalog failures.** The20:18:55 op-web identity pickup403 was followed at20:18:57 by admitted tched_router ListProviders/ListModels failures (events59904/59905). No operator live probe ran in that interval; this matches the user's renewed inability to connect and the reproduced catalog failure after identity bootstrap. Legacy tracing's missing-header warning alone is not an authentication refusal. V5 backing/dispatcher regression tests passed; full verification/release still pending. → OD-83 | open |
+    | 2026-09-24 | Codex | 👁️ OBSERVATION **Latest browser retry correlates with admitted catalog failures.** The20:18:55 op-web identity pickup403 was followed at20:18:57 by admitted threetched ListProviders/ListModels failures (events59904/59905). No operator live probe ran in that interval; this matches the user's renewed inability to connect and the reproduced catalog failure after identity bootstrap. Legacy tracing's missing-header warning alone is not an authentication refusal. V5 backing/dispatcher regression tests passed; full verification/release still pending. → OD-83 | open |
     | 2026-09-24 | Codex | ⚠️ CONCERN **Serial optimized bridge compilation exhausted the host's no-swap memory reserve.** With only one compiler active, MemAvailable fell below1 GiB. Paused rustc6142 with SIGSTOP, created a new dedicated root0700 Btrfs subvolume `target/.provider-catalog-build-swap` containing2 GiB swap, enabled it, and resumed the same compiler without discarding progress or changing source/flags. No live service stopped. Receipt `/tmp/opencode/provider-catalog-build-swap.receipt`; remove this task-owned swap/subvolume after build completion and sufficient available memory. → OD-83 | open |
-    | 2026-09-24 | Codex | 👁️ OBSERVATION **Owner confirmed the connection-screen error is the catalog failure.** Exact displayed text is `tched_router 'custom' model catalog is empty`, matching authenticated ListProviders/ListModels probes and20:18 retry logs. No separate credential rejection is indicated by this report; V5 catalog fix passed full2,159/0/21 tests and is in optimized bridge compilation. Identity reset is unnecessary for this confirmed failure. → OD-83 | open |
+    | 2026-09-24 | Codex | 👁️ OBSERVATION **Owner confirmed the connection-screen error is the catalog failure.** Exact displayed text is `threetched 'custom' model catalog is empty`, matching authenticated ListProviders/ListModels probes and20:18 retry logs. No separate credential rejection is indicated by this report; V5 catalog fix passed full2,159/0/21 tests and is in optimized bridge compilation. Identity reset is unnecessary for this confirmed failure. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Provider catalog login blocker deployed and exact live startup calls pass.** Received RO `20260924-provider-catalog` source UUID4f09a5b2-8b2b-6c43-8337-0ee7f6e6d724/content SHA c85ae76ab0312b497a801d70911a2d5b1b7a758af49c1ed445774ebbd2c35d15 activated21:07:01Z. V5 GNU fmt/Clippy/release and full2,159/0/21 tests pass. New bridge SHA7cfb12660357c60902822bac79e66d299351713faecf3a3fd7522c9926ac447d authenticates existing human and returns6 providers/1,179 model routes; ListProviders/ListModels/GetConfig and h2/gRPC-Web pass. All66 schemas unchanged, catalog generation advanced only; native/UI reused. Grants hash, Personal settings,500 profiles and unrelated service PIDs preserved. No identity reset. Exact browser confirmation pending. Protected evidence: `/opt/op-dbus/recovery/20260924-provider-catalog`. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Temporary compiler swap fully removed after successful build.** swapoff completed; the only task-owned swapfile and dedicated Btrfs subvolume8637/UUID6b940644-2528-4c48-ac0c-cdffeb9bd5f1 were removed before snapshot preparation. Host is back to zero configured swap. No historical cache/identity/release subvolume was removed. Cleanup receipt is archived with provider-catalog release evidence. → OD-83 | open |
     | 2026-09-24 | Codex | ⚠️ CONCERN **Personal model-picker alias selection still needs reconciliation.** Read-only source check: production `toProviderOptions` groups routes by family and sends provider.id, while native `resolve_provider` requires a full reference for a non-current family with multiple aliases. The deployed login/catalog correction preserves this existing resolver contract. Returning from another family to multi-alias custom may therefore be rejected; no live Personal selection was changed to test it. Track underOD83 before claiming all provider-switching paths verified. → OD-83 | open |
     | 2026-09-24 | Codex | 👁️ OBSERVATION **Browser startup repeats a complete native catalog observation.** Isolated Chromium with the existing authored human SID1 reached the chat UI after24.7s: concurrent ListProviders/ListModels durations24,578/13,154ms; model/context/knowledge reads then completed in97–139ms and the composer accepted unsent text. Each catalog RPC independently performs the full serial alias observation. The connection gate incorrectly labels this entire wait as identity resolution. Live sealed GetState already returns both providers/model_routes in one response with state.read capability, enabling a frontend-only correction. Probe disabled only its own WebSocket before credential injection to avoid displacing the user's owner-scoped Knowledge connection. Public hostname was ERR_ADDRESS_UNREACHABLE in this isolated Chromium; direct TLS10.0.0.3 worked and curl hostname worked, so this does not prove the user's transport path. → OD-83 | open |
     | 2026-09-26 | Claude Opus 5.5 | ⚠️ CONCERN **An identity boot descriptor took down every container, and a one-shot identity-centric container is now live.** After the 11:38 reboot, the seeds partition UUID named in fstab no longer existed, because `sdb2` had been reformatted as `raccoon-root`. The `nofail` mounts skipped silently, `op-identity-storage mount-all` failed on leaf `414fbc56`, and incusd's run script exits on that failure, so qdrant, mail, xray and the chatbot were all down. Archiving the two boot descriptors restored Incus with the service containers unchanged. Lessons: one identity's storage must never gate incusd, and btrfs seed/sprout cannot share one seed across two mounted identities (kernel 7.2), so identity roots use overlayfs over an idmapped read-only Raccoon view. Without idmapping, Incus copies the entire lower layer into upper. Live results and the credential-delivery blocker are in OD-86. | open | → OD-86 |
-    | 2026-09-27 | Claude Opus 5.5 | 👁️ OBSERVATION **GUI verified from the host up to the decoy pickup, plus a walkthrough for demos.** Checked from the host: the page at op-web :8080 loads with a door and issuer runtime config. The tonic door at 10.0.0.2:8090 answers a browser-shaped gRPC-Web call over TLS with the local CA. CORS admits origin 10.0.0.4:8080 and the identity headers. A call with no credential is refused with grpc-status 16. tched-router health is ok. The one hop that cannot be checked from the host is the decoy issuer (10.0.0.1:51888), which refuses the host by design, so connected mode needs a test from a WireGuard peer. To make that one test decisive, the connect gate now names what each identity source answered (3tched.com `6bdd87a`). Added `/ui-reference story` (stack, identity, lungs, accountability, compliance): catalog-validated static canvases with dated captured values and no live identifiers (`4b5a258`). The live thread now scrolls to the newest message. Published to the separate landing `http://10.0.0.4:8080/demo/`; the production root is untouched and still serves the Sep 25 build with its hand-injected runtime config. A pre-existing lint error remains in `src/chat/ModeStrip.tsx:86` (setState inside the notebook auto-select effect), left alone because connected mode cannot be exercised from the host. | open | → OD-83 |
+    | 2026-09-27 | Claude Opus 5.5 | 👁️ OBSERVATION **GUI verified from the host up to the decoy pickup, plus a walkthrough for demos.** Checked from the host: the page at op-web :8080 loads with a door and issuer runtime config. The tonic door at 10.0.0.2:8090 answers a browser-shaped gRPC-Web call over TLS with the local CA. CORS admits origin 10.0.0.4:8080 and the identity headers. A call with no credential is refused with grpc-status 16. threetched health is ok. The one hop that cannot be checked from the host is the decoy issuer (10.0.0.1:51888), which refuses the host by design, so connected mode needs a test from a WireGuard peer. To make that one test decisive, the connect gate now names what each identity source answered (3tched.com `6bdd87a`). Added `/ui-reference story` (stack, identity, lungs, accountability, compliance): catalog-validated static canvases with dated captured values and no live identifiers (`4b5a258`). The live thread now scrolls to the newest message. Published to the separate landing `http://10.0.0.4:8080/demo/`; the production root is untouched and still serves the Sep 25 build with its hand-injected runtime config. A pre-existing lint error remains in `src/chat/ModeStrip.tsx:86` (setState inside the notebook auto-select effect), left alone because connected mode cannot be exercised from the host. | open | → OD-83 |
     | 2026-11-02 | Codex | ⚠️ CONCERN — Unified local main `dd8b37f` builds for GNU, but its fresh bridge entry point defaults to plaintext/empty catalog with no registered handlers and does not connect production identity or D-Bus admission. Golden preparation additionally requires `op-grants-materializer`, absent from the fresh bridge build. Do not activate this build as a replacement until those paths are integrated and validated. → OD-126 | open |
     | 2026-11-02 | Codex | ⚠️ CONCERN — The legacy `MutationEngine::call_dbus_method` helper ignores its supplied arguments and calls D-Bus with `()`; it is not a safe generic replacement for `dispatch_method_call_with_bound_oracle` when wiring the rewritten bridge. Preserve authenticated dispatch and complete arguments. → OD-126 | open |
     | 2026-11-02 | Codex | ⚠️ CONCERN — The retained browser-assigned OIA1 interceptor binds a target session, then AnnaScribe requires the assertion peer key to equal the target credential key (`interceptor.rs` bound branch; `anna_scribe.rs::verify_arrival`). A configured assignment where the peer and target keys differ appears to be rejected; confirm intended semantics and tests before reusing this path. New partial OIA1 receiver fails assigned proofs closed. → OD-126 | open |
@@ -1624,14 +1624,14 @@ The handoff identifies a recent key rotation: the expected chatbot identity is d
 
 ## Activity
 
-    $ sudo -n sh -c 'tr "\0" "\n" </proc/2168/environ | grep -E "^(OP_CONTROL_PLANE_CHATBOT_(WIREGUARD_PUBKEY|SESSION_ID|PRINCIPAL_ID)|OP_ORACLE_ASSERTION_SOURCE_BINDING)="' ; readlink -f /proc/2168/exe; sudo -n sv status incusd 3tched tched-router
+    $ sudo -n sh -c 'tr "\0" "\n" </proc/2168/environ | grep -E "^(OP_CONTROL_PLANE_CHATBOT_(WIREGUARD_PUBKEY|SESSION_ID|PRINCIPAL_ID)|OP_ORACLE_ASSERTION_SOURCE_BINDING)="' ; readlink -f /proc/2168/exe; sudo -n sv status incusd 3tched threetched
     OP_CONTROL_PLANE_CHATBOT_SESSION_ID=b0c777e3-0955-cd8b-3d01-ca12998cae28
     OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID=1262e982-14c1-44d4-0771-7ce74213211b
     OP_ORACLE_ASSERTION_SOURCE_BINDING=trusted-decoy-signature
     OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY=Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=
     fail: incusd: unable to change to service directory: file does not exist
     fail: 3tched: unable to change to service directory: file does not exist
-    run: tched-router: (pid 2046) 143422s
+    run: threetched: (pid 2046) 143422s
     ✗ (2) • 5ms
 
 ## Activity
@@ -1963,15 +1963,15 @@ I found a concrete mismatch in the live configuration: the running bridge still 
     
     ### 2026-11-02 · Codex (branch reconciliation correction)
     - Correcting earlier release investigation: `main` and local `restore/devuan-storage-20261013` diverged from `2a6e40e`; the latter was not a descendant of the former. Main contains fresh bridge PR #46, while local restore `967b96d` carries subsequent Nov 1 golden/demo commits and the prior bridge implementation. The live golden MANIFEST identifies `61c2827`, an ancestor of restore but not main; current ready says complete slot b `release-6279b090-6462-4893-9035-ec82188f27e8`. The handoff and SIGNALS on restore record the fresh bridge authentication gap and the release history. Thus the isolated main checkout is not the newer deployed source line; prior inference based on branch timestamps was wrong.
-    - Owner clarified tched-router should be absent and 3tched retained. No source reconciliation, build, seal, activation or service changes have been performed. Do not overwrite shared dirty checkout or automatically merge the divergent bridge histories; inspect changes and reconcile before release.
+    - Owner clarified threetched should be absent and 3tched retained. No source reconciliation, build, seal, activation or service changes have been performed. Do not overwrite shared dirty checkout or automatically merge the divergent bridge histories; inspect changes and reconcile before release.
     
     ### 2026-11-02 · Codex (3tched release clarification)
-    - Owner: tched-router is retired; the component is now 3tched/threetched. Do not build a tched-router component. The live golden already contains a `threetched` executable with provenance v2 (SHA-256 ee56fd315df8f86ba5ffc505082a039ee45b2b0cb8aca2c059be7c7675f29a69), while the old service name and builder paths remain. Preserve 3tched; do not confuse it with the retired router name.
+    - Owner: threetched is retired; the component is now 3tched/threetched. Do not build a threetched component. The live golden already contains a `threetched` executable with provenance v2 (SHA-256 ee56fd315df8f86ba5ffc505082a039ee45b2b0cb8aca2c059be7c7675f29a69), while the old service name and builder paths remain. Preserve 3tched; do not confuse it with the retired router name.
     - Isolated newer-source worktree `/var/tmp/odbus-golden-rebuild-20261102` at main `7475dd0`, no source edits. Rewritten `crates/op-grpc-bridge/src/bin/op-grpc-bridge.rs` serves plaintext by default at 0.0.0.0:50051, reads a JSON file or empty catalog, and creates a core with no registered handlers; identity, sealed SHM, D-Bus dispatch and the 8090 TLS door are not wired in that entry point. The golden builder still requires the old router-named source paths and service. Release builds were cancelled; no successful build, catalog change, snapshot or activation. Running host is untouched. Do not activate the rewrite until its production integration is established.
     
     ### 2026-11-02 · Codex (golden release investigation)
-    - Owner requested golden build/deploy/activation, explicitly overriding the prior golden restriction, then stated mail is no longer on the server and tched-router is deprecated. No live changes, reseal or activation. Existing services remain running.
-    - Current checkout `cursor/cloud-agent-env-760f` at `1182051` has an obsolete builder requiring mail and old router; main `7475dd0` includes hackathon `2a6e40e`, already excludes mail, but still requires threetched and enables the running `tched-router` service. Host uses `/usr/local/libexec/op-dbus` release layout, not this checkout’s documented `/opt/op-dbus/current` layout. Builds on the old checkout were stopped; no artifacts completed. Await owner clarification on the router replacement before preparing or activating a release. Preserve concurrent work.
+    - Owner requested golden build/deploy/activation, explicitly overriding the prior golden restriction, then stated mail is no longer on the server and threetched is deprecated. No live changes, reseal or activation. Existing services remain running.
+    - Current checkout `cursor/cloud-agent-env-760f` at `1182051` has an obsolete builder requiring mail and old router; main `7475dd0` includes hackathon `2a6e40e`, already excludes mail, but still requires threetched and enables the running `threetched` service. Host uses `/usr/local/libexec/op-dbus` release layout, not this checkout’s documented `/opt/op-dbus/current` layout. Builds on the old checkout were stopped; no artifacts completed. Await owner clarification on the router replacement before preparing or activating a release. Preserve concurrent work.
     
     ### 2026-11-02 · Grok (one contract: the chatbot's obligation)
     - **Where:** `hackathon/contracts/ChatResponseObligation.sol`. Working tree, uncommitted. Not deployed. No compiler and no chain key on this host.
@@ -2854,8 +2854,8 @@ Understood. The chatbot should use its lungs socket; I won’t use the shared `c
     ... command output truncated for persistence ...
     works end to end matters more than what is designed.\n\n**How to apply:** until then, favour work that makes the demo real and checkable: the connected GUI path (decoy pickup from a WireGuard peer), the `/demo/` walkthrough (`/ui-reference story`), one real action through an identity's lungs, and a release that survives a reboot. Park large refactors that don't show. Related: [[identity-centric-container-experiment]].\n"},"caller":{"type":"direct"}}],"container":null,"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":159,"cache_read_input_tokens":821641,"output_tokens":1008,"output_tokens_details":{"thinking_tokens":607},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":159,"ephemeral_5m_input_tokens":0},"inference_geo":"not_available","iterations":[{"input_tokens":2,"output_tokens":1008,"cache_read_input_tokens":821641,"cache_creation_input_tokens":159,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":159},"type":"message"}],"speed":"standard"},"input_transformations":[],"diagnostics":null,"context_management":null},"wireToolInputs":{"toolu_01NKizdm2EQTy4svkB1NSP8X":{"file_path":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/oct1-milestone.md","content":"---\nname: oct1-milestone\ndescription: Owner treats 2026-10-01 as the shift from private build to being shown (YC application); prioritize demo-ready, verifiable pieces\nmetadata:\n  type: project\n---\n\nThe owner is aiming for the Y Combinator application deadline and named 2026-10-01 as the point where the project shifts from being built privately to being seen by others (stated 2026-09-27).\n\n**Why:** after that date, reviewers see what it does, so what works end to end matters more than what is designed.\n\n**How to apply:** until then, favour work that makes the demo real and checkable: the connected GUI path (decoy pickup from a WireGuard peer), the `/demo/` walkthrough (`/ui-reference story`), one real action through an identity's lungs, and a release that survives a reboot. Park large refactors that don't show. Related: [[identity-centric-container-experiment]].\n"}},"apiBlockIndex":1,"requestId":"req_011CfUqoTdUfn4uKMvnkDkQw","type":"assistant","uuid":"1d2bfcc6-20dc-4213-86d7-d83e023f2db5","timestamp":"2026-09-27T23:51:28.956Z","advisorModel":"claude-opus-5-5","effort":"xhigh","perTurnEffort":"xhigh","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
     docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:3468:{"parentUuid":"1d2bfcc6-20dc-4213-86d7-d83e023f2db5","isSidechain":false,"promptId":"24c4d9b4-d13d-49f1-b40f-e7c6bce1418e","type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_01NKizdm2EQTy4svkB1NSP8X","type":"tool_result","content":"File created successfully at: /home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/oct1-milestone.md"}]},"uuid":"fa767252-a03b-4e45-bcae-3ff07dd7cf68","timestamp":"2026-09-27T23:51:29.113Z","toolUseResult":{"type":"create","filePath":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/oct1-milestone.md","content":"---\nname: oct1-milestone\ndescription: \"Owner treats 2026-10-01 as the shift from private build to being shown (YC application); prioritize demo-ready, verifiable pieces\"\nmetadata:\n  node_type: memory\n  type: project\n  originSessionId: 3035bc0a-c31b-4328-b44b-4f0db89dc70f\n  modified: 2026-09-27T23:51:29.029Z\n---\n\nThe owner is aiming for the Y Combinator application deadline and named 2026-10-01 as the point where the project shifts from being built privately to being seen by others (stated 2026-09-27).\n\n**Why:** after that date, reviewers see what it does, so what works end to end matters more than what is designed.\n\n**How to apply:** until then, favour work that makes the demo real and checkable: the connected GUI path (decoy pickup from a WireGuard peer), the `/demo/` walkthrough (`/ui-reference story`), one real action through an identity's lungs, and a release that survives a reboot. Park large refactors that don't show. Related: [[identity-centric-container-experiment]].\n","structuredPatch":[],"originalFile":null,"userModified":false,"memdirStamped":true},"sourceToolAssistantUUID":"1d2bfcc6-20dc-4213-86d7-d83e023f2db5","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
-    docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:3956:{"parentUuid":"3a072223-d982-46e3-a477-3652378e9f31","isSidechain":false,"message":{"model":"claude-opus-5-5","id":"msg_011CfUtWDv7GTUivL3YuRtbs","type":"message","role":"assistant","content":[{"type":"tool_use","id":"toolu_01P7wvnz12qBjstZzEnZ6p55","name":"Write","input":{"file_path":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md","content":"---\nname: handoff-2026-09-28\ndescription: In-flight state at session end 2026-09-28: Rust 2024 upgrade uncommitted, Oct 1 demo plan, knowledge graph plan, chain-vector hold, CMS recovered, live host state\nmetadata:\n  type: project\n---\n\nSession 3035bc0a ended at 92% context on 2026-09-28 ~00:30 UTC. Resume from here.\n\n**1. Rust 2024 upgrade: IN PROGRESS, UNCOMMITTED (about 187 files in odbus-verified).** Owner approved workspace-wide cargo for it.\n- Done: `cargo fix --edition` (67 files; behaviour-preserving if-let→match and `expr_2021` rewrites). Workspace `edition = \"2024\"`; all 37 crates use `edition.workspace = true`, including threetched-fs. A temporary `rustfmt.toml` pins `style_edition = \"2021\"`.\n- Running at handoff: a Haiku job doing `cargo clippy --fix` (edition 2024 turns 44 nested `if let` into let-chains and hits 1 let_and_return), then fmt, clippy -D warnings and workspace tests. Its log is in the ephemeral scratchpad `verify-2024b.log`, so rerun /verify if that log is gone.\n- Next: when /verify is green, commit `build(workspace)!: move to the Rust 2024 edition`. Then delete `rustfmt.toml`, run `cargo fmt --all`, and commit `style(workspace): reformat in the 2024 style`.\n- Drop order: 289 tail-expression drop-order warnings, 66 of them involving locks. The transaction and publication sites were reviewed: under 2024 the temporary drops while the local lock is held, which is safe.\n\n**2. Committed today on main, NOT pushed.**\n- odbus-verified: 587fb64, 355b643, b524da9 (3tchedFS import merge), 77c11ce, 0527cbe, 36ea8e0.\n- 3tched.com: 661dc35, 4b5a258, 6bdd87a, 2decab6.\n- /srv/git/3tchedFS is superseded (full history now lives in odbus-verified) and can be archived.\n\n**3. Live host state (manual; see OD-86).**\n- Identity 414fbc56 runs on overlay(Raccoon ro idmapped, device upper). Its lungs are at /run/opdbus-lungs/<session>, served by /srv/git/odbus-verified/target/release/threetched-fs.\n- Brought up by `sudo env THREETCHED_FS=… deploy/runit/libexec-3tched/op-identity-root up`.\n- The chatbot container was started by hand.\n- The old threetched-fs sv has a `down` file.\n- /etc/fstab mounts Raccoon by UUID 2dcac52c…; backup is /etc/fstab.bak-20260927.\n- The identity-roots and incus-ct-chatbot services exist in source only and need a release (operator steps: workspace release build, seal/persist, build-golden, send/receive, activate).\n\n**4. Oct 1 demo ([[oct1-milestone]]).** Owner chose \"compliant from the start, traceable\".\n- Plan: an offline NIST 800-53 control graph, run in the release window with the bridge down. It writes Cozo at /var/lib/op-dbus/cognitive-memory.db through `CozoGraphShuttle::new_persistent`, `store_node` and `store_edge` (graph_node/graph_edge). Source is compliance_official kind=control chunks (OSCAL XML: control id, title, label prop, `link rel=required|related`).\n- Method→control links go in the OSCAL subid registry `control_refs`; the owner reviews them.\n- UI-render mode is implemented but generated canvases are static by rule. The model marks the intended method per component; the platform attaches controls from the registry (never model-written).\n- Blocker only the owner can clear: test http://10.0.0.4:8080/demo/ from a WireGuard peer and send the \"Tried …\" line.\n- The owner also still needs to choose the demo apps (CMS plus others).\n\n**5. Knowledge first, then chain history.**\n- Chain vectors: 84,946 real embeddings in /var/lib/opdbus/snowball/vectors. HOLD: the owner wants the embedding text reviewed first (add outcome and actor role, drop the block number) and the Cozo graph built at ingest.\n- Ingest plan: a local receive subvolume acts as the replica (btrfs send SNP-* → local receive → `op-chain-vectors ingest`). Do NOT set OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN.\n- Accountability gap: `context_bundle.rs` semantic_recall searches `user_memory`, which is empty, not `snowball_footprints`. It needs a read-only snowball search method under `snowball.read`, scoped to the agent on trial plus the caller.\n\n**6. The CMS generated on 2026-08-21** came from the Codex session (GPT-5.6), not Claude.\n- Recovered spec: /srv/git/3tched.com/references/recovered/cms-aug21.spec.json (uncommitted). 43 elements, old catalog, `$state` bindings; regenerate it in UI-render mode.\n- Rated about 8/10 as a design and about 3/10 as a CMS. The backend is an extension (one `cms` plugin on project documents, grants, chain and ledger); media, public delivery and a rich-text editor are the stretches.\n\n**7. NotebookLM.** The `nlm` CLI works. A 141-source notebook (gpt-5.6-sol) times out on the default query timeout, so the notebook_lm plugin needs a longer timeout. Add a SIGNALS row for this (not written yet).\n"},"caller":{"type":"direct"}}],"container":null,"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":2610,"cache_read_input_tokens":914979,"output_tokens":2219,"output_tokens_details":{"thinking_tokens":137},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":2610,"ephemeral_5m_input_tokens":0},"inference_geo":"not_available","iterations":[{"input_tokens":2,"output_tokens":2219,"cache_read_input_tokens":914979,"cache_creation_input_tokens":2610,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":2610},"type":"message"}],"speed":"standard"},"input_transformations":[],"diagnostics":null,"context_management":null},"wireToolInputs":{"toolu_01P7wvnz12qBjstZzEnZ6p55":{"file_path":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md","content":"---\nname: handoff-2026-09-28\ndescription: In-flight state at session end 2026-09-28: Rust 2024 upgrade uncommitted, Oct 1 demo plan, knowledge graph plan, chain-vector hold, CMS recovered, live host state\nmetadata:\n  type: project\n---\n\nSession 3035bc0a ended at 92% context on 2026-09-28 ~00:30 UTC. Resume from here.\n\n**1. Rust 2024 upgrade: IN PROGRESS, UNCOMMITTED (about 187 files in odbus-verified).** Owner approved workspace-wide cargo for it.\n- Done: `cargo fix --edition` (67 files; behaviour-preserving if-let→match and `expr_2021` rewrites). Workspace `edition = \"2024\"`; all 37 crates use `edition.workspace = true`, including threetched-fs. A temporary `rustfmt.toml` pins `style_edition = \"2021\"`.\n- Running at handoff: a Haiku job doing `cargo clippy --fix` (edition 2024 turns 44 nested `if let` into let-chains and hits 1 let_and_return), then fmt, clippy -D warnings and workspace tests. Its log is in the ephemeral scratchpad `verify-2024b.log`, so rerun /verify if that log is gone.\n- Next: when /verify is green, commit `build(workspace)!: move to the Rust 2024 edition`. Then delete `rustfmt.toml`, run `cargo fmt --all`, and commit `style(workspace): reformat in the 2024 style`.\n- Drop order: 289 tail-expression drop-order warnings, 66 of them involving locks. The transaction and publication sites were reviewed: under 2024 the temporary drops while the local lock is held, which is safe.\n\n**2. Committed today on main, NOT pushed.**\n- odbus-verified: 587fb64, 355b643, b524da9 (3tchedFS import merge), 77c11ce, 0527cbe, 36ea8e0.\n- 3tched.com: 661dc35, 4b5a258, 6bdd87a, 2decab6.\n- /srv/git/3tchedFS is superseded (full history now lives in odbus-verified) and can be archived.\n\n**3. Live host state (manual; see OD-86).**\n- Identity 414fbc56 runs on overlay(Raccoon ro idmapped, device upper). Its lungs are at /run/opdbus-lungs/<session>, served by /srv/git/odbus-verified/target/release/threetched-fs.\n- Brought up by `sudo env THREETCHED_FS=… deploy/runit/libexec-3tched/op-identity-root up`.\n- The chatbot container was started by hand.\n- The old threetched-fs sv has a `down` file.\n- /etc/fstab mounts Raccoon by UUID 2dcac52c…; backup is /etc/fstab.bak-20260927.\n- The identity-roots and incus-ct-chatbot services exist in source only and need a release (operator steps: workspace release build, seal/persist, build-golden, send/receive, activate).\n\n**4. Oct 1 demo ([[oct1-milestone]]).** Owner chose \"compliant from the start, traceable\".\n- Plan: an offline NIST 800-53 control graph, run in the release window with the bridge down. It writes Cozo at /var/lib/op-dbus/cognitive-memory.db through `CozoGraphShuttle::new_persistent`, `store_node` and `store_edge` (graph_node/graph_edge). Source is compliance_official kind=control chunks (OSCAL XML: control id, title, label prop, `link rel=required|related`).\n- Method→control links go in the OSCAL subid registry `control_refs`; the owner reviews them.\n- UI-render mode is implemented but generated canvases are static by rule. The model marks the intended method per component; the platform attaches controls from the registry (never model-written).\n- Blocker only the owner can clear: test http://10.0.0.4:8080/demo/ from a WireGuard peer and send the \"Tried …\" line.\n- The owner also still needs to choose the demo apps (CMS plus others).\n\n**5. Knowledge first, then chain history.**\n- Chain vectors: 84,946 real embeddings in /var/lib/opdbus/snowball/vectors. HOLD: the owner wants the embedding text reviewed first (add outcome and actor role, drop the block number) and the Cozo graph built at ingest.\n- Ingest plan: a local receive subvolume acts as the replica (btrfs send SNP-* → local receive → `op-chain-vectors ingest`). Do NOT set OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN.\n- Accountability gap: `context_bundle.rs` semantic_recall searches `user_memory`, which is empty, not `snowball_footprints`. It needs a read-only snowball search method under `snowball.read`, scoped to the agent on trial plus the caller.\n\n**6. The CMS generated on 2026-08-21** came from the Codex session (GPT-5.6), not Claude.\n- Recovered spec: /srv/git/3tched.com/references/recovered/cms-aug21.spec.json (uncommitted). 43 elements, old catalog, `$state` bindings; regenerate it in UI-render mode.\n- Rated about 8/10 as a design and about 3/10 as a CMS. The backend is an extension (one `cms` plugin on project documents, grants, chain and ledger); media, public delivery and a rich-text editor are the stretches.\n\n**7. NotebookLM.** The `nlm` CLI works. A 141-source notebook (gpt-5.6-sol) times out on the default query timeout, so the notebook_lm plugin needs a longer timeout. Add a SIGNALS row for this (not written yet).\n"}},"apiBlockIndex":2,"requestId":"req_011CfUtWDLNuP5GEHkK5DTah","type":"assistant","uuid":"c61d1d3f-456c-46c2-96ae-b30ed401d59d","timestamp":"2026-09-28T00:27:04.074Z","advisorModel":"claude-opus-5-5","effort":"xhigh","perTurnEffort":"xhigh","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
-    docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:3957:{"parentUuid":"c61d1d3f-456c-46c2-96ae-b30ed401d59d","isSidechain":false,"promptId":"441e06d2-afda-4834-b04b-2574910da018","type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_01P7wvnz12qBjstZzEnZ6p55","type":"tool_result","content":"File created successfully at: /home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md"}]},"uuid":"4a1d8286-a2cb-42f1-9f30-e04fb8b30700","timestamp":"2026-09-28T00:27:04.157Z","toolUseResult":{"type":"create","filePath":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md","content":"---\nname: handoff-2026-09-28\ndescription: \"In-flight state at session end 2026-09-28: Rust 2024 upgrade uncommitted, Oct 1 demo plan, knowledge graph plan, chain-vector hold, CMS recovered, live host state\"\nmetadata:\n  node_type: memory\n  type: project\n  originSessionId: 3035bc0a-c31b-4328-b44b-4f0db89dc70f\n  modified: 2026-09-28T00:27:04.132Z\n---\n\nSession 3035bc0a ended at 92% context on 2026-09-28 ~00:30 UTC. Resume from here.\n\n**1. Rust 2024 upgrade: IN PROGRESS, UNCOMMITTED (about 187 files in odbus-verified).** Owner approved workspace-wide cargo for it.\n- Done: `cargo fix --edition` (67 files; behaviour-preserving if-let→match and `expr_2021` rewrites). Workspace `edition = \"2024\"`; all 37 crates use `edition.workspace = true`, including threetched-fs. A temporary `rustfmt.toml` pins `style_edition = \"2021\"`.\n- Running at handoff: a Haiku job doing `cargo clippy --fix` (edition 2024 turns 44 nested `if let` into let-chains and hits 1 let_and_return), then fmt, clippy -D warnings and workspace tests. Its log is in the ephemeral scratchpad `verify-2024b.log`, so rerun /verify if that log is gone.\n- Next: when /verify is green, commit `build(workspace)!: move to the Rust 2024 edition`. Then delete `rustfmt.toml`, run `cargo fmt --all`, and commit `style(workspace): reformat in the 2024 style`.\n- Drop order: 289 tail-expression drop-order warnings, 66 of them involving locks. The transaction and publication sites were reviewed: under 2024 the temporary drops while the local lock is held, which is safe.\n\n**2. Committed today on main, NOT pushed.**\n- odbus-verified: 587fb64, 355b643, b524da9 (3tchedFS import merge), 77c11ce, 0527cbe, 36ea8e0.\n- 3tched.com: 661dc35, 4b5a258, 6bdd87a, 2decab6.\n- /srv/git/3tchedFS is superseded (full history now lives in odbus-verified) and can be archived.\n\n**3. Live host state (manual; see OD-86).**\n- Identity 414fbc56 runs on overlay(Raccoon ro idmapped, device upper). Its lungs are at /run/opdbus-lungs/<session>, served by /srv/git/odbus-verified/target/release/threetched-fs.\n- Brought up by `sudo env THREETCHED_FS=… deploy/runit/libexec-3tched/op-identity-root up`.\n- The chatbot container was started by hand.\n- The old threetched-fs sv has a `down` file.\n- /etc/fstab mounts Raccoon by UUID 2dcac52c…; backup is /etc/fstab.bak-20260927.\n- The identity-roots and incus-ct-chatbot services exist in source only and need a release (operator steps: workspace release build, seal/persist, build-golden, send/receive, activate).\n\n**4. Oct 1 demo ([[oct1-milestone]]).** Owner chose \"compliant from the start, traceable\".\n- Plan: an offline NIST 800-53 control graph, run in the release window with the bridge down. It writes Cozo at /var/lib/op-dbus/cognitive-memory.db through `CozoGraphShuttle::new_persistent`, `store_node` and `store_edge` (graph_node/graph_edge). Source is compliance_official kind=control chunks (OSCAL XML: control id, title, label prop, `link rel=required|related`).\n- Method→control links go in the OSCAL subid registry `control_refs`; the owner reviews them.\n- UI-render mode is implemented but generated canvases are static by rule. The model marks the intended method per component; the platform attaches controls from the registry (never model-written).\n- Blocker only the owner can clear: test http://10.0.0.4:8080/demo/ from a WireGuard peer and send the \"Tried …\" line.\n- The owner also still needs to choose the demo apps (CMS plus others).\n\n**5. Knowledge first, then chain history.**\n- Chain vectors: 84,946 real embeddings in /var/lib/opdbus/snowball/vectors. HOLD: the owner wants the embedding text reviewed first (add outcome and actor role, drop the block number) and the Cozo graph built at ingest.\n- Ingest plan: a local receive subvolume acts as the replica (btrfs send SNP-* → local receive → `op-chain-vectors ingest`). Do NOT set OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN.\n- Accountability gap: `context_bundle.rs` semantic_recall searches `user_memory`, which is empty, not `snowball_footprints`. It needs a read-only snowball search method under `snowball.read`, scoped to the agent on trial plus the caller.\n\n**6. The CMS generated on 2026-08-21** came from the Codex session (GPT-5.6), not Claude.\n- Recovered spec: /srv/git/3tched.com/references/recovered/cms-aug21.spec.json (uncommitted). 43 elements, old catalog, `$state` bindings; regenerate it in UI-render mode.\n- Rated about 8/10 as a design and about 3/10 as a CMS. The backend is an extension (one `cms` plugin on project documents, grants, chain and ledger); media, public delivery and a rich-text editor are the stretches.\n\n**7. NotebookLM.** The `nlm` CLI works. A 141-source notebook (gpt-5.6-sol) times out on the default query timeout, so the notebook_lm plugin needs a longer timeout. Add a SIGNALS row for this (not written yet).\n","structuredPatch":[],"originalFile":null,"userModified":false,"memdirStamped":true},"sourceToolAssistantUUID":"c61d1d3f-456c-46c2-96ae-b30ed401d59d","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
+    docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:3956:{"parentUuid":"3a072223-d982-46e3-a477-3652378e9f31","isSidechain":false,"message":{"model":"claude-opus-5-5","id":"msg_011CfUtWDv7GTUivL3YuRtbs","type":"message","role":"assistant","content":[{"type":"tool_use","id":"toolu_01P7wvnz12qBjstZzEnZ6p55","name":"Write","input":{"file_path":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md","content":"---\nname: handoff-2026-09-28\ndescription: In-flight state at session end 2026-09-28: Rust 2024 upgrade uncommitted, Oct 1 demo plan, knowledge graph plan, chain-vector hold, CMS recovered, live host state\nmetadata:\n  type: project\n---\n\nSession 3035bc0a ended at 92% context on 2026-09-28 ~00:30 UTC. Resume from here.\n\n**1. Rust 2024 upgrade: IN PROGRESS, UNCOMMITTED (about 187 files in odbus-verified).** Owner approved workspace-wide cargo for it.\n- Done: `cargo fix --edition` (67 files; behaviour-preserving if-let→match and `expr_2021` rewrites). Workspace `edition = \"2024\"`; all 37 crates use `edition.workspace = true`, including 3tched-fs. A temporary `rustfmt.toml` pins `style_edition = \"2021\"`.\n- Running at handoff: a Haiku job doing `cargo clippy --fix` (edition 2024 turns 44 nested `if let` into let-chains and hits 1 let_and_return), then fmt, clippy -D warnings and workspace tests. Its log is in the ephemeral scratchpad `verify-2024b.log`, so rerun /verify if that log is gone.\n- Next: when /verify is green, commit `build(workspace)!: move to the Rust 2024 edition`. Then delete `rustfmt.toml`, run `cargo fmt --all`, and commit `style(workspace): reformat in the 2024 style`.\n- Drop order: 289 tail-expression drop-order warnings, 66 of them involving locks. The transaction and publication sites were reviewed: under 2024 the temporary drops while the local lock is held, which is safe.\n\n**2. Committed today on main, NOT pushed.**\n- odbus-verified: 587fb64, 355b643, b524da9 (3tchedFS import merge), 77c11ce, 0527cbe, 36ea8e0.\n- 3tched.com: 661dc35, 4b5a258, 6bdd87a, 2decab6.\n- /srv/git/3tchedFS is superseded (full history now lives in odbus-verified) and can be archived.\n\n**3. Live host state (manual; see OD-86).**\n- Identity 414fbc56 runs on overlay(Raccoon ro idmapped, device upper). Its lungs are at /run/opdbus-lungs/<session>, served by /srv/git/odbus-verified/target/release/3tched-fs.\n- Brought up by `sudo env THREETCHED_FS=… deploy/runit/libexec-3tched/op-identity-root up`.\n- The chatbot container was started by hand.\n- The old 3tched-fs sv has a `down` file.\n- /etc/fstab mounts Raccoon by UUID 2dcac52c…; backup is /etc/fstab.bak-20260927.\n- The identity-roots and incus-ct-chatbot services exist in source only and need a release (operator steps: workspace release build, seal/persist, build-golden, send/receive, activate).\n\n**4. Oct 1 demo ([[oct1-milestone]]).** Owner chose \"compliant from the start, traceable\".\n- Plan: an offline NIST 800-53 control graph, run in the release window with the bridge down. It writes Cozo at /var/lib/op-dbus/cognitive-memory.db through `CozoGraphShuttle::new_persistent`, `store_node` and `store_edge` (graph_node/graph_edge). Source is compliance_official kind=control chunks (OSCAL XML: control id, title, label prop, `link rel=required|related`).\n- Method→control links go in the OSCAL subid registry `control_refs`; the owner reviews them.\n- UI-render mode is implemented but generated canvases are static by rule. The model marks the intended method per component; the platform attaches controls from the registry (never model-written).\n- Blocker only the owner can clear: test http://10.0.0.4:8080/demo/ from a WireGuard peer and send the \"Tried …\" line.\n- The owner also still needs to choose the demo apps (CMS plus others).\n\n**5. Knowledge first, then chain history.**\n- Chain vectors: 84,946 real embeddings in /var/lib/opdbus/snowball/vectors. HOLD: the owner wants the embedding text reviewed first (add outcome and actor role, drop the block number) and the Cozo graph built at ingest.\n- Ingest plan: a local receive subvolume acts as the replica (btrfs send SNP-* → local receive → `op-chain-vectors ingest`). Do NOT set OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN.\n- Accountability gap: `context_bundle.rs` semantic_recall searches `user_memory`, which is empty, not `snowball_footprints`. It needs a read-only snowball search method under `snowball.read`, scoped to the agent on trial plus the caller.\n\n**6. The CMS generated on 2026-08-21** came from the Codex session (GPT-5.6), not Claude.\n- Recovered spec: /srv/git/3tched.com/references/recovered/cms-aug21.spec.json (uncommitted). 43 elements, old catalog, `$state` bindings; regenerate it in UI-render mode.\n- Rated about 8/10 as a design and about 3/10 as a CMS. The backend is an extension (one `cms` plugin on project documents, grants, chain and ledger); media, public delivery and a rich-text editor are the stretches.\n\n**7. NotebookLM.** The `nlm` CLI works. A 141-source notebook (gpt-5.6-sol) times out on the default query timeout, so the notebook_lm plugin needs a longer timeout. Add a SIGNALS row for this (not written yet).\n"},"caller":{"type":"direct"}}],"container":null,"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":2610,"cache_read_input_tokens":914979,"output_tokens":2219,"output_tokens_details":{"thinking_tokens":137},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":2610,"ephemeral_5m_input_tokens":0},"inference_geo":"not_available","iterations":[{"input_tokens":2,"output_tokens":2219,"cache_read_input_tokens":914979,"cache_creation_input_tokens":2610,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":2610},"type":"message"}],"speed":"standard"},"input_transformations":[],"diagnostics":null,"context_management":null},"wireToolInputs":{"toolu_01P7wvnz12qBjstZzEnZ6p55":{"file_path":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md","content":"---\nname: handoff-2026-09-28\ndescription: In-flight state at session end 2026-09-28: Rust 2024 upgrade uncommitted, Oct 1 demo plan, knowledge graph plan, chain-vector hold, CMS recovered, live host state\nmetadata:\n  type: project\n---\n\nSession 3035bc0a ended at 92% context on 2026-09-28 ~00:30 UTC. Resume from here.\n\n**1. Rust 2024 upgrade: IN PROGRESS, UNCOMMITTED (about 187 files in odbus-verified).** Owner approved workspace-wide cargo for it.\n- Done: `cargo fix --edition` (67 files; behaviour-preserving if-let→match and `expr_2021` rewrites). Workspace `edition = \"2024\"`; all 37 crates use `edition.workspace = true`, including 3tched-fs. A temporary `rustfmt.toml` pins `style_edition = \"2021\"`.\n- Running at handoff: a Haiku job doing `cargo clippy --fix` (edition 2024 turns 44 nested `if let` into let-chains and hits 1 let_and_return), then fmt, clippy -D warnings and workspace tests. Its log is in the ephemeral scratchpad `verify-2024b.log`, so rerun /verify if that log is gone.\n- Next: when /verify is green, commit `build(workspace)!: move to the Rust 2024 edition`. Then delete `rustfmt.toml`, run `cargo fmt --all`, and commit `style(workspace): reformat in the 2024 style`.\n- Drop order: 289 tail-expression drop-order warnings, 66 of them involving locks. The transaction and publication sites were reviewed: under 2024 the temporary drops while the local lock is held, which is safe.\n\n**2. Committed today on main, NOT pushed.**\n- odbus-verified: 587fb64, 355b643, b524da9 (3tchedFS import merge), 77c11ce, 0527cbe, 36ea8e0.\n- 3tched.com: 661dc35, 4b5a258, 6bdd87a, 2decab6.\n- /srv/git/3tchedFS is superseded (full history now lives in odbus-verified) and can be archived.\n\n**3. Live host state (manual; see OD-86).**\n- Identity 414fbc56 runs on overlay(Raccoon ro idmapped, device upper). Its lungs are at /run/opdbus-lungs/<session>, served by /srv/git/odbus-verified/target/release/3tched-fs.\n- Brought up by `sudo env THREETCHED_FS=… deploy/runit/libexec-3tched/op-identity-root up`.\n- The chatbot container was started by hand.\n- The old 3tched-fs sv has a `down` file.\n- /etc/fstab mounts Raccoon by UUID 2dcac52c…; backup is /etc/fstab.bak-20260927.\n- The identity-roots and incus-ct-chatbot services exist in source only and need a release (operator steps: workspace release build, seal/persist, build-golden, send/receive, activate).\n\n**4. Oct 1 demo ([[oct1-milestone]]).** Owner chose \"compliant from the start, traceable\".\n- Plan: an offline NIST 800-53 control graph, run in the release window with the bridge down. It writes Cozo at /var/lib/op-dbus/cognitive-memory.db through `CozoGraphShuttle::new_persistent`, `store_node` and `store_edge` (graph_node/graph_edge). Source is compliance_official kind=control chunks (OSCAL XML: control id, title, label prop, `link rel=required|related`).\n- Method→control links go in the OSCAL subid registry `control_refs`; the owner reviews them.\n- UI-render mode is implemented but generated canvases are static by rule. The model marks the intended method per component; the platform attaches controls from the registry (never model-written).\n- Blocker only the owner can clear: test http://10.0.0.4:8080/demo/ from a WireGuard peer and send the \"Tried …\" line.\n- The owner also still needs to choose the demo apps (CMS plus others).\n\n**5. Knowledge first, then chain history.**\n- Chain vectors: 84,946 real embeddings in /var/lib/opdbus/snowball/vectors. HOLD: the owner wants the embedding text reviewed first (add outcome and actor role, drop the block number) and the Cozo graph built at ingest.\n- Ingest plan: a local receive subvolume acts as the replica (btrfs send SNP-* → local receive → `op-chain-vectors ingest`). Do NOT set OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN.\n- Accountability gap: `context_bundle.rs` semantic_recall searches `user_memory`, which is empty, not `snowball_footprints`. It needs a read-only snowball search method under `snowball.read`, scoped to the agent on trial plus the caller.\n\n**6. The CMS generated on 2026-08-21** came from the Codex session (GPT-5.6), not Claude.\n- Recovered spec: /srv/git/3tched.com/references/recovered/cms-aug21.spec.json (uncommitted). 43 elements, old catalog, `$state` bindings; regenerate it in UI-render mode.\n- Rated about 8/10 as a design and about 3/10 as a CMS. The backend is an extension (one `cms` plugin on project documents, grants, chain and ledger); media, public delivery and a rich-text editor are the stretches.\n\n**7. NotebookLM.** The `nlm` CLI works. A 141-source notebook (gpt-5.6-sol) times out on the default query timeout, so the notebook_lm plugin needs a longer timeout. Add a SIGNALS row for this (not written yet).\n"}},"apiBlockIndex":2,"requestId":"req_011CfUtWDLNuP5GEHkK5DTah","type":"assistant","uuid":"c61d1d3f-456c-46c2-96ae-b30ed401d59d","timestamp":"2026-09-28T00:27:04.074Z","advisorModel":"claude-opus-5-5","effort":"xhigh","perTurnEffort":"xhigh","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
+    docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:3957:{"parentUuid":"c61d1d3f-456c-46c2-96ae-b30ed401d59d","isSidechain":false,"promptId":"441e06d2-afda-4834-b04b-2574910da018","type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_01P7wvnz12qBjstZzEnZ6p55","type":"tool_result","content":"File created successfully at: /home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md"}]},"uuid":"4a1d8286-a2cb-42f1-9f30-e04fb8b30700","timestamp":"2026-09-28T00:27:04.157Z","toolUseResult":{"type":"create","filePath":"/home/jeremy/.claude/projects/-srv-git-odbus-verified/memory/handoff-2026-09-28.md","content":"---\nname: handoff-2026-09-28\ndescription: \"In-flight state at session end 2026-09-28: Rust 2024 upgrade uncommitted, Oct 1 demo plan, knowledge graph plan, chain-vector hold, CMS recovered, live host state\"\nmetadata:\n  node_type: memory\n  type: project\n  originSessionId: 3035bc0a-c31b-4328-b44b-4f0db89dc70f\n  modified: 2026-09-28T00:27:04.132Z\n---\n\nSession 3035bc0a ended at 92% context on 2026-09-28 ~00:30 UTC. Resume from here.\n\n**1. Rust 2024 upgrade: IN PROGRESS, UNCOMMITTED (about 187 files in odbus-verified).** Owner approved workspace-wide cargo for it.\n- Done: `cargo fix --edition` (67 files; behaviour-preserving if-let→match and `expr_2021` rewrites). Workspace `edition = \"2024\"`; all 37 crates use `edition.workspace = true`, including 3tched-fs. A temporary `rustfmt.toml` pins `style_edition = \"2021\"`.\n- Running at handoff: a Haiku job doing `cargo clippy --fix` (edition 2024 turns 44 nested `if let` into let-chains and hits 1 let_and_return), then fmt, clippy -D warnings and workspace tests. Its log is in the ephemeral scratchpad `verify-2024b.log`, so rerun /verify if that log is gone.\n- Next: when /verify is green, commit `build(workspace)!: move to the Rust 2024 edition`. Then delete `rustfmt.toml`, run `cargo fmt --all`, and commit `style(workspace): reformat in the 2024 style`.\n- Drop order: 289 tail-expression drop-order warnings, 66 of them involving locks. The transaction and publication sites were reviewed: under 2024 the temporary drops while the local lock is held, which is safe.\n\n**2. Committed today on main, NOT pushed.**\n- odbus-verified: 587fb64, 355b643, b524da9 (3tchedFS import merge), 77c11ce, 0527cbe, 36ea8e0.\n- 3tched.com: 661dc35, 4b5a258, 6bdd87a, 2decab6.\n- /srv/git/3tchedFS is superseded (full history now lives in odbus-verified) and can be archived.\n\n**3. Live host state (manual; see OD-86).**\n- Identity 414fbc56 runs on overlay(Raccoon ro idmapped, device upper). Its lungs are at /run/opdbus-lungs/<session>, served by /srv/git/odbus-verified/target/release/3tched-fs.\n- Brought up by `sudo env THREETCHED_FS=… deploy/runit/libexec-3tched/op-identity-root up`.\n- The chatbot container was started by hand.\n- The old 3tched-fs sv has a `down` file.\n- /etc/fstab mounts Raccoon by UUID 2dcac52c…; backup is /etc/fstab.bak-20260927.\n- The identity-roots and incus-ct-chatbot services exist in source only and need a release (operator steps: workspace release build, seal/persist, build-golden, send/receive, activate).\n\n**4. Oct 1 demo ([[oct1-milestone]]).** Owner chose \"compliant from the start, traceable\".\n- Plan: an offline NIST 800-53 control graph, run in the release window with the bridge down. It writes Cozo at /var/lib/op-dbus/cognitive-memory.db through `CozoGraphShuttle::new_persistent`, `store_node` and `store_edge` (graph_node/graph_edge). Source is compliance_official kind=control chunks (OSCAL XML: control id, title, label prop, `link rel=required|related`).\n- Method→control links go in the OSCAL subid registry `control_refs`; the owner reviews them.\n- UI-render mode is implemented but generated canvases are static by rule. The model marks the intended method per component; the platform attaches controls from the registry (never model-written).\n- Blocker only the owner can clear: test http://10.0.0.4:8080/demo/ from a WireGuard peer and send the \"Tried …\" line.\n- The owner also still needs to choose the demo apps (CMS plus others).\n\n**5. Knowledge first, then chain history.**\n- Chain vectors: 84,946 real embeddings in /var/lib/opdbus/snowball/vectors. HOLD: the owner wants the embedding text reviewed first (add outcome and actor role, drop the block number) and the Cozo graph built at ingest.\n- Ingest plan: a local receive subvolume acts as the replica (btrfs send SNP-* → local receive → `op-chain-vectors ingest`). Do NOT set OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN.\n- Accountability gap: `context_bundle.rs` semantic_recall searches `user_memory`, which is empty, not `snowball_footprints`. It needs a read-only snowball search method under `snowball.read`, scoped to the agent on trial plus the caller.\n\n**6. The CMS generated on 2026-08-21** came from the Codex session (GPT-5.6), not Claude.\n- Recovered spec: /srv/git/3tched.com/references/recovered/cms-aug21.spec.json (uncommitted). 43 elements, old catalog, `$state` bindings; regenerate it in UI-render mode.\n- Rated about 8/10 as a design and about 3/10 as a CMS. The backend is an extension (one `cms` plugin on project documents, grants, chain and ledger); media, public delivery and a rich-text editor are the stretches.\n\n**7. NotebookLM.** The `nlm` CLI works. A 141-source notebook (gpt-5.6-sol) times out on the default query timeout, so the notebook_lm plugin needs a longer timeout. Add a SIGNALS row for this (not written yet).\n","structuredPatch":[],"originalFile":null,"userModified":false,"memdirStamped":true},"sourceToolAssistantUUID":"c61d1d3f-456c-46c2-96ae-b30ed401d59d","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
     docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:3970:{"parentUuid":"747be352-4c28-4a40-8657-289b7c03c793","isSidechain":false,"message":{"model":"claude-opus-5-5","id":"msg_011CfUtXyRHKnE6vNCTFExyR","type":"message","role":"assistant","content":[{"type":"text","text":"The handoff is saved in memory as **\"Handoff 2026-09-28 — READ FIRST\"**, so the next session loads it automatically.\n\nWhat it covers:\n1. **The Rust 2024 upgrade is not committed yet.** About 187 files are changed in the working tree. The worker is still applying clippy's fixes, then runs the full `/verify`. Once that's green: one commit for the edition switch, then remove the temporary `rustfmt.toml` and commit the 2024-style reformat separately. Please don't reset or stash the working tree before then.\n2. **Today's commits are all on `main` and none are pushed:** six in odbus-verified and four in 3tched.com. `/srv/git/3tchedFS` can be archived, since all its history now lives in odbus-verified.\n3. **Live host state:** your identity runs on the overlay root with its lungs mounted. That was set up by hand, so a reboot needs `op-identity-root up` until the release ships the boot services.\n4. **The Oct 1 plan:** traceable compliance, starting with the NIST control graph written into Cozo in the release window while the bridge is down, plus `control_refs` on the demo apps' methods, which you'll review.\n5. **Chain vectors are on hold** until you've reviewed the embedding text. Ingest will go through a local receive subvolume acting as the replica.\n6. **The recovered CMS** is at `3tched.com/references/recovered/cms-aug21.spec.json`, not committed. It came from the Aug 21 Codex session, not Claude.\n7. **NotebookLM works,** but big notebooks time out on the default query timeout. That still needs a SIGNALS row, which I didn't get to.\n\nWaiting on you:\n- Open `http://10.0.0.4:8080/demo/` from your WireGuard machine. If the connect screen appears, send the \"Tried …\" line.\n- Pick the demo apps.\n- Check the 3tched.com commits before you push."}],"container":null,"stop_reason":"end_turn","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":415,"cache_read_input_tokens":919887,"output_tokens":694,"output_tokens_details":{"thinking_tokens":48},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":415,"ephemeral_5m_input_tokens":0},"inference_geo":"not_available","iterations":[{"input_tokens":2,"output_tokens":694,"cache_read_input_tokens":919887,"cache_creation_input_tokens":415,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":415},"type":"message"}],"speed":"standard"},"input_transformations":[],"diagnostics":null,"context_management":null},"apiBlockIndex":1,"requestId":"req_011CfUtXxvmWYxnuWXqHb3YD","type":"assistant","uuid":"7b55c8c3-aafe-4b96-b5c0-cd08f8bdd4bc","timestamp":"2026-09-28T00:27:15.216Z","advisorModel":"claude-opus-5-5","effort":"xhigh","perTurnEffort":"xhigh","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
     docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:3982:{"parentUuid":"461bca04-58e8-4fac-a95f-0c4acf7b10b5","isSidechain":false,"message":{"model":"claude-opus-5-5","id":"msg_011CfUtZJbEE7it5VJsuj4jj","type":"message","role":"assistant","content":[{"type":"tool_use","id":"toolu_01K4cUaQNZfBxz3MykZRPapk","name":"Bash","input":{"command":"ID=$(timeout 60 nlm notebook list 2>/dev/null | jq -r '.[] | select(.title==\"Conversations & Tools — claude-opus-5\") | .id'); echo \"notebook $ID\"; timeout 170 nlm notebook query \"$ID\" 'Do the sources mention an identity \"lungs\" (3tchedFS call files), a Raccoon read-only overlay root, or op-identity-root? What is the latest date covered by the sources? Answer briefly.' 2>&1 | jq -r '.answer // .' 2>/dev/null | head -12","description":"Ask the Claude Opus 5 notebook about this conversation's topics","timeout":260000},"caller":{"type":"direct"}}],"container":null,"stop_reason":"tool_use","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":2,"cache_creation_input_tokens":1025,"cache_read_input_tokens":921044,"output_tokens":900,"output_tokens_details":{"thinking_tokens":594},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":1025,"ephemeral_5m_input_tokens":0},"inference_geo":"not_available","iterations":[{"input_tokens":2,"output_tokens":900,"cache_read_input_tokens":921044,"cache_creation_input_tokens":1025,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":1025},"type":"message"}],"speed":"standard"},"input_transformations":[],"diagnostics":null,"context_management":null},"wireToolInputs":{"toolu_01K4cUaQNZfBxz3MykZRPapk":{"command":"ID=$(timeout 60 nlm notebook list 2>/dev/null | jq -r '.[] | select(.title==\"Conversations & Tools — claude-opus-5\") | .id'); echo \"notebook $ID\"; timeout 170 nlm notebook query \"$ID\" 'Do the sources mention an identity \"lungs\" (3tchedFS call files), a Raccoon read-only overlay root, or op-identity-root? What is the latest date covered by the sources? Answer briefly.' 2>&1 | jq -r '.answer // .' 2>/dev/null | head -12","description":"Ask the Claude Opus 5 notebook about this conversation's topics","timeout":260000}},"apiBlockIndex":2,"requestId":"req_011CfUtZHx2YTnh3G7AQQU8t","type":"assistant","uuid":"7e4a701c-e2f1-42f1-a1a3-e31ea0d47415","timestamp":"2026-09-28T00:27:34.531Z","advisorModel":"claude-opus-5-5","effort":"xhigh","perTurnEffort":"xhigh","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
     docs/CONVERSATION-TRANSCRIPT-2026-09-28-3035bc0a.jsonl:4007:{"parentUuid":"0f921e89-b3dd-4f1b-92ea-5c6698318409","isSidechain":false,"promptId":"b31c26fe-e33e-4d54-aa8c-161f50c165b6","type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_018WeU9XamJkuiBBCCiDn4zm","type":"tool_result","content":"notebook 1a494899-d201-4687-9a66-8704c52b2f9c\nBased on your sources:\n\n* **Identity \"lungs\" (3tchedFS call files):** **No**, the sources do not mention an identity named \"lungs\" [1-3].\n* **Raccoon read-only overlay root:** **No**, the sources mention `raccoon` as an Incus seed/container image [4, 5], but they do not mention a \"Raccoon read-only overlay root.\"\n* **`op-identity-root`:** **No**, the sources do not mention `op-identity-root` (they do reference related components like `op-identity`, `op-identity-headers`, and `op-identity-sled`) [6-8].\n* **Latest date covered:** The latest date covered in the sources is **September 4, 2026** [9, 10].\n\n---\n🔍 *Would you like a deeper breakdown of the identity architecture or the timeline of events recorded in your sources?*\n\n[exited with code 0]","is_error":false}]},"uuid":"19ee5d9f-3268-440d-9141-59714d953d9a","timestamp":"2026-09-28T00:29:12.986Z","toolUseResult":{"stdout":"notebook 1a494899-d201-4687-9a66-8704c52b2f9c\nBased on your sources:\n\n* **Identity \"lungs\" (3tchedFS call files):** **No**, the sources do not mention an identity named \"lungs\" [1-3].\n* **Raccoon read-only overlay root:** **No**, the sources mention `raccoon` as an Incus seed/container image [4, 5], but they do not mention a \"Raccoon read-only overlay root.\"\n* **`op-identity-root`:** **No**, the sources do not mention `op-identity-root` (they do reference related components like `op-identity`, `op-identity-headers`, and `op-identity-sled`) [6-8].\n* **Latest date covered:** The latest date covered in the sources is **September 4, 2026** [9, 10].\n\n---\n🔍 *Would you like a deeper breakdown of the identity architecture or the timeline of events recorded in your sources?*\n\n[exited with code 0]","stderr":"","interrupted":false,"isImage":false,"noOutputExpected":false},"sourceToolAssistantUUID":"0f921e89-b3dd-4f1b-92ea-5c6698318409","session_id":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","userType":"external","entrypoint":"cli","cwd":"/srv/git/odbus-verified","sessionId":"3035bc0a-c31b-4328-b44b-4f0db89dc70f","version":"2.1.283","gitBranch":"main"}
@@ -3208,7 +3208,7 @@ The live chatbot is attached to `/run/opdbus/lungs/lungs.sock`, and the bridge i
     #   POOL=identity-roots                    Incus dir pool for identity roots
     #   LUNGS_RUN=/run/opdbus-lungs
     #   LUNGS_SOCKET=/run/opdbus/lungs.sock    the bridge's shared lungs socket
-    #   THREETCHED_FS=/usr/local/bin/threetched-fs    the release binary
+    #   THREETCHED_FS=/usr/local/bin/3tched-fs    the release binary
     set -u
     
     RACCOON_UUID=${RACCOON_UUID:-2dcac52c-fb0b-418a-95a4-cb6eacc80209}
@@ -3220,7 +3220,7 @@ The live chatbot is attached to `/run/opdbus/lungs/lungs.sock`, and the bridge i
     POOL_PATH=/var/lib/incus/storage-pools/$POOL/containers
     LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
     LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs.sock}
-    THREETCHED_FS=${THREETCHED_FS:-/usr/local/bin/threetched-fs}
+    THREETCHED_FS=${THREETCHED_FS:-/usr/local/bin/3tched-fs}
     STATE=/dev/shm/opdbus/state
     CATALOG=/dev/shm/opdbus/plugin-blobs
     
@@ -3389,7 +3389,7 @@ I’ll trace what still uses the shared container listener and how those calls a
     crates/op-grpc-bridge/src/shared_socket.rs:34:pub const DEFAULT_SOCKET_PATH: &str = "/run/ghostbridge/container.sock";
     crates/op-grpc-bridge/src/shared_socket_tests.rs:9:        root.path().join("container.sock"),
     crates/op-grpc-bridge/src/shared_socket_tests.rs:390:        root.path().join("container.sock"),
-    crates/op-grpc-bridge/src/grpc_server.rs:1021:/// the tched_router bridge (`run_tched_router_server`, `:8090` + `container.sock`) — builds
+    crates/op-grpc-bridge/src/grpc_server.rs:1021:/// the threetched bridge (`run_threetched_server`, `:8090` + `container.sock`) — builds
     ✓ • 436ms
 
 ## Activity
@@ -3594,7 +3594,7 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
     projection, validates its authored claims and forwards the exact decoded SID1
     bytes. The request also carries the schema-declared capability metadata.
     
-    The [HTTP adapter](../../../crates/op-web/src/handlers/tched_router.rs) accepts
+    The [HTTP adapter](../../../crates/op-web/src/handlers/threetched.rs) accepts
     exactly one bounded canonical SID1/OIA1 header and forwards the caller's bytes.
     It does not fall back to the server's identity. Legacy non-plugin service
     interceptors remain unchanged. The new built-in-client TLS fixture exercises
@@ -3708,7 +3708,7 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
     /usr/local/libexec/op-dbus/bin/op-grpc-bridge
     run: op-grpc-bridge: (pid 2168) 143675s; run: log: (pid 2093) 143675s
     lrwxrwxrwx 1 root root 22 Oct 18 16:45 /etc/runit/runsvdir/default/op-grpc-bridge -> /etc/sv/op-grpc-bridge
-    //! Axum gRPC/gRPC-Web host for the tched_router plugin schema.
+    //! Axum gRPC/gRPC-Web host for the threetched plugin schema.
     //!
     //! Serves the plugin-owned schema JSON on:
     //!   - host native gRPC over Unix socket `/run/opdbus/grpc.sock`
@@ -3750,16 +3750,16 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
     use crate::schema_router::SchemaRouter;
     use crate::tracing::{GhostbridgeTraceLayer, TraceContext};
     
-    use crate::proto::tched_router::{
+    use crate::proto::threetched::{
         GetSchemaRequest, SchemaEvent, SchemaResponse, WatchSchemaRequest,
-        tched_router_service_server::{TchedRouterService, TchedRouterServiceServer},
+        threetched_service_server::{ThreetchedService, ThreetchedServiceServer},
     };
     
     /// Host-local native gRPC UDS (op-web, zbusctl, operators on the host).
     const DEFAULT_UNIX_SOCKET: &str = "/run/opdbus/grpc.sock";
     /// Shared container socket — bind-mounted into NIC-less CTs as `/run/ghostbridge`.
     const DEFAULT_SHARED_SOCKET: &str = crate::shared_socket::DEFAULT_SOCKET_PATH;
-    const DEFAULT_SCHEMA_PLUGIN_ID: &str = "tched_router";
+    const DEFAULT_SCHEMA_PLUGIN_ID: &str = "threetched";
     /// The authenticated shared TCP door. Cognitive methods are in-process routes
     /// on this listener; they do not own a separate bind address.
     const DEFAULT_BIND_ADDR: &str = "0.0.0.0:8090";
@@ -3775,7 +3775,7 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
     const DEFAULT_UI_WORKSPACE_SHM_DIR: &str = "/dev/shm/opdbus/ui-workspaces";
     const DEFAULT_GENERATION_SHM_DIR: &str = "/dev/shm/opdbus/generation-jobs";
     
-    /// Runtime configuration for the tched_router Axum host.
+    /// Runtime configuration for the threetched Axum host.
     #[derive(Clone, Debug)]
     pub struct ServerConfig {
         pub plugin_id: String,
@@ -3784,7 +3784,7 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
         pub ui_workspace_shm_dir: PathBuf,
         /// Private generation documents are separate from public router observations.
         pub generation_shm_dir: PathBuf,
-        /// Host-local gRPC UDS (`TCHED_ROUTER_UNIX_SOCKET`, default `/run/opdbus/grpc.sock`).
+        /// Host-local gRPC UDS (`THREETCHED_UNIX_SOCKET`, default `/run/opdbus/grpc.sock`).
         pub unix_socket: PathBuf,
         /// Shared container UDS (`GHOSTBRIDGE_SOCKET_PATH`, default
         /// `/run/ghostbridge/container.sock`). Served with the same route set.
@@ -3792,10 +3792,10 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
         pub shared_socket: PathBuf,
         /// TCP bind addresses (comma-separated). **Always TLS** — zero-trust transport
         /// policy forbids plaintext gRPC on TCP, even on loopback.
-        /// Set via `TCHED_ROUTER_BIND_ADDR` or `GRPC_BIND`; default `0.0.0.0:8090`.
+        /// Set via `THREETCHED_BIND_ADDR` or `GRPC_BIND`; default `0.0.0.0:8090`.
         pub bind_addr: String,
         /// TLS identity for the TCP door. `None` aborts startup with a clear error
-        /// unless `TCHED_ROUTER_DEV_SELF_SIGNED=1` is set (dev/CI only — never production).
+        /// unless `THREETCHED_DEV_SELF_SIGNED=1` is set (dev/CI only — never production).
         pub tls_identity: Option<PemIdentity>,
         /// Optional browser-facing certificate for one existing private/loopback TCP bind.
         /// This never adds a listener or changes the route set.
@@ -3862,18 +3862,18 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
     impl ServerConfig {
         /// Load configuration from environment variables, falling back to defaults.
         pub fn from_env() -> Self {
-            let bind_addr = std::env::var("TCHED_ROUTER_BIND_ADDR")
+            let bind_addr = std::env::var("THREETCHED_BIND_ADDR")
                 .or_else(|_| std::env::var("GRPC_BIND"))
                 .unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
             let (browser_tls_override, browser_tls_override_error) = match load_browser_tls_override(
                 &bind_addr,
-                std::env::var("TCHED_ROUTER_BROWSER_TLS_BIND_ADDR")
+                std::env::var("THREETCHED_BROWSER_TLS_BIND_ADDR")
                     .ok()
                     .as_deref(),
-                std::env::var("TCHED_ROUTER_BROWSER_TLS_CERT_FILE")
+                std::env::var("THREETCHED_BROWSER_TLS_CERT_FILE")
                     .ok()
                     .as_deref(),
-                std::env::var("TCHED_ROUTER_BROWSER_TLS_KEY_FILE")
+                std::env::var("THREETCHED_BROWSER_TLS_KEY_FILE")
                     .ok()
                     .as_deref(),
             ) {
@@ -3892,7 +3892,7 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
                         .unwrap_or_else(|_| DEFAULT_GENERATION_SHM_DIR.to_string()),
                 ),
                 unix_socket: PathBuf::from(
-                    std::env::var("TCHED_ROUTER_UNIX_SOCKET")
+                    std::env::var("THREETCHED_UNIX_SOCKET")
                         .unwrap_or_else(|_| DEFAULT_UNIX_SOCKET.to_string()),
                 ),
                 shared_socket: PathBuf::from(
@@ -3937,7 +3937,7 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
             crate::shared_socket::SharedListenerController::open(unix_socket.clone())?;
         unix_controller.start(128)?;
         let unix_incoming = unix_controller.take_incoming()?;
-        info!(path = %unix_socket.display(), "tched_router native gRPC listening on Unix socket");
+        info!(path = %unix_socket.display(), "threetched native gRPC listening on Unix socket");
     
         // Shared container socket — same gRPC surface, path bind-mounted into CTs.
         // Skip a second bind when env points both knobs at the same path.
@@ -4001,7 +4001,7 @@ Understood: the control-plane chatbot must use the decoy WireGuard server’s cu
             let listener = tokio::net::TcpListener::bind(bind_addr)
                 .await
                 .map_err(|error| anyhow::anyhow!("cannot bind TCP fabric at {bind_addr}: {error}"))?;
-            info!(addr = %bind_addr, "tched_router TLS gRPC/gRPC-Web listening on TCP");
+            info!(addr = %bind_addr, "threetched TLS gRPC/gRPC-Web listening on TCP");
             tcp_tasks.push(tokio::spawn(serve_upgradeable_tcp(
                 listener,
                 tls,
@@ -5156,13 +5156,13 @@ When you say **“the wajke location,”** do you mean the **same location** as 
 ## Activity
 
     $ sudo -n find /var/lib /opt /run/mounts -xdev -type f \( -name '*.img' -o -name '*.raw' \) -printf '%p %s bytes\n' 2>/dev/null | head -100
-    /var/lib/opdbus-release/protected-recovery-20261018T102801Z/staging/var/lib/tched-router/home/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/brotli-decompressor-5.0.3/src/bin/ipsum.raw 5018 bytes
+    /var/lib/opdbus-release/protected-recovery-20261018T102801Z/staging/var/lib/threetched/home/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/brotli-decompressor-5.0.3/src/bin/ipsum.raw 5018 bytes
     /var/lib/threetched/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/brotli-decompressor-5.0.3/src/bin/ipsum.raw 5018 bytes
     /var/lib/threetched/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wacore-0.7.0/src/voip/mlow/testdata/harm_postfilter_vectors.raw 857124 bytes
     /var/lib/threetched/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wacore-0.7.0/src/voip/mlow/testdata/hp_postfilter_vectors.raw 1297564 bytes
     /var/lib/threetched/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wacore-0.7.0/src/voip/mlow/testdata/ref_usesmpl_expected.raw 211200 bytes
     /var/lib/threetched/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wacore-0.7.0/src/voip/mlow/testdata/synth_mic.raw 211200 bytes
-    /var/lib/tched-router/home/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/brotli-decompressor-5.0.3/src/bin/ipsum.raw 5018 bytes
+    /var/lib/threetched/home/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/brotli-decompressor-5.0.3/src/bin/ipsum.raw 5018 bytes
     /var/lib/op-dbus/identity-cozo/devices/3tchedCtlChatbot.img 21474836480 bytes
     ✓ • 13.76s
 
@@ -5365,7 +5365,7 @@ Understood. Provisioning must perform the disk operations through `incus exec` i
 
     $ sudo -n incus exec 3tchedCtlChatbot -- lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS; sudo -n incus exec 3tchedCtlChatbot -- sh -c 'for c in lsblk sfdisk parted mkfs.btrfs mkfs.ext4 btrfs; do command -v "$c" || true; done'; sudo -n incus config device list 3tchedCtlChatbot
     NAME    SIZE TYPE FSTYPE MOUNTPOINTS
-    loop0   150G loop        /var/lib/tched-router
+    loop0   150G loop        /var/lib/threetched
                              /opt/run-mounts/persist
                              /dev/.incus-systemd-credentials
                              /
@@ -5657,7 +5657,7 @@ I’ll check the existing subvolume names and identity-sled layout so the clean 
     ├─/opt/run-mounts/persist                     /dev/loop0[/custom/default_3tchedCtlChatbot-persist]            btrfs
     │ ├─/run/mount/threetched                     threetched                                                      fuse.3tchedFS
     │ ├─/run/mount/3tchedfs                       3tchedFS                                                        fuse.3tchedFS
-    └─/var/lib/tched-router                       /dev/loop0[/custom/default_3tchedCtlChatbot-persist/threetched] btrfs
+    └─/var/lib/threetched                       /dev/loop0[/custom/default_3tchedCtlChatbot-persist/threetched] btrfs
     ✓ • 128ms
 
 ## Activity
@@ -6049,7 +6049,7 @@ I’ll proceed with a fresh `CtlChatbot3tched` and keep the current chatbot runn
     11:Do not treat `deploy/scripts/provision-workspace-subscriber.sh` as a working end-to-end provisioner against the current deployed namespace. Its older identity flow has independent path, operation-receipt and adoption-plan incompatibilities. The newer partitioned-disk flow has guest-FUSE and upgrade-root lifecycle defects. Direct native control and grant edits also fall outside the canonical D-Bus admission/readback path.
     13:The two flows are deliberately different: the legacy identity mode expects an unpartitioned leaf and plan versions 2/3; the manual GPT/overlay path uses version 4. Version 4 and its `partitioned_overlay` field are recognized by the owner. Findings about one flow are not assertions that the other has the same defect. Later-phase legacy findings are latent behind its earlier failures, not observed live outages.
     19:Location: `deploy/scripts/provision-workspace-subscriber.sh:331-343`, callers at `396-401`, `454-455`, `493-507`.
-    21:`lungs_call` writes and closes `operations/<method>/call`, then looks for sibling `error` and `result` files. Current `crates/threetched-fs/src/namespace.rs:1027-1037` projects only `call`. The live `inspect_provision_preflight` directory likewise contains only `call`, `input.schema.json`, `metadata.json`, and `output.schema.json`.
+    21:`lungs_call` writes and closes `operations/<method>/call`, then looks for sibling `error` and `result` files. Current `crates/3tched-fs/src/namespace.rs:1027-1037` projects only `call`. The live `inspect_provision_preflight` directory likewise contains only `call`, `input.schema.json`, `metadata.json`, and `output.schema.json`.
     32:- `provision-workspace-subscriber.sh:290,324-328`: `/usr/local/bin/3tched-fs`, `/run/mount/3tchedFS`.
     41:Location: `provision-workspace-subscriber.sh:459-474`, especially `principal_group` at line 464.
     43:The digest-pinned plan is decoded as `CleanPlan`, which has `#[serde(deny_unknown_fields)]` and no `principal_group` field (`crates/op-grpc-bridge/src/identity_clean_provision.rs:52-77,575`). A valid digest selects this decoder through `identity_seed_provision.rs:719-728`.
@@ -7338,7 +7338,7 @@ I’ll fix the provisioning and socket path in source, then build, prepare and a
     
     Location: `deploy/scripts/provision-workspace-subscriber.sh:331-343`, callers at `396-401`, `454-455`, `493-507`.
     
-    `lungs_call` writes and closes `operations/<method>/call`, then looks for sibling `error` and `result` files. Current `crates/threetched-fs/src/namespace.rs:1027-1037` projects only `call`. The live `inspect_provision_preflight` directory likewise contains only `call`, `input.schema.json`, `metadata.json`, and `output.schema.json`.
+    `lungs_call` writes and closes `operations/<method>/call`, then looks for sibling `error` and `result` files. Current `crates/3tched-fs/src/namespace.rs:1027-1037` projects only `call`. The live `inspect_provision_preflight` directory likewise contains only `call`, `input.schema.json`, `metadata.json`, and `output.schema.json`.
     
     Terminal receipt/diagnostic bytes are per-open-handle (`fuse_fs.rs:600-623`), and the supported mounted client writes, fsyncs, seeks and reads the same descriptor (`mounted.rs:394-410`). Closing the wrapper's write-only descriptor discards its access to that receipt. Even after correcting paths, the initial inventory gate cannot consume the current interface.
     
@@ -7460,9 +7460,9 @@ The live system’s clean-provisioning code is on a different source line from t
     init: runit (sv)
     binaries: 34
     threetched-sha256: ee56fd315df8f86ba5ffc505082a039ee45b2b0cb8aca2c059be7c7675f29a69
-    tched-router-manifest-sha256: aa24f7ebad141004742c6306c85df7904dfe2bd21379fc251ea4fa865eb0655c
-    tched-router-bootstrap-config-sha256: b3a0a5f71f1107e4f8447ec267a8883ec79366f11565143b23300826cd82560e
-    tched-router-bootstrap-skills-sha256: cfc51babb8750f6c27ae6d48fdd04216001e4907d34d6a22b52fcbe0c111a0ef
+    threetched-manifest-sha256: aa24f7ebad141004742c6306c85df7904dfe2bd21379fc251ea4fa865eb0655c
+    threetched-bootstrap-config-sha256: b3a0a5f71f1107e4f8447ec267a8883ec79366f11565143b23300826cd82560e
+    threetched-bootstrap-skills-sha256: cfc51babb8750f6c27ae6d48fdd04216001e4907d34d6a22b52fcbe0c111a0ef
     ui-source-repo: /srv/git/3tched.com
     ui-source-head: b25f131433ecc7b5a0f2d8e17ea960c3ae5de717
     ui-source-worktree: clean-head
@@ -7846,7 +7846,7 @@ You’re right. You asked for the histories to be merged, and I should not build
     //! - RegistrationService — dropped, super old, fresh start later.
     //!
     //! Deliberately gone (the old pollution): build-time live-host schema
-    //! capture, generated per-plugin protos, chat-router/tched-router legacy,
+    //! capture, generated per-plugin protos, chat-router/threetched legacy,
     //! and the ~140 dispatch modules. Old files remain on disk unreferenced;
     //! remove them with `git rm` when convenient — they no longer compile
     //! into this crate (see `autobins`/`autotests` in Cargo.toml).
@@ -7975,7 +7975,7 @@ You’re right. You asked for the histories to be merged, and I should not build
     # model_registry maintains the root-owned provider list (one TOML authority
     # for the whole provider set, including its credential-gate columns).
     toml = { workspace = true }
-    # HTTP client used by the tched_router runtime integration. Cognitive-tool dispatch
+    # HTTP client used by the threetched runtime integration. Cognitive-tool dispatch
     # itself is in-process behind MutationEngine and does not use this dependency.
     reqwest = { workspace = true }
     
@@ -8330,32 +8330,32 @@ You’re right. You asked for the histories to be merged, and I should not build
       "capabilities": [
         "cap.data.cozo.system-graph.read@v1",
         "cap.identity.sled.self.read@v1",
-        "cap.software.3tched-router.chat@v1",
-        "cap.software.3tched-router.config-schema.read@v1",
-        "cap.software.3tched-router.config.read@v1",
-        "cap.software.3tched-router.config.write@v1",
-        "cap.software.3tched-router.model.set@v1",
-        "cap.software.3tched-router.models.read@v1",
-        "cap.software.3tched-router.provider.set@v1",
-        "cap.software.3tched-router.providers.read@v1",
-        "cap.software.3tched-router.route.resolve@v1",
-        "cap.software.3tched-router.router.read@v1",
-        "cap.software.3tched-router.routes.read@v1",
-        "cap.software.3tched-router.state.read@v1",
-        "cap.software.3tched-router.structured-output.read@v1",
-        "cap.software.3tched-router.tools.read@v1",
-        "cap.software.3tched-router.ui-surfaces.read@v1",
-        "cap.software.tched-router.agent.route.self.read@v1",
-        "cap.software.tched-router.catalog.selection.set@v1",
-        "cap.software.tched-router.chat@v1",
-        "cap.software.tched-router.model.binding.read@v1",
-        "cap.software.tched-router.model.set@v1",
-        "cap.software.tched-router.models.read@v1",
-        "cap.software.tched-router.provider.set@v1",
-        "cap.software.tched-router.providers.read@v1",
-        "cap.software.tched-router.router.read@v1",
-        "cap.software.tched-router.router.write@v1",
-        "cap.software.tched-router.selection.set@v1",
+        "cap.software.3tched.chat@v1",
+        "cap.software.3tched.config-schema.read@v1",
+        "cap.software.3tched.config.read@v1",
+        "cap.software.3tched.config.write@v1",
+        "cap.software.3tched.model.set@v1",
+        "cap.software.3tched.models.read@v1",
+        "cap.software.3tched.provider.set@v1",
+        "cap.software.3tched.providers.read@v1",
+        "cap.software.3tched.route.resolve@v1",
+        "cap.software.3tched.router.read@v1",
+        "cap.software.3tched.routes.read@v1",
+        "cap.software.3tched.state.read@v1",
+        "cap.software.3tched.structured-output.read@v1",
+        "cap.software.3tched.tools.read@v1",
+        "cap.software.3tched.ui-surfaces.read@v1",
+        "cap.software.3tched.agent.route.self.read@v1",
+        "cap.software.3tched.catalog.selection.set@v1",
+        "cap.software.3tched.chat@v1",
+        "cap.software.3tched.model.binding.read@v1",
+        "cap.software.3tched.model.set@v1",
+        "cap.software.3tched.models.read@v1",
+        "cap.software.3tched.provider.set@v1",
+        "cap.software.3tched.providers.read@v1",
+        "cap.software.3tched.router.read@v1",
+        "cap.software.3tched.router.write@v1",
+        "cap.software.3tched.selection.set@v1",
         "chat.context",
         "chat.control_plane",
         "chat_response.respond",
@@ -8398,7 +8398,7 @@ You’re right. You asked for the histories to be merged, and I should not build
     /dev/loop0 / btrfs rw,relatime,idmapped,ssd,discard=async,space_cache=v2,user_subvol_rm_allowed,subvolid=262,subvol=/containers/3tchedCtlChatbot 0 0
     /dev/loop0 /dev/.incus-systemd-credentials btrfs ro,relatime,ssd,discard=async,space_cache=v2,user_subvol_rm_allowed,subvolid=262,subvol=/containers/3tchedCtlChatbot 0 0
     /dev/loop0 /opt/run-mounts/persist btrfs rw,relatime,ssd,discard=async,space_cache=v2,user_subvol_rm_allowed,subvolid=263,subvol=/custom/default_3tchedCtlChatbot-persist 0 0
-    /dev/loop0 /var/lib/tched-router btrfs rw,relatime,ssd,discard=async,space_cache=v2,user_subvol_rm_allowed,subvolid=263,subvol=/custom/default_3tchedCtlChatbot-persist 0 0
+    /dev/loop0 /var/lib/threetched btrfs rw,relatime,ssd,discard=async,space_cache=v2,user_subvol_rm_allowed,subvolid=263,subvol=/custom/default_3tchedCtlChatbot-persist 0 0
     threetched /run/mount/threetched fuse.3tchedFS rw,nosuid,nodev,noexec,noatime,user_id=0,group_id=0,default_permissions,allow_other 0 0
     3tchedFS /run/mount/3tchedfs fuse.3tchedFS rw,nosuid,nodev,noexec,noatime,user_id=0,group_id=0,default_permissions,allow_other 0 0
     total 7
@@ -8414,32 +8414,32 @@ You’re right. You asked for the histories to be merged, and I should not build
       "capabilities": [
         "cap.data.cozo.system-graph.read@v1",
         "cap.identity.sled.self.read@v1",
-        "cap.software.3tched-router.chat@v1",
-        "cap.software.3tched-router.config-schema.read@v1",
-        "cap.software.3tched-router.config.read@v1",
-        "cap.software.3tched-router.config.write@v1",
-        "cap.software.3tched-router.model.set@v1",
-        "cap.software.3tched-router.models.read@v1",
-        "cap.software.3tched-router.provider.set@v1",
-        "cap.software.3tched-router.providers.read@v1",
-        "cap.software.3tched-router.route.resolve@v1",
-        "cap.software.3tched-router.router.read@v1",
-        "cap.software.3tched-router.routes.read@v1",
-        "cap.software.3tched-router.state.read@v1",
-        "cap.software.3tched-router.structured-output.read@v1",
-        "cap.software.3tched-router.tools.read@v1",
-        "cap.software.3tched-router.ui-surfaces.read@v1",
-        "cap.software.tched-router.agent.route.self.read@v1",
-        "cap.software.tched-router.catalog.selection.set@v1",
-        "cap.software.tched-router.chat@v1",
-        "cap.software.tched-router.model.binding.read@v1",
-        "cap.software.tched-router.model.set@v1",
-        "cap.software.tched-router.models.read@v1",
-        "cap.software.tched-router.provider.set@v1",
-        "cap.software.tched-router.providers.read@v1",
-        "cap.software.tched-router.router.read@v1",
-        "cap.software.tched-router.router.write@v1",
-        "cap.software.tched-router.selection.set@v1",
+        "cap.software.3tched.chat@v1",
+        "cap.software.3tched.config-schema.read@v1",
+        "cap.software.3tched.config.read@v1",
+        "cap.software.3tched.config.write@v1",
+        "cap.software.3tched.model.set@v1",
+        "cap.software.3tched.models.read@v1",
+        "cap.software.3tched.provider.set@v1",
+        "cap.software.3tched.providers.read@v1",
+        "cap.software.3tched.route.resolve@v1",
+        "cap.software.3tched.router.read@v1",
+        "cap.software.3tched.routes.read@v1",
+        "cap.software.3tched.state.read@v1",
+        "cap.software.3tched.structured-output.read@v1",
+        "cap.software.3tched.tools.read@v1",
+        "cap.software.3tched.ui-surfaces.read@v1",
+        "cap.software.3tched.agent.route.self.read@v1",
+        "cap.software.3tched.catalog.selection.set@v1",
+        "cap.software.3tched.chat@v1",
+        "cap.software.3tched.model.binding.read@v1",
+        "cap.software.3tched.model.set@v1",
+        "cap.software.3tched.models.read@v1",
+        "cap.software.3tched.provider.set@v1",
+        "cap.software.3tched.providers.read@v1",
+        "cap.software.3tched.router.read@v1",
+        "cap.software.3tched.router.write@v1",
+        "cap.software.3tched.selection.set@v1",
         "chat.context",
         "chat.control_plane",
         "chat_response.respond",
@@ -8955,7 +8955,7 @@ The merged bridge currently does not wire in its production identity receiver or
 
 ## Activity
 
-    $ sudo -n incus exec 3tchedCtlChatbot -- cat /run/mount/3tchedfs/.3tchedfs.json; sudo -n incus exec 3tchedCtlChatbot -- cat /run/mount/threetched/.3tchedfs.json; rg -n 'expected operation identity mode|operation identity mode' crates/threetched-fs/src
+    $ sudo -n incus exec 3tchedCtlChatbot -- cat /run/mount/3tchedfs/.3tchedfs.json; sudo -n incus exec 3tchedCtlChatbot -- cat /run/mount/threetched/.3tchedfs.json; rg -n 'expected operation identity mode|operation identity mode' crates/3tched-fs/src
     {
       "format": "3tchedfs/1",
       "view_id": "f09939e348fb5806a023f8cc163f7a6808136af86570b3546298da3d319f683f",
@@ -8970,7 +8970,7 @@ The merged bridge currently does not wire in its production identity receiver or
       "local_call_owner_uid": 0,
       "allowed_operator_uid": null,
       "declared_catalog_dir": "/usr/share/op-dbus/lungs-catalog",
-      "invocation": "/plugins/tched_fs/data/invocation/.value.json"
+      "invocation": "/plugins/_3tched_fs/data/invocation/.value.json"
     }
     {
       "format": "3tchedfs/1",
@@ -9535,9 +9535,9 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
        Compiling op-network v1.0.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-network)
        Compiling op-introspection v1.0.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-introspection)
        Compiling op-blob v1.0.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-blob)
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -9549,13 +9549,13 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
        Compiling op-state v1.0.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-state)
        Compiling op-inspector v1.0.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-inspector)
        Compiling op-plugin-lint v1.0.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-plugin-lint)
        Compiling op-dbus-model v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-dbus-model)
        Compiling op-mcp v0.4.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-mcp)
-    warning: `tched-fs` (lib) generated 1 warning (1 duplicate)
+    warning: `_3tched-fs` (lib) generated 1 warning (1 duplicate)
     warning: `op-snowball` (lib) generated 3 warnings (3 duplicates)
        Compiling op-tools v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-tools)
     ✗ (130) • 2m 21s
@@ -9866,18 +9866,18 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
 
 ## Activity
 
-    $ rg -n 'mount must declare the expected operation identity mode|GuestKernel|guest_kernel' crates/threetched-fs/src | head -60; sed -n '240,340p' crates/threetched-fs/src/mounted.rs; rg -n 'identity_sled.write|inspect_provision_preflight' deploy/security/capability-grants.json crates/op-plugins/src/state_plugins/identity_sled.rs | head -30
-    crates/threetched-fs/src/typed_runtime.rs:634:            &MountIdentity::GuestKernel,
-    crates/threetched-fs/src/namespace.rs:20:    GuestKernel,
-    crates/threetched-fs/src/namespace.rs:1325:                MountIdentity::GuestKernel,
-    crates/threetched-fs/src/namespace.rs:1380:        assert_eq!(namespace.mount_identity, MountIdentity::GuestKernel);
-    crates/threetched-fs/src/fuse_fs.rs:187:            Some(Lungs::Socket { .. }) => MountIdentity::GuestKernel,
-    crates/threetched-fs/src/fuse_fs.rs:1444:                "guest_kernel",
-    crates/threetched-fs/src/mounted.rs:110:            MountIdentity::GuestKernel | MountIdentity::Credential => {
-    crates/threetched-fs/src/mounted.rs:113:                    "mount must declare the expected operation identity mode"
-    crates/threetched-fs/src/mounted.rs:899:        for mode in [MountIdentity::GuestKernel, MountIdentity::Credential] {
-    crates/threetched-fs/src/mounted.rs:921:            let other = if mode == MountIdentity::GuestKernel {
-    crates/threetched-fs/src/mounted.rs:924:                MountIdentity::GuestKernel
+    $ rg -n 'mount must declare the expected operation identity mode|GuestKernel|guest_kernel' crates/3tched-fs/src | head -60; sed -n '240,340p' crates/3tched-fs/src/mounted.rs; rg -n 'identity_sled.write|inspect_provision_preflight' deploy/security/capability-grants.json crates/op-plugins/src/state_plugins/identity_sled.rs | head -30
+    crates/3tched-fs/src/typed_runtime.rs:634:            &MountIdentity::GuestKernel,
+    crates/3tched-fs/src/namespace.rs:20:    GuestKernel,
+    crates/3tched-fs/src/namespace.rs:1325:                MountIdentity::GuestKernel,
+    crates/3tched-fs/src/namespace.rs:1380:        assert_eq!(namespace.mount_identity, MountIdentity::GuestKernel);
+    crates/3tched-fs/src/fuse_fs.rs:187:            Some(Lungs::Socket { .. }) => MountIdentity::GuestKernel,
+    crates/3tched-fs/src/fuse_fs.rs:1444:                "guest_kernel",
+    crates/3tched-fs/src/mounted.rs:110:            MountIdentity::GuestKernel | MountIdentity::Credential => {
+    crates/3tched-fs/src/mounted.rs:113:                    "mount must declare the expected operation identity mode"
+    crates/3tched-fs/src/mounted.rs:899:        for mode in [MountIdentity::GuestKernel, MountIdentity::Credential] {
+    crates/3tched-fs/src/mounted.rs:921:            let other = if mode == MountIdentity::GuestKernel {
+    crates/3tched-fs/src/mounted.rs:924:                MountIdentity::GuestKernel
                 )?)? == serde_json::to_value(&object.schema)?,
                 "mounted schema differs from pinned object"
             );
@@ -9998,7 +9998,7 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
 
 ## Activity
 
-    $ sed -n '55,135p' crates/threetched-fs/src/mounted.rs; rg -n 'MountedView::|--expected-session|MountIdentity::GuestKernel' crates/threetched-fs/src/bin crates/threetched-fs/src/main.rs | head -60
+    $ sed -n '55,135p' crates/3tched-fs/src/mounted.rs; rg -n 'MountedView::|--expected-session|MountIdentity::GuestKernel' crates/3tched-fs/src/bin crates/3tched-fs/src/main.rs | head -60
         ) -> Result<Self> {
             Self::open_with_mode_and_probe(path, expected_session, None, probe)
         }
@@ -10080,16 +10080,16 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
             );
             ensure!(
                 metadata["object_count"].as_u64()
-    rg: crates/threetched-fs/src/bin: No such file or directory (os error 2)
-    crates/threetched-fs/src/main.rs:765:            "--expected-session",
-    crates/threetched-fs/src/main.rs:780:            Cli::try_parse_from(["threetched-fs", "mcp", "--expected-session", "human"]).is_err()
-    crates/threetched-fs/src/main.rs:788:                "--expected-session",
-    crates/threetched-fs/src/main.rs:836:            "--expected-session",
+    rg: crates/3tched-fs/src/bin: No such file or directory (os error 2)
+    crates/3tched-fs/src/main.rs:765:            "--expected-session",
+    crates/3tched-fs/src/main.rs:780:            Cli::try_parse_from(["3tched-fs", "mcp", "--expected-session", "human"]).is_err()
+    crates/3tched-fs/src/main.rs:788:                "--expected-session",
+    crates/3tched-fs/src/main.rs:836:            "--expected-session",
     ✓ • 0ms
 
 ## Activity
 
-    $ rg -n 'open_with|mounted::|Mounted' crates/threetched-fs/src/main.rs | head -55; sed -n '1,60p' crates/threetched-fs/src/mounted.rs; rg -n 'invoke --mount|GuestKernel' crates/threetched-fs/src/cli.rs crates/threetched-fs/src/main.rs
+    $ rg -n 'open_with|mounted::|Mounted' crates/3tched-fs/src/main.rs | head -55; sed -n '1,60p' crates/3tched-fs/src/mounted.rs; rg -n 'invoke --mount|GuestKernel' crates/3tched-fs/src/cli.rs crates/3tched-fs/src/main.rs
     337:    // Mounted mode must never open/create an ObjectStore or resolve SHM state.
     344:        let namespace = mounted::MountedNamespace::open(mount, Some(expected_session))?;
     358:        let namespace = mounted::MountedNamespace::open(path, expected_session.as_deref())?;
@@ -10155,12 +10155,12 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
     
         fn open_with_mode_and_probe(
             path: &Path,
-    rg: crates/threetched-fs/src/cli.rs: No such file or directory (os error 2)
+    rg: crates/3tched-fs/src/cli.rs: No such file or directory (os error 2)
     ✗ (2) • 0ms
 
 ## Activity
 
-    $ sed -n '120,220p' crates/threetched-fs/src/main.rs; sed -n '340,410p' crates/threetched-fs/src/main.rs; sed -n '720,820p' crates/threetched-fs/src/main.rs
+    $ sed -n '120,220p' crates/3tched-fs/src/main.rs; sed -n '340,410p' crates/3tched-fs/src/main.rs; sed -n '720,820p' crates/3tched-fs/src/main.rs
             #[arg(long)]
             confirm_side_effects: bool,
         },
@@ -10372,7 +10372,7 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
         #[test]
         fn mounted_commands_preserve_identity_and_reject_transport_fallback() {
             let args = vec![
-                "threetched-fs",
+                "3tched-fs",
                 "call",
                 "demo",
                 "get_status",
@@ -10393,11 +10393,11 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
                 assert!(Cli::try_parse_from(conflict).is_err());
             }
             assert!(
-                Cli::try_parse_from(["threetched-fs", "mcp", "--expected-session", "human"]).is_err()
+                Cli::try_parse_from(["3tched-fs", "mcp", "--expected-session", "human"]).is_err()
             );
             assert!(matches!(
                 Cli::try_parse_from([
-                    "threetched-fs",
+                    "3tched-fs",
                     "mcp",
                     "--mount",
                     "/run/mount/3tchedFS",
@@ -10410,7 +10410,7 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
             ));
             assert!(
                 Cli::try_parse_from([
-                    "threetched-fs",
+                    "3tched-fs",
                     "mcp",
                     "--mount",
                     "/run/mount/3tchedFS",
@@ -10420,7 +10420,7 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
                 .is_err()
             );
             let cli = Cli::try_parse_from([
-                "threetched-fs",
+                "3tched-fs",
                 "mcp",
                 "--mount",
                 "/run/mounts/3tchedFS",
@@ -10439,17 +10439,17 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
 ## Activity
 
     file changes: Completed · 1 changes
-    Update { move_path: None }: /var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs/src/main.rs
+    Update { move_path: None }: /var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs/src/main.rs
     @@ -756,2 +756,16 @@
          #[test]
     +    fn invoke_accepts_explicit_guest_identity_without_host_session() {
     +        let cli = Cli::try_parse_from([
-    +            "threetched-fs", "invoke", "--mount", "/run/mount/3tchedfs",
+    +            "3tched-fs", "invoke", "--mount", "/run/mount/3tchedfs",
     +            "--guest-kernel", "plugins/identity_sled/operations/inspect_provision_preflight/call",
     +        ]).unwrap();
     +        assert!(matches!(cli.command, Command::Invoke { .. }));
     +        assert!(Cli::try_parse_from([
-    +            "threetched-fs", "invoke", "--mount", "/run/mount/3tchedfs",
+    +            "3tched-fs", "invoke", "--mount", "/run/mount/3tchedfs",
     +            "--guest-kernel", "--expected-session", "another",
     +            "plugins/identity_sled/operations/inspect_provision_preflight/call",
     +        ]).is_err());
@@ -10460,12 +10460,12 @@ That simplifies the identity work. I’ll use an existing supported chatbot name
 
 ## Activity
 
-    $ rg -n '^name|\[\[bin\]\]' crates/threetched-fs/Cargo.toml | head; git status --short --untracked-files=no; sudo -n incus list -f csv -c ns
-    2:name = "tched-fs"
-    9:name = "tched_fs"
+    $ rg -n '^name|\[\[bin\]\]' crates/3tched-fs/Cargo.toml | head; git status --short --untracked-files=no; sudo -n incus list -f csv -c ns
+    2:name = "_3tched-fs"
+    9:name = "_3tched_fs"
     11:[[bin]]
     12:name = "3tched-fs"
-     M crates/threetched-fs/src/main.rs
+     M crates/3tched-fs/src/main.rs
     3tched-container,RUNNING
     3tchedCtlChatbot,RUNNING
     chatbot-template-sysprep,STOPPED
@@ -10497,7 +10497,7 @@ I found a concrete bootstrap issue in the live mounted client: it rejects the ch
 
 ## Activity
 
-    $ CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs --bin 3tched-fs invoke_accepts_explicit_guest_identity_without_host_session
+    $ CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs --bin 3tched-fs invoke_accepts_explicit_guest_identity_without_host_session
        Compiling syn v3.0.3
        Compiling serde_core v1.0.229
        Compiling smallvec v1.15.2
@@ -10866,9 +10866,9 @@ I found a concrete bootstrap issue in the live mounted client: it rejects the ch
        Compiling fuser v0.16.0
        Compiling op-core v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-core)
        Compiling clap v4.6.4
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -10880,9 +10880,9 @@ I found a concrete bootstrap issue in the live mounted client: it rejects the ch
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
     warning: associated function `open_for_mode` is never used
-      --> crates/threetched-fs/src/mounted.rs:43:12
+      --> crates/3tched-fs/src/mounted.rs:43:12
        |
     38 | impl MountedNamespace {
        | --------------------- associated function in this implementation
@@ -10893,7 +10893,7 @@ I found a concrete bootstrap issue in the live mounted client: it rejects the ch
        = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -10901,7 +10901,7 @@ I found a concrete bootstrap issue in the live mounted client: it rejects the ch
     357 |     pub fn declare_socket_session(&mut self, session: &str) -> Result<()> {
         |            ^^^^^^^^^^^^^^^^^^^^^^
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 3 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 3 warnings (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 56s
          Running unittests src/main.rs (/srv/git/odbus-verified/target/debug/deps/3tched_fs-1e90dd137c086bb5)
     
@@ -10912,8 +10912,8 @@ I found a concrete bootstrap issue in the live mounted client: it rejects the ch
     
     ---- cli_tests::invoke_accepts_explicit_guest_identity_without_host_session stdout ----
     
-    thread 'cli_tests::invoke_accepts_explicit_guest_identity_without_host_session' (31909) panicked at crates/threetched-fs/src/main.rs:761:12:
-    called `Result::unwrap()` on an `Err` value: ErrorInner { kind: UnknownArgument, context: FlatMap { keys: [InvalidArg, Usage, Suggested], values: [String("--guest-kernel"), StyledStr(StyledStr("\u{1b}[1m\u{1b}[4mUsage:\u{1b}[0m \u{1b}[1mthreetched-fs invoke\u{1b}[0m \u{1b}[1m--mount\u{1b}[0m <MOUNT> <PATH>")), StyledStrs([StyledStr("to pass '\u{1b}[33m--guest-kernel\u{1b}[0m' as a value, use '\u{1b}[32m-- --guest-kernel\u{1b}[0m'")])] }, message: None, source: None, help_flag: Some("--help"), styles: Styles { header: Style { fg: None, bg: None, underline: None, effects: Effects(BOLD | UNDERLINE) }, error: Style { fg: Some(Ansi(Red)), bg: None, underline: None, effects: Effects(BOLD) }, usage: Style { fg: None, bg: None, underline: None, effects: Effects(BOLD | UNDERLINE) }, literal: Style { fg: None, bg: None, underline: None, effects: Effects(BOLD) }, placeholder: Style { fg: None, bg: None, underline: None, effects: Effects() }, valid: Style { fg: Some(Ansi(Green)), bg: None, underline: None, effects: Effects() }, invalid: Style { fg: Some(Ansi(Yellow)), bg: None, underline: None, effects: Effects() }, context: Style { fg: None, bg: None, underline: None, effects: Effects() }, context_value: None }, color_when: Auto, color_help_when: Auto, backtrace: None }
+    thread 'cli_tests::invoke_accepts_explicit_guest_identity_without_host_session' (31909) panicked at crates/3tched-fs/src/main.rs:761:12:
+    called `Result::unwrap()` on an `Err` value: ErrorInner { kind: UnknownArgument, context: FlatMap { keys: [InvalidArg, Usage, Suggested], values: [String("--guest-kernel"), StyledStr(StyledStr("\u{1b}[1m\u{1b}[4mUsage:\u{1b}[0m \u{1b}[1m3tched-fs invoke\u{1b}[0m \u{1b}[1m--mount\u{1b}[0m <MOUNT> <PATH>")), StyledStrs([StyledStr("to pass '\u{1b}[33m--guest-kernel\u{1b}[0m' as a value, use '\u{1b}[32m-- --guest-kernel\u{1b}[0m'")])] }, message: None, source: None, help_flag: Some("--help"), styles: Styles { header: Style { fg: None, bg: None, underline: None, effects: Effects(BOLD | UNDERLINE) }, error: Style { fg: Some(Ansi(Red)), bg: None, underline: None, effects: Effects(BOLD) }, usage: Style { fg: None, bg: None, underline: None, effects: Effects(BOLD | UNDERLINE) }, literal: Style { fg: None, bg: None, underline: None, effects: Effects(BOLD) }, placeholder: Style { fg: None, bg: None, underline: None, effects: Effects() }, valid: Style { fg: Some(Ansi(Green)), bg: None, underline: None, effects: Effects() }, invalid: Style { fg: Some(Ansi(Yellow)), bg: None, underline: None, effects: Effects() }, context: Style { fg: None, bg: None, underline: None, effects: Effects() }, context_value: None }, color_when: Auto, color_help_when: Auto, backtrace: None }
     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
     
     
@@ -10922,7 +10922,7 @@ I found a concrete bootstrap issue in the live mounted client: it rejects the ch
     
     test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 106 filtered out; finished in 0.00s
     
-    error: test failed, to rerun pass `-p tched-fs --bin 3tched-fs`
+    error: test failed, to rerun pass `-p _3tched-fs --bin 3tched-fs`
     ✗ (101) • 1m 56s
 
 ## Assistant
@@ -10931,7 +10931,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
 
 ## Activity
 
-    $ head -65 crates/threetched-fs/src/main.rs; rg -n 'Command::Invoke' crates/threetched-fs/src/main.rs
+    $ head -65 crates/3tched-fs/src/main.rs; rg -n 'Command::Invoke' crates/3tched-fs/src/main.rs
     mod dispatch;
     mod fuse_buffers;
     mod fuse_fs;
@@ -10947,7 +10947,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     #[path = "threetched-surface.rs"]
     mod threetched_surface;
     #[cfg(not(test))]
-    use tched_fs::threetched_surface;
+    use _3tched_fs::threetched_surface;
     
     use std::fs;
     use std::io::Read;
@@ -11006,7 +11006,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
 ## Activity
 
     file changes: Completed · 1 changes
-    Update { move_path: None }: /var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs/src/main.rs
+    Update { move_path: None }: /var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs/src/main.rs
     @@ -130,2 +130,5 @@
              expected_session: Option<String>,
     +        /// Require the mount to identify this container through its kernel peer.
@@ -11029,7 +11029,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
 
 ## Activity
 
-    $ CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs --bin 3tched-fs invoke_accepts_explicit_guest_identity_without_host_session
+    $ CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs --bin 3tched-fs invoke_accepts_explicit_guest_identity_without_host_session
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -11297,7 +11297,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -11309,10 +11309,10 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -11322,7 +11322,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 7.21s
          Running unittests src/main.rs (/srv/git/odbus-verified/target/debug/deps/3tched_fs-1e90dd137c086bb5)
     
@@ -11335,18 +11335,18 @@ The exact production gap is confirmed: the merged binary would start an empty, p
 
 ## Activity
 
-    $ rustfmt --edition 2024 --config skip_children=true crates/threetched-fs/src/main.rs
+    $ rustfmt --edition 2024 --config skip_children=true crates/3tched-fs/src/main.rs
     ✓ • 0ms
 
 ## Activity
 
-    $ git diff --stat; git diff -- crates/threetched-fs/src/main.rs | head -140
-     crates/threetched-fs/src/main.rs | 64 ++++++++++++++++++++++++++++++++++------
+    $ git diff --stat; git diff -- crates/3tched-fs/src/main.rs | head -140
+     crates/3tched-fs/src/main.rs | 64 ++++++++++++++++++++++++++++++++++------
      1 file changed, 55 insertions(+), 9 deletions(-)
-    diff --git a/crates/threetched-fs/src/main.rs b/crates/threetched-fs/src/main.rs
+    diff --git a/crates/3tched-fs/src/main.rs b/crates/3tched-fs/src/main.rs
     index 27b7226..0df2349 100644
-    --- a/crates/threetched-fs/src/main.rs
-    +++ b/crates/threetched-fs/src/main.rs
+    --- a/crates/3tched-fs/src/main.rs
+    +++ b/crates/3tched-fs/src/main.rs
     @@ -62,10 +62,18 @@ enum Command {
              #[arg(long)]
              no_activate: bool,
@@ -11423,7 +11423,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     +    #[test]
     +    fn invoke_accepts_explicit_guest_identity_without_host_session() {
     +        let cli = Cli::try_parse_from([
-    +            "threetched-fs",
+    +            "3tched-fs",
     +            "invoke",
     +            "--mount",
     +            "/run/mount/3tchedfs",
@@ -11434,7 +11434,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     +        assert!(matches!(cli.command, Command::Invoke { .. }));
     +        assert!(
     +            Cli::try_parse_from([
-    +                "threetched-fs",
+    +                "3tched-fs",
     +                "invoke",
     +                "--mount",
     +                "/run/mount/3tchedfs",
@@ -11455,9 +11455,9 @@ The exact production gap is confirmed: the merged binary would start an empty, p
                  } if plugin == "cognitive"
              ));
     -        assert!(
-    -            Cli::try_parse_from(["threetched-fs", "mcp", "--plugin", "cognitive"]).is_err()
+    -            Cli::try_parse_from(["3tched-fs", "mcp", "--plugin", "cognitive"]).is_err()
     -        );
-    +        assert!(Cli::try_parse_from(["threetched-fs", "mcp", "--plugin", "cognitive"]).is_err());
+    +        assert!(Cli::try_parse_from(["3tched-fs", "mcp", "--plugin", "cognitive"]).is_err());
          }
     
          #[test]
@@ -11465,7 +11465,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
 
 ## Activity
 
-    $ CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs --bin 3tched-fs
+    $ CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs --bin 3tched-fs
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -11733,7 +11733,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -11745,10 +11745,10 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -11758,7 +11758,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 5.37s
          Running unittests src/main.rs (/srv/git/odbus-verified/target/debug/deps/3tched_fs-1e90dd137c086bb5)
     
@@ -11875,33 +11875,33 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     
     ---- fuse_fs::tests::fresh_opens_follow_commits_without_invalidating_old_handle stdout ----
     
-    thread 'fuse_fs::tests::fresh_opens_follow_commits_without_invalidating_old_handle' (2437) panicked at crates/threetched-fs/src/fuse_fs.rs:1867:14:
+    thread 'fuse_fs::tests::fresh_opens_follow_commits_without_invalidating_old_handle' (2437) panicked at crates/3tched-fs/src/fuse_fs.rs:1867:14:
     called `Result::unwrap()` on an `Err` value: projection directory must not be writable by other users or groups
     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
     
     ---- source::tests::absent_invalid_deleted_and_uncommitted_state_never_falls_back stdout ----
     
-    thread 'source::tests::absent_invalid_deleted_and_uncommitted_state_never_falls_back' (2597) panicked at crates/threetched-fs/src/source.rs:465:10:
+    thread 'source::tests::absent_invalid_deleted_and_uncommitted_state_never_falls_back' (2597) panicked at crates/3tched-fs/src/source.rs:465:10:
     called `Result::unwrap()` on an `Err` value: projection directory must not be writable by other users or groups
     
     ---- source::tests::committed_reader_is_bounded_and_empty_policy_exposes_no_state stdout ----
     
-    thread 'source::tests::committed_reader_is_bounded_and_empty_policy_exposes_no_state' (2600) panicked at crates/threetched-fs/src/source.rs:465:10:
+    thread 'source::tests::committed_reader_is_bounded_and_empty_policy_exposes_no_state' (2600) panicked at crates/3tched-fs/src/source.rs:465:10:
     called `Result::unwrap()` on an `Err` value: projection directory must not be writable by other users or groups
     
     ---- source::tests::committed_reader_validates_full_state_and_publishes_only_public_members stdout ----
     
-    thread 'source::tests::committed_reader_validates_full_state_and_publishes_only_public_members' (2601) panicked at crates/threetched-fs/src/source.rs:465:10:
+    thread 'source::tests::committed_reader_validates_full_state_and_publishes_only_public_members' (2601) panicked at crates/3tched-fs/src/source.rs:465:10:
     called `Result::unwrap()` on an `Err` value: projection directory must not be writable by other users or groups
     
     ---- source::tests::interrupted_and_pending_publications_fail_closed stdout ----
     
-    thread 'source::tests::interrupted_and_pending_publications_fail_closed' (2602) panicked at crates/threetched-fs/src/source.rs:465:10:
+    thread 'source::tests::interrupted_and_pending_publications_fail_closed' (2602) panicked at crates/3tched-fs/src/source.rs:465:10:
     called `Result::unwrap()` on an `Err` value: projection directory must not be writable by other users or groups
     
     ---- source::tests::snapshot_reports_deletion_and_enforces_one_aggregate_budget stdout ----
     
-    thread 'source::tests::snapshot_reports_deletion_and_enforces_one_aggregate_budget' (2605) panicked at crates/threetched-fs/src/source.rs:465:10:
+    thread 'source::tests::snapshot_reports_deletion_and_enforces_one_aggregate_budget' (2605) panicked at crates/3tched-fs/src/source.rs:465:10:
     called `Result::unwrap()` on an `Err` value: projection directory must not be writable by other users or groups
     
     
@@ -11915,7 +11915,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     
     test result: FAILED. 98 passed; 6 failed; 3 ignored; 0 measured; 0 filtered out; finished in 1.54s
     
-    error: test failed, to rerun pass `-p tched-fs --bin 3tched-fs`
+    error: test failed, to rerun pass `-p _3tched-fs --bin 3tched-fs`
     ✗ (101) • 6.86s
 
 ## Activity
@@ -12040,7 +12040,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
 ## Activity
 
     $ umask 077
-        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs --bin 3tched-fs
+        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs --bin 3tched-fs
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -12308,7 +12308,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -12320,9 +12320,9 @@ The exact production gap is confirmed: the merged binary would start an empty, p
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -12332,7 +12332,7 @@ The exact production gap is confirmed: the merged binary would start an empty, p
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 0.39s
          Running unittests src/main.rs (/srv/git/odbus-verified/target/debug/deps/3tched_fs-1e90dd137c086bb5)
     
@@ -12466,7 +12466,7 @@ The guest lungs client fix now passes its focused test and the full client test 
     260:| OD-77 | **Resolve all retained consolidated crate-review findings.** | Codex | DONE | Sep 24 final closeout: 73 repaired, 49 compatibility paths retired/fail closed, four withdrawn storage-premise findings, one conditional not established (127 total). Corrected storage, OpenFlow and identity releases deployed. Final combined GNU verification: 2,149 passed, 0 failed, 21 ignored; Clippy/fmt pass. Canonical provision/repair/refusal cases and release-helper cold-remount proof pass. Accounting: /tmp/opencode/crate-reviews/codex-20260922-fQqDu9/REMEDIATION.md. Durable final receipt: /opt/op-dbus/recovery/identity-seed-20260924/activation-evidence/DEPLOYMENT.md. |
     265:| OD-81 | **Complete the human identity seeded Btrfs leaf through canonical provisioning.** | Codex | DONE | Sep 24 complete: received read-only release 20260924-identity-seed activated; canonical own-root repair returned identity-committed/root_and_persist_moved. Existing SID1, genesis, Cozo key and old fstorage bytes preserved; new seeded Btrfs root and private persist binding verified, container remains stopped. Human write/root-repair grants active (88→90), chatbot9 unchanged; write admission proved with duplicate guard. Four private canonical cases and exact helper cold remount/privacy pass. Cozo remains shared device registry, no per-human database copy. First activation rolled back on legacy fwd-443 parent chmod1777; host/source script corrected to0755 without network restart, retry passed. Durable evidence: /opt/op-dbus/recovery/identity-seed-20260924/activation-evidence/DEPLOYMENT.md. |
     274:| OD-97 | **Dedicated elevation account/password.** Create a dedicated elevation account and verify its password for protected tasks. | — | TODO | Owner request 2026-09-30. Current correction checks the root password directly, without a per-principal Unix-user map. Later replace that password authority with the dedicated account; preserve verified caller identity, exact grants, principal/session/task-bound single-use tickets, expiry, lockout and password redaction. Account name, provisioning and credential rotation remain to be designed; no account or password is created by this wishlist entry. |
-     crates/threetched-fs/src/main.rs | 64 ++++++++++++++++++++++++++++++++++------
+     crates/3tched-fs/src/main.rs | 64 ++++++++++++++++++++++++++++++++++------
      1 file changed, 55 insertions(+), 9 deletions(-)
     ✓ • 0ms
 
@@ -12967,7 +12967,7 @@ The key change exposes another hardcoded dependency: the live provisioning stack
 ## Activity
 
     $ umask 077
-        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs
+        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -13235,7 +13235,7 @@ The key change exposes another hardcoded dependency: the live provisioning stack
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -13247,11 +13247,11 @@ The key change exposes another hardcoded dependency: the live provisioning stack
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
-    warning: `tched-fs` (lib test) generated 1 warning (1 duplicate)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib test) generated 1 warning (1 duplicate)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -13261,16 +13261,16 @@ The key change exposes another hardcoded dependency: the live provisioning stack
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
-    error: couldn't find file `/srv/git/odbus-verified/crates/threetched-fs/src/fuse_buffers.rs`
-     --> crates/threetched-fs/examples/typed_use_generated.rs:4:76
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    error: couldn't find file `/srv/git/odbus-verified/crates/3tched-fs/src/fuse_buffers.rs`
+     --> crates/3tched-fs/examples/typed_use_generated.rs:4:76
       |
-    4 | #[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
+    4 | #[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
       |                                                                            ^^^^^^^^^^^^^^^^^
       |
-      = help: you might have meant to open `/srv/git/odbus-verified/crates/threetched-fs/src/fuse_fs.rs`
+      = help: you might have meant to open `/srv/git/odbus-verified/crates/3tched-fs/src/fuse_fs.rs`
     
-    error: could not compile `tched-fs` (example "typed_use_generated") due to 1 previous error
+    error: could not compile `_3tched-fs` (example "typed_use_generated") due to 1 previous error
     warning: build failed, waiting for other jobs to finish...
     ✗ (101) • 6.18s
 
@@ -13286,7 +13286,7 @@ The key change exposes another hardcoded dependency: the live provisioning stack
 ## Activity
 
     $ umask 077
-        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs --lib --bins
+        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs --lib --bins
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -13554,7 +13554,7 @@ The key change exposes another hardcoded dependency: the live provisioning stack
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -13566,9 +13566,9 @@ The key change exposes another hardcoded dependency: the live provisioning stack
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -13578,10 +13578,10 @@ The key change exposes another hardcoded dependency: the live provisioning stack
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (lib test) generated 1 warning (1 duplicate)
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (lib test) generated 1 warning (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
-         Running unittests src/lib.rs (/srv/git/odbus-verified/target/debug/deps/tched_fs-bfae683abe020c16)
+         Running unittests src/lib.rs (/srv/git/odbus-verified/target/debug/deps/_3tched_fs-bfae683abe020c16)
     
     running 27 tests
     test fuse_process::tests::dropping_owned_child_reaps_it ... ok
@@ -13735,21 +13735,21 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
 
 ## Activity
 
-    $ head -45 crates/threetched-fs/examples/typed_use_generated.rs; git ls-files crates/threetched-fs/examples/typed_use_generated.rs; ls crates/threetched-fs/examples; rg -n '/srv/git/odbus-verified/crates/threetched-fs' crates/threetched-fs/examples
+    $ head -45 crates/3tched-fs/examples/typed_use_generated.rs; git ls-files crates/3tched-fs/examples/typed_use_generated.rs; ls crates/3tched-fs/examples; rg -n '/srv/git/odbus-verified/crates/3tched-fs' crates/3tched-fs/examples
     //! Generated typed read example; uses only the identity's existing mounted filesystem.
     #![allow(dead_code)]
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/dispatch.rs"] mod dispatch;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_process.rs"] mod fuse_process;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/model.rs"] mod model;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/mounted.rs"] mod mounted;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/namespace.rs"] mod namespace;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/source.rs"] mod source;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/store.rs"] mod store;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/typed_bindings.rs"] mod typed_bindings;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/typed_runtime.rs"] mod typed_runtime;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/src/threetched-surface.rs"] mod threetched_surface;
-    #[path="/srv/git/odbus-verified/crates/threetched-fs/generated/plugin_types.rs"] mod plugins;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/dispatch.rs"] mod dispatch;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_process.rs"] mod fuse_process;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/model.rs"] mod model;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/mounted.rs"] mod mounted;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/namespace.rs"] mod namespace;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/source.rs"] mod source;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/store.rs"] mod store;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/typed_bindings.rs"] mod typed_bindings;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/typed_runtime.rs"] mod typed_runtime;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/src/threetched-surface.rs"] mod threetched_surface;
+    #[path="/srv/git/odbus-verified/crates/3tched-fs/generated/plugin_types.rs"] mod plugins;
     
     use anyhow::{Context,Result};
     use typed_bindings::{MountRoot,SessionId};
@@ -13770,52 +13770,52 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
         println!("{:?}",receipt.get());
         Ok(())
     }
-    crates/threetched-fs/examples/typed_use_generated.rs
+    crates/3tched-fs/examples/typed_use_generated.rs
     typed_check.rs
     typed_export.rs
     typed_generate.rs
     typed_specialize.rs
     typed_use_generated.rs
     typed_validate.rs
-    crates/threetched-fs/examples/typed_use_generated.rs:3:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/dispatch.rs"] mod dispatch;
-    crates/threetched-fs/examples/typed_use_generated.rs:4:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
-    crates/threetched-fs/examples/typed_use_generated.rs:5:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_process.rs"] mod fuse_process;
-    crates/threetched-fs/examples/typed_use_generated.rs:6:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/model.rs"] mod model;
-    crates/threetched-fs/examples/typed_use_generated.rs:7:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/mounted.rs"] mod mounted;
-    crates/threetched-fs/examples/typed_use_generated.rs:8:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/namespace.rs"] mod namespace;
-    crates/threetched-fs/examples/typed_use_generated.rs:9:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/source.rs"] mod source;
-    crates/threetched-fs/examples/typed_use_generated.rs:10:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/store.rs"] mod store;
-    crates/threetched-fs/examples/typed_use_generated.rs:11:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/typed_bindings.rs"] mod typed_bindings;
-    crates/threetched-fs/examples/typed_use_generated.rs:12:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/typed_runtime.rs"] mod typed_runtime;
-    crates/threetched-fs/examples/typed_use_generated.rs:13:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/threetched-surface.rs"] mod threetched_surface;
-    crates/threetched-fs/examples/typed_use_generated.rs:14:#[path="/srv/git/odbus-verified/crates/threetched-fs/generated/plugin_types.rs"] mod plugins;
+    crates/3tched-fs/examples/typed_use_generated.rs:3:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/dispatch.rs"] mod dispatch;
+    crates/3tched-fs/examples/typed_use_generated.rs:4:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
+    crates/3tched-fs/examples/typed_use_generated.rs:5:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_process.rs"] mod fuse_process;
+    crates/3tched-fs/examples/typed_use_generated.rs:6:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/model.rs"] mod model;
+    crates/3tched-fs/examples/typed_use_generated.rs:7:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/mounted.rs"] mod mounted;
+    crates/3tched-fs/examples/typed_use_generated.rs:8:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/namespace.rs"] mod namespace;
+    crates/3tched-fs/examples/typed_use_generated.rs:9:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/source.rs"] mod source;
+    crates/3tched-fs/examples/typed_use_generated.rs:10:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/store.rs"] mod store;
+    crates/3tched-fs/examples/typed_use_generated.rs:11:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/typed_bindings.rs"] mod typed_bindings;
+    crates/3tched-fs/examples/typed_use_generated.rs:12:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/typed_runtime.rs"] mod typed_runtime;
+    crates/3tched-fs/examples/typed_use_generated.rs:13:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/threetched-surface.rs"] mod threetched_surface;
+    crates/3tched-fs/examples/typed_use_generated.rs:14:#[path="/srv/git/odbus-verified/crates/3tched-fs/generated/plugin_types.rs"] mod plugins;
     ✓ • 0ms
 
 ## Activity
 
-    $ ls crates/threetched-fs/src/{typed_bindings.rs,typed_runtime.rs,fuse_buffers.rs}; ls crates/threetched-fs/generated/plugin_types.rs; git ls-files crates/threetched-fs/examples/typed_use_generated.rs
-    crates/threetched-fs/src/fuse_buffers.rs
-    crates/threetched-fs/src/typed_bindings.rs
-    crates/threetched-fs/src/typed_runtime.rs
-    crates/threetched-fs/generated/plugin_types.rs
-    crates/threetched-fs/examples/typed_use_generated.rs
+    $ ls crates/3tched-fs/src/{typed_bindings.rs,typed_runtime.rs,fuse_buffers.rs}; ls crates/3tched-fs/generated/plugin_types.rs; git ls-files crates/3tched-fs/examples/typed_use_generated.rs
+    crates/3tched-fs/src/fuse_buffers.rs
+    crates/3tched-fs/src/typed_bindings.rs
+    crates/3tched-fs/src/typed_runtime.rs
+    crates/3tched-fs/generated/plugin_types.rs
+    crates/3tched-fs/examples/typed_use_generated.rs
     ✓ • 0ms
 
 ## Activity
 
-    $ rg -n 'typed_use_generated|/srv/git/odbus-verified/crates/threetched-fs' crates/threetched-fs --glob '*.rs' | head -30
-    crates/threetched-fs/examples/typed_use_generated.rs:3:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/dispatch.rs"] mod dispatch;
-    crates/threetched-fs/examples/typed_use_generated.rs:4:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
-    crates/threetched-fs/examples/typed_use_generated.rs:5:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_process.rs"] mod fuse_process;
-    crates/threetched-fs/examples/typed_use_generated.rs:6:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/model.rs"] mod model;
-    crates/threetched-fs/examples/typed_use_generated.rs:7:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/mounted.rs"] mod mounted;
-    crates/threetched-fs/examples/typed_use_generated.rs:8:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/namespace.rs"] mod namespace;
-    crates/threetched-fs/examples/typed_use_generated.rs:9:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/source.rs"] mod source;
-    crates/threetched-fs/examples/typed_use_generated.rs:10:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/store.rs"] mod store;
-    crates/threetched-fs/examples/typed_use_generated.rs:11:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/typed_bindings.rs"] mod typed_bindings;
-    crates/threetched-fs/examples/typed_use_generated.rs:12:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/typed_runtime.rs"] mod typed_runtime;
-    crates/threetched-fs/examples/typed_use_generated.rs:13:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/threetched-surface.rs"] mod threetched_surface;
-    crates/threetched-fs/examples/typed_use_generated.rs:14:#[path="/srv/git/odbus-verified/crates/threetched-fs/generated/plugin_types.rs"] mod plugins;
+    $ rg -n 'typed_use_generated|/srv/git/odbus-verified/crates/3tched-fs' crates/3tched-fs --glob '*.rs' | head -30
+    crates/3tched-fs/examples/typed_use_generated.rs:3:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/dispatch.rs"] mod dispatch;
+    crates/3tched-fs/examples/typed_use_generated.rs:4:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
+    crates/3tched-fs/examples/typed_use_generated.rs:5:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_process.rs"] mod fuse_process;
+    crates/3tched-fs/examples/typed_use_generated.rs:6:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/model.rs"] mod model;
+    crates/3tched-fs/examples/typed_use_generated.rs:7:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/mounted.rs"] mod mounted;
+    crates/3tched-fs/examples/typed_use_generated.rs:8:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/namespace.rs"] mod namespace;
+    crates/3tched-fs/examples/typed_use_generated.rs:9:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/source.rs"] mod source;
+    crates/3tched-fs/examples/typed_use_generated.rs:10:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/store.rs"] mod store;
+    crates/3tched-fs/examples/typed_use_generated.rs:11:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/typed_bindings.rs"] mod typed_bindings;
+    crates/3tched-fs/examples/typed_use_generated.rs:12:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/typed_runtime.rs"] mod typed_runtime;
+    crates/3tched-fs/examples/typed_use_generated.rs:13:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/threetched-surface.rs"] mod threetched_surface;
+    crates/3tched-fs/examples/typed_use_generated.rs:14:#[path="/srv/git/odbus-verified/crates/3tched-fs/generated/plugin_types.rs"] mod plugins;
     ✓ • 0ms
 
 ## Activity
@@ -13824,13 +13824,13 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
     Update { move_path: None }: /srv/git/odbus-verified/HANDOFF.md
     @@ -35,2 +35,4 @@
      ### 2026-11-03 · Codex (chatbot identity and lungs investigation)
-    +- Owner directed fixing, rebuilding and activating the merged source rather than deploying the old branch. Worktree `/var/tmp/odbus-chatbot-merged-20261103`, branch `codex/chatbot-merged-20261103` at merged `773ad7b`, has uncommitted `crates/threetched-fs/src/main.rs` change: `invoke --guest-kernel` explicitly opens only GuestKernel mounts and conflicts with `--expected-session`. It preserves the kernel-bound mount's authority and does not supply an identity. RED confirmed unknown flag, GREEN targeted test passed; `umask 077; cargo test -p tched-fs --lib --bins` passed 130, 4 ignored. Full package test fails compiling `examples/typed_use_generated.rs` because it hardcodes absolute paths into `/srv/git/odbus-verified` where merged modules are absent. No deployment or provisioning occurred.
+    +- Owner directed fixing, rebuilding and activating the merged source rather than deploying the old branch. Worktree `/var/tmp/odbus-chatbot-merged-20261103`, branch `codex/chatbot-merged-20261103` at merged `773ad7b`, has uncommitted `crates/3tched-fs/src/main.rs` change: `invoke --guest-kernel` explicitly opens only GuestKernel mounts and conflicts with `--expected-session`. It preserves the kernel-bound mount's authority and does not supply an identity. RED confirmed unknown flag, GREEN targeted test passed; `umask 077; cargo test -p _3tched-fs --lib --bins` passed 130, 4 ignored. Full package test fails compiling `examples/typed_use_generated.rs` because it hardcodes absolute paths into `/srv/git/odbus-verified` where merged modules are absent. No deployment or provisioning occurred.
     +- Current merged bridge binary is fresh rewrite: plaintext 50051/empty or JSON catalog, no registered handlers, no production TLS, identity admission, D-Bus dispatch, SHM state owner or lungs server. Do not activate until fixed. Clean provision and Incus native reservation paths also pin old session `b0c777e3...` and singleton old container, so rotated key `wNhm...` cannot be admitted as a concurrent replacement. Owner permits any unique name conveying control-plane role. Guest client live preflight could not run because CLI lacked explicit GuestKernel mode; old chatbot grants do not include `identity_sled.write` in `$ROOT`, so this CLI repair alone does not authorize provisioning.
      - Owner requested stopping the other identity containers: stopped `etchedschema-chatbot` (the only other running instance bearing identity session/key metadata); `chatbot-template-sysprep` was already stopped. `3tchedCtlChatbot` and bridge remain running; no other containers were stopped. No data deleted.
 
 ## Activity
 
-    $ sed -n '1,100p' crates/threetched-fs/examples/typed_specialize.rs; ls -lah crates/threetched-fs/generated; rg -n 'src/fuse_buffers.rs|generated/plugin_types.rs|Generated typed read example' crates/threetched-fs
+    $ sed -n '1,100p' crates/3tched-fs/examples/typed_specialize.rs; ls -lah crates/3tched-fs/generated; rg -n 'src/fuse_buffers.rs|generated/plugin_types.rs|Generated typed read example' crates/3tched-fs
     //! Derive plugin-specific Rust types only from manifest-pinned sealed PluginSchema.
     //! This is a generator, never a second schema authority or a backend transport.
     #![allow(dead_code)]
@@ -13935,36 +13935,36 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
     drwxrwxr-x 1 jeremy jeremy  30 Nov  3 22:50 .
     drwxrwxr-x 1 jeremy jeremy 120 Nov  3 22:50 ..
     -rw-rw-r-- 1 jeremy jeremy 66M Nov  3 22:50 plugin_types.rs
-    crates/threetched-fs/README.md:472:`examples/typed_specialize.rs` derives `generated/plugin_types.rs` and
-    crates/threetched-fs/README.md:485:`--catalog <catalog>`, `--out-file crates/threetched-fs/generated/plugin_types.rs`,
-    crates/threetched-fs/docs/typed-filesystem-provenance.json:133:      "path": "crates/threetched-fs/src/fuse_buffers.rs"
-    crates/threetched-fs/docs/typed-filesystem-policy.json:107:      "crates/threetched-fs/src/fuse_buffers.rs:4-109",
-    crates/threetched-fs/examples/typed_use_generated.rs:1://! Generated typed read example; uses only the identity's existing mounted filesystem.
-    crates/threetched-fs/examples/typed_use_generated.rs:4:#[path="/srv/git/odbus-verified/crates/threetched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
-    crates/threetched-fs/examples/typed_use_generated.rs:14:#[path="/srv/git/odbus-verified/crates/threetched-fs/generated/plugin_types.rs"] mod plugins;
-    crates/threetched-fs/examples/typed_specialize.rs:897:        "//! Generated typed read example; uses only the identity's existing mounted filesystem.\n#![allow(dead_code)]\n",
-    crates/threetched-fs/examples/typed_specialize.rs:990:    let mut output = PathBuf::from("crates/threetched-fs/generated/plugin_types.rs");
-    crates/threetched-fs/docs/typed-filesystem-gaps.json:28:        "crates/threetched-fs/src/fuse_buffers.rs:4-109"
-    crates/threetched-fs/docs/typed-filesystem-binding-input.json:2299:        "crates/threetched-fs/src/fuse_buffers.rs:7-10",
-    crates/threetched-fs/examples/typed_check.rs:6:#[path = "../src/fuse_buffers.rs"]
-    crates/threetched-fs/docs/typed-filesystem-nodes.evidence.json:322:        "path": "crates/threetched-fs/src/fuse_buffers.rs"
-    crates/threetched-fs/docs/typed-filesystem.schema.json:1613:        "path": "crates/threetched-fs/src/fuse_buffers.rs"
-    crates/threetched-fs/docs/typed-filesystem.schema.json:15070:        "crates/threetched-fs/src/fuse_buffers.rs:7-10",
-    crates/threetched-fs/docs/typed-filesystem.schema.json:15118:          "crates/threetched-fs/src/fuse_buffers.rs:4-109"
-    crates/threetched-fs/docs/typed-filesystem.schema.json:15401:        "crates/threetched-fs/src/fuse_buffers.rs:4-109",
-    crates/threetched-fs/generated/plugin_types.rs:112769:        validate_state("{\"name\":\"tched_fs\",\"category\":\"storage\",\"version\":\"2.0.8\",\"description\":\"Identity-bound 3tchedFS typed filesystem contract and shared invocation convention\",\"display_name\":\"3tchedFS\",\"fields\":{\"contract\":{\"field_type\":{\"object\":{\"method\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"get_contract\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"schema_version\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"2.0.8\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"source_commit\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null}}},\"required\":true,\"description\":\"\",\"default\":{\"method\":\"get_contract\",\"schema_version\":\"2.0.8\",\"source_commit\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"filesystem_type\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"fuse.3tchedFS\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"invocation\":{\"field_type\":{\"object\":{\"arguments\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"application/json\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"automatic_retry\":{\"field_type\":\"boolean\",\"required\":true,\"description\":\"A transport error can leave execution uncertain; never replay implicitly.\",\"default\":false,\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"commit\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"fsync\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"declaration\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Target-owned declaration, including input/output schemas and capability.\",\"default\":\"plugins/{plugin}/operations/{method}/metadata.json\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"open\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Open one descriptor without truncating, then retain it through the reply.\",\"default\":\"O_RDWR\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"path\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Percent-encoded path components; resolve against the pinned catalog.\",\"default\":\"plugins/{plugin}/operations/{method}/call\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"result\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"seek(0), read receipt or diagnostic on the same descriptor\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null}}},\"required\":true,\"description\":\"\",\"default\":{\"arguments\":\"application/json\",\"automatic_retry\":false,\"commit\":\"fsync\",\"declaration\":\"plugins/{plugin}/operations/{method}/metadata.json\",\"open\":\"O_RDWR\",\"path\":\"plugins/{plugin}/operations/{method}/call\",\"result\":\"seek(0), read receipt or diagnostic on the same descriptor\"},\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"mount_metadata\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Mount-local metadata holds the actual identity and pinned catalog.\",\"default\":\".3tchedfs.json\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null}},\"dependencies\":[],\"immutable_paths\":[\"/filesystem_type\",\"/mount_metadata\",\"/invocation\",\"/contract\"],\"tags\":[\"immutable\",\"filesystem\"],\"dialect\":\"https://json-schema.org/draft/2020-12/schema\",\"mutation_index\":null,\"subids\":{\"__schema__\":\"sch.storage.3tchedfs.schema@v1\"},\"org\":null,\"methods\":{\"get_contract\":{\"name\":\"get_contract\",\"args\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"title\":\"GetContractInput\",\"type\":\"object\"},\"returns\":{\"$defs\":{\"FilesystemContract\":{\"additionalProperties\":true,\"allOf\":[{\"additionalProperties\":false,\"properties\":{\"$defs\":{\"additionalProperties\":false,\"properties\":{\"CallReceipt\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"idempotent\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"boolean\"}},\"required\":[\"type\"],\"type\":\"object\"},\"method\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"plugin_id\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"required_capability\":{\"additionalProperties\":false,\"properties\":{\"anyOf\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"null\"}},\"required\":[\"type\"],\"type\":\"object\"}],\"type\":\"array\"}},\"required\":[\"anyOf\"],\"type\":\"object\"},\"result\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/MethodExecutionReceipt\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"side_effect\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/SideEffect\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"subid\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"plugin_id\",\"method\",\"subid\",\"required_capability\",\"side_effect\",\"idempotent\",\"result\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":7,\"minItems\":7,\"prefixItems\":[{\"const\":\"plugin_id\"},{\"const\":\"method\"},{\"const\":\"subid\"},{\"const\":\"required_capability\"},{\"const\":\"side_effect\"},{\"const\":\"idempotent\"},{\"const\":\"result\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/dispatch.rs:30-39\"},{\"const\":\"crates/threetched-fs/src/dispatch.rs:408-456\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/dispatch.rs:30-39\"},{\"const\":\"crates/threetched-fs/src/dispatch.rs:408-456\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},\"Capabilities\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"},\"x-source-refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/threetched-fs/examples/typed_generate.rs:87-175\"},{\"const\":\"crates/threetched-fs/src/model.rs:6\"}],\"type\":\"array\"}},\"required\":[\"type\",\"items\",\"x-source-refs\"],\"type\":\"object\"},\"Constraint\":{\"additionalProperties\":false,\"properties\":{\"oneOf\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"additionalProperties\":false,\"properties\":{\"enum\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"min\"},{\"const\":\"max\"}],\"type\":\"array\"}},\"required\":[\"enum\"],\"type\":\"object\"},\"value\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"number\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"type\",\"value\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"value\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"regex\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"pattern\"}},\"required\":[\"const\"],\"type\":\"object\"}},\"required\":[\"type\",\"regex\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"regex\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"one_of\"}},\"required\":[\"const\"],\"type\":\"object\"},\"values\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"}},\"required\":[\"type\",\"values\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"values\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"field\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"requires_field\"}},\"required\":[\"const\"],\"type\":\"object\"}},\"required\":[\"type\",\"field\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"field\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"custom\"}},\"required\":[\"const\"],\"type\":\"object\"},\"validator\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"type\",\"validator\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"validator\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"}],\"type\":\"array\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"oneOf\",\"x-source-refs\"],\"type\":\"object\"},\"FieldSchema\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"constraints\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/Constraint\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"},\"default\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"description\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"example\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"field_type\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"read_only\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"boolean\"}},\"required\":[\"type\"],\"type\":\"object\"},\"read_only_when\":{\"additionalProperties\":false,\"properties\":{\"anyOf\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/ReadOnlyCondition\"}},\"required\":[\"$ref\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"null\"}},\"required\":[\"type\"],\"type\":\"object\"}],\"type\":\"array\"}},\"required\":[\"anyOf\"],\"type\":\"object\"},\"required\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"boolean\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"field_type\",\"required\",\"description\",\"default\",\"example\",\"constraints\",\"read_only\",\"read_only_when\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"field_type\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:307-325\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:307-325\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},\"FieldType\":{\"additionalProperties\":false,\"properties\":{\"oneOf\":{\"items\":false,\"maxItems\":7,\"minItems\":7,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"enum\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"const\":\"string\"},{\"const\":\"integer\"},{\"const\":\"float\"},{\"const\":\"boolean\"},{\"const\":\"any\"}],\"type\":\"array\"}},\"required\":[\"enum\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"array\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"}},\"required\":[\"array\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"array\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"object\":{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldSchema\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"additionalProperties\"],\"type\":\"object\"}},\"required\":[\"object\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"object\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"map\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"}},\"required\":[\"map\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"map\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"json_schema\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"}},\"required\":[\"json_schema\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"json_schema\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"enum\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"}},\"required\":[\"enum\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"enum\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"one_of\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"}},\"required\":[\"one_of\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"one_of\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"}],\"type\":\"array\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/model.rs:350-366\"}],\"type\":\"array\"}},\"required\":[\"oneOf\",\"x-source-refs\"],\"type\":\"object\"},\"FilesystemContract\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"authority\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"authoring_source\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"crates/op-plugins/src/state_plugins/tched_fs_contract.rs\"}},\"required\":[\"const\"],\"type\":\"object\"},\"deployment\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"object\"}},\"required\":[\"type\"],\"type\":\"object\"},\"memory\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"object\"}},\"required\":[\"type\"],\"type\":\"object\"},\"owner_plugin\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"tched_fs\"}},\"required\":[\"const\"],\"type\":\"object\"}},\"required\":[\"owner_plugin\",\"authoring_source\",\"deployment\",\"memory\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":4,\"minItems\":4,\"prefixItems\":[{\"const\":\"owner_plugin\"},{\"const\":\"authoring_source\"},{\"const\":\"deployment\"},{\"const\":\"memory\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\"],\"type\":\"object\"},\"bindings\":{\"additionalProperties\":false,\"properties\":{\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"classes\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\"],\"type\":\"object\"},\"enumeration\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"array\"}},\"required\":[\"type\"],\"type\":\"object\"},\"invariants\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"object\"}},\"required\":[\"type\"],\"type\":\"object\"},\"methods\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/Method\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"minItems\":{\"const\":1},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"minItems\",\"items\"],\"type\":\"object\"},\"nodes\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"backing\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"additionalProperties\":false,\"properties\":{\"enum\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"shm\"},{\"const\":\"blob\"},{\"const\":\"synthetic\"}],\"type\":\"array\"}},\"required\":[\"enum\"],\"type\":\"object\"},\"locator_template\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"string\"},{\"const\":\"null\"}],\"type\":\"array\"}},\"required\":[\"type\"],\"type\":\"object\"},\"payload_type\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"kind\",\"locator_template\",\"payload_type\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"kind\"},{\"const\":\"locator_template\"},{\"const\":\"payload_type\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\"],\"type\":\"object\"}},\"required\":[\"backing\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":6,\"minItems\":6,\"prefixItems\":[{\"const\":\"id\"},{\"const\":\"class\"},{\"const\":\"path_template\"},{\"const\":\"params\"},{\"const\":\"backing\"},{\"const\":\"source_refs\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\"],\"type\":\"object\"},\"minItems\":{\"const\":1},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"minItems\",\"items\"],\"type\":\"object\"},\"types\":{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":fa
+    crates/3tched-fs/README.md:472:`examples/typed_specialize.rs` derives `generated/plugin_types.rs` and
+    crates/3tched-fs/README.md:485:`--catalog <catalog>`, `--out-file crates/3tched-fs/generated/plugin_types.rs`,
+    crates/3tched-fs/docs/typed-filesystem-provenance.json:133:      "path": "crates/3tched-fs/src/fuse_buffers.rs"
+    crates/3tched-fs/docs/typed-filesystem-policy.json:107:      "crates/3tched-fs/src/fuse_buffers.rs:4-109",
+    crates/3tched-fs/examples/typed_use_generated.rs:1://! Generated typed read example; uses only the identity's existing mounted filesystem.
+    crates/3tched-fs/examples/typed_use_generated.rs:4:#[path="/srv/git/odbus-verified/crates/3tched-fs/src/fuse_buffers.rs"] mod fuse_buffers;
+    crates/3tched-fs/examples/typed_use_generated.rs:14:#[path="/srv/git/odbus-verified/crates/3tched-fs/generated/plugin_types.rs"] mod plugins;
+    crates/3tched-fs/examples/typed_specialize.rs:897:        "//! Generated typed read example; uses only the identity's existing mounted filesystem.\n#![allow(dead_code)]\n",
+    crates/3tched-fs/examples/typed_specialize.rs:990:    let mut output = PathBuf::from("crates/3tched-fs/generated/plugin_types.rs");
+    crates/3tched-fs/docs/typed-filesystem-gaps.json:28:        "crates/3tched-fs/src/fuse_buffers.rs:4-109"
+    crates/3tched-fs/docs/typed-filesystem-binding-input.json:2299:        "crates/3tched-fs/src/fuse_buffers.rs:7-10",
+    crates/3tched-fs/examples/typed_check.rs:6:#[path = "../src/fuse_buffers.rs"]
+    crates/3tched-fs/docs/typed-filesystem-nodes.evidence.json:322:        "path": "crates/3tched-fs/src/fuse_buffers.rs"
+    crates/3tched-fs/docs/typed-filesystem.schema.json:1613:        "path": "crates/3tched-fs/src/fuse_buffers.rs"
+    crates/3tched-fs/docs/typed-filesystem.schema.json:15070:        "crates/3tched-fs/src/fuse_buffers.rs:7-10",
+    crates/3tched-fs/docs/typed-filesystem.schema.json:15118:          "crates/3tched-fs/src/fuse_buffers.rs:4-109"
+    crates/3tched-fs/docs/typed-filesystem.schema.json:15401:        "crates/3tched-fs/src/fuse_buffers.rs:4-109",
+    crates/3tched-fs/generated/plugin_types.rs:112769:        validate_state("{\"name\":\"_3tched_fs\",\"category\":\"storage\",\"version\":\"2.0.8\",\"description\":\"Identity-bound 3tchedFS typed filesystem contract and shared invocation convention\",\"display_name\":\"3tchedFS\",\"fields\":{\"contract\":{\"field_type\":{\"object\":{\"method\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"get_contract\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"schema_version\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"2.0.8\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"source_commit\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null}}},\"required\":true,\"description\":\"\",\"default\":{\"method\":\"get_contract\",\"schema_version\":\"2.0.8\",\"source_commit\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"filesystem_type\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"fuse.3tchedFS\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"invocation\":{\"field_type\":{\"object\":{\"arguments\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"application/json\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"automatic_retry\":{\"field_type\":\"boolean\",\"required\":true,\"description\":\"A transport error can leave execution uncertain; never replay implicitly.\",\"default\":false,\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"commit\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"fsync\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"declaration\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Target-owned declaration, including input/output schemas and capability.\",\"default\":\"plugins/{plugin}/operations/{method}/metadata.json\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"open\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Open one descriptor without truncating, then retain it through the reply.\",\"default\":\"O_RDWR\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"path\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Percent-encoded path components; resolve against the pinned catalog.\",\"default\":\"plugins/{plugin}/operations/{method}/call\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"result\":{\"field_type\":\"string\",\"required\":true,\"description\":\"\",\"default\":\"seek(0), read receipt or diagnostic on the same descriptor\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null}}},\"required\":true,\"description\":\"\",\"default\":{\"arguments\":\"application/json\",\"automatic_retry\":false,\"commit\":\"fsync\",\"declaration\":\"plugins/{plugin}/operations/{method}/metadata.json\",\"open\":\"O_RDWR\",\"path\":\"plugins/{plugin}/operations/{method}/call\",\"result\":\"seek(0), read receipt or diagnostic on the same descriptor\"},\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null},\"mount_metadata\":{\"field_type\":\"string\",\"required\":true,\"description\":\"Mount-local metadata holds the actual identity and pinned catalog.\",\"default\":\".3tchedfs.json\",\"example\":null,\"constraints\":[],\"read_only\":false,\"read_only_when\":null}},\"dependencies\":[],\"immutable_paths\":[\"/filesystem_type\",\"/mount_metadata\",\"/invocation\",\"/contract\"],\"tags\":[\"immutable\",\"filesystem\"],\"dialect\":\"https://json-schema.org/draft/2020-12/schema\",\"mutation_index\":null,\"subids\":{\"__schema__\":\"sch.storage.3tchedfs.schema@v1\"},\"org\":null,\"methods\":{\"get_contract\":{\"name\":\"get_contract\",\"args\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"title\":\"GetContractInput\",\"type\":\"object\"},\"returns\":{\"$defs\":{\"FilesystemContract\":{\"additionalProperties\":true,\"allOf\":[{\"additionalProperties\":false,\"properties\":{\"$defs\":{\"additionalProperties\":false,\"properties\":{\"CallReceipt\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"idempotent\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"boolean\"}},\"required\":[\"type\"],\"type\":\"object\"},\"method\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"plugin_id\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"required_capability\":{\"additionalProperties\":false,\"properties\":{\"anyOf\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"null\"}},\"required\":[\"type\"],\"type\":\"object\"}],\"type\":\"array\"}},\"required\":[\"anyOf\"],\"type\":\"object\"},\"result\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/MethodExecutionReceipt\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"side_effect\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/SideEffect\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"subid\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"plugin_id\",\"method\",\"subid\",\"required_capability\",\"side_effect\",\"idempotent\",\"result\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":7,\"minItems\":7,\"prefixItems\":[{\"const\":\"plugin_id\"},{\"const\":\"method\"},{\"const\":\"subid\"},{\"const\":\"required_capability\"},{\"const\":\"side_effect\"},{\"const\":\"idempotent\"},{\"const\":\"result\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/dispatch.rs:30-39\"},{\"const\":\"crates/3tched-fs/src/dispatch.rs:408-456\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/dispatch.rs:30-39\"},{\"const\":\"crates/3tched-fs/src/dispatch.rs:408-456\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},\"Capabilities\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"},\"x-source-refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/3tched-fs/examples/typed_generate.rs:87-175\"},{\"const\":\"crates/3tched-fs/src/model.rs:6\"}],\"type\":\"array\"}},\"required\":[\"type\",\"items\",\"x-source-refs\"],\"type\":\"object\"},\"Constraint\":{\"additionalProperties\":false,\"properties\":{\"oneOf\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"additionalProperties\":false,\"properties\":{\"enum\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"min\"},{\"const\":\"max\"}],\"type\":\"array\"}},\"required\":[\"enum\"],\"type\":\"object\"},\"value\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"number\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"type\",\"value\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"value\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"regex\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"pattern\"}},\"required\":[\"const\"],\"type\":\"object\"}},\"required\":[\"type\",\"regex\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"regex\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"one_of\"}},\"required\":[\"const\"],\"type\":\"object\"},\"values\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"}},\"required\":[\"type\",\"values\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"values\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"field\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"requires_field\"}},\"required\":[\"const\"],\"type\":\"object\"}},\"required\":[\"type\",\"field\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"field\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"custom\"}},\"required\":[\"const\"],\"type\":\"object\"},\"validator\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"type\",\"validator\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"type\"},{\"const\":\"validator\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"}],\"type\":\"array\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:465-503\"}],\"type\":\"array\"}},\"required\":[\"oneOf\",\"x-source-refs\"],\"type\":\"object\"},\"FieldSchema\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"constraints\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/Constraint\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"},\"default\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"description\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"example\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"field_type\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"read_only\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"boolean\"}},\"required\":[\"type\"],\"type\":\"object\"},\"read_only_when\":{\"additionalProperties\":false,\"properties\":{\"anyOf\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/ReadOnlyCondition\"}},\"required\":[\"$ref\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"null\"}},\"required\":[\"type\"],\"type\":\"object\"}],\"type\":\"array\"}},\"required\":[\"anyOf\"],\"type\":\"object\"},\"required\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"boolean\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"field_type\",\"required\",\"description\",\"default\",\"example\",\"constraints\",\"read_only\",\"read_only_when\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"field_type\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"},\"x-layout\":{\"additionalProperties\":false,\"properties\":{\"alignment\":{\"const\":\"not applicable\"},\"encoding\":{\"const\":\"UTF-8 JSON; bounded render_document adds LF for namespace file bytes\"},\"endianness\":{\"const\":\"not applicable\"},\"offsets\":{\"const\":\"variable JSON member positions\"},\"source_refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:307-325\"}],\"type\":\"array\"}},\"required\":[\"offsets\",\"endianness\",\"alignment\",\"encoding\",\"source_refs\"],\"type\":\"object\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:307-325\"}],\"type\":\"array\"}},\"required\":[\"type\",\"properties\",\"required\",\"x-source-refs\",\"x-layout\"],\"type\":\"object\"},\"FieldType\":{\"additionalProperties\":false,\"properties\":{\"oneOf\":{\"items\":false,\"maxItems\":7,\"minItems\":7,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"enum\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"const\":\"string\"},{\"const\":\"integer\"},{\"const\":\"float\"},{\"const\":\"boolean\"},{\"const\":\"any\"}],\"type\":\"array\"}},\"required\":[\"enum\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"array\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"}},\"required\":[\"array\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"array\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"object\":{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldSchema\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"additionalProperties\"],\"type\":\"object\"}},\"required\":[\"object\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"object\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"map\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"}},\"required\":[\"map\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"map\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"json_schema\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/JsonValue\"}},\"required\":[\"$ref\"],\"type\":\"object\"}},\"required\":[\"json_schema\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"json_schema\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"enum\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"}},\"required\":[\"enum\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"enum\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"const\":false},\"properties\":{\"additionalProperties\":false,\"properties\":{\"one_of\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/FieldType\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"items\"],\"type\":\"object\"}},\"required\":[\"one_of\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"one_of\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\",\"additionalProperties\"],\"type\":\"object\"}],\"type\":\"array\"},\"x-source-refs\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/model.rs:350-366\"}],\"type\":\"array\"}},\"required\":[\"oneOf\",\"x-source-refs\"],\"type\":\"object\"},\"FilesystemContract\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"authority\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"authoring_source\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"crates/op-plugins/src/state_plugins/_3tched_fs_contract.rs\"}},\"required\":[\"const\"],\"type\":\"object\"},\"deployment\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"object\"}},\"required\":[\"type\"],\"type\":\"object\"},\"memory\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"object\"}},\"required\":[\"type\"],\"type\":\"object\"},\"owner_plugin\":{\"additionalProperties\":false,\"properties\":{\"const\":{\"const\":\"_3tched_fs\"}},\"required\":[\"const\"],\"type\":\"object\"}},\"required\":[\"owner_plugin\",\"authoring_source\",\"deployment\",\"memory\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":4,\"minItems\":4,\"prefixItems\":[{\"const\":\"owner_plugin\"},{\"const\":\"authoring_source\"},{\"const\":\"deployment\"},{\"const\":\"memory\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\"],\"type\":\"object\"},\"bindings\":{\"additionalProperties\":false,\"properties\":{\"required\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"classes\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\"],\"type\":\"object\"},\"enumeration\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"array\"}},\"required\":[\"type\"],\"type\":\"object\"},\"invariants\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"object\"}},\"required\":[\"type\"],\"type\":\"object\"},\"methods\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"$ref\":{\"const\":\"#/$defs/Method\"}},\"required\":[\"$ref\"],\"type\":\"object\"},\"minItems\":{\"const\":1},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"minItems\",\"items\"],\"type\":\"object\"},\"nodes\":{\"additionalProperties\":false,\"properties\":{\"items\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"backing\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":false,\"properties\":{\"kind\":{\"additionalProperties\":false,\"properties\":{\"enum\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"shm\"},{\"const\":\"blob\"},{\"const\":\"synthetic\"}],\"type\":\"array\"}},\"required\":[\"enum\"],\"type\":\"object\"},\"locator_template\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"string\"},{\"const\":\"null\"}],\"type\":\"array\"}},\"required\":[\"type\"],\"type\":\"object\"},\"payload_type\":{\"additionalProperties\":false,\"properties\":{\"type\":{\"const\":\"string\"}},\"required\":[\"type\"],\"type\":\"object\"}},\"required\":[\"kind\",\"locator_template\",\"payload_type\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"kind\"},{\"const\":\"locator_template\"},{\"const\":\"payload_type\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\"],\"type\":\"object\"}},\"required\":[\"backing\"],\"type\":\"object\"},\"required\":{\"items\":false,\"maxItems\":6,\"minItems\":6,\"prefixItems\":[{\"const\":\"id\"},{\"const\":\"class\"},{\"const\":\"path_template\"},{\"const\":\"params\"},{\"const\":\"backing\"},{\"const\":\"source_refs\"}],\"type\":\"array\"},\"type\":{\"const\":\"object\"}},\"required\":[\"type\",\"required\",\"properties\"],\"type\":\"object\"},\"minItems\":{\"const\":1},\"type\":{\"const\":\"array\"}},\"required\":[\"type\",\"minItems\",\"items\"],\"type\":\"object\"},\"types\":{\"additionalProperties\":false,\"properties\":{\"additionalProperties\":{\"additionalProperties\":false,\"properties\":{\"properties\":{\"additionalProperties\":fa
     ... command output truncated for persistence ...
-    e no stable SHM/blob locator and can be overwritten by another call. The invoking file handle retains its own terminal receipt.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"outcome-locators\"},\"payoff\":{\"const\":\"Reliable correlation and recovery after caller disconnect.\"},\"rank\":{\"const\":8},\"route_difference\":{\"const\":\"No direct outcome read exists. Bindings return call receipts from the same opened descriptor; Outcome.get is explicitly a last-method snapshot.\"},\"source_change\":{\"const\":\"If durable retrieval is required, add a caller-scoped operation ID and immutable terminal receipt location owned by canonical dispatch. Do not use shared last-result files for correlation.\"},\"source_refs\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:48-56\"},{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:77-93\"},{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:145-184\"},{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:367-389\"},{\"const\":\"crates/threetched-fs/src/mounted.rs:264-282\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"route_difference\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"Symlink.target\"}],\"type\":\"array\"},\"finding\":{\"const\":\"Namespace links target absolute /plugins/... paths. Kernel following resolves them relative to the process root, which is not necessarily the mount root. The binding returns a semantic target without following the operating-system symlink.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"absolute-symlinks\"},\"payoff\":{\"const\":\"Aliases work reliably at arbitrary mount locations.\"},\"rank\":{\"const\":9},\"route_difference\":{\"const\":\"Semantic mount-local resolution is intentionally different from kernel absolute-path following.\"},\"source_change\":{\"const\":\"Generate correct relative targets for operation/capability/dependency aliases, or formally constrain the mount to the process root and enforce that constraint.\"},\"source_refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/namespace.rs:186-211\"},{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:535-541\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"route_difference\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"FrozenValue.get\"},{\"const\":\"LiveValue.get\"},{\"const\":\"map\"}],\"type\":\"array\"},\"finding\":{\"const\":\"The filesystem consumes ordinary JSON/OPBLOB files under tmpfs paths with fs::read. ObjectStore JSON is compact content-addressed BLAKE3 data, distinct from the source OPBLOB01 binary schema container. No POSIX shared-memory segment name or fixed-layout plugin state record is exposed by this code.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"no-posix-segment-or-zero-copy-layout\"},\"payoff\":{\"const\":\"Performance only after correctness and a measured need; prevents invalid typed mmap claims.\"},\"rank\":{\"const\":10},\"route_difference\":{\"const\":\"BlobRef and ShmHandle are immutable owned decoded values, not mapped borrowed Rust structs. No map method or shm_open implementation is emitted; segment size/alignment/lifetime cannot be invented from a /dev/shm prefix.\"},\"source_change\":{\"const\":\"If measured decoding cost warrants it, define a versioned validated binary state ABI in the existing owner, with publication, mapping lifetime and exposure rules. For current JSON, a bounded mapped byte source still requires decoding and does not make T zero-copy.\"},\"source_refs\":{\"items\":false,\"maxItems\":6,\"minItems\":6,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/source.rs:11-17\"},{\"const\":\"crates/threetched-fs/src/source.rs:143-160\"},{\"const\":\"crates/threetched-fs/src/store.rs:14\"},{\"const\":\"crates/threetched-fs/src/store.rs:297-309\"},{\"const\":\"crates/threetched-fs/src/store.rs:340-350\"},{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:314-342\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"route_difference\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"CallFile.invoke\"}],\"type\":\"array\"},\"finding\":{\"const\":\"The mounted helper validates outer plugin/method attribution, declaration metadata, successful fsync and existence of result. It does not validate nested engine success/event_id/event_hash or the domain result against MethodDecl.returns. The generic binding preserves that nested structured result without claiming a verified audit proof.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"nested-receipt-contract\"},\"payoff\":{\"const\":\"Typed terminal results and stronger completion evidence without retrying an ambiguous mutation.\"},\"rank\":{\"const\":11},\"source_change\":{\"const\":\"Define and validate the common engine receipt envelope in its existing owner, then validate the nested domain result against the pinned method return schema. Keep a distinct typed unknown-outcome error when a backend effect may already have occurred.\"},\"source_refs\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/mounted.rs:336-368\"},{\"const\":\"crates/threetched-fs/src/dispatch.rs:273-284\"},{\"const\":\"crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"const\":\"TypedFilesystem.via_fuse\"},{\"const\":\"CallFile.invoke\"},{\"const\":\"watch\"},{\"const\":\"seal\"},{\"const\":\"map\"}],\"type\":\"array\"},\"finding\":{\"const\":\"The new mounted binding pins a declared human session; guest kernel-authenticated, credential-backed and plain view mounts may not expose session_id and therefore do not have equivalent factory support. The FUSE loop blocks while the scoped D-Bus thread is joined; FUSE_INTERRUPT is unsupported. No watch, map, seal, capture, workspace commit/abort or snapshot control node is projected.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"mount-modes-and-cancellation\"},\"payoff\":{\"const\":\"Broader factory coverage and responsive mounts with honest cancellation guarantees.\"},\"rank\":{\"const\":12},\"source_change\":{\"const\":\"Add a verifiable public mount-mode/identity declaration without credentials for the other supported modes. Define cancellation semantics in the existing operation owner before adding asynchronous handles. Expose additional operations only through an explicitly authored canonical schema; ObjectStore CLI lifecycle methods are not filesystem node methods.\"},\"source_refs\":{\"items\":false,\"maxItems\":6,\"minItems\":6,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:59-73\"},{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:120-125\"},{\"const\":\"crates/threetched-fs/src/fuse_fs.rs:207-253\"},{\"const\":\"crates/threetched-fs/src/namespace.rs:101-215\"},{\"const\":\"crates/threetched-fs/src/namespace.rs:276-321\"},{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:173-175\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"}],\"type\":\"array\"},\"opaque_payloads\":{\"additionalProperties\":false,\"properties\":{\"explanation\":{\"const\":\"Projected payloads are structured JSON, hash text, or symlink targets. Runtime-defined JSON uses a recursive JSON type plus the canonical sealed schema, not Opaque. Unconsumed OPBLOB binary sections are outside the projected content contract; see schema backing evidence.\"},\"projected_file_contents\":{\"items\":false,\"maxItems\":0,\"minItems\":0,\"type\":\"array\"},\"source_refs\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"crates/threetched-fs/src/namespace.rs:129-211\"},{\"const\":\"crates/threetched-fs/src/namespace.rs:491-504\"},{\"const\":\"crates/threetched-fs/src/source.rs:174-215\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"status\",\"projected_file_contents\",\"explanation\",\"source_refs\"],\"type\":\"object\"},\"ranking\":{\"const\":\"Identity and committed-state correctness first, then typed access coverage and performance.\"},\"scope\":{\"const\":\"Source analysis and generated bindings; production filesystem behavior is unchanged.\"},\"task_id\":{\"const\":\"fs-schema-20261005\"},\"unverified\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"Performance and end-to-end behavior of a future direct-shm implementation.\"},{\"const\":\"Durable completion outcome for every individual plugin/backend method; only the common dispatch and projection paths were traced.\"},{\"const\":\"Live mounted execution of the new generated binding module; no user operation was submitted for this analysis.\"}],\"type\":\"array\"}},\"required\":[\"format\",\"task_id\",\"scope\",\"deployment\",\"ranking\",\"gaps\",\"opaque_payloads\",\"unverified\"],\"type\":\"object\"}},\"required\":[\"fs_schema_20261005\",\"pre_repair_gaps\"],\"type\":\"object\"},\"next_gate\":{\"const\":\"Wait for mounted-MCP/workflow source freeze, refresh affected fingerprints/citations, regenerate exports/specializations and compile native GNU release, then prepare immutable snapshot/send-receive activation and verify affected mounted workflow. Preserve separate test ownership.\"},\"source_review\":{\"const\":\"current implementations and citations refreshed\"},\"status\":{\"const\":\"implemented-source-unverified\"},\"task_id\":{\"const\":\"fs-core-20261005\"},\"tests\":{\"const\":\"No current-source test claim by this contract refresh; separate owner-assigned testing agent owns execution. Grok source-test handoff claims require their dated evidence and do not establish complete deployed workflow proof.\"}},\"required\":[\"task_id\",\"status\",\"source_review\",\"build\",\"tests\",\"deployment\",\"next_gate\",\"historical\"],\"type\":\"object\"},\"versioning\":{\"additionalProperties\":false,\"properties\":{\"assembly_commit\":{\"const\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"citation_policy\":{\"const\":\"Existing source references derive from the prior audit and require reconciliation after this incremental lifecycle update. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only. Do not treat in-bounds citations as fresh semantic verification.\"},\"derivation\":{\"const\":\"Incremental revision of the fs-core-20261005 audit. source_commit retains that audit baseline; reviewed filesystem source hashes were updated for threetched-inode-20261011 and threetched-source-authority-20261011 on baseline 2e0e714. Unrelated pins and historical citations remain pending reconciliation as described in latest_source_refresh. Generated review exports are outputs, not authorities.\"},\"latest_source_refresh\":{\"const\":\"2.0.8: inode/handle admission, bounded child lifecycle and sealed threetched integration source (threetched-production-graft-20261011 on 9778c32). Shared binary discovery supplies exact CLI paths, flags and literal-token contracts to the threetched plugin; opblob is the sole sealer. Production FUSE projects the sealed catalog and uses canonical capability admission and receipts. Local graft execution is test-only. Reviewed filesystem and mount-launcher pins were refreshed; unrelated backend pins and historical citations still require full provenance reconciliation. Build, tests, sealing and activation of this integration are pending under the owner build hold; authored source is not runtime proof. See HANDOFF.\"},\"pin_exclusions\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"Plugin-owned embedded contract excludes itself to avoid a self-hash cycle; its canonical sealed document supplies exact identity.\"},{\"const\":\"Derived docs and typed_bindings.rs are outputs and excluded from source input pins.\"}],\"type\":\"array\"},\"schema_version\":{\"const\":\"2.0.8\"},\"source_commit\":{\"const\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"source_files\":{\"items\":false,\"maxItems\":47,\"minItems\":47,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs\"},\"sha256\":{\"const\":\"b1b31b4008cf0513c00e23f1b09570ebd2851ae1e8edc626cad3f7e23fa59630\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs\"},\"sha256\":{\"const\":\"cba7d11c358e011d58767e53f9cdae5f451ac8dd06a2c17ec2156a286d5d43f4\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/session.rs\"},\"sha256\":{\"const\":\"09eb6d57411c29d23f28d19c0709e3c59ce19e2bf7f14bdf9c46f44cc31f59f3\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/blob.rs\"},\"sha256\":{\"const\":\"c2ff1353afaa7291c87f0a40ca4d65c183133cc6ffd4dc57cc16eef7ad1620eb\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/catalog.rs\"},\"sha256\":{\"const\":\"80f067e5598ad88e424ca96861eec43e44b90351cc63e18f4298c9d428cf5c80\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/identity.rs\"},\"sha256\":{\"const\":\"22c60c25b41b1ac9f7677008c872a509ded9aa24f6c0363a56bb728de6f187d0\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/lib.rs\"},\"sha256\":{\"const\":\"245a578f509fc4682502d5d80a5e76dcec3ee4588f7db397c3319e45eb8ea561\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-core/src/identity_projection_transaction.rs\"},\"sha256\":{\"const\":\"52042299ff89361f744c423e2215c1eca026c647e58c6b3cfcca094e5f373515\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-core/src/projection_shm.rs\"},\"sha256\":{\"const\":\"dc28bf6bfa9e99dd435e7605ec5fa1051165998ff9c360aa38a7bd0307ec9077\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-core/src/projection_transactions.rs\"},\"sha256\":{\"const\":\"928240ff74fd8486354491cc8b31b18c19321b8b0bb25b8d802f0aded64a76d5\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-cozo-store/src/runtime_document_transactions.rs\"},\"sha256\":{\"const\":\"0c1738789b3d078bbb3cd4948c342d211d9528e37ab5de1d7677abd1686391f1\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/chatbot_episode_state.rs\"},\"sha256\":{\"const\":\"ba88089d5ae60fce5930c5851a08679b8e9097c7d90b410145136a2cc4d9499c\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/lungs_socket.rs\"},\"sha256\":{\"const\":\"9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/method_receipt_audit.rs\"},\"sha256\":{\"const\":\"71152d6c0e3dc8c17828748e21cefa2986243441e1a9b7e1ea919d23c88c2d32\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/mutation_engine.rs\"},\"sha256\":{\"const\":\"0950b0950343b538dcab4777503b95ca8420d6307c8319c0065f566f3ca1ea07\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/owned_method_task.rs\"},\"sha256\":{\"const\":\"6ef8da351c5861be9081261c749ac969e7cf958e891cc59d6c5cc7bfb9e4a450\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/schema_router.rs\"},\"sha256\":{\"const\":\"f9dd5a2802502ad3d1bf3d0d9772808a7bdbe77ef1ba768c13749524acba1afb\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/state_tree_fold.rs\"},\"sha256\":{\"const\":\"3c82d3e1358dfd919231a5885468bc9e442044e44191f22cd4fd05c8bbb5a5cf\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/bin/opblob.rs\"},\"sha256\":{\"const\":\"12b253adbc51b280a457eccd019174cff8107e10a42f70d4b419bd2233bcc891\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/state_plugins/runtime_documents.rs\"},\"sha256\":{\"const\":\"eaddddc37de952f8fb2092f41a385a23136669d845566484eb2fb94c2895fb3e\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/state_plugins/tched_router.rs\"},\"sha256\":{\"const\":\"9a87b6ad09a9fa98c74dcd6660a924adbc6d450d8853f3f60770bf7ab4a19af9\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/state_plugins/tched_fs.rs\"},\"sha256\":{\"const\":\"2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/Cargo.toml\"},\"sha256\":{\"const\":\"17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/event_chain.rs\"},\"sha256\":{\"const\":\"b1079a93337ed851b4888307a313f32175a0b16d54447714ea659da5b8baf34b\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/method_receipt.rs\"},\"sha256\":{\"const\":\"65940c2b1daffeab9867c9dab5ef8b668775a38bfe889a75e04a37914f66c395\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/plugin_schema.rs\"},\"sha256\":{\"const\":\"359e328c190c3847231ecdb87449fd95fde53741a063cfc0c1d0b262359e8f17\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/public_state.rs\"},\"sha256\":{\"const\":\"c649f87cc0c979713261d738de708a0175dec601c23897e40c358d1370ac2362\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/Cargo.toml\"},\"sha256\":{\"const\":\"71122379896ff949f8f83bc66381d1273834c7855a07e79ea7cf412fe7ec05a3\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/examples/typed_export.rs\"},\"sha256\":{\"const\":\"4a9f8c9e345aff0e792e79d6204e964b573a497a9ebbef09c77221cec1e5c983\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/examples/typed_generate.rs\"},\"sha256\":{\"const\":\"fdd3cb70e87f49b1d0fc86856867f1996ab6066a03a5c6d74858bade19f4a667\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/examples/typed_specialize.rs\"},\"sha256\":{\"const\":\"ff2aa10a4ce51b368fdd254a69eb589a0196fdf5fa0358d6498ff0bddb53a456\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/dispatch.rs\"},\"sha256\":{\"const\":\"74e0f6a829e19c880809dece6bed764c861a8f8c7a7ef1d02b9983dbe1e7bdcd\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/fuse_buffers.rs\"},\"sha256\":{\"const\":\"62509bff1b0b99839fc05bcb524c6ac4d4054c08de000450a14b83580bb8c187\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/fuse_fs.rs\"},\"sha256\":{\"const\":\"5b38308b3b687caa017e4f4350d575132bdbc83aeae5088f36d1dc9ce06312e2\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/fuse_process.rs\"},\"sha256\":{\"const\":\"a695702addbf084dca518265b8c5e7c54ffdf369cb66b08199d148cb7c6f6926\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/lib.rs\"},\"sha256\":{\"const\":\"7b018ef12791707bcd1b6fb926e1c453b7ce569af037dfbd3e38cb039a2bf759\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/main.rs\"},\"sha256\":{\"const\":\"68cb9d882d0ea0df90331bc2576fe7ddcf022ada249975c28020e0e26b854e24\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/mcp.rs\"},\"sha256\":{\"const\":\"f5661e0bb50222085b3b975110d23f7f2316bd935851ecba7b515ac370f4d90b\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/model.rs\"},\"sha256\":{\"const\":\"4bc7b17bd49f1c564ba1efb97182421f8b958a339ecc32fb65e42e76a3a241c0\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/mounted.rs\"},\"sha256\":{\"const\":\"2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/namespace.rs\"},\"sha256\":{\"const\":\"4c778b04ad597208f21a6d2403e3b7631fac2bad38d23cfab1181cb01e7a7cd3\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/source.rs\"},\"sha256\":{\"const\":\"24f3cd2ef38c40fdf9217f3a47a7eccb9620ec29ee50125e1c326777f0ae7a32\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/store.rs\"},\"sha256\":{\"const\":\"943f3bbd29a1cef8caa3f9c135f72479935dfed5abfed29e93b260498c088ffb\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/typed_runtime.rs\"},\"sha256\":{\"const\":\"027d2d834d871b7801e2a8c007fbc638447ed6a36d7443ea43904fa4737b7989\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/threetched-fs/src/threetched-surface.rs\"},\"sha256\":{\"const\":\"5ff3fe01ebf662c97f711fbb78ac4963ba14843ea4f1bb39168c4e5fd52aa375\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"deploy/config/container-socket-contract.schema.json\"},\"sha256\":{\"const\":\"bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"deploy/runit/threetched-fs/run\"},\"sha256\":{\"const\":\"452da1ecc40282b904c3a13a7c303e35f5c319726970d92b3ef766775e1caab9\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"}],\"type\":\"array\"},\"source_hash_algorithm\":{\"const\":\"SHA-256\"}},\"required\":[\"source_files\",\"source_hash_algorithm\",\"assembly_commit\",\"schema_version\",\"source_commit\",\"derivation\",\"pin_exclusions\",\"citation_policy\",\"latest_source_refresh\"],\"type\":\"object\"}},\"required\":[\"$schema\",\"$id\",\"$ref\",\"title\",\"description\",\"$defs\",\"versioning\",\"convention\",\"types\",\"nodes\",\"methods\",\"invariants\",\"enumeration\",\"fuse_operations\",\"class_fuse_operations\",\"absent_surfaces\",\"protocol_extras\",\"backing_evidence\",\"source_payload_types\",\"source_error_shapes\",\"bindings\",\"gaps\",\"proposed_rw_policy_and_memory_strategy\",\"verification\",\"unverified\",\"authority\",\"plugin_surface\",\"runtime_observations\"],\"type\":\"object\"}],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"contract\":{\"$ref\":\"#/$defs/FilesystemContract\"}},\"required\":[\"contract\"],\"title\":\"GetContractOutput\",\"type\":\"object\"},\"side_effect\":\"read\",\"idempotent\":true,\"required_capability\":\"cap.storage.3tchedfs.contract.read@v1\",\"subid\":\"obs.storage.3tchedfs.contract.get@v1\"},\"get_protocol\":{\"name\":\"get_protocol\",\"args\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"title\":\"GetProtocolInput\",\"type\":\"object\"},\"returns\":{\"$defs\":{\"ContractDescriptor\":{\"additionalProperties\":false,\"description\":\"Public discovery metadata; no mount identity, credentials, or live values.\",\"properties\":{\"method\":{\"type\":\"string\"},\"schema_version\":{\"type\":\"string\"},\"source_commit\":{\"type\":\"string\"}},\"required\":[\"schema_version\",\"source_commit\",\"method\"],\"type\":\"object\"},\"Invocation\":{\"additionalProperties\":false,\"description\":\"One convention for every declared operation file, relative to the mount.\",\"properties\":{\"arguments\":{\"type\":\"string\"},\"automatic_retry\":{\"description\":\"A transport error can leave execution uncertain; never replay implicitly.\",\"type\":\"boolean\"},\"commit\":{\"type\":\"string\"},\"declaration\":{\"description\":\"Target-owned declaration, including input/output schemas and capability.\",\"type\":\"string\"},\"open\":{\"description\":\"Open one descriptor without truncating, then retain it through the reply.\",\"type\":\"string\"},\"path\":{\"description\":\"Percent-encoded path components; resolve against the pinned catalog.\",\"type\":\"string\"},\"result\":{\"type\":\"string\"}},\"required\":[\"path\",\"open\",\"arguments\",\"commit\",\"result\",\"declaration\",\"automatic_retry\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"description\":\"Static filesystem contract. This never asserts that a mount is ready.\",\"properties\":{\"contract\":{\"$ref\":\"#/$defs/ContractDescriptor\"},\"filesystem_type\":{\"type\":\"string\"},\"invocation\":{\"$ref\":\"#/$defs/Invocation\"},\"mount_metadata\":{\"description\":\"Mount-local metadata holds the actual identity and pinned catalog.\",\"type\":\"string\"}},\"required\":[\"filesystem_type\",\"mount_metadata\",\"invocation\",\"contract\"],\"title\":\"FilesystemProtocol\",\"type\":\"object\",\"x-oscal-category\":\"storage\",\"x-oscal-subid\":\"sch.storage.3tchedfs.schema@v1\"},\"side_effect\":\"read\",\"idempotent\":true,\"required_capability\":\"cap.storage.3tchedfs.protocol.read@v1\",\"subid\":\"obs.storage.3tchedfs.protocol.get@v1\"},\"get_receipt\":{\"name\":\"get_receipt\",\"args\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"operation_id\":{\"maxLength\":36,\"minLength\":36,\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"operation_id\"],\"title\":\"GetMethodReceiptInput\",\"type\":\"object\"},\"returns\":{\"$defs\":{\"MethodEventProof\":{\"additionalProperties\":false,\"properties\":{\"event_hash\":{\"maxLength\":32,\"minLength\":32,\"pattern\":\"^[0-9a-f]{32}$\",\"type\":\"string\"},\"event_id\":{\"format\":\"uint64\",\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"event_id\",\"event_hash\"],\"type\":\"object\"},\"MethodRecoveryStatus\":{\"enum\":[\"completed\",\"failed\",\"unknown\",\"not_found\"],\"type\":\"string\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"description\":\"Caller-private recovery metadata, never a copy of a private domain result.\",\"properties\":{\"attempt\":{\"anyOf\":[{\"$ref\":\"#/$defs/MethodEventProof\"},{\"type\":\"null\"}]},\"method\":{\"type\":[\"string\",\"null\"]},\"operation_id\":{\"maxLength\":36,\"minLength\":36,\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\",\"type\":\"string\"},\"plugin_id\":{\"type\":[\"string\",\"null\"]},\"result_digest\":{\"type\":[\"string\",\"null\"]},\"status\":{\"$ref\":\"#/$defs/MethodRecoveryStatus\"},\"terminal\":{\"anyOf\":[{\"$ref\":\"#/$defs/MethodEventProof\"},{\"type\":\"null\"}]}},\"required\":[\"operation_id\",\"status\"],\"title\":\"MethodReceiptRecovery\",\"type\":\"object\"},\"side_effect\":\"read\",\"idempotent\":true,\"required_capability\":\"cap.storage.3tchedfs.receipt.read@v1\",\"subid\":\"obs.storage.3tchedfs.receipt.get@v1\"}},\"signals\":[],\"guarantees\":{\"supports_rollback\":false,\"supports_checkpoints\":false,\"supports_verification\":false,\"atomic_operations\":false},\"capabilities\":{\"cap.storage.3tchedfs.contract.read@v1\":{\"id\":\"cap.storage.3tchedfs.contract.read@v1\",\"description\":\"Read the immutable typed filesystem contract; grants no target operation, mount, or backing-store access.\"},\"cap.storage.3tchedfs.protocol.read@v1\":{\"id\":\"cap.storage.3tchedfs.protocol.read@v1\",\"description\":\"Read the shared 3tchedFS invocation convention; grants no target operation access.\"},\"cap.storage.3tchedfs.receipt.read@v1\":{\"id\":\"cap.storage.3tchedfs.receipt.read@v1\",\"description\":\"Recover an operation proof only for the verified caller and session; returns no private arguments or domain result.\"}},\"capability_grants\":{},\"public_state\":{\"paths\":[\"/contract\",\"/filesystem_type\",\"/invocation\",\"/mount_metadata\"]},\"field_writes\":{},\"example\":{\"contract\":{\"method\":\"get_contract\",\"schema_version\":\"2.0.8\",\"source_commit\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"filesystem_type\":\"fuse.3tchedFS\",\"invocation\":{\"arguments\":\"application/json\",\"automatic_retry\":false,\"commit\":\"fsync\",\"declaration\":\"plugins/{plugin}/operations/{method}/metadata.json\",\"open\":\"O_RDWR\",\"path\":\"plugins/{plugin}/operations/{method}/call\",\"result\":\"seek(0), read receipt or diagnostic on the same descriptor\"},\"mount_metadata\":\".3tchedfs.json\"}}",&raw,true).map_err(serde::de::Error::custom)?;
+    e no stable SHM/blob locator and can be overwritten by another call. The invoking file handle retains its own terminal receipt.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"outcome-locators\"},\"payoff\":{\"const\":\"Reliable correlation and recovery after caller disconnect.\"},\"rank\":{\"const\":8},\"route_difference\":{\"const\":\"No direct outcome read exists. Bindings return call receipts from the same opened descriptor; Outcome.get is explicitly a last-method snapshot.\"},\"source_change\":{\"const\":\"If durable retrieval is required, add a caller-scoped operation ID and immutable terminal receipt location owned by canonical dispatch. Do not use shared last-result files for correlation.\"},\"source_refs\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:48-56\"},{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:77-93\"},{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:145-184\"},{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:367-389\"},{\"const\":\"crates/3tched-fs/src/mounted.rs:264-282\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"route_difference\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"Symlink.target\"}],\"type\":\"array\"},\"finding\":{\"const\":\"Namespace links target absolute /plugins/... paths. Kernel following resolves them relative to the process root, which is not necessarily the mount root. The binding returns a semantic target without following the operating-system symlink.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"absolute-symlinks\"},\"payoff\":{\"const\":\"Aliases work reliably at arbitrary mount locations.\"},\"rank\":{\"const\":9},\"route_difference\":{\"const\":\"Semantic mount-local resolution is intentionally different from kernel absolute-path following.\"},\"source_change\":{\"const\":\"Generate correct relative targets for operation/capability/dependency aliases, or formally constrain the mount to the process root and enforce that constraint.\"},\"source_refs\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/namespace.rs:186-211\"},{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:535-541\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"route_difference\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"FrozenValue.get\"},{\"const\":\"LiveValue.get\"},{\"const\":\"map\"}],\"type\":\"array\"},\"finding\":{\"const\":\"The filesystem consumes ordinary JSON/OPBLOB files under tmpfs paths with fs::read. ObjectStore JSON is compact content-addressed BLAKE3 data, distinct from the source OPBLOB01 binary schema container. No POSIX shared-memory segment name or fixed-layout plugin state record is exposed by this code.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"no-posix-segment-or-zero-copy-layout\"},\"payoff\":{\"const\":\"Performance only after correctness and a measured need; prevents invalid typed mmap claims.\"},\"rank\":{\"const\":10},\"route_difference\":{\"const\":\"BlobRef and ShmHandle are immutable owned decoded values, not mapped borrowed Rust structs. No map method or shm_open implementation is emitted; segment size/alignment/lifetime cannot be invented from a /dev/shm prefix.\"},\"source_change\":{\"const\":\"If measured decoding cost warrants it, define a versioned validated binary state ABI in the existing owner, with publication, mapping lifetime and exposure rules. For current JSON, a bounded mapped byte source still requires decoding and does not make T zero-copy.\"},\"source_refs\":{\"items\":false,\"maxItems\":6,\"minItems\":6,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/source.rs:11-17\"},{\"const\":\"crates/3tched-fs/src/source.rs:143-160\"},{\"const\":\"crates/3tched-fs/src/store.rs:14\"},{\"const\":\"crates/3tched-fs/src/store.rs:297-309\"},{\"const\":\"crates/3tched-fs/src/store.rs:340-350\"},{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:314-342\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"route_difference\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":1,\"minItems\":1,\"prefixItems\":[{\"const\":\"CallFile.invoke\"}],\"type\":\"array\"},\"finding\":{\"const\":\"The mounted helper validates outer plugin/method attribution, declaration metadata, successful fsync and existence of result. It does not validate nested engine success/event_id/event_hash or the domain result against MethodDecl.returns. The generic binding preserves that nested structured result without claiming a verified audit proof.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"nested-receipt-contract\"},\"payoff\":{\"const\":\"Typed terminal results and stronger completion evidence without retrying an ambiguous mutation.\"},\"rank\":{\"const\":11},\"source_change\":{\"const\":\"Define and validate the common engine receipt envelope in its existing owner, then validate the nested domain result against the pinned method return schema. Keep a distinct typed unknown-outcome error when a backend effect may already have occurred.\"},\"source_refs\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/mounted.rs:336-368\"},{\"const\":\"crates/3tched-fs/src/dispatch.rs:273-284\"},{\"const\":\"crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"affected_methods\":{\"items\":false,\"maxItems\":5,\"minItems\":5,\"prefixItems\":[{\"const\":\"TypedFilesystem.via_fuse\"},{\"const\":\"CallFile.invoke\"},{\"const\":\"watch\"},{\"const\":\"seal\"},{\"const\":\"map\"}],\"type\":\"array\"},\"finding\":{\"const\":\"The new mounted binding pins a declared human session; guest kernel-authenticated, credential-backed and plain view mounts may not expose session_id and therefore do not have equivalent factory support. The FUSE loop blocks while the scoped D-Bus thread is joined; FUSE_INTERRUPT is unsupported. No watch, map, seal, capture, workspace commit/abort or snapshot control node is projected.\"},\"fixable\":{\"const\":true},\"id\":{\"const\":\"mount-modes-and-cancellation\"},\"payoff\":{\"const\":\"Broader factory coverage and responsive mounts with honest cancellation guarantees.\"},\"rank\":{\"const\":12},\"source_change\":{\"const\":\"Add a verifiable public mount-mode/identity declaration without credentials for the other supported modes. Define cancellation semantics in the existing operation owner before adding asynchronous handles. Expose additional operations only through an explicitly authored canonical schema; ObjectStore CLI lifecycle methods are not filesystem node methods.\"},\"source_refs\":{\"items\":false,\"maxItems\":6,\"minItems\":6,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:59-73\"},{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:120-125\"},{\"const\":\"crates/3tched-fs/src/fuse_fs.rs:207-253\"},{\"const\":\"crates/3tched-fs/src/namespace.rs:101-215\"},{\"const\":\"crates/3tched-fs/src/namespace.rs:276-321\"},{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:173-175\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"rank\",\"id\",\"status\",\"affected_methods\",\"finding\",\"fixable\",\"source_change\",\"payoff\",\"source_refs\"],\"type\":\"object\"}],\"type\":\"array\"},\"opaque_payloads\":{\"additionalProperties\":false,\"properties\":{\"explanation\":{\"const\":\"Projected payloads are structured JSON, hash text, or symlink targets. Runtime-defined JSON uses a recursive JSON type plus the canonical sealed schema, not Opaque. Unconsumed OPBLOB binary sections are outside the projected content contract; see schema backing evidence.\"},\"projected_file_contents\":{\"items\":false,\"maxItems\":0,\"minItems\":0,\"type\":\"array\"},\"source_refs\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"crates/3tched-fs/src/namespace.rs:129-211\"},{\"const\":\"crates/3tched-fs/src/namespace.rs:491-504\"},{\"const\":\"crates/3tched-fs/src/source.rs:174-215\"}],\"type\":\"array\"},\"status\":{\"const\":\"verified\"}},\"required\":[\"status\",\"projected_file_contents\",\"explanation\",\"source_refs\"],\"type\":\"object\"},\"ranking\":{\"const\":\"Identity and committed-state correctness first, then typed access coverage and performance.\"},\"scope\":{\"const\":\"Source analysis and generated bindings; production filesystem behavior is unchanged.\"},\"task_id\":{\"const\":\"fs-schema-20261005\"},\"unverified\":{\"items\":false,\"maxItems\":3,\"minItems\":3,\"prefixItems\":[{\"const\":\"Performance and end-to-end behavior of a future direct-shm implementation.\"},{\"const\":\"Durable completion outcome for every individual plugin/backend method; only the common dispatch and projection paths were traced.\"},{\"const\":\"Live mounted execution of the new generated binding module; no user operation was submitted for this analysis.\"}],\"type\":\"array\"}},\"required\":[\"format\",\"task_id\",\"scope\",\"deployment\",\"ranking\",\"gaps\",\"opaque_payloads\",\"unverified\"],\"type\":\"object\"}},\"required\":[\"fs_schema_20261005\",\"pre_repair_gaps\"],\"type\":\"object\"},\"next_gate\":{\"const\":\"Wait for mounted-MCP/workflow source freeze, refresh affected fingerprints/citations, regenerate exports/specializations and compile native GNU release, then prepare immutable snapshot/send-receive activation and verify affected mounted workflow. Preserve separate test ownership.\"},\"source_review\":{\"const\":\"current implementations and citations refreshed\"},\"status\":{\"const\":\"implemented-source-unverified\"},\"task_id\":{\"const\":\"fs-core-20261005\"},\"tests\":{\"const\":\"No current-source test claim by this contract refresh; separate owner-assigned testing agent owns execution. Grok source-test handoff claims require their dated evidence and do not establish complete deployed workflow proof.\"}},\"required\":[\"task_id\",\"status\",\"source_review\",\"build\",\"tests\",\"deployment\",\"next_gate\",\"historical\"],\"type\":\"object\"},\"versioning\":{\"additionalProperties\":false,\"properties\":{\"assembly_commit\":{\"const\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"citation_policy\":{\"const\":\"Existing source references derive from the prior audit and require reconciliation after this incremental lifecycle update. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only. Do not treat in-bounds citations as fresh semantic verification.\"},\"derivation\":{\"const\":\"Incremental revision of the fs-core-20261005 audit. source_commit retains that audit baseline; reviewed filesystem source hashes were updated for threetched-inode-20261011 and threetched-source-authority-20261011 on baseline 2e0e714. Unrelated pins and historical citations remain pending reconciliation as described in latest_source_refresh. Generated review exports are outputs, not authorities.\"},\"latest_source_refresh\":{\"const\":\"2.0.8: inode/handle admission, bounded child lifecycle and sealed threetched integration source (threetched-production-graft-20261011 on 9778c32). Shared binary discovery supplies exact CLI paths, flags and literal-token contracts to the threetched plugin; opblob is the sole sealer. Production FUSE projects the sealed catalog and uses canonical capability admission and receipts. Local graft execution is test-only. Reviewed filesystem and mount-launcher pins were refreshed; unrelated backend pins and historical citations still require full provenance reconciliation. Build, tests, sealing and activation of this integration are pending under the owner build hold; authored source is not runtime proof. See HANDOFF.\"},\"pin_exclusions\":{\"items\":false,\"maxItems\":2,\"minItems\":2,\"prefixItems\":[{\"const\":\"Plugin-owned embedded contract excludes itself to avoid a self-hash cycle; its canonical sealed document supplies exact identity.\"},{\"const\":\"Derived docs and typed_bindings.rs are outputs and excluded from source input pins.\"}],\"type\":\"array\"},\"schema_version\":{\"const\":\"2.0.8\"},\"source_commit\":{\"const\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"source_files\":{\"items\":false,\"maxItems\":47,\"minItems\":47,\"prefixItems\":[{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs\"},\"sha256\":{\"const\":\"b1b31b4008cf0513c00e23f1b09570ebd2851ae1e8edc626cad3f7e23fa59630\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs\"},\"sha256\":{\"const\":\"cba7d11c358e011d58767e53f9cdae5f451ac8dd06a2c17ec2156a286d5d43f4\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/session.rs\"},\"sha256\":{\"const\":\"09eb6d57411c29d23f28d19c0709e3c59ce19e2bf7f14bdf9c46f44cc31f59f3\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/blob.rs\"},\"sha256\":{\"const\":\"c2ff1353afaa7291c87f0a40ca4d65c183133cc6ffd4dc57cc16eef7ad1620eb\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/catalog.rs\"},\"sha256\":{\"const\":\"80f067e5598ad88e424ca96861eec43e44b90351cc63e18f4298c9d428cf5c80\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/identity.rs\"},\"sha256\":{\"const\":\"22c60c25b41b1ac9f7677008c872a509ded9aa24f6c0363a56bb728de6f187d0\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-blob/src/lib.rs\"},\"sha256\":{\"const\":\"245a578f509fc4682502d5d80a5e76dcec3ee4588f7db397c3319e45eb8ea561\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-core/src/identity_projection_transaction.rs\"},\"sha256\":{\"const\":\"52042299ff89361f744c423e2215c1eca026c647e58c6b3cfcca094e5f373515\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-core/src/projection_shm.rs\"},\"sha256\":{\"const\":\"dc28bf6bfa9e99dd435e7605ec5fa1051165998ff9c360aa38a7bd0307ec9077\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-core/src/projection_transactions.rs\"},\"sha256\":{\"const\":\"928240ff74fd8486354491cc8b31b18c19321b8b0bb25b8d802f0aded64a76d5\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-cozo-store/src/runtime_document_transactions.rs\"},\"sha256\":{\"const\":\"0c1738789b3d078bbb3cd4948c342d211d9528e37ab5de1d7677abd1686391f1\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/chatbot_episode_state.rs\"},\"sha256\":{\"const\":\"ba88089d5ae60fce5930c5851a08679b8e9097c7d90b410145136a2cc4d9499c\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/lungs_socket.rs\"},\"sha256\":{\"const\":\"9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/method_receipt_audit.rs\"},\"sha256\":{\"const\":\"71152d6c0e3dc8c17828748e21cefa2986243441e1a9b7e1ea919d23c88c2d32\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/mutation_engine.rs\"},\"sha256\":{\"const\":\"0950b0950343b538dcab4777503b95ca8420d6307c8319c0065f566f3ca1ea07\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/owned_method_task.rs\"},\"sha256\":{\"const\":\"6ef8da351c5861be9081261c749ac969e7cf958e891cc59d6c5cc7bfb9e4a450\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/schema_router.rs\"},\"sha256\":{\"const\":\"f9dd5a2802502ad3d1bf3d0d9772808a7bdbe77ef1ba768c13749524acba1afb\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-grpc-bridge/src/state_tree_fold.rs\"},\"sha256\":{\"const\":\"3c82d3e1358dfd919231a5885468bc9e442044e44191f22cd4fd05c8bbb5a5cf\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/bin/opblob.rs\"},\"sha256\":{\"const\":\"12b253adbc51b280a457eccd019174cff8107e10a42f70d4b419bd2233bcc891\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/state_plugins/runtime_documents.rs\"},\"sha256\":{\"const\":\"eaddddc37de952f8fb2092f41a385a23136669d845566484eb2fb94c2895fb3e\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/state_plugins/threetched.rs\"},\"sha256\":{\"const\":\"9a87b6ad09a9fa98c74dcd6660a924adbc6d450d8853f3f60770bf7ab4a19af9\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-plugins/src/state_plugins/_3tched_fs.rs\"},\"sha256\":{\"const\":\"2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/Cargo.toml\"},\"sha256\":{\"const\":\"17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/event_chain.rs\"},\"sha256\":{\"const\":\"b1079a93337ed851b4888307a313f32175a0b16d54447714ea659da5b8baf34b\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/method_receipt.rs\"},\"sha256\":{\"const\":\"65940c2b1daffeab9867c9dab5ef8b668775a38bfe889a75e04a37914f66c395\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/plugin_schema.rs\"},\"sha256\":{\"const\":\"359e328c190c3847231ecdb87449fd95fde53741a063cfc0c1d0b262359e8f17\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/op-state-store/src/public_state.rs\"},\"sha256\":{\"const\":\"c649f87cc0c979713261d738de708a0175dec601c23897e40c358d1370ac2362\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/Cargo.toml\"},\"sha256\":{\"const\":\"71122379896ff949f8f83bc66381d1273834c7855a07e79ea7cf412fe7ec05a3\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/examples/typed_export.rs\"},\"sha256\":{\"const\":\"4a9f8c9e345aff0e792e79d6204e964b573a497a9ebbef09c77221cec1e5c983\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/examples/typed_generate.rs\"},\"sha256\":{\"const\":\"fdd3cb70e87f49b1d0fc86856867f1996ab6066a03a5c6d74858bade19f4a667\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/examples/typed_specialize.rs\"},\"sha256\":{\"const\":\"ff2aa10a4ce51b368fdd254a69eb589a0196fdf5fa0358d6498ff0bddb53a456\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/dispatch.rs\"},\"sha256\":{\"const\":\"74e0f6a829e19c880809dece6bed764c861a8f8c7a7ef1d02b9983dbe1e7bdcd\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/fuse_buffers.rs\"},\"sha256\":{\"const\":\"62509bff1b0b99839fc05bcb524c6ac4d4054c08de000450a14b83580bb8c187\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/fuse_fs.rs\"},\"sha256\":{\"const\":\"5b38308b3b687caa017e4f4350d575132bdbc83aeae5088f36d1dc9ce06312e2\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/fuse_process.rs\"},\"sha256\":{\"const\":\"a695702addbf084dca518265b8c5e7c54ffdf369cb66b08199d148cb7c6f6926\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/lib.rs\"},\"sha256\":{\"const\":\"7b018ef12791707bcd1b6fb926e1c453b7ce569af037dfbd3e38cb039a2bf759\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/main.rs\"},\"sha256\":{\"const\":\"68cb9d882d0ea0df90331bc2576fe7ddcf022ada249975c28020e0e26b854e24\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/mcp.rs\"},\"sha256\":{\"const\":\"f5661e0bb50222085b3b975110d23f7f2316bd935851ecba7b515ac370f4d90b\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/model.rs\"},\"sha256\":{\"const\":\"4bc7b17bd49f1c564ba1efb97182421f8b958a339ecc32fb65e42e76a3a241c0\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/mounted.rs\"},\"sha256\":{\"const\":\"2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/namespace.rs\"},\"sha256\":{\"const\":\"4c778b04ad597208f21a6d2403e3b7631fac2bad38d23cfab1181cb01e7a7cd3\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/source.rs\"},\"sha256\":{\"const\":\"24f3cd2ef38c40fdf9217f3a47a7eccb9620ec29ee50125e1c326777f0ae7a32\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/store.rs\"},\"sha256\":{\"const\":\"943f3bbd29a1cef8caa3f9c135f72479935dfed5abfed29e93b260498c088ffb\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/typed_runtime.rs\"},\"sha256\":{\"const\":\"027d2d834d871b7801e2a8c007fbc638447ed6a36d7443ea43904fa4737b7989\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"crates/3tched-fs/src/threetched-surface.rs\"},\"sha256\":{\"const\":\"5ff3fe01ebf662c97f711fbb78ac4963ba14843ea4f1bb39168c4e5fd52aa375\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"deploy/config/container-socket-contract.schema.json\"},\"sha256\":{\"const\":\"bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"},{\"additionalProperties\":false,\"properties\":{\"path\":{\"const\":\"deploy/runit/3tched-fs/run\"},\"sha256\":{\"const\":\"452da1ecc40282b904c3a13a7c303e35f5c319726970d92b3ef766775e1caab9\"}},\"required\":[\"sha256\",\"path\"],\"type\":\"object\"}],\"type\":\"array\"},\"source_hash_algorithm\":{\"const\":\"SHA-256\"}},\"required\":[\"source_files\",\"source_hash_algorithm\",\"assembly_commit\",\"schema_version\",\"source_commit\",\"derivation\",\"pin_exclusions\",\"citation_policy\",\"latest_source_refresh\"],\"type\":\"object\"}},\"required\":[\"$schema\",\"$id\",\"$ref\",\"title\",\"description\",\"$defs\",\"versioning\",\"convention\",\"types\",\"nodes\",\"methods\",\"invariants\",\"enumeration\",\"fuse_operations\",\"class_fuse_operations\",\"absent_surfaces\",\"protocol_extras\",\"backing_evidence\",\"source_payload_types\",\"source_error_shapes\",\"bindings\",\"gaps\",\"proposed_rw_policy_and_memory_strategy\",\"verification\",\"unverified\",\"authority\",\"plugin_surface\",\"runtime_observations\"],\"type\":\"object\"}],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"contract\":{\"$ref\":\"#/$defs/FilesystemContract\"}},\"required\":[\"contract\"],\"title\":\"GetContractOutput\",\"type\":\"object\"},\"side_effect\":\"read\",\"idempotent\":true,\"required_capability\":\"cap.storage.3tchedfs.contract.read@v1\",\"subid\":\"obs.storage.3tchedfs.contract.get@v1\"},\"get_protocol\":{\"name\":\"get_protocol\",\"args\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"title\":\"GetProtocolInput\",\"type\":\"object\"},\"returns\":{\"$defs\":{\"ContractDescriptor\":{\"additionalProperties\":false,\"description\":\"Public discovery metadata; no mount identity, credentials, or live values.\",\"properties\":{\"method\":{\"type\":\"string\"},\"schema_version\":{\"type\":\"string\"},\"source_commit\":{\"type\":\"string\"}},\"required\":[\"schema_version\",\"source_commit\",\"method\"],\"type\":\"object\"},\"Invocation\":{\"additionalProperties\":false,\"description\":\"One convention for every declared operation file, relative to the mount.\",\"properties\":{\"arguments\":{\"type\":\"string\"},\"automatic_retry\":{\"description\":\"A transport error can leave execution uncertain; never replay implicitly.\",\"type\":\"boolean\"},\"commit\":{\"type\":\"string\"},\"declaration\":{\"description\":\"Target-owned declaration, including input/output schemas and capability.\",\"type\":\"string\"},\"open\":{\"description\":\"Open one descriptor without truncating, then retain it through the reply.\",\"type\":\"string\"},\"path\":{\"description\":\"Percent-encoded path components; resolve against the pinned catalog.\",\"type\":\"string\"},\"result\":{\"type\":\"string\"}},\"required\":[\"path\",\"open\",\"arguments\",\"commit\",\"result\",\"declaration\",\"automatic_retry\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"description\":\"Static filesystem contract. This never asserts that a mount is ready.\",\"properties\":{\"contract\":{\"$ref\":\"#/$defs/ContractDescriptor\"},\"filesystem_type\":{\"type\":\"string\"},\"invocation\":{\"$ref\":\"#/$defs/Invocation\"},\"mount_metadata\":{\"description\":\"Mount-local metadata holds the actual identity and pinned catalog.\",\"type\":\"string\"}},\"required\":[\"filesystem_type\",\"mount_metadata\",\"invocation\",\"contract\"],\"title\":\"FilesystemProtocol\",\"type\":\"object\",\"x-oscal-category\":\"storage\",\"x-oscal-subid\":\"sch.storage.3tchedfs.schema@v1\"},\"side_effect\":\"read\",\"idempotent\":true,\"required_capability\":\"cap.storage.3tchedfs.protocol.read@v1\",\"subid\":\"obs.storage.3tchedfs.protocol.get@v1\"},\"get_receipt\":{\"name\":\"get_receipt\",\"args\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"operation_id\":{\"maxLength\":36,\"minLength\":36,\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\",\"type\":\"string\"}},\"required\":[\"operation_id\"],\"title\":\"GetMethodReceiptInput\",\"type\":\"object\"},\"returns\":{\"$defs\":{\"MethodEventProof\":{\"additionalProperties\":false,\"properties\":{\"event_hash\":{\"maxLength\":32,\"minLength\":32,\"pattern\":\"^[0-9a-f]{32}$\",\"type\":\"string\"},\"event_id\":{\"format\":\"uint64\",\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"event_id\",\"event_hash\"],\"type\":\"object\"},\"MethodRecoveryStatus\":{\"enum\":[\"completed\",\"failed\",\"unknown\",\"not_found\"],\"type\":\"string\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"description\":\"Caller-private recovery metadata, never a copy of a private domain result.\",\"properties\":{\"attempt\":{\"anyOf\":[{\"$ref\":\"#/$defs/MethodEventProof\"},{\"type\":\"null\"}]},\"method\":{\"type\":[\"string\",\"null\"]},\"operation_id\":{\"maxLength\":36,\"minLength\":36,\"pattern\":\"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$\",\"type\":\"string\"},\"plugin_id\":{\"type\":[\"string\",\"null\"]},\"result_digest\":{\"type\":[\"string\",\"null\"]},\"status\":{\"$ref\":\"#/$defs/MethodRecoveryStatus\"},\"terminal\":{\"anyOf\":[{\"$ref\":\"#/$defs/MethodEventProof\"},{\"type\":\"null\"}]}},\"required\":[\"operation_id\",\"status\"],\"title\":\"MethodReceiptRecovery\",\"type\":\"object\"},\"side_effect\":\"read\",\"idempotent\":true,\"required_capability\":\"cap.storage.3tchedfs.receipt.read@v1\",\"subid\":\"obs.storage.3tchedfs.receipt.get@v1\"}},\"signals\":[],\"guarantees\":{\"supports_rollback\":false,\"supports_checkpoints\":false,\"supports_verification\":false,\"atomic_operations\":false},\"capabilities\":{\"cap.storage.3tchedfs.contract.read@v1\":{\"id\":\"cap.storage.3tchedfs.contract.read@v1\",\"description\":\"Read the immutable typed filesystem contract; grants no target operation, mount, or backing-store access.\"},\"cap.storage.3tchedfs.protocol.read@v1\":{\"id\":\"cap.storage.3tchedfs.protocol.read@v1\",\"description\":\"Read the shared 3tchedFS invocation convention; grants no target operation access.\"},\"cap.storage.3tchedfs.receipt.read@v1\":{\"id\":\"cap.storage.3tchedfs.receipt.read@v1\",\"description\":\"Recover an operation proof only for the verified caller and session; returns no private arguments or domain result.\"}},\"capability_grants\":{},\"public_state\":{\"paths\":[\"/contract\",\"/filesystem_type\",\"/invocation\",\"/mount_metadata\"]},\"field_writes\":{},\"example\":{\"contract\":{\"method\":\"get_contract\",\"schema_version\":\"2.0.8\",\"source_commit\":\"ed02a783fa9ae99c174544c585106e116ce2c6b1\"},\"filesystem_type\":\"fuse.3tchedFS\",\"invocation\":{\"arguments\":\"application/json\",\"automatic_retry\":false,\"commit\":\"fsync\",\"declaration\":\"plugins/{plugin}/operations/{method}/metadata.json\",\"open\":\"O_RDWR\",\"path\":\"plugins/{plugin}/operations/{method}/call\",\"result\":\"seek(0), read receipt or diagnostic on the same descriptor\"},\"mount_metadata\":\".3tchedfs.json\"}}",&raw,true).map_err(serde::de::Error::custom)?;
     ✓ • 0ms
 
 ## Activity
 
-    $ sed -i 's|/srv/git/odbus-verified/crates/threetched-fs/|../|g' crates/threetched-fs/examples/typed_use_generated.rs
+    $ sed -i 's|/srv/git/odbus-verified/crates/3tched-fs/|../|g' crates/3tched-fs/examples/typed_use_generated.rs
     ✓ • 0ms
 
 ## Activity
 
-    $ rg -n 'Generated typed read example|use_example|CARGO_MANIFEST_DIR|src/dispatch' crates/threetched-fs/examples/typed_specialize.rs | head -40
+    $ rg -n 'Generated typed read example|use_example|CARGO_MANIFEST_DIR|src/dispatch' crates/3tched-fs/examples/typed_specialize.rs | head -40
     48:    use_example: Option<String>,
     885:        use_example: example,
     895:    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -13976,7 +13976,7 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
 
 ## Activity
 
-    $ sed -n '885,930p' crates/threetched-fs/examples/typed_specialize.rs; sed -n '1240,1275p' crates/threetched-fs/examples/typed_specialize.rs
+    $ sed -n '885,930p' crates/3tched-fs/examples/typed_specialize.rs; sed -n '1240,1275p' crates/3tched-fs/examples/typed_specialize.rs
             use_example: example,
         })
     }
@@ -14033,7 +14033,7 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
                     ),
                 ),
             ]));
-            schema.name = "tched_fs".into();
+            schema.name = "_3tched_fs".into();
             let generated = generate(
                 &snapshot(schema),
                 &BTreeSet::new(),
@@ -14067,7 +14067,7 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
 
 ## Activity
 
-    $ sed -n '980,1055p' crates/threetched-fs/examples/typed_specialize.rs; rg -n 'use_example|usage_example\(' crates/threetched-fs/examples/typed_specialize.rs
+    $ sed -n '980,1055p' crates/3tched-fs/examples/typed_specialize.rs; rg -n 'use_example|usage_example\(' crates/3tched-fs/examples/typed_specialize.rs
     }
     fn absolute(path: PathBuf) -> Result<PathBuf> {
         Ok(if path.is_absolute() {
@@ -14078,8 +14078,8 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
     }
     fn main() -> Result<()> {
         let mut catalog = PathBuf::from(source::DEFAULT_CATALOG_DIR);
-        let mut output = PathBuf::from("crates/threetched-fs/generated/plugin_types.rs");
-        let mut report = PathBuf::from("crates/threetched-fs/docs/typed-specialization-report.json");
+        let mut output = PathBuf::from("crates/3tched-fs/generated/plugin_types.rs");
+        let mut report = PathBuf::from("crates/3tched-fs/docs/typed-specialization-report.json");
         let mut example = None;
         let mut plugins = BTreeSet::new();
         let mut args = std::env::args().skip(1);
@@ -14116,7 +14116,7 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
         if example.is_some() {
             ensure!(
                 generated.use_example.is_some(),
-                "sealed tched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report"
+                "sealed _3tched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report"
             );
         }
         if let Some(path) = example {
@@ -14192,8 +14192,8 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
     export OP_BROWSER_CONTROL_PLANE_PEER_KEY="${OP_BROWSER_CONTROL_PLANE_PEER_KEY:-4V4Wob4v8YxCcQ4nz95Jt3b/aQcAInLq+ABIvvS7/Qg=}"
     # Local interactive clients, including Codex, authenticate as the existing
     # human WireGuard principal. The MutationEngine mints SID1 into this same sled;
-     .../threetched-fs/examples/typed_use_generated.rs  | 24 ++++----
-     crates/threetched-fs/src/main.rs                   | 64 +++++++++++++++++++---
+     .../3tched-fs/examples/typed_use_generated.rs  | 24 ++++----
+     crates/3tched-fs/src/main.rs                   | 64 +++++++++++++++++++---
      2 files changed, 67 insertions(+), 21 deletions(-)
     ✓ • 0ms
 
@@ -14223,11 +14223,11 @@ The client library and binary tests pass with a private umask: 130 passed and 4 
 
 ## Activity
 
-    $ ps -eo pid,etime,rss,comm,args | rg 'rustc.*typed_use_generated|cargo test -p tched-fs' | cut -c1-200 | head -5; free -h | head -3
-    15062       01:42 104460 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo test -p tched-fs
-    15173       01:42 3825456 rustc         /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name typed_use_generated --edition=2024 crates/threetched-fs/examples/typed_us
-    21187       00:00 11764 bash            /bin/bash -c ps -eo pid,etime,rss,comm,args | rg 'rustc.*typed_use_generated|cargo test -p tched-fs' | cut -c1-200 | head -5; free -h | head -3
-    21231       00:00  4928 rg              rg rustc.*typed_use_generated|cargo test -p tched-fs
+    $ ps -eo pid,etime,rss,comm,args | rg 'rustc.*typed_use_generated|cargo test -p _3tched-fs' | cut -c1-200 | head -5; free -h | head -3
+    15062       01:42 104460 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo test -p _3tched-fs
+    15173       01:42 3825456 rustc         /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name typed_use_generated --edition=2024 crates/3tched-fs/examples/typed_us
+    21187       00:00 11764 bash            /bin/bash -c ps -eo pid,etime,rss,comm,args | rg 'rustc.*typed_use_generated|cargo test -p _3tched-fs' | cut -c1-200 | head -5; free -h | head -3
+    21231       00:00  4928 rg              rg rustc.*typed_use_generated|cargo test -p _3tched-fs
                    total        used        free      shared  buff/cache   available
     Mem:            31Gi        15Gi       334Mi       333Mi        16Gi        15Gi
     Swap:          8.0Gi       5.9Gi       2.1Gi
@@ -14337,7 +14337,7 @@ I found a path for the rotated identity that avoids reusing the old singleton re
 ## Activity
 
     $ umask 077
-        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs
+        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -14605,7 +14605,7 @@ I found a path for the rotated identity that avoids reusing the old singleton re
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -14617,10 +14617,10 @@ I found a path for the rotated identity that avoids reusing the old singleton re
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -14630,9 +14630,9 @@ I found a path for the rotated identity that avoids reusing the old singleton re
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/examples/../src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/examples/../src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -14644,15 +14644,15 @@ I found a path for the rotated identity that avoids reusing the old singleton re
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (example "typed_check") generated 1 warning (run `cargo fix --example "typed_check" -p tched-fs` to apply 1 suggestion)
-    warning: `tched-fs` (lib test) generated 1 warning (1 duplicate)
+    warning: `_3tched-fs` (example "typed_check") generated 1 warning (run `cargo fix --example "typed_check" -p _3tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib test) generated 1 warning (1 duplicate)
     ✗ (130) • 2m 46s
 
 ## Activity
 
-    $ git show HEAD:crates/threetched-fs/examples/typed_use_generated.rs > crates/threetched-fs/examples/typed_use_generated.rs
+    $ git show HEAD:crates/3tched-fs/examples/typed_use_generated.rs > crates/3tched-fs/examples/typed_use_generated.rs
         git status --short --untracked-files=no
-     M crates/threetched-fs/src/main.rs
+     M crates/3tched-fs/src/main.rs
      M deploy/runit/op-grpc-bridge/run
     ✓ • 0ms
 
@@ -14803,7 +14803,7 @@ I found a path for the rotated identity that avoids reusing the old singleton re
         }
       }
     }
-     M crates/threetched-fs/src/main.rs
+     M crates/3tched-fs/src/main.rs
      M deploy/runit/op-grpc-bridge/run
     194:export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-wNhmhGDpdkScmSdcHnzhr/1vmTIL5wxLXcve/jwk9xE=}"
     195:export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-54291774-4b0a-68b0-b55c-dc544900a8de}"
@@ -14908,7 +14908,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
           "cap.software.chat-router.generation.cancel@v1",
           "cap.software.chat-router.generation.delete@v1",
           "cap.software.chat-router.generation.recover@v1",
-          "cap.software.tched-router.agent.route.self.read@v1"
+          "cap.software.3tched.agent.route.self.read@v1"
         ]
       },
       "1262e982-14c1-44d4-0771-7ce74213211b": {
@@ -14919,32 +14919,32 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
         "capabilities": [
           "cap.data.cozo.system-graph.read@v1",
           "cap.identity.sled.self.read@v1",
-          "cap.software.3tched-router.chat@v1",
-          "cap.software.3tched-router.config-schema.read@v1",
-          "cap.software.3tched-router.config.read@v1",
-          "cap.software.3tched-router.config.write@v1",
-          "cap.software.3tched-router.model.set@v1",
-          "cap.software.3tched-router.models.read@v1",
-          "cap.software.3tched-router.provider.set@v1",
-          "cap.software.3tched-router.providers.read@v1",
-          "cap.software.3tched-router.route.resolve@v1",
-          "cap.software.3tched-router.router.read@v1",
-          "cap.software.3tched-router.routes.read@v1",
-          "cap.software.3tched-router.state.read@v1",
-          "cap.software.3tched-router.structured-output.read@v1",
-          "cap.software.3tched-router.tools.read@v1",
-          "cap.software.3tched-router.ui-surfaces.read@v1",
-          "cap.software.tched-router.agent.route.self.read@v1",
-          "cap.software.tched-router.catalog.selection.set@v1",
-          "cap.software.tched-router.chat@v1",
-          "cap.software.tched-router.model.binding.read@v1",
-          "cap.software.tched-router.model.set@v1",
-          "cap.software.tched-router.models.read@v1",
-          "cap.software.tched-router.provider.set@v1",
-          "cap.software.tched-router.providers.read@v1",
-          "cap.software.tched-router.router.read@v1",
-          "cap.software.tched-router.router.write@v1",
-          "cap.software.tched-router.selection.set@v1",
+          "cap.software.3tched.chat@v1",
+          "cap.software.3tched.config-schema.read@v1",
+          "cap.software.3tched.config.read@v1",
+          "cap.software.3tched.config.write@v1",
+          "cap.software.3tched.model.set@v1",
+          "cap.software.3tched.models.read@v1",
+          "cap.software.3tched.provider.set@v1",
+          "cap.software.3tched.providers.read@v1",
+          "cap.software.3tched.route.resolve@v1",
+          "cap.software.3tched.router.read@v1",
+          "cap.software.3tched.routes.read@v1",
+          "cap.software.3tched.state.read@v1",
+          "cap.software.3tched.structured-output.read@v1",
+          "cap.software.3tched.tools.read@v1",
+          "cap.software.3tched.ui-surfaces.read@v1",
+          "cap.software.3tched.agent.route.self.read@v1",
+          "cap.software.3tched.catalog.selection.set@v1",
+          "cap.software.3tched.chat@v1",
+          "cap.software.3tched.model.binding.read@v1",
+          "cap.software.3tched.model.set@v1",
+          "cap.software.3tched.models.read@v1",
+          "cap.software.3tched.provider.set@v1",
+          "cap.software.3tched.providers.read@v1",
+          "cap.software.3tched.router.read@v1",
+          "cap.software.3tched.router.write@v1",
+          "cap.software.3tched.selection.set@v1",
           "chat.context",
           "chat.control_plane",
           "chat_response.respond",
@@ -15001,7 +15001,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
         jq -e '.wireguard.server == "decoy" and .identities.chatbot.pubkey == "wNhmhGDpdkScmSdcHnzhr/1vmTIL5wxLXcve/jwk9xE=" and (has("mesh") | not)' deploy/config/identities/manifest.json
         git diff --stat
     true
-     crates/threetched-fs/src/main.rs       | 64 +++++++++++++++++++++++++++++-----
+     crates/3tched-fs/src/main.rs       | 64 +++++++++++++++++++++++++++++-----
      deploy/config/identities/manifest.json | 28 ++++++---------
      deploy/runit/op-grpc-bridge/run        |  6 ++--
      3 files changed, 68 insertions(+), 30 deletions(-)
@@ -15010,7 +15010,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
 ## Activity
 
     file changes: Completed · 1 changes
-    Update { move_path: None }: /var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs/src/main.rs
+    Update { move_path: None }: /var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs/src/main.rs
     @@ -64,14 +64,6 @@
              /// Project only these sealed plugins, retaining the source catalog pin.
     -        #[arg(
@@ -15045,16 +15045,16 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
                  }
     @@ -870,3 +857,5 @@
              ));
-    -        assert!(Cli::try_parse_from(["threetched-fs", "mcp", "--plugin", "cognitive"]).is_err());
+    -        assert!(Cli::try_parse_from(["3tched-fs", "mcp", "--plugin", "cognitive"]).is_err());
     +        assert!(
-    +            Cli::try_parse_from(["threetched-fs", "mcp", "--plugin", "cognitive"]).is_err()
+    +            Cli::try_parse_from(["3tched-fs", "mcp", "--plugin", "cognitive"]).is_err()
     +        );
          }
 
 ## Activity
 
     $ umask 077
-        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs --lib --bins
+        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs --lib --bins
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -15322,7 +15322,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -15334,11 +15334,11 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
-    warning: `tched-fs` (lib test) generated 1 warning (1 duplicate)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
+    warning: `_3tched-fs` (lib test) generated 1 warning (1 duplicate)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -15348,9 +15348,9 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 6.14s
-         Running unittests src/lib.rs (/srv/git/odbus-verified/target/debug/deps/tched_fs-bfae683abe020c16)
+         Running unittests src/lib.rs (/srv/git/odbus-verified/target/debug/deps/_3tched_fs-bfae683abe020c16)
     
     running 27 tests
     test fuse_process::tests::metadata_capture_declares_stable_locale_and_plain_output ... ok
@@ -15498,7 +15498,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     
     ---- fuse_fs::tests::upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion stdout ----
     
-    thread 'fuse_fs::tests::upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion' (30499) panicked at crates/threetched-fs/src/fuse_fs.rs:2049:65:
+    thread 'fuse_fs::tests::upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion' (30499) panicked at crates/3tched-fs/src/fuse_fs.rs:2049:65:
     called `Result::unwrap()` on an `Err` value: upstream process could not be spawned: Text file busy (os error 26)
     note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
     
@@ -15508,13 +15508,13 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     
     test result: FAILED. 103 passed; 1 failed; 3 ignored; 0 measured; 0 filtered out; finished in 1.59s
     
-    error: test failed, to rerun pass `-p tched-fs --bin 3tched-fs`
+    error: test failed, to rerun pass `-p _3tched-fs --bin 3tched-fs`
     ✗ (101) • 9.28s
 
 ## Activity
 
     $ umask 077
-        CARGO_TARGET_DIR=/srv/git/odbus-verified/target cargo test -p tched-fs --bin 3tched-fs upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion
+        CARGO_TARGET_DIR=/srv/git/odbus-verified/target cargo test -p _3tched-fs --bin 3tched-fs upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -15782,7 +15782,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -15794,9 +15794,9 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -15806,7 +15806,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
          Running unittests src/main.rs (/srv/git/odbus-verified/target/debug/deps/3tched_fs-1e90dd137c086bb5)
     
@@ -15823,13 +15823,13 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     Update { move_path: None }: /srv/git/odbus-verified/HANDOFF.md
     @@ -38,2 +38,3 @@
      - Merged worktree runit defaults now pin current `wNhm...` key, session `54291774-4b0a-68b0-b55c-dc544900a8de`, principal `29858abd-4489-5b69-67b9-c5ee951ed6f2`; shell syntax and independent KDF checked. Not deployed. Current key rechecked on decoy. Existing Cozo singleton native creation journal cannot simply be repurposed for a new key: an ordinary numbered identity with a control-plane display name can preserve its historical singleton record and UUID fencing, but bridge preparation, owner validation, selected principal grants and deployment still need implementation and tests. Agent review found no authorization bypass in guest client flag; mode verification relies on the existing FUSE server's kernel-bound identity, not the CLI proving its own container.
-    +- The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
+    +- The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p _3tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
      - Owner requested stopping the other identity containers: stopped `etchedschema-chatbot` (the only other running instance bearing identity session/key metadata); `chatbot-template-sysprep` was already stopped. `3tchedCtlChatbot` and bridge remain running; no other containers were stopped. No data deleted.
 
 ## Activity
 
     $ umask 077
-        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p tched-fs --lib --bins -- --test-threads=1
+        CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo test -p _3tched-fs --lib --bins -- --test-threads=1
     warning: hiding a lifetime that's elided elsewhere is confusing
       --> vendor/jsonschema/src/keywords/const_.rs:18:34
        |
@@ -16097,7 +16097,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     
     warning: `jsonschema` (lib) generated 19 warnings (run `cargo fix --lib -p jsonschema` to apply 19 suggestions)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -16109,9 +16109,9 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -16121,10 +16121,10 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
         |
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
-    warning: `tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
-    warning: `tched-fs` (lib test) generated 1 warning (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs" test) generated 2 warnings (1 duplicate)
+    warning: `_3tched-fs` (lib test) generated 1 warning (1 duplicate)
         Finished `test` profile [unoptimized + debuginfo] target(s) in 0.48s
-         Running unittests src/lib.rs (/srv/git/odbus-verified/target/debug/deps/tched_fs-bfae683abe020c16)
+         Running unittests src/lib.rs (/srv/git/odbus-verified/target/debug/deps/_3tched_fs-bfae683abe020c16)
     
     running 27 tests
     test fuse_buffers::serialization_tests::serialization_keeps_document_newline_and_releases_charge_on_expansion_limit ... ok
@@ -16275,7 +16275,7 @@ The merged worktree now records the decoy-only WireGuard topology and the live k
 ## Activity
 
     $ git -C /var/tmp/odbus-chatbot-lungs-20261103 status --short --untracked-files=no; git -C /var/tmp/odbus-chatbot-merged-20261103 status --short --untracked-files=no
-     M crates/threetched-fs/src/main.rs
+     M crates/3tched-fs/src/main.rs
      M deploy/config/identities/manifest.json
      M deploy/runit/op-grpc-bridge/run
     ✓ • 582ms
@@ -16287,7 +16287,7 @@ The client repair and current key selectors are staged in the merged-source work
 ## Activity
 
     $ umask 077
-        CXXFLAGS='-include cstdint' CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo build -p tched-fs --release --bin 3tched-fs
+        CXXFLAGS='-include cstdint' CARGO_TARGET_DIR=/srv/git/odbus-verified/target CARGO_BUILD_JOBS=2 cargo build -p _3tched-fs --release --bin 3tched-fs
        Compiling proc-macro2 v1.0.107
        Compiling serde_core v1.0.229
        Compiling quote v1.0.47
@@ -16300,8 +16300,8 @@ The client repair and current key selectors are staged in the merged-source work
     file changes: Completed · 1 changes
     Update { move_path: None }: /srv/git/odbus-verified/HANDOFF.md
     @@ -39,2 +39,3 @@
-     - The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
-    +- Serial `umask 077; cargo test -p tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native client release build started with target `/var/tmp/odbus-chatbot-merged-target`; inspect process and result before assuming completion. Do not install or activate the client alone as a completed identity release.
+     - The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p _3tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
+    +- Serial `umask 077; cargo test -p _3tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native client release build started with target `/var/tmp/odbus-chatbot-merged-target`; inspect process and result before assuming completion. Do not install or activate the client alone as a completed identity release.
      - Owner requested stopping the other identity containers: stopped `etchedschema-chatbot` (the only other running instance bearing identity session/key metadata); `chatbot-template-sysprep` was already stopped. `3tchedCtlChatbot` and bridge remain running; no other containers were stopped. No data deleted.
 
 ## Activity
@@ -16719,7 +16719,7 @@ The existing version-4 provisioner also assumes the per-identity image’s secon
     file changes: Completed · 1 changes
     Update { move_path: None }: /srv/git/odbus-verified/HANDOFF.md
     @@ -40,2 +40,3 @@
-     - Serial `umask 077; cargo test -p tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native client release build started with target `/var/tmp/odbus-chatbot-merged-target`; inspect process and result before assuming completion. Do not install or activate the client alone as a completed identity release.
+     - Serial `umask 077; cargo test -p _3tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native client release build started with target `/var/tmp/odbus-chatbot-merged-target`; inspect process and result before assuming completion. Do not install or activate the client alone as a completed identity release.
     +- Additional architecture mismatch: version-4 `identity_clean_provision` pins its identity image's second partition as Btrfs upgrade storage, whereas the owner now specifies the seed image's upgrade partition and a persistent image split into Btrfs device-add and ext4 personal-data/RocksDB. The version-4 owner plan and validation cannot be used unchanged for that layout. The owner says only the user subvolume needs initial mounting; current clean storage verification requires all member mounts.
      - Owner requested stopping the other identity containers: stopped `etchedschema-chatbot` (the only other running instance bearing identity session/key metadata); `chatbot-template-sysprep` was already stopped. `3tchedCtlChatbot` and bridge remain running; no other containers were stopped. No data deleted.
 
@@ -16727,7 +16727,7 @@ The existing version-4 provisioner also assumes the per-identity image’s secon
 
     $ rustc -vV | rg '^host:'; git diff --check; git status --short --untracked-files=no
     host: x86_64-unknown-linux-gnu
-     M crates/threetched-fs/src/main.rs
+     M crates/3tched-fs/src/main.rs
      M deploy/config/identities/manifest.json
      M deploy/runit/op-grpc-bridge/run
     ✓ • 0ms
@@ -16766,7 +16766,7 @@ The existing version-4 provisioner also assumes the per-identity image’s secon
     |----|------|-------|--------|-------|
     | OD-87 | **Oct 1 record epoch: the point where the system's record goes from build history to what others see it do.** Owner intent (Sep 27–28): Oct 1 marks the shift in "who has seen what it does". Everything before it is development history and is kept, never reset. Everything after it is the accountable record of the system in front of others. The owner left the term and mechanism to Claude; call it the *record epoch*, not an "anchor", which already names the interceptor's session anchoring. | `owner` + `Claude` | TODO | **Mechanism (all existing parts):** on Oct 1, 1) run `snowball.verify_chain` and record the chain head it reports; 2) take one aligned read-only Snowball snapshot set at that head through the declared `snowball.create_snapshot` method (timing + vectors + state, `snowball.invoke`); 3) `btrfs send/receive` that set into the local receive subvolume, so the pre-epoch record has a read-only copy outside any identity's sled (the defendant never holds the only copy); 4) note the epoch's snapshot-set name, block number and head hash here and in SIGNALS. **After the epoch:** Accountability searches default to "since the epoch", while pre-epoch history stays searchable on request. Chain vectors are loaded into Qdrant from the received copy (OD-64 local-replica path, no origin exception). **Needs before Oct 1:** decide whether the epoch also gets its own chain event (that requires a declared method in the snowball schema, not an ad hoc write), and settle the chain embedding text (outcomes, actor role, no block number) before the first ingest, because changing it later means re-embedding. **Not in scope:** resetting or pruning any history. |
     | OD-85 | **Identity seeds on the read-only `opdbus-seeds` partition, and the per-identity upgrade routine.** | `owner` + `Claude` | WIP | Sep 26: seeds deleted with their releases were recovered from live loops onto partition UUID `753de7a7-f908-455a-b0aa-b7a536e62fa5` (`/var/lib/opdbus-seeds`, read-only, `fstab`), bind-mounted at the plan-pinned `/opt/op-dbus/releases/20260924-{human-router,identity-seed}/identity` paths; leaf clones in `backups/20260926/`. A `LOOP_CHANGE_FD` swap put both seeded sprouts into emergency shutdown; recovery (unmount, release loops, `btrfs device scan --forget`, `op-identity-storage mount-all`, re-attach Incus pool views) awaits owner go. **Routine (owner design):** per identity, mount original seed + original cozo, snapshot `pool/containers/<id>`, run the system upgrade (writes land in its leaf), verify, unmount and release loops, next identity. **Code needed:** stop path must unmount/release/forget instead of `btrfs device remove` of the leaf (`leave_identity_btrfs` → `ensure_device_removed`); a real retire/re-provision method (journal and binding are immutable today, `tombstone_session` is dead code); chatbot bootstrap ordering; correct `identity-transport.md:318-319` (seed must not live in a release). → SIGNALS 2026-09-26 |
-    | OD-83 | **Connect dashboard chatbot to compact MCP and repair mode selection.** | `Codex` | WIP | Sep 24: `20260924-provider-catalog` activated at21:07:01 UTC after GNU fmt/Clippy/release and full tests2,159 passed/0 failed/21 ignored. Fixed full native-alias lookup in three bridge paths, unselected empty catalogs and exact-alias mutation validation. The owner's confirmed connection-screen error was the catalog failure after authentication; live authenticated ListProviders/ListModels/GetConfig now pass with6 providers/1,179 model routes, and h2/gRPC-Web pass. Browser confirmation pending. All66 plugins retained; Personal/grants/compact/unrelated service PIDs preserved. CP inherits `TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER=family.alias`; prior provider-choice live CP/Accountability generation proofs remain retained, and all ten roles still use500. Native JSON-text marker and catalog-only16 MiB fix reused unchanged. Temporary build swap removed. Evidence: `/opt/op-dbus/recovery/20260924-provider-catalog`. Remaining: reconcile family-only Personal picker with explicit native alias selection; long-lived MQTT durability and actual CP tool invocation remain unproven. OD84 gallery promotion remains separate. |
+    | OD-83 | **Connect dashboard chatbot to compact MCP and repair mode selection.** | `Codex` | WIP | Sep 24: `20260924-provider-catalog` activated at21:07:01 UTC after GNU fmt/Clippy/release and full tests2,159 passed/0 failed/21 ignored. Fixed full native-alias lookup in three bridge paths, unselected empty catalogs and exact-alias mutation validation. The owner's confirmed connection-screen error was the catalog failure after authentication; live authenticated ListProviders/ListModels/GetConfig now pass with6 providers/1,179 model routes, and h2/gRPC-Web pass. Browser confirmation pending. All66 plugins retained; Personal/grants/compact/unrelated service PIDs preserved. CP inherits `THREETCHED_CONTROL_PLANE_MODEL_PROVIDER=family.alias`; prior provider-choice live CP/Accountability generation proofs remain retained, and all ten roles still use500. Native JSON-text marker and catalog-only16 MiB fix reused unchanged. Temporary build swap removed. Evidence: `/opt/op-dbus/recovery/20260924-provider-catalog`. Remaining: reconcile family-only Personal picker with explicit native alias selection; long-lived MQTT durability and actual CP tool invocation remain unproven. OD84 gallery promotion remains separate. |
     | OD-82 | **Restore active host disk-space monitoring and fail-closed preparation/receive gates.** | `Codex` | WIP | Sep 24: recovered ~60 GB by removing only owned incomplete receive and idle incremental cache. Current receive enforces 2× candidate bytes +16 GiB reserve. Artix cronie/runit now runs the safe monitor every five minutes; actual first scheduled status verified at 11:58:39Z. Unsafe old reclaim cron archived; no automatic deletions and no email. Remaining: propagate the capacity gate to reusable preparation/build entry points. Preserve identity Btrfs and release recovery inputs. See SIGNALS.md. |
     | OD-DEMO | **Get a demo out** — minimal end-to-end path that shows the system working | `general-purpose` | TODO | top priority; scope/deadline TBD — see subtasks once defined |
     | OD-05 | Dynamic xray cutover: wire `run_schema_shuttle` → live (sled → /dev/shm config → D-Bus start) | `general-purpose` | BLOCKED | needs `/etc/ghostbridge/xray.env` secrets + op-xray-daemon running as service |
@@ -17050,7 +17050,7 @@ I’ve split the remaining repair into the merged bridge’s secure bootstrap an
     @@ -40,2 +40,3 @@
      - Merged worktree runit defaults now pin current `wNhm...` key, session `54291774-4b0a-68b0-b55c-dc544900a8de`, principal `29858abd-4489-5b69-67b9-c5ee951ed6f2`; shell syntax and independent KDF checked. Not deployed. Current key rechecked on decoy. Existing Cozo singleton native creation journal cannot simply be repurposed for a new key: an ordinary numbered identity with a control-plane display name can preserve its historical singleton record and UUID fencing, but bridge preparation, owner validation, selected principal grants and deployment still need implementation and tests. Agent review found no authorization bypass in guest client flag; mode verification relies on the existing FUSE server's kernel-bound identity, not the CLI proving its own container.
     +- Staged new principal grants in merged worktree `deploy/security/capability-grants.json`: direct, deduplicated union of the live old chatbot's explicit capabilities and its live `$ROOT` group; existing principal remains for bootstrap. The merged source `$ROOT` and old principal have an additional `mongodb_mcp.read` vs live, so new principal deliberately has no group membership rather than silently acquiring it. This is a point-in-time grant copy; reconcile future role/group changes and revalidate against live policy before activation. No live grants were written.
-     - The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
+     - The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p _3tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
 
 ## Activity
 
@@ -17197,7 +17197,7 @@ I’ve staged the new principal’s grants to match the current chatbot’s effe
 ## Activity
 
     $ git diff --stat; git diff --check; /usr/local/libexec/op-dbus/bin/op-grants-materializer validate deploy/security/capability-grants.json
-     crates/threetched-fs/src/main.rs       | 37 ++++++++++++++++++++-
+     crates/3tched-fs/src/main.rs       | 37 ++++++++++++++++++++-
      deploy/config/identities/manifest.json | 28 ++++++----------
      deploy/runit/op-grpc-bridge/run        |  6 ++--
      deploy/security/capability-grants.json | 59 ++++++++++++++++++++++++++++++++++
@@ -17207,11 +17207,11 @@ I’ve staged the new principal’s grants to match the current chatbot’s effe
 
 ## Activity
 
-    $ ps -eo pid,etime,stat,rss,comm,args | rg 'cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(jsonschema|reqwest|tched_fs)' | cut -c1-180 | head -12; free -h | head -3
+    $ ps -eo pid,etime,stat,rss,comm,args | rg 'cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(jsonschema|reqwest|_3tched_fs)' | cut -c1-180 | head -12; free -h | head -3
      3083       00:21 Sl   253540 rustc          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name reqwest --edition=2021 /home/jeremy/.cargo/regis
-     3114       05:23 Ssl  105660 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build -p tched-fs --release --bin 3tched-fs
+     3114       05:23 Ssl  105660 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build -p _3tched-fs --release --bin 3tched-fs
      7621       00:00 Ss   11664 bash            /bin/bash -c ps -eo pid,etime,stat,rss,comm,args | rg 'cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(jsonschema|reqwest|tche
-     7688       00:00 S     5044 rg              rg cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(jsonschema|reqwest|tched_fs)
+     7688       00:00 S     5044 rg              rg cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(jsonschema|reqwest|_3tched_fs)
     21942       01:57 Ss    5592 bash            /bin/bash -lc cat >> crates/op-grpc-bridge/src/server.rs <<'EOF'  #[cfg(test)] mod bootstrap_tests {     use super::*;     use crate::p
     21964       01:57 Sl   166864 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo test --locked -p op-grpc-bridge --lib bootstrap_rejects_reque
     28851       00:47 Ss    5616 bash            /bin/bash -lc umask 077; CARGO_TARGET_DIR=/srv/git/odbus-verified/target CXXFLAGS='-include cstdint' CC=gcc CXX=g++ cargo test -p op-gr
@@ -17266,14 +17266,14 @@ The tests are now exercising the key rotation against the existing reservation j
 
 ## Activity
 
-    $ ps -eo pid,etime,stat,rss,comm,args | rg 'cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(op_plugins|tched_fs|cozorocks)' | cut -c1-185 | head -10
-     3114       07:09 Ssl  105772 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build -p tched-fs --release --bin 3tched-fs
+    $ ps -eo pid,etime,stat,rss,comm,args | rg 'cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(op_plugins|_3tched_fs|cozorocks)' | cut -c1-185 | head -10
+     3114       07:09 Ssl  105772 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build -p _3tched-fs --release --bin 3tched-fs
     14015       01:04 Ss    5640 bash            /bin/bash -lc CARGO_TARGET_DIR=/srv/git/odbus-verified/target/golden-rebuild CARGO_BUILD_JOBS=2 CC=gcc CXX=g++ CXXFLAGS='-include cstdint' c
     14044       01:04 Sl   162284 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo test --locked --release --target x86_64-unknown-linux-gnu -p op-gr
     17296       00:51 Sl   1865240 rustc         /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name op_plugins --edition=2024 crates/op-plugins/src/lib.r
     17377       00:51 Sl   1859480 rustc         /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name op_plugins --edition=2024 crates/op-plugins/src/lib.r
-    22829       00:00 Ss   11664 bash            /bin/bash -c ps -eo pid,etime,stat,rss,comm,args | rg 'cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(op_plugins|tched_fs|cozorock
-    22867       00:00 S     5052 rg              rg cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(op_plugins|tched_fs|cozorocks)
+    22829       00:00 Ss   11664 bash            /bin/bash -c ps -eo pid,etime,stat,rss,comm,args | rg 'cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(op_plugins|_3tched_fs|cozorock
+    22867       00:00 S     5052 rg              rg cargo (test|build).*op-grpc|cargo build -p tched|rustc.*(op_plugins|_3tched_fs|cozorocks)
     28851       02:33 Ss    5616 bash            /bin/bash -lc umask 077; CARGO_TARGET_DIR=/srv/git/odbus-verified/target CXXFLAGS='-include cstdint' CC=gcc CXX=g++ cargo test -p op-grpc-br
     28876       02:33 Sl   157180 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo test -p op-grpc-bridge --lib preparation_accepts_rotated_configure
     ✓ • 32ms
@@ -17305,8 +17305,8 @@ The native lungs client is in its release build. The reservation repair is prese
 ## Activity
 
     $ ps -eo pid,ppid,etime,stat,rss,comm,args | awk '$2==3114 || $1==3114' | cut -c1-220; ps -o pid,etime,stat,rss,comm -p 15173,17296
-     3114 12579       08:20 Ssl  105772 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build -p tched-fs --release --bin 3tched-fs
-    23553  3114       00:58 Sl   533356 rustc          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name 3tched_fs --edition=2024 crates/threetched-fs/src/main.rs --error-format=json --js
+     3114 12579       08:20 Ssl  105772 cargo          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build -p _3tched-fs --release --bin 3tched-fs
+    23553  3114       00:58 Sl   533356 rustc          /home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name 3tched_fs --edition=2024 crates/3tched-fs/src/main.rs --error-format=json --js
       PID     ELAPSED STAT   RSS COMMAND
     17296       02:01 Sl   2857440 rustc
     ✓ • 116ms
@@ -17319,7 +17319,7 @@ The native lungs client is in its release build. The reservation repair is prese
 ## Activity
 
     $ umask 077
-        CXXFLAGS='-include cstdint' CARGO_TARGET_DIR=/var/tmp/odbus-chatbot-merged-target CARGO_BUILD_JOBS=2 cargo build -p tched-fs --release --bin 3tched-fs
+        CXXFLAGS='-include cstdint' CARGO_TARGET_DIR=/var/tmp/odbus-chatbot-merged-target CARGO_BUILD_JOBS=2 cargo build -p _3tched-fs --release --bin 3tched-fs
        Compiling proc-macro2 v1.0.107
        Compiling quote v1.0.47
        Compiling unicode-ident v1.0.24
@@ -17846,9 +17846,9 @@ The native lungs client is in its release build. The reservation repair is prese
        Compiling op-core v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/op-core)
        Compiling clap v4.6.4
        Compiling fs2 v0.4.3
-       Compiling tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/threetched-fs)
+       Compiling _3tched-fs v0.1.0 (/var/tmp/odbus-chatbot-merged-20261103/crates/3tched-fs)
     warning: use of deprecated method `std::sync::atomic::Atomic::<usize>::fetch_update`: renamed to `try_update` for consistency
-      --> crates/threetched-fs/src/fuse_buffers.rs:17:14
+      --> crates/3tched-fs/src/fuse_buffers.rs:17:14
        |
     17 |             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |              ^^^^^^^^^^^^
@@ -17860,9 +17860,9 @@ The native lungs client is in its release build. The reservation repair is prese
     17 +             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
        |
     
-    warning: `tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p tched-fs` to apply 1 suggestion)
+    warning: `_3tched-fs` (lib) generated 1 warning (run `cargo fix --lib -p _3tched-fs` to apply 1 suggestion)
     warning: associated items `serialize` and `into_parts` are never used
-       --> crates/threetched-fs/src/fuse_buffers.rs:74:19
+       --> crates/3tched-fs/src/fuse_buffers.rs:74:19
         |
      72 | impl Buffer {
         | ----------- associated items in this implementation
@@ -17876,7 +17876,7 @@ The native lungs client is in its release build. The reservation repair is prese
         = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
     
     warning: associated function `new` is never used
-      --> crates/threetched-fs/src/model.rs:40:12
+      --> crates/3tched-fs/src/model.rs:40:12
        |
     39 | impl TypedObjectBlob {
        | -------------------- associated function in this implementation
@@ -17884,7 +17884,7 @@ The native lungs client is in its release build. The reservation repair is prese
        |            ^^^
     
     warning: method `object` is never used
-       --> crates/threetched-fs/src/mounted.rs:209:12
+       --> crates/3tched-fs/src/mounted.rs:209:12
         |
      38 | impl MountedNamespace {
         | --------------------- method in this implementation
@@ -17893,7 +17893,7 @@ The native lungs client is in its release build. The reservation repair is prese
         |            ^^^^^^
     
     warning: variants `ThreetchedSchema`, `ThreetchedInput`, `ThreetchedOutput`, and `ThreetchedMetadata` are never constructed
-      --> crates/threetched-fs/src/namespace.rs:39:5
+      --> crates/3tched-fs/src/namespace.rs:39:5
        |
     27 | pub enum FileSource {
        |          ---------- variants in this enum
@@ -17910,7 +17910,7 @@ The native lungs client is in its release build. The reservation repair is prese
        = note: `FileSource` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
     
     warning: method `declare_socket_session` is never used
-       --> crates/threetched-fs/src/namespace.rs:357:12
+       --> crates/3tched-fs/src/namespace.rs:357:12
         |
     113 | impl Namespace {
         | -------------- method in this implementation
@@ -17919,7 +17919,7 @@ The native lungs client is in its release build. The reservation repair is prese
         |            ^^^^^^^^^^^^^^^^^^^^^^
     
     warning: associated function `rehydrate` is never used
-       --> crates/threetched-fs/src/namespace.rs:739:8
+       --> crates/3tched-fs/src/namespace.rs:739:8
         |
     738 | impl NamespaceBuilder {
         | --------------------- associated function in this implementation
@@ -17927,19 +17927,19 @@ The native lungs client is in its release build. The reservation repair is prese
         |        ^^^^^^^^^
     
     warning: struct `CommittedPublicSnapshot` is never constructed
-      --> crates/threetched-fs/src/source.rs:31:12
+      --> crates/3tched-fs/src/source.rs:31:12
        |
     31 | pub struct CommittedPublicSnapshot {
        |            ^^^^^^^^^^^^^^^^^^^^^^^
     
     warning: function `read_committed_public_snapshot` is never used
-      --> crates/threetched-fs/src/source.rs:80:8
+      --> crates/3tched-fs/src/source.rs:80:8
        |
     80 | pub fn read_committed_public_snapshot(
        |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     
     warning: method `capture` is never used
-      --> crates/threetched-fs/src/store.rs:75:12
+      --> crates/3tched-fs/src/store.rs:75:12
        |
     60 | impl ObjectStore {
        | ---------------- method in this implementation
@@ -17947,7 +17947,7 @@ The native lungs client is in its release build. The reservation repair is prese
     75 |     pub fn capture(&self, source: &SourceCatalog, activate: bool) -> Result<ViewManifest> {
        |            ^^^^^^^
     
-    warning: `tched-fs` (bin "3tched-fs") generated 10 warnings (1 duplicate)
+    warning: `_3tched-fs` (bin "3tched-fs") generated 10 warnings (1 duplicate)
         Finished `release` profile [optimized] target(s) in 8m 33s
     ✓ • 8m 33s
 
@@ -18000,9 +18000,9 @@ The native GNU lungs client build succeeded, and the artifact exposes the new ex
     file changes: Completed · 1 changes
     Update { move_path: None }: /srv/git/odbus-verified/HANDOFF.md
     @@ -42,3 +42,3 @@
-     - The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
-    -- Serial `umask 077; cargo test -p tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native client release build started with target `/var/tmp/odbus-chatbot-merged-target`; inspect process and result before assuming completion. Do not install or activate the client alone as a completed identity release.
-    +- Serial `umask 077; cargo test -p tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native GNU client release build passed with target `/var/tmp/odbus-chatbot-merged-target`; `/var/tmp/odbus-chatbot-merged-target/release/3tched-fs` SHA-256 `4aae8bc37792ae6730ed4df818e1ff9518d0514762d84bf0664ea9aa28a17ff7`, `invoke --help` shows `--guest-kernel`. Do not install or activate the client alone as a completed identity release.
+     - The merged worktree manifest also incorporates the other agent's decoy-only topology correction, updated to the live key; that agent's original working file was not changed. A later repeat of `cargo test -p _3tched-fs --lib --bins` had one `ETXTBSY` in `upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion`; its isolated rerun passed. Earlier full lib/bin run passed. Full package compile has the separate stale generated example absolute-path failure recorded above; no full workspace verification passed.
+    -- Serial `umask 077; cargo test -p _3tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native client release build started with target `/var/tmp/odbus-chatbot-merged-target`; inspect process and result before assuming completion. Do not install or activate the client alone as a completed identity release.
+    +- Serial `umask 077; cargo test -p _3tched-fs --lib --bins -- --test-threads=1` passed (130 passed, 4 ignored). Native GNU client release build passed with target `/var/tmp/odbus-chatbot-merged-target`; `/var/tmp/odbus-chatbot-merged-target/release/3tched-fs` SHA-256 `4aae8bc37792ae6730ed4df818e1ff9518d0514762d84bf0664ea9aa28a17ff7`, `invoke --help` shows `--guest-kernel`. Do not install or activate the client alone as a completed identity release.
      - Additional architecture mismatch: version-4 `identity_clean_provision` pins its identity image's second partition as Btrfs upgrade storage, whereas the owner now specifies the seed image's upgrade partition and a persistent image split into Btrfs device-add and ext4 personal-data/RocksDB. The version-4 owner plan and validation cannot be used unchanged for that layout. The owner says only the user subvolume needs initial mounting; current clean storage verification requires all member mounts.
 
 ## Activity

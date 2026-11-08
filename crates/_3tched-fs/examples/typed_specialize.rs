@@ -987,8 +987,8 @@ fn absolute(path: PathBuf) -> Result<PathBuf> {
 }
 fn main() -> Result<()> {
     let mut catalog = PathBuf::from(source::DEFAULT_CATALOG_DIR);
-    let mut output = PathBuf::from("crates/threetched-fs/generated/plugin_types.rs");
-    let mut report = PathBuf::from("crates/threetched-fs/docs/typed-specialization-report.json");
+    let mut output = PathBuf::from("crates/_3tched-fs/generated/plugin_types.rs");
+    let mut report = PathBuf::from("crates/_3tched-fs/docs/typed-specialization-report.json");
     let mut example = None;
     let mut plugins = BTreeSet::new();
     let mut args = std::env::args().skip(1);

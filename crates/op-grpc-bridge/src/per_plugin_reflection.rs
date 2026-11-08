@@ -264,7 +264,7 @@ mod tests {
             .register(
                 "chat_router".to_string(),
                 "RegisterAgent".to_string(),
-                "exp.service.3tched-router.register-agent@v1".to_string(),
+                "exp.service.threetched.register-agent@v1".to_string(),
                 Some("register".to_string()),
                 "1.0.0".to_string(),
             )

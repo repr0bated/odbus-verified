@@ -1,15 +1,15 @@
 # threetched source build
 
 This package carries the complete pinned upstream source for the threetched
-tched-router backing binary. It targets `zeroclaw-labs/zeroclaw` release
+threetched backing binary. It targets `zeroclaw-labs/zeroclaw` release
 `v0.8.4`, commit `a56c345d51dd8ab562e9351e0d4ab83f6a741db9`.
 `source.tar.gz` is a reproducible `gzip -n` encoding of the exact deterministic
 Git archive; both compressed and uncompressed digests are fixed in `source.pin`.
 
 ```sh
 ./build-threetched.sh \
-  --cache-dir /var/cache/op-dbus-build/tched-router \
-  --output-dir ../../target/threetched-artifacts/tched-router
+  --cache-dir /var/cache/op-dbus-build/threetched \
+  --output-dir ../../target/threetched-artifacts/threetched
 ```
 
 By default the helper verifies and uses the checked-in source archive before
@@ -82,4 +82,4 @@ runtime display text and fresh default user directories all use `threetched`, al
 lowercase. Cargo package/library/crate identifiers and source paths retain
 their upstream names; the original archive, licenses, upstream URLs and
 versioned WIT/protocol identifiers remain accurate. The framework and protocol
-names remain `tched-router` / `tched_router`.
+names remain `threetched` / `threetched`.

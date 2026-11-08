@@ -93,15 +93,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             post(handlers::chat_router::chat_router_chat_stream_handler),
         )
         .route(
-            "/tched-router/chat",
+            "/threetched/chat",
             post(handlers::chat_router::chat_router_chat_handler),
         )
         .route(
-            "/tched-router/chat/stream",
+            "/threetched/chat/stream",
             post(handlers::chat_router::chat_router_chat_stream_handler),
         )
         .route(
-            "/tched-router/schema",
+            "/threetched/schema",
             get(handlers::chat_router::chat_router_schema_handler),
         )
         // Plugin identity endpoints — model-agnostic, sealed SHM blob catalog

@@ -18,7 +18,7 @@ zeroclaw-gui
 # Native runtime renamed to threetched; keep the old executable out of releases.
 zeroclaw
 # Our filesystem client is 3tched-fs; threetched names the external runtime.
-threetched-fs
+3tched-fs
 # Stale pre-runit build outputs: the current crate produces op-runit-systemctl
 # and svd. Scanning target/release must not resurrect earlier s6 executables.
 op-s6-systemctl

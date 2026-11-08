@@ -19,17 +19,17 @@ unset OPDBUS_FILESYSTEM_ROOT OPDBUS_FILESYSTEM_SESSION OPDBUS_FILESYSTEM_READ_HE
 set --
 if [ -e "$filesystem_marker" ] || [ -L "$filesystem_marker" ]; then
     [ ! -L /etc/op-dbus ] && [ "$(stat -c '%u %a' /etc/op-dbus)" = '0 755' ] || exit 78
-    protected_filesystem_file "$filesystem_marker" || { echo 'tched-router: unprotected filesystem opt-in marker' >&2; exit 78; }
+    protected_filesystem_file "$filesystem_marker" || { echo 'threetched: unprotected filesystem opt-in marker' >&2; exit 78; }
     [ "$(wc -c <"$filesystem_marker")" -le 6 ] || exit 78
     case "$(cat "$filesystem_marker")" in
         true) filesystem_enabled=true ;;
         false) ;;
-        *) echo 'tched-router: filesystem opt-in marker must contain true or false' >&2; exit 78 ;;
+        *) echo 'threetched: filesystem opt-in marker must contain true or false' >&2; exit 78 ;;
     esac
 fi
 if [ "$filesystem_enabled" = true ]; then
     [ "$(id -u jeremy)" = 1001 ] || exit 78
-    protected_filesystem_file "$filesystem_session_file" || { echo 'tched-router: unprotected human session source' >&2; exit 78; }
+    protected_filesystem_file "$filesystem_session_file" || { echo 'threetched: unprotected human session source' >&2; exit 78; }
     [ "$(wc -c <"$filesystem_session_file")" -le 37 ] || exit 78
     OPDBUS_FILESYSTEM_ROOT=$filesystem_root
     OPDBUS_FILESYSTEM_SESSION=$(cat "$filesystem_session_file")
@@ -43,38 +43,38 @@ fi
 # Keep only public service settings across the first exec. The shared
 # environment file can contain unrelated provider credentials; none of those
 # become ambient input to the router daemon.
-if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
+if [ "${THREETCHED_SANITIZED:-}" != 1 ]; then
     set -a
     [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
     set +a
-    exec env -i TCHED_ROUTER_SANITIZED=1 PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin \
-        TCHED_ROUTER_BOOTSTRAP_CONFIG=/usr/share/op-dbus/etc/op-dbus/threetched-runtime.toml \
-        TCHED_ROUTER_BOOTSTRAP_SKILLS=/usr/share/op-dbus/etc/op-dbus/threetched-skills/default \
-        TCHED_ROUTER_OPENCODE_KEY_FILE="${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}" \
-        TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE="${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}" \
+    exec env -i THREETCHED_SANITIZED=1 PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin \
+        THREETCHED_BOOTSTRAP_CONFIG=/usr/share/op-dbus/etc/op-dbus/threetched-runtime.toml \
+        THREETCHED_BOOTSTRAP_SKILLS=/usr/share/op-dbus/etc/op-dbus/threetched-skills/default \
+        THREETCHED_OPENCODE_KEY_FILE="${THREETCHED_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}" \
+        THREETCHED_CHEAPER_INFERENCE_KEY_FILE="${THREETCHED_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}" \
         THREETCHED_BIN=/usr/local/libexec/op-dbus/threetched/threetched \
-        THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json \
-        TCHED_ROUTER_HOST="${TCHED_ROUTER_HOST:-127.0.0.1}" \
-        TCHED_ROUTER_PORT="${TCHED_ROUTER_PORT:-8084}" \
-        TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER="${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}" \
+        THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/threetched.json \
+        THREETCHED_HOST="${THREETCHED_HOST:-127.0.0.1}" \
+        THREETCHED_PORT="${THREETCHED_PORT:-8084}" \
+        THREETCHED_CONTROL_PLANE_MODEL_PROVIDER="${THREETCHED_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}" \
         OPDBUS_SLED_AUTH_URL="${OPDBUS_SLED_AUTH_URL:-https://10.0.0.2:8090/mcp}" \
         OPDBUS_SLED_CA_FILE="${OPDBUS_SLED_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
         "$@" /bin/sh "$0" --sanitized
 fi
 
-CONFIG_DIR=/var/lib/tched-router
+CONFIG_DIR=/var/lib/threetched
 BOOTSTRAP_CONFIG=/usr/share/op-dbus/etc/op-dbus/threetched-runtime.toml
 BOOTSTRAP_SKILLS=/usr/share/op-dbus/etc/op-dbus/threetched-skills/default
-OPENCODE_GO_KEY_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
-CHEAPER_INFERENCE_KEY_FILE=${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}
+OPENCODE_GO_KEY_FILE=${THREETCHED_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
+CHEAPER_INFERENCE_KEY_FILE=${THREETCHED_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}
 THREETCHED_BIN=/usr/local/libexec/op-dbus/threetched/threetched
-THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json
-HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
-PORT=${TCHED_ROUTER_PORT:-8084}
-CONTROL_PLANE_MODEL_PROVIDER=${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}
+THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/threetched.json
+HOST=${THREETCHED_HOST:-127.0.0.1}
+PORT=${THREETCHED_PORT:-8084}
+CONTROL_PLANE_MODEL_PROVIDER=${THREETCHED_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}
 printf '%s' "$CONTROL_PLANE_MODEL_PROVIDER" |
     jq -Re 'test("^[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+$")' >/dev/null || {
-    echo "tched-router: invalid Control Plane model provider reference" >&2
+    echo "threetched: invalid Control Plane model provider reference" >&2
     exit 78
 }
 
@@ -126,7 +126,7 @@ threetched_config() {
 if [ "$CONTROL_PLANE_MODEL_PROVIDER" != opencode.go_control_plane ]; then
     threetched_config get "providers.models.$CONTROL_PLANE_MODEL_PROVIDER.model" --json |
         jq -e '.value | strings | test("\\S")' >/dev/null || {
-        echo "tched-router: Control Plane model provider is not configured" >&2
+        echo "threetched: Control Plane model provider is not configured" >&2
         exit 78
     }
 fi
@@ -150,7 +150,7 @@ if [ "$filesystem_enabled" = true ] || [ -e "$filesystem_root_receipt" ] || [ -L
     fi
     roots=$(threetched_config get risk_profiles.control_plane.allowed_roots --json | jq -ce '.value | if type == "string" then fromjson else . end | arrays | select(all(.[]; type == "string"))')
     if [ "$filesystem_enabled" = true ]; then
-        [ "$(findmnt -rn -M "$filesystem_root" -o FSTYPE)" = fuse.3tchedFS ] || { echo 'tched-router: threetched filesystem mount is not ready' >&2; exit 78; }
+        [ "$(findmnt -rn -M "$filesystem_root" -o FSTYPE)" = fuse.3tchedFS ] || { echo 'threetched: threetched filesystem mount is not ready' >&2; exit 78; }
         jq -e --arg session "$OPDBUS_FILESYSTEM_SESSION" '.mount_identity.kind == "host_session" and .mount_identity.session == $session and .local_call_owner_uid == 1001 and .workspace_id == null' "$filesystem_root/.3tchedfs.json" >/dev/null || exit 78
         if ! printf '%s' "$roots" | jq -e --arg root "$filesystem_root" 'index($root) != null' >/dev/null; then
             # Record intent before the atomic threetched patch, so interrupted
@@ -195,12 +195,12 @@ while IFS='|' read -r agent kind model wire risk; do
                     jq -r '.value // ""' 2>/dev/null || true)
                 if [ -n "$current" ]; then
                     printf '%s' "$current" | jq -Re 'test("^[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+$")' >/dev/null || {
-                        echo 'tched-router: existing agent provider binding is invalid' >&2
+                        echo 'threetched: existing agent provider binding is invalid' >&2
                         exit 78
                     }
                     threetched_config get "providers.models.$current.model" --json |
                         jq -e '.value | strings | test("\\S")' >/dev/null || {
-                        echo 'tched-router: existing selected provider is not configured' >&2
+                        echo 'threetched: existing selected provider is not configured' >&2
                         exit 78
                     }
                     agent_provider=$current
@@ -274,7 +274,7 @@ for agent in dashboard accountability control_plane cp_route_grok_47 cp_route_de
     current_profile=$(threetched_config get "agents.$agent.runtime_profile" --json | jq -er '.value | strings')
     case "$current_profile" in
         ''|chatbot_500) ;;
-        *) echo "tched-router: unexpected named runtime profile; reconcile before migration" >&2; exit 78 ;;
+        *) echo "threetched: unexpected named runtime profile; reconcile before migration" >&2; exit 78 ;;
     esac
     iteration_patch=$(printf '%s' "$iteration_patch" | jq --arg p "/agents/$agent/runtime_profile" --arg old "$current_profile" '. + [
       {op:"test",path:$p,value:$old},
@@ -289,10 +289,10 @@ unset iteration_patch current_profile
 # control_plane bundle. Existing bundle contents are preserved by init.
 threetched_config init mcp_bundles.opdbus_control_plane >/dev/null
 
-[ -f "$OPENCODE_GO_KEY_FILE" ] || { echo "tched-router: missing OpenCode Go API key" >&2; exit 78; }
+[ -f "$OPENCODE_GO_KEY_FILE" ] || { echo "threetched: missing OpenCode Go API key" >&2; exit 78; }
 set -- $(stat -Lc '%u %a' "$OPENCODE_GO_KEY_FILE")
 [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
-    echo "tched-router: OpenCode Go API key must be root-owned with mode 0400 or 0600" >&2
+    echo "threetched: OpenCode Go API key must be root-owned with mode 0400 or 0600" >&2
     exit 78
 }
 # The key is raw-file input to threetched config patch and never an argument.
@@ -317,7 +317,7 @@ jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
 if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
     set -- $(stat -Lc '%u %a' "$CHEAPER_INFERENCE_KEY_FILE")
     [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
-        echo "tched-router: Cheaper Inference key must be root-owned with mode 0400 or 0600" >&2
+        echo "threetched: Cheaper Inference key must be root-owned with mode 0400 or 0600" >&2
         exit 78
     }
     existing=$(threetched_config get providers.models.custom.cheaper_inference.model --json 2>/dev/null || true)
@@ -342,7 +342,7 @@ if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
             PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin \
             "$THREETCHED_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 else
-    echo "tched-router: Cheaper Inference key is absent; that provider is not configured" >&2
+    echo "threetched: Cheaper Inference key is absent; that provider is not configured" >&2
 fi
 
 /usr/local/libexec/op-dbus/helpers/prepare-salad-control-plane
@@ -350,6 +350,6 @@ export HOME="$CONFIG_DIR/home" USER=root PATH=/usr/local/libexec/op-dbus/bin:/us
 # The Sled-authenticated MCP door remains the identity authority. These are
 # public endpoint/CA settings, never reconstructed credentials.
 export OPDBUS_SLED_AUTH_URL OPDBUS_SLED_CA_FILE
-unset TCHED_ROUTER_SANITIZED
+unset THREETCHED_SANITIZED
 exec chpst -u root:root \
     "$THREETCHED_BIN" daemon --config-dir "$CONFIG_DIR" --host "$HOST" --port "$PORT" --log-level warn

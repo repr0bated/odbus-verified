@@ -1,14 +1,14 @@
 //! The threetched service paths shared by chat-router plugin surfaces.
-//! Defaults mirror deploy/runit/tched-router/run; service overrides use its
-//! THREETCHED_BIN, THREETCHED_MANIFEST and TCHED_ROUTER_CONFIG_DIR variables.
+//! Defaults mirror deploy/runit/threetched/run; service overrides use its
+//! THREETCHED_BIN, THREETCHED_MANIFEST and THREETCHED_CONFIG_DIR variables.
 
 use std::path::PathBuf;
 
 use anyhow::{Result, ensure};
 
 pub const DEFAULT_BINARY: &str = "/usr/local/libexec/op-dbus/threetched/threetched";
-pub const DEFAULT_CONFIG_DIR: &str = "/var/lib/tched-router";
-pub const DEFAULT_MANIFEST: &str = "/usr/share/op-dbus/threetched-manifests/tched-router.json";
+pub const DEFAULT_CONFIG_DIR: &str = "/var/lib/threetched";
+pub const DEFAULT_MANIFEST: &str = "/usr/share/op-dbus/threetched-manifests/threetched.json";
 
 fn absolute_env_path(name: &str, default: &str) -> Result<PathBuf> {
     let path = std::env::var_os(name)
@@ -23,7 +23,7 @@ pub fn binary() -> Result<PathBuf> {
 }
 
 pub fn config_dir() -> Result<PathBuf> {
-    absolute_env_path("TCHED_ROUTER_CONFIG_DIR", DEFAULT_CONFIG_DIR)
+    absolute_env_path("THREETCHED_CONFIG_DIR", DEFAULT_CONFIG_DIR)
 }
 
 pub fn manifest() -> Result<PathBuf> {

@@ -4234,7 +4234,7 @@
         "PublicState: explicit true schema retains arbitrary JSON"
       ]
     },
-    "tched_router": {
+    "threetched": {
       "schema_hash": "60345942852e5b8fa0ee3d87d5ca578b5edd2d4e113964008cffab682a5d533e",
       "state": false,
       "public_state": true,

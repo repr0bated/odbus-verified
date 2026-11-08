@@ -26,7 +26,7 @@ cargo run -p op-plugin-lint -- \
 Example artifacts in this folder: `zeroclaw.complete.json`, `zeroclaw.complete.md`.
 
 The checked-in `zeroclaw*.json` files are historical captures of `zeroclaw.rs`,
-not the current `tched_router` schema or release configuration. Their original
+not the current `threetched` schema or release configuration. Their original
 field names, URLs and schema metadata are retained as captured evidence. For
 the current cognitive naming contract, use the plugin-owned Rust schemas;
 regenerate an example from the intended source rather than relabeling a capture.

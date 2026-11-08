@@ -76,8 +76,8 @@ const CONTRACT: &str = r########"
         }
       ],
       "x-source-refs": [
-        "crates/threetched-fs/examples/typed_generate.rs:87-175",
-        "crates/threetched-fs/src/model.rs:6"
+        "crates/_3tched-fs/examples/typed_generate.rs:87-175",
+        "crates/_3tched-fs/src/model.rs:6"
       ]
     },
     "U64": {
@@ -85,28 +85,28 @@ const CONTRACT: &str = r########"
       "minimum": 0,
       "exclusiveMaximum": 18446744073709552000,
       "x-source-refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ]
     },
     "ObjectHash": {
       "type": "string",
       "pattern": "^[0-9a-fA-F]{64}$",
       "x-source-refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+        "crates/_3tched-fs/src/typed_runtime.rs:121-126"
       ]
     },
     "ViewId": {
       "$ref": "#/$defs/ObjectHash",
       "x-source-refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+        "crates/_3tched-fs/src/typed_runtime.rs:121-126"
       ]
     },
     "SchemaHash": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$",
       "x-source-refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:112-120"
+        "crates/_3tched-fs/src/typed_runtime.rs:112-120"
       ]
     },
     "WorkspaceId": {
@@ -121,7 +121,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "x-source-refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:127-138"
+        "crates/_3tched-fs/src/typed_runtime.rs:127-138"
       ]
     },
     "SideEffect": {
@@ -130,7 +130,7 @@ const CONTRACT: &str = r########"
         "mutation"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:532-535"
+        "crates/_3tched-fs/src/model.rs:532-535"
       ]
     },
     "MountMetadata": {
@@ -223,7 +223,7 @@ const CONTRACT: &str = r########"
         "declared_catalog_dir"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/namespace.rs:492-513"
+        "crates/_3tched-fs/src/namespace.rs:492-513"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -231,7 +231,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:492-513"
+          "crates/_3tched-fs/src/namespace.rs:492-513"
         ]
       }
     },
@@ -275,7 +275,7 @@ const CONTRACT: &str = r########"
         "objects"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/store.rs:27-35"
+        "crates/_3tched-fs/src/store.rs:27-35"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -283,7 +283,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:27-35"
+          "crates/_3tched-fs/src/store.rs:27-35"
         ]
       }
     },
@@ -323,7 +323,7 @@ const CONTRACT: &str = r########"
         "staged_objects"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/store.rs:47-54"
+        "crates/_3tched-fs/src/store.rs:47-54"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -331,7 +331,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:47-54"
+          "crates/_3tched-fs/src/store.rs:47-54"
         ]
       }
     },
@@ -365,7 +365,7 @@ const CONTRACT: &str = r########"
         "value"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:29-37"
+        "crates/_3tched-fs/src/model.rs:29-37"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -373,7 +373,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:29-37"
+          "crates/_3tched-fs/src/model.rs:29-37"
         ]
       }
     },
@@ -503,7 +503,7 @@ const CONTRACT: &str = r########"
         "version"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:155-201"
+        "crates/_3tched-fs/src/model.rs:155-201"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -511,7 +511,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:155-201"
+          "crates/_3tched-fs/src/model.rs:155-201"
         ]
       }
     },
@@ -557,7 +557,7 @@ const CONTRACT: &str = r########"
         "field_type"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:307-325"
+        "crates/_3tched-fs/src/model.rs:307-325"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -565,7 +565,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:307-325"
+          "crates/_3tched-fs/src/model.rs:307-325"
         ]
       }
     },
@@ -663,7 +663,7 @@ const CONTRACT: &str = r########"
         }
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:350-366"
+        "crates/_3tched-fs/src/model.rs:350-366"
       ]
     },
     "ReadOnlyCondition": {
@@ -681,7 +681,7 @@ const CONTRACT: &str = r########"
         "value"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:458-463"
+        "crates/_3tched-fs/src/model.rs:458-463"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -689,7 +689,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:458-463"
+          "crates/_3tched-fs/src/model.rs:458-463"
         ]
       }
     },
@@ -713,7 +713,7 @@ const CONTRACT: &str = r########"
             "value"
           ],
           "x-source-refs": [
-            "crates/threetched-fs/src/model.rs:465-503"
+            "crates/_3tched-fs/src/model.rs:465-503"
           ],
           "x-layout": {
             "offsets": "variable JSON member positions",
@@ -721,7 +721,7 @@ const CONTRACT: &str = r########"
             "alignment": "not applicable",
             "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
             "source_refs": [
-              "crates/threetched-fs/src/model.rs:465-503"
+              "crates/_3tched-fs/src/model.rs:465-503"
             ]
           }
         },
@@ -740,7 +740,7 @@ const CONTRACT: &str = r########"
             "regex"
           ],
           "x-source-refs": [
-            "crates/threetched-fs/src/model.rs:465-503"
+            "crates/_3tched-fs/src/model.rs:465-503"
           ],
           "x-layout": {
             "offsets": "variable JSON member positions",
@@ -748,7 +748,7 @@ const CONTRACT: &str = r########"
             "alignment": "not applicable",
             "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
             "source_refs": [
-              "crates/threetched-fs/src/model.rs:465-503"
+              "crates/_3tched-fs/src/model.rs:465-503"
             ]
           }
         },
@@ -770,7 +770,7 @@ const CONTRACT: &str = r########"
             "values"
           ],
           "x-source-refs": [
-            "crates/threetched-fs/src/model.rs:465-503"
+            "crates/_3tched-fs/src/model.rs:465-503"
           ],
           "x-layout": {
             "offsets": "variable JSON member positions",
@@ -778,7 +778,7 @@ const CONTRACT: &str = r########"
             "alignment": "not applicable",
             "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
             "source_refs": [
-              "crates/threetched-fs/src/model.rs:465-503"
+              "crates/_3tched-fs/src/model.rs:465-503"
             ]
           }
         },
@@ -797,7 +797,7 @@ const CONTRACT: &str = r########"
             "field"
           ],
           "x-source-refs": [
-            "crates/threetched-fs/src/model.rs:465-503"
+            "crates/_3tched-fs/src/model.rs:465-503"
           ],
           "x-layout": {
             "offsets": "variable JSON member positions",
@@ -805,7 +805,7 @@ const CONTRACT: &str = r########"
             "alignment": "not applicable",
             "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
             "source_refs": [
-              "crates/threetched-fs/src/model.rs:465-503"
+              "crates/_3tched-fs/src/model.rs:465-503"
             ]
           }
         },
@@ -824,7 +824,7 @@ const CONTRACT: &str = r########"
             "validator"
           ],
           "x-source-refs": [
-            "crates/threetched-fs/src/model.rs:465-503"
+            "crates/_3tched-fs/src/model.rs:465-503"
           ],
           "x-layout": {
             "offsets": "variable JSON member positions",
@@ -832,13 +832,13 @@ const CONTRACT: &str = r########"
             "alignment": "not applicable",
             "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
             "source_refs": [
-              "crates/threetched-fs/src/model.rs:465-503"
+              "crates/_3tched-fs/src/model.rs:465-503"
             ]
           }
         }
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:465-503"
+        "crates/_3tched-fs/src/model.rs:465-503"
       ]
     },
     "MethodDecl": {
@@ -881,7 +881,7 @@ const CONTRACT: &str = r########"
         "subid"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:518-528"
+        "crates/_3tched-fs/src/model.rs:518-528"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -889,7 +889,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:518-528"
+          "crates/_3tched-fs/src/model.rs:518-528"
         ]
       }
     },
@@ -911,7 +911,7 @@ const CONTRACT: &str = r########"
         "subid"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:538-543"
+        "crates/_3tched-fs/src/model.rs:538-543"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -919,7 +919,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:538-543"
+          "crates/_3tched-fs/src/model.rs:538-543"
         ]
       }
     },
@@ -941,7 +941,7 @@ const CONTRACT: &str = r########"
       },
       "required": [],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:546-561"
+        "crates/_3tched-fs/src/model.rs:546-561"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -949,7 +949,7 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:546-561"
+          "crates/_3tched-fs/src/model.rs:546-561"
         ]
       }
     },
@@ -959,8 +959,8 @@ const CONTRACT: &str = r########"
         "type": "string"
       },
       "x-source-refs": [
-        "crates/threetched-fs/examples/typed_generate.rs:87-175",
-        "crates/threetched-fs/src/model.rs:6"
+        "crates/_3tched-fs/examples/typed_generate.rs:87-175",
+        "crates/_3tched-fs/src/model.rs:6"
       ]
     },
     "CallReceipt": {
@@ -1005,8 +1005,8 @@ const CONTRACT: &str = r########"
         "result"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/dispatch.rs:30-39",
-        "crates/threetched-fs/src/dispatch.rs:408-456"
+        "crates/_3tched-fs/src/dispatch.rs:30-39",
+        "crates/_3tched-fs/src/dispatch.rs:408-456"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -1014,8 +1014,8 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/dispatch.rs:30-39",
-          "crates/threetched-fs/src/dispatch.rs:408-456"
+          "crates/_3tched-fs/src/dispatch.rs:30-39",
+          "crates/_3tched-fs/src/dispatch.rs:408-456"
         ]
       }
     },
@@ -1067,8 +1067,8 @@ const CONTRACT: &str = r########"
         "error"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:555-581",
-        "crates/threetched-fs/src/typed_runtime.rs:1653-1682"
+        "crates/_3tched-fs/src/fuse_fs.rs:555-581",
+        "crates/_3tched-fs/src/typed_runtime.rs:1653-1682"
       ],
       "x-layout": {
         "offsets": "variable JSON member positions",
@@ -1076,8 +1076,8 @@ const CONTRACT: &str = r########"
         "alignment": "not applicable",
         "encoding": "UTF-8 JSON; bounded render_document adds LF for namespace file bytes",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:555-581",
-          "crates/threetched-fs/src/typed_runtime.rs:1653-1682"
+          "crates/_3tched-fs/src/fuse_fs.rs:555-581",
+          "crates/_3tched-fs/src/typed_runtime.rs:1653-1682"
         ]
       }
     },
@@ -1208,8 +1208,8 @@ const CONTRACT: &str = r########"
         }
       },
       "x-source-refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ]
     },
     "Method": {
@@ -1254,8 +1254,8 @@ const CONTRACT: &str = r########"
         }
       },
       "x-source-refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ]
     },
     "StateValueScope": {
@@ -1265,7 +1265,7 @@ const CONTRACT: &str = r########"
         "schema_only"
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/model.rs:14-20"
+        "crates/_3tched-fs/src/model.rs:14-20"
       ]
     },
     "MountIdentity": {
@@ -1307,8 +1307,8 @@ const CONTRACT: &str = r########"
         }
       ],
       "x-source-refs": [
-        "crates/threetched-fs/src/namespace.rs:15-23",
-        "crates/threetched-fs/src/namespace.rs:492-513"
+        "crates/_3tched-fs/src/namespace.rs:15-23",
+        "crates/_3tched-fs/src/namespace.rs:492-513"
       ]
     },
     "MethodEventProof": {
@@ -1633,75 +1633,75 @@ const CONTRACT: &str = r########"
       },
       {
         "sha256": "71122379896ff949f8f83bc66381d1273834c7855a07e79ea7cf412fe7ec05a3",
-        "path": "crates/threetched-fs/Cargo.toml"
+        "path": "crates/_3tched-fs/Cargo.toml"
       },
       {
         "sha256": "4a9f8c9e345aff0e792e79d6204e964b573a497a9ebbef09c77221cec1e5c983",
-        "path": "crates/threetched-fs/examples/typed_export.rs"
+        "path": "crates/_3tched-fs/examples/typed_export.rs"
       },
       {
         "sha256": "fdd3cb70e87f49b1d0fc86856867f1996ab6066a03a5c6d74858bade19f4a667",
-        "path": "crates/threetched-fs/examples/typed_generate.rs"
+        "path": "crates/_3tched-fs/examples/typed_generate.rs"
       },
       {
         "sha256": "ff2aa10a4ce51b368fdd254a69eb589a0196fdf5fa0358d6498ff0bddb53a456",
-        "path": "crates/threetched-fs/examples/typed_specialize.rs"
+        "path": "crates/_3tched-fs/examples/typed_specialize.rs"
       },
       {
         "sha256": "74e0f6a829e19c880809dece6bed764c861a8f8c7a7ef1d02b9983dbe1e7bdcd",
-        "path": "crates/threetched-fs/src/dispatch.rs"
+        "path": "crates/_3tched-fs/src/dispatch.rs"
       },
       {
         "sha256": "62509bff1b0b99839fc05bcb524c6ac4d4054c08de000450a14b83580bb8c187",
-        "path": "crates/threetched-fs/src/fuse_buffers.rs"
+        "path": "crates/_3tched-fs/src/fuse_buffers.rs"
       },
       {
         "sha256": "5b38308b3b687caa017e4f4350d575132bdbc83aeae5088f36d1dc9ce06312e2",
-        "path": "crates/threetched-fs/src/fuse_fs.rs"
+        "path": "crates/_3tched-fs/src/fuse_fs.rs"
       },
       {
         "sha256": "a695702addbf084dca518265b8c5e7c54ffdf369cb66b08199d148cb7c6f6926",
-        "path": "crates/threetched-fs/src/fuse_process.rs"
+        "path": "crates/_3tched-fs/src/fuse_process.rs"
       },
       {
         "sha256": "7b018ef12791707bcd1b6fb926e1c453b7ce569af037dfbd3e38cb039a2bf759",
-        "path": "crates/threetched-fs/src/lib.rs"
+        "path": "crates/_3tched-fs/src/lib.rs"
       },
       {
         "sha256": "68cb9d882d0ea0df90331bc2576fe7ddcf022ada249975c28020e0e26b854e24",
-        "path": "crates/threetched-fs/src/main.rs"
+        "path": "crates/_3tched-fs/src/main.rs"
       },
       {
         "sha256": "f5661e0bb50222085b3b975110d23f7f2316bd935851ecba7b515ac370f4d90b",
-        "path": "crates/threetched-fs/src/mcp.rs"
+        "path": "crates/_3tched-fs/src/mcp.rs"
       },
       {
         "sha256": "4bc7b17bd49f1c564ba1efb97182421f8b958a339ecc32fb65e42e76a3a241c0",
-        "path": "crates/threetched-fs/src/model.rs"
+        "path": "crates/_3tched-fs/src/model.rs"
       },
       {
         "sha256": "2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8",
-        "path": "crates/threetched-fs/src/mounted.rs"
+        "path": "crates/_3tched-fs/src/mounted.rs"
       },
       {
         "sha256": "4c778b04ad597208f21a6d2403e3b7631fac2bad38d23cfab1181cb01e7a7cd3",
-        "path": "crates/threetched-fs/src/namespace.rs"
+        "path": "crates/_3tched-fs/src/namespace.rs"
       },
       {
         "sha256": "24f3cd2ef38c40fdf9217f3a47a7eccb9620ec29ee50125e1c326777f0ae7a32",
-        "path": "crates/threetched-fs/src/source.rs"
+        "path": "crates/_3tched-fs/src/source.rs"
       },
       {
         "sha256": "943f3bbd29a1cef8caa3f9c135f72479935dfed5abfed29e93b260498c088ffb",
-        "path": "crates/threetched-fs/src/store.rs"
+        "path": "crates/_3tched-fs/src/store.rs"
       },
       {
         "sha256": "027d2d834d871b7801e2a8c007fbc638447ed6a36d7443ea43904fa4737b7989",
-        "path": "crates/threetched-fs/src/typed_runtime.rs"
+        "path": "crates/_3tched-fs/src/typed_runtime.rs"
       },
       {
         "sha256": "5ff3fe01ebf662c97f711fbb78ac4963ba14843ea4f1bb39168c4e5fd52aa375",
-        "path": "crates/threetched-fs/src/threetched-surface.rs"
+        "path": "crates/_3tched-fs/src/threetched-surface.rs"
       },
       {
         "sha256": "bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05",
@@ -1709,7 +1709,7 @@ const CONTRACT: &str = r########"
       },
       {
         "sha256": "452da1ecc40282b904c3a13a7c303e35f5c319726970d92b3ef766775e1caab9",
-        "path": "deploy/runit/threetched-fs/run"
+        "path": "deploy/runit/3tched-fs/run"
       }
     ],
     "source_hash_algorithm": "SHA-256",
@@ -1732,8 +1732,8 @@ const CONTRACT: &str = r########"
       "verification": "source-audited; runtime behavior unverified unless explicitly marked",
       "source_refs": [
         "AGENTS.md:252",
-        "crates/threetched-fs/src/model.rs:52-55",
-        "crates/threetched-fs/src/model.rs:369-426"
+        "crates/_3tched-fs/src/model.rs:52-55",
+        "crates/_3tched-fs/src/model.rs:369-426"
       ]
     },
     {
@@ -1742,9 +1742,9 @@ const CONTRACT: &str = r########"
       "basis": "source",
       "verification": "source-audited; runtime behavior unverified unless explicitly marked",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:52-103",
-        "crates/threetched-fs/src/model.rs:214-280",
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/model.rs:52-103",
+        "crates/_3tched-fs/src/model.rs:214-280",
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -1753,8 +1753,8 @@ const CONTRACT: &str = r########"
       "basis": "design applicability inference",
       "verification": "source-audited; runtime behavior unverified unless explicitly marked",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472",
-        "crates/threetched-fs/src/dispatch.rs:103-173"
+        "crates/_3tched-fs/src/namespace.rs:108-472",
+        "crates/_3tched-fs/src/dispatch.rs:103-173"
       ]
     },
     {
@@ -1763,11 +1763,11 @@ const CONTRACT: &str = r########"
       "basis": "source",
       "verification": "source-audited; runtime behavior unverified unless explicitly marked",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:8-17",
-        "crates/threetched-fs/src/source.rs:11-17",
-        "crates/threetched-fs/src/source.rs:269-339",
-        "crates/threetched-fs/src/store.rs:363-388",
-        "crates/threetched-fs/src/store.rs:514-528"
+        "crates/_3tched-fs/src/model.rs:8-17",
+        "crates/_3tched-fs/src/source.rs:11-17",
+        "crates/_3tched-fs/src/source.rs:269-339",
+        "crates/_3tched-fs/src/store.rs:363-388",
+        "crates/_3tched-fs/src/store.rs:514-528"
       ]
     },
     {
@@ -1785,8 +1785,8 @@ const CONTRACT: &str = r########"
     "JsonValue": {
       "kind": "recursive_json",
       "source_refs": [
-        "crates/threetched-fs/examples/typed_generate.rs:87-175",
-        "crates/threetched-fs/src/model.rs:6"
+        "crates/_3tched-fs/examples/typed_generate.rs:87-175",
+        "crates/_3tched-fs/src/model.rs:6"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1798,7 +1798,7 @@ const CONTRACT: &str = r########"
       "validator": "plugin",
       "validation_origin": "canonical SourceCatalog plugin grammar: nonempty <=128 lowercase ASCII, digits, underscore",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:102-111"
+        "crates/_3tched-fs/src/typed_runtime.rs:102-111"
       ],
       "source_layout": []
     },
@@ -1807,7 +1807,7 @@ const CONTRACT: &str = r########"
       "validator": "identifier",
       "validation_origin": "source arbitrary UTF-8 key incl empty; encoded component from canonical source, membership checked at use",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+        "crates/_3tched-fs/src/typed_runtime.rs:86-91"
       ],
       "source_layout": []
     },
@@ -1816,7 +1816,7 @@ const CONTRACT: &str = r########"
       "validator": "session",
       "validation_origin": "canonical lungs bootstrap grammar plus exact mounted session match",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:92-101"
+        "crates/_3tched-fs/src/typed_runtime.rs:92-101"
       ],
       "source_layout": []
     },
@@ -1824,7 +1824,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "store_name",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:127-138"
+        "crates/_3tched-fs/src/typed_runtime.rs:127-138"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1835,7 +1835,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "hash",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+        "crates/_3tched-fs/src/typed_runtime.rs:121-126"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1846,7 +1846,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "hash",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:121-126"
+        "crates/_3tched-fs/src/typed_runtime.rs:121-126"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1871,7 +1871,7 @@ const CONTRACT: &str = r########"
         "declared_catalog_dir": "String"
       },
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:492-513"
+        "crates/_3tched-fs/src/namespace.rs:492-513"
       ],
       "source_layout": [
         {
@@ -1894,7 +1894,7 @@ const CONTRACT: &str = r########"
             "declared_catalog_dir": "String"
           },
           "evidence": [
-            "crates/threetched-fs/src/namespace.rs:492-513"
+            "crates/_3tched-fs/src/namespace.rs:492-513"
           ],
           "fixed_offsets": false,
           "endianness": "not applicable",
@@ -1909,7 +1909,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::store::ViewManifest",
       "source_refs": [
-        "crates/threetched-fs/src/store.rs:27-35"
+        "crates/_3tched-fs/src/store.rs:27-35"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1920,7 +1920,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::store::Workspace",
       "source_refs": [
-        "crates/threetched-fs/src/store.rs:47-54"
+        "crates/_3tched-fs/src/store.rs:47-54"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1931,7 +1931,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::TypedObjectBlob",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:29-37"
+        "crates/_3tched-fs/src/model.rs:29-37"
       ],
       "source_layout": [
         {
@@ -1947,7 +1947,7 @@ const CONTRACT: &str = r########"
             "value_scope": "full(default/omitted)|public_projection|schema_only"
           },
           "evidence": [
-            "crates/threetched-fs/src/model.rs:29-37"
+            "crates/_3tched-fs/src/model.rs:29-37"
           ],
           "fixed_offsets": false,
           "endianness": "not applicable",
@@ -1962,7 +1962,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::PluginSchema",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:155-201"
+        "crates/_3tched-fs/src/model.rs:155-201"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1973,7 +1973,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::MethodDecl",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:518-528"
+        "crates/_3tched-fs/src/model.rs:518-528"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1984,7 +1984,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::SideEffect",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:532-535"
+        "crates/_3tched-fs/src/model.rs:532-535"
       ],
       "source_layout": [],
       "json_schema": {
@@ -1995,8 +1995,8 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "JsonValue",
       "source_refs": [
-        "crates/threetched-fs/examples/typed_generate.rs:87-175",
-        "crates/threetched-fs/src/model.rs:6"
+        "crates/_3tched-fs/examples/typed_generate.rs:87-175",
+        "crates/_3tched-fs/src/model.rs:6"
       ],
       "source_layout": []
     },
@@ -2004,8 +2004,8 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "Vec<CapabilityId>",
       "source_refs": [
-        "crates/threetched-fs/examples/typed_generate.rs:87-175",
-        "crates/threetched-fs/src/model.rs:6"
+        "crates/_3tched-fs/examples/typed_generate.rs:87-175",
+        "crates/_3tched-fs/src/model.rs:6"
       ],
       "source_layout": [],
       "json_schema": {
@@ -2024,8 +2024,8 @@ const CONTRACT: &str = r########"
         "result": "MethodExecutionReceipt"
       },
       "source_refs": [
-        "crates/threetched-fs/src/dispatch.rs:30-39",
-        "crates/threetched-fs/src/dispatch.rs:408-456"
+        "crates/_3tched-fs/src/dispatch.rs:30-39",
+        "crates/_3tched-fs/src/dispatch.rs:408-456"
       ],
       "source_layout": [
         {
@@ -2042,8 +2042,8 @@ const CONTRACT: &str = r########"
             "result": "MethodExecutionReceipt"
           },
           "evidence": [
-            "crates/threetched-fs/src/dispatch.rs:30-39",
-            "crates/threetched-fs/src/dispatch.rs:408-456"
+            "crates/_3tched-fs/src/dispatch.rs:30-39",
+            "crates/_3tched-fs/src/dispatch.rs:408-456"
           ],
           "fixed_offsets": false,
           "endianness": "not applicable",
@@ -2068,8 +2068,8 @@ const CONTRACT: &str = r########"
         "MethodMetadata": "MethodDecl"
       },
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:26-38",
-        "crates/threetched-fs/src/typed_runtime.rs:1072-1098"
+        "crates/_3tched-fs/src/namespace.rs:26-38",
+        "crates/_3tched-fs/src/typed_runtime.rs:1072-1098"
       ],
       "source_layout": []
     },
@@ -2077,7 +2077,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::DirectoryEntry",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:204-231"
+        "crates/_3tched-fs/src/typed_runtime.rs:204-231"
       ],
       "binding_accessors": {
         "plugin": "Option<&PluginId>",
@@ -2092,7 +2092,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::SemanticLocator",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:234-241"
+        "crates/_3tched-fs/src/typed_runtime.rs:234-241"
       ],
       "binding_fields": {
         "raw_target": "String",
@@ -2106,7 +2106,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::BlobRef<T>",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:173-181"
+        "crates/_3tched-fs/src/typed_runtime.rs:173-181"
       ],
       "source_layout": []
     },
@@ -2114,7 +2114,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::ShmHandle<T>",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:183-191"
+        "crates/_3tched-fs/src/typed_runtime.rs:183-191"
       ],
       "ownership": "immutable owned decoded per-open snapshot, no mmap or zero-copy",
       "source_layout": []
@@ -2123,8 +2123,8 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::ValidatedArguments",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:243-250",
-        "crates/threetched-fs/src/typed_runtime.rs:1248-1267"
+        "crates/_3tched-fs/src/typed_runtime.rs:243-250",
+        "crates/_3tched-fs/src/typed_runtime.rs:1248-1267"
       ],
       "source_layout": []
     },
@@ -2132,7 +2132,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "root",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+        "crates/_3tched-fs/src/typed_runtime.rs:157-171"
       ],
       "validation_origin": "binding restriction: absolute no traversal; actual mount type and FD pins checked at factory",
       "source_layout": []
@@ -2141,7 +2141,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "root",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+        "crates/_3tched-fs/src/typed_runtime.rs:157-171"
       ],
       "validation_origin": "binding restriction: absolute no traversal; already-existing frozen store required",
       "source_layout": []
@@ -2150,7 +2150,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "pointer",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:139-156"
+        "crates/_3tched-fs/src/typed_runtime.rs:139-156"
       ],
       "validation_origin": "binding additionally rejects malformed RFC6901 tilde escapes",
       "source_layout": []
@@ -2159,7 +2159,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "identifier",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+        "crates/_3tched-fs/src/typed_runtime.rs:86-91"
       ],
       "validation_origin": "source arbitrary UTF-8 key incl empty; encoded component from canonical source, membership checked at use",
       "source_layout": []
@@ -2167,7 +2167,7 @@ const CONTRACT: &str = r########"
     "ArrayIndex": {
       "kind": "validated_index",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_layout": []
     },
@@ -2175,7 +2175,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "schema_hash",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:112-120"
+        "crates/_3tched-fs/src/typed_runtime.rs:112-120"
       ],
       "validation_origin": "canonical SourceCatalog lower-hex64 schema hash grammar",
       "source_layout": [],
@@ -2187,7 +2187,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "identifier",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+        "crates/_3tched-fs/src/typed_runtime.rs:86-91"
       ],
       "validation_origin": "source arbitrary UTF-8 catalog marker; actual view pins enforce exact value",
       "source_layout": []
@@ -2196,7 +2196,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "store_name",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:127-138"
+        "crates/_3tched-fs/src/typed_runtime.rs:127-138"
       ],
       "source_layout": []
     },
@@ -2204,7 +2204,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::FieldSchema",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:307-325"
+        "crates/_3tched-fs/src/model.rs:307-325"
       ],
       "source_layout": [],
       "json_schema": {
@@ -2215,7 +2215,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::FieldType",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:350-366"
+        "crates/_3tched-fs/src/model.rs:350-366"
       ],
       "source_layout": [],
       "json_schema": {
@@ -2226,7 +2226,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::Constraint",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:465-503"
+        "crates/_3tched-fs/src/model.rs:465-503"
       ],
       "source_layout": [],
       "json_schema": {
@@ -2237,7 +2237,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::SignalDecl",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:538-543"
+        "crates/_3tched-fs/src/model.rs:538-543"
       ],
       "source_layout": [],
       "json_schema": {
@@ -2248,7 +2248,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::PluginGuarantees",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:546-561"
+        "crates/_3tched-fs/src/model.rs:546-561"
       ],
       "source_layout": [],
       "json_schema": {
@@ -2259,7 +2259,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::HandleKind",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:193-202"
+        "crates/_3tched-fs/src/typed_runtime.rs:193-202"
       ],
       "source_layout": []
     },
@@ -2267,22 +2267,22 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::TypedFilesystem",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:450-698"
+        "crates/_3tched-fs/src/typed_runtime.rs:450-698"
       ],
       "source_layout": []
     },
     "CallFile": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+        "crates/_3tched-fs/src/typed_runtime.rs:1235-1318"
       ],
       "source_layout": []
     },
     "CallFileError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2299,15 +2299,15 @@ const CONTRACT: &str = r########"
     "Directory": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+        "crates/_3tched-fs/src/typed_runtime.rs:988-1015"
       ],
       "source_layout": []
     },
     "DirectoryError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2324,15 +2324,15 @@ const CONTRACT: &str = r########"
     "FrozenValue": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+        "crates/_3tched-fs/src/typed_runtime.rs:1134-1163"
       ],
       "source_layout": []
     },
     "FrozenValueError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2349,15 +2349,15 @@ const CONTRACT: &str = r########"
     "LiveValue": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+        "crates/_3tched-fs/src/typed_runtime.rs:1165-1182"
       ],
       "source_layout": []
     },
     "LiveValueError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2374,15 +2374,15 @@ const CONTRACT: &str = r########"
     "ObjectHashFile": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+        "crates/_3tched-fs/src/typed_runtime.rs:1100-1132"
       ],
       "source_layout": []
     },
     "ObjectHashFileError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2399,15 +2399,15 @@ const CONTRACT: &str = r########"
     "StaticJson": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+        "crates/_3tched-fs/src/typed_runtime.rs:1017-1098"
       ],
       "source_layout": []
     },
     "StaticJsonError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2424,15 +2424,15 @@ const CONTRACT: &str = r########"
     "Symlink": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+        "crates/_3tched-fs/src/typed_runtime.rs:1320-1360"
       ],
       "source_layout": []
     },
     "SymlinkError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2449,15 +2449,15 @@ const CONTRACT: &str = r########"
     "WorkspaceField": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+        "crates/_3tched-fs/src/typed_runtime.rs:1184-1233"
       ],
       "source_layout": []
     },
     "WorkspaceFieldError": {
       "kind": "binding_error",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80",
-        "crates/threetched-fs/examples/typed_generate.rs:254-343"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80",
+        "crates/_3tched-fs/examples/typed_generate.rs:254-343"
       ],
       "variants": [
         "Io {condition: FsCondition, source operation, errno diagnostic, ErrorKind, message}",
@@ -2475,7 +2475,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::typed_runtime::NodeError",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:25-80"
+        "crates/_3tched-fs/src/typed_runtime.rs:25-80"
       ],
       "authority": "binding-defined error conditions; source errno retained in Io diagnostics",
       "source_layout": []
@@ -2484,7 +2484,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::ReadOnlyCondition",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:458-463"
+        "crates/_3tched-fs/src/model.rs:458-463"
       ],
       "source_layout": [],
       "json_schema": {
@@ -2494,112 +2494,112 @@ const CONTRACT: &str = r########"
     "TypedNode": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "DirectBlobDirectory": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseDirectory": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "DirectBlobStaticJson": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseStaticJson": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "DirectBlobObjectHashFile": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseObjectHashFile": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "DirectBlobFrozenValue": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseFrozenValue": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseWorkspaceField": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseLiveValue": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseCallFile": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "DirectBlobSymlink": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
     "ViaFuseSymlink": {
       "kind": "binding_node",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:25-103",
-        "crates/threetched-fs/examples/typed_generate.rs:176-243"
+        "crates/_3tched-fs/src/namespace.rs:25-103",
+        "crates/_3tched-fs/examples/typed_generate.rs:176-243"
       ],
       "source_layout": []
     },
@@ -2607,7 +2607,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "identifier",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+        "crates/_3tched-fs/src/typed_runtime.rs:86-91"
       ],
       "validation_origin": "canonical declaration membership, no new string grammar",
       "source_layout": []
@@ -2616,7 +2616,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "identifier",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+        "crates/_3tched-fs/src/typed_runtime.rs:86-91"
       ],
       "validation_origin": "exact canonical method declaration, no new grammar",
       "source_layout": []
@@ -2628,7 +2628,7 @@ const CONTRACT: &str = r########"
         "Index": "ArrayIndex"
       },
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_layout": []
     },
@@ -2642,8 +2642,8 @@ const CONTRACT: &str = r########"
         "operation_id": "Option<String>"
       },
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:555-581",
-        "crates/threetched-fs/src/typed_runtime.rs:1653-1682"
+        "crates/_3tched-fs/src/fuse_fs.rs:555-581",
+        "crates/_3tched-fs/src/typed_runtime.rs:1653-1682"
       ],
       "source_layout": [
         {
@@ -2658,8 +2658,8 @@ const CONTRACT: &str = r########"
             "operation_id": "Option<String>"
           },
           "evidence": [
-            "crates/threetched-fs/src/dispatch.rs:81-105",
-            "crates/threetched-fs/src/fuse_fs.rs:555-581"
+            "crates/_3tched-fs/src/dispatch.rs:81-105",
+            "crates/_3tched-fs/src/fuse_fs.rs:555-581"
           ],
           "fixed_offsets": false,
           "endianness": "not applicable",
@@ -2689,8 +2689,8 @@ const CONTRACT: &str = r########"
         "Handle": null
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1653-1682",
-        "crates/threetched-fs/src/fuse_fs.rs:555-581"
+        "crates/_3tched-fs/src/typed_runtime.rs:1653-1682",
+        "crates/_3tched-fs/src/fuse_fs.rs:555-581"
       ],
       "source_layout": []
     },
@@ -2712,7 +2712,7 @@ const CONTRACT: &str = r########"
         "InFlight": null
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1636-1651"
+        "crates/_3tched-fs/src/typed_runtime.rs:1636-1651"
       ],
       "source_layout": []
     },
@@ -2720,7 +2720,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "root",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+        "crates/_3tched-fs/src/typed_runtime.rs:157-171"
       ],
       "validation_origin": "Binding absolute traversal-free directory for read-only canonical committed public snapshots",
       "source_layout": []
@@ -2729,7 +2729,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "identifier",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:86-91"
+        "crates/_3tched-fs/src/typed_runtime.rs:86-91"
       ],
       "validation_origin": "source arbitrary UTF-8 dependency reference; distinct from captured PluginId grammar",
       "source_layout": []
@@ -2738,8 +2738,8 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::namespace::MountIdentity",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:15-23",
-        "crates/threetched-fs/src/namespace.rs:492-513"
+        "crates/_3tched-fs/src/namespace.rs:15-23",
+        "crates/_3tched-fs/src/namespace.rs:492-513"
       ],
       "source_layout": []
     },
@@ -2747,7 +2747,7 @@ const CONTRACT: &str = r########"
       "kind": "alias",
       "rust": "crate::model::StateValueScope",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:14-20"
+        "crates/_3tched-fs/src/model.rs:14-20"
       ],
       "source_layout": []
     },
@@ -2795,7 +2795,7 @@ const CONTRACT: &str = r########"
       "kind": "validated_string",
       "validator": "root",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:157-171"
+        "crates/_3tched-fs/src/typed_runtime.rs:157-171"
       ],
       "validation_origin": "Binding absolute traversal-free directory; active catalog provenance checked before/after live operations",
       "source_layout": []
@@ -2805,7 +2805,7 @@ const CONTRACT: &str = r########"
       "class": "Directory",
       "route": "direct-shm",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+        "crates/_3tched-fs/src/typed_runtime.rs:988-1015"
       ],
       "source_layout": []
     },
@@ -2814,7 +2814,7 @@ const CONTRACT: &str = r########"
       "class": "StaticJson",
       "route": "direct-shm",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+        "crates/_3tched-fs/src/typed_runtime.rs:1017-1098"
       ],
       "source_layout": []
     },
@@ -2823,7 +2823,7 @@ const CONTRACT: &str = r########"
       "class": "ObjectHashFile",
       "route": "direct-shm",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+        "crates/_3tched-fs/src/typed_runtime.rs:1100-1132"
       ],
       "source_layout": []
     },
@@ -2832,7 +2832,7 @@ const CONTRACT: &str = r########"
       "class": "LiveValue",
       "route": "direct-shm",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+        "crates/_3tched-fs/src/typed_runtime.rs:1165-1182"
       ],
       "source_layout": []
     },
@@ -2841,7 +2841,7 @@ const CONTRACT: &str = r########"
       "class": "Symlink",
       "route": "direct-shm",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+        "crates/_3tched-fs/src/typed_runtime.rs:1320-1360"
       ],
       "source_layout": []
     }
@@ -2863,14 +2863,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:669-697"
+          "crates/_3tched-fs/src/namespace.rs:669-697"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:669-697"
+        "crates/_3tched-fs/src/namespace.rs:669-697"
       ],
       "source_node_class": "root",
       "source_node_kind": "Directory",
@@ -2894,14 +2894,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:699-712"
+          "crates/_3tched-fs/src/namespace.rs:699-712"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:699-712"
+        "crates/_3tched-fs/src/namespace.rs:699-712"
       ],
       "source_node_class": "mount_metadata",
       "source_node_kind": "File",
@@ -2925,14 +2925,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:699-712"
+          "crates/_3tched-fs/src/namespace.rs:699-712"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:699-712"
+        "crates/_3tched-fs/src/namespace.rs:699-712"
       ],
       "source_node_class": "view_manifest",
       "source_node_kind": "File",
@@ -2956,14 +2956,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:699-712"
+          "crates/_3tched-fs/src/namespace.rs:699-712"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "workspace mount only",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:699-712"
+        "crates/_3tched-fs/src/namespace.rs:699-712"
       ],
       "source_node_class": "workspace_manifest",
       "source_node_kind": "File",
@@ -2987,14 +2987,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "plugins",
       "source_node_kind": "Directory",
@@ -3018,14 +3018,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "operations",
       "source_node_kind": "Directory",
@@ -3049,14 +3049,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "relationships",
       "source_node_kind": "Directory",
@@ -3080,14 +3080,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "relationships/dependencies",
       "source_node_kind": "Directory",
@@ -3111,14 +3111,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "always",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "capabilities",
       "source_node_kind": "Directory",
@@ -3149,14 +3149,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "per pinned object",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "plugin_directory",
       "source_node_kind": "Directory",
@@ -3187,14 +3187,14 @@ const CONTRACT: &str = r########"
           "description": "Frozen object state is sanitized by its sealed policy. Live mounts render fresh committed public state; unavailable live state yields explicit schema_only envelope, never stale private values."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "per pinned object",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "typed_object",
       "source_node_kind": "File",
@@ -3225,14 +3225,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "per pinned object",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "plugin_schema",
       "source_node_kind": "File",
@@ -3263,14 +3263,14 @@ const CONTRACT: &str = r########"
           "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "plugin_value",
       "source_node_kind": "LiveFile",
@@ -3301,14 +3301,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View without state_dir or Workspace (value.json is never writable); per pinned object",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "plugin_value",
       "source_node_kind": "File",
@@ -3339,14 +3339,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "per pinned object",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "required_capabilities",
       "source_node_kind": "File",
@@ -3377,14 +3377,14 @@ const CONTRACT: &str = r########"
           "description": "Real captured artifact identity, never a hash of live rendered state. User data field named object.hash remains its declared value class."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "text/plain; ASCII hex plus LF",
       "existence_condition": "per pinned object",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "object_hash",
       "source_node_kind": "File",
@@ -3415,14 +3415,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "per pinned object",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "data_root",
       "source_node_kind": "Directory",
@@ -3465,14 +3465,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "captured JSON object child is object or array",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "object_container",
       "source_node_kind": "Directory",
@@ -3515,14 +3515,14 @@ const CONTRACT: &str = r########"
           "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "object_scalar",
       "source_node_kind": "LiveFile",
@@ -3565,14 +3565,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View without state_dir or Workspace when write_target absent; captured JSON object child is scalar or null",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "object_scalar",
       "source_node_kind": "File",
@@ -3615,14 +3615,14 @@ const CONTRACT: &str = r########"
           "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "Workspace staged/base public value pointer with effective writable target; immutable and conditional fields remain read-only.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "object_scalar",
       "source_node_kind": "File",
@@ -3659,16 +3659,16 @@ const CONTRACT: &str = r########"
           "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842",
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842",
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842",
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842",
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "container_value",
       "source_node_kind": "LiveFile",
@@ -3705,16 +3705,16 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842",
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842",
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View without state_dir or Workspace when write_target absent; non-root object container or any array container",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842",
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842",
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "container_value",
       "source_node_kind": "File",
@@ -3751,16 +3751,16 @@ const CONTRACT: &str = r########"
           "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842",
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842",
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "Workspace staged/base public value pointer with effective writable target; immutable and conditional fields remain read-only.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842",
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842",
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "container_value",
       "source_node_kind": "File",
@@ -3803,14 +3803,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "captured JSON array element is object or array",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "array_container",
       "source_node_kind": "Directory",
@@ -3853,14 +3853,14 @@ const CONTRACT: &str = r########"
           "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View with live state directory; current locked committed public value contains this JSON pointer. Aggregate value.json discovery exists even when state is unavailable, but reads fail closed.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "array_scalar",
       "source_node_kind": "LiveFile",
@@ -3903,14 +3903,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "View without state_dir or Workspace when write_target absent; captured JSON array element is scalar or null",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "array_scalar",
       "source_node_kind": "File",
@@ -3953,14 +3953,14 @@ const CONTRACT: &str = r########"
           "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "Workspace staged/base public value pointer with effective writable target; immutable and conditional fields remain read-only.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ],
       "source_node_class": "array_scalar",
       "source_node_kind": "File",
@@ -3991,14 +3991,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "per pinned object, including no-method plugins",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "plugin_operations",
       "source_node_kind": "Directory",
@@ -4035,14 +4035,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "per schema.methods map entry",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "method_directory",
       "source_node_kind": "Directory",
@@ -4079,14 +4079,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/schema+json",
       "existence_condition": "every method",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "input_schema",
       "source_node_kind": "File",
@@ -4123,14 +4123,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/schema+json",
       "existence_condition": "method.returns is Some",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "output_schema",
       "source_node_kind": "File",
@@ -4167,14 +4167,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "resolved from pinned manifest and node declaration; never guessed"
       },
       "content_type": "application/json",
       "existence_condition": "every method",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "method_metadata",
       "source_node_kind": "File",
@@ -4211,14 +4211,14 @@ const CONTRACT: &str = r########"
           "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared _3tched_fs.get_receipt, not a result cache."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:844-873"
+          "crates/_3tched-fs/src/namespace.rs:844-873"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": "application/json (arguments on write; terminal receipt/diagnostic on same handle read)",
       "existence_condition": "Lungs identity mount; declared method. Missing output contract blocks dispatch before any effect.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:844-873"
+        "crates/_3tched-fs/src/namespace.rs:844-873"
       ],
       "source_node_class": "method_call",
       "source_node_kind": "CallFile",
@@ -4249,14 +4249,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "per pinned object, including no methods",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "root_plugin_operations",
       "source_node_kind": "Directory",
@@ -4293,14 +4293,14 @@ const CONTRACT: &str = r########"
           "description": "Relative target remains inside the mounted namespace."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "every method",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "operation_alias",
       "source_node_kind": "Symlink",
@@ -4331,14 +4331,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "some method requires capability",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "capability_directory",
       "source_node_kind": "Directory",
@@ -4381,14 +4381,14 @@ const CONTRACT: &str = r########"
           "description": "Relative target remains inside the mounted namespace."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "method.required_capability is Some",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "capability_method_alias",
       "source_node_kind": "Symlink",
@@ -4419,14 +4419,14 @@ const CONTRACT: &str = r########"
           "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "per pinned object, including no dependencies",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "dependency_directory",
       "source_node_kind": "Directory",
@@ -4463,14 +4463,14 @@ const CONTRACT: &str = r########"
           "description": "Relative target remains inside the mounted namespace; missing dependency target remains unresolved."
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ],
         "locator_status": "no independent persistent locator"
       },
       "content_type": null,
       "existence_condition": "per schema.dependencies list entry",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ],
       "source_node_class": "dependency_alias",
       "source_node_kind": "Symlink",
@@ -4512,7 +4512,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+        "crates/_3tched-fs/src/typed_runtime.rs:988-1015"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4548,9 +4548,9 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:988-1015",
-        "crates/threetched-fs/src/typed_runtime.rs:525-561",
-        "crates/threetched-fs/src/source.rs:42-149"
+        "crates/_3tched-fs/src/typed_runtime.rs:988-1015",
+        "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+        "crates/_3tched-fs/src/source.rs:42-149"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4587,7 +4587,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+        "crates/_3tched-fs/src/typed_runtime.rs:988-1015"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4623,7 +4623,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+        "crates/_3tched-fs/src/typed_runtime.rs:1017-1098"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4659,9 +4659,9 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1017-1098",
-        "crates/threetched-fs/src/typed_runtime.rs:525-561",
-        "crates/threetched-fs/src/source.rs:42-149"
+        "crates/_3tched-fs/src/typed_runtime.rs:1017-1098",
+        "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+        "crates/_3tched-fs/src/source.rs:42-149"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4698,7 +4698,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+        "crates/_3tched-fs/src/typed_runtime.rs:1017-1098"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4734,7 +4734,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+        "crates/_3tched-fs/src/typed_runtime.rs:1100-1132"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4770,9 +4770,9 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1100-1132",
-        "crates/threetched-fs/src/typed_runtime.rs:525-561",
-        "crates/threetched-fs/src/source.rs:42-149"
+        "crates/_3tched-fs/src/typed_runtime.rs:1100-1132",
+        "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+        "crates/_3tched-fs/src/source.rs:42-149"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4809,7 +4809,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+        "crates/_3tched-fs/src/typed_runtime.rs:1100-1132"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4845,7 +4845,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+        "crates/_3tched-fs/src/typed_runtime.rs:1134-1163"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4882,7 +4882,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+        "crates/_3tched-fs/src/typed_runtime.rs:1134-1163"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4919,7 +4919,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+        "crates/_3tched-fs/src/typed_runtime.rs:1184-1233"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -4969,7 +4969,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+        "crates/_3tched-fs/src/typed_runtime.rs:1184-1233"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -5005,9 +5005,9 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1165-1182",
-        "crates/threetched-fs/src/typed_runtime.rs:525-561",
-        "crates/threetched-fs/src/source.rs:42-149"
+        "crates/_3tched-fs/src/typed_runtime.rs:1165-1182",
+        "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+        "crates/_3tched-fs/src/source.rs:42-149"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -5044,7 +5044,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+        "crates/_3tched-fs/src/typed_runtime.rs:1165-1182"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -5086,7 +5086,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+        "crates/_3tched-fs/src/typed_runtime.rs:1235-1318"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -5138,7 +5138,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+        "crates/_3tched-fs/src/typed_runtime.rs:1235-1318"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -5172,7 +5172,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+        "crates/_3tched-fs/src/typed_runtime.rs:1320-1360"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -5206,9 +5206,9 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1320-1360",
-        "crates/threetched-fs/src/typed_runtime.rs:525-561",
-        "crates/threetched-fs/src/source.rs:42-149"
+        "crates/_3tched-fs/src/typed_runtime.rs:1320-1360",
+        "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+        "crates/_3tched-fs/src/source.rs:42-149"
       ],
       "verification": "implemented-source-unverified"
     },
@@ -5243,7 +5243,7 @@ const CONTRACT: &str = r########"
         ]
       },
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+        "crates/_3tched-fs/src/typed_runtime.rs:1320-1360"
       ],
       "verification": "implemented-source-unverified"
     }
@@ -5257,8 +5257,8 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:1041-1067",
-            "crates/threetched-fs/src/mounted.rs:499-581"
+            "crates/_3tched-fs/src/namespace.rs:1041-1067",
+            "crates/_3tched-fs/src/mounted.rs:499-581"
           ]
         },
         {
@@ -5267,9 +5267,9 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:912-961",
-            "crates/threetched-fs/src/namespace.rs:1069-1077",
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:912-961",
+            "crates/_3tched-fs/src/namespace.rs:1069-1077",
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ]
         }
       ],
@@ -5280,7 +5280,7 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/model.rs:10-144"
+            "crates/_3tched-fs/src/model.rs:10-144"
           ]
         },
         {
@@ -5289,7 +5289,7 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/source.rs:24-149",
+            "crates/_3tched-fs/src/source.rs:24-149",
             "crates/op-core/src/projection_transactions.rs:197-237",
             "crates/op-core/src/projection_transactions.rs:451-510"
           ]
@@ -5300,7 +5300,7 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/source.rs:184-267"
+            "crates/_3tched-fs/src/source.rs:184-267"
           ]
         },
         {
@@ -5309,8 +5309,8 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/store.rs:150-249",
-            "crates/threetched-fs/src/namespace.rs:997-1039"
+            "crates/_3tched-fs/src/store.rs:150-249",
+            "crates/_3tched-fs/src/namespace.rs:997-1039"
           ]
         },
         {
@@ -5319,9 +5319,9 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:26-38",
-            "crates/threetched-fs/src/namespace.rs:108-472",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/namespace.rs:26-38",
+            "crates/_3tched-fs/src/namespace.rs:108-472",
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         {
@@ -5330,8 +5330,8 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented-source-unverified",
           "source_refs": [
-            "crates/threetched-fs/src/model.rs:475-514",
-            "crates/threetched-fs/examples/typed_specialize.rs:120-602"
+            "crates/_3tched-fs/src/model.rs:475-514",
+            "crates/_3tched-fs/examples/typed_specialize.rs:120-602"
           ]
         }
       ],
@@ -5342,7 +5342,7 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:207-277"
+            "crates/_3tched-fs/src/fuse_fs.rs:207-277"
           ]
         },
         {
@@ -5351,8 +5351,8 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/store.rs:580-626",
-            "crates/threetched-fs/src/namespace.rs:515-667"
+            "crates/_3tched-fs/src/store.rs:580-626",
+            "crates/_3tched-fs/src/namespace.rs:515-667"
           ]
         }
       ],
@@ -5363,10 +5363,10 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:24-26",
-            "crates/threetched-fs/src/fuse_fs.rs:275-353",
-            "crates/threetched-fs/src/fuse_fs.rs:765-771",
-            "crates/threetched-fs/src/namespace.rs:26-38"
+            "crates/_3tched-fs/src/fuse_fs.rs:24-26",
+            "crates/_3tched-fs/src/fuse_fs.rs:275-353",
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771",
+            "crates/_3tched-fs/src/namespace.rs:26-38"
           ]
         },
         {
@@ -5375,8 +5375,8 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:54-119",
-            "crates/threetched-fs/src/fuse_fs.rs:885-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:54-119",
+            "crates/_3tched-fs/src/fuse_fs.rs:885-1012"
           ]
         },
         {
@@ -5385,11 +5385,11 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented-source-unverified",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:143-334",
-            "crates/threetched-fs/src/namespace.rs:400-471",
-            "crates/threetched-fs/src/namespace.rs:621-667",
-            "crates/threetched-fs/src/fuse_fs.rs:660-693",
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/namespace.rs:143-334",
+            "crates/_3tched-fs/src/namespace.rs:400-471",
+            "crates/_3tched-fs/src/namespace.rs:621-667",
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693",
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         {
@@ -5398,11 +5398,11 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented-source-unverified",
           "source_refs": [
-            "crates/threetched-fs/src/typed_runtime.rs:525-561",
-            "crates/threetched-fs/src/typed_runtime.rs:730-777",
-            "crates/threetched-fs/src/typed_runtime.rs:784-875",
-            "crates/threetched-fs/src/typed_runtime.rs:939-1015",
-            "crates/threetched-fs/src/typed_runtime.rs:1456-1529"
+            "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+            "crates/_3tched-fs/src/typed_runtime.rs:730-777",
+            "crates/_3tched-fs/src/typed_runtime.rs:784-875",
+            "crates/_3tched-fs/src/typed_runtime.rs:939-1015",
+            "crates/_3tched-fs/src/typed_runtime.rs:1456-1529"
           ]
         }
       ],
@@ -5413,9 +5413,9 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:15-23",
-            "crates/threetched-fs/src/mounted.rs:39-181",
-            "crates/threetched-fs/src/dispatch.rs:174-346"
+            "crates/_3tched-fs/src/namespace.rs:15-23",
+            "crates/_3tched-fs/src/mounted.rs:39-181",
+            "crates/_3tched-fs/src/dispatch.rs:174-346"
           ]
         },
         {
@@ -5424,8 +5424,8 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/dispatch.rs:67-92",
-            "crates/threetched-fs/src/dispatch.rs:347-456",
+            "crates/_3tched-fs/src/dispatch.rs:67-92",
+            "crates/_3tched-fs/src/dispatch.rs:347-456",
             "crates/op-grpc-bridge/src/schema_router.rs:841-930",
             "crates/op-grpc-bridge/src/schema_router.rs:961-1036"
           ]
@@ -5438,7 +5438,7 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:275-581"
+            "crates/_3tched-fs/src/fuse_fs.rs:275-581"
           ]
         },
         {
@@ -5447,9 +5447,9 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:234-353",
-            "crates/threetched-fs/src/fuse_fs.rs:351-554",
-            "crates/threetched-fs/src/store.rs:198-249"
+            "crates/_3tched-fs/src/fuse_fs.rs:234-353",
+            "crates/_3tched-fs/src/fuse_fs.rs:351-554",
+            "crates/_3tched-fs/src/store.rs:198-249"
           ]
         },
         {
@@ -5481,9 +5481,9 @@ const CONTRACT: &str = r########"
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
             "crates/op-state-store/src/method_receipt.rs:40-141",
-            "crates/threetched-fs/src/dispatch.rs:128-141",
-            "crates/threetched-fs/src/dispatch.rs:408-456",
-            "crates/threetched-fs/src/mounted.rs:184-497"
+            "crates/_3tched-fs/src/dispatch.rs:128-141",
+            "crates/_3tched-fs/src/dispatch.rs:408-456",
+            "crates/_3tched-fs/src/mounted.rs:184-497"
           ]
         }
       ],
@@ -5494,9 +5494,9 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/threetched-fs/src/dispatch.rs:81-105",
-            "crates/threetched-fs/src/fuse_fs.rs:555-581",
-            "crates/threetched-fs/src/typed_runtime.rs:1636-1682"
+            "crates/_3tched-fs/src/dispatch.rs:81-105",
+            "crates/_3tched-fs/src/fuse_fs.rs:555-581",
+            "crates/_3tched-fs/src/typed_runtime.rs:1636-1682"
           ]
         }
       ],
@@ -5507,11 +5507,11 @@ const CONTRACT: &str = r########"
           "basis": "current source",
           "verification": "implemented-source-unverified",
           "source_refs": [
-            "crates/threetched-fs/src/main.rs:314-387",
-            "crates/threetched-fs/src/mounted.rs:184-207",
-            "crates/threetched-fs/src/mcp.rs:95-143",
-            "crates/threetched-fs/src/mcp.rs:581-706",
-            "crates/threetched-fs/src/mcp.rs:867-906"
+            "crates/_3tched-fs/src/main.rs:314-387",
+            "crates/_3tched-fs/src/mounted.rs:184-207",
+            "crates/_3tched-fs/src/mcp.rs:95-143",
+            "crates/_3tched-fs/src/mcp.rs:581-706",
+            "crates/_3tched-fs/src/mcp.rs:867-906"
           ]
         },
         {
@@ -5536,7 +5536,7 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -5546,7 +5546,7 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:1041-1067"
+          "crates/_3tched-fs/src/namespace.rs:1041-1067"
         ]
       },
       {
@@ -5556,8 +5556,8 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:202-353",
-          "crates/threetched-fs/src/main.rs:314-656"
+          "crates/_3tched-fs/src/fuse_fs.rs:202-353",
+          "crates/_3tched-fs/src/main.rs:314-656"
         ]
       },
       {
@@ -5567,8 +5567,8 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:330-388",
-          "crates/threetched-fs/src/source.rs:42-77"
+          "crates/_3tched-fs/src/store.rs:330-388",
+          "crates/_3tched-fs/src/source.rs:42-77"
         ]
       },
       {
@@ -5578,8 +5578,8 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/mounted.rs:39-181",
-          "crates/threetched-fs/src/typed_runtime.rs:271-439"
+          "crates/_3tched-fs/src/mounted.rs:39-181",
+          "crates/_3tched-fs/src/typed_runtime.rs:271-439"
         ]
       },
       {
@@ -5589,7 +5589,7 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/dispatch.rs:128-141",
+          "crates/_3tched-fs/src/dispatch.rs:128-141",
           "crates/op-grpc-bridge/src/mutation_engine.rs:3421-3621"
         ]
       },
@@ -5600,7 +5600,7 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/dispatch.rs:174-407",
+          "crates/_3tched-fs/src/dispatch.rs:174-407",
           "crates/op-grpc-bridge/src/schema_router.rs:841-930"
         ]
       },
@@ -5611,7 +5611,7 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/mounted.rs:184-497",
+          "crates/_3tched-fs/src/mounted.rs:184-497",
           "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
         ]
       },
@@ -5622,8 +5622,8 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:150-249",
-          "crates/threetched-fs/src/namespace.rs:997-1039"
+          "crates/_3tched-fs/src/store.rs:150-249",
+          "crates/_3tched-fs/src/namespace.rs:997-1039"
         ]
       },
       {
@@ -5633,8 +5633,8 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:198-249",
-          "crates/threetched-fs/src/store.rs:484-499"
+          "crates/_3tched-fs/src/store.rs:198-249",
+          "crates/_3tched-fs/src/store.rs:484-499"
         ]
       },
       {
@@ -5644,8 +5644,8 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:150-185",
-          "crates/threetched-fs/src/store.rs:453-479"
+          "crates/_3tched-fs/src/store.rs:150-185",
+          "crates/_3tched-fs/src/store.rs:453-479"
         ]
       },
       {
@@ -5655,9 +5655,9 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031",
-          "crates/threetched-fs/src/typed_runtime.rs:988-1015",
-          "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031",
+          "crates/_3tched-fs/src/typed_runtime.rs:988-1015",
+          "crates/_3tched-fs/src/typed_runtime.rs:1184-1233"
         ]
       },
       {
@@ -5667,8 +5667,8 @@ const CONTRACT: &str = r########"
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:173-191",
-          "crates/threetched-fs/src/source.rs:24-149"
+          "crates/_3tched-fs/src/typed_runtime.rs:173-191",
+          "crates/_3tched-fs/src/source.rs:24-149"
         ]
       }
     ]
@@ -5687,7 +5687,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:669-697"
+        "crates/_3tched-fs/src/namespace.rs:669-697"
       ]
     },
     {
@@ -5703,7 +5703,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:699-712"
+        "crates/_3tched-fs/src/namespace.rs:699-712"
       ]
     },
     {
@@ -5719,7 +5719,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:699-712"
+        "crates/_3tched-fs/src/namespace.rs:699-712"
       ]
     },
     {
@@ -5735,7 +5735,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:699-712"
+        "crates/_3tched-fs/src/namespace.rs:699-712"
       ]
     },
     {
@@ -5751,7 +5751,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5767,7 +5767,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5783,7 +5783,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5799,7 +5799,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5815,7 +5815,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5838,7 +5838,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5861,7 +5861,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5884,7 +5884,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5906,7 +5906,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5928,7 +5928,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5951,7 +5951,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5974,7 +5974,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -5997,7 +5997,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6032,7 +6032,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6066,7 +6066,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6100,7 +6100,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6133,7 +6133,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6161,8 +6161,8 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842",
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842",
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6190,8 +6190,8 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842",
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842",
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6218,8 +6218,8 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842",
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842",
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6254,7 +6254,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6288,7 +6288,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6322,7 +6322,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6355,7 +6355,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:714-842"
+        "crates/_3tched-fs/src/namespace.rs:714-842"
       ]
     },
     {
@@ -6378,7 +6378,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6407,7 +6407,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6436,7 +6436,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6465,7 +6465,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6494,7 +6494,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6521,7 +6521,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:844-873"
+        "crates/_3tched-fs/src/namespace.rs:844-873"
       ]
     },
     {
@@ -6544,7 +6544,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6573,7 +6573,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6596,7 +6596,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6631,7 +6631,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6654,7 +6654,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -6683,7 +6683,7 @@ const CONTRACT: &str = r########"
       ],
       "backing_enumeration": "Static enumeration uses pinned bounded locators without live values. Addressed live data enumeration refreshes only its committed public plugin subtree; captured view/workspace version otherwise. Per-opendir stable charged listing.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     }
   ],
@@ -6694,7 +6694,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn init(&mut self, _request: &Request<'_>, config: &mut KernelConfig) -> Result<(), i32>",
       "behavior": "Requests FUSE_ATOMIC_O_TRUNC and 1 MiB max_write; EIO if negotiation fails.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:634-642"
+        "crates/_3tched-fs/src/fuse_fs.rs:634-642"
       ],
       "params": [
         {
@@ -6716,7 +6716,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn lookup(&mut self, _request: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEntry)",
       "behavior": "Static lookup uses bounded locators without SHM reads. Live data lookup refreshes only the addressed plugin from fresh committed public state under catalog guards. ENOENT absent child; EIO refresh/render failure. Zero TTL; entry generation0.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:643-659"
+        "crates/_3tched-fs/src/fuse_fs.rs:643-659"
       ],
       "params": [
         {
@@ -6748,7 +6748,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn getattr(&mut self, request: &Request<'_>, ino: u64, fh: Option<u64>, reply: ReplyAttr)",
       "behavior": "With FH uses pinned open Node and active snapshot size before discovery. Without FH refreshes only addressed live data; static attributes avoid SHM. Unknown FH EBADF; wrong inode/UID EACCES. Zero TTL. Mode/owner/nlink/block fields from attr.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:660-693"
+        "crates/_3tched-fs/src/fuse_fs.rs:660-693"
       ],
       "params": [
         {
@@ -6780,7 +6780,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn setattr(&mut self, request: &Request<'_>, ino: u64, mode: Option<u32>, uid: Option<u32>, gid: Option<u32>, size: Option<u64>, _atime: Option<TimeOrNow>, _mtime: Option<TimeOrNow>, _ctime: Option<std::time::SystemTime>, fh: Option<u64>, _crtime: Option<std::time::SystemTime>, _chgtime: Option<std::time::SystemTime>, _bkuptime: Option<std::time::SystemTime>, _flags: Option<u32>, reply: ReplyAttr)",
       "behavior": "mode/uid/gid changes EROFS. Requires original FH and exact UID, writable access and node. Checked resize bounded before growth; EBADF unknown handle, EACCES attribution, EAGAIN inflight, EINVAL terminal writes, EFBIG/ENOMEM limits. Times/flags ignored; truncation alone does not execute empty CallFile.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:695-753"
+        "crates/_3tched-fs/src/fuse_fs.rs:695-753"
       ],
       "params": [
         {
@@ -6867,7 +6867,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn readlink(&mut self, _request: &Request<'_>, ino: u64, reply: ReplyData)",
       "behavior": "Static relative symlink bytes require no SHM discovery. ENOENT absent node, EINVAL non-symlink, EIO addressed dynamic refresh failure.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:754-764"
+        "crates/_3tched-fs/src/fuse_fs.rs:754-764"
       ],
       "params": [
         {
@@ -6894,7 +6894,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn open(&mut self, request: &Request<'_>, ino: u64, flags: i32, reply: ReplyOpen)",
       "behavior": "Fresh Node+UID+access pinned per FH; FOPEN_DIRECT_IO. Read-only node write EROFS, unauthorized local writable UID EACCES, directory EISDIR, symlink/invalid access EINVAL. One local workspace object writer EBUSY. Bounded snapshot allocation and total handle/capacity reservation; call starts empty with attributed fallback.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:765-771"
+        "crates/_3tched-fs/src/fuse_fs.rs:765-771"
       ],
       "params": [
         {
@@ -6926,7 +6926,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn read(&mut self, request: &Request<'_>, ino: u64, fh: u64, offset: i64, size: u32, _flags: i32, _lock_owner: Option<u64>, reply: ReplyData)",
       "behavior": "Checked nonnegative offset; clamps slice to snapshot EOF, returns up to size. Unknown FH EBADF; wrong UID/inode EACCES; O_WRONLY EBADF; inflight EAGAIN. CallFile reads only originating handle's terminal receipt/diagnostic; empty before execution.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:772-801"
+        "crates/_3tched-fs/src/fuse_fs.rs:772-801"
       ],
       "params": [
         {
@@ -6978,7 +6978,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn write(&mut self, request: &Request<'_>, ino: u64, fh: u64, offset: i64, data: &[u8], _write_flags: u32, _flags: i32, _lock_owner: Option<u64>, reply: ReplyWrite)",
       "behavior": "Original writable handle only. Checked nonnegative offset/end and growth; gaps zero-filled; accepts complete provided chunk or error. Unknown FH/O_RDONLY EBADF, wrong UID/inode EACCES, inflight EAGAIN, terminal EINVAL, read-only node EROFS, size EFBIG, allocation ENOMEM. Input chunk at most1 MiB; total call input1 MiB/workspace document16 MiB. No effect until flush/fsync/release.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:802-852"
+        "crates/_3tched-fs/src/fuse_fs.rs:802-852"
       ],
       "params": [
         {
@@ -7035,7 +7035,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn flush(&mut self, request: &Request<'_>, ino: u64, fh: u64, _lock_owner: u64, reply: ReplyEmpty)",
       "behavior": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:853-862"
+        "crates/_3tched-fs/src/fuse_fs.rs:853-862"
       ],
       "params": [
         {
@@ -7072,7 +7072,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn release(&mut self, request: &Request<'_>, ino: u64, fh: u64, _flags: i32, _lock_owner: Option<u64>, _flush: bool, reply: ReplyEmpty)",
       "behavior": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file. Kernel cleanup validates exact FH/inode without requiring the unset request UID to match the opener; accepted data and pinned mount identity remain authoritative.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:863-874"
+        "crates/_3tched-fs/src/fuse_fs.rs:863-874"
       ],
       "params": [
         {
@@ -7119,7 +7119,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn fsync(&mut self, request: &Request<'_>, ino: u64, fh: u64, _datasync: bool, reply: ReplyEmpty)",
       "behavior": "Same asynchronous bounded submission as flush; waits reply on originating operation's terminal status. Ignores datasync. Local write acceptance alone is not completed backend proof.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:875-884"
+        "crates/_3tched-fs/src/fuse_fs.rs:875-884"
       ],
       "params": [
         {
@@ -7156,7 +7156,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn readdir(&mut self, request: &Request<'_>, ino: u64, fh: u64, offset: i64, mut reply: ReplyDirectory)",
       "behavior": "Paginates the admitted opendir listing without SHM discovery, using nonnegative index offsets. Unknown FH EBADF; wrong inode/UID EACCES; negative offset EINVAL. Stops at reply capacity; stable entries until releasedir.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:969-995"
+        "crates/_3tched-fs/src/fuse_fs.rs:969-995"
       ],
       "params": [
         {
@@ -7193,7 +7193,7 @@ const CONTRACT: &str = r########"
       "rust_signature": "fn access(&mut self, request: &Request<'_>, ino: u64, mask: i32, reply: ReplyEmpty)",
       "behavior": "Only addressed live data discovery is refreshed; static access avoids SHM. ENOENT absent; write access read-only node EROFS; writable node unauthorized local UID EACCES. Other checks rely on mount default_permissions plus bridge identity/capabilities.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
       ],
       "params": [
         {
@@ -7226,7 +7226,7 @@ const CONTRACT: &str = r########"
       "behavior": "no-op; no reply",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [],
       "verification": "source inspected; current runtime unverified"
@@ -7238,7 +7238,7 @@ const CONTRACT: &str = r########"
       "behavior": "no-op; no reply",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7266,7 +7266,7 @@ const CONTRACT: &str = r########"
       "behavior": "calls no-op forget for every input; no reply",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7289,7 +7289,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7337,7 +7337,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7380,7 +7380,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7413,7 +7413,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7446,7 +7446,7 @@ const CONTRACT: &str = r########"
       "behavior": "EPERM",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7484,7 +7484,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7532,7 +7532,7 @@ const CONTRACT: &str = r########"
       "behavior": "EPERM",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7570,7 +7570,7 @@ const CONTRACT: &str = r########"
       "behavior": "Read-only flag required EROFS otherwise; only addressed live data discovery is refreshed, static directories avoid SHM. Directory only EINVAL. Charged immutable listing includes . and .. plus sorted children; bounded handle/capacity/try_reserve allocation. FH pins inode and UID.",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-        "crates/threetched-fs/src/fuse_fs.rs:885-968"
+        "crates/_3tched-fs/src/fuse_fs.rs:885-968"
       ],
       "params": [
         {
@@ -7603,7 +7603,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7641,7 +7641,7 @@ const CONTRACT: &str = r########"
       "behavior": "Drops charged listing for exact kernel FH/inode regardless of the unset release UID. Unknown FH EBADF and wrong inode EACCES; readdir still requires opener UID.",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-        "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+        "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
       ],
       "params": [
         {
@@ -7679,7 +7679,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7717,7 +7717,7 @@ const CONTRACT: &str = r########"
       "behavior": "statfs(blocks=0,bfree=0,bavail=0,files=0,ffree=0,bsize=512,namelen=255,frsize=0)",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7745,7 +7745,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7793,7 +7793,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7831,7 +7831,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7864,7 +7864,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7897,7 +7897,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -7945,7 +7945,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8003,7 +8003,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS; kernel may still implement local file locks",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8066,7 +8066,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8104,7 +8104,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8157,7 +8157,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8205,7 +8205,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8253,7 +8253,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8296,7 +8296,7 @@ const CONTRACT: &str = r########"
       "behavior": "ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8359,7 +8359,7 @@ const CONTRACT: &str = r########"
       "behavior": "macOS only, ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8387,7 +8387,7 @@ const CONTRACT: &str = r########"
       "behavior": "macOS only, ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8435,7 +8435,7 @@ const CONTRACT: &str = r########"
       "behavior": "macOS only, ENOSYS",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
       ],
       "params": [
         {
@@ -8469,7 +8469,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -8481,7 +8481,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -8493,7 +8493,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -8505,7 +8505,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -8517,7 +8517,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -8529,7 +8529,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -8541,7 +8541,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -8553,7 +8553,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -8565,7 +8565,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -8577,7 +8577,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -8589,7 +8589,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -8601,7 +8601,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -8613,7 +8613,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -8626,7 +8626,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -8639,7 +8639,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -8652,7 +8652,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -8665,7 +8665,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -8678,7 +8678,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -8691,7 +8691,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -8704,7 +8704,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -8717,7 +8717,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -8730,7 +8730,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -8743,7 +8743,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -8756,7 +8756,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -8769,7 +8769,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -8782,7 +8782,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -8795,7 +8795,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -8808,7 +8808,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -8821,7 +8821,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -8834,7 +8834,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -8847,7 +8847,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -8860,7 +8860,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -8873,7 +8873,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -8886,7 +8886,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -8899,7 +8899,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -8912,7 +8912,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -8925,7 +8925,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -8938,7 +8938,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -8951,7 +8951,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -8964,7 +8964,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -8977,7 +8977,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -8990,7 +8990,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -9003,7 +9003,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -9016,7 +9016,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -9024,7 +9024,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -9040,7 +9040,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -9052,7 +9052,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -9064,7 +9064,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -9076,7 +9076,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -9088,7 +9088,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -9100,7 +9100,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -9112,7 +9112,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -9124,7 +9124,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -9136,7 +9136,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -9148,7 +9148,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -9160,7 +9160,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -9172,7 +9172,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -9184,7 +9184,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -9197,7 +9197,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -9210,7 +9210,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -9223,7 +9223,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -9236,7 +9236,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -9249,7 +9249,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -9262,7 +9262,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -9275,7 +9275,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -9288,7 +9288,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -9301,7 +9301,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -9314,7 +9314,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -9327,7 +9327,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -9340,7 +9340,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -9353,7 +9353,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -9366,7 +9366,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -9379,7 +9379,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -9392,7 +9392,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -9405,7 +9405,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -9418,7 +9418,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -9431,7 +9431,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -9444,7 +9444,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -9457,7 +9457,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -9470,7 +9470,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -9483,7 +9483,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -9496,7 +9496,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -9509,7 +9509,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -9522,7 +9522,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -9535,7 +9535,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -9548,7 +9548,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -9561,7 +9561,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -9574,7 +9574,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -9587,7 +9587,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -9595,7 +9595,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -9611,7 +9611,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -9623,7 +9623,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -9635,7 +9635,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -9647,7 +9647,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -9659,7 +9659,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -9671,7 +9671,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -9683,7 +9683,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -9695,7 +9695,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -9707,7 +9707,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -9719,7 +9719,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -9731,7 +9731,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -9743,7 +9743,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -9755,7 +9755,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -9768,7 +9768,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -9781,7 +9781,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -9794,7 +9794,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -9807,7 +9807,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -9820,7 +9820,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -9833,7 +9833,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -9846,7 +9846,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -9859,7 +9859,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -9872,7 +9872,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -9885,7 +9885,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -9898,7 +9898,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -9911,7 +9911,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -9924,7 +9924,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -9937,7 +9937,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -9950,7 +9950,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -9963,7 +9963,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -9976,7 +9976,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -9989,7 +9989,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -10002,7 +10002,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -10015,7 +10015,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -10028,7 +10028,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -10041,7 +10041,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -10054,7 +10054,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -10067,7 +10067,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -10080,7 +10080,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -10093,7 +10093,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -10106,7 +10106,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -10119,7 +10119,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -10132,7 +10132,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -10145,7 +10145,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -10158,7 +10158,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -10166,7 +10166,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -10182,7 +10182,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -10194,7 +10194,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -10206,7 +10206,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -10218,7 +10218,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -10230,7 +10230,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -10242,7 +10242,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -10254,7 +10254,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -10266,7 +10266,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -10278,7 +10278,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -10290,7 +10290,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -10302,7 +10302,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -10314,7 +10314,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -10326,7 +10326,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -10339,7 +10339,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -10352,7 +10352,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -10365,7 +10365,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -10378,7 +10378,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -10391,7 +10391,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -10404,7 +10404,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -10417,7 +10417,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -10430,7 +10430,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -10443,7 +10443,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -10456,7 +10456,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -10469,7 +10469,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -10482,7 +10482,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -10495,7 +10495,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -10508,7 +10508,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -10521,7 +10521,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -10534,7 +10534,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -10547,7 +10547,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -10560,7 +10560,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -10573,7 +10573,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -10586,7 +10586,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -10599,7 +10599,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -10612,7 +10612,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -10625,7 +10625,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -10638,7 +10638,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -10651,7 +10651,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -10664,7 +10664,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -10677,7 +10677,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -10690,7 +10690,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -10703,7 +10703,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -10716,7 +10716,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -10729,7 +10729,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -10737,7 +10737,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -10753,7 +10753,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -10765,7 +10765,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -10777,7 +10777,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -10789,7 +10789,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -10801,7 +10801,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -10813,7 +10813,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -10825,7 +10825,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -10837,7 +10837,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -10849,7 +10849,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -10861,7 +10861,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -10873,7 +10873,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -10885,7 +10885,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -10897,7 +10897,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -10910,7 +10910,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -10923,7 +10923,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -10936,7 +10936,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -10949,7 +10949,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -10962,7 +10962,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -10975,7 +10975,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -10988,7 +10988,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -11001,7 +11001,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -11014,7 +11014,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -11027,7 +11027,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -11040,7 +11040,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -11053,7 +11053,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -11066,7 +11066,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -11079,7 +11079,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -11092,7 +11092,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -11105,7 +11105,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -11118,7 +11118,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -11131,7 +11131,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -11144,7 +11144,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -11157,7 +11157,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -11170,7 +11170,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -11183,7 +11183,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -11196,7 +11196,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -11209,7 +11209,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -11222,7 +11222,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -11235,7 +11235,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -11248,7 +11248,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -11261,7 +11261,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -11274,7 +11274,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -11287,7 +11287,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -11300,7 +11300,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -11308,7 +11308,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -11324,7 +11324,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -11336,7 +11336,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -11348,7 +11348,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -11360,7 +11360,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -11372,7 +11372,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -11384,7 +11384,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -11396,7 +11396,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -11408,7 +11408,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -11420,7 +11420,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -11432,7 +11432,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -11444,7 +11444,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -11456,7 +11456,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -11468,7 +11468,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -11481,7 +11481,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -11494,7 +11494,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -11507,7 +11507,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -11520,7 +11520,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -11533,7 +11533,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -11546,7 +11546,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -11559,7 +11559,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -11572,7 +11572,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -11585,7 +11585,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -11598,7 +11598,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -11611,7 +11611,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -11624,7 +11624,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -11637,7 +11637,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -11650,7 +11650,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -11663,7 +11663,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -11676,7 +11676,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -11689,7 +11689,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -11702,7 +11702,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -11715,7 +11715,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -11728,7 +11728,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -11741,7 +11741,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -11754,7 +11754,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -11767,7 +11767,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -11780,7 +11780,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -11793,7 +11793,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -11806,7 +11806,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -11819,7 +11819,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -11832,7 +11832,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -11845,7 +11845,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -11858,7 +11858,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -11871,7 +11871,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -11879,7 +11879,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -11895,7 +11895,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -11907,7 +11907,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -11919,7 +11919,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -11931,7 +11931,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -11943,7 +11943,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -11955,7 +11955,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -11967,7 +11967,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -11979,7 +11979,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -11991,7 +11991,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -12003,7 +12003,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -12015,7 +12015,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -12027,7 +12027,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -12039,7 +12039,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -12052,7 +12052,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -12065,7 +12065,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -12078,7 +12078,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -12091,7 +12091,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -12104,7 +12104,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -12117,7 +12117,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -12130,7 +12130,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -12143,7 +12143,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -12156,7 +12156,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -12169,7 +12169,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -12182,7 +12182,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -12195,7 +12195,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -12208,7 +12208,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -12221,7 +12221,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -12234,7 +12234,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -12247,7 +12247,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -12260,7 +12260,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -12273,7 +12273,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -12286,7 +12286,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -12299,7 +12299,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -12312,7 +12312,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -12325,7 +12325,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -12338,7 +12338,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -12351,7 +12351,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -12364,7 +12364,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -12377,7 +12377,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -12390,7 +12390,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -12403,7 +12403,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -12416,7 +12416,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -12429,7 +12429,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -12442,7 +12442,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -12450,7 +12450,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -12466,7 +12466,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:634-642"
+            "crates/_3tched-fs/src/fuse_fs.rs:634-642"
           ]
         },
         "lookup": {
@@ -12478,7 +12478,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:643-659"
+            "crates/_3tched-fs/src/fuse_fs.rs:643-659"
           ]
         },
         "getattr": {
@@ -12490,7 +12490,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:660-693"
+            "crates/_3tched-fs/src/fuse_fs.rs:660-693"
           ]
         },
         "setattr": {
@@ -12502,7 +12502,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:695-753"
+            "crates/_3tched-fs/src/fuse_fs.rs:695-753"
           ]
         },
         "readlink": {
@@ -12514,7 +12514,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:754-764"
+            "crates/_3tched-fs/src/fuse_fs.rs:754-764"
           ]
         },
         "open": {
@@ -12526,7 +12526,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:765-771"
+            "crates/_3tched-fs/src/fuse_fs.rs:765-771"
           ]
         },
         "read": {
@@ -12538,7 +12538,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:772-801"
+            "crates/_3tched-fs/src/fuse_fs.rs:772-801"
           ]
         },
         "write": {
@@ -12550,7 +12550,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:802-852"
+            "crates/_3tched-fs/src/fuse_fs.rs:802-852"
           ]
         },
         "flush": {
@@ -12562,7 +12562,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:853-862"
+            "crates/_3tched-fs/src/fuse_fs.rs:853-862"
           ]
         },
         "release": {
@@ -12574,7 +12574,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:863-874"
+            "crates/_3tched-fs/src/fuse_fs.rs:863-874"
           ]
         },
         "fsync": {
@@ -12586,7 +12586,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": "#/invariants/source_facts/write_receipt_concurrency",
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:875-884"
+            "crates/_3tched-fs/src/fuse_fs.rs:875-884"
           ]
         },
         "readdir": {
@@ -12598,7 +12598,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:969-995"
+            "crates/_3tched-fs/src/fuse_fs.rs:969-995"
           ]
         },
         "access": {
@@ -12610,7 +12610,7 @@ const CONTRACT: &str = r########"
           "side_effects_ref": null,
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:1013-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:1013-1031"
           ]
         },
         "destroy": {
@@ -12623,7 +12623,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:324",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "forget": {
@@ -12636,7 +12636,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:339",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "batch_forget": {
@@ -12649,7 +12649,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:343-347",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mknod": {
@@ -12662,7 +12662,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:389-404",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "mkdir": {
@@ -12675,7 +12675,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:407-420",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "unlink": {
@@ -12688,7 +12688,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:423-426",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rmdir": {
@@ -12701,7 +12701,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:429-432",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "symlink": {
@@ -12714,7 +12714,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:435-447",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "rename": {
@@ -12727,7 +12727,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:450-465",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "link": {
@@ -12740,7 +12740,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:468-480",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "opendir": {
@@ -12753,7 +12753,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:606-608",
-            "crates/threetched-fs/src/fuse_fs.rs:885-968"
+            "crates/_3tched-fs/src/fuse_fs.rs:885-968"
           ]
         },
         "readdirplus": {
@@ -12766,7 +12766,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:632-642",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "releasedir": {
@@ -12779,7 +12779,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
-            "crates/threetched-fs/src/fuse_fs.rs:996-1012"
+            "crates/_3tched-fs/src/fuse_fs.rs:996-1012"
           ]
         },
         "fsyncdir": {
@@ -12792,7 +12792,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:663-673",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "statfs": {
@@ -12805,7 +12805,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:676-678",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setxattr": {
@@ -12818,7 +12818,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:681-696",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxattr": {
@@ -12831,7 +12831,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:702-712",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "listxattr": {
@@ -12844,7 +12844,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:718-721",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "removexattr": {
@@ -12857,7 +12857,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:724-727",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "create": {
@@ -12870,7 +12870,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:748-763",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getlk": {
@@ -12883,7 +12883,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:766-783",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setlk": {
@@ -12896,7 +12896,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:792-810",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "bmap": {
@@ -12909,7 +12909,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:815-818",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "ioctl": {
@@ -12922,7 +12922,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:821-838",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "poll": {
@@ -12935,7 +12935,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:841-856",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "fallocate": {
@@ -12948,7 +12948,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:859-875",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "lseek": {
@@ -12961,7 +12961,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:877-891",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "copy_file_range": {
@@ -12974,7 +12974,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:894-913",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "setvolname": {
@@ -12987,7 +12987,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:918-921",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "exchange": {
@@ -13000,7 +13000,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:925-940",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         },
         "getxtimes": {
@@ -13013,7 +13013,7 @@ const CONTRACT: &str = r########"
           "cache_flags_ref": "#/invariants/source_facts/cache_and_freshness",
           "source_refs": [
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:945-948",
-            "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+            "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
           ]
         }
       },
@@ -13021,7 +13021,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "reason": "No mmap callback or raw POSIX SHM layout exposed; FOPEN_DIRECT_IO. Specific kernel mmap errno not probed.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:765-771",
+          "crates/_3tched-fs/src/fuse_fs.rs:765-771",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       }
@@ -13034,8 +13034,8 @@ const CONTRACT: &str = r########"
       "basis": "current source",
       "verification": "implemented source; build, deployment and tests pending",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:78-97",
-        "crates/threetched-fs/src/namespace.rs:844-873"
+        "crates/_3tched-fs/src/namespace.rs:78-97",
+        "crates/_3tched-fs/src/namespace.rs:844-873"
       ]
     },
     {
@@ -13044,7 +13044,7 @@ const CONTRACT: &str = r########"
       "basis": "current source",
       "verification": "implemented source; build, deployment and tests pending",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:582-1031",
+        "crates/_3tched-fs/src/fuse_fs.rs:582-1031",
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
       ]
     }
@@ -13088,9 +13088,9 @@ const CONTRACT: &str = r########"
     {
       "statement": "describe --mount <path> --expected-session <session> [--plugin <plugin>] returns { methods: [{ plugin_id, method, path, declaration }] } from the identity-bound mounted catalog. Declarations are sorted by plugin/method and bounded to 16 MiB aggregate; optional plugin limits selection. Mount/identity/catalog are verified before and after. No operation is submitted and no backend transport fallback is selected.",
       "sources": [
-        "crates/threetched-fs/src/main.rs:124-137",
-        "crates/threetched-fs/src/main.rs:314-329",
-        "crates/threetched-fs/src/mounted.rs:292-333"
+        "crates/_3tched-fs/src/main.rs:124-137",
+        "crates/_3tched-fs/src/main.rs:314-329",
+        "crates/_3tched-fs/src/mounted.rs:292-333"
       ],
       "basis": "current source",
       "verification": "implemented-source-unverified"
@@ -13098,9 +13098,9 @@ const CONTRACT: &str = r########"
     {
       "statement": "Static specialization recognizes nested authored schema scopes through $defs, definitions and $id. Local references and oneOf validator documents use the current nested scope; external/recursive references, allOf and unsupported custom cases remain rejected.",
       "sources": [
-        "crates/threetched-fs/examples/typed_specialize.rs:120-232",
-        "crates/threetched-fs/examples/typed_specialize.rs:416-442",
-        "crates/threetched-fs/examples/typed_specialize.rs:1122-1136"
+        "crates/_3tched-fs/examples/typed_specialize.rs:120-232",
+        "crates/_3tched-fs/examples/typed_specialize.rs:416-442",
+        "crates/_3tched-fs/examples/typed_specialize.rs:1122-1136"
       ],
       "basis": "current source",
       "verification": "implemented-source-unverified"
@@ -13108,13 +13108,13 @@ const CONTRACT: &str = r########"
     {
       "statement": "mcp --mount uses the assigned identity-bound namespace, with direct store/view/workspace/lungs/state/catalog selectors excluded. Mounted delivery reads only schema.json/object.hash and verifies mount/view/identity for declaration discovery; present resource values use the addressed value.json and operations use call files with the existing canonical receipt validation. Missing or changed mount identity/declaration and target read/dispatch errors propagate; no alternate delivery fallback. Existing lungs delivery remains for schema-only guests. No FUSE metadata or node shape is added.",
       "sources": [
-        "crates/threetched-fs/src/main.rs:168-198",
-        "crates/threetched-fs/src/main.rs:358-387",
-        "crates/threetched-fs/src/mounted.rs:184-207",
-        "crates/threetched-fs/src/mounted.rs:247-333",
-        "crates/threetched-fs/src/mcp.rs:95-143",
-        "crates/threetched-fs/src/mcp.rs:319-386",
-        "crates/threetched-fs/src/mcp.rs:581-706"
+        "crates/_3tched-fs/src/main.rs:168-198",
+        "crates/_3tched-fs/src/main.rs:358-387",
+        "crates/_3tched-fs/src/mounted.rs:184-207",
+        "crates/_3tched-fs/src/mounted.rs:247-333",
+        "crates/_3tched-fs/src/mcp.rs:95-143",
+        "crates/_3tched-fs/src/mcp.rs:319-386",
+        "crates/_3tched-fs/src/mcp.rs:581-706"
       ],
       "basis": "current source",
       "verification": "implemented-source-unverified; current revision awaits regeneration/build/runtime verification"
@@ -13134,8 +13134,8 @@ const CONTRACT: &str = r########"
         "schema_section": 1,
         "schema_authority": "op_state_store::PluginSchema from manifest-pinned sealed blob",
         "source_refs": [
-          "crates/threetched-fs/src/source.rs:14-22",
-          "crates/threetched-fs/src/source.rs:290-400"
+          "crates/_3tched-fs/src/source.rs:14-22",
+          "crates/_3tched-fs/src/source.rs:290-400"
         ]
       },
       "committed_state": {
@@ -13146,7 +13146,7 @@ const CONTRACT: &str = r########"
         "layout": "No POSIX segment ABI, fixed offset or raw mapped address; owned decoded snapshot",
         "source_refs": [
           "crates/op-core/src/projection_transactions.rs:451-510",
-          "crates/threetched-fs/src/source.rs:42-149"
+          "crates/_3tched-fs/src/source.rs:42-149"
         ]
       },
       "captured_store": {
@@ -13158,11 +13158,11 @@ const CONTRACT: &str = r########"
         "format": "Captured TypedObject/ViewManifest/Workspace UTF-8 JSON with BLAKE3 content addresses; not OPBLOB01 plugin authority",
         "writer": "Existing .lock + file sync/atomic rename/parent sync; workspace expected-object CAS",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:16-54",
-          "crates/threetched-fs/src/store.rs:198-249",
-          "crates/threetched-fs/src/store.rs:453-543",
-          "crates/threetched-fs/src/store.rs:498-528",
-          "crates/threetched-fs/src/store.rs:531-626"
+          "crates/_3tched-fs/src/store.rs:16-54",
+          "crates/_3tched-fs/src/store.rs:198-249",
+          "crates/_3tched-fs/src/store.rs:453-543",
+          "crates/_3tched-fs/src/store.rs:498-528",
+          "crates/_3tched-fs/src/store.rs:531-626"
         ]
       },
       "method_journal": {
@@ -13197,12 +13197,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:669-697"
+            "crates/_3tched-fs/src/namespace.rs:669-697"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:669-697"
+          "crates/_3tched-fs/src/namespace.rs:669-697"
         ]
       },
       {
@@ -13221,12 +13221,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:699-712"
+            "crates/_3tched-fs/src/namespace.rs:699-712"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:699-712"
+          "crates/_3tched-fs/src/namespace.rs:699-712"
         ]
       },
       {
@@ -13245,12 +13245,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:699-712"
+            "crates/_3tched-fs/src/namespace.rs:699-712"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:699-712"
+          "crates/_3tched-fs/src/namespace.rs:699-712"
         ]
       },
       {
@@ -13269,12 +13269,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:699-712"
+            "crates/_3tched-fs/src/namespace.rs:699-712"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:699-712"
+          "crates/_3tched-fs/src/namespace.rs:699-712"
         ]
       },
       {
@@ -13293,12 +13293,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13317,12 +13317,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13341,12 +13341,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13365,12 +13365,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13389,12 +13389,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13420,12 +13420,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13451,12 +13451,12 @@ const CONTRACT: &str = r########"
             "description": "Frozen object state is sanitized by its sealed policy. Live mounts render fresh committed public state; unavailable live state yields explicit schema_only envelope, never stale private values."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13482,12 +13482,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13513,12 +13513,12 @@ const CONTRACT: &str = r########"
             "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13544,12 +13544,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13575,12 +13575,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13606,12 +13606,12 @@ const CONTRACT: &str = r########"
             "description": "Real captured artifact identity, never a hash of live rendered state. User data field named object.hash remains its declared value class."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13637,12 +13637,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -13680,12 +13680,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -13723,12 +13723,12 @@ const CONTRACT: &str = r########"
             "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -13766,12 +13766,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -13809,12 +13809,12 @@ const CONTRACT: &str = r########"
             "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -13846,14 +13846,14 @@ const CONTRACT: &str = r########"
             "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842",
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842",
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842",
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842",
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -13885,14 +13885,14 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842",
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842",
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842",
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842",
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -13924,14 +13924,14 @@ const CONTRACT: &str = r########"
             "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842",
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842",
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842",
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842",
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -13969,12 +13969,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -14012,12 +14012,12 @@ const CONTRACT: &str = r########"
             "description": "Exact pinned active catalog/schema/public-policy checks around locked committed state read. Owned decode; absent/pending/malformed/invalid state or pointer is unavailable, not fabricated null."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -14055,12 +14055,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -14098,12 +14098,12 @@ const CONTRACT: &str = r########"
             "description": "stage_pointer_checked uses the open descriptor's expected captured object hash under the existing store writer lock; CAS conflict returns ESTALE before replacement."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:714-842"
+            "crates/_3tched-fs/src/namespace.rs:714-842"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:714-842"
+          "crates/_3tched-fs/src/namespace.rs:714-842"
         ]
       },
       {
@@ -14129,12 +14129,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14166,12 +14166,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14203,12 +14203,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14240,12 +14240,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14277,12 +14277,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "resolved from pinned manifest and node declaration; never guessed"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14314,12 +14314,12 @@ const CONTRACT: &str = r########"
             "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared _3tched_fs.get_receipt, not a result cache."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:844-873"
+            "crates/_3tched-fs/src/namespace.rs:844-873"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:844-873"
+          "crates/_3tched-fs/src/namespace.rs:844-873"
         ]
       },
       {
@@ -14345,12 +14345,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14382,12 +14382,12 @@ const CONTRACT: &str = r########"
             "description": "Relative target remains inside the mounted namespace."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14413,12 +14413,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14456,12 +14456,12 @@ const CONTRACT: &str = r########"
             "description": "Relative target remains inside the mounted namespace."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14487,12 +14487,12 @@ const CONTRACT: &str = r########"
             "description": "Fresh declared source read; original source ownership does not authorize cached derived payloads."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -14524,12 +14524,12 @@ const CONTRACT: &str = r########"
             "description": "Relative target remains inside the mounted namespace; missing dependency target remains unresolved."
           },
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:108-472"
+            "crates/_3tched-fs/src/namespace.rs:108-472"
           ],
           "locator_status": "no independent persistent locator"
         },
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       }
     ],
@@ -14545,8 +14545,8 @@ const CONTRACT: &str = r########"
         "$ref": "#/$defs/MountMetadata"
       },
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:15-23",
-        "crates/threetched-fs/src/namespace.rs:492-513"
+        "crates/_3tched-fs/src/namespace.rs:15-23",
+        "crates/_3tched-fs/src/namespace.rs:492-513"
       ]
     },
     "TypedObjectBlob": {
@@ -14555,7 +14555,7 @@ const CONTRACT: &str = r########"
         "$ref": "#/$defs/TypedObject"
       },
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:29-37"
+        "crates/_3tched-fs/src/model.rs:29-37"
       ]
     },
     "ViewManifest": {
@@ -14564,7 +14564,7 @@ const CONTRACT: &str = r########"
         "$ref": "#/$defs/ViewManifest"
       },
       "source_refs": [
-        "crates/threetched-fs/src/store.rs:27-35"
+        "crates/_3tched-fs/src/store.rs:27-35"
       ]
     },
     "Workspace": {
@@ -14573,7 +14573,7 @@ const CONTRACT: &str = r########"
         "$ref": "#/$defs/Workspace"
       },
       "source_refs": [
-        "crates/threetched-fs/src/store.rs:47-54"
+        "crates/_3tched-fs/src/store.rs:47-54"
       ]
     },
     "MethodDecl": {
@@ -14582,7 +14582,7 @@ const CONTRACT: &str = r########"
         "$ref": "#/$defs/MethodDecl"
       },
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:518-528"
+        "crates/_3tched-fs/src/model.rs:518-528"
       ]
     },
     "CallReceipt": {
@@ -14591,8 +14591,8 @@ const CONTRACT: &str = r########"
         "$ref": "#/$defs/CallReceipt"
       },
       "source_refs": [
-        "crates/threetched-fs/src/dispatch.rs:29-37",
-        "crates/threetched-fs/src/dispatch.rs:432-456"
+        "crates/_3tched-fs/src/dispatch.rs:29-37",
+        "crates/_3tched-fs/src/dispatch.rs:432-456"
       ]
     },
     "LungsDiagnostic": {
@@ -14601,8 +14601,8 @@ const CONTRACT: &str = r########"
         "$ref": "#/$defs/OperationDiagnostic"
       },
       "source_refs": [
-        "crates/threetched-fs/src/dispatch.rs:81-105",
-        "crates/threetched-fs/src/fuse_fs.rs:555-581"
+        "crates/_3tched-fs/src/dispatch.rs:81-105",
+        "crates/_3tched-fs/src/fuse_fs.rs:555-581"
       ]
     },
     "MethodExecutionReceipt": {
@@ -14647,13 +14647,13 @@ const CONTRACT: &str = r########"
     "admission_semantics": "Admission is a terminal rejection before dispatch, with no backend effect or operation ID. The descriptor cannot dispatch rejected input on later flush, fsync or release. Reopening and staging input is an explicit new attempt; clients never retry automatically. It is distinct from outcome_unknown after an operation may have started.",
     "not_a_full_backend_error_taxonomy": true,
     "sources": [
-      "crates/threetched-fs/src/dispatch.rs:81-105",
-      "crates/threetched-fs/src/fuse_fs.rs:555-581"
+      "crates/_3tched-fs/src/dispatch.rs:81-105",
+      "crates/_3tched-fs/src/fuse_fs.rs:555-581"
     ]
   },
   "bindings": {
     "runtime_module": "crate::typed_runtime",
-    "generated_path": "crates/threetched-fs/src/typed_bindings.rs",
+    "generated_path": "crates/_3tched-fs/src/typed_bindings.rs",
     "classes": {
       "Directory": {
         "operations": [
@@ -14666,7 +14666,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:988-1015"
+          "crates/_3tched-fs/src/typed_runtime.rs:988-1015"
         ],
         "routes": [
           "direct-blob",
@@ -14685,7 +14685,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1017-1098"
+          "crates/_3tched-fs/src/typed_runtime.rs:1017-1098"
         ],
         "routes": [
           "direct-blob",
@@ -14704,7 +14704,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+          "crates/_3tched-fs/src/typed_runtime.rs:1100-1132"
         ],
         "routes": [
           "direct-blob",
@@ -14723,7 +14723,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1134-1163"
+          "crates/_3tched-fs/src/typed_runtime.rs:1134-1163"
         ],
         "routes": [
           "direct-blob",
@@ -14753,7 +14753,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1184-1233"
+          "crates/_3tched-fs/src/typed_runtime.rs:1184-1233"
         ],
         "routes": [
           "via-fuse"
@@ -14770,7 +14770,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+          "crates/_3tched-fs/src/typed_runtime.rs:1165-1182"
         ],
         "routes": [
           "direct-shm",
@@ -14809,7 +14809,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1235-1318"
+          "crates/_3tched-fs/src/typed_runtime.rs:1235-1318"
         ],
         "routes": [
           "via-fuse"
@@ -14826,7 +14826,7 @@ const CONTRACT: &str = r########"
           }
         ],
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+          "crates/_3tched-fs/src/typed_runtime.rs:1320-1360"
         ],
         "routes": [
           "direct-blob",
@@ -14840,21 +14840,21 @@ const CONTRACT: &str = r########"
         "signature": "TypedFilesystem::direct_blob(ObjectStore, ViewId)",
         "route": "direct-blob",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:575-615"
+          "crates/_3tched-fs/src/typed_runtime.rs:575-615"
         ]
       },
       {
         "signature": "TypedFilesystem::direct_blob_at(StoreRoot, ViewId)",
         "route": "direct-blob",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:563-573"
+          "crates/_3tched-fs/src/typed_runtime.rs:563-573"
         ]
       },
       {
         "signature": "TypedFilesystem::direct_shm(StoreRoot, ViewId, CatalogRoot, StateDirectory)",
         "route": "direct-shm",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:525-561"
+          "crates/_3tched-fs/src/typed_runtime.rs:525-561"
         ],
         "requirements": "Real captured view and object-store pins, active sealed catalog and canonical committed public-state directory; read-only, owned decoded values"
       },
@@ -14862,49 +14862,49 @@ const CONTRACT: &str = r########"
         "signature": "TypedFilesystem::via_fuse(MountRoot, SessionId)",
         "route": "via-fuse",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:617-622"
+          "crates/_3tched-fs/src/typed_runtime.rs:617-622"
         ]
       },
       {
         "signature": "TypedFilesystem::via_workspace_fuse(MountRoot, WorkspaceId)",
         "route": "via-fuse",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:624-629"
+          "crates/_3tched-fs/src/typed_runtime.rs:624-629"
         ]
       },
       {
         "signature": "TypedFilesystem::via_guest_fuse(MountRoot)",
         "route": "via-fuse",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:631-636"
+          "crates/_3tched-fs/src/typed_runtime.rs:631-636"
         ]
       },
       {
         "signature": "TypedFilesystem::via_credential_fuse(MountRoot)",
         "route": "via-fuse",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:638-643"
+          "crates/_3tched-fs/src/typed_runtime.rs:638-643"
         ]
       },
       {
         "signature": "TypedFilesystem::root() -> Directory",
         "route": "mode-pinned",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:659-660"
+          "crates/_3tched-fs/src/typed_runtime.rs:659-660"
         ]
       },
       {
         "signature": "TypedFilesystem::node(DirectoryEntry) -> Result<TypedNode, NodeError>",
         "route": "mode-pinned",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:662-672"
+          "crates/_3tched-fs/src/typed_runtime.rs:662-672"
         ]
       },
       {
         "signature": "TypedFilesystem::call_file(PluginId, MethodId) -> Result<CallFile, NodeError>",
         "route": "via-fuse",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:674-685"
+          "crates/_3tched-fs/src/typed_runtime.rs:674-685"
         ]
       }
     ],
@@ -14914,8 +14914,8 @@ const CONTRACT: &str = r########"
         "status": "read-only-owned-decoded",
         "reason": "Only Directory/StaticJson/ObjectHashFile/LiveValue/Symlink routes. Mandatory captured StoreRoot/ViewId plus current CatalogRoot/StateDirectory preserve real pins; no direct mutation, frozen value, raw mmap or zero-copy guarantee.",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:525-561",
-          "crates/threetched-fs/src/typed_runtime.rs:1165-1182"
+          "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+          "crates/_3tched-fs/src/typed_runtime.rs:1165-1182"
         ]
       },
       {
@@ -14923,8 +14923,8 @@ const CONTRACT: &str = r########"
         "status": "owned-decoded",
         "reason": "Captured sanitized public state and immutable artifact reads are owned decodes; artifact access confers no backend capability or live identity authentication.",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:575-615",
-          "crates/threetched-fs/src/model.rs:95-144"
+          "crates/_3tched-fs/src/typed_runtime.rs:575-615",
+          "crates/_3tched-fs/src/model.rs:95-144"
         ]
       },
       {
@@ -14932,8 +14932,8 @@ const CONTRACT: &str = r########"
         "status": "same-handle-receipt",
         "reason": "No Outcome/latest-result/error files. Shared nested receipt attribution, ordered attempt/terminal proofs and exact domain returns validate before completed success. Unknown completion forbids replay; declared recovery supplies caller-private status/proofs only.",
         "source_refs": [
-          "crates/threetched-fs/src/mounted.rs:184-497",
-          "crates/threetched-fs/src/dispatch.rs:408-456",
+          "crates/_3tched-fs/src/mounted.rs:184-497",
+          "crates/_3tched-fs/src/dispatch.rs:408-456",
           "crates/op-state-store/src/method_receipt.rs:40-141"
         ]
       },
@@ -14942,8 +14942,8 @@ const CONTRACT: &str = r########"
         "status": "relative-semantic-target",
         "reason": "Parent-relative operation/capability/dependency aliases stay inside mount; dependency target may be absent. Typed resolver does not silently follow an external OS target.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472",
-          "crates/threetched-fs/src/typed_runtime.rs:1320-1360"
+          "crates/_3tched-fs/src/namespace.rs:108-472",
+          "crates/_3tched-fs/src/typed_runtime.rs:1320-1360"
         ]
       },
       {
@@ -14951,10 +14951,10 @@ const CONTRACT: &str = r########"
         "status": "authored-source-unverified",
         "reason": "Generator emits exact supported source schema constructs and explicit unsupported/dynamic reports. Prior fs-core generation and GNU compilation ran before the Grok mounted-MCP changes; see reports/fs-core-20261005/release-preparation.json and HANDOFF.md 2026-10-05 final2 build entries. This source revision still requires regenerated artifacts and compilation; no deployment of its specializations is claimed.",
         "source_refs": [
-          "crates/threetched-fs/examples/typed_specialize.rs:120-476",
-          "crates/threetched-fs/examples/typed_specialize.rs:507-602",
-          "crates/threetched-fs/examples/typed_specialize.rs:666-1050",
-          "crates/threetched-fs/src/typed_runtime.rs:454-510"
+          "crates/_3tched-fs/examples/typed_specialize.rs:120-476",
+          "crates/_3tched-fs/examples/typed_specialize.rs:507-602",
+          "crates/_3tched-fs/examples/typed_specialize.rs:666-1050",
+          "crates/_3tched-fs/src/typed_runtime.rs:454-510"
         ]
       }
     ],
@@ -14963,140 +14963,140 @@ const CONTRACT: &str = r########"
         "condition": "MissingNode",
         "source_condition": "Namespace child or file missing",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EROFS": {
         "condition": "ReadOnly",
         "source_condition": "Node does not admit requested write",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EINVAL": {
         "condition": "InvalidValue",
         "source_condition": "Negative offset/invalid payload/schema/terminal write",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EACCES": {
         "condition": "PermissionDenied",
         "source_condition": "Exact UID, mount mode, credential, session or capability admission refused",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EPERM": {
         "condition": "PermissionDenied",
         "source_condition": "Preserved OS permission refusal",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EIO": {
         "condition": "BackendUnavailable",
         "source_condition": "Source/transport/unknown completion",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EISDIR": {
         "condition": "IsDirectory",
         "source_condition": "Directory opened as regular file",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "ESTALE": {
         "condition": "StaleVersion",
         "source_condition": "Workspace expected-object CAS conflict",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EFBIG": {
         "condition": "TooLarge",
         "source_condition": "Bounded serialized document/argument/offset growth",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "ENOMEM": {
         "condition": "ResourceExhausted",
         "source_condition": "Bounded charge/allocation unavailable",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EBUSY": {
         "condition": "Busy",
         "source_condition": "Concurrent workspace writer or async job/reply waiter capacity; terminal admission diagnostic means rejected before dispatch, with no automatic retry",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EBADF": {
         "condition": "InvalidHandle",
         "source_condition": "Unknown FD or wrong read/write access",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "EAGAIN": {
         "condition": "InFlight",
         "source_condition": "Operation is inflight",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       "other": {
         "condition": "OtherIo",
         "source_condition": "Other I/O preserved; raw errno remains diagnostic only",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
-          "crates/threetched-fs/src/fuse_fs.rs:60-92",
-          "crates/threetched-fs/src/fuse_fs.rs:275-443",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/typed_runtime.rs:1636-1651",
+          "crates/_3tched-fs/src/fuse_fs.rs:60-92",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-443",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       }
     },
@@ -15110,10 +15110,10 @@ const CONTRACT: &str = r########"
       "projection_nodes": 100000,
       "origin": "Current source bounds across mounted/store/source/FUSE/typed JSON ownership; backend allocator/native buffers and global EventChain are not claimed fully bounded",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_buffers.rs:7-10",
-        "crates/threetched-fs/src/fuse_fs.rs:24-26",
-        "crates/threetched-fs/src/store.rs:17-18",
-        "crates/threetched-fs/src/source.rs:21-22",
+        "crates/_3tched-fs/src/fuse_buffers.rs:7-10",
+        "crates/_3tched-fs/src/fuse_fs.rs:24-26",
+        "crates/_3tched-fs/src/store.rs:17-18",
+        "crates/_3tched-fs/src/source.rs:21-22",
         "crates/op-state-store/src/method_receipt.rs:6-7",
         "crates/op-grpc-bridge/src/method_receipt_audit.rs:20-21"
       ],
@@ -15156,9 +15156,9 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Reusable filesystem payload/live/outcome caches replaced by declared locators and charged active descriptor ownership; TTLzero/directIO.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:25-38",
-          "crates/threetched-fs/src/fuse_fs.rs:24-130",
-          "crates/threetched-fs/src/fuse_buffers.rs:4-109"
+          "crates/_3tched-fs/src/namespace.rs:25-38",
+          "crates/_3tched-fs/src/fuse_fs.rs:24-130",
+          "crates/_3tched-fs/src/fuse_buffers.rs:4-109"
         ]
       },
       {
@@ -15167,9 +15167,9 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Canonical bounded locked read validates complete committed state and derives only exact sealed public projection; pending/invalid/absent state and catalog/policy drift fail closed. Schema-only boot capture explicitly has unavailable state.",
         "source_refs": [
-          "crates/threetched-fs/src/source.rs:42-149",
-          "crates/threetched-fs/src/source.rs:184-267",
-          "crates/threetched-fs/src/model.rs:10-144"
+          "crates/_3tched-fs/src/source.rs:42-149",
+          "crates/_3tched-fs/src/source.rs:184-267",
+          "crates/_3tched-fs/src/model.rs:10-144"
         ]
       },
       {
@@ -15178,8 +15178,8 @@ const CONTRACT: &str = r########"
         "status": "intentional-separation",
         "finding": "Workspace staging remains captured public-state artifact editing; backend mutations only canonical identity/capability-admitted CallFile. Direct SHM route is read-only; no direct state mutation/write pointer bypass exists.",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:198-249",
-          "crates/threetched-fs/src/dispatch.rs:174-456"
+          "crates/_3tched-fs/src/store.rs:198-249",
+          "crates/_3tched-fs/src/dispatch.rs:174-456"
         ]
       },
       {
@@ -15198,8 +15198,8 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Addressed data discovery rebuilds only its current committed public subtree; absent/deleted keys disappear, unrelated locators remain intact, and target errors propagate. Static factories/traversal avoid unrelated live values. Existing FD/listing snapshots stay versioned and bounded.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472",
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031"
+          "crates/_3tched-fs/src/namespace.rs:108-472",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031"
         ]
       },
       {
@@ -15208,8 +15208,8 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Per-object local guard plus expected-object CAS reject cross-process stale writers; successful stage updates descriptor hash and fresh inventory; failed FD cannot retry on release.",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:198-249",
-          "crates/threetched-fs/src/fuse_fs.rs:351-554"
+          "crates/_3tched-fs/src/store.rs:198-249",
+          "crates/_3tched-fs/src/fuse_fs.rs:351-554"
         ]
       },
       {
@@ -15218,7 +15218,7 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Result/error files and Outcome nodes removed. Same original call descriptor carries transient terminal payload; declared get_receipt recovers permanent caller-private status/proofs, never a private result.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:844-873",
+          "crates/_3tched-fs/src/namespace.rs:844-873",
           "crates/op-grpc-bridge/src/method_receipt_audit.rs:644-736"
         ]
       },
@@ -15228,7 +15228,7 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Operation/capability/dependency links are parent-relative and stay inside the mount.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -15238,8 +15238,8 @@ const CONTRACT: &str = r########"
         "finding": "Shared closed envelope validates target/operation/proof order and exact MethodDecl.returns. Missing result declaration blocks before effects rather than inferring null.",
         "source_refs": [
           "crates/op-state-store/src/method_receipt.rs:40-141",
-          "crates/threetched-fs/src/dispatch.rs:408-456",
-          "crates/threetched-fs/src/mounted.rs:184-497"
+          "crates/_3tched-fs/src/dispatch.rs:408-456",
+          "crates/_3tched-fs/src/mounted.rs:184-497"
         ]
       },
       {
@@ -15248,8 +15248,8 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Exact typed host/guest/credential identity mode+UUID pin; local UID/access enforcement; bounded async jobs with single execution and durable owned attempt/backend/terminal across caller cancellation. No backend cancellation/rollback API fabricated.",
         "source_refs": [
-          "crates/threetched-fs/src/mounted.rs:39-181",
-          "crates/threetched-fs/src/fuse_fs.rs:202-581",
+          "crates/_3tched-fs/src/mounted.rs:39-181",
+          "crates/_3tched-fs/src/fuse_fs.rs:202-581",
           "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
         ]
       },
@@ -15259,10 +15259,10 @@ const CONTRACT: &str = r########"
         "status": "authored-source-unverified",
         "finding": "Source-authored schema-only sealed specialization emits exact supported object presence/null/maps/arrays/enums/OneOf shapes. Context-dependent source OneOf, general intersections/unions, recursive/external references, custom validation and partial public map/array shapes report unsupported; dynamic slots stay explicit. Prior generation and generated-use GNU compilation completed before the Grok mounted-MCP changes; current-source regeneration/rebuild remains pending. Dated preparation evidence: reports/fs-core-20261005/release-preparation.json and HANDOFF.md final2 build entries.",
         "source_refs": [
-          "crates/threetched-fs/examples/typed_specialize.rs:120-476",
-          "crates/threetched-fs/examples/typed_specialize.rs:507-602",
-          "crates/threetched-fs/examples/typed_specialize.rs:666-1050",
-          "crates/threetched-fs/src/typed_runtime.rs:454-510"
+          "crates/_3tched-fs/examples/typed_specialize.rs:120-476",
+          "crates/_3tched-fs/examples/typed_specialize.rs:507-602",
+          "crates/_3tched-fs/examples/typed_specialize.rs:666-1050",
+          "crates/_3tched-fs/src/typed_runtime.rs:454-510"
         ]
       },
       {
@@ -15271,8 +15271,8 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "finding": "Read-only direct SHM is a fresh owned decoded canonical committed snapshot. No raw address, fixed ABI segment, mmap, pointer layout or zero-copy guarantee is claimed.",
         "source_refs": [
-          "crates/threetched-fs/src/source.rs:24-149",
-          "crates/threetched-fs/src/typed_runtime.rs:173-191"
+          "crates/_3tched-fs/src/source.rs:24-149",
+          "crates/_3tched-fs/src/typed_runtime.rs:173-191"
         ]
       },
       {
@@ -15281,7 +15281,7 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "finding": "No watch/stream/mmap node or arbitrary create/delete/rename/xattr/locking API is authored. fuser default errors remain explicit. These are not implemented features or hidden repair failures.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:582-1031",
+          "crates/_3tched-fs/src/fuse_fs.rs:582-1031",
           "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:314-949"
         ]
       },
@@ -15310,7 +15310,7 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Real JSON key .value.json is encoded %2Evalue.json, distinct from synthetic aggregate marker; empty key remains canonical %.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:1041-1067"
+          "crates/_3tched-fs/src/namespace.rs:1041-1067"
         ]
       },
       {
@@ -15319,8 +15319,8 @@ const CONTRACT: &str = r########"
         "status": "implemented-source-unverified",
         "finding": "Mandatory captured store/view plus active catalog and committed state provenance; five readonly classes only. Artifact hash identifies capture, not hash of current state.",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:525-561",
-          "crates/threetched-fs/src/typed_runtime.rs:1100-1182"
+          "crates/_3tched-fs/src/typed_runtime.rs:525-561",
+          "crates/_3tched-fs/src/typed_runtime.rs:1100-1182"
         ]
       },
       {
@@ -15329,8 +15329,8 @@ const CONTRACT: &str = r########"
         "status": "intentional-unsupported",
         "finding": "No invented execution authority for Constraint::Custom names. Explicit unavailable/report replaces silent validation success. Backend-owned custom implementation is outside this filesystem's authored surface.",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:475-514",
-          "crates/threetched-fs/examples/typed_specialize.rs:120-602"
+          "crates/_3tched-fs/src/model.rs:475-514",
+          "crates/_3tched-fs/examples/typed_specialize.rs:120-602"
         ]
       }
     ]
@@ -15348,7 +15348,7 @@ const CONTRACT: &str = r########"
         "read": "Fresh current discovery; per-opendir stable listing.",
         "write": "Unsupported arbitrary node lifecycle mutation.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:885-1012"
+          "crates/_3tched-fs/src/fuse_fs.rs:885-1012"
         ]
       },
       {
@@ -15356,7 +15356,7 @@ const CONTRACT: &str = r########"
         "read": "Fresh selected immutable declaration/artifact; TypedObject payload sanitized public or explicit schema_only.",
         "write": "EROFS",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:515-667"
+          "crates/_3tched-fs/src/namespace.rs:515-667"
         ]
       },
       {
@@ -15364,7 +15364,7 @@ const CONTRACT: &str = r########"
         "read": "Sanitized captured immutable public state snapshot.",
         "write": "EROFS",
         "source_refs": [
-          "crates/threetched-fs/src/model.rs:92-144"
+          "crates/_3tched-fs/src/model.rs:92-144"
         ]
       },
       {
@@ -15372,7 +15372,7 @@ const CONTRACT: &str = r########"
         "read": "Current frozen workspace public state pointer.",
         "write": "Stage complete validated candidate only under expected-object CAS; backend state untouched.",
         "source_refs": [
-          "crates/threetched-fs/src/store.rs:198-249"
+          "crates/_3tched-fs/src/store.rs:198-249"
         ]
       },
       {
@@ -15380,7 +15380,7 @@ const CONTRACT: &str = r########"
         "read": "Fresh canonical committed public state with exact active catalog/policy pin and generation; absent/pending/invalid pointer unavailable.",
         "write": "EROFS; direct SHM route read-only.",
         "source_refs": [
-          "crates/threetched-fs/src/source.rs:42-149"
+          "crates/_3tched-fs/src/source.rs:42-149"
         ]
       },
       {
@@ -15388,7 +15388,7 @@ const CONTRACT: &str = r########"
         "read": "Own originating descriptor's terminal receipt or attributed diagnostic only.",
         "write": "Bounded schema-admitted input; exactly one canonical backend dispatch, permanent scoped operation reservation, durable linked attempt/terminal, exact result validation, no automatic replay.",
         "source_refs": [
-          "crates/threetched-fs/src/fuse_fs.rs:275-581",
+          "crates/_3tched-fs/src/fuse_fs.rs:275-581",
           "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
         ]
       },
@@ -15397,7 +15397,7 @@ const CONTRACT: &str = r########"
         "read": "Relative semantic target inside mount.",
         "write": "Unsupported link creation/retarget.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:108-472"
+          "crates/_3tched-fs/src/namespace.rs:108-472"
         ]
       },
       {
@@ -15405,7 +15405,7 @@ const CONTRACT: &str = r########"
         "read": "Real captured artifact pin; not a digest of current live state.",
         "write": "EROFS",
         "source_refs": [
-          "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+          "crates/_3tched-fs/src/typed_runtime.rs:1100-1132"
         ]
       }
     ],
@@ -15441,8 +15441,8 @@ const CONTRACT: &str = r########"
       },
       "scope": "Limits bound serialized/source/staging/topology ownership, not every allocator/native backend or system-wide audit Vec. Large domain method buffers remain each backend owner's responsibility.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_buffers.rs:4-109",
-        "crates/threetched-fs/src/source.rs:21-22",
+        "crates/_3tched-fs/src/fuse_buffers.rs:4-109",
+        "crates/_3tched-fs/src/source.rs:21-22",
         "crates/op-grpc-bridge/src/method_receipt_audit.rs:20-21"
       ]
     },
@@ -15501,8 +15501,8 @@ const CONTRACT: &str = r########"
         },
         "generated_binding_compile": {
           "status": "passed",
-          "generator_input": "crates/threetched-fs/docs/typed-filesystem.schema.json",
-          "output": "crates/threetched-fs/src/typed_bindings.rs",
+          "generator_input": "crates/_3tched-fs/docs/typed-filesystem.schema.json",
+          "output": "crates/_3tched-fs/src/typed_bindings.rs",
           "compile_integration": "examples/typed_check.rs includes the generated module, runtime and existing authoritative source modules; main.rs and production binary integration were not changed",
           "deterministic_regeneration": "passed --check against the complete schema",
           "logs": [
@@ -15512,7 +15512,7 @@ const CONTRACT: &str = r########"
         },
         "tests": {
           "status": "passed",
-          "command": "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check",
+          "command": "cargo test -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_check",
           "passed": 31,
           "failed": 0,
           "ignored": 0,
@@ -15540,7 +15540,7 @@ const CONTRACT: &str = r########"
         },
         "scoped_clippy": {
           "status": "passed",
-          "command": "cargo clippy -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate --example typed_validate --example typed_check -- -D warnings",
+          "command": "cargo clippy -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_generate --example typed_validate --example typed_check -- -D warnings",
           "log": "/var/tmp/fs-schema-20261005-final2-clippy.log"
         },
         "workspace_verify": {
@@ -15562,11 +15562,11 @@ const CONTRACT: &str = r########"
         ],
         "deployment": "not deployed; no service, mount, grant, catalog or live state mutation",
         "reproduction": [
-          "sh crates/threetched-fs/docs/typed-filesystem-build.sh",
-          "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs",
-          "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs --check",
-          "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_validate",
-          "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check"
+          "sh crates/_3tched-fs/docs/typed-filesystem-build.sh",
+          "cargo run -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/_3tched-fs/docs/typed-filesystem.schema.json crates/_3tched-fs/src/typed_bindings.rs",
+          "cargo run -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/_3tched-fs/docs/typed-filesystem.schema.json crates/_3tched-fs/src/typed_bindings.rs --check",
+          "cargo run -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_validate",
+          "cargo test -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_check"
         ],
         "execution_routing": "Cargo commands run from repository root through the assigned gpt-6-luna execution worker with CARGO_CALLER_FAMILY=gpt and CARGO_DISPATCHED=1; normal callers follow scripts/cargo-dispatch.md."
       },
@@ -15591,9 +15591,9 @@ const CONTRACT: &str = r########"
             "source_change": "Remove TypedFuse.live_cache and StateKey memoization. Each open should obtain an authorized committed snapshot through the canonical reader and decode it into a bounded transient handle buffer. Drop buffers on release; do not add per-mount, cross-mount or SHM result caches. Audit the existing one-second view metadata TTL against the same no-cache policy.",
             "payoff": "Conforms read behavior and memory ownership to the owner's no-cache policy.",
             "source_refs": [
-              "crates/threetched-fs/src/fuse_fs.rs:17-35",
-              "crates/threetched-fs/src/fuse_fs.rs:92-93",
-              "crates/threetched-fs/src/fuse_fs.rs:314-342"
+              "crates/_3tched-fs/src/fuse_fs.rs:17-35",
+              "crates/_3tched-fs/src/fuse_fs.rs:92-93",
+              "crates/_3tched-fs/src/fuse_fs.rs:314-342"
             ]
           },
           {
@@ -15610,10 +15610,10 @@ const CONTRACT: &str = r########"
             "source_change": "Use read_projection_snapshot_bounded_in (or an identity-scoped equivalent owned by the existing backend) in capture and live reads; apply the plugin-owned exposure policy with verified caller scope before projection. Return a typed unavailable/incomplete-publication result instead of silently substituting defaults when authority is required.",
             "payoff": "Makes direct and mounted reads agree on committed state and identity boundaries; prerequisite to safe direct-shm access.",
             "source_refs": [
-              "crates/threetched-fs/src/fuse_fs.rs:314-342",
-              "crates/threetched-fs/src/source.rs:40-43",
-              "crates/threetched-fs/src/source.rs:53-78",
-              "crates/threetched-fs/src/source.rs:86-123",
+              "crates/_3tched-fs/src/fuse_fs.rs:314-342",
+              "crates/_3tched-fs/src/source.rs:40-43",
+              "crates/_3tched-fs/src/source.rs:53-78",
+              "crates/_3tched-fs/src/source.rs:86-123",
               "crates/op-core/src/projection_transactions.rs:279-305",
               "crates/op-core/src/projection_transactions.rs:425-489"
             ]
@@ -15632,10 +15632,10 @@ const CONTRACT: &str = r########"
             "source_change": "Keep mutations on the existing authenticated dispatch path. If a native typed transport is needed, expose the existing declaration, validation, identity, capability, audit and receipt contract through that owner rather than adding a store writer.",
             "payoff": "Preserves identity and audit semantics while allowing generated typed arguments and results.",
             "source_refs": [
-              "crates/threetched-fs/src/store.rs:143-189",
-              "crates/threetched-fs/src/fuse_fs.rs:187-253",
-              "crates/threetched-fs/src/dispatch.rs:190-252",
-              "crates/threetched-fs/src/mounted.rs:284-333"
+              "crates/_3tched-fs/src/store.rs:143-189",
+              "crates/_3tched-fs/src/fuse_fs.rs:187-253",
+              "crates/_3tched-fs/src/dispatch.rs:190-252",
+              "crates/_3tched-fs/src/mounted.rs:284-333"
             ]
           },
           {
@@ -15654,7 +15654,7 @@ const CONTRACT: &str = r########"
               "crates/op-grpc-bridge/src/mutation_engine.rs:3483-3559",
               "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922",
               "crates/op-grpc-bridge/src/owned_method_task.rs:15-38",
-              "crates/threetched-fs/src/mounted.rs:327-333"
+              "crates/_3tched-fs/src/mounted.rs:327-333"
             ]
           },
           {
@@ -15673,12 +15673,12 @@ const CONTRACT: &str = r########"
             "source_change": "Specialize this generator against an explicitly pinned sealed PluginSchema catalog, using the existing schema authority for input/output definitions; carry the schema hash in generated method handles and reject a different catalog. Keep plugin custom validation in canonical dispatch.",
             "payoff": "Compile-time per-plugin fields and tighter return types without a second plugin schema authority.",
             "source_refs": [
-              "crates/threetched-fs/src/model.rs:202-219",
-              "crates/threetched-fs/src/model.rs:269-286",
-              "crates/threetched-fs/src/model.rs:361-364",
-              "crates/threetched-fs/src/model.rs:371-381",
-              "crates/threetched-fs/src/model.rs:413-421",
-              "crates/threetched-fs/src/dispatch.rs:103-108"
+              "crates/_3tched-fs/src/model.rs:202-219",
+              "crates/_3tched-fs/src/model.rs:269-286",
+              "crates/_3tched-fs/src/model.rs:361-364",
+              "crates/_3tched-fs/src/model.rs:371-381",
+              "crates/_3tched-fs/src/model.rs:413-421",
+              "crates/_3tched-fs/src/dispatch.rs:103-108"
             ]
           },
           {
@@ -15695,10 +15695,10 @@ const CONTRACT: &str = r########"
             "source_change": "Add an explicit generation-pinned topology refresh owned by the filesystem, or define schema-backed map/array enumeration with a separate typed generation token. Update inode/cache invalidation at the same boundary.",
             "payoff": "Reliable typed enumeration of changing collections.",
             "source_refs": [
-              "crates/threetched-fs/src/namespace.rs:119-172",
-              "crates/threetched-fs/src/namespace.rs:323-423",
-              "crates/threetched-fs/src/fuse_fs.rs:329-342",
-              "crates/threetched-fs/src/fuse_fs.rs:346-360"
+              "crates/_3tched-fs/src/namespace.rs:119-172",
+              "crates/_3tched-fs/src/namespace.rs:323-423",
+              "crates/_3tched-fs/src/fuse_fs.rs:329-342",
+              "crates/_3tched-fs/src/fuse_fs.rs:346-360"
             ]
           },
           {
@@ -15716,10 +15716,10 @@ const CONTRACT: &str = r########"
             "source_change": "Provide an explicit store-generation notification and mount refresh acknowledgement through the filesystem owner; define conflict detection/versioned compare-and-swap for stale same-field writes if needed.",
             "payoff": "Safe direct workspace staging and clear post-write consistency.",
             "source_refs": [
-              "crates/threetched-fs/src/store.rs:143-189",
-              "crates/threetched-fs/src/store.rs:385-407",
-              "crates/threetched-fs/src/fuse_fs.rs:363-405",
-              "crates/threetched-fs/src/fuse_fs.rs:576-632"
+              "crates/_3tched-fs/src/store.rs:143-189",
+              "crates/_3tched-fs/src/store.rs:385-407",
+              "crates/_3tched-fs/src/fuse_fs.rs:363-405",
+              "crates/_3tched-fs/src/fuse_fs.rs:576-632"
             ]
           },
           {
@@ -15736,11 +15736,11 @@ const CONTRACT: &str = r########"
             "source_change": "If durable retrieval is required, add a caller-scoped operation ID and immutable terminal receipt location owned by canonical dispatch. Do not use shared last-result files for correlation.",
             "payoff": "Reliable correlation and recovery after caller disconnect.",
             "source_refs": [
-              "crates/threetched-fs/src/fuse_fs.rs:48-56",
-              "crates/threetched-fs/src/fuse_fs.rs:77-93",
-              "crates/threetched-fs/src/fuse_fs.rs:145-184",
-              "crates/threetched-fs/src/fuse_fs.rs:367-389",
-              "crates/threetched-fs/src/mounted.rs:264-282"
+              "crates/_3tched-fs/src/fuse_fs.rs:48-56",
+              "crates/_3tched-fs/src/fuse_fs.rs:77-93",
+              "crates/_3tched-fs/src/fuse_fs.rs:145-184",
+              "crates/_3tched-fs/src/fuse_fs.rs:367-389",
+              "crates/_3tched-fs/src/mounted.rs:264-282"
             ]
           },
           {
@@ -15756,8 +15756,8 @@ const CONTRACT: &str = r########"
             "source_change": "Generate correct relative targets for operation/capability/dependency aliases, or formally constrain the mount to the process root and enforce that constraint.",
             "payoff": "Aliases work reliably at arbitrary mount locations.",
             "source_refs": [
-              "crates/threetched-fs/src/namespace.rs:186-211",
-              "crates/threetched-fs/src/fuse_fs.rs:535-541"
+              "crates/_3tched-fs/src/namespace.rs:186-211",
+              "crates/_3tched-fs/src/fuse_fs.rs:535-541"
             ]
           },
           {
@@ -15775,12 +15775,12 @@ const CONTRACT: &str = r########"
             "source_change": "If measured decoding cost warrants it, define a versioned validated binary state ABI in the existing owner, with publication, mapping lifetime and exposure rules. For current JSON, a bounded mapped byte source still requires decoding and does not make T zero-copy.",
             "payoff": "Performance only after correctness and a measured need; prevents invalid typed mmap claims.",
             "source_refs": [
-              "crates/threetched-fs/src/source.rs:11-17",
-              "crates/threetched-fs/src/source.rs:143-160",
-              "crates/threetched-fs/src/store.rs:14",
-              "crates/threetched-fs/src/store.rs:297-309",
-              "crates/threetched-fs/src/store.rs:340-350",
-              "crates/threetched-fs/src/fuse_fs.rs:314-342"
+              "crates/_3tched-fs/src/source.rs:11-17",
+              "crates/_3tched-fs/src/source.rs:143-160",
+              "crates/_3tched-fs/src/store.rs:14",
+              "crates/_3tched-fs/src/store.rs:297-309",
+              "crates/_3tched-fs/src/store.rs:340-350",
+              "crates/_3tched-fs/src/fuse_fs.rs:314-342"
             ]
           },
           {
@@ -15795,8 +15795,8 @@ const CONTRACT: &str = r########"
             "source_change": "Define and validate the common engine receipt envelope in its existing owner, then validate the nested domain result against the pinned method return schema. Keep a distinct typed unknown-outcome error when a backend effect may already have occurred.",
             "payoff": "Typed terminal results and stronger completion evidence without retrying an ambiguous mutation.",
             "source_refs": [
-              "crates/threetched-fs/src/mounted.rs:336-368",
-              "crates/threetched-fs/src/dispatch.rs:273-284",
+              "crates/_3tched-fs/src/mounted.rs:336-368",
+              "crates/_3tched-fs/src/dispatch.rs:273-284",
               "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922"
             ]
           },
@@ -15816,11 +15816,11 @@ const CONTRACT: &str = r########"
             "source_change": "Add a verifiable public mount-mode/identity declaration without credentials for the other supported modes. Define cancellation semantics in the existing operation owner before adding asynchronous handles. Expose additional operations only through an explicitly authored canonical schema; ObjectStore CLI lifecycle methods are not filesystem node methods.",
             "payoff": "Broader factory coverage and responsive mounts with honest cancellation guarantees.",
             "source_refs": [
-              "crates/threetched-fs/src/fuse_fs.rs:59-73",
-              "crates/threetched-fs/src/fuse_fs.rs:120-125",
-              "crates/threetched-fs/src/fuse_fs.rs:207-253",
-              "crates/threetched-fs/src/namespace.rs:101-215",
-              "crates/threetched-fs/src/namespace.rs:276-321",
+              "crates/_3tched-fs/src/fuse_fs.rs:59-73",
+              "crates/_3tched-fs/src/fuse_fs.rs:120-125",
+              "crates/_3tched-fs/src/fuse_fs.rs:207-253",
+              "crates/_3tched-fs/src/namespace.rs:101-215",
+              "crates/_3tched-fs/src/namespace.rs:276-321",
               "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:173-175"
             ]
           }
@@ -15830,9 +15830,9 @@ const CONTRACT: &str = r########"
           "projected_file_contents": [],
           "explanation": "Projected payloads are structured JSON, hash text, or symlink targets. Runtime-defined JSON uses a recursive JSON type plus the canonical sealed schema, not Opaque. Unconsumed OPBLOB binary sections are outside the projected content contract; see schema backing evidence.",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:129-211",
-            "crates/threetched-fs/src/namespace.rs:491-504",
-            "crates/threetched-fs/src/source.rs:174-215"
+            "crates/_3tched-fs/src/namespace.rs:129-211",
+            "crates/_3tched-fs/src/namespace.rs:491-504",
+            "crates/_3tched-fs/src/source.rs:174-215"
           ]
         },
         "unverified": [
@@ -15853,14 +15853,14 @@ const CONTRACT: &str = r########"
     "owner_plugin": "_3tched_fs",
     "authoring_source": "crates/op-plugins/src/state_plugins/_3tched_fs_contract.rs",
     "derived_exports": [
-      "crates/threetched-fs/docs/typed-filesystem.schema.json",
-      "crates/threetched-fs/docs/typed-filesystem-binding-input.json",
-      "crates/threetched-fs/docs/typed-filesystem-provenance.json",
-      "crates/threetched-fs/docs/typed-filesystem-nodes.evidence.json",
-      "crates/threetched-fs/docs/typed-filesystem-backing.evidence.json",
-      "crates/threetched-fs/docs/typed-filesystem-gaps.json",
-      "crates/threetched-fs/docs/typed-filesystem-policy.json",
-      "crates/threetched-fs/docs/typed-filesystem-verification.json"
+      "crates/_3tched-fs/docs/typed-filesystem.schema.json",
+      "crates/_3tched-fs/docs/typed-filesystem-binding-input.json",
+      "crates/_3tched-fs/docs/typed-filesystem-provenance.json",
+      "crates/_3tched-fs/docs/typed-filesystem-nodes.evidence.json",
+      "crates/_3tched-fs/docs/typed-filesystem-backing.evidence.json",
+      "crates/_3tched-fs/docs/typed-filesystem-gaps.json",
+      "crates/_3tched-fs/docs/typed-filesystem-policy.json",
+      "crates/_3tched-fs/docs/typed-filesystem-verification.json"
     ],
     "maintenance": "Edit the plugin-owned embedded Rust contract, then run typed_export. Exported JSON is not an independent authoring source.",
     "backend_schema_authority": "Each referenced backend PluginSchema remains the manifest-pinned sealed authority for its state, arguments, returns and capability admission.",
@@ -15977,47 +15977,47 @@ const CONTRACT: &str = r########"
           },
           {
             "sha256": "34525606d8f08069ab1eb5f50f5b1cd257cb0abbff6b2fa2b0ac072bb28dc0cf",
-            "path": "crates/threetched-fs/Cargo.toml"
+            "path": "crates/_3tched-fs/Cargo.toml"
           },
           {
             "sha256": "38f51eea39745abb037871bcfdd4c4fb747e3ae6e6d18f9518441431a739e3cd",
-            "path": "crates/threetched-fs/examples/typed_generate.rs"
+            "path": "crates/_3tched-fs/examples/typed_generate.rs"
           },
           {
             "sha256": "6c1ca38e1d43d9d2e5b429da58af84f2354834f3bd21854e6b4005c33897b531",
-            "path": "crates/threetched-fs/src/dispatch.rs"
+            "path": "crates/_3tched-fs/src/dispatch.rs"
           },
           {
             "sha256": "81aea4519626b0238ec3f588d5443606d7551eaa696a94fff7e8cbf9c37e2279",
-            "path": "crates/threetched-fs/src/fuse_fs.rs"
+            "path": "crates/_3tched-fs/src/fuse_fs.rs"
           },
           {
             "sha256": "3c19610a6d645cdd963fb6928049ec4dc4e687d3d0713c6a5274b51990d7b154",
-            "path": "crates/threetched-fs/src/main.rs"
+            "path": "crates/_3tched-fs/src/main.rs"
           },
           {
             "sha256": "502bdbe6a9b47dd1970135d985d8f0956e1837fe8b9ccbb8523d2addcba44919",
-            "path": "crates/threetched-fs/src/model.rs"
+            "path": "crates/_3tched-fs/src/model.rs"
           },
           {
             "sha256": "246195e1c34fdd92ba39c08f7f5618735812816179d08db56e941265c2acb73f",
-            "path": "crates/threetched-fs/src/mounted.rs"
+            "path": "crates/_3tched-fs/src/mounted.rs"
           },
           {
             "sha256": "abb0236369fb624e8ad07a5db138f5f79884285f0e2caa00e1a80b2d3e4dba97",
-            "path": "crates/threetched-fs/src/namespace.rs"
+            "path": "crates/_3tched-fs/src/namespace.rs"
           },
           {
             "sha256": "86f4bc6455679aeebcddb1386679e08eb342c44b38b587d78661341d5170c0a8",
-            "path": "crates/threetched-fs/src/source.rs"
+            "path": "crates/_3tched-fs/src/source.rs"
           },
           {
             "sha256": "bbcfd9886f146c4faa718825ad88443f5b3ec347e1ba8d7005b5a080cf500acc",
-            "path": "crates/threetched-fs/src/store.rs"
+            "path": "crates/_3tched-fs/src/store.rs"
           },
           {
             "sha256": "811ecff5f4ccb8695f47e9c52718a5ff237c5d85fe5f426817bd340b0b83c446",
-            "path": "crates/threetched-fs/src/typed_runtime.rs"
+            "path": "crates/_3tched-fs/src/typed_runtime.rs"
           },
           {
             "sha256": "bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05",
@@ -16025,7 +16025,7 @@ const CONTRACT: &str = r########"
           },
           {
             "sha256": "aa6fe9812af03fc62634305ddef99f2324881459095aed0f11cc4f9b279323c9",
-            "path": "deploy/runit/threetched-fs/run"
+            "path": "deploy/runit/3tched-fs/run"
           }
         ],
         "source_hash_algorithm": "SHA-256",

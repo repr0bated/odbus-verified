@@ -36,15 +36,15 @@ pub const MAX_CHAT_RESPONSE_BYTES: usize = 8 * 1024 * 1024;
 
 /// Transport layer metadata for the 3tched Router plugin.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-transport.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.threetched-transport.schema@v1"))]
 pub struct LlmTransport {
     /// D-Bus object path served by this plugin.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router-transport.dbus-object@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched-transport.dbus-object@v1"))]
     pub dbus_object: String,
     /// gRPC upstream target.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router-transport.grpc-target@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched-transport.grpc-target@v1"))]
     pub grpc_target: String,
     /// Incus / WireGuard container target for xray routing. Kept as a
     /// published-schema field for backward compatibility, but threetched's LLM
@@ -52,274 +52,274 @@ pub struct LlmTransport {
     /// the gRPC-bridge via `op-grpc-bridge`); there is no per-service
     /// incus container. Defaults to the `"host"` sentinel.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router-transport.incus-container@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched-transport.incus-container@v1"))]
     pub incus_container: String,
     /// Browser-facing surface description.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "exp.service.3tched-router-transport.browser-surface@v1"))]
+    #[schemars(extend("x-oscal-subid" = "exp.service.threetched-transport.browser-surface@v1"))]
     pub browser_surface: String,
     /// REST aliases exposed by the bridge.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "exp.service.3tched-router-transport.rest-aliases@v1"))]
+    #[schemars(extend("x-oscal-subid" = "exp.service.threetched-transport.rest-aliases@v1"))]
     pub rest_aliases: Vec<String>,
     /// Canonical OSCAL/subid mapping authority.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "src.service.3tched-router-transport.policy-source@v1"))]
+    #[schemars(extend("x-oscal-subid" = "src.service.threetched-transport.policy-source@v1"))]
     pub policy_source: String,
 }
 
 /// Nested per-capability model assignments.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.3tched-router.model-assignments.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.threetched.model-assignments.schema@v1"))]
 pub struct ModelAssignments {
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.model-assignments.ovs-routing@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.model-assignments.ovs-routing@v1"))]
     pub ovs_routing: String,
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.model-assignments.obfuscation@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.model-assignments.obfuscation@v1"))]
     pub obfuscation: String,
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.model-assignments.vectorization@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.model-assignments.vectorization@v1"))]
     pub vectorization: String,
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.model-assignments.qdrant-retrieval@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.model-assignments.qdrant-retrieval@v1"))]
     pub qdrant_retrieval: String,
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.model-assignments.cozo-retrieval@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.model-assignments.cozo-retrieval@v1"))]
     pub cozo_retrieval: String,
 }
 
 /// Configurable options RPC contract extracted from `operation.registration.v1`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.rpc.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.rpc.schema@v1"))]
 pub struct ConfigurableOptionRpc {
     /// RPC name from RegistrationService.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.rpc.name@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.rpc.name@v1"))]
     pub name: String,
     /// Request message type.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.rpc.request@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.rpc.request@v1"))]
     pub request_type: String,
     /// Response message type.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.rpc.response@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.rpc.response@v1"))]
     pub response_type: String,
     /// Read or mutation side-effect classification.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.rpc.side-effect@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.rpc.side-effect@v1"))]
     pub side_effect: String,
     /// Required capability for this RPC.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.rpc.capability@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.rpc.capability@v1"))]
     pub capability_id: String,
     /// OSCAL operation taxonomy key.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.rpc.subid@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.rpc.subid@v1"))]
     pub subid: String,
 }
 
 /// Configurable options message contract extracted from registration.proto.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.message.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.message.schema@v1"))]
 pub struct ConfigurableOptionMessage {
     /// Message type name.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.message.name@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.message.name@v1"))]
     pub name: String,
     /// Message fields keyed by proto field name.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.message.fields@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.message.fields@v1"))]
     pub fields: Vec<ConfigurableOptionField>,
 }
 
 /// Field contract extracted from configurable options proto messages.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.field.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.field.schema@v1"))]
 pub struct ConfigurableOptionField {
     /// Field name.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.field.name@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.field.name@v1"))]
     pub name: String,
     /// Proto type, including optional/repeated marker when applicable.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.field.proto-type@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.field.proto-type@v1"))]
     pub proto_type: String,
     /// JSON/schema rendering type.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.field.json-type@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.field.json-type@v1"))]
     pub json_type: String,
     /// True when the field contains sensitive material.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.field.sensitive@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.field.sensitive@v1"))]
     pub sensitive: bool,
     /// True when this option is required by the source contract.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.field.required@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.field.required@v1"))]
     pub required: bool,
 }
 
 /// Registration error code contract.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.error-code.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.error-code.schema@v1"))]
 pub struct ConfigurableOptionErrorCode {
     /// Symbolic proto enum name.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.error-code.name@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.error-code.name@v1"))]
     pub name: String,
     /// Numeric proto value.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.error-code.value@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.error-code.value@v1"))]
     pub value: i32,
 }
 
 /// Magic-link and WireGuard registration service schema.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.registration-service.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.registration-service.schema@v1"))]
 pub struct RegistrationServiceSchema {
     /// Proto package name.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.registration-service.package@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.registration-service.package@v1"))]
     pub package: String,
     /// Owning proto source path.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "src.software.3tched-router-options.registration-service.proto@v1"))]
+    #[schemars(extend("x-oscal-subid" = "src.software.threetched-options.registration-service.proto@v1"))]
     pub source_proto: String,
     /// Service name.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.registration-service.name@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.registration-service.name@v1"))]
     pub service: String,
     /// RPC methods exposed by the registration service.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.registration-service.rpcs@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.registration-service.rpcs@v1"))]
     pub rpcs: Vec<ConfigurableOptionRpc>,
     /// Message schemas used by those RPCs.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.registration-service.messages@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.registration-service.messages@v1"))]
     pub messages: Vec<ConfigurableOptionMessage>,
     /// Error enum values.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.registration-service.errors@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.registration-service.errors@v1"))]
     pub error_codes: Vec<ConfigurableOptionErrorCode>,
 }
 
 /// Identity chain declared for user container options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.identity-chain.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.identity-chain.schema@v1"))]
 pub struct IdentityOptions {
     /// Hardware-bound seed accepted by the user container flow.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "src.hardware.3tched-router-options.identity.mac@v1"))]
+    #[schemars(extend("x-oscal-subid" = "src.hardware.3tched-options.identity.mac@v1"))]
     pub mac_address_key: String,
     /// Optional shared key accepted by the user container flow.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "src.policy.3tched-router-options.identity.psk@v1"))]
+    #[schemars(extend("x-oscal-subid" = "src.policy.threetched-options.identity.psk@v1"))]
     pub pre_shared_key: String,
     /// WireGuard public key identity.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "src.network.3tched-router-options.identity.wireguard-pubkey@v1"))]
+    #[schemars(extend("x-oscal-subid" = "src.network.3tched-options.identity.wireguard-pubkey@v1"))]
     pub wireguard_pubkey: String,
     /// MCP bearer token derivation rule.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.identity.mcp-token@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.identity.mcp-token@v1"))]
     pub mcp_token_derivation: String,
 }
 
 /// Namespace template declared for each user container.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.memory-namespace.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.memory-namespace.schema@v1"))]
 pub struct MemoryNamespaceOption {
     /// Namespace template.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.memory-namespace.template@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.memory-namespace.template@v1"))]
     pub namespace_template: String,
     /// Keys owned by this namespace.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.memory-namespace.keys@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.memory-namespace.keys@v1"))]
     pub keys: Vec<String>,
     /// Human-readable purpose.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.memory-namespace.purpose@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.memory-namespace.purpose@v1"))]
     pub purpose: String,
     /// Identity key used to bind this namespace to the container/user identity.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.memory-namespace.identity-link@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.memory-namespace.identity-link@v1"))]
     pub identity_link_key: String,
 }
 
 /// User container option contract exposed through 3tched Router.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.process-procedure.3tched-router-options.user-container.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.process-procedure.threetched-options.user-container.schema@v1"))]
 pub struct UserContainerOptions {
     /// Source script that currently materializes the user container flow.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "src.process-procedure.3tched-router-options.user-container.script@v1"))]
+    #[schemars(extend("x-oscal-subid" = "src.process-procedure.threetched-options.user-container.script@v1"))]
     pub source_script: String,
     /// User-visible container arguments.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.process-procedure.3tched-router-options.user-container.arguments@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.process-procedure.threetched-options.user-container.arguments@v1"))]
     pub arguments: Vec<ConfigurableOptionField>,
     /// Incus container name template.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.user-container.container-template@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.user-container.container-template@v1"))]
     pub container_id_template: String,
     /// Default Incus image.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.user-container.image@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.user-container.image@v1"))]
     pub image: String,
     /// Cognitive endpoint used by the user container memory flow.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "exp.service.3tched-router-options.user-container.mcp-endpoint@v1"))]
+    #[schemars(extend("x-oscal-subid" = "exp.service.threetched-options.user-container.mcp-endpoint@v1"))]
     pub cognitive_endpoint: String,
     /// Feature flags declared for the user container flow.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router-options.user-container.features@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.policy.threetched-options.user-container.features@v1"))]
     pub feature_flags: Vec<String>,
 }
 
 /// Privacy rules for configurable options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router-options.privacy.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.policy.threetched-options.privacy.schema@v1"))]
 pub struct PrivacyOptions {
     /// Whether email may be written to CozoDB.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router-options.privacy.email-storage@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.policy.threetched-options.privacy.email-storage@v1"))]
     pub email_storage_rule: String,
     /// Sensitive fields that must not be rendered casually.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router-options.privacy.sensitive-fields@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.policy.threetched-options.privacy.sensitive-fields@v1"))]
     pub sensitive_fields: Vec<String>,
 }
 
 /// Complete configurable options schema surface owned by 3tched Router.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.schema@v1"))]
 pub struct ConfigurableOptions {
     /// Magic-link and WireGuard registration RPC schema.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.registration-service@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched-options.registration-service@v1"))]
     pub registration_service: RegistrationServiceSchema,
     /// User container configurable option schema.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.process-procedure.3tched-router-options.user-container@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.process-procedure.threetched-options.user-container@v1"))]
     pub user_container: UserContainerOptions,
     /// Identity chain schema.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.identity-chain@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.identity-chain@v1"))]
     pub identity_chain: IdentityOptions,
     /// Memory namespace templates.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router-options.memory-namespaces@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched-options.memory-namespaces@v1"))]
     pub memory_namespaces: Vec<MemoryNamespaceOption>,
     /// Privacy handling rules.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router-options.privacy@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.policy.threetched-options.privacy@v1"))]
     pub privacy_policy: PrivacyOptions,
 }
 
 /// Top-level 3tched Router state.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.plugin.3tched-router.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.plugin.3tched.schema@v1"))]
 #[schemars(extend("x-oscal-category" = "llm"))]
 pub struct ChatRouterState {
     /// Narrow reflected model binding, published by authoritative native observation.
@@ -328,66 +328,66 @@ pub struct ChatRouterState {
     pub catalog_model_binding: Option<ResolveCatalogModelBindingOutput>,
     /// Owner-private generation document revision; excluded from public_state.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(extend("x-oscal-subid" = "obs.software.tched-router.generation-revision@v1"))]
+    #[schemars(extend("x-oscal-subid" = "obs.software.threetched.generation-revision@v1"))]
     pub generation_revision: Option<u64>,
     /// Native response text committed for one verified principal and session.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(extend("x-oscal-subid" = "obs.software.tched-router.generation-jobs@v1"))]
+    #[schemars(extend("x-oscal-subid" = "obs.software.threetched.generation-jobs@v1"))]
     pub generation_jobs: Option<std::collections::BTreeMap<String, generation::GenerationJob>>,
     /// Operational status.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "obs.software.3tched-router.status@v1"))]
+    #[schemars(extend("x-oscal-subid" = "obs.software.threetched.status@v1"))]
     pub status: String,
     /// Selected provider identifier.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.selected-provider@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.selected-provider@v1"))]
     pub selected_provider: String,
     /// Selected model identifier.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "exp.service.3tched-router.selected-model@v1"))]
+    #[schemars(extend("x-oscal-subid" = "exp.service.threetched.selected-model@v1"))]
     pub selected_model: String,
     /// Exact masked native v0.8.4 configuration observed through the loopback
     /// gateway. It remains in protected committed SHM and is never part of the
     /// shared public-state policy.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(extend("x-oscal-subid" = "obs.software.3tched-router.native-config@v1"))]
+    #[schemars(extend("x-oscal-subid" = "obs.software.threetched.native-config@v1"))]
     pub native_config: Option<JsonValue>,
     /// Per-capability model assignments.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.model-assignments@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.model-assignments@v1"))]
     pub model_assignments: ModelAssignments,
     /// Transport layer metadata.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.transport@v1"))]
+    #[schemars(extend("x-oscal-subid" = "mut.service.threetched.transport@v1"))]
     pub transport: LlmTransport,
     /// Magic-link and WireGuard registration RPC schema (a plain configuration).
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router.registration-service@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.service.threetched.registration-service@v1"))]
     pub registration_service: RegistrationServiceSchema,
     /// User container configurable option schema (a plain configuration).
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.process-procedure.3tched-router.user-container@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.process-procedure.threetched.user-container@v1"))]
     pub user_container: UserContainerOptions,
     /// Identity chain schema (a plain configuration).
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router.identity-chain@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched.identity-chain@v1"))]
     pub identity_chain: IdentityOptions,
     /// Memory namespace templates (a plain configuration).
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router.memory-namespaces@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched.memory-namespaces@v1"))]
     pub memory_namespaces: Vec<MemoryNamespaceOption>,
     /// Privacy handling rules (a plain configuration).
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router.privacy@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.policy.threetched.privacy@v1"))]
     pub privacy_policy: PrivacyOptions,
     /// Declared LLM catalog fields — flattened to the top level. This is
     /// DECLARED state, not a runtime projection: there is no projection.
     #[serde(flatten)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router.llm-catalog@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched.llm-catalog@v1"))]
     pub catalog: LlmProjection,
     /// Pure selector weights and default effort class.
     #[serde(default)]
-    #[schemars(extend("x-oscal-subid" = "sch.software.3tched-router.selector-policy@v1"))]
+    #[schemars(extend("x-oscal-subid" = "sch.software.threetched.selector-policy@v1"))]
     pub selector_policy: super::common::llm_projection::SelectorPolicy,
 }
 
@@ -504,7 +504,7 @@ pub struct SetModelInput {
 /// substitute the plugin schema's example/default state.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.runtime-state@v2"))]
+#[schemars(extend("x-oscal-subid" = "obs.service.threetched.runtime-state@v2"))]
 pub struct ObservedChatRouterState {
     pub status: String,
     pub selected_provider: String,
@@ -528,14 +528,14 @@ impl From<&ChatRouterState> for ObservedChatRouterState {
 /// Output for the complete native runtime observation.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.state.result@v2"))]
+#[schemars(extend("x-oscal-subid" = "obs.service.threetched.state.result@v2"))]
 pub struct GetStateOutput {
     /// Complete set of fields read by the native runtime adapter.
     pub state: ObservedChatRouterState,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "exp.service.3tched-router.model-routes.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "exp.service.threetched.model-routes.result@v1"))]
 pub struct GetModelRoutesOutput {
     /// Declared model routes.
     pub model_routes: Vec<ModelRoute>,
@@ -543,7 +543,7 @@ pub struct GetModelRoutesOutput {
 
 /// Output for the declared tool catalog.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "exp.service.3tched-router.tools.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "exp.service.threetched.tools.result@v1"))]
 pub struct GetToolsOutput {
     /// Declared LLM tools.
     pub tools: Vec<LlmTool>,
@@ -551,14 +551,14 @@ pub struct GetToolsOutput {
 
 /// Output for the provider list accessor.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.providers.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "obs.service.threetched.providers.result@v1"))]
 pub struct ListProvidersOutput {
     pub providers: Vec<Provider>,
 }
 
 /// Output for the router accessor.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.router.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "obs.service.threetched.router.result@v1"))]
 pub struct GetRouterOutput {
     pub router: Router,
 }
@@ -744,21 +744,21 @@ pub struct ConfigMigrateOutput {
 
 /// Output for the UI surfaces accessor.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.ui-surfaces.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "obs.service.threetched.ui-surfaces.result@v1"))]
 pub struct ListUiSurfacesOutput {
     pub ui_surfaces: Vec<UiSurface>,
 }
 
 /// Output for the structured output accessor.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.structured-output.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "obs.service.threetched.structured-output.result@v1"))]
 pub struct GetStructuredOutputOutput {
     pub structured_output: StructuredOutput,
 }
 
 /// Output for a resolved model route.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "exp.service.3tched-router.route.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "exp.service.threetched.route.result@v1"))]
 pub struct ResolveRouteOutput {
     /// Resolved route.
     pub route: ModelRoute,
@@ -766,7 +766,7 @@ pub struct ResolveRouteOutput {
 
 /// Output from the bridge-owned 3tched Router chat dispatcher.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "exp.service.3tched-router.chat.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "exp.service.threetched.chat.result@v1"))]
 pub struct ChatOutput {
     /// Assistant response text.
     pub content: String,
@@ -783,7 +783,7 @@ pub struct ChatOutput {
 
 /// Schema-declared model listing output.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "obs.service.3tched-router.models.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "obs.service.threetched.models.result@v1"))]
 pub struct ListModelsOutput {
     /// Schema-declared model routes, optionally filtered by provider.
     pub model_routes: Vec<ModelRoute>,
@@ -791,7 +791,7 @@ pub struct ListModelsOutput {
 
 /// Output for provider selection.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.selected-provider.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "mut.service.threetched.selected-provider.result@v1"))]
 pub struct SetProviderOutput {
     /// Selected provider identifier.
     pub selected_provider: String,
@@ -799,7 +799,7 @@ pub struct SetProviderOutput {
 
 /// Output for model selection.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "mut.service.3tched-router.selected-model.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "mut.service.threetched.selected-model.result@v1"))]
 pub struct SetModelOutput {
     /// Selected model identifier.
     pub selected_model: String,
@@ -813,7 +813,7 @@ pub struct SetSelectionInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "mut.service.tched-router.selection.set.result@v1"))]
+#[schemars(extend("x-oscal-subid" = "mut.service.threetched.selection.set.result@v1"))]
 pub struct SetSelectionOutput {
     pub selected_provider: String,
     pub selected_model: String,
@@ -906,8 +906,8 @@ impl ChatRouterPlugin {
         let selected_provider = Self::env_or("LLM_PROVIDER", "opencode");
         let selected_model = Self::env_or("LLM_MODEL", Self::DEFAULT_CHAT_MODEL);
         let chat_model = selected_model.clone();
-        let router_endpoint = Self::env_or("TCHED_ROUTER_ENDPOINT", "http://localhost:11434");
-        let grpc_target = Self::env_or("TCHED_ROUTER_GRPC_TARGET", "https://127.0.0.1:8090");
+        let router_endpoint = Self::env_or("THREETCHED_ENDPOINT", "http://localhost:11434");
+        let grpc_target = Self::env_or("THREETCHED_GRPC_TARGET", "https://127.0.0.1:8090");
         let grpc_target_for_provider = grpc_target.clone();
 
         let co = Self::configurable_options();
@@ -932,7 +932,7 @@ impl ChatRouterPlugin {
                 incus_container: "host".to_string(),
                 browser_surface: "gRPC-Web through op-web".to_string(),
                 rest_aliases: vec![
-                    "/api/tched-router/chat".to_string(),
+                    "/api/threetched/chat".to_string(),
                     "/api/llm/chat".to_string(),
                 ],
                 policy_source: Self::OSCAL_SUBID_REGISTRY_OBJECT.to_string(),
@@ -1100,7 +1100,7 @@ impl ChatRouterPlugin {
                         hint: "local".to_string(),
                         provider: "opencode".to_string(),
                         upstream_provider: "opencode".to_string(),
-                        transport: "tched-router-loopback".to_string(),
+                        transport: "threetched-loopback".to_string(),
                         model: chat_model.clone(),
                         kind: "router".to_string(),
                         status: "declared".to_string(),
@@ -1180,7 +1180,7 @@ impl ChatRouterPlugin {
                 ],
                 tools: vec![
                     LlmTool {
-                        name: "3tched-router.chat".to_string(),
+                        name: "3tched.chat".to_string(),
                         description: "Send an Antigravity/3tched Router chat turn and return structured JSON when response_schema is present.".to_string(),
                         parameters: serde_json::json!({
                             "type": "object",
@@ -1195,7 +1195,7 @@ impl ChatRouterPlugin {
                         ..Default::default()
                     },
                     LlmTool {
-                        name: "3tched-router.models.list".to_string(),
+                        name: "3tched.models.list".to_string(),
                         description: "List cached or live models for a 3tched Router provider.".to_string(),
                         parameters: serde_json::json!({
                             "type": "object",
@@ -1326,56 +1326,56 @@ impl ChatRouterPlugin {
                         "SendMagicLinkRequest",
                         "SendMagicLinkResponse",
                         "Mutation",
-                        "cap.software.3tched-router.registration.magic-link.send@v1",
-                        "mut.service.3tched-router.registration.magic-link.send@v1",
+                        "cap.software.threetched.registration.magic-link.send@v1",
+                        "mut.service.threetched.registration.magic-link.send@v1",
                     ),
                     Self::option_rpc(
                         "VerifyMagicLink",
                         "VerifyMagicLinkRequest",
                         "VerifyMagicLinkResponse",
                         "Mutation",
-                        "cap.software.3tched-router.registration.magic-link.verify@v1",
-                        "mut.service.3tched-router.registration.magic-link.verify@v1",
+                        "cap.software.threetched.registration.magic-link.verify@v1",
+                        "mut.service.threetched.registration.magic-link.verify@v1",
                     ),
                     Self::option_rpc(
                         "RegisterUser",
                         "RegisterUserRequest",
                         "RegisterUserResponse",
                         "Mutation",
-                        "cap.software.3tched-router.registration.user.register@v1",
-                        "mut.service.3tched-router.registration.user.register@v1",
+                        "cap.software.threetched.registration.user.register@v1",
+                        "mut.service.threetched.registration.user.register@v1",
                     ),
                     Self::option_rpc(
                         "GetUserStatus",
                         "GetUserStatusRequest",
                         "GetUserStatusResponse",
                         "Read",
-                        "cap.software.3tched-router.registration.user-status.read@v1",
-                        "obs.service.3tched-router.registration.user-status.get@v1",
+                        "cap.software.threetched.registration.user-status.read@v1",
+                        "obs.service.threetched.registration.user-status.get@v1",
                     ),
                     Self::option_rpc(
                         "ListUsers",
                         "ListUsersRequest",
                         "ListUsersResponse",
                         "Read",
-                        "cap.software.3tched-router.registration.users.read@v1",
-                        "obs.service.3tched-router.registration.users.list@v1",
+                        "cap.software.threetched.registration.users.read@v1",
+                        "obs.service.threetched.registration.users.list@v1",
                     ),
                     Self::option_rpc(
                         "GetWireGuardConfig",
                         "GetWireGuardConfigRequest",
                         "GetWireGuardConfigResponse",
                         "Read",
-                        "cap.software.3tched-router.registration.wireguard-config.read@v1",
-                        "obs.service.3tched-router.registration.wireguard-config.get@v1",
+                        "cap.software.threetched.registration.wireguard-config.read@v1",
+                        "obs.service.threetched.registration.wireguard-config.get@v1",
                     ),
                     Self::option_rpc(
                         "AdminUserAction",
                         "AdminUserActionRequest",
                         "AdminUserActionResponse",
                         "Mutation",
-                        "cap.software.3tched-router.registration.admin-user-action.apply@v1",
-                        "mut.service.3tched-router.registration.admin-user-action.apply@v1",
+                        "cap.software.threetched.registration.admin-user-action.apply@v1",
+                        "mut.service.threetched.registration.admin-user-action.apply@v1",
                     ),
                 ],
                 messages: vec![
@@ -1740,7 +1740,7 @@ impl StatePlugin for ChatRouterPlugin {
         let mut schema = chat_router_schema();
         super::common::llm_projection::rewrite_projection_subids_for_plugin(
             &mut schema,
-            "3tched-router",
+            "3tched",
         );
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
         Some(schema)
@@ -1856,8 +1856,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "GetState",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.state.read@v1",
-            "obs.service.3tched-router.state.get@v1",
+            "cap.software.threetched.state.read@v1",
+            "obs.service.threetched.state.get@v1",
         ),
     );
     schema.methods.insert(
@@ -1866,8 +1866,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "GetModelRoutes",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.routes.read@v1",
-            "obs.service.3tched-router.model-routes.list@v1",
+            "cap.software.threetched.routes.read@v1",
+            "obs.service.threetched.model-routes.list@v1",
         ),
     );
     schema.methods.insert(
@@ -1876,8 +1876,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "ListProviders",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.providers.read@v1",
-            "obs.service.3tched-router.providers.list@v1",
+            "cap.software.threetched.providers.read@v1",
+            "obs.service.threetched.providers.list@v1",
         ),
     );
     schema.methods.insert(
@@ -1886,8 +1886,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "GetTools",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.tools.read@v1",
-            "obs.service.3tched-router.tools.list@v1",
+            "cap.software.threetched.tools.read@v1",
+            "obs.service.threetched.tools.list@v1",
         ),
     );
     schema.methods.insert(
@@ -1896,8 +1896,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "GetRouter",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.router.read@v1",
-            "obs.service.3tched-router.router.get@v1",
+            "cap.software.threetched.router.read@v1",
+            "obs.service.threetched.router.get@v1",
         ),
     );
     schema.methods.insert(
@@ -1906,8 +1906,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "ListUiSurfaces",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.ui-surfaces.read@v1",
-            "obs.service.3tched-router.ui-surfaces.list@v1",
+            "cap.software.threetched.ui-surfaces.read@v1",
+            "obs.service.threetched.ui-surfaces.list@v1",
         ),
     );
     schema.methods.insert(
@@ -1916,8 +1916,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "GetStructuredOutput",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.structured-output.read@v1",
-            "obs.service.3tched-router.structured-output.get@v1",
+            "cap.software.threetched.structured-output.read@v1",
+            "obs.service.threetched.structured-output.get@v1",
         ),
     );
     schema.methods.insert(
@@ -1926,8 +1926,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "ResolveRoute",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.route.resolve@v1",
-            "obs.service.3tched-router.route.resolve@v1",
+            "cap.software.threetched.route.resolve@v1",
+            "obs.service.threetched.route.resolve@v1",
         ),
     );
     schema.methods.insert(
@@ -1936,8 +1936,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "Chat",
             op_state_store::SideEffect::Read,
             false,
-            "cap.software.3tched-router.chat@v1",
-            "exp.service.3tched-router.chat@v1",
+            "cap.software.threetched.chat@v1",
+            "exp.service.threetched.chat@v1",
         ),
     );
     schema.methods.insert(
@@ -1946,8 +1946,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "ListModels",
             op_state_store::SideEffect::Read,
             true,
-            "cap.software.3tched-router.models.read@v1",
-            "obs.service.3tched-router.models.list@v1",
+            "cap.software.threetched.models.read@v1",
+            "obs.service.threetched.models.list@v1",
         ),
     );
     schema.methods.insert(
@@ -1956,8 +1956,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetProvider",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.provider.set@v1",
-            "mut.service.3tched-router.provider.set@v1",
+            "cap.software.threetched.provider.set@v1",
+            "mut.service.threetched.provider.set@v1",
         ),
     );
     schema.methods.insert(
@@ -1966,8 +1966,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetModel",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.model.set@v1",
-            "mut.service.3tched-router.model.set@v1",
+            "cap.software.threetched.model.set@v1",
+            "mut.service.threetched.model.set@v1",
         ),
     );
     schema.methods.insert(
@@ -1976,8 +1976,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetSelection",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.selection.set@v1",
-            "mut.service.tched-router.selection.set@v1",
+            "cap.software.threetched.selection.set@v1",
+            "mut.service.threetched.selection.set@v1",
         ),
     );
     schema.methods.insert(
@@ -1986,8 +1986,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetOvsRoutingModel",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.model-assignments.ovs-routing.set@v1",
-            "mut.service.3tched-router.model-assignments.ovs-routing.set@v1",
+            "cap.software.threetched.model-assignments.ovs-routing.set@v1",
+            "mut.service.threetched.model-assignments.ovs-routing.set@v1",
         ),
     );
     schema.methods.insert(
@@ -1996,8 +1996,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetObfuscationModel",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.model-assignments.obfuscation.set@v1",
-            "mut.service.3tched-router.model-assignments.obfuscation.set@v1",
+            "cap.software.threetched.model-assignments.obfuscation.set@v1",
+            "mut.service.threetched.model-assignments.obfuscation.set@v1",
         ),
     );
     schema.methods.insert(
@@ -2009,8 +2009,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetVectorizationModel",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.model-assignments.vectorization.set@v1",
-            "mut.service.3tched-router.model-assignments.vectorization.set@v1",
+            "cap.software.threetched.model-assignments.vectorization.set@v1",
+            "mut.service.threetched.model-assignments.vectorization.set@v1",
         ),
     );
     schema.methods.insert(
@@ -2022,8 +2022,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetQdrantRetrievalModel",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.model-assignments.qdrant-retrieval.set@v1",
-            "mut.service.3tched-router.model-assignments.qdrant-retrieval.set@v1",
+            "cap.software.threetched.model-assignments.qdrant-retrieval.set@v1",
+            "mut.service.threetched.model-assignments.qdrant-retrieval.set@v1",
         ),
     );
     schema.methods.insert(
@@ -2035,8 +2035,8 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetCozoRetrievalModel",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.model-assignments.cozo-retrieval.set@v1",
-            "mut.service.3tched-router.model-assignments.cozo-retrieval.set@v1",
+            "cap.software.threetched.model-assignments.cozo-retrieval.set@v1",
+            "mut.service.threetched.model-assignments.cozo-retrieval.set@v1",
         ),
     );
 
@@ -2063,14 +2063,14 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "GetConfig",
             SideEffect::Read,
             true,
-            "cap.software.3tched-router.config.read@v1",
-            "obs.service.3tched-router.config.get@v1",
+            "cap.software.threetched.config.read@v1",
+            "obs.service.threetched.config.get@v1",
         ),
     );
     schema.capabilities.insert(
-        "cap.software.3tched-router.config.read@v1".to_string(),
+        "cap.software.threetched.config.read@v1".to_string(),
         CapabilityDecl {
-            id: "cap.software.3tched-router.config.read@v1".to_string(),
+            id: "cap.software.threetched.config.read@v1".to_string(),
             description: "Read the full 3tched Router configuration (secrets masked).".to_string(),
         },
     );
@@ -2080,14 +2080,14 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "PatchConfig",
             SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.config.write@v1",
-            "mut.service.3tched-router.config.patch@v2",
+            "cap.software.threetched.config.write@v1",
+            "mut.service.threetched.config.patch@v2",
         ),
     );
     schema.capabilities.insert(
-        "cap.software.3tched-router.config.write@v1".to_string(),
+        "cap.software.threetched.config.write@v1".to_string(),
         CapabilityDecl {
-            id: "cap.software.3tched-router.config.write@v1".to_string(),
+            id: "cap.software.threetched.config.write@v1".to_string(),
             description: "Apply bounded typed 3tched Router configuration property operations."
                 .to_string(),
         },
@@ -2102,14 +2102,14 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "GetMcpConfig",
             SideEffect::Read,
             true,
-            "cap.software.3tched-router.mcp-config.read@v1",
-            "obs.service.3tched-router.mcp-config.get@v1",
+            "cap.software.threetched.mcp-config.read@v1",
+            "obs.service.threetched.mcp-config.get@v1",
         ),
     );
     schema.capabilities.insert(
-        "cap.software.3tched-router.mcp-config.read@v1".to_string(),
+        "cap.software.threetched.mcp-config.read@v1".to_string(),
         CapabilityDecl {
-            id: "cap.software.3tched-router.mcp-config.read@v1".to_string(),
+            id: "cap.software.threetched.mcp-config.read@v1".to_string(),
             description: "Read the 3tched Router `mcp` configuration (secrets masked).".to_string(),
         },
     );
@@ -2156,8 +2156,8 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             "apply_catalog_model_binding",
             SideEffect::Mutation,
             false,
-            "cap.software.3tched-router.catalog.selection.set@v1",
-            "mut.software.tched-router.catalog-model-binding@v1",
+            "cap.software.threetched.catalog.selection.set@v1",
+            "mut.software.threetched.catalog-model-binding@v1",
         ),
     );
     schema.methods.insert(
@@ -2169,8 +2169,8 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             "resolve_catalog_model_binding",
             SideEffect::Read,
             true,
-            "cap.software.3tched-router.model.binding.read@v1",
-            "obs.software.tched-router.catalog-model-binding@v1",
+            "cap.software.threetched.model.binding.read@v1",
+            "obs.software.threetched.catalog-model-binding@v1",
         ),
     );
     schema.methods.insert(
@@ -2179,12 +2179,12 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             "get_own_agent_route",
             SideEffect::Read,
             true,
-            "cap.software.3tched-router.agent.route.self.read@v1",
-            "obs.software.tched-router.agent-route-self@v1",
+            "cap.software.threetched.agent.route.self.read@v1",
+            "obs.software.threetched.agent-route-self@v1",
         ),
     );
-    let read_capability = "cap.software.3tched-router.router.read@v1";
-    let write_capability = "cap.software.3tched-router.router.write@v1";
+    let read_capability = "cap.software.threetched.router.read@v1";
+    let write_capability = "cap.software.threetched.router.write@v1";
     schema.methods.insert(
         "config_list".to_string(),
         method_decl_from_schemars_with_output::<ConfigListInput, ConfigListOutput>(
@@ -2192,7 +2192,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             SideEffect::Read,
             true,
             read_capability,
-            "obs.software.tched-router.config-list@v2",
+            "obs.software.threetched.config-list@v2",
         ),
     );
     schema.methods.insert(
@@ -2202,7 +2202,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             SideEffect::Read,
             true,
             read_capability,
-            "obs.software.tched-router.config-get@v2",
+            "obs.software.threetched.config-get@v2",
         ),
     );
     schema.methods.insert(
@@ -2212,7 +2212,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             SideEffect::Mutation,
             false,
             write_capability,
-            "mut.software.tched-router.config-set@v2",
+            "mut.software.threetched.config-set@v2",
         ),
     );
     schema.methods.insert(
@@ -2222,7 +2222,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             SideEffect::Mutation,
             false,
             write_capability,
-            "mut.software.tched-router.config-patch@v2",
+            "mut.software.threetched.config-patch@v2",
         ),
     );
     schema.methods.insert(
@@ -2232,7 +2232,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             SideEffect::Mutation,
             false,
             write_capability,
-            "mut.software.tched-router.config-init@v2",
+            "mut.software.threetched.config-init@v2",
         ),
     );
     schema.methods.insert(
@@ -2242,7 +2242,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             SideEffect::Mutation,
             false,
             write_capability,
-            "mut.software.tched-router.config-migrate@v2",
+            "mut.software.threetched.config-migrate@v2",
         ),
     );
     schema.capabilities.insert(
@@ -2265,95 +2265,95 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
 /// Capabilities gated by the hand-carried (non-generated) methods.
 const CARRIED_CAPABILITIES: &[(&str, &str)] = &[
     (
-        "cap.software.3tched-router.state.read@v1",
+        "cap.software.threetched.state.read@v1",
         "Read the full 3tched Router declared state.",
     ),
     (
-        "cap.software.3tched-router.providers.read@v1",
+        "cap.software.threetched.providers.read@v1",
         "Read the declared provider catalog.",
     ),
     (
-        "cap.software.3tched-router.provider.set@v1",
+        "cap.software.threetched.provider.set@v1",
         "Select the active provider.",
     ),
     (
-        "cap.software.3tched-router.routes.read@v1",
+        "cap.software.threetched.routes.read@v1",
         "Read declared model routes.",
     ),
     (
-        "cap.software.3tched-router.models.read@v1",
+        "cap.software.threetched.models.read@v1",
         "List models, optionally filtered by provider.",
     ),
     (
-        "cap.software.3tched-router.model.set@v1",
+        "cap.software.threetched.model.set@v1",
         "Select the active model.",
     ),
     (
-        "cap.software.3tched-router.route.resolve@v1",
+        "cap.software.threetched.route.resolve@v1",
         "Resolve a route hint to a declared model route.",
     ),
     (
-        "cap.software.3tched-router.router.read@v1",
+        "cap.software.threetched.router.read@v1",
         "Read the router configuration.",
     ),
     (
-        "cap.software.3tched-router.tools.read@v1",
+        "cap.software.threetched.tools.read@v1",
         "Read the declared LLM tool catalog.",
     ),
     (
-        "cap.software.3tched-router.ui-surfaces.read@v1",
+        "cap.software.threetched.ui-surfaces.read@v1",
         "List registered UI surfaces.",
     ),
     (
-        "cap.software.3tched-router.structured-output.read@v1",
+        "cap.software.threetched.structured-output.read@v1",
         "Read the structured-output contract.",
     ),
     (
-        "cap.software.3tched-router.chat@v1",
+        "cap.software.threetched.chat@v1",
         "Send a chat turn through the bridge-owned dispatcher.",
     ),
     (
-        "cap.software.3tched-router.router.read@v1",
+        "cap.software.threetched.router.read@v1",
         "Read chat_router configuration via config_list/get.",
     ),
     (
-        "cap.software.3tched-router.agent.route.self.read@v1",
+        "cap.software.threetched.agent.route.self.read@v1",
         "Read only the dedicated native route selected by the caller's persisted chat mode.",
     ),
     (
-        "cap.software.3tched-router.model.binding.read@v1",
+        "cap.software.threetched.model.binding.read@v1",
         "Resolve one available catalog model to a verified ordinary native profile and safe endpoint.",
     ),
     (
-        "cap.software.3tched-router.catalog.selection.set@v1",
+        "cap.software.threetched.catalog.selection.set@v1",
         "Apply one verified available catalog model only to an allowed ordinary native profile.",
     ),
     (
-        "cap.software.3tched-router.selection.set@v1",
+        "cap.software.threetched.selection.set@v1",
         "Select the active provider and model together.",
     ),
     (
-        "cap.software.3tched-router.router.write@v1",
+        "cap.software.threetched.router.write@v1",
         "Mutate chat_router configuration via config_set/patch.",
     ),
     (
-        "cap.software.3tched-router.model-assignments.ovs-routing.set@v1",
+        "cap.software.threetched.model-assignments.ovs-routing.set@v1",
         "Set the OVS-routing model assignment.",
     ),
     (
-        "cap.software.3tched-router.model-assignments.obfuscation.set@v1",
+        "cap.software.threetched.model-assignments.obfuscation.set@v1",
         "Set the obfuscation model assignment.",
     ),
     (
-        "cap.software.3tched-router.model-assignments.vectorization.set@v1",
+        "cap.software.threetched.model-assignments.vectorization.set@v1",
         "Set the vectorization model assignment.",
     ),
     (
-        "cap.software.3tched-router.model-assignments.qdrant-retrieval.set@v1",
+        "cap.software.threetched.model-assignments.qdrant-retrieval.set@v1",
         "Set the Qdrant-retrieval model assignment.",
     ),
     (
-        "cap.software.3tched-router.model-assignments.cozo-retrieval.set@v1",
+        "cap.software.threetched.model-assignments.cozo-retrieval.set@v1",
         "Set the Cozo-retrieval model assignment.",
     ),
 ];
@@ -2651,7 +2651,7 @@ mod tests {
         let apply = &schema.methods["apply_catalog_model_binding"];
         assert_eq!(
             apply.required_capability.as_deref(),
-            Some("cap.software.3tched-router.catalog.selection.set@v1")
+            Some("cap.software.threetched.catalog.selection.set@v1")
         );
         assert_ne!(method.required_capability, apply.required_capability);
         assert_eq!(method.side_effect, op_state_store::SideEffect::Read);
@@ -2662,7 +2662,7 @@ mod tests {
         assert_eq!(method.returns, apply.returns);
         assert_eq!(
             method.required_capability.as_deref(),
-            Some("cap.software.3tched-router.model.binding.read@v1")
+            Some("cap.software.threetched.model.binding.read@v1")
         );
         assert!(schema.fields["catalog_model_binding"].read_only);
         let op_state_store::FieldType::JsonSchema(field_schema) =
@@ -2713,7 +2713,7 @@ mod tests {
         let method = &schema.methods["get_own_agent_route"];
         assert_eq!(
             method.required_capability.as_deref(),
-            Some("cap.software.3tched-router.agent.route.self.read@v1")
+            Some("cap.software.threetched.agent.route.self.read@v1")
         );
         let input =
             serde_json::to_value(schemars::schema_for!(super::GetOwnAgentRouteInput)).unwrap();

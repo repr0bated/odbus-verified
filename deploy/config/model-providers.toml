@@ -20,7 +20,7 @@
 # ~/.bash_secrets variable it is installed from), enabled (default true),
 # native_provider_id (the exact ordinary-selection family.alias, separate
 # from id), inference_url_prefix (the platform API namespace the route
-# checks require), and control_plane: the tched-router profile (family.alias)
+# checks require), and control_plane: the threetched profile (family.alias)
 # that serves this provider's models for the Control Plane, plus any
 # alternative profiles the provider offers (another wire format on the same
 # provider). A key is only ever sent to its own provider.

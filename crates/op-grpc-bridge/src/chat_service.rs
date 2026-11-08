@@ -38,7 +38,7 @@ use crate::proto::chat::{
 };
 
 const CHAT_PLUGIN_ID: &str = "chat_router";
-const ROUTER_CHAT_CAPABILITY: &str = "cap.software.3tched-router.chat@v1";
+const ROUTER_CHAT_CAPABILITY: &str = "cap.software.threetched.chat@v1";
 
 // Conversation/tool ids are client-controlled correlation labels, never an
 // authorization boundary. Include both stable principal and verified session.
@@ -770,8 +770,8 @@ mod tests {
         }
         let _restore = Restore(
             [
-                "TCHED_ROUTER_RUNTIME_ENDPOINT",
-                "TCHED_ROUTER_RUNTIME_TOKEN",
+                "THREETCHED_RUNTIME_ENDPOINT",
+                "THREETCHED_RUNTIME_TOKEN",
                 "OP_GRANTS_PATH",
             ]
             .into_iter()
@@ -788,9 +788,9 @@ mod tests {
         );
         let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
         // FIXME: Audit that the environment access only happens in single-threaded code.
-        unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", endpoint) };
+        unsafe { std::env::set_var("THREETCHED_RUNTIME_ENDPOINT", endpoint) };
         // FIXME: Audit that the environment access only happens in single-threaded code.
-        unsafe { std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN") };
+        unsafe { std::env::remove_var("THREETCHED_RUNTIME_TOKEN") };
         let event_chain = Arc::new(tokio::sync::RwLock::new(op_state_store::EventChain::new(
             op_state_store::ChainConfig::default(),
         )));

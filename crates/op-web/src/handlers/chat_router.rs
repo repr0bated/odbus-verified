@@ -202,7 +202,7 @@ pub async fn chat_router_chat_handler(
     let result = match call_chat_router_method(
         &headers,
         "Chat",
-        "cap.software.3tched-router.chat@v1",
+        "cap.software.threetched.chat@v1",
         serde_json::json!({
             "messages": messages,
             "provider": req.provider.unwrap_or_default(),
@@ -297,7 +297,7 @@ pub async fn openai_models_handler(
     let result = match call_chat_router_method(
         &headers,
         "ListModels",
-        "cap.software.3tched-router.models.read@v1",
+        "cap.software.threetched.models.read@v1",
         serde_json::json!({}),
     )
     .await
@@ -442,7 +442,7 @@ fn compatibility_openapi(schema: Option<&Value>) -> Value {
                     }
                 }
             },
-            "/api/tched-router/chat": {
+            "/api/threetched/chat": {
                 "post": {
                     "operationId": "chat_router.Chat",
                     "responses": {
@@ -471,7 +471,7 @@ fn compatibility_openapi(schema: Option<&Value>) -> Value {
 /// Combines the locally-derived HTTP adapter document with the 3tched Router plugin
 /// projection (providers, model_routes, tools, structured_output) so the
 /// frontend can render the entire chat interface from a single schema.
-/// GET /api/tched-router/schema
+/// GET /api/threetched/schema
 pub async fn chat_router_schema_handler(Extension(_state): Extension<Arc<AppState>>) -> Response {
     // Read 3tched Router state directly from the SHM state tree. Fall back to the
     // sealed PluginSchema blob so the schema surface still renders when no

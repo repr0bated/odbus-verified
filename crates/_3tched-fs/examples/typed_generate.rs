@@ -292,11 +292,11 @@ fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
     let input = PathBuf::from(
         args.next()
-            .unwrap_or_else(|| "crates/threetched-fs/docs/typed-filesystem.schema.json".into()),
+            .unwrap_or_else(|| "crates/_3tched-fs/docs/typed-filesystem.schema.json".into()),
     );
     let output = PathBuf::from(
         args.next()
-            .unwrap_or_else(|| "crates/threetched-fs/src/typed_bindings.rs".into()),
+            .unwrap_or_else(|| "crates/_3tched-fs/src/typed_bindings.rs".into()),
     );
     let check = args.next().as_deref() == Some("--check");
     ensure!(

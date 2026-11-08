@@ -54,8 +54,8 @@ in `threetched-surface.rs`. Its methods and capture evidence enter the plugin's
 `PluginSchema`; `opblob` seals that contract. Production mounts project it from
 the catalog through the ordinary namespace builder. No extra mount argument,
 mount-time command discovery or separately written schema file is needed.
-The `tched_fs` plugin describes our filesystem protocol itself. Our executable
-is `3tched-fs` (Cargo package `tched-fs`); the upstream executable remains
+The `_3tched_fs` plugin describes our filesystem protocol itself. Our executable
+is `3tched-fs` (Cargo package `_3tched-fs`); the upstream executable remains
 `threetched`. Host mounts separate our OP-DBUS plugins at
 `/run/mounts/3tchedFS` from the upstream integration plugins at
 `/run/mounts/threetched`, using `capture --exclude-plugin` and
@@ -78,7 +78,7 @@ namespace descriptors, native instance UUID/init PID and the active principal
 registry are rechecked for operations. The canonical runtime performs exact
 sealed-method and grant admission and owns durable attempt/terminal receipts.
 Lost replies and cancellation never imply that retrying is safe; recover the
-operation through the declared `tched_fs.get_method_receipt` method under the
+operation through the declared `_3tched_fs.get_method_receipt` method under the
 same principal and session. Mount presence is not bridge startup readiness,
 method authorization or evidence of backend completion.
 
@@ -220,11 +220,11 @@ Mutation and external operations additionally require
 Calls can use an existing identity-bound FUSE mount directly:
 
 ```sh
-threetched-fs call demo get_status --mount /run/mount/3tchedFS --args '{}'
+3tched-fs call demo get_status --mount /run/mount/3tchedFS --args '{}'
 # Optionally require the mount's declared session to match an expected owner:
-threetched-fs call demo get_status --mount /run/mount/3tchedFS --expected-session <session-id> --args '{}'
+3tched-fs call demo get_status --mount /run/mount/3tchedFS --expected-session <session-id> --args '{}'
 # Or use the exact mount-relative operation path discovered in the namespace:
-threetched-fs invoke plugins/demo/operations/get_status/call --mount /run/mount/3tchedFS --args '{}'
+3tched-fs invoke plugins/demo/operations/get_status/call --mount /run/mount/3tchedFS --args '{}'
 ```
 
 Mounted mode reads the catalog and target method's sealed declarations through that
@@ -242,18 +242,18 @@ path relative to the selected mount. Absolute paths, shortcut symlinks,
 noncanonical encodings and traversal are rejected. A call reads only its target
 plugin's object and schema; unrelated catalog members are not opened.
 
-The `tched_fs` plugin (display name `3tchedFS`) at
-`/org/opdbus/v1/plugins/tched_fs` declares one
+The `_3tched_fs` plugin (display name `3tchedFS`) at
+`/org/opdbus/v1/plugins/_3tched_fs` declares one
 `get_protocol` method describing this filesystem invocation protocol. When the
 mount's pinned catalog contains that plugin, `.3tchedfs.json` includes an
-`invocation` reference to `/plugins/tched_fs/data/invocation/.value.json`; the descriptor
+`invocation` reference to `/plugins/_3tched_fs/data/invocation/.value.json`; the descriptor
 remains defined by the plugin's sealed schema. Exposing the new plugin requires
 catalog sealing and release activation. The `invoke` helper also works with
 existing compatible identity mounts that do not yet contain that plugin.
 
 ## MCP server (the identity's own)
 
-`threetched-fs mcp` serves one identity over MCP on stdio, using the reference
+`3tched-fs mcp` serves one identity over MCP on stdio, using the reference
 Rust SDK (`rmcp`). Any IDE that launches an MCP server can use it; the IDE
 holds no credential, because the connection is the identity.
 
@@ -265,7 +265,7 @@ the mount:
 {
   "mcpServers": {
     "opdbus": {
-      "command": "threetched-fs",
+      "command": "3tched-fs",
       "args": ["mcp", "--mount", "/run/mount/3tchedFS",
                "--expected-session", "<session-id>"]
     }
@@ -280,7 +280,7 @@ its captured view and the lungs socket:
 {
   "mcpServers": {
     "opdbus": {
-      "command": "threetched-fs",
+      "command": "3tched-fs",
       "args": ["--store", "/usr/share/op-dbus/lungs-view", "mcp",
                "--state", "/usr/share/op-dbus/lungs-empty-state",
                "--lungs-socket", "/run/opdbus/lungs/lungs.sock"]
@@ -316,7 +316,7 @@ supply `--lungs-session <session>`.
   catalog, one per plugin, so there is no hand-kept manifest. Loading only
   shapes the list: the identity can still call any method it is granted.
   `--load <set>` preloads, `--all` lists every method.
-- **EMQX**: `--announce-toolsets` (or `threetched-fs toolsets --publish`)
+- **EMQX**: `--announce-toolsets` (or `3tched-fs toolsets --publish`)
   feeds the manifest to the broker through the sealed
   `emqx.publish_toolsets` method, as this identity. The broker keeps it
   retained on `opdbus/toolsets`; only live identities may subscribe, and
@@ -369,7 +369,7 @@ been run for this integration while the owner's build hold is in effect.
 1. **Make the feature exist upstream.** If the selected threetched binary already
    advertises the command and its flags in `--help`, no method table or argument
    struct needs adding here. If it does not, implement or obtain it in the
-   pinned upstream source first. Update `vendor/tched-router/source.pin`, the
+   pinned upstream source first. Update `vendor/threetched/source.pin`, the
    source archive, reviewed patches and their digests together when changing
    that upstream input. A runtime WASM extension with only exported tool schemas
    is a different surface; its tools cannot be inferred from CLI help.
@@ -378,16 +378,16 @@ been run for this integration while the owner's build hold is in effect.
    assigned Cargo worker run the existing recipe on the GNU host toolchain:
 
    ```sh
-   vendor/tched-router/build-threetched.sh \
-     --cache-dir /var/cache/op-dbus-build/tched-router \
-     --output-dir target/threetched-artifacts/tched-router
+   vendor/threetched/build-threetched.sh \
+     --cache-dir /var/cache/op-dbus-build/threetched \
+     --output-dir target/threetched-artifacts/threetched
    ```
 
    The result is `threetched` plus `manifest.json`. The helper verifies source
    and patch provenance and checks the binary; it does not install or activate
    it. Inspect the actual new command's `--help` and `config schema`. If the
    configuration contract changed, replace the sole UPSTREAM IMPORT block in
-   `tched_router_contract.rs` with the verified binary output and record its
+   `threetched_contract.rs` with the verified binary output and record its
    provenance. That configuration document does not define CLI flag types.
 
 3. **Select capture inputs separately from installed paths.** Use the same
@@ -395,10 +395,10 @@ been run for this integration while the owner's build hold is in effect.
    evidence and the sealed declarations agree:
 
    ```sh
-   export THREETCHED_CAPTURE_BIN="$PWD/target/threetched-artifacts/tched-router/threetched"
-   export THREETCHED_CAPTURE_MANIFEST="$PWD/target/threetched-artifacts/tched-router/manifest.json"
+   export THREETCHED_CAPTURE_BIN="$PWD/target/threetched-artifacts/threetched/threetched"
+   export THREETCHED_CAPTURE_MANIFEST="$PWD/target/threetched-artifacts/threetched/manifest.json"
    export THREETCHED_BIN=/usr/bin/threetched
-   export THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json
+   export THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/threetched.json
    export COGNITIVE_QDRANT_URL=http://10.200.0.2:6334
    ```
 
@@ -472,9 +472,9 @@ been run for this integration while the owner's build hold is in effect.
    `plugins/threetched/schema.json` lists the method, then read its
    `operations/<encoded-method>/input.schema.json`, `output.schema.json` and
    `metadata.json`. The corresponding `call` file must exist. Use
-   `threetched-fs describe --mount <mount> --expected-session <session> --plugin threetched`
+   `3tched-fs describe --mount <mount> --expected-session <session> --plugin threetched`
    to discover the current surface. Invoke the selected method through that
-   same mount using `threetched-fs call threetched <method> --mount <mount>
+   same mount using `3tched-fs call threetched <method> --mount <mount>
    --expected-session <session> --args-file <arguments.json> --confirm-side-effects`.
    Verify its terminal operation receipt and the authoritative resulting state.
    Also verify denial with an ungranted test identity and rejection of unknown
@@ -502,9 +502,9 @@ limit, while PublicState is supported. Generation is not compilation or runtime
 verification.
 
 For a replacement catalog, use the existing `typed_specialize` generator with
-`--catalog <catalog>`, `--out-file crates/threetched-fs/generated/plugin_types.rs`,
-`--report crates/threetched-fs/docs/typed-specialization-report.json`, and
-`--use-example crates/threetched-fs/examples/typed_use_generated.rs` together.
+`--catalog <catalog>`, `--out-file crates/_3tched-fs/generated/plugin_types.rs`,
+`--report crates/_3tched-fs/docs/typed-specialization-report.json`, and
+`--use-example crates/_3tched-fs/examples/typed_use_generated.rs` together.
 The optional last output keeps the example's module name aligned with the
 sealed plugin ID. Do not mechanically rename a captured ID while retaining an
 old schema hash. Runtime discovery derives paths and contracts from the selected

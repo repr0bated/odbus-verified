@@ -27,7 +27,7 @@ fn visit(value: &Value, visitor: &mut impl FnMut(&str, &Value) -> Result<()>) ->
 fn main() -> Result<()> {
     let path = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| "crates/threetched-fs/docs/typed-filesystem.schema.json".to_owned());
+        .unwrap_or_else(|| "crates/_3tched-fs/docs/typed-filesystem.schema.json".to_owned());
     let schema: Value = serde_json::from_slice(&std::fs::read(&path)?)?;
     jsonschema::draft202012::meta::validate(&schema)
         .map_err(|error| anyhow::anyhow!("invalid JSON Schema 2020-12: {error}"))?;

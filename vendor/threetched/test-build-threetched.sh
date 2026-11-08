@@ -3,7 +3,7 @@
 
 package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$package_dir/source.pin"
-test_root=$(mktemp -d "/tmp/tched-router-threetched-test.XXXXXX")
+test_root=$(mktemp -d "/tmp/threetched-threetched-test.XXXXXX")
 cleanup() {
     rm -rf -- "$test_root"
 }

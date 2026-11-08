@@ -74,9 +74,9 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         crate::oracle_assertion::DecoyTrustStore::load(),
     ).context("initialize durable oracle replay admission")?);
     let runtime = Arc::new(Runtime::open(catalog, catalog_dir, database).await?);
-    let cert = std::env::var_os("TCHED_ROUTER_TLS_CERT_FILE").map(PathBuf::from)
+    let cert = std::env::var_os("THREETCHED_TLS_CERT_FILE").map(PathBuf::from)
         .unwrap_or_else(|| "/etc/op-dbus/tls/tonic-svc0.crt".into());
-    let key = std::env::var_os("TCHED_ROUTER_TLS_KEY_FILE").map(PathBuf::from)
+    let key = std::env::var_os("THREETCHED_TLS_KEY_FILE").map(PathBuf::from)
         .unwrap_or_else(|| "/etc/op-dbus/tls/tonic-svc0.key".into());
     let service = BridgeService::production(runtime.clone(), oracle.clone());
     let door = crate::server::bind_production(addr, service, PemIdentity::from_root_owned_files(cert, key)?).await?;

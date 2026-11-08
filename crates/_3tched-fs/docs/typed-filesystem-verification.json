@@ -31,8 +31,8 @@
       },
       "generated_binding_compile": {
         "status": "passed",
-        "generator_input": "crates/threetched-fs/docs/typed-filesystem.schema.json",
-        "output": "crates/threetched-fs/src/typed_bindings.rs",
+        "generator_input": "crates/_3tched-fs/docs/typed-filesystem.schema.json",
+        "output": "crates/_3tched-fs/src/typed_bindings.rs",
         "compile_integration": "examples/typed_check.rs includes the generated module, runtime and existing authoritative source modules; main.rs and production binary integration were not changed",
         "deterministic_regeneration": "passed --check against the complete schema",
         "logs": [
@@ -42,7 +42,7 @@
       },
       "tests": {
         "status": "passed",
-        "command": "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check",
+        "command": "cargo test -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_check",
         "passed": 31,
         "failed": 0,
         "ignored": 0,
@@ -70,7 +70,7 @@
       },
       "scoped_clippy": {
         "status": "passed",
-        "command": "cargo clippy -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate --example typed_validate --example typed_check -- -D warnings",
+        "command": "cargo clippy -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_generate --example typed_validate --example typed_check -- -D warnings",
         "log": "/var/tmp/fs-schema-20261005-final2-clippy.log"
       },
       "workspace_verify": {
@@ -92,11 +92,11 @@
       ],
       "deployment": "not deployed; no service, mount, grant, catalog or live state mutation",
       "reproduction": [
-        "sh crates/threetched-fs/docs/typed-filesystem-build.sh",
-        "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs",
-        "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs --check",
-        "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_validate",
-        "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check"
+        "sh crates/_3tched-fs/docs/typed-filesystem-build.sh",
+        "cargo run -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/_3tched-fs/docs/typed-filesystem.schema.json crates/_3tched-fs/src/typed_bindings.rs",
+        "cargo run -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/_3tched-fs/docs/typed-filesystem.schema.json crates/_3tched-fs/src/typed_bindings.rs --check",
+        "cargo run -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_validate",
+        "cargo test -p 3tched-fs --target x86_64-unknown-linux-gnu --example typed_check"
       ],
       "execution_routing": "Cargo commands run from repository root through the assigned gpt-6-luna execution worker with CARGO_CALLER_FAMILY=gpt and CARGO_DISPATCHED=1; normal callers follow scripts/cargo-dispatch.md."
     },
@@ -121,9 +121,9 @@
           "source_change": "Remove TypedFuse.live_cache and StateKey memoization. Each open should obtain an authorized committed snapshot through the canonical reader and decode it into a bounded transient handle buffer. Drop buffers on release; do not add per-mount, cross-mount or SHM result caches. Audit the existing one-second view metadata TTL against the same no-cache policy.",
           "payoff": "Conforms read behavior and memory ownership to the owner's no-cache policy.",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:17-35",
-            "crates/threetched-fs/src/fuse_fs.rs:92-93",
-            "crates/threetched-fs/src/fuse_fs.rs:314-342"
+            "crates/_3tched-fs/src/fuse_fs.rs:17-35",
+            "crates/_3tched-fs/src/fuse_fs.rs:92-93",
+            "crates/_3tched-fs/src/fuse_fs.rs:314-342"
           ]
         },
         {
@@ -140,10 +140,10 @@
           "source_change": "Use read_projection_snapshot_bounded_in (or an identity-scoped equivalent owned by the existing backend) in capture and live reads; apply the plugin-owned exposure policy with verified caller scope before projection. Return a typed unavailable/incomplete-publication result instead of silently substituting defaults when authority is required.",
           "payoff": "Makes direct and mounted reads agree on committed state and identity boundaries; prerequisite to safe direct-shm access.",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:314-342",
-            "crates/threetched-fs/src/source.rs:40-43",
-            "crates/threetched-fs/src/source.rs:53-78",
-            "crates/threetched-fs/src/source.rs:86-123",
+            "crates/_3tched-fs/src/fuse_fs.rs:314-342",
+            "crates/_3tched-fs/src/source.rs:40-43",
+            "crates/_3tched-fs/src/source.rs:53-78",
+            "crates/_3tched-fs/src/source.rs:86-123",
             "crates/op-core/src/projection_transactions.rs:279-305",
             "crates/op-core/src/projection_transactions.rs:425-489"
           ]
@@ -162,10 +162,10 @@
           "source_change": "Keep mutations on the existing authenticated dispatch path. If a native typed transport is needed, expose the existing declaration, validation, identity, capability, audit and receipt contract through that owner rather than adding a store writer.",
           "payoff": "Preserves identity and audit semantics while allowing generated typed arguments and results.",
           "source_refs": [
-            "crates/threetched-fs/src/store.rs:143-189",
-            "crates/threetched-fs/src/fuse_fs.rs:187-253",
-            "crates/threetched-fs/src/dispatch.rs:190-252",
-            "crates/threetched-fs/src/mounted.rs:284-333"
+            "crates/_3tched-fs/src/store.rs:143-189",
+            "crates/_3tched-fs/src/fuse_fs.rs:187-253",
+            "crates/_3tched-fs/src/dispatch.rs:190-252",
+            "crates/_3tched-fs/src/mounted.rs:284-333"
           ]
         },
         {
@@ -184,7 +184,7 @@
             "crates/op-grpc-bridge/src/mutation_engine.rs:3483-3559",
             "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922",
             "crates/op-grpc-bridge/src/owned_method_task.rs:15-38",
-            "crates/threetched-fs/src/mounted.rs:327-333"
+            "crates/_3tched-fs/src/mounted.rs:327-333"
           ]
         },
         {
@@ -203,12 +203,12 @@
           "source_change": "Specialize this generator against an explicitly pinned sealed PluginSchema catalog, using the existing schema authority for input/output definitions; carry the schema hash in generated method handles and reject a different catalog. Keep plugin custom validation in canonical dispatch.",
           "payoff": "Compile-time per-plugin fields and tighter return types without a second plugin schema authority.",
           "source_refs": [
-            "crates/threetched-fs/src/model.rs:202-219",
-            "crates/threetched-fs/src/model.rs:269-286",
-            "crates/threetched-fs/src/model.rs:361-364",
-            "crates/threetched-fs/src/model.rs:371-381",
-            "crates/threetched-fs/src/model.rs:413-421",
-            "crates/threetched-fs/src/dispatch.rs:103-108"
+            "crates/_3tched-fs/src/model.rs:202-219",
+            "crates/_3tched-fs/src/model.rs:269-286",
+            "crates/_3tched-fs/src/model.rs:361-364",
+            "crates/_3tched-fs/src/model.rs:371-381",
+            "crates/_3tched-fs/src/model.rs:413-421",
+            "crates/_3tched-fs/src/dispatch.rs:103-108"
           ]
         },
         {
@@ -225,10 +225,10 @@
           "source_change": "Add an explicit generation-pinned topology refresh owned by the filesystem, or define schema-backed map/array enumeration with a separate typed generation token. Update inode/cache invalidation at the same boundary.",
           "payoff": "Reliable typed enumeration of changing collections.",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:119-172",
-            "crates/threetched-fs/src/namespace.rs:323-423",
-            "crates/threetched-fs/src/fuse_fs.rs:329-342",
-            "crates/threetched-fs/src/fuse_fs.rs:346-360"
+            "crates/_3tched-fs/src/namespace.rs:119-172",
+            "crates/_3tched-fs/src/namespace.rs:323-423",
+            "crates/_3tched-fs/src/fuse_fs.rs:329-342",
+            "crates/_3tched-fs/src/fuse_fs.rs:346-360"
           ]
         },
         {
@@ -246,10 +246,10 @@
           "source_change": "Provide an explicit store-generation notification and mount refresh acknowledgement through the filesystem owner; define conflict detection/versioned compare-and-swap for stale same-field writes if needed.",
           "payoff": "Safe direct workspace staging and clear post-write consistency.",
           "source_refs": [
-            "crates/threetched-fs/src/store.rs:143-189",
-            "crates/threetched-fs/src/store.rs:385-407",
-            "crates/threetched-fs/src/fuse_fs.rs:363-405",
-            "crates/threetched-fs/src/fuse_fs.rs:576-632"
+            "crates/_3tched-fs/src/store.rs:143-189",
+            "crates/_3tched-fs/src/store.rs:385-407",
+            "crates/_3tched-fs/src/fuse_fs.rs:363-405",
+            "crates/_3tched-fs/src/fuse_fs.rs:576-632"
           ]
         },
         {
@@ -266,11 +266,11 @@
           "source_change": "If durable retrieval is required, add a caller-scoped operation ID and immutable terminal receipt location owned by canonical dispatch. Do not use shared last-result files for correlation.",
           "payoff": "Reliable correlation and recovery after caller disconnect.",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:48-56",
-            "crates/threetched-fs/src/fuse_fs.rs:77-93",
-            "crates/threetched-fs/src/fuse_fs.rs:145-184",
-            "crates/threetched-fs/src/fuse_fs.rs:367-389",
-            "crates/threetched-fs/src/mounted.rs:264-282"
+            "crates/_3tched-fs/src/fuse_fs.rs:48-56",
+            "crates/_3tched-fs/src/fuse_fs.rs:77-93",
+            "crates/_3tched-fs/src/fuse_fs.rs:145-184",
+            "crates/_3tched-fs/src/fuse_fs.rs:367-389",
+            "crates/_3tched-fs/src/mounted.rs:264-282"
           ]
         },
         {
@@ -286,8 +286,8 @@
           "source_change": "Generate correct relative targets for operation/capability/dependency aliases, or formally constrain the mount to the process root and enforce that constraint.",
           "payoff": "Aliases work reliably at arbitrary mount locations.",
           "source_refs": [
-            "crates/threetched-fs/src/namespace.rs:186-211",
-            "crates/threetched-fs/src/fuse_fs.rs:535-541"
+            "crates/_3tched-fs/src/namespace.rs:186-211",
+            "crates/_3tched-fs/src/fuse_fs.rs:535-541"
           ]
         },
         {
@@ -305,12 +305,12 @@
           "source_change": "If measured decoding cost warrants it, define a versioned validated binary state ABI in the existing owner, with publication, mapping lifetime and exposure rules. For current JSON, a bounded mapped byte source still requires decoding and does not make T zero-copy.",
           "payoff": "Performance only after correctness and a measured need; prevents invalid typed mmap claims.",
           "source_refs": [
-            "crates/threetched-fs/src/source.rs:11-17",
-            "crates/threetched-fs/src/source.rs:143-160",
-            "crates/threetched-fs/src/store.rs:14",
-            "crates/threetched-fs/src/store.rs:297-309",
-            "crates/threetched-fs/src/store.rs:340-350",
-            "crates/threetched-fs/src/fuse_fs.rs:314-342"
+            "crates/_3tched-fs/src/source.rs:11-17",
+            "crates/_3tched-fs/src/source.rs:143-160",
+            "crates/_3tched-fs/src/store.rs:14",
+            "crates/_3tched-fs/src/store.rs:297-309",
+            "crates/_3tched-fs/src/store.rs:340-350",
+            "crates/_3tched-fs/src/fuse_fs.rs:314-342"
           ]
         },
         {
@@ -325,8 +325,8 @@
           "source_change": "Define and validate the common engine receipt envelope in its existing owner, then validate the nested domain result against the pinned method return schema. Keep a distinct typed unknown-outcome error when a backend effect may already have occurred.",
           "payoff": "Typed terminal results and stronger completion evidence without retrying an ambiguous mutation.",
           "source_refs": [
-            "crates/threetched-fs/src/mounted.rs:336-368",
-            "crates/threetched-fs/src/dispatch.rs:273-284",
+            "crates/_3tched-fs/src/mounted.rs:336-368",
+            "crates/_3tched-fs/src/dispatch.rs:273-284",
             "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922"
           ]
         },
@@ -346,11 +346,11 @@
           "source_change": "Add a verifiable public mount-mode/identity declaration without credentials for the other supported modes. Define cancellation semantics in the existing operation owner before adding asynchronous handles. Expose additional operations only through an explicitly authored canonical schema; ObjectStore CLI lifecycle methods are not filesystem node methods.",
           "payoff": "Broader factory coverage and responsive mounts with honest cancellation guarantees.",
           "source_refs": [
-            "crates/threetched-fs/src/fuse_fs.rs:59-73",
-            "crates/threetched-fs/src/fuse_fs.rs:120-125",
-            "crates/threetched-fs/src/fuse_fs.rs:207-253",
-            "crates/threetched-fs/src/namespace.rs:101-215",
-            "crates/threetched-fs/src/namespace.rs:276-321",
+            "crates/_3tched-fs/src/fuse_fs.rs:59-73",
+            "crates/_3tched-fs/src/fuse_fs.rs:120-125",
+            "crates/_3tched-fs/src/fuse_fs.rs:207-253",
+            "crates/_3tched-fs/src/namespace.rs:101-215",
+            "crates/_3tched-fs/src/namespace.rs:276-321",
             "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:173-175"
           ]
         }
@@ -360,9 +360,9 @@
         "projected_file_contents": [],
         "explanation": "Projected payloads are structured JSON, hash text, or symlink targets. Runtime-defined JSON uses a recursive JSON type plus the canonical sealed schema, not Opaque. Unconsumed OPBLOB binary sections are outside the projected content contract; see schema backing evidence.",
         "source_refs": [
-          "crates/threetched-fs/src/namespace.rs:129-211",
-          "crates/threetched-fs/src/namespace.rs:491-504",
-          "crates/threetched-fs/src/source.rs:174-215"
+          "crates/_3tched-fs/src/namespace.rs:129-211",
+          "crates/_3tched-fs/src/namespace.rs:491-504",
+          "crates/_3tched-fs/src/source.rs:174-215"
         ]
       },
       "unverified": [

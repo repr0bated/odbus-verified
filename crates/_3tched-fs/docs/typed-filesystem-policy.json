@@ -11,7 +11,7 @@
       "read": "Fresh current discovery; per-opendir stable listing.",
       "write": "Unsupported arbitrary node lifecycle mutation.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:885-1012"
+        "crates/_3tched-fs/src/fuse_fs.rs:885-1012"
       ]
     },
     {
@@ -19,7 +19,7 @@
       "read": "Fresh selected immutable declaration/artifact; TypedObject payload sanitized public or explicit schema_only.",
       "write": "EROFS",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:515-667"
+        "crates/_3tched-fs/src/namespace.rs:515-667"
       ]
     },
     {
@@ -27,7 +27,7 @@
       "read": "Sanitized captured immutable public state snapshot.",
       "write": "EROFS",
       "source_refs": [
-        "crates/threetched-fs/src/model.rs:92-144"
+        "crates/_3tched-fs/src/model.rs:92-144"
       ]
     },
     {
@@ -35,7 +35,7 @@
       "read": "Current frozen workspace public state pointer.",
       "write": "Stage complete validated candidate only under expected-object CAS; backend state untouched.",
       "source_refs": [
-        "crates/threetched-fs/src/store.rs:198-249"
+        "crates/_3tched-fs/src/store.rs:198-249"
       ]
     },
     {
@@ -43,7 +43,7 @@
       "read": "Fresh canonical committed public state with exact active catalog/policy pin and generation; absent/pending/invalid pointer unavailable.",
       "write": "EROFS; direct SHM route read-only.",
       "source_refs": [
-        "crates/threetched-fs/src/source.rs:42-149"
+        "crates/_3tched-fs/src/source.rs:42-149"
       ]
     },
     {
@@ -51,7 +51,7 @@
       "read": "Own originating descriptor's terminal receipt or attributed diagnostic only.",
       "write": "Bounded schema-admitted input; exactly one canonical backend dispatch, permanent scoped operation reservation, durable linked attempt/terminal, exact result validation, no automatic replay.",
       "source_refs": [
-        "crates/threetched-fs/src/fuse_fs.rs:275-581",
+        "crates/_3tched-fs/src/fuse_fs.rs:275-581",
         "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
       ]
     },
@@ -60,7 +60,7 @@
       "read": "Relative semantic target inside mount.",
       "write": "Unsupported link creation/retarget.",
       "source_refs": [
-        "crates/threetched-fs/src/namespace.rs:108-472"
+        "crates/_3tched-fs/src/namespace.rs:108-472"
       ]
     },
     {
@@ -68,7 +68,7 @@
       "read": "Real captured artifact pin; not a digest of current live state.",
       "write": "EROFS",
       "source_refs": [
-        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+        "crates/_3tched-fs/src/typed_runtime.rs:1100-1132"
       ]
     }
   ],
@@ -104,8 +104,8 @@
     },
     "scope": "Limits bound serialized/source/staging/topology ownership, not every allocator/native backend or system-wide audit Vec. Large domain method buffers remain each backend owner's responsibility.",
     "source_refs": [
-      "crates/threetched-fs/src/fuse_buffers.rs:4-109",
-      "crates/threetched-fs/src/source.rs:21-22",
+      "crates/_3tched-fs/src/fuse_buffers.rs:4-109",
+      "crates/_3tched-fs/src/source.rs:21-22",
       "crates/op-grpc-bridge/src/method_receipt_audit.rs:20-21"
     ]
   },

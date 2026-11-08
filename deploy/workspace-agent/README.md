@@ -24,7 +24,7 @@ identity-bound main view at `/run/mount/3tchedfs`. The shared `cognitive` and
 `agent-config` links also use that view. Upstream plugins live in the separate
 guest view at `/run/mount/threetched`: `shared/threetched-plugins` and
 `skills/skills` target its `plugins/threetched` directory; `skills/runtime`
-targets its `plugins/tched_router` directory. Both views preserve the guest's
+targets its `plugins/threetched` directory. Both views preserve the guest's
 identity and use the same lungs endpoint.
 
 These links expose the sealed native interfaces, not the retired SkillsService

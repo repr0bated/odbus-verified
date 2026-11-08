@@ -1,0 +1,9 @@
+#!/bin/sh
+# Only main and dev may be pushed.
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/dev) ;;
+    *) echo "push refused: '$remote_ref' is not allowed (only main and dev)." >&2; exit 1 ;;
+  esac
+done
+exit 0

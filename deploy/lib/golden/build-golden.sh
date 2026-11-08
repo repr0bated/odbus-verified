@@ -12,7 +12,7 @@
 #   $OP_PERSISTED_CATALOG_SOURCE    sealed catalog from `opblob seal-shm && opblob persist`
 #                                   (default /var/lib/opdbus/plugin-blobs, never modified here)
 #   $OP_THREETCHED_ARTIFACT_DIR     pinned threetched binary + manifest
-#                                   (default target/threetched-artifacts/tched-router).
+#                                   (default target/threetched-artifacts/threetched).
 #   /srv/git/3tched.com             the UI repository itself — Svelte/SvelteKit only.
 #                                   There is no vendored UI archive; assets are built
 #                                   from this repo (overridable with OP_UI_REPO).
@@ -62,10 +62,10 @@ esac
 UI_REPO=${OP_UI_REPO:-/srv/git/3tched.com}
 UI_REPO=$(realpath -e -- "$UI_REPO")
 UI_DIST="$UI_REPO/dist"
-THREETCHED_ARTIFACT_DIR=$(realpath -e -- "${OP_THREETCHED_ARTIFACT_DIR:-"$PROJECT_ROOT/target/threetched-artifacts/tched-router"}")
+THREETCHED_ARTIFACT_DIR=$(realpath -e -- "${OP_THREETCHED_ARTIFACT_DIR:-"$PROJECT_ROOT/target/threetched-artifacts/threetched"}")
 THREETCHED_BIN="$THREETCHED_ARTIFACT_DIR/threetched"
 THREETCHED_MANIFEST="$THREETCHED_ARTIFACT_DIR/manifest.json"
-TCHED_ROUTER_SOURCE_PIN="$PROJECT_ROOT/vendor/tched-router/source.pin"
+THREETCHED_SOURCE_PIN="$PROJECT_ROOT/vendor/threetched/source.pin"
 EMQX_VERSION_FILE="$SCRIPT_DIR/../config/emqx.version"
 EMQX_CONFIG_DIR="$SCRIPT_DIR/../emqx"
 ARTIFACT_CACHE_DIR=${OP_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
@@ -74,8 +74,8 @@ HOST_RUNTIME_PACKAGES_SOURCE="$SCRIPT_DIR/../config/host-runtime-packages.txt"
 EXECUTION_PYTHON_LOCK="$SCRIPT_DIR/../config/execution-python-requirements.lock"
 EXECUTION_PYTHON_PREPARE="$SCRIPT_DIR/prepare-execution-python.sh"
 HOST_RUNTIME_PACKAGE_CHECK="$SCRIPT_DIR/check-host-runtime-packages.sh"
-TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/threetched-runtime.toml"
-TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/threetched-skills/default"
+THREETCHED_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/threetched-runtime.toml"
+THREETCHED_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/threetched-skills/default"
 AGENT_BUNDLE_SOURCE="$SCRIPT_DIR/../config/agents"
 RETIRED_SERVICES_FILE="$SCRIPT_DIR/retired-services"
 RETIRED_BINARIES_FILE="$SCRIPT_DIR/retired-binaries"
@@ -253,13 +253,13 @@ printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/3tched-fs" ||
     die "release is missing system_graph_inventory; rebuild the workspace"
 
 # threetched: pinned upstream binary staged as usr/bin/threetched.
-[ -f "$TCHED_ROUTER_SOURCE_PIN" ] || die "missing threetched source pin: $TCHED_ROUTER_SOURCE_PIN"
+[ -f "$THREETCHED_SOURCE_PIN" ] || die "missing threetched source pin: $THREETCHED_SOURCE_PIN"
 # shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated in the manifest check below.
-. "$TCHED_ROUTER_SOURCE_PIN"
-[ -x "$THREETCHED_BIN" ] || die "missing threetched binary; run vendor/tched-router/build-threetched.sh"
+. "$THREETCHED_SOURCE_PIN"
+[ -x "$THREETCHED_BIN" ] || die "missing threetched binary; run vendor/threetched/build-threetched.sh"
 [ -f "$THREETCHED_MANIFEST" ] || die "missing threetched provenance manifest: $THREETCHED_MANIFEST"
 THREETCHED_SHA256=$(sha256sum "$THREETCHED_BIN" | cut -d' ' -f1)
-TCHED_ROUTER_MANIFEST_SHA256=$(sha256sum "$THREETCHED_MANIFEST" | cut -d' ' -f1)
+THREETCHED_MANIFEST_SHA256=$(sha256sum "$THREETCHED_MANIFEST" | cut -d' ' -f1)
 jq -e --arg sha "$THREETCHED_SHA256" --arg tag "${UPSTREAM_TAG:-}" \
     '.format == "opdbus.threetched.v2" and .source.mode == "unmodified-upstream" and
      (has("patches") | not) and .artifact.name == "threetched" and
@@ -268,8 +268,8 @@ jq -e --arg sha "$THREETCHED_SHA256" --arg tag "${UPSTREAM_TAG:-}" \
     die "threetched provenance does not match its pinned source and binary"
 [ "$("$THREETCHED_BIN" --version)" = "zeroclaw ${UPSTREAM_TAG#v}" ] ||
     die "threetched candidate reports an unexpected version"
-[ -f "$TCHED_ROUTER_BOOTSTRAP_CONFIG" ] || die "missing threetched bootstrap config"
-[ -d "$TCHED_ROUTER_BOOTSTRAP_SKILLS" ] && [ -n "$(find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f -print -quit)" ] ||
+[ -f "$THREETCHED_BOOTSTRAP_CONFIG" ] || die "missing threetched bootstrap config"
+[ -d "$THREETCHED_BOOTSTRAP_SKILLS" ] && [ -n "$(find "$THREETCHED_BOOTSTRAP_SKILLS" -type f -print -quit)" ] ||
     die "missing or empty threetched bootstrap skill bundle"
 [ -f "$AGENT_BUNDLE_SOURCE/AGENTS.md" ] || die "missing shared agent bundle: $AGENT_BUNDLE_SOURCE"
 
@@ -358,9 +358,9 @@ fi
 [ -r "$EXECUTION_PYTHON_LOCK" ] && [ -x "$EXECUTION_PYTHON_PREPARE" ] ||
     die "missing execution Python lock or preparation helper"
 EXECUTION_PYTHON_LOCK_SHA256=$(sha256sum "$EXECUTION_PYTHON_LOCK" | cut -d' ' -f1)
-TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256=$(sha256sum "$TCHED_ROUTER_BOOTSTRAP_CONFIG" | cut -d' ' -f1)
-TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256=$(
-    find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f -print | sort |
+THREETCHED_BOOTSTRAP_CONFIG_SHA256=$(sha256sum "$THREETCHED_BOOTSTRAP_CONFIG" | cut -d' ' -f1)
+THREETCHED_BOOTSTRAP_SKILLS_SHA256=$(
+    find "$THREETCHED_BOOTSTRAP_SKILLS" -type f -print | sort |
         while IFS= read -r skill; do sha256sum "$skill"; done | sha256sum | cut -d' ' -f1)
 BIN_COUNT=$(printf '%s\n' "$BINARIES" | wc -l)
 log "$BIN_COUNT release binaries in $RELEASE_DIR"
@@ -425,7 +425,7 @@ build_golden() {
     done
     install_file 0755 "$THREETCHED_BIN" "$GOLDEN_DIR/usr/bin/threetched"
     install_file 0644 "$THREETCHED_MANIFEST" \
-        "$GOLDEN_DIR/usr/share/op-dbus/threetched-manifests/tched-router.json"
+        "$GOLDEN_DIR/usr/share/op-dbus/threetched-manifests/threetched.json"
 
     # UI: assets built from the UI repository, staged at the dashboard root.
     sync_tree "$UI_STAGE" "$GOLDEN_DIR/usr/local/share/op-dbus/dashboard"
@@ -582,8 +582,8 @@ build_golden() {
     for declaration in enabled-services retired-services retired-binaries; do
         install_file 0644 "$SCRIPT_DIR/$declaration" "$GOLDEN_DIR/usr/share/op-dbus/etc/opdbus/$declaration"
     done
-    install_file 0644 "$TCHED_ROUTER_BOOTSTRAP_CONFIG" "$GOLDEN_DIR/usr/share/op-dbus/etc/op-dbus/threetched-runtime.toml"
-    sync_tree "$TCHED_ROUTER_BOOTSTRAP_SKILLS" "$GOLDEN_DIR/usr/share/op-dbus/etc/op-dbus/threetched-skills/default"
+    install_file 0644 "$THREETCHED_BOOTSTRAP_CONFIG" "$GOLDEN_DIR/usr/share/op-dbus/etc/op-dbus/threetched-runtime.toml"
+    sync_tree "$THREETCHED_BOOTSTRAP_SKILLS" "$GOLDEN_DIR/usr/share/op-dbus/etc/op-dbus/threetched-skills/default"
     sync_tree "$AGENT_BUNDLE_SOURCE" "$GOLDEN_DIR/usr/share/op-dbus/agents"
 
     # MANIFEST: staged release identity and hashes for post-receive verification.
@@ -595,9 +595,9 @@ build_golden() {
             printf 'init: runit (sv)\n'
             printf 'binaries: %s\n' "$BIN_COUNT"
             printf 'threetched-sha256: %s\n' "$THREETCHED_SHA256"
-            printf 'tched-router-manifest-sha256: %s\n' "$TCHED_ROUTER_MANIFEST_SHA256"
-            printf 'tched-router-bootstrap-config-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256"
-            printf 'tched-router-bootstrap-skills-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256"
+            printf 'threetched-manifest-sha256: %s\n' "$THREETCHED_MANIFEST_SHA256"
+            printf 'threetched-bootstrap-config-sha256: %s\n' "$THREETCHED_BOOTSTRAP_CONFIG_SHA256"
+            printf 'threetched-bootstrap-skills-sha256: %s\n' "$THREETCHED_BOOTSTRAP_SKILLS_SHA256"
             printf 'ui-source-repo: %s\n' "$UI_REPO"
             printf 'ui-source-head: %s\n' "$UI_HEAD"
             printf 'ui-source-worktree: %s\n' "$UI_WORKTREE"

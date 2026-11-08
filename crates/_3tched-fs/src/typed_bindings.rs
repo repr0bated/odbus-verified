@@ -2,7 +2,7 @@
 // Do not edit; this is a derived filesystem binding, never a plugin schema authority.
 #![allow(dead_code)]
 use crate::typed_runtime::NodeHandle;
-/// Source: ["crates/threetched-fs/examples/typed_generate.rs:87-175","crates/threetched-fs/src/model.rs:6"]
+/// Source: ["crates/_3tched-fs/examples/typed_generate.rs:87-175","crates/_3tched-fs/src/model.rs:6"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum JsonValue {
@@ -21,7 +21,7 @@ impl JsonValue {
         serde_json::from_value(value).map_err(NodeError::decode)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:102-111"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:102-111"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct PluginId(String);
@@ -41,7 +41,7 @@ impl<'de> serde::Deserialize<'de> for PluginId {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:86-91"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:86-91"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct MethodId(String);
@@ -61,7 +61,7 @@ impl<'de> serde::Deserialize<'de> for MethodId {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:92-101"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:92-101"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SessionId(String);
@@ -81,7 +81,7 @@ impl<'de> serde::Deserialize<'de> for SessionId {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:127-138"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:127-138"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct WorkspaceId(String);
@@ -101,7 +101,7 @@ impl<'de> serde::Deserialize<'de> for WorkspaceId {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:121-126"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:121-126"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ViewId(String);
@@ -121,7 +121,7 @@ impl<'de> serde::Deserialize<'de> for ViewId {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:121-126"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:121-126"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ObjectHash(String);
@@ -141,7 +141,7 @@ impl<'de> serde::Deserialize<'de> for ObjectHash {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/namespace.rs:492-513"]
+/// Source: ["crates/_3tched-fs/src/namespace.rs:492-513"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MountMetadata {
     pub format: String,
@@ -164,23 +164,23 @@ pub struct MountMetadata {
     pub allowed_operator_uid: Option<u32>,
     pub declared_catalog_dir: String,
 }
-/// Source: ["crates/threetched-fs/src/store.rs:27-35"]
+/// Source: ["crates/_3tched-fs/src/store.rs:27-35"]
 pub type ViewManifest = crate::store::ViewManifest;
-/// Source: ["crates/threetched-fs/src/store.rs:47-54"]
+/// Source: ["crates/_3tched-fs/src/store.rs:47-54"]
 pub type Workspace = crate::store::Workspace;
-/// Source: ["crates/threetched-fs/src/model.rs:29-37"]
+/// Source: ["crates/_3tched-fs/src/model.rs:29-37"]
 pub type TypedObject = crate::model::TypedObjectBlob;
-/// Source: ["crates/threetched-fs/src/model.rs:155-201"]
+/// Source: ["crates/_3tched-fs/src/model.rs:155-201"]
 pub type PluginSchema = crate::model::PluginSchema;
-/// Source: ["crates/threetched-fs/src/model.rs:518-528"]
+/// Source: ["crates/_3tched-fs/src/model.rs:518-528"]
 pub type MethodDecl = crate::model::MethodDecl;
-/// Source: ["crates/threetched-fs/src/model.rs:532-535"]
+/// Source: ["crates/_3tched-fs/src/model.rs:532-535"]
 pub type SideEffect = crate::model::SideEffect;
-/// Source: ["crates/threetched-fs/examples/typed_generate.rs:87-175","crates/threetched-fs/src/model.rs:6"]
+/// Source: ["crates/_3tched-fs/examples/typed_generate.rs:87-175","crates/_3tched-fs/src/model.rs:6"]
 pub type JsonSchema = JsonValue;
-/// Source: ["crates/threetched-fs/examples/typed_generate.rs:87-175","crates/threetched-fs/src/model.rs:6"]
+/// Source: ["crates/_3tched-fs/examples/typed_generate.rs:87-175","crates/_3tched-fs/src/model.rs:6"]
 pub type Capabilities = Vec<CapabilityId>;
-/// Source: ["crates/threetched-fs/src/dispatch.rs:30-39","crates/threetched-fs/src/dispatch.rs:408-456"]
+/// Source: ["crates/_3tched-fs/src/dispatch.rs:30-39","crates/_3tched-fs/src/dispatch.rs:408-456"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CallReceipt {
     pub plugin_id: PluginId,
@@ -192,7 +192,7 @@ pub struct CallReceipt {
     pub idempotent: bool,
     pub result: MethodExecutionReceipt,
 }
-/// Source: ["crates/threetched-fs/src/namespace.rs:26-38","crates/threetched-fs/src/typed_runtime.rs:1072-1098"]
+/// Source: ["crates/_3tched-fs/src/namespace.rs:26-38","crates/_3tched-fs/src/typed_runtime.rs:1072-1098"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum StaticPayload {
     MountMetadata(MountMetadata),
@@ -205,17 +205,17 @@ pub enum StaticPayload {
     Returns(JsonSchema),
     MethodMetadata(MethodDecl),
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:204-231"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:204-231"]
 pub type DirectoryEntry = crate::typed_runtime::DirectoryEntry;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:234-241"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:234-241"]
 pub type SemanticLocator = crate::typed_runtime::SemanticLocator;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:173-181"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:173-181"]
 pub type BlobRef<T> = crate::typed_runtime::BlobRef<T>;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:183-191"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:183-191"]
 pub type ShmHandle<T> = crate::typed_runtime::ShmHandle<T>;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:243-250","crates/threetched-fs/src/typed_runtime.rs:1248-1267"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:243-250","crates/_3tched-fs/src/typed_runtime.rs:1248-1267"]
 pub type ValidatedArguments = crate::typed_runtime::ValidatedArguments;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:157-171"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:157-171"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct MountRoot(String);
@@ -235,7 +235,7 @@ impl<'de> serde::Deserialize<'de> for MountRoot {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:157-171"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:157-171"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct StoreRoot(String);
@@ -255,7 +255,7 @@ impl<'de> serde::Deserialize<'de> for StoreRoot {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:139-156"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:139-156"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct JsonPointer(String);
@@ -275,7 +275,7 @@ impl<'de> serde::Deserialize<'de> for JsonPointer {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:86-91"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:86-91"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct FieldKey(String);
@@ -295,7 +295,7 @@ impl<'de> serde::Deserialize<'de> for FieldKey {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/namespace.rs:714-842"]
+/// Source: ["crates/_3tched-fs/src/namespace.rs:714-842"]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct ArrayIndex(usize);
@@ -307,7 +307,7 @@ impl ArrayIndex {
         self.0
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:112-120"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:112-120"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SchemaHash(String);
@@ -327,7 +327,7 @@ impl<'de> serde::Deserialize<'de> for SchemaHash {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:86-91"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:86-91"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CatalogHash(String);
@@ -347,7 +347,7 @@ impl<'de> serde::Deserialize<'de> for CatalogHash {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:127-138"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:127-138"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SnapshotName(String);
@@ -367,25 +367,25 @@ impl<'de> serde::Deserialize<'de> for SnapshotName {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/model.rs:307-325"]
+/// Source: ["crates/_3tched-fs/src/model.rs:307-325"]
 pub type FieldSchema = crate::model::FieldSchema;
-/// Source: ["crates/threetched-fs/src/model.rs:350-366"]
+/// Source: ["crates/_3tched-fs/src/model.rs:350-366"]
 pub type FieldType = crate::model::FieldType;
-/// Source: ["crates/threetched-fs/src/model.rs:465-503"]
+/// Source: ["crates/_3tched-fs/src/model.rs:465-503"]
 pub type Constraint = crate::model::Constraint;
-/// Source: ["crates/threetched-fs/src/model.rs:538-543"]
+/// Source: ["crates/_3tched-fs/src/model.rs:538-543"]
 pub type SignalDecl = crate::model::SignalDecl;
-/// Source: ["crates/threetched-fs/src/model.rs:546-561"]
+/// Source: ["crates/_3tched-fs/src/model.rs:546-561"]
 pub type PluginGuarantees = crate::model::PluginGuarantees;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:193-202"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:193-202"]
 pub type HandleKind = crate::typed_runtime::HandleKind;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:450-698"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:450-698"]
 pub type TypedFilesystem = crate::typed_runtime::TypedFilesystem;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:25-80"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:25-80"]
 pub type NodeError = crate::typed_runtime::NodeError;
-/// Source: ["crates/threetched-fs/src/model.rs:458-463"]
+/// Source: ["crates/_3tched-fs/src/model.rs:458-463"]
 pub type ReadOnlyCondition = crate::model::ReadOnlyCondition;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:86-91"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:86-91"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CapabilityId(String);
@@ -405,7 +405,7 @@ impl<'de> serde::Deserialize<'de> for CapabilityId {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:86-91"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:86-91"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct Subid(String);
@@ -425,13 +425,13 @@ impl<'de> serde::Deserialize<'de> for Subid {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/namespace.rs:714-842"]
+/// Source: ["crates/_3tched-fs/src/namespace.rs:714-842"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum PathSegment {
     Field(FieldKey),
     Index(ArrayIndex),
 }
-/// Source: ["crates/threetched-fs/src/fuse_fs.rs:555-581","crates/threetched-fs/src/typed_runtime.rs:1653-1682"]
+/// Source: ["crates/_3tched-fs/src/fuse_fs.rs:555-581","crates/_3tched-fs/src/typed_runtime.rs:1653-1682"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct OperationDiagnostic {
     pub plugin: PluginId,
@@ -441,7 +441,7 @@ pub struct OperationDiagnostic {
     #[serde(default)]
     pub operation_id: Option<String>,
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:1653-1682","crates/threetched-fs/src/fuse_fs.rs:555-581"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:1653-1682","crates/_3tched-fs/src/fuse_fs.rs:555-581"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DiagnosticStage {
@@ -459,7 +459,7 @@ pub enum DiagnosticStage {
     Limits,
     Handle,
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:1636-1651"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:1636-1651"]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum FsCondition {
     MissingNode,
@@ -476,7 +476,7 @@ pub enum FsCondition {
     InvalidHandle,
     InFlight,
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:157-171"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:157-171"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct StateDirectory(String);
@@ -496,7 +496,7 @@ impl<'de> serde::Deserialize<'de> for StateDirectory {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:86-91"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:86-91"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DependencyId(String);
@@ -516,9 +516,9 @@ impl<'de> serde::Deserialize<'de> for DependencyId {
         Self::new(value).map_err(serde::de::Error::custom)
     }
 }
-/// Source: ["crates/threetched-fs/src/namespace.rs:15-23","crates/threetched-fs/src/namespace.rs:492-513"]
+/// Source: ["crates/_3tched-fs/src/namespace.rs:15-23","crates/_3tched-fs/src/namespace.rs:492-513"]
 pub type MountIdentity = crate::namespace::MountIdentity;
-/// Source: ["crates/threetched-fs/src/model.rs:14-20"]
+/// Source: ["crates/_3tched-fs/src/model.rs:14-20"]
 pub type StateValueScope = crate::model::StateValueScope;
 /// Source: ["crates/op-state-store/src/method_receipt.rs:54-101"]
 pub type MethodExecutionReceipt = op_state_store::method_receipt::MethodExecutionReceipt;
@@ -530,7 +530,7 @@ pub type MethodReceiptRecovery = op_state_store::method_receipt::MethodReceiptRe
 pub type MethodRecoveryStatus = op_state_store::method_receipt::MethodRecoveryStatus;
 /// Source: ["crates/op-state-store/src/method_receipt.rs:27-35"]
 pub type GetMethodReceiptInput = op_state_store::method_receipt::GetMethodReceiptInput;
-/// Source: ["crates/threetched-fs/src/typed_runtime.rs:157-171"]
+/// Source: ["crates/_3tched-fs/src/typed_runtime.rs:157-171"]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CatalogRoot(String);

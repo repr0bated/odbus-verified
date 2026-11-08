@@ -5,7 +5,7 @@ package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$package_dir/source.pin"
 source_pin_sha256=$(sha256sum "$package_dir/source.pin" | awk '{print $1}')
 
-output_dir=target/threetched-artifacts/tched-router
+output_dir=target/threetched-artifacts/threetched
 cache_dir=
 source_dir=
 source_archive=
@@ -98,7 +98,7 @@ case "$output_dir" in /*) ;; *) output_dir=$(pwd)/$output_dir ;; esac
 mkdir -p -- "$cache_dir" "$output_dir"
 cache_archive="$cache_dir/zeroclaw-${UPSTREAM_TAG}-${UPSTREAM_COMMIT}.tar"
 cargo_target_dir="$cache_dir/cargo-target-${UPSTREAM_COMMIT}"
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/tched-router-threetched.XXXXXX")
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/threetched-threetched.XXXXXX")
 cleanup() {
     _status=$?
     rm -rf -- "$work_dir"
@@ -145,7 +145,7 @@ elif [ -f "$package_dir/source.tar.gz" ]; then
     verify_archive "$cache_archive.new"
     mv -f -- "$cache_archive.new" "$cache_archive"
 else
-    fetch_dir=$(mktemp -d "${TMPDIR:-/tmp}/tched-router-fetch.XXXXXX")
+    fetch_dir=$(mktemp -d "${TMPDIR:-/tmp}/threetched-fetch.XXXXXX")
     trap 'rm -rf -- "$fetch_dir"; exit $?' EXIT HUP INT TERM
     git -C "$fetch_dir" clone --depth 1 --no-tags "https://github.com/zeroclaw-labs/zeroclaw.git" .
     actual_commit=$(git -C "$fetch_dir" rev-parse HEAD) || true

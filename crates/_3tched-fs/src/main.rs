@@ -815,7 +815,7 @@ mod cli_tests {
     #[test]
     fn mounted_commands_preserve_identity_and_reject_transport_fallback() {
         let args = vec![
-            "threetched-fs",
+            "3tched-fs",
             "call",
             "demo",
             "get_status",
@@ -836,11 +836,11 @@ mod cli_tests {
             assert!(Cli::try_parse_from(conflict).is_err());
         }
         assert!(
-            Cli::try_parse_from(["threetched-fs", "mcp", "--expected-session", "human"]).is_err()
+            Cli::try_parse_from(["3tched-fs", "mcp", "--expected-session", "human"]).is_err()
         );
         assert!(matches!(
             Cli::try_parse_from([
-                "threetched-fs",
+                "3tched-fs",
                 "mcp",
                 "--mount",
                 "/run/mount/3tchedFS",
@@ -853,7 +853,7 @@ mod cli_tests {
         ));
         assert!(
             Cli::try_parse_from([
-                "threetched-fs",
+                "3tched-fs",
                 "mcp",
                 "--mount",
                 "/run/mount/3tchedFS",
@@ -863,7 +863,7 @@ mod cli_tests {
             .is_err()
         );
         let cli = Cli::try_parse_from([
-            "threetched-fs",
+            "3tched-fs",
             "mcp",
             "--mount",
             "/run/mounts/3tchedFS",
@@ -880,14 +880,14 @@ mod cli_tests {
             } if plugin == "cognitive"
         ));
         assert!(
-            Cli::try_parse_from(["threetched-fs", "mcp", "--plugin", "cognitive"]).is_err()
+            Cli::try_parse_from(["3tched-fs", "mcp", "--plugin", "cognitive"]).is_err()
         );
     }
 
     #[test]
     fn invoke_requires_mount_and_has_no_direct_transport_selectors() {
         let args = [
-            "threetched-fs",
+            "3tched-fs",
             "invoke",
             "plugins/demo/operations/get_status/call",
             "--mount",
@@ -901,7 +901,7 @@ mod cli_tests {
         ));
         assert!(
             Cli::try_parse_from([
-                "threetched-fs",
+                "3tched-fs",
                 "invoke",
                 "plugins/demo/operations/get_status/call"
             ])
@@ -923,7 +923,7 @@ mod cli_tests {
     #[test]
     fn guest_mcp_socket_requires_no_session_input() {
         let cli = Cli::try_parse_from([
-            "threetched-fs",
+            "3tched-fs",
             "--store",
             "/usr/share/op-dbus/lungs-view",
             "mcp",
@@ -944,10 +944,10 @@ mod cli_tests {
     #[test]
     fn host_session_still_requires_socket_and_preserves_selected_identity() {
         assert!(
-            Cli::try_parse_from(["threetched-fs", "mcp", "--lungs-session", "session"]).is_err()
+            Cli::try_parse_from(["3tched-fs", "mcp", "--lungs-session", "session"]).is_err()
         );
         let cli = Cli::try_parse_from([
-            "threetched-fs",
+            "3tched-fs",
             "mcp",
             "--lungs-socket",
             "/run/opdbus/lungs/lungs.sock",

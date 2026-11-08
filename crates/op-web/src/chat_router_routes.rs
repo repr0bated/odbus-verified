@@ -1,6 +1,6 @@
 //! Router-plugin helpers backed by the SHM state tree.
 //!
-//! HTTP paths stay `/api/tched-router/*` and `/api/llm/*` (what the UI already
+//! HTTP paths stay `/api/threetched/*` and `/api/llm/*` (what the UI already
 //! calls). The sealed plugin those handlers read is `chat_router`.
 
 use anyhow::{Result, bail};

@@ -167,7 +167,7 @@ fn command_policy(method: &str) -> (String, String) {
     // policy identifier, not an inferred CLI type or a hardcoded method table.
     let key = format!("c{:x}", Sha256::digest(method.as_bytes()));
     (
-        format!("cap.software.3tched-router.call.{key}@v1"),
+        format!("cap.software.threetched.call.{key}@v1"),
         format!("mut.software.threetched.call.{key}@v1"),
     )
 }
@@ -543,22 +543,22 @@ esac
         let (cap, subid) = command_policy("plugins.install");
         assert_ne!(cap, command_policy("plugins-install").0);
         super::super::common::oscal::validate_subid(&subid).unwrap();
-        assert!(cap.starts_with("cap.software.3tched-router.call."));
+        assert!(cap.starts_with("cap.software.threetched.call."));
     }
 
     #[test]
     fn config_selector_cannot_escape_sealed_context() {
-        let root = Path::new("/var/lib/tched-router");
+        let root = Path::new("/var/lib/threetched");
         // Fixture spellings; production obtains this list from captured help.
         let spellings = ["-c", "--config-dir"];
         validate_config_selector(&serde_json::json!({}), root, &spellings).unwrap();
         for spelling in spellings {
-            validate_config_selector(&serde_json::json!({(spelling):["/var/lib/tched-router"]}), root, &spellings).unwrap();
-            validate_config_selector(&serde_json::json!({(spelling):[["/var/lib/tched-router"]]}), root, &spellings).unwrap();
+            validate_config_selector(&serde_json::json!({(spelling):["/var/lib/threetched"]}), root, &spellings).unwrap();
+            validate_config_selector(&serde_json::json!({(spelling):[["/var/lib/threetched"]]}), root, &spellings).unwrap();
             assert!(validate_config_selector(&serde_json::json!({(spelling):["/other/identity"]}), root, &spellings).is_err());
-            assert!(validate_config_selector(&serde_json::json!({(spelling):[["/var/lib/tched-router"],["/other/identity"]]}), root, &spellings).is_err());
+            assert!(validate_config_selector(&serde_json::json!({(spelling):[["/var/lib/threetched"],["/other/identity"]]}), root, &spellings).is_err());
         }
-        assert!(validate_config_selector(&serde_json::json!({"-c":["/var/lib/tched-router"], "--config-dir":["/var/lib/tched-router"]}), root, &spellings).is_err());
+        assert!(validate_config_selector(&serde_json::json!({"-c":["/var/lib/threetched"], "--config-dir":["/var/lib/threetched"]}), root, &spellings).is_err());
     }
 
     #[test]

@@ -98,7 +98,7 @@ fn export(directory: &Path, check: bool) -> Result<()> {
 
 fn main() -> Result<()> {
     let mut check = false;
-    let mut directory = PathBuf::from("crates/threetched-fs/docs");
+    let mut directory = PathBuf::from("crates/_3tched-fs/docs");
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {

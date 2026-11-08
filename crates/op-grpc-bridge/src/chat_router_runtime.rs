@@ -215,11 +215,11 @@ impl ChatRouterRuntimeClient {
     }
 
     pub(crate) fn from_env() -> Self {
-        let endpoint = std::env::var("TCHED_ROUTER_RUNTIME_ENDPOINT")
+        let endpoint = std::env::var("THREETCHED_RUNTIME_ENDPOINT")
             .unwrap_or_else(|_| DEFAULT_ENDPOINT.to_string());
-        let agent_alias = std::env::var("TCHED_ROUTER_RUNTIME_AGENT")
+        let agent_alias = std::env::var("THREETCHED_RUNTIME_AGENT")
             .unwrap_or_else(|_| DEFAULT_AGENT_ALIAS.to_string());
-        let token = std::env::var("TCHED_ROUTER_RUNTIME_TOKEN")
+        let token = std::env::var("THREETCHED_RUNTIME_TOKEN")
             .ok()
             .filter(|value| !value.trim().is_empty());
         Self::new(endpoint, agent_alias, token)
@@ -1355,7 +1355,7 @@ impl ChatRouterRuntimeClient {
     }
 
     fn opencode_only(&self) -> bool {
-        std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1")
+        std::env::var("THREETCHED_REQUIRE_OPENCODE").as_deref() == Ok("1")
             && self.agent_alias != "control_plane"
     }
 

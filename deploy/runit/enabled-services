@@ -9,7 +9,7 @@ op-grpc-bridge
 op-web
 op-runit-systemctl
 emqx
-tched-router
+threetched
 unified-execution
 
 # Local conversation capture; remote corpus writes require its own opt-in and

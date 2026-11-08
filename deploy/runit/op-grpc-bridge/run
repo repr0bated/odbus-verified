@@ -57,7 +57,7 @@ wait_dep op-runit-systemctl
 wait_dep op-session-bus
 wait_dep identity-roots
 wait_dep ovsdb-server
-wait_dep tched-router
+wait_dep threetched
 # Identity storage restoration is owned independently by identity-roots. The
 # bridge waits for the storage owner's readiness before restoring active
 # service identities. The storage owner never depends on this bridge.
@@ -79,34 +79,34 @@ export OPDBUS_LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock
 # The native router's provider-only generation protocol requires a real paired
 # subject. Consume the operator-provisioned token from a root-only file; never
 # accept the secret itself from the broad environment file.
-export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
-export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
+export THREETCHED_RUNTIME_ENDPOINT="${THREETCHED_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
+export THREETCHED_RUNTIME_AGENT="${THREETCHED_RUNTIME_AGENT:-dashboard}"
 # Door selection is not limited to OpenCode profiles.
-export TCHED_ROUTER_REQUIRE_OPENCODE=0
+export THREETCHED_REQUIRE_OPENCODE=0
 startup_phase runtime-token
-TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
-unset TCHED_ROUTER_RUNTIME_TOKEN
-if [ ! -f "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ] || [ -L "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ]; then
+THREETCHED_RUNTIME_TOKEN_FILE=${THREETCHED_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/threetched-runtime-token}
+unset THREETCHED_RUNTIME_TOKEN
+if [ ! -f "$THREETCHED_RUNTIME_TOKEN_FILE" ] || [ -L "$THREETCHED_RUNTIME_TOKEN_FILE" ]; then
     echo "protected threetched runtime token file is missing or not a regular file" >&2
     exit 78
 fi
-set -- $(stat -Lc '%u %a' "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
+set -- $(stat -Lc '%u %a' "$THREETCHED_RUNTIME_TOKEN_FILE")
 [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
     echo "threetched runtime token file must be root-owned with mode 0400 or 0600" >&2
     exit 78
 }
-TCHED_ROUTER_RUNTIME_TOKEN=$(cat "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
-case "$TCHED_ROUTER_RUNTIME_TOKEN" in
+THREETCHED_RUNTIME_TOKEN=$(cat "$THREETCHED_RUNTIME_TOKEN_FILE")
+case "$THREETCHED_RUNTIME_TOKEN" in
     ''|*[!A-Za-z0-9._~-]*)
         echo "threetched runtime token file has an invalid token" >&2
         exit 78
         ;;
 esac
-[ "${#TCHED_ROUTER_RUNTIME_TOKEN}" -le 8192 ] || {
+[ "${#THREETCHED_RUNTIME_TOKEN}" -le 8192 ] || {
     echo "threetched runtime token exceeds its transport bound" >&2
     exit 78
 }
-export TCHED_ROUTER_RUNTIME_TOKEN
+export THREETCHED_RUNTIME_TOKEN
 export OPDBUS_READY_PATH="${OPDBUS_READY_PATH:-$DEFAULT_READY_PATH}"
 rm -f -- "$OPDBUS_READY_PATH"
 
@@ -148,10 +148,10 @@ startup_phase private-door-address-ready
 # Local filesystem callers use OPDBUS_LUNGS_SOCKET, not a second gRPC listener.
 FABRIC_BIND="10.0.0.2:8090"
 export OP_GRPC_BRIDGE_LISTEN="$FABRIC_BIND"
-unset OP_DBUS_GRPC_LISTEN TCHED_ROUTER_BIND_ADDR GRPC_BIND TCHED_ROUTER_UNIX_SOCKET
-export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
-export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
-unset TCHED_ROUTER_BROWSER_TLS_BIND_ADDR TCHED_ROUTER_BROWSER_TLS_CERT_FILE TCHED_ROUTER_BROWSER_TLS_KEY_FILE
+unset OP_DBUS_GRPC_LISTEN THREETCHED_BIND_ADDR GRPC_BIND THREETCHED_UNIX_SOCKET
+export THREETCHED_TLS_CERT_FILE="${THREETCHED_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
+export THREETCHED_TLS_KEY_FILE="${THREETCHED_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
+unset THREETCHED_BROWSER_TLS_BIND_ADDR THREETCHED_BROWSER_TLS_CERT_FILE THREETCHED_BROWSER_TLS_KEY_FILE
 # EMQX starts after this bridge: do not wait for the broker here. The bridge
 # must bind its authenticated private ExHook backend before publishing ready.
 # The retained /mqtt route then relays to EMQX's verified loopback WSS backend.
@@ -159,8 +159,8 @@ startup_phase emqx-prepare
 /usr/local/libexec/op-dbus/helpers/emqx-prepare
 export OP_EMQX_EXHOOK_ENABLE=1
 export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
-export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE}"
-export OP_EMQX_EXHOOK_SERVER_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE}"
+export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${THREETCHED_TLS_CERT_FILE}"
+export OP_EMQX_EXHOOK_SERVER_KEY_FILE="${THREETCHED_TLS_KEY_FILE}"
 export OP_EMQX_EXHOOK_CLIENT_CA_FILE=/etc/emqx/certs/opdbus-ca.crt
 export OP_EMQX_EXHOOK_CLIENT_CERT_FILE=/etc/emqx/certs/emqx-exhook-client.crt
 # The bridge opens this append-only journal with mode 0600 and syncs every

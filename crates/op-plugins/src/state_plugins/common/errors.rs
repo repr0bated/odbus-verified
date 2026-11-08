@@ -2,7 +2,7 @@
 //!
 //! `ChatRouterError` is a schema-contract type: it derives `schemars::JsonSchema`
 //! so the error shape is surfaced in MCP tool responses and D-Bus method error
-//! payloads. subid: `sch.software.3tched-router-error.schema@v1`.
+//! payloads. subid: `sch.software.threetched-error.schema@v1`.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

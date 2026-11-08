@@ -82,7 +82,7 @@
     },
     {
       "sha256": "9a87b6ad09a9fa98c74dcd6660a924adbc6d450d8853f3f60770bf7ab4a19af9",
-      "path": "crates/op-plugins/src/state_plugins/tched_router.rs"
+      "path": "crates/op-plugins/src/state_plugins/threetched.rs"
     },
     {
       "sha256": "2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b",
@@ -110,75 +110,75 @@
     },
     {
       "sha256": "71122379896ff949f8f83bc66381d1273834c7855a07e79ea7cf412fe7ec05a3",
-      "path": "crates/threetched-fs/Cargo.toml"
+      "path": "crates/_3tched-fs/Cargo.toml"
     },
     {
       "sha256": "4a9f8c9e345aff0e792e79d6204e964b573a497a9ebbef09c77221cec1e5c983",
-      "path": "crates/threetched-fs/examples/typed_export.rs"
+      "path": "crates/_3tched-fs/examples/typed_export.rs"
     },
     {
       "sha256": "fdd3cb70e87f49b1d0fc86856867f1996ab6066a03a5c6d74858bade19f4a667",
-      "path": "crates/threetched-fs/examples/typed_generate.rs"
+      "path": "crates/_3tched-fs/examples/typed_generate.rs"
     },
     {
       "sha256": "ff2aa10a4ce51b368fdd254a69eb589a0196fdf5fa0358d6498ff0bddb53a456",
-      "path": "crates/threetched-fs/examples/typed_specialize.rs"
+      "path": "crates/_3tched-fs/examples/typed_specialize.rs"
     },
     {
       "sha256": "74e0f6a829e19c880809dece6bed764c861a8f8c7a7ef1d02b9983dbe1e7bdcd",
-      "path": "crates/threetched-fs/src/dispatch.rs"
+      "path": "crates/_3tched-fs/src/dispatch.rs"
     },
     {
       "sha256": "62509bff1b0b99839fc05bcb524c6ac4d4054c08de000450a14b83580bb8c187",
-      "path": "crates/threetched-fs/src/fuse_buffers.rs"
+      "path": "crates/_3tched-fs/src/fuse_buffers.rs"
     },
     {
       "sha256": "5b38308b3b687caa017e4f4350d575132bdbc83aeae5088f36d1dc9ce06312e2",
-      "path": "crates/threetched-fs/src/fuse_fs.rs"
+      "path": "crates/_3tched-fs/src/fuse_fs.rs"
     },
     {
       "sha256": "a695702addbf084dca518265b8c5e7c54ffdf369cb66b08199d148cb7c6f6926",
-      "path": "crates/threetched-fs/src/fuse_process.rs"
+      "path": "crates/_3tched-fs/src/fuse_process.rs"
     },
     {
       "sha256": "7b018ef12791707bcd1b6fb926e1c453b7ce569af037dfbd3e38cb039a2bf759",
-      "path": "crates/threetched-fs/src/lib.rs"
+      "path": "crates/_3tched-fs/src/lib.rs"
     },
     {
       "sha256": "68cb9d882d0ea0df90331bc2576fe7ddcf022ada249975c28020e0e26b854e24",
-      "path": "crates/threetched-fs/src/main.rs"
+      "path": "crates/_3tched-fs/src/main.rs"
     },
     {
       "sha256": "f5661e0bb50222085b3b975110d23f7f2316bd935851ecba7b515ac370f4d90b",
-      "path": "crates/threetched-fs/src/mcp.rs"
+      "path": "crates/_3tched-fs/src/mcp.rs"
     },
     {
       "sha256": "4bc7b17bd49f1c564ba1efb97182421f8b958a339ecc32fb65e42e76a3a241c0",
-      "path": "crates/threetched-fs/src/model.rs"
+      "path": "crates/_3tched-fs/src/model.rs"
     },
     {
       "sha256": "2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8",
-      "path": "crates/threetched-fs/src/mounted.rs"
+      "path": "crates/_3tched-fs/src/mounted.rs"
     },
     {
       "sha256": "4c778b04ad597208f21a6d2403e3b7631fac2bad38d23cfab1181cb01e7a7cd3",
-      "path": "crates/threetched-fs/src/namespace.rs"
+      "path": "crates/_3tched-fs/src/namespace.rs"
     },
     {
       "sha256": "24f3cd2ef38c40fdf9217f3a47a7eccb9620ec29ee50125e1c326777f0ae7a32",
-      "path": "crates/threetched-fs/src/source.rs"
+      "path": "crates/_3tched-fs/src/source.rs"
     },
     {
       "sha256": "943f3bbd29a1cef8caa3f9c135f72479935dfed5abfed29e93b260498c088ffb",
-      "path": "crates/threetched-fs/src/store.rs"
+      "path": "crates/_3tched-fs/src/store.rs"
     },
     {
       "sha256": "027d2d834d871b7801e2a8c007fbc638447ed6a36d7443ea43904fa4737b7989",
-      "path": "crates/threetched-fs/src/typed_runtime.rs"
+      "path": "crates/_3tched-fs/src/typed_runtime.rs"
     },
     {
       "sha256": "5ff3fe01ebf662c97f711fbb78ac4963ba14843ea4f1bb39168c4e5fd52aa375",
-      "path": "crates/threetched-fs/src/threetched-surface.rs"
+      "path": "crates/_3tched-fs/src/threetched-surface.rs"
     },
     {
       "sha256": "bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05",
@@ -186,7 +186,7 @@
     },
     {
       "sha256": "452da1ecc40282b904c3a13a7c303e35f5c319726970d92b3ef766775e1caab9",
-      "path": "deploy/runit/threetched-fs/run"
+      "path": "deploy/runit/3tched-fs/run"
     }
   ],
   "source_hash_algorithm": "SHA-256",

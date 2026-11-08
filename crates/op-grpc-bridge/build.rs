@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for name in [
         "THREETCHED_BIN",
         "THREETCHED_MANIFEST",
-        "TCHED_ROUTER_CONFIG_DIR",
+        "THREETCHED_CONFIG_DIR",
         "THREETCHED_CAPTURE_BIN",
         "THREETCHED_CAPTURE_MANIFEST",
     ] {

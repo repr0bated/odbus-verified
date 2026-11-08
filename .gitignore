@@ -36,7 +36,7 @@ google-cloud-sdk/
 # Local built artifacts
 deploy/bin/
 *.tar.gz
-!vendor/tched-router/source.tar.gz
+!vendor/threetched/source.tar.gz
 !vendor/vercel-json-render-ui/source.tar.gz
 backup.tar.gz
 
@@ -95,7 +95,7 @@ techops/
 # Editor/patch artifacts never belong next to verified source
 *.bak
 *.patch
-!vendor/tched-router/patches/*.patch
+!vendor/threetched/patches/*.patch
 !/deploy/release/lifetime/0001-btrfs-quiescent-destroy.patch
 *.backup
 *.copied
