@@ -872,7 +872,6 @@ impl Projection {
             );
             for (backend, locator) in [
                 ("model_registry", "src/chat/model-catalog.ts#MODEL_REGISTRY"),
-                ("tched_router", "src/chat/door-chat-adapter.ts#TCHED_ROUTER"),
             ] {
                 if plugins.contains_key(backend) {
                     self.edge(

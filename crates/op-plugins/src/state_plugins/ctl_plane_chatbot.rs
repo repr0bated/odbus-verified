@@ -539,7 +539,7 @@ pub struct CtlPlaneChatbotState {
     pub knowledge_truncated: bool,
     #[serde(default = "default_chat_llm_plugin")]
     #[schemars(
-        description = "Reserved legacy field without an active config owner. Native Chat routing is selected through the tched_router contract.",
+        description = "Reserved legacy field without an active config owner. Native Chat routing is selected through the chat_router contract.",
         example = &"large_language_model",
         extend("readOnly" = true),
         extend("x-oscal-subid" = "mut.software.plugin.ctl-plane-chatbot.llm-plugin@v1")
@@ -547,7 +547,7 @@ pub struct CtlPlaneChatbotState {
     pub llm_plugin: String,
     #[serde(default)]
     #[schemars(
-        description = "Reserved legacy field; no chatbot-specific model override is implemented. Native Chat uses tched_router selection.",
+        description = "Reserved legacy field; no chatbot-specific model override is implemented. Native Chat uses chat_router selection.",
         extend("readOnly" = true),
         extend("x-oscal-subid" = "mut.software.plugin.ctl-plane-chatbot.chat-model@v1")
     )]

@@ -244,20 +244,6 @@ async fn reflection_list_services_over_tls() {
     );
 }
 
-/// A discovered generated service must reach its authentication handler,
-/// not return UNIMPLEMENTED as an unmounted descriptor-only service would.
-#[tokio::test]
-async fn advertised_plugin_route_is_mounted_over_tls() {
-    let (addr, ca_pem) = start_tls_server().await;
-    let channel = tls_channel(addr, &ca_pem).await;
-    let mut client = op_grpc_bridge::proto::plugin_methods::tched_router_plugin_methods_client::TchedRouterPluginMethodsClient::new(channel);
-    let status = client
-        .get_config(op_grpc_bridge::proto::plugin_methods::TchedRouterGetConfigRequest::default())
-        .await
-        .expect_err("missing identity must fail at the mounted route's auth gate");
-    assert_eq!(status.code(), tonic::Code::Unauthenticated);
-}
-
 /// gRPC reflection can retrieve a file descriptor for a known service over TLS.
 #[tokio::test]
 async fn reflection_file_descriptor_over_tls() {

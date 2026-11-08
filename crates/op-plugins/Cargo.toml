@@ -18,7 +18,7 @@ op-core = { path = "../op-core" }
 # Sealed plugin-object blobs: the blob catalog IS the plugin surface.
 op-blob = { workspace = true }
 op-plugin-lint = { path = "../op-plugin-lint" }
-tched-fs = { path = "../threetched-fs" }
+_3tched-fs = { path = "../_3tched-fs" }
 op-dbus-model = { workspace = true }
 op-state = { path = "../op-state" }
 op-state-store = { path = "../op-state-store" }
@@ -26,7 +26,7 @@ op-cozo-store = { workspace = true }
 op-snowball = { path = "../op-snowball" }
 op-network = { path = "../op-network" }
 op-agents = { path = "../op-agents" }
-# The tched-router config surface is generated from the pinned threetched
+# The threetched config surface is generated from the pinned threetched
 # binary's imported `config schema` contract in the plugin, and validated
 # against it at runtime. There is deliberately NO zeroclaw crate dependency:
 # a linked crate pins us to a version that need not match the deployed binary.

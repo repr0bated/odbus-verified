@@ -1,4 +1,3 @@
-//! Prior name: tched_router_runtime.
 //! Loopback adapter for the real chat_router daemon.
 //!
 //! The upstream binary owns provider/model discovery, selection, persistence and

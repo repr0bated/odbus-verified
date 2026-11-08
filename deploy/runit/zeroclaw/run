@@ -9,26 +9,26 @@ AUTH_FILE=${OPENCODE_AUTH_FILE:-/home/jeremy/.local/share/opencode/auth.json}
 NATIVE_BIN=${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}
 NATIVE_MANIFEST=${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}
 
-[ -x "$NATIVE_BIN" ] || { echo "pinned tched_router native binary is missing" >&2; exit 78; }
-[ -f "$NATIVE_MANIFEST" ] || { echo "tched_router native provenance manifest is missing" >&2; exit 78; }
+[ -x "$NATIVE_BIN" ] || { echo "pinned threetched native binary is missing" >&2; exit 78; }
+[ -f "$NATIVE_MANIFEST" ] || { echo "threetched native provenance manifest is missing" >&2; exit 78; }
 manifest_format=$(jq -er '.format' "$NATIVE_MANIFEST")
 manifest_commit=$(jq -er '.upstream.commit' "$NATIVE_MANIFEST")
 manifest_binary_sha256=$(jq -er '.artifact.sha256' "$NATIVE_MANIFEST")
 [ "$manifest_format" = opdbus.tched-router-native.v1 ] || {
-    echo "tched_router native provenance format is unsupported" >&2
+    echo "threetched native provenance format is unsupported" >&2
     exit 78
 }
 [ "$manifest_commit" = a56c345d51dd8ab562e9351e0d4ab83f6a741db9 ] || {
-    echo "tched_router native provenance has the wrong upstream commit" >&2
+    echo "threetched native provenance has the wrong upstream commit" >&2
     exit 78
 }
 actual_binary_sha256=$(sha256sum "$NATIVE_BIN" | awk '{print $1}')
 [ "$actual_binary_sha256" = "$manifest_binary_sha256" ] || {
-    echo "tched_router native binary differs from its provenance manifest" >&2
+    echo "threetched native binary differs from its provenance manifest" >&2
     exit 78
 }
 [ "$($NATIVE_BIN --version)" = "zeroclaw 0.8.4" ] || {
-    echo "tched_router native binary reports an unexpected version" >&2
+    echo "threetched native binary reports an unexpected version" >&2
     exit 78
 }
 

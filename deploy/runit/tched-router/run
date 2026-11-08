@@ -89,7 +89,7 @@ if [ "$manifest_format" = "opdbus.threetched.v2" ]; then
         (.upstream.commit | test("^[0-9a-f]{40}$"))' "$THREETCHED_MANIFEST" >/dev/null || {
         echo "invalid threetched artifact provenance" >&2; exit 78;
     }
-    [ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
+    [ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "threetched binary/provenance mismatch" >&2; exit 78; }
     [ "$("$THREETCHED_BIN" --version)" = "zeroclaw ${manifest_tag#v}" ] || { echo "unexpected threetched version" >&2; exit 78; }
 elif [ "$manifest_format" = "opdbus.threetched.v1" ]; then
     jq -e '.artifact.name == "threetched" and
@@ -97,10 +97,10 @@ elif [ "$manifest_format" = "opdbus.threetched.v1" ]; then
         (.patches.branding_sha256 | test("^[0-9a-f]{64}$"))' "$THREETCHED_MANIFEST" >/dev/null || {
         echo "invalid threetched artifact provenance" >&2; exit 78;
     }
-    [ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
+    [ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "threetched binary/provenance mismatch" >&2; exit 78; }
     [ "$("$THREETCHED_BIN" --version)" = "threetched ${manifest_tag#v}" ] || { echo "unexpected threetched version" >&2; exit 78; }
 else
-    echo "unsupported tched_router provenance: $manifest_format" >&2
+    echo "unsupported threetched provenance: $manifest_format" >&2
     exit 78
 fi
 

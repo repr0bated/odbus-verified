@@ -13,7 +13,7 @@ mod store;
 #[path = "threetched-surface.rs"]
 mod threetched_surface;
 #[cfg(not(test))]
-use tched_fs::threetched_surface;
+use _3tched_fs::threetched_surface;
 
 use std::fs;
 use std::io::Read;

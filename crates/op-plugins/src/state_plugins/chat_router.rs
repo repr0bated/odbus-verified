@@ -1976,7 +1976,7 @@ fn chat_router_schema_from_state(state: ChatRouterState) -> PluginSchema {
             "SetSelection",
             op_state_store::SideEffect::Mutation,
             false,
-            "cap.software.tched-router.selection.set@v1",
+            "cap.software.3tched-router.selection.set@v1",
             "mut.service.tched-router.selection.set@v1",
         ),
     );
@@ -2156,7 +2156,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             "apply_catalog_model_binding",
             SideEffect::Mutation,
             false,
-            "cap.software.tched-router.catalog.selection.set@v1",
+            "cap.software.3tched-router.catalog.selection.set@v1",
             "mut.software.tched-router.catalog-model-binding@v1",
         ),
     );
@@ -2169,7 +2169,7 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             "resolve_catalog_model_binding",
             SideEffect::Read,
             true,
-            "cap.software.tched-router.model.binding.read@v1",
+            "cap.software.3tched-router.model.binding.read@v1",
             "obs.software.tched-router.catalog-model-binding@v1",
         ),
     );
@@ -2179,12 +2179,12 @@ fn register_cli_config_methods(schema: &mut PluginSchema) {
             "get_own_agent_route",
             SideEffect::Read,
             true,
-            "cap.software.tched-router.agent.route.self.read@v1",
+            "cap.software.3tched-router.agent.route.self.read@v1",
             "obs.software.tched-router.agent-route-self@v1",
         ),
     );
-    let read_capability = "cap.software.tched-router.router.read@v1";
-    let write_capability = "cap.software.tched-router.router.write@v1";
+    let read_capability = "cap.software.3tched-router.router.read@v1";
+    let write_capability = "cap.software.3tched-router.router.write@v1";
     schema.methods.insert(
         "config_list".to_string(),
         method_decl_from_schemars_with_output::<ConfigListInput, ConfigListOutput>(
@@ -2313,27 +2313,27 @@ const CARRIED_CAPABILITIES: &[(&str, &str)] = &[
         "Send a chat turn through the bridge-owned dispatcher.",
     ),
     (
-        "cap.software.tched-router.router.read@v1",
+        "cap.software.3tched-router.router.read@v1",
         "Read chat_router configuration via config_list/get.",
     ),
     (
-        "cap.software.tched-router.agent.route.self.read@v1",
+        "cap.software.3tched-router.agent.route.self.read@v1",
         "Read only the dedicated native route selected by the caller's persisted chat mode.",
     ),
     (
-        "cap.software.tched-router.model.binding.read@v1",
+        "cap.software.3tched-router.model.binding.read@v1",
         "Resolve one available catalog model to a verified ordinary native profile and safe endpoint.",
     ),
     (
-        "cap.software.tched-router.catalog.selection.set@v1",
+        "cap.software.3tched-router.catalog.selection.set@v1",
         "Apply one verified available catalog model only to an allowed ordinary native profile.",
     ),
     (
-        "cap.software.tched-router.selection.set@v1",
+        "cap.software.3tched-router.selection.set@v1",
         "Select the active provider and model together.",
     ),
     (
-        "cap.software.tched-router.router.write@v1",
+        "cap.software.3tched-router.router.write@v1",
         "Mutate chat_router configuration via config_set/patch.",
     ),
     (
@@ -2651,7 +2651,7 @@ mod tests {
         let apply = &schema.methods["apply_catalog_model_binding"];
         assert_eq!(
             apply.required_capability.as_deref(),
-            Some("cap.software.tched-router.catalog.selection.set@v1")
+            Some("cap.software.3tched-router.catalog.selection.set@v1")
         );
         assert_ne!(method.required_capability, apply.required_capability);
         assert_eq!(method.side_effect, op_state_store::SideEffect::Read);
@@ -2662,7 +2662,7 @@ mod tests {
         assert_eq!(method.returns, apply.returns);
         assert_eq!(
             method.required_capability.as_deref(),
-            Some("cap.software.tched-router.model.binding.read@v1")
+            Some("cap.software.3tched-router.model.binding.read@v1")
         );
         assert!(schema.fields["catalog_model_binding"].read_only);
         let op_state_store::FieldType::JsonSchema(field_schema) =
@@ -2713,7 +2713,7 @@ mod tests {
         let method = &schema.methods["get_own_agent_route"];
         assert_eq!(
             method.required_capability.as_deref(),
-            Some("cap.software.tched-router.agent.route.self.read@v1")
+            Some("cap.software.3tched-router.agent.route.self.read@v1")
         );
         let input =
             serde_json::to_value(schemars::schema_for!(super::GetOwnAgentRouteInput)).unwrap();

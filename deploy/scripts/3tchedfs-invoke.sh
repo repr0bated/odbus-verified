@@ -8,7 +8,7 @@
 #
 # Usage:
 #   deploy/scripts/3tchedfs-invoke.sh <plugin> <method> [json-args] [--confirm-side-effects]
-#   OP_3TCHEDFS_MOUNT=/run/mounts/3tchedFS deploy/scripts/3tchedfs-invoke.sh tched_router config_get '{"path":"agents.dashboard.model_provider"}'
+#   OP_3TCHEDFS_MOUNT=/run/mounts/3tchedFS deploy/scripts/3tchedfs-invoke.sh threetched config_get '{"path":"agents.dashboard.model_provider"}'
 set -euo pipefail
 
 die() { echo "3tchedfs-invoke: $*" >&2; exit 1; }

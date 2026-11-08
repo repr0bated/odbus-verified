@@ -21,7 +21,7 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     match plugin {
         "cozo" => cozo::supports(method),
         "freedesktop" => matches!(method, "GetManagedObjects" | "Get" | "GetAll" | "Set" | "Introspect" | "Ping" | "GetMachineId"),
-        "tched_fs" => matches!(method, "get_protocol" | "get_contract" | "get_receipt"),
+        "_3tched_fs" => matches!(method, "get_protocol" | "get_contract" | "get_receipt"),
         "ghostbridge" => matches!(method, "GetState" | "GetIdentity" | "ListEndpoints" | "GetGhostrunner"),
         "snowball" => snowball::supports(method),
         _ => false,
@@ -38,7 +38,7 @@ pub(crate) async fn dispatch(
     match plugin {
         "cozo" => cozo::dispatch(ctx, method, args).await,
         "freedesktop" => freedesktop::dispatch(ctx, method, args).await,
-        "tched_fs" => filesystem(ctx, method, args).await,
+        "_3tched_fs" => filesystem(ctx, method, args).await,
         "ghostbridge" => ghostbridge(ctx, method).await,
         "snowball" => snowball::dispatch(ctx, method, args).await,
         _ => unreachable!("supported plugin checked above"),
@@ -71,7 +71,7 @@ async fn filesystem(
         serde_json::to_value(receipt)?
     } else {
         // These are the actual immutable descriptor methods. The sealed
-        // tched_fs contract has no mount, unmount, read-file or proxy method.
+        // _3tched_fs contract has no mount, unmount, read-file or proxy method.
         // The existing host/guest mount owners and Runtime lungs keep those
         // namespaces; this adapter neither selects nor creates a host mount.
         chat_fs::dispatch(method, args).map_err(RuntimeError::before_effect)?

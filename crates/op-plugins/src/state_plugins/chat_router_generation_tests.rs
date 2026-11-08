@@ -197,7 +197,7 @@ fn selectors_are_reused_but_storage_domains_and_inputs_stay_separate() {
     let a = owner("ab", "c");
     let b = owner("a", "bc");
     assert_ne!(a.selector(), b.selector());
-    assert!(a.document_id().starts_with("tched_generation:v1:"));
+    assert!(a.document_id().starts_with("_3tched_generation:v1:"));
     for agent_alias in ["", "../another", "different/session", "bad name"] {
         assert!(StartGenerationInput {
             agent_alias: agent_alias.into(),

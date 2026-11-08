@@ -99,7 +99,7 @@ fn decode_identity_header(
     Ok(Some(wire))
 }
 
-async fn call_tched_router_method(
+async fn call_chat_router_method(
     headers: &HeaderMap,
     method: &str,
     capability: &str,
@@ -199,7 +199,7 @@ pub async fn chat_router_chat_handler(
             })
             .collect()
     };
-    let result = match call_tched_router_method(
+    let result = match call_chat_router_method(
         &headers,
         "Chat",
         "cap.software.3tched-router.chat@v1",
@@ -294,7 +294,7 @@ pub async fn openai_models_handler(
     headers: HeaderMap,
     Extension(_state): Extension<Arc<AppState>>,
 ) -> Response {
-    let result = match call_tched_router_method(
+    let result = match call_chat_router_method(
         &headers,
         "ListModels",
         "cap.software.3tched-router.models.read@v1",
@@ -370,7 +370,7 @@ fn json_error_response(status: StatusCode, message: &str) -> Response {
 /// (Absolute Base). Per AGENTS.md the sealed blob IS the plugin; the monolithic
 /// `/dev/shm/live-schema.json` is gone. Live projection values take precedence,
 /// while schema field defaults provide the boot-safe provider/model catalog.
-fn read_tched_router_schema_shm() -> Option<Value> {
+fn read_chat_router_schema_shm() -> Option<Value> {
     let schema =
         op_blob::catalog::read_plugin_schema_shm(crate::chat_router_routes::ROUTER_PLUGIN_ID)?;
     // `PluginSchema` serializes to { name, version, fields, methods, … }.
@@ -479,9 +479,9 @@ pub async fn chat_router_schema_handler(Extension(_state): Extension<Arc<AppStat
     let (router, router_schema) = match crate::chat_router_routes::read_router_plugin().await {
         Ok(Some(v)) => {
             info!("Using chat_router from SHM state tree (live provider/model catalog)");
-            (v, read_tched_router_schema_shm())
+            (v, read_chat_router_schema_shm())
         }
-        Ok(None) => match read_tched_router_schema_shm() {
+        Ok(None) => match read_chat_router_schema_shm() {
             Some(schema) => {
                 warn!("3tched Router SHM state unavailable; using PluginSchema only");
                 (schema.clone(), Some(schema))

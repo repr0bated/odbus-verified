@@ -1,4 +1,3 @@
-//! Prior name: tched_router_admission.
 //! Final router admission under the one runtime operation guard.
 //!
 //! This retains the original caller metadata and admitted plugin; it mints no

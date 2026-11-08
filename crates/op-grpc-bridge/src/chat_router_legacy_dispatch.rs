@@ -1,4 +1,3 @@
-//! Prior name: tched_router_legacy_dispatch.
 //! Bridge integration for retained chat_router reads and durable role assignments.
 //! Canonical admission/verified identity remains in MutationEngine.
 

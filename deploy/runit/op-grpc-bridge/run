@@ -87,23 +87,23 @@ startup_phase runtime-token
 TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
 unset TCHED_ROUTER_RUNTIME_TOKEN
 if [ ! -f "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ] || [ -L "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ]; then
-    echo "protected tched_router runtime token file is missing or not a regular file" >&2
+    echo "protected threetched runtime token file is missing or not a regular file" >&2
     exit 78
 fi
 set -- $(stat -Lc '%u %a' "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
 [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
-    echo "tched_router runtime token file must be root-owned with mode 0400 or 0600" >&2
+    echo "threetched runtime token file must be root-owned with mode 0400 or 0600" >&2
     exit 78
 }
 TCHED_ROUTER_RUNTIME_TOKEN=$(cat "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
 case "$TCHED_ROUTER_RUNTIME_TOKEN" in
     ''|*[!A-Za-z0-9._~-]*)
-        echo "tched_router runtime token file has an invalid token" >&2
+        echo "threetched runtime token file has an invalid token" >&2
         exit 78
         ;;
 esac
 [ "${#TCHED_ROUTER_RUNTIME_TOKEN}" -le 8192 ] || {
-    echo "tched_router runtime token exceeds its transport bound" >&2
+    echo "threetched runtime token exceeds its transport bound" >&2
     exit 78
 }
 export TCHED_ROUTER_RUNTIME_TOKEN

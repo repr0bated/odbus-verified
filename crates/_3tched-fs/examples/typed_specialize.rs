@@ -859,7 +859,7 @@ fn generate(
                 literal(&object.source_schema_hash)
             ),
         )?;
-        if plugin_id == "tched_fs"
+        if plugin_id == "_3tched_fs"
             && let (Some(protocol), Some(receipt)) = (
                 example_shapes.get("get_protocol"),
                 example_shapes.get("get_receipt"),
@@ -1025,7 +1025,7 @@ fn main() -> Result<()> {
     if example.is_some() {
         ensure!(
             generated.use_example.is_some(),
-            "sealed tched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report"
+            "sealed _3tched_fs get_protocol/get_receipt cannot both be specialized; consult emitted report"
         );
     }
     if let Some(path) = example {
@@ -1247,7 +1247,7 @@ mod tests {
                 ),
             ),
         ]));
-        schema.name = "tched_fs".into();
+        schema.name = "_3tched_fs".into();
         let generated = generate(
             &snapshot(schema),
             &BTreeSet::new(),

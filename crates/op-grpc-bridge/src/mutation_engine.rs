@@ -4342,7 +4342,7 @@ impl MutationEngine {
                 let args = serde_json::to_value(&parsed_value)?;
                 op_plugins::state_plugins::software::dispatch_software_method(method, &args).await?
             }
-            "tched_fs" => {
+            "_3tched_fs" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 let output = if method == "get_receipt" {
                     let request: op_state_store::method_receipt::GetMethodReceiptInput =
@@ -5703,7 +5703,7 @@ impl MutationEngine {
                     )
                     .await;
             }
-            // Selected model on tched-router (:8084). Tools are compact MCP on
+            // Selected model on threetched (:8084). Tools are compact MCP on
             // that agent; the bridge does not own a second provider state.
             let output = if route.mode == op_plugins::state_plugins::project::ChatMode::ControlPlane
             {

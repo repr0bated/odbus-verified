@@ -5,7 +5,7 @@
 # at shutdown. That capture is a safety net — something to reach for if a boot
 # comes up wrong — not a restore path. Boot deliberately reseeds every plugin
 # from the freshly built schema, because nothing here holds present state that
-# cannot be rederived (identity_sled → cozo, tched_router → config.toml, net →
+# cannot be rederived (identity_sled → cozo, threetched → config.toml, net →
 # OVS conf.db, cognitive_mcp → memory.db) and the durability that matters is
 # historical: the mutation chain, covered independently.
 #

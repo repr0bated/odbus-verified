@@ -1,4 +1,4 @@
-//! Prior names: ZeroClawCronGateway, TchedRouterCronGateway.
+//! Prior name: ZeroClawCronGateway.
 //! Exact v0.8.4 cron route mapping over the existing hardened chat-router
 //! runtime client. No second reqwest client or bearer authority is introduced.
 

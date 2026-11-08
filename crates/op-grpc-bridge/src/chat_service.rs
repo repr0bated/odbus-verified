@@ -37,7 +37,7 @@ use crate::proto::chat::{
     chat_service_server::ChatService,
 };
 
-const ROUTER_PLUGIN_ID: &str = "tched_router";
+const CHAT_PLUGIN_ID: &str = "chat_router";
 const ROUTER_CHAT_CAPABILITY: &str = "cap.software.3tched-router.chat@v1";
 
 // Conversation/tool ids are client-controlled correlation labels, never an
@@ -62,7 +62,7 @@ fn chat_identity<T>(request: &Request<T>) -> Result<GhostbridgeIdentity, Status>
     let identity = bridge_capability_identity(request.extensions())
         .ok_or_else(|| Status::unauthenticated("verified chat identity is required"))?;
     crate::grpc_server::authorize_schema_method(
-        ROUTER_PLUGIN_ID,
+        CHAT_PLUGIN_ID,
         "Chat",
         Some(ROUTER_CHAT_CAPABILITY),
         Some(&identity),
@@ -129,7 +129,7 @@ async fn dispatch_chat_method(
 ) -> anyhow::Result<ChatOutput> {
     let result = engine
         .dispatch_method_call_with_identity(
-            ROUTER_PLUGIN_ID,
+            CHAT_PLUGIN_ID,
             "Chat",
             chat_args,
             Some(ROUTER_CHAT_CAPABILITY),
@@ -626,7 +626,7 @@ mod tests {
         let schema = op_plugins::state_plugins::chat_router::chat_router_plugin_schema();
         let chat = schema.methods.get("Chat").expect("Chat method");
 
-        assert_eq!(schema.name, ROUTER_PLUGIN_ID);
+        assert_eq!(schema.name, CHAT_PLUGIN_ID);
         assert_eq!(
             chat.required_capability.as_deref(),
             Some(ROUTER_CHAT_CAPABILITY)

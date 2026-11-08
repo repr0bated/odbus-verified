@@ -104,10 +104,6 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/tched-router/schema",
             get(handlers::chat_router::chat_router_schema_handler),
         )
-        .route(
-            "/tched_router/schema",
-            get(handlers::chat_router::chat_router_schema_handler),
-        )
         // Plugin identity endpoints — model-agnostic, sealed SHM blob catalog
         // (`/dev/shm/opdbus/`) is the single source of truth for both.
         .route(

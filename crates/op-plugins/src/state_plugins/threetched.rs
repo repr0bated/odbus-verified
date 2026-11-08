@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use simd_json::OwnedValue;
-use tched_fs::threetched_surface::{SurfaceSnapshot, ThreetchedSurface};
+use _3tched_fs::threetched_surface::{SurfaceSnapshot, ThreetchedSurface};
 
 pub const PLUGIN_NAME: &str = "threetched";
 const VERSION: &str = "1.0.0";
@@ -167,7 +167,7 @@ fn command_policy(method: &str) -> (String, String) {
     // policy identifier, not an inferred CLI type or a hardcoded method table.
     let key = format!("c{:x}", Sha256::digest(method.as_bytes()));
     (
-        format!("cap.software.threetched.call.{key}@v1"),
+        format!("cap.software.3tched-router.call.{key}@v1"),
         format!("mut.software.threetched.call.{key}@v1"),
     )
 }
@@ -373,7 +373,7 @@ pub async fn dispatch(
         // worker has killed and reaped its child group.
         let _operation = operation;
         let mut command = prepare_command(&method, &value, &source)?;
-        let output = tched_fs::fuse_process::run_command(&mut command, &cancelled)?;
+        let output = _3tched_fs::fuse_process::run_command(&mut command, &cancelled)?;
         ensure!(output.exit == 0, "threetched command exited with {}; inspect the identity-bound method receipt before retrying", output.exit);
         Ok(serde_json::to_value(&output)?)
     }).await.context("threetched execution worker failed")?
@@ -543,7 +543,7 @@ esac
         let (cap, subid) = command_policy("plugins.install");
         assert_ne!(cap, command_policy("plugins-install").0);
         super::super::common::oscal::validate_subid(&subid).unwrap();
-        assert!(cap.starts_with("cap.software.threetched.call."));
+        assert!(cap.starts_with("cap.software.3tched-router.call."));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-//! Prior name: tched_config_dispatch.
+//! Prior name: _3tched_config_dispatch.
 //! Native read adapter for the chat_router v0.8.4 config surface.
 //!
 //! Runtime performs sealed admission and pins/rechecks the exact plugin schema

@@ -24,7 +24,7 @@
 //! - RegistrationService — dropped, super old, fresh start later.
 //!
 //! Deliberately gone (the old pollution): build-time live-host schema
-//! capture, generated per-plugin protos, chat-router/tched-router legacy,
+//! capture, generated per-plugin protos, chat-router legacy,
 //! and the ~140 dispatch modules. Old files remain on disk unreferenced;
 //! remove them with `git rm` when convenient — they no longer compile
 //! into this crate (see `autobins`/`autotests` in Cargo.toml).

@@ -3,6 +3,32 @@
 version = 4
 
 [[package]]
+name = "_3tched-fs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "blake3",
+ "clap",
+ "fs2",
+ "fuser",
+ "jsonschema",
+ "libc",
+ "op-core",
+ "op-state-store",
+ "parking_lot",
+ "regex",
+ "rmcp",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "thiserror 2.0.19",
+ "tokio",
+ "uuid",
+ "zbus 5.18.0",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4504,6 +4530,7 @@ dependencies = [
 name = "op-grpc-bridge"
 version = "0.1.0"
 dependencies = [
+ "_3tched-fs",
  "anyhow",
  "async-stream",
  "async-trait",
@@ -4552,7 +4579,6 @@ dependencies = [
  "sha2 0.10.9",
  "simd-json",
  "socket2 0.6.5",
- "tched-fs",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -4842,6 +4868,7 @@ dependencies = [
 name = "op-plugins"
 version = "1.0.0"
 dependencies = [
+ "_3tched-fs",
  "anyhow",
  "async-trait",
  "base64 0.21.7",
@@ -4878,7 +4905,6 @@ dependencies = [
  "sha2 0.10.9",
  "simd-json",
  "sysinfo",
- "tched-fs",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -7507,32 +7533,6 @@ dependencies = [
  "filetime",
  "libc",
  "xattr",
-]
-
-[[package]]
-name = "tched-fs"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "blake3",
- "clap",
- "fs2",
- "fuser",
- "jsonschema",
- "libc",
- "op-core",
- "op-state-store",
- "parking_lot",
- "regex",
- "rmcp",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "thiserror 2.0.19",
- "tokio",
- "uuid",
- "zbus 5.18.0",
 ]
 
 [[package]]

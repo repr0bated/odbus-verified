@@ -1,4 +1,4 @@
-//! Prior name: tched_catalog_binding.
+//! Prior name: _3tched_catalog_binding.
 //! Narrow ordinary-profile binding selection. The owner catalog supplies the
 //! independent endpoint trust; native observations never manufacture that trust.
 

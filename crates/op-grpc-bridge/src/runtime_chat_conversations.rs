@@ -259,8 +259,8 @@ async fn answer(ctx: &BackendContext<'_>, mut messages: Vec<ChatMessage>, respon
                 ensure!(tools.iter().any(|tool| tool.name == path), "model operation is not in the authorized namespace");
                 let parts = path.split('/').collect::<Vec<_>>();
                 ensure!(parts.len() == 5 && parts[1] == "operations" && parts[4] == "call", "invalid mounted operation path");
-                let plugin = ctx.runtime.catalog().plugins().iter().find(|plugin| tched_fs::namespace::encode_component(&plugin.id) == parts[2]).context("mounted plugin no longer exists")?;
-                let method = plugin.methods.iter().find(|method| tched_fs::namespace::encode_component(&method.name) == parts[3]).context("mounted method no longer exists")?;
+                let plugin = ctx.runtime.catalog().plugins().iter().find(|plugin| _3tched_fs::namespace::encode_component(&plugin.id) == parts[2]).context("mounted plugin no longer exists")?;
+                let method = plugin.methods.iter().find(|method| _3tched_fs::namespace::encode_component(&method.name) == parts[3]).context("mounted method no longer exists")?;
                 ensure!(!(plugin.id == "chat_response" && matches!(method.name.as_str(), "submit_turn" | "respond_to_user" | "request_clarification" | "cannot_perform")), "a model may not mint, replace or answer its own pending conversation turn");
                 let result = ctx.runtime.call_nested(ctx.caller, &plugin.id, &method.name, args).await?;
                 actions.push(format!("{}.{}", plugin.id, method.name));

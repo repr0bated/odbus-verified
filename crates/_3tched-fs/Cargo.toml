@@ -1,12 +1,12 @@
 [package]
-name = "tched-fs"
+name = "_3tched-fs"
 version = "0.1.0"
 edition.workspace = true
 description = "Schema-driven FUSE projection over authoritative typed OP-DBUS blobs"
 license = "MIT"
 
 [lib]
-name = "tched_fs"
+name = "_3tched_fs"
 
 [[bin]]
 name = "3tched-fs"

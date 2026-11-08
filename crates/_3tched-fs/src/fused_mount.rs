@@ -82,8 +82,8 @@ fn validate_namespace(metadata: &Value, view: &Value, catalog: &Value, session: 
         "mounted namespace is not pinned to the current sealed catalog");
     let objects = view["objects"].as_object().context("mounted view objects are absent")?;
     let plugins = catalog["plugins"].as_object().context("sealed plugin inventory is absent")?;
-    let expected = |id: &str| id != "threetched" && id != "tched_router";
-    ensure!(objects.contains_key("tched_fs")
+    let expected = |id: &str| id != "threetched";
+    ensure!(objects.contains_key("_3tched_fs")
         && objects.len() == plugins.keys().filter(|id| expected(id)).count()
         && objects.keys().all(|id| expected(id) && plugins.contains_key(id)),
         "mounted namespace differs from the host owner's sealed plugin selection");

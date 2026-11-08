@@ -1,4 +1,3 @@
-//! Prior name: tched_router_generation_native.
 //! Bounded adapter for the pinned binary's stateless generation WebSocket.
 //!
 //! The native endpoint has no task identifier: MutationEngine owns the job identity,

@@ -363,7 +363,7 @@ async fn visible_tools(ctx: &BackendContext<'_>) -> Result<Vec<op_plugins::state
         let schema = sealed_schema(ctx, &plugin.id)?;
         for declaration in schema.methods.values() {
             if declaration.required_capability.as_ref().is_some_and(|cap| grants.contains(cap)) && plugin.id != "mcp" {
-                tools.push(op_plugins::state_plugins::common::llm_projection::LlmTool { name: format!("/operations/{}/{}/call", tched_fs::namespace::encode_component(&plugin.id), tched_fs::namespace::encode_component(&declaration.name)), description: format!("{}: {}", plugin.name, declaration.name), parameters: serde_json::to_value(&declaration.args)?, response_schema: serde_json::to_value(&declaration.returns)? });
+                tools.push(op_plugins::state_plugins::common::llm_projection::LlmTool { name: format!("/operations/{}/{}/call", _3tched_fs::namespace::encode_component(&plugin.id), _3tched_fs::namespace::encode_component(&declaration.name)), description: format!("{}: {}", plugin.name, declaration.name), parameters: serde_json::to_value(&declaration.args)?, response_schema: serde_json::to_value(&declaration.returns)? });
             }
         }
     }

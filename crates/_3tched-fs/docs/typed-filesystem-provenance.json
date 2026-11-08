@@ -86,7 +86,7 @@
     },
     {
       "sha256": "2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b",
-      "path": "crates/op-plugins/src/state_plugins/tched_fs.rs"
+      "path": "crates/op-plugins/src/state_plugins/_3tched_fs.rs"
     },
     {
       "sha256": "17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49",

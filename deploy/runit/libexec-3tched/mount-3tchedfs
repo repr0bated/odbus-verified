@@ -83,7 +83,7 @@ ready() {
         (.source_catalog_hash == $catalog[0].catalog_hash and
          .source_catalog_generation == $catalog[0].generation) and
         (if $name == "threetched" then $actual == $upstream
-        else (.objects | has("tched_fs")) and
+        else (.objects | has("_3tched_fs")) and
             ($actual == (($catalog[0].plugins | keys | sort) - $upstream))
         end)
     ' "$mount_path/view.json" >/dev/null

@@ -1,7 +1,7 @@
 //! Router-plugin helpers backed by the SHM state tree.
 //!
 //! HTTP paths stay `/api/tched-router/*` and `/api/llm/*` (what the UI already
-//! calls). The sealed plugin those handlers read is `tched_router`.
+//! calls). The sealed plugin those handlers read is `chat_router`.
 
 use anyhow::{Result, bail};
 use simd_json::OwnedValue as Value;

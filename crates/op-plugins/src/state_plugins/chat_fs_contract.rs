@@ -1193,10 +1193,10 @@ const CONTRACT: &str = r########"
           ],
           "properties": {
             "owner_plugin": {
-              "const": "tched_fs"
+              "const": "_3tched_fs"
             },
             "authoring_source": {
-              "const": "crates/op-plugins/src/state_plugins/tched_fs_contract.rs"
+              "const": "crates/op-plugins/src/state_plugins/_3tched_fs_contract.rs"
             },
             "deployment": {
               "type": "object"
@@ -1609,7 +1609,7 @@ const CONTRACT: &str = r########"
       },
       {
         "sha256": "2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b",
-        "path": "crates/op-plugins/src/state_plugins/tched_fs.rs"
+        "path": "crates/op-plugins/src/state_plugins/_3tched_fs.rs"
       },
       {
         "sha256": "17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49",
@@ -4208,7 +4208,7 @@ const CONTRACT: &str = r########"
           "kind": "canonical_method_call",
           "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
           "payload_type": "CallReceipt",
-          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
+          "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared _3tched_fs.get_receipt, not a result cache."
         },
         "source_refs": [
           "crates/threetched-fs/src/namespace.rs:844-873"
@@ -14311,7 +14311,7 @@ const CONTRACT: &str = r########"
             "kind": "canonical_method_call",
             "locator_template": "same authenticated D-Bus connection PluginV1.CallWithOperationId",
             "payload_type": "CallReceipt",
-            "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared tched_fs.get_receipt, not a result cache."
+            "description": "Transient same-FD arguments/terminal response only; nested MethodExecutionReceipt includes linked durable attempt and terminal proofs. Stable metadata recovery uses declared _3tched_fs.get_receipt, not a result cache."
           },
           "source_refs": [
             "crates/threetched-fs/src/namespace.rs:844-873"
@@ -15850,8 +15850,8 @@ const CONTRACT: &str = r########"
     "Global EventChain lifetime RAM retention and long-run workload measurements are existing system-wide concerns outside this targeted filesystem repair."
   ],
   "authority": {
-    "owner_plugin": "tched_fs",
-    "authoring_source": "crates/op-plugins/src/state_plugins/tched_fs_contract.rs",
+    "owner_plugin": "_3tched_fs",
+    "authoring_source": "crates/op-plugins/src/state_plugins/_3tched_fs_contract.rs",
     "derived_exports": [
       "crates/threetched-fs/docs/typed-filesystem.schema.json",
       "crates/threetched-fs/docs/typed-filesystem-binding-input.json",
@@ -16038,7 +16038,7 @@ const CONTRACT: &str = r########"
     }
   },
   "plugin_surface": {
-    "plugin_id": "tched_fs",
+    "plugin_id": "_3tched_fs",
     "version": "2.0.8",
     "methods": [
       {
@@ -16063,8 +16063,8 @@ const CONTRACT: &str = r########"
       }
     ],
     "source_refs": [
-      "crates/op-plugins/src/state_plugins/tched_fs.rs:18-22",
-      "crates/op-plugins/src/state_plugins/tched_fs.rs:241-338",
+      "crates/op-plugins/src/state_plugins/_3tched_fs.rs:18-22",
+      "crates/op-plugins/src/state_plugins/_3tched_fs.rs:241-338",
       "crates/op-grpc-bridge/src/mutation_engine.rs:4198-4221"
     ]
   },

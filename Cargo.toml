@@ -39,7 +39,7 @@ members = [
     "crates/op-xray-daemon",
     "crates/op-dbus-cli",
     "crates/op-chat-responder",
-    "crates/threetched-fs",
+    "crates/_3tched-fs",
 ]
 exclude = ["crates/op-uds-relay", "hackathon"]
 
@@ -52,7 +52,7 @@ license = "Apache-2.0"
 [workspace.dependencies]
 # Internal Crates
 # ZeroClaw base runtime — imported for its REAL types (config, tools, providers).
-# The sealed tched_router blob is projected from these, not from hand-written structs.
+# The sealed threetched blob is projected from these, not from hand-written structs.
 # default-features = false: skip nostr/prometheus/skill-creation extras.
 # In-repo stand-in so this workspace loads without the live-host checkout.
 op-core = { path = "crates/op-core" }

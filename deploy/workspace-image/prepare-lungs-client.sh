@@ -194,7 +194,7 @@ install -m 0755 "$client" "$guest/usr/local/bin/3tched-fs"
 install -d -m 0755 "$empty" "$store" "$upstream_store"
 # Same selection as the host adapter; only declarations are delivered, never
 # live state or credentials. Both mounts write through the same lungs endpoint.
-upstream_plugins=threetched,tched_router
+upstream_plugins=threetched
 "$client" --store "$store" capture --schema-only --catalog "$catalog" --state "$empty" \
     --exclude-plugin "$upstream_plugins"
 "$client" --store "$upstream_store" capture --schema-only --catalog "$catalog" --state "$empty" \

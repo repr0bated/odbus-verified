@@ -127,7 +127,7 @@ mod tests {
         first["types"] = json!({});
         let second = chat_fs_contract::document();
         assert!(!second["types"].as_object().unwrap().is_empty());
-        assert_eq!(second["authority"]["owner_plugin"], "tched_fs");
+        assert_eq!(second["authority"]["owner_plugin"], "_3tched_fs");
         assert_eq!(second["authority"]["deployment"]["status"], "source-only");
     }
 

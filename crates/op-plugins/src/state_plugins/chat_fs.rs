@@ -14,7 +14,7 @@ use simd_json::OwnedValue as Value;
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 use super::chat_fs_contract;
 
-pub const PLUGIN_NAME: &str = "tched_fs";
+pub const PLUGIN_NAME: &str = "_3tched_fs";
 const VERSION: &str = "2.0.8";
 const READ_PROTOCOL: &str = "cap.storage.3tchedfs.protocol.read@v1";
 const READ_CONTRACT: &str = "cap.storage.3tchedfs.contract.read@v1";
@@ -493,7 +493,7 @@ mod tests {
         let blob = op_blob::blobify_plugin_schema(PLUGIN_NAME, schema);
         let pool = DescriptorPool::decode(blob.descriptor_set.as_slice()).unwrap();
         let descriptor = pool
-            .get_message_by_name("operation.method.tched_fs.get_contract.GetContractOutput")
+            .get_message_by_name("operation.method._3tched_fs.get_contract.GetContractOutput")
             .unwrap();
         let output = dispatch("get_contract", &serde_json::json!({})).unwrap();
         let message = DynamicMessage::deserialize(descriptor.clone(), &output).unwrap();
