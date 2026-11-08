@@ -1,5 +1,17 @@
 # Agent handoff
 
+## 2026-11-08 — Claude — BRANCH POLICY: ALL AGENTS RECONCILE
+
+Owner directive: only `main` and `dev` may be used. Every agent must, before any further work:
+1. Run `scripts/branch-policy.sh` and resolve every VIOLATION it reports for your own work.
+2. Ensure `git config core.hooksPath .githooks` is set in your clone (worktrees share it).
+3. Move any commits you need from an off-policy branch onto `dev`, then archive the old branch as `archive/<branch>` and remove your worktree.
+4. Do not create, commit to, or push other branches. Do not delete remote branches without owner approval.
+
+Enforcement: GitHub rulesets `branch-policy-restrict-others` (26818908) and `branch-policy-protect-main-dev` (26818910) are active on origin. Local hooks refuse off-policy commits and pushes.
+
+Current state (2026-11-08): local violations held by worktrees: `codex/bridge-fuse-repair-20261104`, `codex/bridge-hybrid-experiment-20261104`, `codex/pr-sweep-annotation-budget-20261023`, `feat/identity-nextdns-reseal`, `feat/jev-content-decisions`, `hackathon`, `recover/execution-tracker`. Root-owned, not deletable by this user: `claude/fuse-lungs-20261104`, `claude/wheelhouse-20261104`. Remote violations awaiting owner approval: 17 branches on origin.
+
 ## 2026-11-08 — Grok — release activated
 
 Build, seal, persist, and `activate-golden.sh` finished at 21:27Z. Active slot B `release-d6441566-71f0-4da8-a797-16c5da5c668f` root 578, previous slot A `release-69d18396-9348-4a9b-a653-4f0fcddd0c4d` root 576, journal null, readiness `complete b`. Golden MANIFEST commit `56380c8`, build `20261108T212528Z`. Catalog generation 216, 72 plugins, includes `threetched`, does not include `tched_router`. Installed mount helper `upstream_plugins=threetched`. Rebuilt `op-release` `b9220559…` was saved at `/home/jeremy/opdbus-release-20261108/op-release.rebuilt` and the approved kit `ade7e2c2…` performed the activation. Rollback: `sudo /usr/local/libexec/opdbus-release/op-release-launch rollback`.
