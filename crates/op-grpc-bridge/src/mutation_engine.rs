@@ -4352,11 +4352,11 @@ impl MutationEngine {
                             .await?,
                     )?
                 } else {
-                    op_plugins::state_plugins::chat_fs::dispatch(method, &args)?
+                    op_plugins::state_plugins::_3tched_fs::dispatch(method, &args)?
                 };
                 self.publish_plugin_projection_state(
                     plugin_id,
-                    op_plugins::state_plugins::chat_fs::protocol_value()?,
+                    op_plugins::state_plugins::_3tched_fs::protocol_value()?,
                     ChangeType::PropertySet,
                     true,
                 )

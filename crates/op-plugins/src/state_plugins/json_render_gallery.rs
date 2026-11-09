@@ -56,14 +56,14 @@ pub fn is_gallery_method(method: &str) -> bool {
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SaveCandidateInput {
-    /// A chat Canvas: exactly `{root, elements}`.
+    pub name: String,
+    pub description: String,
+    /// A json-render spec: `{root, elements}`.
     pub spec: Value,
-    pub title: String,
-    /// The chat mode the canvas came from.
-    pub mode: String,
-    /// The request that produced it, if the UI keeps it.
-    #[serde(default)]
-    pub prompt: Option<String>,
+    pub svelte_source: String,
+    pub compiled_output: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cozo_relations: Option<std::collections::BTreeMap<String, Vec<Value>>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -99,10 +99,6 @@ pub struct CatalogPageInput {
 #[serde(deny_unknown_fields)]
 pub struct PromoteInput {
     pub candidate_id: String,
-    /// Catalog name, unique among active entries.
-    pub name: String,
-    #[serde(default)]
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -124,17 +120,20 @@ pub struct RetireInput {
 pub struct Candidate {
     pub candidate_id: String,
     pub principal_id: String,
-    pub title: String,
-    pub mode: String,
-    #[serde(default)]
-    pub prompt: Option<String>,
+    pub name: String,
+    pub description: String,
     pub spec: Value,
-    /// sha256 of the canonical canvas.
+    pub svelte_source: String,
+    pub compiled_output: String,
+    /// sha256 of the canonical element content.
+    pub content_hash: String,
+    /// sha256 of the canonical json-render spec. Kept so the existing store index still matches the canvas.
     pub spec_hash: String,
-    /// The chat Canvas profile export it was validated against.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cozo_relations: Option<std::collections::BTreeMap<String, Vec<Value>>>,
+    /// The chat Canvas profile export the spec was validated against.
     pub profile_sha256: String,
     pub created_at: String,
-    /// The catalog entry this candidate became, once promoted.
     #[serde(default)]
     pub promoted_entry_id: Option<String>,
 }
@@ -143,8 +142,8 @@ pub struct Candidate {
 #[serde(deny_unknown_fields)]
 pub struct CandidateSummary {
     pub candidate_id: String,
-    pub title: String,
-    pub mode: String,
+    pub name: String,
+    pub content_hash: String,
     pub spec_hash: String,
     pub created_at: String,
     #[serde(default)]
@@ -155,8 +154,8 @@ impl From<&Candidate> for CandidateSummary {
     fn from(candidate: &Candidate) -> Self {
         Self {
             candidate_id: candidate.candidate_id.clone(),
-            title: candidate.title.clone(),
-            mode: candidate.mode.clone(),
+            name: candidate.name.clone(),
+            content_hash: candidate.content_hash.clone(),
             spec_hash: candidate.spec_hash.clone(),
             created_at: candidate.created_at.clone(),
             promoted_entry_id: candidate.promoted_entry_id.clone(),
@@ -195,7 +194,12 @@ pub struct CatalogEntry {
     pub name: String,
     pub description: String,
     pub spec: Value,
+    pub svelte_source: String,
+    pub compiled_output: String,
+    pub content_hash: String,
     pub spec_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cozo_relations: Option<std::collections::BTreeMap<String, Vec<Value>>>,
     pub profile_sha256: String,
     pub from_candidate_id: String,
     pub promoted_by: String,
@@ -208,9 +212,6 @@ pub struct CatalogEntry {
     pub retired_by: Option<String>,
     #[serde(default)]
     pub retire_reason: Option<String>,
-    /// Cozo relations imported atomically with this entry's spec.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cozo_relations: Option<std::collections::BTreeMap<String, Vec<Value>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -364,6 +365,33 @@ pub fn spec_hash(spec: &Value) -> String {
     format!("{:x}", sha2::Sha256::digest(canonical_json(spec)))
 }
 
+/// `sha256` of the element content that promotion must copy byte-for-byte.
+pub fn content_hash(
+    name: &str,
+    description: &str,
+    spec: &Value,
+    svelte_source: &str,
+    compiled_output: &str,
+    cozo_relations: &Option<std::collections::BTreeMap<String, Vec<Value>>>,
+) -> String {
+    let relations = cozo_relations
+        .as_ref()
+        .map(|relations| serde_json::to_value(relations).expect("cozo relations serialize"))
+        .unwrap_or(Value::Null);
+    spec_hash(&serde_json::json!({
+        "name": name,
+        "description": description,
+        "spec": spec,
+        "svelte_source": svelte_source,
+        "compiled_output": compiled_output,
+        "cozo_relations": relations,
+    }))
+}
+
+fn validate_element_source(what: &str, value: &str) -> Result<()> {
+    text(what, value, 1, 1_048_576, true)
+}
+
 /// Structural checks of a stored candidate; the canvas itself is checked
 /// against the sealed profile by the caller.
 pub fn validate_candidate(candidate: &Candidate) -> Result<()> {
@@ -372,9 +400,22 @@ pub fn validate_candidate(candidate: &Candidate) -> Result<()> {
         !candidate.principal_id.is_empty() && candidate.principal_id.len() <= 512,
         "invalid candidate principal"
     );
-    validate_title(&candidate.title)?;
-    validate_mode(&candidate.mode)?;
-    validate_prompt(candidate.prompt.as_deref())?;
+    validate_name(&candidate.name)?;
+    validate_description(&candidate.description)?;
+    validate_element_source("svelte source", &candidate.svelte_source)?;
+    validate_element_source("compiled output", &candidate.compiled_output)?;
+    validate_hash("content_hash", &candidate.content_hash)?;
+    ensure!(
+        content_hash(
+            &candidate.name,
+            &candidate.description,
+            &candidate.spec,
+            &candidate.svelte_source,
+            &candidate.compiled_output,
+            &candidate.cozo_relations,
+        ) == candidate.content_hash,
+        "candidate content differs from its content_hash"
+    );
     validate_hash("spec_hash", &candidate.spec_hash)?;
     validate_hash("profile_sha256", &candidate.profile_sha256)?;
     ensure!(
@@ -393,6 +434,20 @@ pub fn validate_entry(entry: &CatalogEntry) -> Result<()> {
     validate_uuid_v7("from_candidate_id", &entry.from_candidate_id)?;
     validate_name(&entry.name)?;
     validate_description(&entry.description)?;
+    validate_element_source("svelte source", &entry.svelte_source)?;
+    validate_element_source("compiled output", &entry.compiled_output)?;
+    validate_hash("content_hash", &entry.content_hash)?;
+    ensure!(
+        content_hash(
+            &entry.name,
+            &entry.description,
+            &entry.spec,
+            &entry.svelte_source,
+            &entry.compiled_output,
+            &entry.cozo_relations,
+        ) == entry.content_hash,
+        "catalog entry content differs from its content_hash"
+    );
     validate_hash("spec_hash", &entry.spec_hash)?;
     validate_hash("profile_sha256", &entry.profile_sha256)?;
     ensure!(
@@ -543,14 +598,22 @@ mod tests {
 
     fn candidate() -> Candidate {
         let spec = json!({"root": "a", "elements": {"a": {"type": "text", "props": {"text": "x", "className": null}}}});
+        let name = "Proposal";
+        let description = "A status page";
+        let svelte_source = "<p>status</p>";
+        let compiled_output = "function Status() { return null; }";
+        let spec_hash = spec_hash(&spec);
         Candidate {
             candidate_id: uuid::Uuid::now_v7().to_string(),
             principal_id: "did:op:human:one".into(),
-            title: "Proposal".into(),
-            mode: "ui_render".into(),
-            prompt: Some("draw a status page".into()),
-            spec_hash: spec_hash(&spec),
+            name: name.into(),
+            description: description.into(),
             spec,
+            svelte_source: svelte_source.into(),
+            compiled_output: compiled_output.into(),
+            content_hash: content_hash(name, description, &json!({"root": "a", "elements": {"a": {"type": "text", "props": {"text": "x", "className": null}}}}), svelte_source, compiled_output, &None),
+            spec_hash,
+            cozo_relations: None,
             profile_sha256: "a".repeat(64),
             created_at: chrono::Utc::now().to_rfc3339(),
             promoted_entry_id: None,
@@ -570,12 +633,9 @@ mod tests {
         let mut tampered = candidate();
         tampered.spec["root"] = json!("b");
         assert!(validate_candidate(&tampered).is_err());
-        let mut mode = candidate();
-        mode.mode = "admin".into();
-        assert!(validate_candidate(&mode).is_err());
-        let mut title = candidate();
-        title.title = " padded".into();
-        assert!(validate_candidate(&title).is_err());
+        let mut name = candidate();
+        name.name = " padded".into();
+        assert!(validate_candidate(&name).is_err());
         let mut v4 = candidate();
         v4.candidate_id = uuid::Uuid::new_v4().to_string();
         assert!(validate_candidate(&v4).is_err());
@@ -586,10 +646,14 @@ mod tests {
         let candidate = candidate();
         let mut entry = CatalogEntry {
             entry_id: uuid::Uuid::now_v7().to_string(),
-            name: "Status page".into(),
-            description: "Line one\nline two".into(),
+            name: candidate.name.clone(),
+            description: candidate.description.clone(),
             spec: candidate.spec.clone(),
+            svelte_source: candidate.svelte_source.clone(),
+            compiled_output: candidate.compiled_output.clone(),
+            content_hash: candidate.content_hash.clone(),
             spec_hash: candidate.spec_hash.clone(),
+            cozo_relations: candidate.cozo_relations.clone(),
             profile_sha256: candidate.profile_sha256.clone(),
             from_candidate_id: candidate.candidate_id.clone(),
             promoted_by: candidate.principal_id.clone(),

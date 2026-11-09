@@ -2,7 +2,7 @@
 //! Runtime alone journals effects and publishes their observations. Descriptor
 //! reads do not assert mount readiness; absent owners never become empty state.
 use anyhow::{Context, ensure};
-use op_plugins::state_plugins::{chat_fs, ghostbridge};
+use op_plugins::state_plugins::{_3tched_fs, ghostbridge};
 use serde_json::Value;
 
 use crate::{
@@ -74,14 +74,14 @@ async fn filesystem(
         // _3tched_fs contract has no mount, unmount, read-file or proxy method.
         // The existing host/guest mount owners and Runtime lungs keep those
         // namespaces; this adapter neither selects nor creates a host mount.
-        chat_fs::dispatch(method, args).map_err(RuntimeError::before_effect)?
+        _3tched_fs::dispatch(method, args).map_err(RuntimeError::before_effect)?
     };
     revalidate(ctx).await?;
     // Only the public protocol is global. The recovery result stays in the
     // caller-scoped method journal, never in this public state document.
     Ok(BackendOutcome {
         result,
-        state: BackendStateUpdate::Replace(serde_json::to_value(chat_fs::protocol_value()?)?),
+        state: BackendStateUpdate::Replace(serde_json::to_value(_3tched_fs::protocol_value()?)?),
         scope: StateScope::Public,
         additional: Vec::new(),
         guard: None,

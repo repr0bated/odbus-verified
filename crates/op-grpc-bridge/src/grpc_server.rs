@@ -1295,11 +1295,9 @@ mod browser_method_paths {
 
 /// Mount the COMPLETE Operation gRPC service surface onto a `tonic::service::Routes`.
 ///
-/// This is the SINGLE source of the backplane's service set. Every endpoint that
-/// serves the backplane — the op-dbus bridge (`run_grpc_server`, TCP `:50051`) and
-/// the chat_router bridge (`run_chat_router_server`, `:8090` + `container.sock`) — builds
-/// its routes from here, so reflection can never advertise a service that isn't
-/// actually mounted (the bug the gRPC-Web probe surfaced).
+/// This is the SINGLE source of the backplane's service set. `run_grpc_server`
+/// builds the fabric door, including the TLS listener on `:8090`, from here, so
+/// reflection can never advertise a service that isn't actually mounted.
 ///
 /// Services (all behind the Ghostbridge interceptor, all gRPC-Web enabled):
 ///   StateSync, PluginService, EventChainService, OvsdbMirror, RuntimeMirror,
@@ -1308,8 +1306,7 @@ mod browser_method_paths {
 ///
 /// The caller supplies a fully-configured `OperationGrpcServer` (plugin provider /
 /// semantic shuttle already attached) and adds endpoint-specific extras
-/// afterward (e.g. the chat_router bridge adds `ChatRouterService`; `run_grpc_server`
-/// adds the gRPC health service).
+/// afterward (`run_grpc_server` adds the gRPC health service).
 ///
 /// Adding a new domain service: add one `.add_service(...)` here and it appears on
 /// BOTH endpoints at once.

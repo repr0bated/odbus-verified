@@ -121,10 +121,10 @@ fn manifest_version(manifest: &Value, binary_hash: &str) -> Result<String> {
 }
 
 fn capture() -> Result<Captured> {
-    let binary = super::chat_router_paths::binary()?;
-    let manifest = super::chat_router_paths::manifest()?;
-    let config_dir = super::chat_router_paths::config_dir()?;
-    let (capture_binary, capture_manifest) = super::chat_router_paths::capture_paths()?;
+    let binary = super::threetched_paths::binary()?;
+    let manifest = super::threetched_paths::manifest()?;
+    let config_dir = super::threetched_paths::config_dir()?;
+    let (capture_binary, capture_manifest) = super::threetched_paths::capture_paths()?;
     let manifest_sha256 = sha256_file(&capture_manifest)?;
     let descriptor: Value = serde_json::from_reader(File::open(&capture_manifest)?)?;
     let binary_sha256 = sha256_file(&capture_binary)?;
@@ -305,9 +305,9 @@ fn validate_noninteractive_command(
 }
 
 fn prepare_command(method: &str, value: &Value, source: &ThreetchedState) -> Result<Command> {
-    let binary = super::chat_router_paths::binary()?;
-    let manifest = super::chat_router_paths::manifest()?;
-    let config_dir = super::chat_router_paths::config_dir()?;
+    let binary = super::threetched_paths::binary()?;
+    let manifest = super::threetched_paths::manifest()?;
+    let config_dir = super::threetched_paths::config_dir()?;
     ensure!(binary == Path::new(&source.binary) && manifest == Path::new(&source.manifest)
         && config_dir == Path::new(&source.config_dir), "threetched runtime paths changed since seal");
     ensure!(sha256_file(&manifest)? == source.manifest_sha256,
@@ -436,9 +436,9 @@ esac
         let surface = ThreetchedSurface::capture_with_config(&binary, directory.path()).unwrap();
         let captured = Captured {
             state: ThreetchedState {
-                binary: super::super::chat_router_paths::DEFAULT_BINARY.into(),
-                manifest: super::super::chat_router_paths::DEFAULT_MANIFEST.into(),
-                config_dir: super::super::chat_router_paths::DEFAULT_CONFIG_DIR.into(),
+                binary: super::super::threetched_paths::DEFAULT_BINARY.into(),
+                manifest: super::super::threetched_paths::DEFAULT_MANIFEST.into(),
+                config_dir: super::super::threetched_paths::DEFAULT_CONFIG_DIR.into(),
                 binary_sha256: surface.binary_sha256().into(),
                 manifest_sha256: "a".repeat(64),
                 surface: serde_json::to_value(surface.snapshot()).unwrap(),

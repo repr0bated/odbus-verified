@@ -100,7 +100,7 @@
 //! }
 //! ```
 
-use super::chat_fs_contract;
+use super::_3tched_fs_contract;
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 use anyhow::{Result, bail};
 use async_trait::async_trait;
@@ -7702,7 +7702,7 @@ pub struct FilesystemContract(serde_json::Value);
 
 impl FilesystemContract {
     pub fn get() -> Self {
-        Self(chat_fs_contract::document())
+        Self(_3tched_fs_contract::document())
     }
 }
 
@@ -7717,7 +7717,7 @@ impl JsonSchema for FilesystemContract {
         serde_json::json!({
             "type": "object",
             "additionalProperties": true,
-            "allOf": [literal_contract_schema(&chat_fs_contract::document())],
+            "allOf": [literal_contract_schema(&_3tched_fs_contract::document())],
         })
         .try_into()
         .expect("filesystem contract schema is an object")
@@ -7799,8 +7799,8 @@ impl Default for FilesystemProtocol {
                 automatic_retry: false,
             },
             contract: ContractDescriptor {
-                schema_version: chat_fs_contract::schema_version().into(),
-                source_commit: chat_fs_contract::source_commit().into(),
+                schema_version: _3tched_fs_contract::schema_version().into(),
+                source_commit: _3tched_fs_contract::source_commit().into(),
                 method: "get_contract".into(),
             },
         }

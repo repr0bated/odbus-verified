@@ -16,7 +16,7 @@ use op_plugins::state_plugins::json_render::{
         Candidate, CandidateOutput, CandidatePage, CandidateRefInput, CandidateSummary,
         CatalogEntry, CatalogEntryOutput, CatalogEntryRefInput, CatalogEntrySummary, CatalogPage,
         CatalogPageInput, DeletedOutput, PageInput, PromoteInput, RetireInput, SaveCandidateInput,
-        page_limit, spec_hash, validate_candidate, validate_description, validate_entry,
+        page_limit, spec_hash, content_hash, validate_candidate, validate_description, validate_entry,
         validate_mode, validate_name, validate_prompt, validate_reason, validate_title,
         validate_uuid_v7,
     },
@@ -220,21 +220,31 @@ async fn save(
     store: std::sync::Arc<op_cozo_store::CozoGraphShuttle>,
     input: SaveCandidateInput,
 ) -> Result<Value> {
-    validate_title(&input.title)?;
-    validate_mode(&input.mode)?;
-    validate_prompt(input.prompt.as_deref())?;
+    validate_name(&input.name)?;
+    validate_description(&input.description)?;
     seal.validator
         .validate(&input.spec)
         .context("canvas rejected by the sealed chat Canvas profile; nothing was saved")?;
+    let spec_hash = spec_hash(&input.spec);
+    let content_hash = content_hash(
+        &input.name,
+        &input.description,
+        &input.spec,
+        &input.svelte_source,
+        &input.compiled_output,
+        &input.cozo_relations,
+    );
     let candidate = Candidate {
         candidate_id: uuid::Uuid::now_v7().to_string(),
         principal_id: caller.principal_id.clone(),
-        title: input.title,
-        mode: input.mode,
-        prompt: input.prompt,
-        cozo_relations: input.cozo_relations,
-        spec_hash: spec_hash(&input.spec),
+        name: input.name,
+        description: input.description,
         spec: input.spec,
+        svelte_source: input.svelte_source,
+        compiled_output: input.compiled_output,
+        content_hash,
+        spec_hash,
+        cozo_relations: input.cozo_relations,
         profile_sha256: seal.profile_sha256.clone(),
         created_at: chrono::Utc::now().to_rfc3339(),
         promoted_entry_id: None,
@@ -297,8 +307,6 @@ async fn promote(
     input: PromoteInput,
 ) -> Result<Value> {
     validate_uuid_v7("candidate_id", &input.candidate_id)?;
-    validate_name(&input.name)?;
-    validate_description(&input.description)?;
     let principal = caller.principal_id.clone();
     let candidate_id = input.candidate_id.clone();
     // The candidate is re-read and re-validated inside the promotion
@@ -337,10 +345,14 @@ async fn promote(
             }
             let entry = CatalogEntry {
                 entry_id: entry_id.clone(),
-                name: input.name.clone(),
-                description: input.description.clone(),
-                spec: candidate.spec,
-                spec_hash: candidate.spec_hash,
+                name: candidate.name.clone(),
+                description: candidate.description.clone(),
+                spec: candidate.spec.clone(),
+                svelte_source: candidate.svelte_source.clone(),
+                compiled_output: candidate.compiled_output.clone(),
+                content_hash: candidate.content_hash.clone(),
+                spec_hash: candidate.spec_hash.clone(),
+                cozo_relations: candidate.cozo_relations.clone(),
                 profile_sha256: profile_sha256.clone(),
                 from_candidate_id: candidate.candidate_id,
                 promoted_by: principal.clone(),
@@ -349,7 +361,6 @@ async fn promote(
                 retired_at: None,
                 retired_by: None,
                 retire_reason: None,
-                cozo_relations: candidate.cozo_relations.clone(),
             };
             entry_record(&entry).map_err(|error| CozoError::Other(error.to_string()))
         };

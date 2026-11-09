@@ -70,14 +70,16 @@ pub(super) async fn dispatch(ctx: &BackendContext<'_>, method: &str, arguments: 
     let result = match method {
         "save_candidate" => {
             let input: SaveCandidateInput = serde_json::from_value(arguments.clone())?;
-            validate_title(&input.title)?;
-            validate_mode(&input.mode)?;
-            validate_prompt(input.prompt.as_deref())?;
+            validate_name(&input.name)?;
+            validate_description(&input.description)?;
             validator.validate(&input.spec)?;
+            let spec_hash = spec_hash(&input.spec);
             let value = Candidate {
                 candidate_id: uuid::Uuid::now_v7().to_string(), principal_id: principal,
-                title: input.title, mode: input.mode, prompt: input.prompt,
-                spec_hash: spec_hash(&input.spec), spec: input.spec,
+                name: input.name.clone(), description: input.description.clone(), spec: input.spec.clone(),
+                svelte_source: input.svelte_source.clone(), compiled_output: input.compiled_output.clone(),
+                content_hash: content_hash(&input.name, &input.description, &input.spec, &input.svelte_source, &input.compiled_output, &input.cozo_relations),
+                spec_hash, cozo_relations: input.cozo_relations.clone(),
                 profile_sha256, created_at: chrono::Utc::now().to_rfc3339(), promoted_entry_id: None,
             };
             validate_candidate(&value)?;
@@ -120,8 +122,6 @@ pub(super) async fn dispatch(ctx: &BackendContext<'_>, method: &str, arguments: 
         "promote_candidate" => {
             let input: PromoteInput = serde_json::from_value(arguments.clone())?;
             validate_uuid_v7("candidate_id", &input.candidate_id)?;
-            validate_name(&input.name)?;
-            validate_description(&input.description)?;
             let entry_id = uuid::Uuid::now_v7().to_string();
             let promoted_at = chrono::Utc::now().to_rfc3339();
             let record = blocking(ctx, true, move || {
@@ -130,12 +130,13 @@ pub(super) async fn dispatch(ctx: &BackendContext<'_>, method: &str, arguments: 
                         let value = candidate(row, &principal)?;
                         validator.validate(&value.spec).context("candidate rejected by current sealed Canvas profile")?;
                         entry_row(&CatalogEntry {
-                            entry_id: entry_id.clone(), name: input.name.clone(), description: input.description.clone(),
-                            spec: value.spec, spec_hash: value.spec_hash, profile_sha256: profile_sha256.clone(),
+                            entry_id: entry_id.clone(), name: value.name.clone(), description: value.description.clone(),
+                            spec: value.spec.clone(), svelte_source: value.svelte_source.clone(), compiled_output: value.compiled_output.clone(),
+                            content_hash: value.content_hash.clone(), spec_hash: value.spec_hash.clone(), cozo_relations: value.cozo_relations.clone(),
+                            profile_sha256: profile_sha256.clone(),
                             from_candidate_id: value.candidate_id, promoted_by: principal.clone(), promoted_at: promoted_at.clone(),
                             status: "active".into(), retired_at: None, retired_by: None, retire_reason: None,
-                            cozo_relations: None,
-                                                    })
+                        })
                     };
                     make().map_err(|error| CozoError::Other(error.to_string()))
                 };

@@ -1,4 +1,4 @@
-//! The threetched service paths shared by chat-router plugin surfaces.
+//! Paths to the threetched binary, its manifest, and its config directory.
 //! Defaults mirror deploy/runit/threetched/run; service overrides use its
 //! THREETCHED_BIN, THREETCHED_MANIFEST and THREETCHED_CONFIG_DIR variables.
 

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
-use super::chat_fs_contract;
+use super::_3tched_fs_contract;
 
 pub const PLUGIN_NAME: &str = "_3tched_fs";
 const VERSION: &str = "2.0.8";
@@ -38,7 +38,7 @@ pub struct FilesystemContract(serde_json::Value);
 
 impl FilesystemContract {
     pub fn get() -> Self {
-        Self(chat_fs_contract::document())
+        Self(_3tched_fs_contract::document())
     }
 
     pub fn document(&self) -> &serde_json::Value {
@@ -63,7 +63,7 @@ impl schemars::JsonSchema for FilesystemContract {
         serde_json::json!({
             "type": "object",
             "additionalProperties": true,
-            "allOf": [literal_schema(&chat_fs_contract::document())],
+            "allOf": [literal_schema(&_3tched_fs_contract::document())],
         })
         .try_into()
         .expect("filesystem contract schema is an object")
@@ -150,8 +150,8 @@ impl Default for FilesystemProtocol {
                 automatic_retry: false,
             },
             contract: ContractDescriptor {
-                schema_version: chat_fs_contract::schema_version().into(),
-                source_commit: chat_fs_contract::source_commit().into(),
+                schema_version: _3tched_fs_contract::schema_version().into(),
+                source_commit: _3tched_fs_contract::source_commit().into(),
                 method: "get_contract".into(),
             },
         }
@@ -178,7 +178,7 @@ impl StatePlugin for ThreeTchedFsPlugin {
         VERSION
     }
     fn schema(&self) -> Option<PluginSchema> {
-        Some(chat_fs_schema())
+        Some(_3tched_fs_schema())
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {
@@ -234,7 +234,7 @@ pub fn protocol_value() -> Result<Value> {
     )?)
 }
 
-pub fn chat_fs_schema() -> PluginSchema {
+pub fn _3tched_fs_schema() -> PluginSchema {
     let root =
         serde_json::to_value(schemars::schema_for!(FilesystemProtocol)).expect("protocol schema");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn sealed_filesystem_contract_preserves_protocol_and_target_authority() {
-        let schema = chat_fs_schema();
+        let schema = _3tched_fs_schema();
         assert!(schema.validate_capability_closure().missing.is_empty());
         schema.validate_public_state_policy().unwrap();
         for subid in schema
@@ -410,7 +410,7 @@ mod tests {
             protocol
         );
         // The sealer canonicalizes object keys, including nested JSON maps.
-        let repeated = op_blob::blobify_plugin_schema(PLUGIN_NAME, chat_fs_schema());
+        let repeated = op_blob::blobify_plugin_schema(PLUGIN_NAME, _3tched_fs_schema());
         let repeated_bytes = repeated.seal();
         assert_eq!(
             bytes, repeated_bytes,
@@ -434,7 +434,7 @@ mod tests {
                 .iter()
                 .any(|id| id == PLUGIN_NAME)
         );
-        let schema = chat_fs_schema();
+        let schema = _3tched_fs_schema();
         assert_eq!(schema.methods.len(), 3);
         let output = dispatch("get_protocol", &serde_json::json!({})).unwrap();
         assert_eq!(
@@ -487,7 +487,7 @@ mod tests {
         use prost::Message;
         use prost_reflect::{DescriptorPool, DynamicMessage};
 
-        let schema = chat_fs_schema();
+        let schema = _3tched_fs_schema();
         let returns =
             serde_json::to_value(schema.methods["get_contract"].returns.clone().unwrap()).unwrap();
         let blob = op_blob::blobify_plugin_schema(PLUGIN_NAME, schema);
