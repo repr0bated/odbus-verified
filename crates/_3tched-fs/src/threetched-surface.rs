@@ -1384,9 +1384,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "explicit binary metadata discovery only; requires THREETCHED_FS_BINARY_CAPTURE"]
+    #[ignore = "explicit binary metadata discovery only; requires _3TCHED_FS_BINARY_CAPTURE"]
     fn actual_threetched_capture() {
-        let path = std::env::var_os("THREETCHED_FS_BINARY_CAPTURE").expect("select threetched binary");
+        let path = std::env::var_os("_3TCHED_FS_BINARY_CAPTURE").expect("select threetched binary");
         let surface = ThreetchedSurface::capture(PathBuf::from(path)).unwrap();
         println!(
             "threetched discovery: {} methods, version {:?}",

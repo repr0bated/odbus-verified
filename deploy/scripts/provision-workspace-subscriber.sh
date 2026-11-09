@@ -61,7 +61,7 @@ prepare_chatbot_container() (
     [[ -d $directory && $(stat -c %u:%g:%a "$directory") == 0:0:700 ]] || die 'receipt directory must be private'
     sid=b0c777e3-0955-cd8b-3d01-ca12998cae28
     key=Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=
-    client=$(realpath -e -- "${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}")
+    client=$(realpath -e -- "${_3TCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}")
     root_path "$client"
     [[ -f $client && -x $client ]] || die 'mounted client unavailable'
     control_mount=${OP_3TCHEDFS_MOUNT:-/run/mounts/3tchedFS}
@@ -243,7 +243,7 @@ provision_system_container() (
     [[ $(id -u) == 0 ]] || die 'system preparation requires host root for durable operation receipts'
     valid_uuid "$OPERATION_ID" || die '--operation-id canonical UUID required; reuse it after interruption'
     for tool in jq findmnt realpath stat incus timeout flock sync mktemp; do need_cmd "$tool"; done
-    client=$(realpath -e -- "${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}")
+    client=$(realpath -e -- "${_3TCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}")
     [[ -f $client && -x $client ]] || die 'mounted client unavailable'
     root_path "$client"
     lungs_mount=${OP_3TCHEDFS_MOUNT:-/run/mounts/3tchedFS}

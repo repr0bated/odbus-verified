@@ -14,7 +14,7 @@ set -euo pipefail
 die() { echo "3tchedfs-invoke: $*" >&2; exit 1; }
 
 MOUNT="${OP_3TCHEDFS_MOUNT:-/run/mounts/3tchedFS}"
-CLIENT="${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}"
+CLIENT="${_3TCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}"
 PLUGIN="${1:?plugin id}"
 METHOD="${2:?method name}"
 shift 2
