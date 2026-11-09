@@ -99,29 +99,50 @@ pub enum HeldCapabilityResult {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolCallStatus {
-    Pending,
     AwaitingConfirmation,
-    Running,
-    Succeeded,
-    Failed,
-    Denied,
+    Pending,
     Unknown,
-    Undetermined,
+    Unconfirmed,
+    Completed,
+    Rejected,
+    Denied,
+    Failed,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PendingToolCall {
+    pub tool_call_id: String,
     pub tool_key: ToolKey,
+    pub plugin_id: String,
+    pub method: String,
     pub status: ToolCallStatus,
     pub arguments: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_bytes: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
+    pub held_at_unix: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ToolCallStatusUpdate {
-    pub tool_key: ToolKey,
+    pub tool_call_id: String,
     pub status: ToolCallStatus,
+    pub seq: u64,
+    pub plugin: String,
+    pub method: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub detail: Option<String>,
+    pub required_capability: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub receipt: Option<ReceiptSummary>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authoritative_state: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub read_back_error: Option<crate::errors::TypedError>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

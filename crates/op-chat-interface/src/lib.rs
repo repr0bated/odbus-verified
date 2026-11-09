@@ -18,9 +18,12 @@
 //!   and an in-process harness (tasks 10.3, 14.6).
 
 pub mod errors;
+pub mod gate;
 pub mod guard;
 pub mod profile;
 pub mod registry;
+pub mod state;
+pub mod status;
 pub mod types;
 pub mod validation;
 
