@@ -39,6 +39,21 @@ no operation was called):
 | Credential handling via FUSE | `ls /run/mounts/3tchedFS/operations/identity_sled/` + `model_registry` ops | `identity_sled/{get_own_identity,refresh_credential,get_session_history,...}`, `model_registry/maintain_credentials` | provider/identity credentials are obtained and used behind the FUSE operation surface; the chat interface must never receive raw credential values (Secret_Guard) |
 | In-container identity operations | `ls /run/mounts/3tchedFS/operations/identity_sled/` | `get_own_identity` present among 18 operations | a mounted Branch namespace exists for `CockpitBot3tched` |
 
+Architecture note (owner, 2026-11-09): the FUSE FS is a runtime mirror
+of the SHM. Corroborated read-only: host `/dev/shm/opdbus/` holds
+`plugin-blobs/` (72 sealed blobs), `state/`, `capability-grants.json`,
+`credentials/`; the same layout is visible inside the container. The
+mounted views (`plugins/<p>/{schema.json,value.json,object.blob.json,
+object.hash,capabilities.json,operations}`) are the projection of the
+sealed blob catalog plus live, MutationEngine-committed SHM state —
+`view.json`'s `source_catalog_hash`/`source_catalog_generation` name
+that SHM catalog. Consequences for implementation: reading a mounted
+file is reading the SHM mirror, not an independent store; the mirror is
+never a persistence target (Partitioned_Store and records live
+elsewhere); authoritative state change happens only through an
+Operation_File call, after which the bridge commits state to SHM before
+notifications, and the mirror reflects it.
+
 Effect on blockers: B-06/B-07 (no egress path) are narrowed — the egress
 path is FUSE operation calls (above), not container IP egress. Which
 model-provider call satisfies the structured tool-call requirement
@@ -46,6 +61,47 @@ model-provider call satisfies the structured tool-call requirement
 Task 1.3 still requires actually calling `get_own_identity` through the
 mount to identify the Bound_Identity; that is an operation call, not a
 listing, and remains gated pending execution authorization.
+
+## Task 1.3 call attempt (owner: "call it", 2026-11-09)
+
+`identity_sled` is mounted in the container at
+`/run/mounts/3tchedFS/plugins/identity_sled/`; mount declaration
+`.3tchedfs.json` shows `mount_identity: { kind: "guest_kernel" }`,
+catalog generation 144, `local_call_owner_uid: 0`.
+
+Attempted calls, in order:
+
+1. `3tched-fs call identity_sled get_own_identity --mount
+   /run/mounts/3tchedFS --args "{}"` (in-container deployed binary):
+   refused before dispatch — `Error: mount must declare the expected
+   operation identity mode`. The deployed binary has no `--guest-kernel`
+   flag (that flag is WT/newer, B-09).
+2. Direct Operation_File call per D-44 (write `{}` once, fsync, read the
+   terminal receipt on the same handle), as root (the declared local
+   call owner): write succeeded; fsync returned `EACCES`, and the
+   terminal diagnostic on the handle was:
+
+   ```json
+   {
+     "plugin": "identity_sled",
+     "method": "get_own_identity",
+     "stage": "register",
+     "error": "identity registration refused: org.freedesktop.DBus.Error.AccessDenied: lungs identity binding refused",
+     "operation_id": null
+   }
+   ```
+
+3. Same direct call as `ubuntu` (uid 1000): open refused (`EACCES`,
+   call file is `0600 root`).
+
+Result: the call was executed exactly once through the mount and was
+**denied at identity registration**. No receipt, no Public_Identity_Fields.
+Bound_Identity for `CockpitBot3tched` remains **unidentified**; B-02 is
+now precisely located: the `incus exec` root context is not the
+identity-bound operator for this mount, and no other caller context was
+tried (trying other identities to route around a denial is forbidden).
+Task 1.3 stays BLOCKED until the bound operator context performs the
+call or the owner authorizes the Branch run (task 19.14).
 
 ## Blockers
 
