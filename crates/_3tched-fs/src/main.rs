@@ -700,7 +700,16 @@ async fn main() -> Result<()> {
                 }
                 None => TypedFuse::with_state_dir(store, target, state)?,
             };
-            filesystem.namespace.surface = surface;
+            filesystem.set_surface(surface);
+            if surface == namespace::Surface::Binary {
+                let binary_path = std::env::var("THREETCHED_BIN")
+                    .unwrap_or_else(|_| "/usr/local/libexec/op-dbus/threetched/threetched".into());
+                let binary_path = std::path::Path::new(&binary_path);
+                if binary_path.is_file() {
+                    let surface = crate::threetched_surface::ThreetchedSurface::capture(binary_path)?;
+                    filesystem.graft_threetched(surface)?;
+                }
+            }
             if let Some(uid) = call_owner_uid {
                 filesystem = filesystem.with_call_owner_uid(uid)?;
             }

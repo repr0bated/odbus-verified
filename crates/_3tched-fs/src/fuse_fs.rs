@@ -208,7 +208,10 @@ impl TypedFuse {
             cancelled: Arc::new(AtomicBool::new(false)),
         })
     }
-    #[cfg(test)]
+    pub fn set_surface(&mut self, surface: crate::namespace::Surface) {
+        self.namespace.surface = surface;
+    }
+
     pub fn graft_threetched(&mut self, surface: ThreetchedSurface) -> anyhow::Result<()> {
         self.namespace.graft_threetched(surface)?;
         Ok(())

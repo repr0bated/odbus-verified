@@ -450,7 +450,6 @@ impl Namespace {
         fresh.instance_uuid = self.instance_uuid.clone();
         fresh.local_call_owner_uid = self.local_call_owner_uid;
         fresh.allowed_operator_uid = self.allowed_operator_uid;
-        #[cfg(test)]
         if let Some(surface) = self.threetched_surface.clone() {
             fresh.graft_shared_threetched(surface)?;
         }
@@ -459,7 +458,6 @@ impl Namespace {
 
     /// Add the `threetched` tree beside the sealed catalog objects.
     /// The bytes come from a captured binary surface, not from a plugin blob.
-    #[cfg(test)]
     pub fn graft_threetched(
         &mut self,
         surface: crate::threetched_surface::ThreetchedSurface,
@@ -467,7 +465,6 @@ impl Namespace {
         self.graft_shared_threetched(Arc::new(surface))
     }
 
-    #[cfg(test)]
     fn graft_shared_threetched(
         &mut self,
         surface: Arc<crate::threetched_surface::ThreetchedSurface>,
@@ -515,7 +512,7 @@ impl Namespace {
             return Ok(());
         };
         let base = format!("/plugins/{}/data", encode_component(&plugin));
-        let parent = inode_for_path(&base);
+        let parent = inode_for_surface(self.surface, &base);
         let descendants = format!("{base}/");
         // Remove stale discovery even when the new authoritative read fails.
         let removed: BTreeSet<_> = self
@@ -836,7 +833,6 @@ impl NamespaceBuilder {
     }
 
     /// Materialize the `threetched` plugin tree from a captured binary surface.
-    #[cfg(test)]
     pub fn attach_threetched(
         &mut self,
         plugins_parent: u64,
@@ -1155,7 +1151,7 @@ impl NamespaceBuilder {
         if self.paths.contains_key(&path) {
             bail!("duplicate namespace path {path}");
         }
-        let ino = inode_for_path(&path);
+        let ino = inode_for_surface(self.namespace.surface, &path);
         if let Some(existing) = self.namespace.nodes.get(&ino) {
             bail!("inode collision between {} and {path}", existing.path);
         }
@@ -1287,7 +1283,12 @@ fn hex_bytes(bytes: &[u8]) -> String {
 }
 
 fn inode_for_path(path: &str) -> u64 {
-    let bytes = blake3::hash(path.as_bytes()).as_bytes()[..8]
+    inode_for_surface(Surface::Our, path)
+}
+
+fn inode_for_surface(surface: Surface, path: &str) -> u64 {
+    let keyed = format!("{}:{path}", surface.as_str());
+    let bytes = blake3::hash(keyed.as_bytes()).as_bytes()[..8]
         .try_into()
         .expect("eight-byte slice");
     let mut ino = u64::from_le_bytes(bytes) | (1 << 63);
