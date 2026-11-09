@@ -26,7 +26,7 @@ for b in $(git for-each-ref --format='%(refname:short)' refs/heads); do
     echo "VIOLATION: $b"
   fi
 done
-for r in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin); do
+for r in $(git for-each-ref --format='%(refname)' refs/remotes/origin); do r=${r#refs/remotes/}; case "$r" in */HEAD) continue ;; esac
   name=${r#origin/}; [ "$name" = HEAD ] && continue
   case " $ALLOWED " in *" $name "*) continue ;; esac
   echo "REMOTE VIOLATION: origin/$name (remote deletion needs an explicit approval)"
