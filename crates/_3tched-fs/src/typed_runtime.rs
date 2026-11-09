@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::model::SideEffect;
 use crate::mounted::{MountedDiagnostic, MountedNamespace};
-use crate::namespace::{MountIdentity, Namespace, NodeKind, ProjectionTarget, encode_component};
+use crate::namespace::{FileSource, MountIdentity, Namespace, NodeKind, ProjectionTarget, encode_component};
 use crate::store::ObjectStore;
 use crate::typed_bindings::*;
 
@@ -74,6 +74,31 @@ impl NodeError {
             };
         }
         Self::Contract(format!("{operation}: {error:#}"))
+    }
+}
+
+fn refuse_direct_shm_only(node: &crate::namespace::Node) -> Result<(), NodeError> {
+    let refused = match &node.kind {
+        NodeKind::Symlink(_) | NodeKind::CallFile { .. } => true,
+        NodeKind::File(source) => matches!(
+            source,
+            FileSource::Capabilities { .. }
+                | FileSource::MethodInput { .. }
+                | FileSource::MethodOutput { .. }
+                | FileSource::MethodMetadata { .. }
+                | FileSource::ThreetchedSchema
+                | FileSource::ThreetchedInput { .. }
+                | FileSource::ThreetchedOutput { .. }
+                | FileSource::ThreetchedMetadata { .. }
+        ),
+        _ => false,
+    };
+    if refused {
+        Err(NodeError::Unavailable(
+            "direct SHM does not expose this mount-only file".into(),
+        ))
+    } else {
+        Ok(())
     }
 }
 fn ensure(condition: bool, message: impl Into<String>) -> Result<(), NodeError> {
@@ -954,6 +979,7 @@ impl NodeHandle {
                     .ok_or_else(|| {
                         NodeError::Unavailable("public locator is absent or unavailable".to_owned())
                     })?;
+                refuse_direct_shm_only(node)?;
                 namespace
                     .file_bytes(store, node)
                     .map_err(|e| NodeError::backing("read direct public locator", e))
