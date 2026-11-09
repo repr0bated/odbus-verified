@@ -419,6 +419,9 @@ For non-Cargo delegation, choose the appropriate agent role:
 
 Only two branches may be used: `main` and `dev`. Do not create, commit to, or push any other branch.
 Before starting work, run `scripts/branch-policy.sh`. If it reports a violation, stop and report it
-instead of working around it. Archiving a branch to a tag is safe, but deleting a branch in use by a
-worktree, or any remote branch, needs an explicit owner approval. The `.githooks` directory refuses
+instead of working around it. Archiving a branch to a tag is safe. Deleting a local off-policy branch
+in use by another worktree is allowed (owner, 2026-11-09): archive it as `archive/<branch>`, detach that
+worktree (`git -C <worktree> switch --detach`, which keeps its files and uncommitted changes), then
+delete the branch; `scripts/branch-policy.sh --apply` does this. Never remove the worktree itself.
+Deleting a remote branch still needs an explicit owner approval. The `.githooks` directory refuses
 commits and pushes to other branches; `git config core.hooksPath .githooks` must be set in the clone.

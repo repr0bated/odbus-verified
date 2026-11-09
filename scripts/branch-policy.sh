@@ -18,7 +18,19 @@ for b in $(git for-each-ref --format='%(refname:short)' refs/heads); do
   case " $ALLOWED " in *" $b "*) continue ;; esac
   bad=$((bad+1))
   if echo "$worktree_branches" | grep -qx "$b"; then
-    echo "VIOLATION (in use by a worktree, not touched): $b"
+    wt=$(git worktree list --porcelain | awk -v ref="refs/heads/$b" '/^worktree /{p=substr($0,10)} $0=="branch "ref{print p; exit}')
+    if [ "$apply" -eq 1 ]; then
+      # Owner, 2026-11-09: branches held by other worktrees may be deleted.
+      # Archive, detach the worktree (files and uncommitted changes kept), delete. Never remove the worktree.
+      git tag -f "archive/$b" "$b" >/dev/null
+      if git -C "$wt" switch --detach >/dev/null 2>&1 && git branch -D "$b" >/dev/null 2>&1; then
+        echo "archived, detached worktree $wt, deleted: $b"
+      else
+        echo "could not delete (worktree $wt not detachable by this user): $b"
+      fi
+    else
+      echo "VIOLATION (in use by worktree $wt; --apply archives, detaches and deletes): $b"
+    fi
   elif [ "$apply" -eq 1 ]; then
     git tag -f "archive/$b" "$b" >/dev/null
     git branch -D "$b" >/dev/null 2>&1 && echo "archived and deleted: $b" || echo "could not delete: $b"
