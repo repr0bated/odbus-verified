@@ -14,8 +14,6 @@
 #   PERSIST      per-container sparse copy of TEMPLATE in the container's cozo
 #                pool dir; `btrfs device add` sprouts it onto the shared sealed
 #                seed and holds this container's persistence.
-#   UPGRADE      per-container sparse upgrade staging image, mounted read-only
-#                at /mnt/upgrade once it holds a filesystem.
 #   SLED         identity sled: a subvolume on the persistence btrfs (created
 #                after the device add), rw in the container as part of its root
 #                and shared rw to the host at HOST_SLED (snowball ledger, sled
@@ -39,10 +37,8 @@ SEED_IMG=/var/lib/incus/storage-pools/3tched/3tched-seed.img
 TEMPLATE=/var/lib/incus/disks/btrfs-persist.img
 CDIR=/var/lib/incus/storage-pools/cozo/containers/$NAME
 PERSIST=$CDIR/btrfs-persist.img
-UPGRADE=$CDIR/upgrade.img
 ROCKSDB=$CDIR/rocksdb.img
 ROCKSDB_SIZE=10G
-UPGRADE_SIZE=20G
 ROOTFS=$CDIR/rootfs
 SLED=var/lib/identity-sled
 HOST_SLED=/run/identity-sled/$NAME
@@ -83,10 +79,6 @@ provision() {
 		chmod 600 "$ROCKSDB"
 		mkfs.ext4 -q -F -L rocksdb -E lazy_itable_init=1,lazy_journal_init=1 "$ROCKSDB"
 	fi
-	if [ ! -e "$UPGRADE" ]; then
-		truncate -s "$UPGRADE_SIZE" "$UPGRADE"
-		chmod 600 "$UPGRADE"
-	fi
 }
 
 start() {
@@ -113,13 +105,6 @@ start() {
 	mkdir -p "$ROOTFS/$COZO"
 	mountpoint -q "$ROOTFS/$COZO" ||
 		mount -t ext4 -o noatime,nodiratime "$RDB" "$ROOTFS/$COZO"
-
-	# Upgrade staging, read-only, only once something has been written to it.
-	UPG=$(attach "$UPGRADE")
-	if blkid -p "$UPG" >/dev/null 2>&1; then
-		mkdir -p "$ROOTFS/mnt/upgrade"
-		mountpoint -q "$ROOTFS/mnt/upgrade" || mount -o ro "$UPG" "$ROOTFS/mnt/upgrade"
-	fi
 
 	agent
 	sled
@@ -221,10 +206,9 @@ sled_only() {
 stop() {
 	incus stop "$NAME" 2>/dev/null || true
 	mountpoint -q "$HOST_SLED" && umount "$HOST_SLED"
-	mountpoint -q "$ROOTFS/mnt/upgrade" && umount "$ROOTFS/mnt/upgrade"
 	mountpoint -q "$ROOTFS/$COZO" && umount "$ROOTFS/$COZO"
 	mountpoint -q "$ROOTFS" && umount "$ROOTFS"
-	for img in "$UPGRADE" "$ROCKSDB" "$PERSIST" "$SEED_IMG"; do
+	for img in "$ROCKSDB" "$PERSIST" "$SEED_IMG"; do
 		l=$(loop_of "$img")
 		[ -z "$l" ] || losetup -d "$l"
 	done
