@@ -1,6 +1,8 @@
 //! Core gRPC services, with an explicit TLS-only production door.
 
 use crate::core::BridgeCore;
+use crate::chat_link::{ChatLinkService, MAX_CHUNK_PROTO_BYTES, MAX_REQUEST_PROTO_BYTES};
+use crate::proto::chat_link_server::ChatLinkServer;
 use crate::proto::event_chain_service_server::EventChainServiceServer;
 use crate::proto::plugin_service_server::PluginServiceServer;
 use crate::proto::state_sync_server::StateSyncServer;
@@ -72,10 +74,14 @@ pub async fn bind_production(
     let reflection = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
         .build_v1()?;
+    let chat = ChatLinkService::from_env(service.clone()).await?;
     let web = tonic_web::GrpcWebLayer::new();
     let app = tonic::service::Routes::new(web.layer(StateSyncServer::new(service.clone())))
         .add_service(web.layer(PluginServiceServer::new(service.clone())))
         .add_service(web.layer(EventChainServiceServer::new(service)))
+        .add_service(web.layer(ChatLinkServer::new(chat)
+            .max_decoding_message_size(MAX_REQUEST_PROTO_BYTES)
+            .max_encoding_message_size(MAX_CHUNK_PROTO_BYTES)))
         .add_service(web.layer(reflection))
         .prepare()
         .into_axum_router()

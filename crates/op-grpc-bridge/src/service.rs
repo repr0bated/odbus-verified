@@ -2,8 +2,8 @@
 //!
 //! `EventChainService` proof/snapshot RPCs are honestly `UNIMPLEMENTED`;
 //! everything else is real. `OvsdbMirror`, `RuntimeMirror` and
-//! `DbusPassthrough` are generated from the same file but not served: the
-//! fresh bridge owns state, plugins and audit only.
+//! `DbusPassthrough` are generated from the same file but not served here.
+//! Authenticated ChatLink shares the production door via its separate module.
 
 use crate::core::{
     json_map_to_proto_struct, json_to_proto_value, proto_value_to_json, BridgeCore, CoreMutation,
@@ -101,7 +101,7 @@ impl BridgeService {
         Self { core: runtime.core().clone(), runtime: Some(runtime), oracle }
     }
 
-    async fn authenticate<T: Sync>(&self, request: &Request<T>) -> Result<VerifiedCaller, Status> {
+    pub(crate) async fn authenticate<T: Sync>(&self, request: &Request<T>) -> Result<VerifiedCaller, Status> {
         let sid_headers = request.metadata().get_all_bin(op_identity::sealed_id::HTTP_HEADER_NAME);
         let mut sid_headers = sid_headers.iter();
         let sid1 = sid_headers.next().map(|value| value.to_bytes()).transpose()
@@ -125,6 +125,15 @@ impl BridgeService {
             ).await.map_err(|_| Status::unauthenticated("oracle assertion is not current"))?);
             Ok(VerifiedCaller::new(verified.identity(), Arc::new(OracleAuthority(verified.clone()))))
         }
+    }
+
+    /// ChatLink has no fixture bypass and no independent capability vocabulary.
+    /// Reuse the sealed self-read method at admission and before each disclosure.
+    pub(crate) async fn authorize_chat(&self, caller: &VerifiedCaller) -> Result<(), Status> {
+        let runtime = self.runtime.as_ref()
+            .ok_or_else(|| Status::unavailable("authenticated chat runtime is unavailable"))?;
+        runtime.authorize_nested(caller, "identity_sled", "get_own_identity").await
+            .map_err(|_| Status::permission_denied("current self-read authority is required"))
     }
 
     fn requested_capability<T>(&self, request: &Request<T>) -> Result<String, Status> {

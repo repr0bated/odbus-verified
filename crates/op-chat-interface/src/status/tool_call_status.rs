@@ -42,9 +42,9 @@ pub fn next(status: ToolCallStatus, event: StatusEvent) -> ToolCallStatus {
     match (status, event) {
         (Pending, ValidatedMutation) => AwaitingConfirmation,
         (Pending, ValidatedRead) => Pending,
-        (_, ValidationOrNotOffered) => Failed,
+        (_, StatusEvent::ValidationOrNotOffered) => Failed,
         (AwaitingConfirmation, ConfirmationAccepted) => Pending,
-        (AwaitingConfirmation, Rejected) => Rejected,
+        (AwaitingConfirmation, StatusEvent::Rejected) => ToolCallStatus::Rejected,
         (Pending, ReceiptWithVerifiedReadBack) => Completed,
         (Pending, ReceiptWithoutVerifiedReadBack) => Unconfirmed,
         (Pending, Denial) => Denied,

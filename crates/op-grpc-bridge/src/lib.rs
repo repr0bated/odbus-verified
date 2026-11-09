@@ -31,7 +31,9 @@
 
 pub mod admission;
 pub mod catalog;
+pub mod cockpit;
 pub mod core;
+pub(crate) mod chat_link;
 pub mod grpc_client;
 pub mod grant_document;
 pub mod human_principal_registry;

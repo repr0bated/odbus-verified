@@ -42,7 +42,7 @@ zbus = { workspace = true }
 
 # Serialization
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value"] }
 simd-json = { workspace = true }
 jsonschema = { workspace = true }
 # model_registry maintains the root-owned provider list (one TOML authority
@@ -54,6 +54,7 @@ reqwest = { workspace = true }
 
 # Internal crates
 op-state-store = { path = "../op-state-store" }
+op-chat-interface = { path = "../op-chat-interface" }
 op-blob = { path = "../op-blob" }
 op-snowball = { path = "../op-snowball" }
 op-state = { path = "../op-state" }

@@ -4,7 +4,7 @@
 //! field path and rule, never the value.
 
 use crate::{
-    guard::{GuardVerdict, SecretGuard},
+    guard::SecretGuard,
     types::IdentityProfile,
 };
 use std::fmt;
@@ -140,7 +140,7 @@ fn validate_schema(value: &serde_json::Value) -> Result<(), ProfileError> {
     if let Some(error) = validator.iter_errors(value).next() {
         return Err(ProfileError::new(
             error.instance_path.to_string(),
-            error.kind.to_string(),
+            format!("{:?}", error.kind),
         ));
     }
     Ok(())

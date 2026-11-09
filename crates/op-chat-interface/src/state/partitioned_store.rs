@@ -6,7 +6,7 @@
 use crate::types::{ChatSessionId, PrincipalId, SecurityEvent};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PartitionError {
     pub message: String,
     pub security_event: SecurityEvent,
@@ -71,7 +71,7 @@ impl PartitionedStore {
         session: &ChatSessionId,
         at: &str,
     ) -> Result<&mut Partition, PartitionError> {
-        let err = |store: &Self| PartitionError {
+        let err = || PartitionError {
             message: "partition unavailable".to_string(),
             security_event: SecurityEvent {
                 at: at.to_string(),
@@ -82,7 +82,8 @@ impl PartitionedStore {
         };
         match self.partitions.get_mut(&handle.id) {
             Some(p) if p.active_sessions.contains(session.as_str()) => Ok(p),
-            _ => Err(err(self)),
+            None => Err(err()),
+            Some(_) => Err(err()),
         }
     }
 

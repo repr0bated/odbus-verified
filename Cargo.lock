@@ -6061,6 +6061,7 @@ dependencies = [
  "op-agents",
  "op-blob",
  "op-chat",
+ "op-chat-interface",
  "op-cognitive",
  "op-core",
  "op-cozo-store",

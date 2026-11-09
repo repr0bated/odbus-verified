@@ -25,6 +25,7 @@ pub mod registry;
 pub mod state;
 pub mod status;
 pub mod types;
+pub mod chain;
 pub mod validation;
 
 pub use errors::{ErrorKind, TypedError};

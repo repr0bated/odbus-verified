@@ -77,6 +77,27 @@ service EventChainService {
 }
 
 // =============================================================================
+// Identity-bound chat - authenticated on the existing production TLS door only
+// =============================================================================
+
+service ChatLink {
+  // Credentials remain transport metadata. The verified caller must hold the
+  // exact identity_sled.get_own_identity grant, rechecked before every chunk.
+  // Disconnect cancels this exchange; worker failure is never replayed.
+  rpc Exchange(ChatLinkRequest) returns (stream ChatLinkChunk);
+}
+
+message ChatLinkRequest {
+  // Valid UTF-8 JSON, at most 1 MiB; identity in JSON is never authority.
+  bytes json = 1;
+}
+
+message ChatLinkChunk {
+  // One AI SDK UIMessageChunk JSON object, at most 16 MiB.
+  bytes json = 1;
+}
+
+// =============================================================================
 // Message Types - State Sync
 // =============================================================================
 

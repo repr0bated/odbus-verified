@@ -36,7 +36,7 @@ pub fn validate_arguments(schema: &serde_json::Value, arguments: &serde_json::Va
         .iter_errors(arguments)
         .map(|error| ValidationFailure {
             path: error.instance_path.to_string(),
-            keyword: error.kind.to_string(),
+            keyword: format!("{:?}", error.kind),
         })
         .collect();
     if !failures.is_empty() {
