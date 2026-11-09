@@ -62,6 +62,14 @@ Each task: `implemented: no | built: no | deployed: no | tested: no`
   - Completion: body change does not change inode; collision still errors.
   - _Requirements: 9, 10, 11_
 
+- [ ] 3.3 Leave the 256-slot table alone
+  - Do not edit `crates/_3tched-fs/src/fuse_buffers.rs` or the
+    `slots.take(1, HANDLE_LIMIT)` / `Charge` drop path in `fuse_fs.rs`.
+  - Do not raise 256, do not evict an active handle, and do not drop a slot
+    before `release`.
+  - Completion: `HANDLE_LIMIT` is still 256 and open/release still pair.
+  - _Requirements: 25_
+
 ## 4. SHM authority
 
 - [ ] 4.1 Keep live and frozen reads apart

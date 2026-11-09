@@ -100,6 +100,11 @@ Inode input is `"{surface}:{path}"`, then the existing blake3 high-bit rule.
 Root stays inode `1`. A collision still fails the projection. Refresh of an
 unchanged path keeps the inode.
 
+The surface flag does not touch the handle table. `HANDLE_LIMIT` stays 256 in
+`crates/_3tched-fs/src/fuse_buffers.rs`. `open` still takes one slot and
+`Charge` still returns it on drop. A 257th open is `ENOMEM`. Active handles
+are not evicted.
+
 ### SHM and frozen reads
 
 **Purpose:** Keep one authority for each fact from the inventory in

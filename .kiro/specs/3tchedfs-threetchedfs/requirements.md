@@ -68,7 +68,6 @@ inode support, and review SHM for overlooked representation.
     namespace, not from a SHM inode table.
 
 ### SHM representations
-
 13. WHEN a view mount reads plugin state THEN the system SHALL read the
     committed object at `/dev/shm/opdbus/state/<plugin>.json` for that plugin
     and pointer.
@@ -98,6 +97,10 @@ inode support, and review SHM for overlooked representation.
 24. IF the SHM object is `credentials/`, `capability-grants.json`, a
     release-original plugin-blob copy, or `/dev/shm/3tchedfs` THEN the system
     SHALL NOT project it.
+25. WHEN a file or directory is opened THEN the system SHALL take one slot from
+    the existing 256-slot budget and SHALL return that slot on release, failed
+    open, and teardown. The system SHALL NOT raise `HANDLE_LIMIT` or evict an
+    active handle to hide a leak.
 
 ## 3. SHM inventory
 
