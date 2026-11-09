@@ -24,6 +24,10 @@ fn main() -> anyhow::Result<()> {
         "vector_id": r.vector_id,
         "sealed_id": r.sealed_id,
         "session_started_at": r.session_started_at,
+        // NextDNS profile/device sealed into SID1, when the identity has one.
+        "nextdns": op_identity::sealed_id::SealedId::from_inline_ref(&r.sealed_id)
+            .ok()
+            .and_then(|sealed| sealed.nextdns),
     });
     println!("{}", serde_json::to_string(&fixed)?);
     Ok(())

@@ -8,7 +8,9 @@
 #
 # Layout:
 #   SEED_IMG p1  sealed btrfs (btrfstune -S1), OS in default subvolume @
-#   SEED_IMG p2  sparse ext4 (+C via the image file) for RocksDB, mounted at COZO
+#   SEED_IMG p2  unused (formerly a shared RocksDB partition)
+#   ROCKSDB      per-container sparse ext4 image (+C, set while empty) for this
+#                identity's RocksDB, mounted at COZO
 #   PERSIST      per-container sparse copy of TEMPLATE in the container's cozo
 #                pool dir; `btrfs device add` sprouts it onto the shared sealed
 #                seed and holds this container's persistence.
@@ -22,6 +24,10 @@
 #                sealed in as identity.json (+ .sha256) and sealed_id, mode 0400
 #                and chattr +i;
 #                an unprivileged container lacks CAP_LINUX_IMMUTABLE.
+#   NEXTDNS      /etc/nextdns.conf in the container's persistence, written at
+#                every start from the identity: the NextDNS context sealed in its
+#                SID1, else the bridge's OP_IDENTITY_NEXTDNS_BINDINGS entry for its
+#                WireGuard key. Without either, NextDNS is left unconfigured.
 #   PROFILE      cockpitbot-seed: lungs socket and Xray egress proxy devices.
 #
 # Storage is assembled host-side before `incus start`: a container has no exec
@@ -34,6 +40,8 @@ TEMPLATE=/var/lib/incus/disks/btrfs-persist.img
 CDIR=/var/lib/incus/storage-pools/cozo/containers/$NAME
 PERSIST=$CDIR/btrfs-persist.img
 UPGRADE=$CDIR/upgrade.img
+ROCKSDB=$CDIR/rocksdb.img
+ROCKSDB_SIZE=10G
 UPGRADE_SIZE=20G
 ROOTFS=$CDIR/rootfs
 SLED=var/lib/identity-sled
@@ -42,6 +50,7 @@ COZO=var/lib/op-dbus/identity-cozo
 PROFILE=cockpitbot-seed
 IDENTITY_DB=/var/lib/op-dbus/identity-cozo
 SLED_ROW=/usr/local/sbin/sled-row
+BRIDGE_ENV=/etc/op-dbus/environment
 
 die() { echo "3tched-seed-launch: $*" >&2; exit 1; }
 
@@ -65,6 +74,14 @@ provision() {
 	if [ ! -e "$PERSIST" ]; then
 		cp --sparse=always "$TEMPLATE" "$PERSIST"
 		chmod 600 "$PERSIST"
+	fi
+	if [ ! -e "$ROCKSDB" ]; then
+		# +C only takes effect on an empty file; lazy init keeps it sparse.
+		touch "$ROCKSDB"
+		chattr +C "$ROCKSDB"
+		truncate -s "$ROCKSDB_SIZE" "$ROCKSDB"
+		chmod 600 "$ROCKSDB"
+		mkfs.ext4 -q -F -L rocksdb -E lazy_itable_init=1,lazy_journal_init=1 "$ROCKSDB"
 	fi
 	if [ ! -e "$UPGRADE" ]; then
 		truncate -s "$UPGRADE_SIZE" "$UPGRADE"
@@ -91,10 +108,11 @@ start() {
 		mount -o remount,rw "$ROOTFS"
 	fi
 
-	# RocksDB on the image's sparse ext4 partition.
+	# This identity's RocksDB on its own sparse ext4 image.
+	RDB=$(attach "$ROCKSDB")
 	mkdir -p "$ROOTFS/$COZO"
 	mountpoint -q "$ROOTFS/$COZO" ||
-		mount -t ext4 -o noatime,nodiratime "${SEED}p2" "$ROOTFS/$COZO"
+		mount -t ext4 -o noatime,nodiratime "$RDB" "$ROOTFS/$COZO"
 
 	# Upgrade staging, read-only, only once something has been written to it.
 	UPG=$(attach "$UPGRADE")
@@ -105,7 +123,40 @@ start() {
 
 	agent
 	sled
+	nextdns
 	incus start "$NAME"
+}
+
+# Write this identity's NextDNS forwarder into its persistence.
+nextdns() {
+	conf=$ROOTFS/etc/nextdns.conf
+	ctx=$(python3 -I - "$ROOTFS/$SLED/identity.json" "$BRIDGE_ENV" <<'PY'
+import json, re, shlex, sys
+identity = json.load(open(sys.argv[1]))
+ctx = identity.get("nextdns")
+if not ctx:
+    try:
+        text = open(sys.argv[2]).read()
+    except OSError:
+        text = ""
+    match = re.search(r"^OP_IDENTITY_NEXTDNS_BINDINGS=(.*)$", text, re.M)
+    bindings = json.loads(shlex.split(match.group(1))[0]) if match else []
+    ctx = next((b for b in bindings if b.get("wireguard_pubkey") == identity["wireguard_pubkey"]), None)
+if ctx:
+    profile, device = ctx["profile_id"], ctx["device_name"]
+    if re.fullmatch(r"[0-9a-f]{6}", profile) and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", device):
+        print(f"{profile} {device}")
+PY
+)
+	if [ -z "$ctx" ]; then
+		echo "3tched-seed-launch: no NextDNS context for $NAME; DNS left unconfigured" >&2
+		rm -f "$conf"
+		return 0
+	fi
+	set -- $ctx
+	sed "s|@FORWARDER@|https://dns.nextdns.io/$1/$2#127.0.0.1|" \
+		"$ROOTFS/etc/nextdns.conf.template" >"$conf.new"
+	mv "$conf.new" "$conf"
 }
 
 sled() {
@@ -173,7 +224,7 @@ stop() {
 	mountpoint -q "$ROOTFS/mnt/upgrade" && umount "$ROOTFS/mnt/upgrade"
 	mountpoint -q "$ROOTFS/$COZO" && umount "$ROOTFS/$COZO"
 	mountpoint -q "$ROOTFS" && umount "$ROOTFS"
-	for img in "$UPGRADE" "$PERSIST" "$SEED_IMG"; do
+	for img in "$UPGRADE" "$ROCKSDB" "$PERSIST" "$SEED_IMG"; do
 		l=$(loop_of "$img")
 		[ -z "$l" ] || losetup -d "$l"
 	done

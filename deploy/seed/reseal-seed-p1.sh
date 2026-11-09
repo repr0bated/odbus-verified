@@ -2,7 +2,7 @@
 # Rebuild partition 1 (sealed OS) of the 3tched seed image in place, keeping p2.
 #   OS from the read-only subvolume at $SRC via btrfs send, as default subvolume @,
 #   seed-wide config applied (Xray egress proxy, container fstab, optional
-#   OVERLAY tree), then sealed.
+#   PACKAGES and OVERLAY tree), then sealed.
 # Every container sprouted from the old p1 must be re-provisioned afterwards.
 set -eu
 
@@ -15,7 +15,10 @@ DST=$WORK/dst
 LOOP=
 
 cleanup() {
-	mountpoint -q "$DST" 2>/dev/null && umount "$DST"
+	for m in "$DST/@/etc/resolv.conf" "$DST/@/dev" "$DST/@/sys" "$DST/@/proc"; do
+		! mountpoint -q "$m" 2>/dev/null || umount -R "$m" || true
+	done
+	! mountpoint -q "$DST" 2>/dev/null || umount "$DST" || true
 	[ -n "$LOOP" ] && losetup -d "$LOOP" 2>/dev/null || true
 	rm -rf "$WORK"
 }
@@ -57,6 +60,25 @@ cat >"$R/etc/apt/apt.conf.d/95egress-proxy" <<EOF
 Acquire::http::Proxy "$PROXY";
 Acquire::https::Proxy "$PROXY";
 EOF
+
+# Optional packages, installed in a chroot with the host's network (the seed's
+# own apt proxy is the containers' 127.0.0.1:3128, absent on the host).
+if [ -n "${PACKAGES:-}" ]; then
+	for d in proc sys dev; do
+		mount --rbind "/$d" "$R/$d"
+		mount --make-rslave "$R/$d"
+	done
+	mount --bind /etc/resolv.conf "$R/etc/resolv.conf"
+	printf '#!/bin/sh\nexit 101\n' >"$R/usr/sbin/policy-rc.d"
+	chmod 0755 "$R/usr/sbin/policy-rc.d"
+	APT="apt-get -q -o Acquire::http::Proxy=false -o Acquire::https::Proxy=false"
+	chroot "$R" env DEBIAN_FRONTEND=noninteractive $APT update
+	chroot "$R" env DEBIAN_FRONTEND=noninteractive $APT install -y --no-install-recommends $PACKAGES
+	chroot "$R" apt-get clean
+	rm -f "$R/usr/sbin/policy-rc.d"
+	umount "$R/etc/resolv.conf"
+	for d in dev sys proc; do umount -R "$R/$d"; done
+fi
 
 # Optional seed overlay: files laid over @ as-is (e.g. NextDNS + its DoH
 # tunnel, resolved drop-in, profile.d proxy, 3tched-call, unit masks).
