@@ -18,6 +18,7 @@
 //!   and an in-process harness (tasks 10.3, 14.6).
 
 pub mod errors;
+pub mod guard;
 pub mod types;
 
 pub use errors::{ErrorKind, TypedError};

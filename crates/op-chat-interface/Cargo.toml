@@ -9,3 +9,4 @@ description = "Identity-bound chat interface backend (Rust). Browser UI is Svelt
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+base64 = { workspace = true }
