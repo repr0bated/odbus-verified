@@ -28,8 +28,8 @@ esac
 fs_name=$1
 mount_path=$2
 case "$fs_name:$mount_path" in
-    3tchedFS:/run/mounts/3tchedFS) selection=--exclude-plugin ;;
-    threetched:/run/mounts/threetched) selection=--include-plugin ;;
+    3tchedFS:/run/mounts/3tchedFS) selection=--exclude-plugin; surface=3tched ;;
+    threetched:/run/mounts/threetched) selection=--include-plugin; surface=threetched ;;
     *) fail 'unexpected mount source or target' ;;
 esac
 upstream_plugins=threetched
@@ -71,9 +71,10 @@ mounted_kind() { findmnt -rn -M "$mount_path" -o FSTYPE; }
 ready() {
     [ "$(mounted_kind)" = fuse.3tchedFS ] || return 1
     [ "$(findmnt -rn -M "$mount_path" -o SOURCE)" = "$fs_name" ] || return 1
-    timeout 3 jq -e --arg session "$session" --argjson uid "$owner_uid" '
+    timeout 3 jq -e --arg session "$session" --argjson uid "$owner_uid" --arg surface "$surface" '
         .mount_identity.kind == "host_session" and
         .mount_identity.session == $session and
+        .surface == $surface and
         .local_call_owner_uid == $uid and .workspace_id == null
     ' "$mount_path/.3tchedfs.json" >/dev/null || return 1
     timeout 3 jq -e --arg name "$fs_name" --arg upstream "$upstream_plugins" \
@@ -110,6 +111,7 @@ ensure_dir "$store" 700
     "$selection" "$upstream_plugins" >"$runtime/capture.json"
 nohup setsid "$binary" --store "$store" mount \
     --fs-name "$fs_name" \
+    --surface "$surface" \
     --catalog /dev/shm/opdbus/plugin-blobs --state /dev/shm/opdbus/state \
     --allow-other --auto-unmount --call-owner-uid "$owner_uid" \
     --lungs-socket /run/opdbus/lungs/lungs.sock --lungs-session "$session" \

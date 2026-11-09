@@ -165,6 +165,41 @@ impl Namespace {
         Self::build_with(store, target, Some(state_dir), true)
     }
 
+    pub fn build_lungs_as(
+        store: &ObjectStore,
+        target: ProjectionTarget,
+        state_dir: &std::path::Path,
+        surface: Surface,
+    ) -> Result<Self> {
+        if !matches!(target, ProjectionTarget::View(_)) {
+            bail!("a lungs mount projects a pinned view, not a workspace");
+        }
+        Self::build_with_catalog_as(
+            store,
+            target,
+            Some(state_dir),
+            true,
+            std::path::Path::new(crate::source::DEFAULT_CATALOG_DIR),
+            surface,
+        )
+    }
+
+    pub fn build_as(
+        store: &ObjectStore,
+        target: ProjectionTarget,
+        state_dir: Option<&std::path::Path>,
+        surface: Surface,
+    ) -> Result<Self> {
+        Self::build_with_catalog_as(
+            store,
+            target,
+            state_dir,
+            false,
+            std::path::Path::new(crate::source::DEFAULT_CATALOG_DIR),
+            surface,
+        )
+    }
+
     pub fn build_with(
         store: &ObjectStore,
         target: ProjectionTarget,

@@ -173,6 +173,33 @@ impl TypedFuse {
         let namespace = Namespace::build_lungs(&store, target, &state_dir)?;
         Self::from_parts(store, namespace, Some(lungs))
     }
+    pub fn lungs_as(
+        store: ObjectStore,
+        target: ProjectionTarget,
+        state_dir: PathBuf,
+        lungs: Lungs,
+        surface: crate::namespace::Surface,
+    ) -> anyhow::Result<Self> {
+        let namespace = Namespace::build_lungs_as(&store, target, &state_dir, surface)?;
+        Self::from_parts(store, namespace, Some(lungs))
+    }
+    pub fn with_state_dir_as(
+        store: ObjectStore,
+        target: ProjectionTarget,
+        state_dir: PathBuf,
+        surface: crate::namespace::Surface,
+    ) -> anyhow::Result<Self> {
+        let namespace = Namespace::build_as(&store, target, Some(&state_dir), surface)?;
+        Self::from_parts(store, namespace, None)
+    }
+    pub fn new_as(
+        store: ObjectStore,
+        target: ProjectionTarget,
+        surface: crate::namespace::Surface,
+    ) -> anyhow::Result<Self> {
+        let namespace = Namespace::build_as(&store, target, None, surface)?;
+        Self::from_parts(store, namespace, None)
+    }
     fn from_parts(
         store: ObjectStore,
         mut namespace: Namespace,

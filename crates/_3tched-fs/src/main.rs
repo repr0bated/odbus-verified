@@ -668,6 +668,8 @@ async fn main() -> Result<()> {
             bus_address,
         } => {
             let surface = namespace::Surface::parse(&surface_str)?;
+            reject_excluded_shm(&state)?;
+            reject_excluded_shm(&catalog)?;
             if fs_name.is_empty() || fs_name.len() > 63
                 || !fs_name.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
             {
@@ -694,21 +696,21 @@ async fn main() -> Result<()> {
             // View mounts read live state from SHM; workspace mounts use
             // frozen COW objects and don't need the state directory.
             let mut filesystem = match lungs {
-                Some(lungs) => TypedFuse::lungs(store, target, state, lungs)?,
+                Some(lungs) => TypedFuse::lungs_as(store, target, state, lungs, surface)?,
                 None if matches!(target, ProjectionTarget::Workspace(_)) => {
-                    TypedFuse::new(store, target)?
+                    TypedFuse::new_as(store, target, surface)?
                 }
-                None => TypedFuse::with_state_dir(store, target, state)?,
+                None => TypedFuse::with_state_dir_as(store, target, state, surface)?,
             };
-            filesystem.set_surface(surface);
             if surface == namespace::Surface::Binary {
                 let binary_path = std::env::var("THREETCHED_BIN")
                     .unwrap_or_else(|_| "/usr/local/libexec/op-dbus/threetched/threetched".into());
-                let binary_path = std::path::Path::new(&binary_path);
-                if binary_path.is_file() {
-                    let surface = crate::threetched_surface::ThreetchedSurface::capture(binary_path)?;
-                    filesystem.graft_threetched(surface)?;
+                let binary_path = std::path::PathBuf::from(binary_path);
+                if !binary_path.is_file() {
+                    bail!("threetched surface binary is missing: {}", binary_path.display());
                 }
+                let captured = crate::threetched_surface::ThreetchedSurface::capture(&binary_path)?;
+                filesystem.graft_threetched(captured)?;
             }
             if let Some(uid) = call_owner_uid {
                 filesystem = filesystem.with_call_owner_uid(uid)?;
@@ -737,6 +739,17 @@ async fn main() -> Result<()> {
             fuser::mount2(filesystem, &mountpoint, &options)
                 .with_context(|| format!("mount {} at {}", surface.mount_name(), mountpoint.display()))?;
         }
+    }
+    Ok(())
+}
+
+fn reject_excluded_shm(path: &std::path::Path) -> Result<()> {
+    let text = path.to_string_lossy();
+    if text.contains("/credentials")
+        || text.contains("capability-grants.json")
+        || text.contains(".op-release-original-")
+    {
+        bail!("refusing excluded SHM path {}", path.display());
     }
     Ok(())
 }
