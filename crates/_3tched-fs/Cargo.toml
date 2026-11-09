@@ -33,6 +33,17 @@ zbus = { version = "5", features = ["p2p", "tokio"] }
 # The sealed schema's authority: it decodes every blob this crate projects.
 op-state-store = { workspace = true }
 op-core = { workspace = true }
+# Optional host-side IPFS publish/fetch of content-addressed views (feature "ipfs").
+# Minimal transport set: private (pnet) TCP + noise only; no upnp, quic,
+# websocket, gateway, delegated routing or DNS.
+rust-ipfs = { version = "0.16", optional = true, default-features = false, features = ["tcp", "noise", "ed25519", "pnet"] }
+connexa = { version = "0.5", optional = true, default-features = false, features = ["pnet"] }
+ipld-core = { version = "0.4", optional = true }
+# rust-ipfs verifies blocks through this table; 3tchedFS hashes are BLAKE3.
+multihash-codetable = { version = "0.2", optional = true, features = ["blake3"] }
+
+[features]
+ipfs = ["dep:rust-ipfs", "dep:connexa", "dep:ipld-core", "dep:multihash-codetable", "tokio/signal"]
 
 [dev-dependencies]
 tempfile = "3"

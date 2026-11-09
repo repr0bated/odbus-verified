@@ -3,6 +3,8 @@ mod fuse_buffers;
 mod fuse_fs;
 #[cfg(test)]
 mod fuse_process;
+#[cfg(feature = "ipfs")]
+mod ipfs;
 mod mcp;
 mod model;
 mod mounted;
@@ -252,6 +254,119 @@ enum Command {
         #[arg(long)]
         publish: bool,
     },
+    /// Exchange content-addressed views over a private IPFS swarm. Run by the
+    /// host inside a throwaway mesh-only namespace; off unless
+    /// /etc/op-dbus/3tchedfs-ipfs.enabled exists.
+    #[cfg(feature = "ipfs")]
+    Ipfs {
+        #[command(subcommand)]
+        command: IpfsCommand,
+    },
+}
+
+#[cfg(feature = "ipfs")]
+#[derive(Debug, Subcommand)]
+enum IpfsCommand {
+    /// Print the CID of a view and of each object it names.
+    Cids { view: String },
+    /// Add a view and its objects as pinned raw blocks; with --serve, stay
+    /// online serving them to connected private peers until stopped.
+    Publish {
+        view: String,
+        #[command(flatten)]
+        node: IpfsNodeArgs,
+        #[arg(long)]
+        serve: bool,
+    },
+    /// Fetch a view and its objects by view id into the store, verifying
+    /// every block. The current pointer is not moved.
+    Fetch {
+        view: String,
+        #[command(flatten)]
+        node: IpfsNodeArgs,
+        #[arg(long, default_value_t = 60)]
+        timeout_secs: u64,
+    },
+}
+
+#[cfg(feature = "ipfs")]
+#[derive(Debug, Args)]
+struct IpfsNodeArgs {
+    /// go-ipfs style swarm.key (mode 0600); only nodes holding it can connect.
+    #[arg(long)]
+    swarm_key: PathBuf,
+    /// Persistent IPFS repo directory; in memory when omitted.
+    #[arg(long)]
+    repo: Option<PathBuf>,
+    /// Multiaddr to listen on, e.g. /ip4/0.0.0.0/tcp/4001.
+    #[arg(long = "listen")]
+    listen: Vec<String>,
+    /// Multiaddr (with /p2p/<peer-id>) of a peer to connect to.
+    #[arg(long = "peer")]
+    peers: Vec<String>,
+}
+
+#[cfg(feature = "ipfs")]
+async fn run_ipfs(store: &ObjectStore, command: IpfsCommand) -> Result<()> {
+    async fn start(node: &IpfsNodeArgs) -> Result<rust_ipfs::Ipfs> {
+        let parse = |addresses: &[String]| -> Result<Vec<rust_ipfs::Multiaddr>> {
+            addresses
+                .iter()
+                .map(|address| address.parse().with_context(|| format!("invalid multiaddr {address}")))
+                .collect()
+        };
+        ipfs::start(
+            &node.swarm_key,
+            node.repo.as_deref(),
+            &parse(&node.listen)?,
+            &parse(&node.peers)?,
+        )
+        .await
+    }
+    match command {
+        IpfsCommand::Cids { view } => {
+            let view = store.read_view(&view)?;
+            let objects = view
+                .objects
+                .iter()
+                .map(|(plugin, hash)| Ok((plugin.clone(), Value::from(ipfs::cid_for(hash)?.to_string()))))
+                .collect::<Result<serde_json::Map<_, _>>>()?;
+            print_json(&serde_json::json!({
+                "view": ipfs::cid_for(&view.view_id)?.to_string(),
+                "objects": objects,
+            }))?;
+        }
+        IpfsCommand::Publish { view, node, serve } => {
+            let node_handle = start(&node).await?;
+            for (label, cid) in ipfs::publish_view(&node_handle, store, &view).await? {
+                println!("{cid} {label}");
+            }
+            if serve {
+                let peer = node_handle.keypair().public().to_peer_id();
+                for address in node_handle.listening_addresses().await? {
+                    eprintln!("serving {address}/p2p/{peer}");
+                }
+                let mut terminate =
+                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+                tokio::select! {
+                    result = tokio::signal::ctrl_c() => result?,
+                    _ = terminate.recv() => {}
+                }
+            }
+        }
+        IpfsCommand::Fetch { view, node, timeout_secs } => {
+            let node_handle = start(&node).await?;
+            let fetched = ipfs::fetch_view(
+                &node_handle,
+                store,
+                &view,
+                std::time::Duration::from_secs(timeout_secs),
+            )
+            .await?;
+            print_json(&fetched)?;
+        }
+    }
+    Ok(())
 }
 
 /// An identity's lungs: the shared socket authenticates the current container
@@ -488,6 +603,8 @@ async fn main() -> Result<()> {
             }
         }
         Command::Views => print_json(&store.list_views()?)?,
+        #[cfg(feature = "ipfs")]
+        Command::Ipfs { command } => run_ipfs(&store, command).await?,
         Command::Tree { target } => {
             let target = resolve_target(&store, &target)?;
             let namespace = Namespace::build(&store, target, None)?;

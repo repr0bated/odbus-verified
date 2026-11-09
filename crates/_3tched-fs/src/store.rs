@@ -405,6 +405,68 @@ impl ObjectStore {
         list_stems(&self.snapshots_dir(), ".ref")
     }
 
+    /// Exact stored bytes of an object; their BLAKE3 hash is the object hash.
+    pub fn object_bytes(&self, hash: &str) -> Result<Vec<u8>> {
+        self.read_object(hash)?;
+        read_bounded(&self.object_path(hash), MAX_DOCUMENT_BYTES)
+    }
+
+    /// Canonical body bytes of a view; their BLAKE3 hash is the view id.
+    pub fn view_body_bytes(&self, id: &str) -> Result<Vec<u8>> {
+        let view = self.read_view(id)?;
+        bounded_json(
+            &ViewBody {
+                format: view.format,
+                source_catalog_hash: view.source_catalog_hash,
+                source_catalog_generation: view.source_catalog_generation,
+                parent_view: view.parent_view,
+                objects: view.objects,
+            },
+            MAX_MANIFEST_BYTES,
+            false,
+        )
+    }
+
+    /// Store an object received as raw bytes, after the same content-hash and
+    /// typed validation `read_object` applies.
+    pub fn import_object_bytes(&self, hash: &str, bytes: &[u8]) -> Result<()> {
+        validate_hash(hash, "object")?;
+        ensure!(
+            bytes.len() as u64 <= MAX_DOCUMENT_BYTES,
+            "object {hash} exceeds document byte limit"
+        );
+        ensure!(
+            hash_bytes(bytes) == hash,
+            "object {hash} failed content-hash verification"
+        );
+        let object: TypedObjectBlob =
+            serde_json::from_slice(bytes).with_context(|| format!("decode object {hash}"))?;
+        object.validate(None)?;
+        let path = self.object_path(hash);
+        if !path.exists() {
+            self.atomic_write(&path, bytes)?;
+        }
+        Ok(())
+    }
+
+    /// Store a view received as canonical body bytes. Every object it names
+    /// must already be present and valid; the current pointer is not moved.
+    pub fn import_view_body(&self, id: &str, bytes: &[u8]) -> Result<ViewManifest> {
+        validate_hash(id, "view")?;
+        ensure!(
+            hash_bytes(bytes) == id,
+            "view {id} failed content-hash verification"
+        );
+        let body: ViewBody =
+            serde_json::from_slice(bytes).with_context(|| format!("decode view {id}"))?;
+        for hash in body.objects.values() {
+            self.read_object(hash)?;
+        }
+        let view = self.write_view(body)?;
+        ensure!(view.view_id == id, "view {id} body is not canonical");
+        Ok(view)
+    }
+
     fn write_object(&self, object: &TypedObjectBlob) -> Result<String> {
         object.validate(None)?;
         let bytes = canonical_json(object)?;

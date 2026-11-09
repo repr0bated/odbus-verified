@@ -9,6 +9,8 @@ mod fuse_buffers;
 pub mod dispatch;
 pub mod fuse_fs;
 pub mod fuse_process;
+#[cfg(feature = "ipfs")]
+pub mod ipfs;
 pub mod model;
 pub mod namespace;
 pub mod source;
