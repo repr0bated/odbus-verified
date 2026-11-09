@@ -103,6 +103,15 @@ tried (trying other identities to route around a denial is forbidden).
 Task 1.3 stays BLOCKED until the bound operator context performs the
 call or the owner authorizes the Branch run (task 19.14).
 
+Owner note (2026-11-09): the container is not finished developing.
+`CockpitBot3tched` is a development container, not a finished
+Deployment_Target. The identity-binding refusal above is therefore
+expected at this stage and is not a defect in the mount or the identity
+sled. Development of the Chat_Interface proceeds against the synthetic
+fixtures and in-process harness (tasks 10.3, 14.6); live container
+integration stays in the blocked task-19 group until the container is
+finished and the owner authorizes a Branch run.
+
 ## Blockers
 
 - **B-02 (partially cleared at host level)**: a mount and the host
