@@ -1,6 +1,6 @@
 advisors:
   - name: default
-    model: salad/qwen3.6-35b-a3b:high
+    model: cursor/grok-4.7:high
     tools:
       - read
       - security_scan

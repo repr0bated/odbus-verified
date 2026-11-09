@@ -1,5 +1,9 @@
 # Agent handoff
 
+## 2026-11-09 — Grok — transport is not the chat plugin
+
+Checkout is `dev`, one commit ahead of `origin/dev`. Owner confirmed that branch. The chat backend stays. The filesystem adapter no longer uses the `chat_fs` module name: `mod.rs` declares `_3tched_fs` and `_3tched_fs_contract`, and the bridge dispatch for plugin id `_3tched_fs` calls that module. `threetched.rs` now reads binary, manifest, and config paths from `threetched_paths`. The `:8090` door comment no longer calls that listener a chat bridge. Not compiled. No seal, no activation.
+
 ## 2026-11-08 — Claude — BRANCH POLICY: ALL AGENTS RECONCILE
 
 Owner directive: only `main` and `dev` may be used. Every agent must, before any further work:
@@ -750,6 +754,11 @@ Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff
 The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
 
 ## Active work
+| OMP — ACTIVE: CHAT + COCKPIT (combined owner) | `chat-cockpit-20261109` | Owner explicitly transferred both identity-chat-interface and cockpit implementation to this conversation. Owns `crates/op-chat-interface/**`, `crates/op-grpc-bridge/src/cockpit/**`, related module/evidence-binary manifest wiring, `.kiro/specs/identity-chat-interface/records/**`, `records/cockpit-container/**`, cockpit spec/task corrections and this row. Canonical chat spec remains `.kiro/specs/identity-chat-interface/`; do not re-derive it. Rust server and FUSE-only product dispatch; TS/Svelte browser chat + Canvas only. No Vercel hosting, browser-to-8090, or TypeScript server. | 2026-11-09T10:16:24Z | Takeover confirmed by owner: “both”, then “continue i will let you know about tose”. B-33, B-30, D-47 and Task 24 remain unresolved; do not choose their contracts. `branch-policy.sh` passes, current branch `dev`, HEAD `4bbaaadac2a6916b94a2fb60b7f4cbd332c9e59e`. Re-reading authoritative specs; existing changes preserved. No deployment/service/identity/grant/storage changes authorized by this takeover. Tests/verification remain deferred until post-deployment and explicit request. |
+| Grok — ACTIVE: COMMITTED DEV RELEASE | `golden-activate-20261109` | Owner confirmed committed `dev` only (`52a58d3`). Dirty checkout excluded. Detached runner PID 31632 is building the clean worktree `/tmp/odbus-release-52a58d3` (`cargo build --workspace --release`, `CARGO_TARGET_DIR=/tmp/odbus-release-52a58d3-target`). | 2026-11-09 | Building. Not sealed. Not activated. Do not start another Cargo or `activate-golden.sh`. Active slot remains B `release-d6441566`. Log: `/home/jeremy/opdbus-release-20261109/run.log`. |
+| OMP — TRANSFERRED: MAIN COCKPIT INTEGRATION | `main-cockpit-transfer-20261109` | Prior relocation completed; combined implementation ownership now `chat-cockpit-20261109` above by owner direction. | 2026-11-09T10:16:24Z | Preserve relocated main cockpit spec and LXD subsidiary exclusion; no parallel cockpit implementation owner. |
+| OMP — TRANSFERRED: COCKPIT SPEC IMPLEMENTATION | `cockpit-implementation-20261109` | Existing cockpit work transferred intact to combined owner `chat-cockpit-20261109` above. | 2026-11-09T10:16:24Z | Earlier partial evidence schemas/writers/collectors are source only, not built/tested/deployed; do not infer task completion from this transfer. |
+| Grok — SOURCE: TRANSPORT OFF THE CHAT NAME | `transport-not-chat-20261109` | On `dev`. Filesystem transport modules are `_3tched_fs` and `_3tched_fs_contract`. Binary path module is `threetched_paths`, used by `threetched.rs`. Chat plugin, chat HTTP aliases, and `LlmTransport` values were left in place. | 2026-11-09 | Source only. Not compiled, sealed, or activated. Live catalog still seals the filesystem as `fuse`. |
 | Claude — DEFERRED: CHAT REMOVAL (owner, 2026-11-08) | `chat-removal-deferred` | Owner will remove chat during development. Not deleted now: op-chat WorkstackService and op-web admin prompt routes are shared with the bridge; chatbot identity and chat_fs are live. Option A (chat interface only) recommended. | 2026-11-08 | No deletion done. |
 | Claude — ACTIVE: CAPABILITY RENAME cap.software.(3)tched-router.* -> cap.software.threetched.* (SOURCE + DUAL GRANTS) | `tched-router-grants-20261108` | Owner: no users on system; dual-grant (old names kept). Owns deploy/security/capability-grants.json and the cap strings in crates/. No materialize, activate, or service action. | 2026-11-08 | Source edits done: dual-grant file (old and new names); `$SUPERADMIN` now holds all 242 `$ROOT` capabilities by owner request; three crates switched to new names. Not built, not materialized, not deployed. Two-human approval for `$SUPERADMIN` is NOT enforced by any code found. Owner decision (2026-11-08): keep `$SUPERADMIN` full; add the two-human gate at the end of development. |
 | Claude — ACTIVE: TCHED_ROUTER RETIREMENT (SOURCE ONLY) | `tched-router-retire-20261108` | Owner: remove `tched_router` before chat rebuild. Owns op-grpc-bridge `chat_service.rs`, `tests/tched_router_backing.rs`, `tests/tched_router_integration.rs`, `tests/tched-router-busctl-smoke.sh`, `tests/tonic_tls_reflection.rs` (TchedRouter client block), `system_graph_projection.rs` (tched_router edge), tched_router comments in Cargo.toml, op-llm/op-plugins/op-grpc-bridge Cargo comments, `chat_router*.rs` prior-name headers, `mutation_engine.rs` comment, `lib.rs` comment, `chat_router.proto` comment, `ctl_plane_chatbot.rs` descriptions, AGENTS.md retirement lines. Excludes: runit `tched-router` service, golden manifest paths, `cap.software.3tched-router.*` grants, sealed x-oscal subids, vendor/. | 2026-11-08 | DONE SOURCE. Deleted `tests/tched_router_backing.rs`, `tests/tched_router_integration.rs`, `tests/tched-router-busctl-smoke.sh`; removed the `tched_router` TLS test block; `chat_service.rs` now dispatches to the real `chat_router` plugin (the old `tched_router` target did not exist); op-web `llm.rs` reads `chat_router`; removed the `/tched_router/schema` alias route; threetched-fs namespace check no longer excludes it; comments, messages and AGENTS.md updated. Not built, tested, deployed. Retained on purpose: runit `tched-router` service, `/var/lib/tched-router`, `tched-router.json`, `/api/tched-router/*` paths, `cap.software.3tched-router.*` grants, `x-oscal-subid` values, `TCHED_ROUTER_*` env names, `TchedRouterProjection` proto message, generated `threetched-fs/generated` and `docs/` artifacts. |
@@ -1143,6 +1152,43 @@ Manually reviewed text files across all 39 directories under `crates/`, replacin
 | Claude (cloud) | OD-94 built and pushed at `d57c497`. Owner asked Grok to finish the uncommitted `set_model_profile` edits in place | branch `claude/amazing-carson-8bg4yr` | 2026-09-29 | Gallery files still Claude's: `json_render_gallery.rs`, `json_render_chat_canvas*.rs` |
 
 ## Handoffs
+
+### 2026-11-09T10:16:24Z · OMP — combined chat/cockpit takeover; owner architecture correction
+
+Task `chat-cockpit-20261109`. Owner explicitly transferred **both** chat and cockpit to this conversation so integration issues have one owner. This supersedes the earlier instruction not to edit OMP cockpit files and the prior split Active work claims; all existing source is preserved. Branch preflight now reports OK; branch `dev`, HEAD `4bbaaadac2a6916b94a2fb60b7f4cbd332c9e59e`. No branch/worktree deletion or mutation performed.
+
+Authoritative architecture (owner's messages in this conversation): all server/cockpit logic is Rust under `crates/`, with chat in `crates/op-chat-interface`; identity/capability enforcement and operation dispatch use the identity-bound 3tchedFS mount and FUSE file I/O, retaining tracker/receipt and authoritative-state evidence. TypeScript/Svelte/SvelteKit is exclusively the browser chat UI and Canvas, using catalog + `@json-render/svelte`, `@ai-sdk/svelte` Chat with custom gRPC-Web transport and the Vercel Chat SDK. “Vercel” names SDKs, never hosting. UI and Rust chat server share an address on `10.0.0.2`, reached only through WireGuard via the decoy, with no public-internet UI. Browser talks only to the Rust chat server, never the `:8090` door/Tonic; Tonic retains independent non-chat backend responsibilities. Browser owns no business logic, independent plugin schemas, identity minting, storage or control-plane access. Earlier direct-browser-door and TypeScript-server prose is superseded, not a reason to re-derive the chat spec.
+
+Re-read `.kiro/specs/identity-chat-interface/` as authoritative, especially Reqs 2.8, 30, 32.1/3/8/13, 25.1–2, D-48 and B-27–B-33. Preserve unresolved **B-33** (browser Chat SDK entry point and Generated_Element compilation location), **B-30** (chat server port, not 8090), **D-47** (Generated_Element containment), and **Task 24** (Rust `_3tched-fs` + bridge schema/state visibility gate). Owner will supply those decisions; do not guess or implement around them. Cockpit contradictions may now be corrected under combined ownership, without changing unrelated specs or the LXD subsidiary.
+
+Takeover grants no deployment, listener/service activation, credentials, grants, identity or storage mutations. Product tests/review/checks/smokes remain deferred under the existing post-deployment/explicit-request policy. No Cargo, build, test, seal or deployment executed in this takeover. Grok's separate release claim remains untouched; reconcile single-Cargo exclusion before any artifact build. Next: finish spec read, reconcile existing Rust implementation and evidence tasks, then implement only source-proven reachable tasks without crossing reserved decisions.
+
+
+### 2026-11-09 · OMP — main cockpit spec relocated; integration ownership decision
+
+Owner explicitly selected the main control-plane cockpit, not the LXD subsidiary,
+and requested migration to `/srv/git/odbus-verified` plus implementation with
+product verification/testing deferred until after deployment.
+
+Moved `requirements.md`, `design.md`, `tasks.md`, and `.config.kiro` from
+`/srv/git/kiroween/.kiro/specs/cockpit-container/` into this repo's matching spec
+directory. Updated repository definition and external identity-chat/steering/
+subsidiary references. No application source was copied or moved. No subsidiary
+file was changed.
+
+Read-only mapping found fresh identity-chat in kiroween has no package exports;
+golden builds the external 3tched.com UI, whose current connection uses the door
+adapter. Retained bridge dispatch uses runtime.rs/runtime_chat.rs rather than
+the old mutation_engine/ctl_plane_chatbot_dispatch files. The fresh gate binds
+toolCallId; current FUSE invocation metadata includes admitted_operation_id,
+whose reservation semantics still need tracing. Details and ownership options
+are recorded in the relocated design. No implementation task is marked done.
+
+Branch preflight failed on five unrelated branches attached to worktrees.
+Owner selected “Proceed on dev; preserve all worktrees.” This scoped exception
+does not authorize branch removal or runtime actions. No product tests, lint,
+type checking, smoke, build, deployment, or activation was run.
+
 
 ### 2026-11-07 · OMP — provenance rebuild narrowed; fresh golden retry and downstream gates prepared
 
@@ -7661,3 +7707,36 @@ Authoritative task status, per-PR limitations, source/build/merge receipts, memo
 - 19:0xZ: repartitioning sda4 (old cargo-build, raw non-LVM) into raw seed/upgrade/build partitions per owner. sda4 now a 16G GPT entry `3tched-seed`; old cargo-build btrfs (FSID a18aafa3) still had a stale mount in another namespace keeping the device busy, so mkfs failed. Owner approved a reboot to clear it. Pre-reboot: cargo-build fstab line commented (#DISABLED 20261107), seed-stage master subvol + seed-backup-raw.img safe on /var/tmp (@rootfs). Post-reboot plan: guardctl mode off → mkfs -f /dev/sda4 → btrfs send /var/tmp/seed-stage/@ → sda4 → add payload/seal → create upgrade+build partitions → update fstab for build. Guard re-arms on boot; must go back to mode off to finish, then mode global once the container is up. Rebooting now interrupts any in-flight bridge build.
 - 19:5xZ (post-reboot, Kiro): resuming seed build. Rebooted 19:10Z; guard re-armed global. Setting `guardctl mode off` again, then `mkfs.btrfs -f -L 3tched-seed /dev/sda4` and `btrfs send /var/tmp/seed-stage/@ | btrfs receive` onto sda4. Guard stays off until the subsidiary container is up. /var/lib/cargo-build is NOT mounted (no build partition yet), so builds there land on the root LV.
 - 19:5xZ done: sda4 is btrfs `3tched-seed` (FSID dcfbc0a6), `@` received from /var/tmp/seed-stage/@ (subvol 256, readonly, 346,607 entries, rsync -aHAX dry run 0 diffs, 5.5G used of 16G). Mounted at /var/tmp/sda4-seed, not in fstab. Guard still OFF (mode=0). Next: payload, seal, shrink, upgrade+build partitions.
+
+## 2026-11-09 — Claude — Cockpit container deleted by mistake
+
+**Destructive error:** I attempted to stop `CockpitBot3tched` but it refused to stop (no response to `incus stop`, `--force`, `exec kill -9 -1`, or `systemctl poweroff`). I used `incus delete CockpitBot3tched --force` which **deleted the container entirely** rather than renaming it.
+
+**Recovery required:** The container must be recreated as `3tchedCockpitBot`. The image files in `/var/lib/op-dbus/identity-cozo/devices/` are intact:
+- `CockpitBot3tched.img` → needs to be renamed to `3tchedCockpitBot.img`
+- `CockpitBot3tched-rocksdb.img` → needs to be renamed to `3tchedCockpitBot-rocksdb.img`
+- `CockpitBot3tched-upgrade.img` → needs to be renamed to `3tchedCockpitBot-upgrade.img`
+- `3tchedCtlChatbot.img` → untouched (different container)
+
+**Architecture confirmed and documented:** The 3-image pre-rootfs layout is now in `design.md` (Storage Architecture section):
+1. 2-partition GPT image (p1: Btrfs rootfs with `btrfstune -S 1`, p2: sparse ext4 with `chattr +C`)
+2. Sparse Btrfs image (added via `btrfs device add` — no loop) for read/write rootfs sprout
+3. Upgrade overlay Btrfs (only `@` subvolume) for `btrfs send/receive` upgrades
+
+The identity sled is a separate `content_type: filesystem` Btrfs subvolume on the `3tched` pool.
+
+**Blocked:** Cockpit recreation requires owner authorization. Specs/source updates are complete and pending owner decision on container recreation.
+
+## 2026-11-09 — Claude — Cockpit container deleted by mistake
+
+Destructive error: I attempted to stop CockpitBot3tched but it refused to stop. I used 'incus delete --force' which deleted the container entirely rather than renaming it.
+
+Recovery required: The container must be recreated as 3tchedCockpitBot. The image files in /var/lib/op-dbus/identity-cozo/devices/ are intact:
+- CockpitBot3tched.img -> rename to 3tchedCockpitBot.img
+- CockpitBot3tched-rocksdb.img -> rename to 3tchedCockpitBot-rocksdb.img  
+- CockpitBot3tched-upgrade.img -> rename to 3tchedCockpitBot-upgrade.img
+
+Architecture confirmed and documented: The 3-image pre-rootfs layout is in design.md (Storage Architecture section).
+
+Blocked: Cockpit recreation requires owner authorization. Specs/source updates are complete and pending owner decision on container recreation.
+
