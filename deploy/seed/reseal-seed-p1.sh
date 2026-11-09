@@ -1,7 +1,8 @@
 #!/bin/sh
 # Rebuild partition 1 (sealed OS) of the 3tched seed image in place, keeping p2.
 #   OS from the read-only subvolume at $SRC via btrfs send, as default subvolume @,
-#   seed-wide config applied (Xray egress proxy, container fstab), then sealed.
+#   seed-wide config applied (Xray egress proxy, container fstab, optional
+#   OVERLAY tree), then sealed.
 # Every container sprouted from the old p1 must be re-provisioned afterwards.
 set -eu
 
@@ -56,6 +57,14 @@ cat >"$R/etc/apt/apt.conf.d/95egress-proxy" <<EOF
 Acquire::http::Proxy "$PROXY";
 Acquire::https::Proxy "$PROXY";
 EOF
+
+# Optional seed overlay: files laid over @ as-is (e.g. NextDNS + its DoH
+# tunnel, resolved drop-in, profile.d proxy, 3tched-call, unit masks).
+# Existing directories keep their ownership and mode.
+if [ -n "${OVERLAY:-}" ]; then
+	[ -d "$OVERLAY" ] || { echo "OVERLAY $OVERLAY is not a directory" >&2; exit 1; }
+	(cd "$OVERLAY" && tar -cpf - --exclude=./ .) | tar -C "$R" -xpf - --no-overwrite-dir
+fi
 
 sync
 umount "$DST"
