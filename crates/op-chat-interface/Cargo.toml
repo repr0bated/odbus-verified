@@ -1,0 +1,11 @@
+[package]
+name = "op-chat-interface"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Identity-bound chat interface backend (Rust). Browser UI is Svelte/TypeScript and lives with the dashboard; everything server-side is here."
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

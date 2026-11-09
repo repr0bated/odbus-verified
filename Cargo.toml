@@ -39,6 +39,7 @@ members = [
     "crates/op-xray-daemon",
     "crates/op-dbus-cli",
     "crates/op-chat-responder",
+    "crates/op-chat-interface",
     "crates/_3tched-fs",
 ]
 exclude = ["crates/op-uds-relay", "hackathon"]
