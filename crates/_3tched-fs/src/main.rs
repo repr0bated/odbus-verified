@@ -159,6 +159,9 @@ enum Command {
         /// Visible kernel mount source label; this does not select an identity.
         #[arg(long, default_value = "3tchedFS")]
         fs_name: String,
+        /// Surface to project: "3tched" or "threetched". Required.
+        #[arg(long, required = true)]
+        surface: String,
         #[command(flatten)]
         target: TargetArgs,
         #[arg(long, default_value = DEFAULT_STATE_DIR)]
@@ -652,6 +655,7 @@ async fn main() -> Result<()> {
         Command::Mount {
             mountpoint,
             fs_name,
+            surface: surface_str,
             target,
             state,
             catalog,
@@ -663,6 +667,7 @@ async fn main() -> Result<()> {
             lungs_session,
             bus_address,
         } => {
+            let surface = namespace::Surface::parse(&surface_str)?;
             if fs_name.is_empty() || fs_name.len() > 63
                 || !fs_name.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
             {
@@ -695,6 +700,7 @@ async fn main() -> Result<()> {
                 }
                 None => TypedFuse::with_state_dir(store, target, state)?,
             };
+            filesystem.namespace.surface = surface;
             if let Some(uid) = call_owner_uid {
                 filesystem = filesystem.with_call_owner_uid(uid)?;
             }
@@ -720,7 +726,7 @@ async fn main() -> Result<()> {
                 options.push(MountOption::AutoUnmount);
             }
             fuser::mount2(filesystem, &mountpoint, &options)
-                .with_context(|| format!("mount 3tchedFS at {}", mountpoint.display()))?;
+                .with_context(|| format!("mount {} at {}", surface.mount_name(), mountpoint.display()))?;
         }
     }
     Ok(())
