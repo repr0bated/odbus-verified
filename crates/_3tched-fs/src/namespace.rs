@@ -23,6 +23,39 @@ pub enum MountIdentity {
     Unbound,
 }
 
+/// Which surface a mount projects. libfuse is the engine under both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Surface {
+    /// Our code surface. Mount name `3tched_fs`.
+    Our,
+    /// ZeroClaw-derived binary surface. Mount name `threetched_fs`.
+    Binary,
+}
+
+impl Surface {
+    pub fn parse(value: &str) -> Result<Self> {
+        match value {
+            "3tched" => Ok(Self::Our),
+            "threetched" => Ok(Self::Binary),
+            _ => bail!("surface must be 3tched or threetched"),
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Our => "3tched",
+            Self::Binary => "threetched",
+        }
+    }
+
+    pub fn mount_name(self) -> &'static str {
+        match self {
+            Self::Our => "3tched_fs",
+            Self::Binary => "threetched_fs",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum FileSource {
     MountMetadata,
@@ -68,6 +101,7 @@ pub struct Namespace {
     pub declared_catalog_dir: std::path::PathBuf,
     pub source_schema_hashes: BTreeMap<String, String>,
     pub threetched_surface: Option<Arc<crate::threetched_surface::ThreetchedSurface>>,
+    pub surface: Surface,
 }
 
 #[derive(Debug, Clone)]
@@ -153,6 +187,24 @@ impl Namespace {
         lungs: bool,
         catalog_dir: &std::path::Path,
     ) -> Result<Self> {
+        Self::build_with_catalog_as(
+            store,
+            target,
+            state_dir,
+            lungs,
+            catalog_dir,
+            Surface::Our,
+        )
+    }
+
+    pub fn build_with_catalog_as(
+        store: &ObjectStore,
+        target: ProjectionTarget,
+        state_dir: Option<&std::path::Path>,
+        lungs: bool,
+        catalog_dir: &std::path::Path,
+        surface: Surface,
+    ) -> Result<Self> {
         let (view, workspace) = match &target {
             ProjectionTarget::View(id) => (store.read_view(id)?, None),
             ProjectionTarget::Workspace(id) => {
@@ -161,10 +213,10 @@ impl Namespace {
                 (view, Some(workspace))
             }
         };
-        // View mounts read live state from SHM; workspace mounts use frozen COW.
         let live = workspace.is_none() && state_dir.is_some();
         let mut builder =
             NamespaceBuilder::new(target.clone(), state_dir.map(|p| p.to_path_buf()), lungs);
+        builder.namespace.surface = surface;
         builder.namespace.declare_catalog_dir(catalog_dir)?;
         builder.object_hashes = workspace
             .as_ref()
@@ -539,8 +591,10 @@ impl Namespace {
             "source_catalog_generation":view.source_catalog_generation,
             "object_count":view.objects.len(),
             "mount_identity":self.mount_identity, "instance_uuid":self.instance_uuid,
+            "surface":self.surface.as_str(),
+            "mount_name":self.surface.mount_name(),
             "local_call_owner_uid":self.local_call_owner_uid,"allowed_operator_uid":self.allowed_operator_uid,
-            "declared_catalog_dir":self.declared_catalog_dir
+            "declared_catalog_dir":self.declared_catalog_dir,
         });
         if view.objects.contains_key("_3tched_fs") {
             value["invocation"] =
@@ -774,6 +828,7 @@ impl NamespaceBuilder {
                 declared_catalog_dir: std::path::PathBuf::from(crate::source::DEFAULT_CATALOG_DIR),
                 source_schema_hashes: BTreeMap::new(),
                 threetched_surface: None,
+                surface: Surface::Our,
             },
             paths: HashMap::from([("/".to_string(), ROOT_INO)]),
             object_hashes: BTreeMap::new(),
