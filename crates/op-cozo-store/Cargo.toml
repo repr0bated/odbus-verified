@@ -41,5 +41,9 @@ path = "src/bin/migrate-chatbot-root.rs"
 name = "validate-chatbot-state"
 path = "src/bin/validate-chatbot-state.rs"
 
+[[bin]]
+name = "sled-row"
+path = "src/bin/sled-row.rs"
+
 [dev-dependencies]
 tempfile = { workspace = true }
