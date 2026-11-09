@@ -19,6 +19,7 @@
 
 pub mod errors;
 pub mod guard;
+pub mod profile;
 pub mod types;
 
 pub use errors::{ErrorKind, TypedError};
