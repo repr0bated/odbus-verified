@@ -1,0 +1,144 @@
+#!/bin/sh
+# Run one network-enabled service in a throwaway, mesh-only network namespace.
+#
+#   svc-netns run [--expose PORT] -- COMMAND [ARGS...]
+#
+# The namespace gets an OVS internal port sock_<id> on ovsbr0 and a temporary
+# address from POOL. It routes only to the mesh (WireGuard 10.0.0.0/24 behind
+# the decoy, 10.10.0.0/24, the WARP mesh) via the host; there is no default
+# route, so no internet and no REALITY/pub0 exit. Outbound mesh traffic leaves
+# as the server's identity address 10.0.0.2; with --expose, TCP PORT on
+# 10.0.0.2 reaches the service from the mesh for the duration of the run.
+# Everything (port mapping, OVS port, namespace, address lease) is removed when
+# the command exits.
+set -eu
+
+BRIDGE=ovsbr0
+GATEWAY=10.200.0.1
+CARRIER=10.200.0.254
+POOL_PREFIX=10.200.0
+POOL_FIRST=129
+POOL_LAST=190
+POOL_CIDR=10.200.0.128/26
+IDENTITY_ADDR=10.0.0.2
+MESH_ROUTES="10.0.0.0/24 10.10.0.0/24 100.96.0.0/12"
+LEASES=/run/svc-netns
+TABLE=svc_netns
+
+die() { echo "svc-netns: $*" >&2; exit 1; }
+
+# Static policy, created once and idle until a namespace uses the pool.
+ensure_table() {
+	nft list table ip "$TABLE" >/dev/null 2>&1 && return 0
+	nft -f - <<EOF
+table ip $TABLE {
+	chain pre {
+		type nat hook prerouting priority dstnat; policy accept;
+	}
+	chain post {
+		type nat hook postrouting priority srcnat; policy accept;
+		ip saddr $POOL_CIDR oifname "$BRIDGE" ip daddr { $(echo "$MESH_ROUTES" | sed 's/ /, /g') } snat to $IDENTITY_ADDR
+	}
+	chain pool_forward {
+		type filter hook forward priority filter; policy accept;
+		ip saddr $POOL_CIDR ct state established,related accept
+		ip daddr $POOL_CIDR ct state established,related accept
+		ip saddr $POOL_CIDR oifname != "$BRIDGE" counter drop comment "pool reaches the mesh only"
+		ip saddr $POOL_CIDR ip daddr != { $(echo "$MESH_ROUTES" | sed 's/ /, /g') } counter drop
+		ip daddr $POOL_CIDR ct status dnat accept
+		ip daddr $POOL_CIDR counter drop comment "no unsolicited inbound"
+	}
+}
+EOF
+}
+
+lease() {
+	mkdir -p -m 0700 "$LEASES"
+	host=$POOL_FIRST
+	while [ "$host" -le "$POOL_LAST" ]; do
+		if mkdir "$LEASES/$POOL_PREFIX.$host" 2>/dev/null; then
+			echo "$POOL_PREFIX.$host"
+			return 0
+		fi
+		host=$((host + 1))
+	done
+	return 1
+}
+
+run() {
+	expose=
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--expose) expose=$2; shift 2 ;;
+		--) shift; break ;;
+		*) die "usage: svc-netns run [--expose PORT] -- COMMAND [ARGS...]" ;;
+		esac
+	done
+	[ $# -gt 0 ] || die "no command"
+	case "$expose" in
+	'' | *[!0-9]*) [ -z "$expose" ] || die "--expose takes a TCP port" ;;
+	esac
+
+	id=$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')
+	ns=svc-$id
+	port=sock_$id
+	addr=$(lease) || die "address pool exhausted"
+	handle=
+	child=
+
+	teardown() {
+		trap - EXIT INT TERM HUP
+		[ -z "$child" ] || kill "$child" 2>/dev/null || true
+		[ -z "$child" ] || wait "$child" 2>/dev/null || true
+		[ -z "$handle" ] || nft delete rule ip "$TABLE" pre handle "$handle" 2>/dev/null || true
+		ovs-vsctl --if-exists del-port "$BRIDGE" "$port" 2>/dev/null || true
+		ip netns del "$ns" 2>/dev/null || true
+		ip neigh flush to "$addr" dev "$BRIDGE" 2>/dev/null || true
+		rmdir "$LEASES/$addr" 2>/dev/null || true
+	}
+	trap teardown EXIT
+	trap 'exit 130' INT TERM HUP
+
+	ensure_table
+	ip netns add "$ns"
+	ovs-vsctl add-port "$BRIDGE" "$port" -- set interface "$port" type=internal
+	ip link set "$port" netns "$ns"
+	ip -n "$ns" link set lo up
+	# /32 with every route via the host, so all traffic (including replies to
+	# the mesh carrier on the same bridge) passes the host's NAT and filter.
+	ip -n "$ns" addr add "$addr/32" dev "$port"
+	ip -n "$ns" link set "$port" up
+	ip -n "$ns" route add "$GATEWAY" dev "$port" scope link
+	for route in $MESH_ROUTES $CARRIER/32; do
+		ip -n "$ns" route add "$route" via "$GATEWAY" dev "$port"
+	done
+	if [ -n "$expose" ]; then
+		handle=$(nft --echo --handle add rule ip "$TABLE" pre \
+			iifname "$BRIDGE" ip daddr "$IDENTITY_ADDR" tcp dport "$expose" \
+			dnat to "$addr:$expose" comment "\"$ns\"" | sed -n 's/.*# handle \([0-9]*\).*/\1/p')
+		[ -n "$handle" ] || die "could not expose port $expose"
+	fi
+	# A reused lease has a new MAC: drop the host's old neighbour entry, then
+	# warm the path so the first mesh request does not stall on retransmits.
+	ip neigh flush to "$addr" dev "$BRIDGE" 2>/dev/null || true
+	tries=0
+	until ip netns exec "$ns" ping -c1 -W1 "$GATEWAY" >/dev/null 2>&1; do
+		tries=$((tries + 1))
+		[ "$tries" -lt 10 ] || die "namespace cannot reach $GATEWAY"
+	done
+	ping -c1 -W1 "$addr" >/dev/null 2>&1 || true
+	echo "svc-netns: $ns $addr${expose:+ exposed as $IDENTITY_ADDR:$expose}" >&2
+
+	SVC_NETNS_ADDR=$addr ip netns exec "$ns" "$@" &
+	child=$!
+	status=0
+	wait "$child" || status=$?
+	child=
+	exit "$status"
+}
+
+[ "$(id -u)" = 0 ] || die "run as root"
+case "${1:-}" in
+run) shift; run "$@" ;;
+*) die "usage: svc-netns run [--expose PORT] -- COMMAND [ARGS...]" ;;
+esac
