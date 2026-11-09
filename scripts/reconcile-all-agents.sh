@@ -19,8 +19,8 @@ esac
 ALLOWED="main dev"
 on_policy() { case " $ALLOWED " in *" $1 "*) return 0 ;; esac; return 1; }
 
-git config core.hooksPath .githooks
-[ "$(git config core.hooksPath)" = ".githooks" ] || { echo "hooksPath not set"; exit 1; }
+git config core.hooksPath "$root/.githooks"
+case "$(git config core.hooksPath)" in */.githooks) ;; *) echo "hooksPath not set"; exit 1 ;; esac
 git fetch -q origin --prune || echo "WARN: fetch failed; remote state may be stale"
 
 echo "== worktrees"

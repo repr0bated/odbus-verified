@@ -10,7 +10,7 @@ cd "$root"
 apply=0; [ "${1:-}" = "--apply" ] && apply=1
 
 hooks=$(git config core.hooksPath || true)
-[ "$hooks" = ".githooks" ] || echo "WARN: core.hooksPath is '$hooks' (expected .githooks); run: git config core.hooksPath .githooks"
+case "$hooks" in */.githooks|.githooks) ;; *) echo "WARN: core.hooksPath is '$hooks' (expected an absolute path to .githooks); run: git config core.hooksPath "$(git rev-parse --show-toplevel)/.githooks"" ;; esac
 
 worktree_branches=$(git worktree list --porcelain | awk '/^branch /{sub("refs/heads/","",$2); print $2}')
 bad=0
