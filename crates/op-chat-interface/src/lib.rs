@@ -20,6 +20,7 @@
 pub mod errors;
 pub mod guard;
 pub mod profile;
+pub mod registry;
 pub mod types;
 pub mod validation;
 

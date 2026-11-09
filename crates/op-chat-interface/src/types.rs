@@ -45,14 +45,40 @@ pub struct CatalogPin {
     pub source_catalog_generation: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SideEffect {
+    Read,
+    Mutation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnavailableReason {
+    Absent,
+    Undetermined,
+    ViewAbsent,
+    Schema,
+    StickyDenied,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegistryEntry {
     pub tool_key: ToolKey,
     pub plugin_id: String,
     pub method: String,
+    pub args: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub returns: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required_capability: Option<String>,
+    pub side_effect: SideEffect,
+    pub idempotent: bool,
+    pub subid: String,
+    pub view_kind: ViewKind,
     pub offered: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub unavailable_reason: Option<String>,
+    pub unavailable_reason: Option<UnavailableReason>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -67,6 +93,7 @@ pub enum HeldCapabilityResult {
     Held { capabilities: Vec<String> },
     Denied { detail: String },
     Unavailable { detail: String },
+    Undetermined,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
