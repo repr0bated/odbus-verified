@@ -16,12 +16,23 @@
 //! - The deployment container is still in development; live integration
 //!   is the blocked task-19 group. Development uses synthetic fixtures
 //!   and an in-process harness (tasks 10.3, 14.6).
+//!
+//! Tool_Registry is RETIRED (owner, 2026-11-09): there is no tool
+//! registry and no registry pattern in this crate. A tool IS a plug-in —
+//! when the identity-chat needs tools, each is implemented as a
+//! one-file plugin (one .rs + one schema JSON, `*State` contract,
+//! per-method `*Input`/`*Output` pairs, `dispatch_*_method`, `*_schema()`,
+//! fail-closed), never as a registry, registry table or registry lookup.
+//! `ToolKey` below names a plugin method (`plugin/method`); it is a
+//! plugin identifier, not a registry key. The `registry` module and the
+//! `RegistryEntry`/`RegistrySnapshot` types were removed with the
+//! retirement; the credential registry in `guard` (Secret_Guard needles)
+//! is a different component and stays.
 
 pub mod errors;
 pub mod gate;
 pub mod guard;
 pub mod profile;
-pub mod registry;
 pub mod state;
 pub mod status;
 pub mod types;

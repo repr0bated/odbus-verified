@@ -99,8 +99,10 @@ impl ChainVerifier {
     ///    `first_broken_index` is the least such `i`.
     /// 4. `result = "broken"` if continuity is broken OR any exposed
     ///    `verify_integrity == false`.
-    /// 5. Otherwise, `result = "unverified"` if any reason exists (e.g.
-    ///    unlinked receipts). Otherwise `result = "verified"`.
+    /// 5. Otherwise, `result = "unverified"` if any reason exists (the
+    ///    caller reports unlinked Receipt-producing Tool_Calls as
+    ///    reasons — the chain record model carries no receipt link).
+    ///    Otherwise `result = "verified"`.
     ///
     /// The anchor (`records[0].prev_hash`) never affects the continuity
     /// check (D-30).
@@ -159,8 +161,11 @@ impl ChainVerifier {
         // Determine result
         let result = if continuity == "broken" || any_integrity_false {
             "broken".to_string()
-        } else if !reasons.is_empty() || links.iter().any(|l| l.tool_call_id.is_none()) {
-            // Unverified: reasons exist or some receipts are unlinked
+        } else if !reasons.is_empty() {
+            // Unverified: reasons exist (e.g. unlinked receipts, reported by
+            // the caller — the chain record model carries no receipt link,
+            // so a bare tool_call_id absence must not decide the verdict:
+            // a record with no tool name is not a Tool_Call at all).
             "unverified".to_string()
         } else {
             "verified".to_string()
@@ -264,7 +269,7 @@ mod tests {
     fn test_unverified_with_reasons() {
         let r1 = make_record("genesis", "hash-a", Some(true));
         let seg = make_segment(vec![r1]);
-        let report = ChainVerifier::new().verify(&seg, &["no execution record read granted"]);
+        let report = ChainVerifier::new().verify(&seg, &["no execution record read granted".to_string()]);
         assert_eq!(report.result, "unverified");
         assert_eq!(report.continuity, "intact");
         assert_eq!(report.reasons, vec!["no execution record read granted"]);

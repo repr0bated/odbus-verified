@@ -209,7 +209,7 @@ fn all_strings(value: &serde_json::Value) -> Vec<String> {
 /// Canonical JSON in schema key order; list order preserved (task 4.1).
 pub fn format(profile: &IdentityProfile) -> String {
     let mut out = String::from("{");
-    let mut push = |out: &mut String, key: &str, value: serde_json::Value, first: bool| {
+    let push = |out: &mut String, key: &str, value: serde_json::Value, first: bool| {
         if !first {
             out.push(',');
         }

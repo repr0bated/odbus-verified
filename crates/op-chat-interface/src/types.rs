@@ -28,6 +28,12 @@ macro_rules! branded {
 
 branded!(PrincipalId);
 branded!(ChatSessionId);
+// Identifies one tool by its plugin method (`plugin/method`).
+// A tool IS a plug-in: this is a plugin identifier, not a registry
+// key. There is no tool registry and no registry pattern (owner,
+// 2026-11-09); `RegistryEntry`/`RegistrySnapshot` were removed with
+// the Tool_Registry retirement. When tools are needed, each is a
+// one-file plugin (one .rs + one schema JSON).
 branded!(ToolKey);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -36,64 +42,6 @@ pub enum ViewKind {
     #[serde(rename = "3tched")]
     ThreeTched,
     Threetched,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CatalogPin {
-    pub view_id: String,
-    pub source_catalog_hash: String,
-    pub source_catalog_generation: u64,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SideEffect {
-    Read,
-    Mutation,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UnavailableReason {
-    Absent,
-    Undetermined,
-    ViewAbsent,
-    Schema,
-    StickyDenied,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RegistryEntry {
-    pub tool_key: ToolKey,
-    pub plugin_id: String,
-    pub method: String,
-    pub args: serde_json::Value,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub returns: Option<serde_json::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub required_capability: Option<String>,
-    pub side_effect: SideEffect,
-    pub idempotent: bool,
-    pub subid: String,
-    pub view_kind: ViewKind,
-    pub offered: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub unavailable_reason: Option<UnavailableReason>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RegistrySnapshot {
-    pub pin: CatalogPin,
-    pub entries: Vec<RegistryEntry>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum HeldCapabilityResult {
-    Held { capabilities: Vec<String> },
-    Denied { detail: String },
-    Unavailable { detail: String },
-    Undetermined,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

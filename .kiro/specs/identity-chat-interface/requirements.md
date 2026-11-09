@@ -260,12 +260,13 @@ mounted namespace of the Bound_Identity.
   unrecognized.
 - **Read_Method**: A method whose Sealed_Method_Schema declares a recognized
   non-mutation side effect.
-- **Tool_Registry**: The runtime set of AI SDK tool definitions for one
+- **Tool_Registry**: **RETIRED (owner, 2026-11-09).** Was: the runtime set of AI SDK tool definitions for one
   Bound_Identity, one per Sealed_Method_Schema, each marked offered or
-  unavailable.
-- **Offered_Tool**: A Tool_Registry entry that the Model_Context_Builder may
+  unavailable. A tool IS a plug-in; there is no tool registry and no
+  registry pattern. See Requirement 6.
+- **Offered_Tool**: **RETIRED with the Tool_Registry (owner, 2026-11-09).** Was: a Tool_Registry entry that the Model_Context_Builder may
   include in a Model_Provider request.
-- **Unavailable_Tool**: A Tool_Registry entry whose Required_Capability is
+- **Unavailable_Tool**: **RETIRED with the Tool_Registry (owner, 2026-11-09).** Was: a Tool_Registry entry whose Required_Capability is
   absent from the Held_Capability_Set or cannot be determined.
 - **Tool_Call**: One AI SDK tool invocation proposed by the model, with a
   tool name and an argument value, belonging to one Chat_Session.
@@ -502,7 +503,9 @@ cannot leak any sealed identity.
 10. THE Tool_Executor SHALL use the kernel-bound caller identity of the mount the Chat_Interface runs under (as Cockpit_Spec Requirement 18.3 requires for the Cockpit) and SHALL pass no SID1 file and no `--lungs-session` value, whatever a Tool_Call argument, the Chat_UI, the model or the Identity_Profile supplies.
 11. FOR a message stream to the Chat_UI, the output item of criteria 5 to 7 SHALL be one stream chunk: THE Secret_Guard SHALL check each chunk together with the bytes it holds back from the preceding chunks of the same stream, SHALL hold back from release only the trailing bytes, up to the hold-back length recorded in `design.md` (D-18), that could begin a Credential_Material value continuing into the next chunk, and SHALL release the checked remainder of the chunk, so that progressive delivery is preserved and a value split across chunks is still detected before any byte of it leaves the Chat_Route; WHEN the stream ends, THE Secret_Guard SHALL check and release or block the held-back bytes as one final item.
 
-### Requirement 6: Capability-derived tool registry
+### Requirement 6: Capability-derived tool registry — **RETIRED (owner, 2026-11-09). DO NOT IMPLEMENT.**
+
+**Retirement (owner, 2026-11-09):** The Tool Registry is retired. A tool IS a plug-in; there is no tool registry and no registry pattern. When the identity-chat needs tools, each is implemented as a one-file plugin (one .rs file plus one schema JSON per plugin, a `*State` struct as the single typed present-state contract, per-method `*Input`/`*Output` pairs with `#[serde(deny_unknown_fields)]` on inputs, a `dispatch_*_method` dispatcher, a `*_schema()` builder registering methods with capability/subid IDs and schemars x-oscal extensions, fail-closed), never as a registry, registry table or registry lookup. The clauses below are retained for the record only; they impose no obligation. Spec task 6 is retired. The Rust `registry` module and `RegistryEntry`/`RegistrySnapshot` types were removed from `crates/op-chat-interface` (2026-11-09). `src/lib/server/registry/tool-registry.ts` (ToolRegistryImpl) is dead code — leave it alone.
 
 **User Story:** As the owner, I want the tools offered to the model derived from
 the Bound_Identity's sealed schemas and existing grants, so that the model can

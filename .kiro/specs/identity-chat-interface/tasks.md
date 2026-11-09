@@ -266,8 +266,9 @@ implement the stated interim behaviour now; the remainder is gated.
     - Property 19 (round trip to the call input) needs the fake adapter's
       input-byte log and is placed with the Tool_Executor (task 10.10).
 
-- [ ] 6. Tool_Registry with dual-view derivation
-  - [ ] 6.1 Discover and implement an authoritative mounted caller-capability reader (D-11, B-11)
+- [ ] 6. Tool_Registry with dual-view derivation — **RETIRED (owner, 2026-11-09). DO NOT IMPLEMENT.**
+  - **Retirement (owner, 2026-11-09):** The Tool Registry is retired. A tool IS a plug-in; there is no tool registry and no registry pattern. When the identity-chat needs tools, each is implemented as a one-file plugin (one .rs file plus one schema JSON per plugin, a `*State` struct as the single typed present-state contract, per-method `*Input`/`*Output` pairs with `#[serde(deny_unknown_fields)]` on inputs, a `dispatch_*_method` dispatcher, a `*_schema()` builder registering methods with capability/subid IDs and schemars x-oscal extensions, fail-closed), never as a registry, registry table or registry lookup. Do NOT implement this task or any of its subtasks (6.1–6.7). The Rust `registry` module (`derive`, `tool_names`, `RegistrySnapshot` derivation) and the `RegistryEntry`/`RegistrySnapshot`/`CatalogPin`/`SideEffect`/`UnavailableReason`/`HeldCapabilityResult` types were removed from `crates/op-chat-interface` (2026-11-09); `ToolKey` remains only as a plugin-method identifier (`plugin/method`) on `PendingToolCall`. `src/lib/server/registry/tool-registry.ts` (ToolRegistryImpl) is dead code — leave it alone. Requirement 6 is retired. References to the Tool_Registry elsewhere in this spec are retired too; do not wire them into the Rust backend.
+  - [ ] 6.1 Discover and implement an authoritative mounted caller-capability reader (D-11, B-11) — RETIRED, see above
     - The interim always-undetermined capability-source scaffold was removed.
       Do not ship a fake reader. Until an attributed self-grant read is available,
       the registry accepts an explicit undetermined result and offers no tools.
@@ -277,7 +278,7 @@ implement the stated interim behaviour now; the remainder is gated.
     - No code path reads `/dev/shm/opdbus/capability-grants.json` or calls
       `op-grants-materializer`.
     - _Requirements: 6.3, 6.6, 6.11, 7.1_
-  - [~] 6.2 Implement `registry/tool-registry.ts` `derive` and `aiSdkTools`
+  - [~] 6.2 Implement `registry/tool-registry.ts` `derive` and `aiSdkTools` — RETIRED, see above
     - Pure function of its input: both views' discovery outputs, each with its
       own `CatalogPin`, the held result, the exclusion set and the
       sticky-denied set. Reads no other partition.
@@ -303,19 +304,19 @@ implement the stated interim behaviour now; the remainder is gated.
       `[A-Za-z0-9_-]` with `_${n}` on collision, used only as lookup keys; the
       AI SDK tool definitions carry no `execute`.
     - _Requirements: 6.1, 6.2, 6.3, 6.5, 6.7, 6.8, 6.12, 6.13, 6.14, 6.15, 7.5, 15.4, 20.6, 19.1_
-  - [ ]* 6.3 Write property test for registry derivation
+  - [ ]* 6.3 Write property test for registry derivation — RETIRED, see task 6
     - **Property 13: Registry derivation**
     - **Validates: Requirements 6.1, 6.7, 15.4**
-  - [ ]* 6.4 Write property test for the offered subset
+  - [ ]* 6.4 Write property test for the offered subset — RETIRED, see task 6
     - **Property 14: Offered tools are a subset of held capabilities**
     - **Validates: Requirements 6.2, 6.3, 6.8**
-  - [ ]* 6.5 Write property test for wrong-view exclusion and missing view
+  - [ ]* 6.5 Write property test for wrong-view exclusion and missing view — RETIRED, see task 6
     - **Property 46: Wrong-view exclusion and missing view**
     - **Validates: Requirements 6.12, 6.13, 6.14**
-  - [ ]* 6.6 Write property test for upgrade isolation
+  - [ ]* 6.6 Write property test for upgrade isolation — RETIRED, see task 6
     - **Property 47: Upgrade isolation**
     - **Validates: Requirements 6.15**
-  - [ ]* 6.7 Write property test for registry isolation
+  - [ ]* 6.7 Write property test for registry isolation — RETIRED, see task 6
     - **Property 38: Registry isolation**
     - **Validates: Requirements 20.6**
 

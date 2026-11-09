@@ -5735,12 +5735,21 @@ dependencies = [
 name = "op-chat-interface"
 version = "1.0.0"
 dependencies = [
+ "async-trait",
  "base64 0.21.7",
+ "chrono",
  "jsonschema",
+ "op-chat",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-web",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
