@@ -7932,7 +7932,7 @@ pub fn fuse_schema() -> PluginSchema {
         "/kernel_protocol".into(),
     ];
     register_methods(&mut schema);
-    register_fs_projection_methods(&mut schema);
+    // Filesystem contract methods belong to `_3tched_fs`, not this libfuse plugin.
     schema
 }
 
