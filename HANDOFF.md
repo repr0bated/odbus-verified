@@ -1,5 +1,84 @@
 # Agent handoff
 
+## 2026-11-11 — Grok — three-repo base, shared surfaces
+
+Grok session `01a1c842-0764-7220-868f-a42a6c10ff2d`. Transcript:
+`/home/jeremy/.grok/sessions/%2Fhome%2Fjeremy/01a1c842-0764-7220-868f-a42a6c10ff2d/chat_history.jsonl`.
+Not an OMP session. Open that id from OMP.
+
+Owner is separating three things that are mostly already deployed. The specs
+are the separation, and the shared surfaces at install and at runtime. They
+are not a greenfield rebuild. Do not start a Cargo workspace build, do not
+move files, and do not redeploy the host bridge from this entry.
+
+An LLM's usual pattern is to collapse lookalike names, to split chat into a
+host backend and a container frontend, and to put a page on the host. Those
+patterns are wrong here. Read this entry before editing any of the three.
+
+### Names that are not spellings of each other
+
+- **3tched** is our code. Repo `/srv/git/odbus-verified`. It is the base: the
+  gates, grants and capabilities, persistent memory, the cognitive layer, and
+  3tchedFS. At runtime it executes the backend. Spec:
+  `.kiro/specs/3tched-core/`.
+- **threetched** is not our code. It is the upstream ZeroClaw binary, installed
+  and renamed, with no patches. It owns models, providers, and skills. The
+  container installs that binary on top of base 3tched.
+- **Container** is the `/srv/git/3tched.com` repo. It owns all of chat, which
+  is the range of services, and it owns the threetched install. The
+  instance-agnostic spec is
+  `/srv/git/3tched.com/.kiro/specs/container-chat/`. It names no Incus
+  instance. The container design checked into this repo is not that spec:
+  it uses per-container loop devices and other choices made against owner
+  instruction. The running container is not that design and is not named
+  here.
+- **Network** is `/srv/git/network`. Identity and transport only. The host
+  bridge is already up. Spec: `.kiro/specs/standalone-network/`. Decoy
+  WireGuard, OIA1, and live WARP are not on this host.
+
+Kiro and a subsidiary product are not part of this base. The unaddressed OVS
+port `subsidiary0` is only a port on the network bridge.
+
+### What changes
+
+Chat changes the most. It sat on the host, so it never actually passed the
+gate. The identity is the container, and the gate passes inside the container.
+Host port 8080 is the path that must not pass, for the same reason: a host
+listener is not the container identity. That is why rendering has to pass
+through the container. The container emits the spec. The end user's browser
+renders it. How those bytes leave the container is still open. Nothing in
+this base binds a host page on 8080.
+
+The bridge is 3tched code. It must contain 3tchedFS. A bridge build with no
+3tchedFS is the failure this layout exists to keep from shipping again. Do
+not rehash that incident.
+
+### Install stays separate. Runtime crosses.
+
+Install order is network, then base 3tched, then the container repo on top
+of that base. At runtime a chat turn inside the container calls 3tched for
+the gate, memory, the cognitive layer, and 3tchedFS, and calls the threetched
+binary for models, providers, and skills. The network only delivers a proof
+to the dumb port `10.0.0.2:8090`. Crossing at runtime is required. It is not
+a reason to merge the repos.
+
+Shared surfaces, and who owns them at install:
+
+| Surface | Install owner | Runtime |
+| --- | --- | --- |
+| 3tchedFS, the FUSE mount | 3tched | Container disk I/O. The mount carries the identity. The bridge includes this code. |
+| `/run/opdbus/lungs/lungs.sock` | 3tched, one socket | Containers connect. The kernel peer distinguishes them. |
+| Grants and capabilities gate | 3tched | Passes for the caller inside the container. Host chat did not pass. Host :8080 must not pass. |
+| Persistent memory, cognitive layer | 3tched | Called from chat in the container. |
+| threetched binary | Container install on the 3tched base | Models, providers, skills. 3tched does not reimplement the binary. |
+| Chat | 3tched.com, running in the container | The service range. This is the piece that moves. |
+| Rendered UI | Container emits the spec | Passes through the container. The user's browser renders it. |
+| Proof to `10.0.0.2:8090` | Network | Dumb until 3tched's bridge binds it. The network does not mint SID1 and does not draw UI. |
+
+`.kiro/specs/identity-chat-interface/` is the hackathon spec. Its 2026-11-09
+line that puts Chat_Route on the VPS host is not this base. Follow
+`container-chat` for the base.
+
 ## 2026-11-10 — Composer — deleted bare tched-router leftovers
 
 Removed on-disk path leftovers (no active crates/deploy refs): `target/threetched-artifacts/tched-router` and `/var/lib/tched-router`. Owner: if something still needs them, the bug will show. Not a rename pass; intent scan separate.
@@ -758,6 +837,9 @@ Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff
 The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
 
 ## Active work
+| OMP — COMPLETE: INSTANCE-AGNOSTIC CONTAINER CHAT SPEC | `container-chat-spec-20261111` | Owner: container-chat is the chat backend spec, instance-agnostic, and lives in `/srv/git/3tched.com`. It installs on odbus-verified and owns runtime chat. It does not name a live instance and does not adopt the in-repo loop-backed container design. Identity-chat and `crates/op-chat-interface` stay until the owner says this spec is done. | 2026-11-11 | Spec written, committed, and pushed at `d070413` on `dev` branch of `/srv/git/3tched.com`. Three files: requirements.md (15 requirements), design.md (architecture, components, error handling), tasks.md (14 implementation phases, 40+ sub-tasks). Supersedes `.kiro/specs/identity-chat-interface/`. The odbus-verified copy is a pointer only. |
+| Grok — HANDED TO OMP: THREE-REPO BASE | `three-repo-base-20261111` | Read Grok session `01a1c842-0764-7220-868f-a42a6c10ff2d` (`chat_history.jsonl` under `~/.grok/sessions/%2Fhome%2Fjeremy/01a1c842-0764-7220-868f-a42a6c10ff2d/`). Specs drafted, not implemented: `.kiro/specs/3tched-core/`, `.kiro/specs/container-chat/`, `.kiro/specs/standalone-network/`. Do not build, move files, or redeploy the host bridge. | 2026-11-11 | Handoff is the 2026-11-11 entry at the top of this file. 3tched is our code. threetched is the ZeroClaw binary. Container repo is `/srv/git/3tched.com`. Chat passes the gate inside the container. Host :8080 must not pass. |
+| Grok — ACTIVE: STANDALONE NETWORK SPEC | `standalone-network-20261111` | Owner: network is a solo deployable repo that only establishes identity and transports it. `10.0.0.2:8090` is a dumb port until the bridge or another authoritative service attaches. Specs stay in `.kiro/specs/standalone-network/` and are copied later. No repo created, no runtime change. | 2026-11-11 | Requirements, design, and tasks drafted. Obfuscation, the door, and the host interface that holds `10.0.0.2` stay out of this spec. |
 | Composer — ACTIVE: BUILD SEAL PERSIST ACTIVATE | `workspace-build-20261110` | Owner: yea all — build + seal + persist + activate-golden. Capture `THREETCHED_*` → `target/threetched-artifacts/threetched` only. Job `/home/jeremy/opdbus-build-20261110`. | 2026-11-10T00:29Z | Build still running; `after-build.sh` waits for BUILD_OK then seal/persist/activate. Do not start a second Cargo or activate. |
 | Composer — ACTIVE: PER-CRATE LINE SCAN + JEV | `tched-line-scan-jev-20261110` | Owner: one agent per crate; line-by-line case-insensitive `tched`; NO sed/awk/grep/globbing/search tools; every hit to JEV as INTENT assessment (not rename). Receipts `/home/jeremy/opdbus-tched-scan-20261110/`. Golden paused. Folder names not assessed; `target/threetched-artifacts/tched-router/` still present. | 2026-11-10T00:22Z | Progress: 38/40 crates `.done` (incl. op-grpc-bridge 196 hits). Still pending: `_3tched-fs`, `op-plugins`. |
 | Composer — PAUSED: COMMIT PUSH BUILD GOLDEN | `golden-activate-20261109b` | Owner asked commit/push/build/activate; paused on naming. | 2026-11-10T00:06Z | Committed/pushed `ea4540f`. Paused. Superseded for naming work by `tched-line-scan-jev-20261110`. Do not start Cargo/activate. |
