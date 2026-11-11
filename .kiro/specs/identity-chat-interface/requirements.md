@@ -1,5 +1,11 @@
 # Requirements Document
 
+> Base status, 2026-11-11. This file is the hackathon spec. It is not the
+> base. For the base, chat belongs to `/srv/git/3tched.com`, runs inside the
+> container, and passes the gate there. The host Chat_Route placement later
+> in this file is the old line. Follow `.kiro/specs/container-chat/` and the
+> 2026-11-11 handoff. Kiro is not part of the base.
+
 ## Introduction
 
 This spec covers one general, identity-neutral chat interface for any sealed
