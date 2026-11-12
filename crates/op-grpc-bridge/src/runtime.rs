@@ -290,6 +290,12 @@ impl Runtime {
             Ok(CozoGraphShuttle::new_persistent_private(identity_path)?)
         }).await??);
         identity_store.ensure_distinct_from(&documents.shared_store())?;
+        let adopting = identity_store.clone();
+        if tokio::task::spawn_blocking(move || crate::runtime_identity_owner::adopt_issued_identity_at_startup(&adopting))
+            .await?.context("adopt the decoy-issued own identity")?
+        {
+            tracing::info!("committed the decoy-issued identity; this container owns it");
+        }
         crate::runtime_identity::recover_startup(identity_store.clone(), catalog_dir.clone()).await?;
         let core = BridgeCore::open(catalog, database_path)?;
         let workspace = crate::runtime_workspace::WorkspaceRuntime::open(core.catalog(), &catalog_dir).await?;

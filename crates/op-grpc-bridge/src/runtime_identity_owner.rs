@@ -238,6 +238,63 @@ fn issued_identity_claims(session_id: &str, public_key: &str, expires_at: i64)
     verify_issued_claims(&issued, &trust, session_id, public_key, expires_at).map(Some)
 }
 
+/// Startup adoption of this container's own decoy-issued identity.
+///
+/// The sled is not durable; `sealed_id` is its persistence. When the sled has
+/// no record for the container's own key, verify the decoy-issued IID1 (and the
+/// installed `sealed_id`, if any) and commit it as a fresh `service` record.
+/// The key also gets its human-principal registration (the registry the door
+/// verifies against). Never overwrites a record or a deletion tombstone; an
+/// existing record must carry the same SID1. Returns whether a record was
+/// committed. The own key is `OP_IDENTITY_OWN_WIREGUARD_PUBKEY`, else the
+/// configured control-plane chatbot key.
+pub(crate) fn adopt_issued_identity_at_startup(cozo: &CozoGraphShuttle) -> anyhow::Result<bool> {
+    let Some(key) = ["OP_IDENTITY_OWN_WIREGUARD_PUBKEY", "OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY"]
+        .iter().find_map(|name| std::env::var(name).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty()))
+    else { return Ok(false) };
+    canonical_key(&key)?;
+    let session = op_identity::session::derive_session_id(&key);
+    let Some(claims) = issued_identity_claims(&session, &key, 0)? else { return Ok(false) };
+    let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let installed_path = std::env::var("OP_ISSUED_SEALED_ID_PATH").unwrap_or_else(|_| "/agent/user/sealed_id".into());
+    match std::fs::read_to_string(&installed_path) {
+        Ok(installed) => ensure!(installed.trim() == inline, "installed sealed_id differs from the decoy-issued identity"),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error).with_context(|| format!("reading {installed_path}")),
+    }
+    let registry = crate::human_principal_registry::store().context("human principal store unavailable")?;
+    match registry.get_human_principal_by_pubkey(&key)? {
+        Some(record) => ensure!(record.revoked_at == 0
+            && record.principal_id == op_identity::session::derive_principal_id(&key), "own principal is revoked or rebound"),
+        None => registry.put_human_principal(&op_cozo_store::HumanPrincipalRecord {
+            principal_id: op_identity::session::derive_principal_id(&key), human_pubkey: key.clone(),
+            display_alias: std::env::var("OP_IDENTITY_OWN_DISPLAY_ALIAS").unwrap_or_else(|_| "control-plane-chatbot".into()),
+            registered_at: now(), revoked_at: 0 })?,
+    }
+    let expected = cozo.read_identity_revision(&session)?;
+    if let Some(record) = &expected.record {
+        ensure!(record.sealed_id == inline, "the sled holds a different identity than the decoy issued");
+        return Ok(false);
+    }
+    ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
+        "issued identity cannot overwrite a deletion tombstone");
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session, "wireguard_pubkey": key, "principal_kind": "service",
+        "active": true, "expires_at": 0,
+        "session_started_at": claims.arrival_timestamp, "last_seen_at": claims.arrival_timestamp,
+        "schema_version": claims.schema_version, "genesis": claims.session_genesis,
+        "trace_id": claims.trace_id, "sealed_id": inline,
+        "arrival_timestamp": claims.arrival_timestamp,
+        "chain_head_at_arrival": claims.chain_head_at_arrival,
+        "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": claims.head_timestamp_at_arrival
+    }))?;
+    let operation = format!("adopt-issued-{}", uuid::Uuid::new_v4().simple());
+    cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+        expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod issued_identity_tests {
     use base64::Engine as _;
