@@ -168,6 +168,16 @@ impl NativeOwner {
         let key = canonical_key(public_key)?;
         ensure!(op_identity::session::derive_session_id(public_key) == session_id && expires_at >= 0,
             "invalid provision identity anchor");
+        // The decoy terminates WireGuard and may issue the identity (IID1).
+        // When one is present this owner verifies and adopts it instead of
+        // minting locally; it never falls back to a local mint after a
+        // present blob fails verification.
+        if let Some(claims) = issued_identity_claims(session_id, public_key, expires_at)? {
+            return Ok(GenesisStamp {
+                sealed_id: claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?,
+                claims,
+            });
+        }
         let events = self.runtime.core().journal_events(&self.caller.private_scope(), self.request_event_id, self.request_event_id)?;
         let event = events.into_iter().next().context("durable provision attempt is absent")?;
         ensure!(event.event_id == self.request_event_id && event.event_hash == self.request_event_hash,
@@ -196,6 +206,63 @@ impl NativeOwner {
     }
 }
 struct GenesisStamp { sealed_id: String, claims: op_identity::sealed_id::SealedId }
+
+const DEFAULT_ISSUED_IDENTITY_PATH: &str = "/agent/user/issued_identity.iid1";
+
+/// Verify a decoy-issued identity (standard-base64 IID1) for exactly this
+/// session, key and term against the decoy trust store.
+fn verify_issued_claims(issued: &str, trust_store: &[u8], session_id: &str, public_key: &str,
+    expires_at: i64) -> anyhow::Result<op_identity::sealed_id::SealedId> {
+    use op_identity::issued_identity::{IssuedIdentity, parse_trust_store};
+    let wire = base64::engine::general_purpose::STANDARD.decode(issued.trim())
+        .context("issued identity is not standard base64")?;
+    let issued = IssuedIdentity::verify(&wire, &parse_trust_store(trust_store)?, public_key)?;
+    ensure!(issued.sealed.session_id == session_id, "issued identity is for a different session");
+    ensure!(issued.sealed.schema_version == RECORD_FORMAT && issued.sealed.expires_at == expires_at,
+        "issued identity has a different record format or term");
+    Ok(issued.sealed)
+}
+
+/// The decoy-issued claims at `OP_ISSUED_IDENTITY_PATH`, if a blob is present.
+fn issued_identity_claims(session_id: &str, public_key: &str, expires_at: i64)
+    -> anyhow::Result<Option<op_identity::sealed_id::SealedId>> {
+    let path = std::env::var("OP_ISSUED_IDENTITY_PATH").unwrap_or_else(|_| DEFAULT_ISSUED_IDENTITY_PATH.into());
+    let issued = match std::fs::read_to_string(&path) {
+        Ok(value) => value,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error).with_context(|| format!("reading {path}")),
+    };
+    let trust_path = std::env::var("OP_DECOY_TRUST_STORE")
+        .unwrap_or_else(|_| crate::oracle_assertion::DEFAULT_DECOY_TRUST_STORE.into());
+    let trust = std::fs::read(&trust_path).with_context(|| format!("reading {trust_path}"))?;
+    verify_issued_claims(&issued, &trust, session_id, public_key, expires_at).map(Some)
+}
+
+#[cfg(test)]
+mod issued_identity_tests {
+    use base64::Engine as _;
+    use ed25519_dalek::SigningKey;
+    use op_identity::issued_identity::{IssueRequest, IssuedIdentity};
+    const KEY: &str = "wNhmhGDpdkScmSdcHnzhr/1vmTIL5wxLXcve/jwk9xE=";
+
+    #[test]
+    fn adopts_only_a_signed_identity_for_this_session_key_and_term() {
+        let signer = SigningKey::from_bytes(&[5u8; 32]);
+        let wire = IssuedIdentity::issue(&signer, "decoy-t", IssueRequest {
+            wireguard_pubkey: KEY, catalog_hash_hex: &"ab".repeat(32), nextdns: None,
+            schema_version: super::RECORD_FORMAT, now: 1_800_000_000 }).unwrap().to_wire().unwrap();
+        let issued = base64::engine::general_purpose::STANDARD.encode(wire);
+        let trust = |key: &SigningKey| format!(r#"{{"decoy_keys":{{"decoy-t":"{}"}}}}"#,
+            base64::engine::general_purpose::STANDARD.encode(key.verifying_key().to_bytes())).into_bytes();
+        let session = op_identity::session::derive_session_id(KEY);
+        let claims = super::verify_issued_claims(&issued, &trust(&signer), &session, KEY, 0).unwrap();
+        assert_eq!(claims.session_id, session);
+        assert!(super::verify_issued_claims(&issued, &trust(&signer), "other", KEY, 0).is_err());
+        assert!(super::verify_issued_claims(&issued, &trust(&signer), &session, KEY, 60).is_err());
+        let other = SigningKey::from_bytes(&[6u8; 32]);
+        assert!(super::verify_issued_claims(&issued, &trust(&other), &session, KEY, 0).is_err());
+    }
+}
 fn apply_genesis_stamp(sled: &mut ContainerIdentitySled, stamp: &GenesisStamp) -> anyhow::Result<()> {
     ensure!(!sled.is_anchored() && sled.session_id == stamp.claims.session_id
         && sled.wireguard_pubkey == stamp.claims.wireguard_pubkey, "provision anchor cannot overwrite existing identity");
