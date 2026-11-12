@@ -1,5 +1,35 @@
 # Agent handoff
 
+## 2026-11-12 — Kiro — applied the 2026-11-11 omp container decisions
+
+Source: omp session `01a1c8f3-9cf8-70cd-b004-a16fa2049f4f` (cursor/grok-4.7) and
+its advisor log. Daytime decisions were written down and not run; the advisor
+then relaunched 3tchedChatbot from the generic image with `security.nesting=true`.
+Host rebooted 05:28Z into `@trial` (no `/etc/op-dbus`, no `/opt/op-dbus`).
+
+Done and verified on the host:
+- `/dev/sda4` (sealed seed, Ubuntu 26.04) ro at `/run/mounts/seed-3tched`;
+  `/dev/sda5` `@` ro at `/run/mounts/upgrade-3tched`; both in `/etc/fstab`
+  (backup `/etc/fstab.bak-20261112-kiro`).
+- `3tched-pool` grown to 150GiB sparse (`incus storage set ... size=150GiB`).
+- Bundle moved to `/srv/git/3tched.com/deploy/container/` (`70e39e9`, `a80fba9`,
+  `dc8e382`). Cozo root = `/var/lib/incus/storage-pools/3tched-pool/containers/<c>/`.
+  RocksDB is a one-time sparse ext4 there (recipe flags, `+C`), host loop-mounted;
+  Incus bind-mounts regular files, so the device source is the mounted directory.
+  Snowball ledger mount, seed/upgrade ro lowers, `/agent` dirs. WG key = decoy
+  `wg-opdbus` server public key (owner). Profile nesting back to false.
+- Old instance deleted, script run: storage steps 1–7 succeeded. Start fails:
+  `Network "ovsbr0" unavailable` — `/etc/network/interfaces` configures eth0
+  static, so Incus refuses to bridge it. Fixing that moves the host uplink; it
+  waits for owner confirmation.
+
+Not done: root from the sda4 seed (instance still uses image `opdbus-seed-base`;
+sprouting sda4 while it is mounted ro failed earlier with `open_ctree -16`); the
+in-container overlay unit; volatile.uuid is new (`5aff1e61…`), not `b0c777e3…`;
+container-chat code move (tasks.md 2–11) and removal of `crates/op-chat-interface`
+(the bridge's cockpit still imports its `guard`); pool `3tched` and fstab line 8
+left in place.
+
 ## 2026-11-11 — Grok — three-repo base, shared surfaces
 
 Grok session `01a1c842-0764-7220-868f-a42a6c10ff2d`. Transcript:
