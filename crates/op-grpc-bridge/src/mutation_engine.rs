@@ -767,12 +767,6 @@ impl MutationEngine {
         }
         if crate::identity_sled_dispatch::configured_identity_awaits_provision(self, &session_id)
             .await?
-            && !crate::identity_sled_dispatch::initialize_issued_service_identity(
-                self,
-                &session_id,
-                wireguard_pubkey,
-            )
-            .await?
         {
             tracing::info!(%session_id, "configured chatbot awaits explicit container provisioning");
             return Ok(None);
