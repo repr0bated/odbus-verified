@@ -172,6 +172,9 @@ export OP_AUTH_REPLAY_DB_PATH="${OP_AUTH_REPLAY_DB_PATH:-/var/lib/op-dbus/auth-r
 export OP_DECOY_NATIVE_CA_FILE="${OP_DECOY_NATIVE_CA_FILE:-/etc/op-dbus/decoy-native/ca.pem}"
 export OP_DECOY_NATIVE_CERT_FILE="${OP_DECOY_NATIVE_CERT_FILE:-/etc/op-dbus/decoy-native/bridge.pem}"
 export OP_DECOY_NATIVE_KEY_FILE="${OP_DECOY_NATIVE_KEY_FILE:-/etc/op-dbus/decoy-native/bridge-key.pem}"
+# Owner 2026-11-11: the identity Cozo store root is the Incus pool containers
+# directory; each container directory under it holds that identity's data.
+export IDENTITY_SLED_COZO_DB_PATH="${IDENTITY_SLED_COZO_DB_PATH:-/var/lib/incus/storage-pools/3tched-pool/containers}"
 export OPDBUS_SNOWBALL_PATH="${OPDBUS_SNOWBALL_PATH:-/var/lib/opdbus/snowball}"
 export OP_DBUS_CACHE_DIR="${OP_DBUS_CACHE_DIR:-/var/lib/opdbus/cache}"
 export OPDBUS_CACHE_PLACEMENT="${OPDBUS_CACHE_PLACEMENT:-local}"

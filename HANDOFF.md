@@ -23,9 +23,16 @@ Done and verified on the host:
   static, so Incus refuses to bridge it. Fixing that moves the host uplink; it
   waits for owner confirmation.
 
-Not done: root from the sda4 seed (instance still uses image `opdbus-seed-base`;
-sprouting sda4 while it is mounted ro failed earlier with `open_ctree -16`); the
-in-container overlay unit; volatile.uuid is new (`5aff1e61…`), not `b0c777e3…`;
+Update 05:5xZ (owner: "eth0 static on bridge", "boot from it"): `apply.sh` run;
+eth0 is an unaddressed ovsbr0 member, `/etc/network/interfaces` eth0 is `manual`
+(backup `.bak-20261112-kiro`). 3tchedChatbot RUNNING, root = sda4 seed + sprout
+`@root` (Ubuntu 26.04.1), hostname 3tchedChatbot, started by runit
+`3tched-container-root` (`boot.autostart=false`). Seed is no longer mounted
+standalone (fstab line removed). Bridge `run` now exports
+`IDENTITY_SLED_COZO_DB_PATH=/var/lib/incus/storage-pools/3tched-pool/containers`
+(source only; bridge not installed on `@trial`). jeremy added to `incus-admin`.
+
+Not done: the in-container overlay unit; volatile.uuid is new (`5aff1e61…`), not `b0c777e3…`;
 container-chat code move (tasks.md 2–11) and removal of `crates/op-chat-interface`
 (the bridge's cockpit still imports its `guard`); pool `3tched` and fstab line 8
 left in place.
