@@ -378,8 +378,98 @@ fn pickup_json(door: &str, assertion_b64: &str, expires_at: i64) -> String {
     .to_string()
 }
 
+/// Keys WireGuard terminates on `iface`: the interface's own key and every
+/// configured peer. Issuance is refused for any other key.
+fn wireguard_keys(iface: &str) -> Result<Vec<String>> {
+    let out = Command::new("wg")
+        .args(["show", iface, "dump"])
+        .output()
+        .context("running `wg show dump`")?;
+    if !out.status.success() {
+        bail!("`wg show {iface} dump` failed");
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let mut keys = Vec::new();
+    for (index, line) in stdout.lines().enumerate() {
+        let fields: Vec<&str> = line.split('\t').collect();
+        // Line 0: private-key public-key port fwmark. Peers: public-key first.
+        let key = if index == 0 {
+            fields.get(1)
+        } else {
+            fields.first()
+        };
+        if let Some(key) = key.filter(|key| !key.is_empty() && **key != "(none)") {
+            keys.push((*key).to_string());
+        }
+    }
+    Ok(keys)
+}
+
+/// `op-decoy-issuer issue-identity --pubkey K --catalog-hash H
+///  [--nextdns-profile P --nextdns-device D] [--iface I] [--key F] [--key-id ID]`
+///
+/// One-shot: mint and sign the genesis and SID1 for K (IID1) and print it as
+/// standard base64. Opens no listener. K must be a key WireGuard terminates
+/// on the interface.
+fn issue_identity() -> Result<()> {
+    use op_identity::issued_identity::{IssueRequest, IssuedIdentity};
+    let pubkey = arg("--pubkey").context("--pubkey is required")?;
+    let catalog_hash = arg("--catalog-hash").context("--catalog-hash is required")?;
+    let iface = arg("--iface").unwrap_or_else(|| DEFAULT_IFACE.to_string());
+    anyhow::ensure!(
+        wireguard_keys(&iface)?.contains(&pubkey),
+        "{pubkey} is not a WireGuard key on {iface}"
+    );
+    let nextdns = match (arg("--nextdns-profile"), arg("--nextdns-device")) {
+        (Some(profile_id), Some(device_name)) => Some(op_identity::sealed_id::NextDnsContext {
+            profile_id,
+            device_name,
+        }),
+        (None, None) => None,
+        _ => bail!("--nextdns-profile and --nextdns-device go together"),
+    };
+    let key_path = PathBuf::from(arg("--key").unwrap_or_else(|| DEFAULT_KEY_PATH.to_string()));
+    let signing_key = load_signing_key(&key_path)?;
+    let key_id = match arg("--key-id") {
+        Some(id) => id,
+        None => std::fs::read_to_string(DEFAULT_KEY_ID_PATH)
+            .context("reading key id")?
+            .trim()
+            .to_string(),
+    };
+    let issued = IssuedIdentity::issue(
+        &signing_key,
+        &key_id,
+        IssueRequest {
+            wireguard_pubkey: &pubkey,
+            catalog_hash_hex: &catalog_hash,
+            nextdns,
+            schema_version: op_identity::issued_identity::SCHEMA_VERSION,
+            now: chrono::Utc::now().timestamp(),
+        },
+    )?;
+    println!(
+        "{}",
+        base64::engine::general_purpose::STANDARD.encode(issued.to_wire()?)
+    );
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    if std::env::args().nth(1).as_deref() == Some("issue-identity") {
+        return issue_identity();
+    }
+    if std::env::args().nth(1).as_deref() == Some("verifying-key") {
+        // Public half only, for the receivers' decoy trust store.
+        let key_path = PathBuf::from(arg("--key").unwrap_or_else(|| DEFAULT_KEY_PATH.to_string()));
+        let key = load_signing_key(&key_path)?.verifying_key();
+        println!(
+            "{}",
+            base64::engine::general_purpose::STANDARD.encode(key.to_bytes())
+        );
+        return Ok(());
+    }
     let cfg = Config {
         listen: arg("--listen")
             .unwrap_or_else(|| DEFAULT_LISTEN.to_string())

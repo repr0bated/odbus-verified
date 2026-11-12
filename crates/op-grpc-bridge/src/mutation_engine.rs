@@ -667,6 +667,19 @@ fn sealed_sealed_id(
     .map_err(|error| anyhow::anyhow!("seal session sealed ID: {error}"))
 }
 
+#[cfg(test)]
+mod issued_identity_contract {
+    #[test]
+    fn decoy_issued_sid1_uses_the_sled_record_format_and_scope() {
+        assert_eq!(
+            op_identity::issued_identity::SCHEMA_VERSION,
+            op_plugins::state_plugins::identity_sled::RECORD_FORMAT
+        );
+        assert_eq!(op_identity::issued_identity::TRANSPORT_SCOPE, "dbus,grpc,mcp,mqtt");
+        assert_eq!(op_identity::issued_identity::PRINCIPAL_KIND, "wireguard-principal");
+    }
+}
+
 impl MutationEngine {
     pub(crate) fn install_mcp_policy_owner(
         &self,
