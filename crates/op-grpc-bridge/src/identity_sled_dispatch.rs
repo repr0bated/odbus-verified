@@ -1570,6 +1570,93 @@ pub(crate) async fn initialize_configured_human(
     Ok(())
 }
 
+/// Default location of the decoy-issued identity inside the identity container.
+const DEFAULT_ISSUED_IDENTITY_PATH: &str = "/agent/user/issued_identity.iid1";
+const DEFAULT_ISSUED_SEALED_ID_PATH: &str = "/agent/user/sealed_id";
+
+/// Verify a decoy-issued identity (IID1) for exactly `session_id`/key and
+/// return its SID1 inline reference. `issued` is the standard-base64 IID1;
+/// `installed`, when present, must already hold the same SID1.
+pub(crate) fn verify_issued_service_identity(
+    issued: &str,
+    installed: Option<&str>,
+    trust_store: &[u8],
+    session_id: &str,
+    wireguard_pubkey: &str,
+) -> anyhow::Result<op_identity::sealed_id::SealedId> {
+    use op_identity::issued_identity::{IssuedIdentity, parse_trust_store};
+    let wire = base64::engine::general_purpose::STANDARD
+        .decode(issued.trim())
+        .context("issued identity is not standard base64")?;
+    let trusted = parse_trust_store(trust_store)?;
+    let issued = IssuedIdentity::verify(&wire, &trusted, wireguard_pubkey)?;
+    anyhow::ensure!(
+        issued.sealed.session_id == session_id,
+        "issued identity is for a different session"
+    );
+    if let Some(installed) = installed {
+        anyhow::ensure!(
+            installed.trim() == issued.sealed.to_inline_ref()?,
+            "installed sealed_id differs from the decoy-issued identity"
+        );
+    }
+    Ok(issued.sealed)
+}
+
+/// Commit a decoy-issued identity as the service sled's first record. The
+/// decoy minted the genesis and SID1; this owner verifies its signature and
+/// becomes the identity owner. Returns false when nothing was issued.
+/// Never overwrites an existing identity or a deletion tombstone.
+pub(crate) async fn initialize_issued_service_identity(
+    engine: &MutationEngine,
+    session_id: &str,
+    wireguard_pubkey: &str,
+) -> anyhow::Result<bool> {
+    let issued_path = std::env::var("OP_ISSUED_IDENTITY_PATH")
+        .unwrap_or_else(|_| DEFAULT_ISSUED_IDENTITY_PATH.to_string());
+    let issued = match std::fs::read_to_string(&issued_path) {
+        Ok(value) => value,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error).with_context(|| format!("reading {issued_path}")),
+    };
+    let installed_path = std::env::var("OP_ISSUED_SEALED_ID_PATH")
+        .unwrap_or_else(|_| DEFAULT_ISSUED_SEALED_ID_PATH.to_string());
+    let installed = std::fs::read_to_string(&installed_path).ok();
+    let trust_path = std::env::var("OP_DECOY_TRUST_STORE")
+        .unwrap_or_else(|_| crate::oracle_assertion::DEFAULT_DECOY_TRUST_STORE.to_string());
+    let trust = std::fs::read(&trust_path).with_context(|| format!("reading {trust_path}"))?;
+    let sealed = verify_issued_service_identity(
+        &issued,
+        installed.as_deref(),
+        &trust,
+        session_id,
+        wireguard_pubkey,
+    )?;
+    let store = engine.identity_sled_store()?;
+    let _guard = store.lifecycle_lock(session_id).await.lock_owned().await;
+    let expected = load_revision(store, session_id).await?;
+    anyhow::ensure!(
+        expected.revision == 0 && expected.operation_id.is_empty()
+            && expected.record.is_none() && expected.genesis.is_none(),
+        "issued identity cannot overwrite an identity or deletion tombstone"
+    );
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session_id, "wireguard_pubkey": wireguard_pubkey,
+        "principal_kind": "service", "active": true, "expires_at": sealed.expires_at,
+        "session_started_at": sealed.arrival_timestamp, "last_seen_at": sealed.arrival_timestamp,
+        "schema_version": sealed.schema_version, "genesis": sealed.session_genesis,
+        "trace_id": sealed.trace_id, "sealed_id": sealed.to_inline_ref()?,
+        "arrival_timestamp": sealed.arrival_timestamp,
+        "chain_head_at_arrival": sealed.chain_head_at_arrival,
+        "catalog_hash_at_arrival": sealed.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": sealed.head_timestamp_at_arrival
+    }))?;
+    commit_cas(engine, store, opid("initialize-issued-service"), session_id.to_owned(),
+        expected, Some(sled_to_record(&sled)?), Some(sled_to_genesis(&sled)), ()).await?;
+    tracing::info!(%session_id, "committed decoy-issued service identity; this container owns it");
+    Ok(true)
+}
+
 /// Bring up the control-plane chatbot container named by
 /// `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`. Human containers start at login.
 pub(crate) async fn start_service_identity_containers(
@@ -4808,4 +4895,43 @@ pub(crate) mod tests {
     }
 
     include!("identity_sled_private_fixture_tests.rs");
+}
+
+#[cfg(test)]
+mod issued_service_identity_tests {
+    use base64::Engine as _;
+    use ed25519_dalek::SigningKey;
+    use op_identity::issued_identity::{IssueRequest, IssuedIdentity};
+
+    const KEY: &str = "wNhmhGDpdkScmSdcHnzhr/1vmTIL5wxLXcve/jwk9xE=";
+
+    fn issued(signer: &SigningKey) -> String {
+        let issued = IssuedIdentity::issue(signer, "decoy-t", IssueRequest {
+            wireguard_pubkey: KEY,
+            catalog_hash_hex: &"ab".repeat(32),
+            nextdns: None,
+            schema_version: op_identity::issued_identity::SCHEMA_VERSION,
+            now: 1_800_000_000,
+        }).unwrap();
+        base64::engine::general_purpose::STANDARD.encode(issued.to_wire().unwrap())
+    }
+
+    fn trust(signer: &SigningKey) -> Vec<u8> {
+        let key = base64::engine::general_purpose::STANDARD.encode(signer.verifying_key().to_bytes());
+        format!(r#"{{"decoy_keys":{{"decoy-t":"{key}"}}}}"#).into_bytes()
+    }
+
+    #[test]
+    fn accepts_only_the_signed_identity_for_this_session_and_key() {
+        let signer = SigningKey::from_bytes(&[5u8; 32]);
+        let session = op_identity::session::derive_session_id(KEY);
+        let wire = issued(&signer);
+        let sealed = super::verify_issued_service_identity(&wire, None, &trust(&signer), &session, KEY).unwrap();
+        let inline = sealed.to_inline_ref().unwrap();
+        super::verify_issued_service_identity(&wire, Some(&inline), &trust(&signer), &session, KEY).unwrap();
+        assert!(super::verify_issued_service_identity(&wire, Some("sid1:other"), &trust(&signer), &session, KEY).is_err());
+        assert!(super::verify_issued_service_identity(&wire, None, &trust(&signer), "other-session", KEY).is_err());
+        let other = SigningKey::from_bytes(&[6u8; 32]);
+        assert!(super::verify_issued_service_identity(&wire, None, &trust(&other), &session, KEY).is_err());
+    }
 }
