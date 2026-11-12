@@ -1,7 +1,7 @@
-//! Whole-record credential gate. Uses the identity-chat guard, adding evidence
+//! Whole-record credential gate. Uses the base Secret_Guard, adding evidence
 //! digest provenance; it never hashes registered credentials for detection.
-use op_chat_interface::guard::{GuardVerdict, SecretGuard};
-use op_chat_interface::types::CredentialClass;
+use super::secret_guard::{GuardVerdict, SecretGuard};
+use super::secret_guard::CredentialClass;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::{Duration, Instant};

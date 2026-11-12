@@ -4,4 +4,5 @@
 pub mod records;
 pub mod discovery;
 pub mod safety;
+pub mod secret_guard;
 pub mod writer;

@@ -54,7 +54,6 @@ reqwest = { workspace = true }
 
 # Internal crates
 op-state-store = { path = "../op-state-store" }
-op-chat-interface = { path = "../op-chat-interface" }
 op-blob = { path = "../op-blob" }
 op-snowball = { path = "../op-snowball" }
 op-state = { path = "../op-state" }
