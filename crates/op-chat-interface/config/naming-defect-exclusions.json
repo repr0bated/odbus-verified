@@ -1,4 +1,0 @@
-{
-  "_header": "Excluded plugin names are added only by spec task 19.6 (D-32, B-14). Each name cited here must reference the naming-defect entry in .kiro/specs/identity-chat-interface/records/baseline-record.md. No excluded name is recorded yet.",
-  "exclusions": []
-}

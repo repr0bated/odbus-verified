@@ -91,6 +91,8 @@ fn record_name(record: &EvidenceRecord) -> &'static str {
         EvidenceRecord::OwnerAuthorization(_) => "owner-authorization.json",
         EvidenceRecord::Status(_) => "status.json",
         EvidenceRecord::Blocker(_) => "blockers.jsonl",
+        EvidenceRecord::StorageLayout(_) => "storage-layout.json",
+        EvidenceRecord::ImageProvisioning(_) => "image-provisioning.json",
     }
 }
 

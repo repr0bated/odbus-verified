@@ -634,6 +634,16 @@ impl EvidenceRecord {
                 for item in &record.components { item.validate()?; }
                 for item in &record.open_blockers { nonempty(&item.record_id)?; references(&item.dependent_tasks)?; }
             }
+            Self::StorageLayout(record) => {
+                header(&record.header)?;
+                nonempty(&record.sled_description)?; nonempty(&record.image_directory)?;
+            }
+            Self::ImageProvisioning(record) => {
+                header(&record.header)?;
+                header(&record.expected_layout.header)?;
+                nonempty(&record.expected_layout.image_directory)?;
+                for file in &record.actual_files { nonempty(&file.name)?; }
+            }
         }
         Ok(())
     }
