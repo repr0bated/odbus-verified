@@ -32,6 +32,14 @@ standalone (fstab line removed). Bridge `run` now exports
 `IDENTITY_SLED_COZO_DB_PATH=/var/lib/incus/storage-pools/3tched-pool/containers`
 (source only; bridge not installed on `@trial`). jeremy added to `incus-admin`.
 
+Update 06:10Z: pool `3tched-pool` now mounts `/var/lib/incus/disks/3tched.img`
+(150G; `3tched-pool.img` is a hard link to it — Incus loop-mounts only the
+canonical `<pool>.img` name). Data block-copied (cmp identical); old file kept as
+`3tched-pool.img.pre-move-20261112` (same FSID, do not loop-attach both). Plain
+pool `3tched` and fstab line 8 removed (owner). `op-chat-interface` copied to
+`/srv/git/3tched.com/crates/op-chat-interface` (standalone, own chat.proto);
+built and ran solo. Still in odbus-verified: bridge cockpit imports its `guard`.
+
 Not done: the in-container overlay unit; volatile.uuid is new (`5aff1e61…`), not `b0c777e3…`;
 container-chat code move (tasks.md 2–11) and removal of `crates/op-chat-interface`
 (the bridge's cockpit still imports its `guard`); pool `3tched` and fstab line 8
