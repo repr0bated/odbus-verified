@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, ensure};
-use std::{fs::File, os::{fd::{AsFd, OwnedFd}, unix::fs::MetadataExt}, path::{Path, PathBuf}, time::Instant};
+use std::{fs::File, os::{fd::{AsFd, OwnedFd}, unix::fs::{FileTypeExt, MetadataExt}}, path::{Path, PathBuf}, time::Instant};
 use super::{fs, inventory, model::*};
 
 #[derive(Debug, serde::Serialize)]
@@ -30,8 +30,34 @@ pub fn parent(target: &Path) -> Result<Parent> {
     let id = fs::mount_id(file.as_fd())?;
     let mounts = table()?; let m = mounts.iter().find(|m| m.id == id).context("target parent mount absent from host namespace")?;
     ensure!(m.propagation.iter().all(|f| !f.starts_with("shared:") && !f.starts_with("master:")), "target parent propagation is not private");
-    Ok(Parent { fsid: btrfs_uapi::filesystem::filesystem_info(file.as_fd())?.uuid.to_string(), subvolume: btrfs_uapi::subvolume::subvolume_info(file.as_fd())?.id,
-        device: file.metadata()?.dev(), mount_id: id })
+    let device = file.metadata()?.dev();
+    let (fsid, subvolume) = match m.kind.as_str() {
+        "btrfs" => (btrfs_uapi::filesystem::filesystem_info(file.as_fd())?.uuid.to_string(),
+            btrfs_uapi::subvolume::subvolume_info(file.as_fd())?.id),
+        "ext4" => {
+            // Resolve the native rootfs UUID from its block-device identity.
+            // Device numbers and mount IDs remain runtime checks, not reboot pins.
+            let mut matches = Vec::new();
+            for entry in std::fs::read_dir("/dev/disk/by-uuid")? {
+                let entry = entry?;
+                let metadata = match std::fs::metadata(entry.path()) {
+                    Ok(metadata) => metadata,
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                    Err(error) => return Err(error.into()),
+                };
+                if metadata.file_type().is_block_device() && metadata.rdev() == device {
+                    let name = entry.file_name().into_string().map_err(|_| anyhow::anyhow!("non-UTF8 filesystem UUID"))?;
+                    let uuid: uuid::Uuid = name.parse().context("invalid ext4 UUID alias")?;
+                    ensure!(!uuid.is_nil(), "nil ext4 filesystem UUID");
+                    matches.push(uuid.to_string());
+                }
+            }
+            ensure!(matches.len() == 1, "ext4 target parent must have exactly one native filesystem UUID alias");
+            (format!("ext4:{}", matches[0]), 0)
+        }
+        _ => anyhow::bail!("unsupported overlay target parent filesystem: {}", m.kind),
+    };
+    Ok(Parent { fsid, subvolume, device, mount_id: id })
 }
 pub fn verify_parent(target: &Target) -> Result<Parent> {
     let actual = parent(&target.path)?; let expected = target.parent.as_ref().context("target has no registered parent identity")?;

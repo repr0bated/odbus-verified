@@ -6,7 +6,7 @@ use super::{fs, inventory, lifetime, model::*};
 
 pub fn verify_root(root: &File, release: &Release) -> Result<()> {
     let info = subvolume::subvolume_info(root.as_fd())?;
-    ensure!(filesystem_info(root.as_fd())?.uuid.to_string() == FSID && root.metadata()?.ino() == 256,
+    ensure!(filesystem_info(root.as_fd())?.uuid.to_string() == super::storage::fsid()? && root.metadata()?.ino() == 256,
         "release root is not the expected Btrfs subvolume");
     ensure!(info.id == release.id && info.uuid.to_string() == release.native_uuid
         && info.received_uuid.to_string() == release.received_uuid
@@ -14,7 +14,7 @@ pub fn verify_root(root: &File, release: &Release) -> Result<()> {
         "release root ID/native UUID/received UUID/read-only identity differs");
     Ok(())
 }
-pub fn top() -> Result<File> { fs::directory(fs::detached_btrfs(FSID, 5, false)?.as_fd()) }
+pub fn top() -> Result<File> { fs::directory(fs::detached_btrfs(super::storage::fsid()?, 5, false)?.as_fd()) }
 fn open_child(root: &File, path: &Path) -> Result<Option<File>> {
     match fs::open_beneath(root.as_fd(), path, libc::O_RDONLY | libc::O_DIRECTORY) {
         Ok(f) => Ok(Some(f)),
@@ -29,21 +29,21 @@ fn check_private(dir: &File) -> Result<()> {
 pub fn provision(state: &mut State) -> Result<()> {
     ensure!(state.journal.is_none(), "recover existing transaction before provisioning");
     let parent = fs::secure_absolute(Path::new("/opt/op-dbus"), libc::O_RDONLY | libc::O_DIRECTORY)?;
-    ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == FSID && subvolume::subvolume_info(parent.as_fd())?.id == OPT_ID,
-        "/opt/op-dbus must be on the approved @opt subvolume 271");
+    ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == super::storage::fsid()? && subvolume::subvolume_info(parent.as_fd())?.id == super::storage::parent_subvolume()?,
+        "/opt/op-dbus must be on the configured preparation subvolume");
     let golden = open_child(&parent, Path::new("golden"))?;
     if let Some(golden) = &golden {
         if golden.metadata()?.ino() != 256 {
             ensure!(std::fs::read_dir(format!("/proc/self/fd/{}", golden.as_raw_fd()))?.next().is_none(), "golden is a nonempty ordinary directory; will not replace it");
             let metadata = golden.metadata()?;
             state.golden_original = Some(serde_json::json!({
-                "path": GOLDEN, "fsid": FSID, "parent_subvolume": OPT_ID,
+                "path": GOLDEN, "fsid": super::storage::fsid()?, "parent_subvolume": super::storage::parent_subvolume()?,
                 "inode": metadata.ino(), "uid": metadata.uid(), "gid": metadata.gid(),
                 "mode": metadata.mode(), "entries": 0,
             }));
         } else {
             let info = subvolume::subvolume_info(golden.as_fd())?;
-            ensure!(info.parent_id == OPT_ID && !subvolume::subvolume_flags_get(golden.as_fd())?.contains(SubvolumeFlags::RDONLY), "golden has wrong parent or read-only state");
+            ensure!(info.parent_id == super::storage::parent_subvolume()? && !subvolume::subvolume_flags_get(golden.as_fd())?.contains(SubvolumeFlags::RDONLY), "golden has wrong parent or read-only state");
         }
     }
     state.journal = Some(Journal::new("provision", state.active, None)); state.save()?;
@@ -51,7 +51,7 @@ pub fn provision(state: &mut State) -> Result<()> {
 }
 pub fn provision_resume(state: &mut State) -> Result<()> {
     let parent = fs::secure_absolute(Path::new("/opt/op-dbus"), libc::O_RDONLY | libc::O_DIRECTORY)?;
-    ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == FSID && subvolume::subvolume_info(parent.as_fd())?.id == OPT_ID, "golden parent changed");
+    ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == super::storage::fsid()? && subvolume::subvolume_info(parent.as_fd())?.id == super::storage::parent_subvolume()?, "golden parent changed");
     if let Some(golden) = open_child(&parent, Path::new("golden"))? {
         if golden.metadata()?.ino() != 256 {
             ensure!(std::fs::read_dir(format!("/proc/self/fd/{}", golden.as_raw_fd()))?.next().is_none(), "ordinary golden directory is not empty");
@@ -65,14 +65,14 @@ pub fn provision_resume(state: &mut State) -> Result<()> {
     }
     let golden = open_child(&parent, Path::new("golden"))?.context("golden missing after creation")?;
     let info = subvolume::subvolume_info(golden.as_fd())?;
-    ensure!(golden.metadata()?.ino() == 256 && info.parent_id == OPT_ID && !subvolume::subvolume_flags_get(golden.as_fd())?.contains(SubvolumeFlags::RDONLY), "golden verification failed");
+    ensure!(golden.metadata()?.ino() == 256 && info.parent_id == super::storage::parent_subvolume()? && !subvolume::subvolume_flags_get(golden.as_fd())?.contains(SubvolumeFlags::RDONLY), "golden verification failed");
     if open_child(&parent, Path::new("release-send"))?.is_none() {
         state.intent("create-release-send")?; fs::mkdir_at(parent.as_fd(), Path::new("release-send"), 0o700)?;
     }
     let send = open_child(&parent, Path::new("release-send"))?.unwrap(); check_private(&send)?;
     let root = top()?;
     for slot in [Slot::A, Slot::B] {
-        if let Some(actual) = open_child(&root, Path::new(slot.root()))? {
+        if let Some(actual) = open_child(&root, Path::new(slot.root()?))? {
             verify_root(&actual, state.release(slot).context("preexisting unregistered slot requires explicit bootstrap reconciliation")?)?;
         } else { ensure!(state.slots.get(&slot).and_then(Option::as_ref).is_none(), "recorded slot is missing"); }
     }
@@ -190,7 +190,7 @@ pub fn deploy(state: &mut State) -> Result<Slot> {
     let slot = state.active.map_or(Slot::A, Slot::other);
     let evicted = state.slots.get(&slot).and_then(Option::as_ref).cloned();
     let top = top()?;
-    match (open_child(&top, Path::new(slot.root()))?, evicted.as_ref()) {
+    match (open_child(&top, Path::new(slot.root()?))?, evicted.as_ref()) {
         (Some(root), Some(record)) => verify_root(&root, record)?,
         (None, None) => {},
         _ => bail!("slot contents and durable record disagree; refusing replacement"),
@@ -205,10 +205,10 @@ pub fn deploy(state: &mut State) -> Result<Slot> {
     let receiver = receiver()?;
     let golden = fs::secure_absolute(Path::new(GOLDEN), libc::O_RDONLY | libc::O_DIRECTORY)?;
     let g = subvolume::subvolume_info(golden.as_fd())?;
-    ensure!(golden.metadata()?.ino() == 256 && filesystem_info(golden.as_fd())?.uuid.to_string() == FSID && g.parent_id == OPT_ID && !subvolume::subvolume_flags_get(golden.as_fd())?.contains(SubvolumeFlags::RDONLY), "golden is not the approved writable @opt child subvolume");
+    ensure!(golden.metadata()?.ino() == 256 && filesystem_info(golden.as_fd())?.uuid.to_string() == super::storage::fsid()? && g.parent_id == super::storage::parent_subvolume()? && !subvolume::subvolume_flags_get(golden.as_fd())?.contains(SubvolumeFlags::RDONLY), "golden is not the configured writable preparation child subvolume");
     let send = fs::secure_absolute(Path::new(SEND), libc::O_RDONLY | libc::O_DIRECTORY)?;
     check_private(&send)?;
-    ensure!(filesystem_info(send.as_fd())?.uuid.to_string() == FSID && subvolume::subvolume_info(send.as_fd())?.id == OPT_ID, "source snapshot parent differs");
+    ensure!(filesystem_info(send.as_fd())?.uuid.to_string() == super::storage::fsid()? && subvolume::subvolume_info(send.as_fd())?.id == super::storage::parent_subvolume()?, "source snapshot parent differs");
     let parent_id = if let Some(active) = state.active {
         let parent = state.release(active)?;
         match open_child(&send, Path::new(&parent.name))? {
@@ -262,7 +262,7 @@ pub fn install_received(state: &mut State) -> Result<()> {
     // Reverify the complete incoming tree before authorizing any occupied deletion.
     // A crash after rename is reconciled against the exact installed native UUID.
     let installed = {
-        let root = open_child(&top, Path::new(slot.root()))?;
+        let root = open_child(&top, Path::new(slot.root()?))?;
         if let Some(root) = root {
             let info = subvolume::subvolume_info(root.as_fd())?;
             if info.id == release.id && info.uuid.to_string() == release.native_uuid {
@@ -290,7 +290,7 @@ pub fn install_received(state: &mut State) -> Result<()> {
         // umount result, guard toggle, or userspace token substitutes for that check.
         remove_root(state, &top, RootRemoval {
             id: old.id, native_uuid: old.native_uuid.clone(), received_uuid: old.received_uuid.clone(),
-            parent: "slot".into(), name: slot.root().into(), cleaned: false, rejected: false,
+            parent: "slot".into(), name: slot.root()?.into(), cleaned: false, rejected: false,
         })?;
         state.slots.insert(slot, None);
         if state.previous == Some(slot) { state.previous = None; }
@@ -302,9 +302,9 @@ pub fn install_received(state: &mut State) -> Result<()> {
         state.journal.as_mut().unwrap().timings_ms.insert("reuse_cleanup".into(), started.elapsed().as_millis());
     }
     if !installed {
-        ensure!(open_child(&top, Path::new(slot.root()))?.is_none(), "slot reappeared before no-replace installation");
+        ensure!(open_child(&top, Path::new(slot.root()?))?.is_none(), "slot reappeared before no-replace installation");
         state.intent("install-received-slot")?;
-        fs::rename_at(top.as_fd(), Path::new(&release.name), top.as_fd(), Path::new(slot.root()))
+        fs::rename_at(top.as_fd(), Path::new(&release.name), top.as_fd(), Path::new(slot.root()?))
             .context("install verified receive via same-parent no-replace rename")?;
     }
     state.slots.insert(slot, Some(release));
@@ -356,8 +356,8 @@ fn removal_parent(top: &File, kind: &str) -> Result<File> {
         "source" | "source-orphaned" => {
             let parent = fs::secure_absolute(reset_source_path(kind)?, libc::O_RDONLY | libc::O_DIRECTORY)?;
             check_private(&parent)?;
-            ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == FSID
-                && subvolume::subvolume_info(parent.as_fd())?.id == OPT_ID, "source parent identity changed");
+            ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == super::storage::fsid()?
+                && subvolume::subvolume_info(parent.as_fd())?.id == super::storage::parent_subvolume()?, "source parent identity changed");
             Ok(parent)
         },
         _ => bail!("unknown removal parent"),
@@ -366,7 +366,7 @@ fn removal_parent(top: &File, kind: &str) -> Result<File> {
 
 fn remove_root(state: &mut State, top: &File, removal: RootRemoval) -> Result<()> {
     inventory::normalized(Path::new(&removal.name), false)?;
-    ensure!(Path::new(&removal.name).components().count() == 1 && removal.id > OPT_ID,
+    ensure!(Path::new(&removal.name).components().count() == 1 && removal.id > super::storage::parent_subvolume()?,
         "invalid cleanup root identity/name");
     if let Some(active) = state.active {
         let active = state.release(active)?;
@@ -400,7 +400,7 @@ fn remove_root(state: &mut State, top: &File, removal: RootRemoval) -> Result<()
     let parent = removal_parent(top, &removal.parent)?;
     if let Some(root) = open_child(&parent, Path::new(&removal.name))? {
         let actual = subvolume::subvolume_info(root.as_fd())?;
-        ensure!(root.metadata()?.ino() == 256 && filesystem_info(root.as_fd())?.uuid.to_string() == FSID
+        ensure!(root.metadata()?.ino() == 256 && filesystem_info(root.as_fd())?.uuid.to_string() == super::storage::fsid()?
             && actual.id == removal.id && actual.uuid.to_string() == removal.native_uuid
             && actual.received_uuid.to_string() == removal.received_uuid,
             "cleanup name no longer denotes the exact recorded root");
@@ -417,7 +417,7 @@ fn remove_root(state: &mut State, top: &File, removal: RootRemoval) -> Result<()
     drop(parent);
     state.journal.as_mut().unwrap().removals[index].rejected = false;
     state.intent(format!("quiescent-delete:{}", removal.id))?;
-    match lifetime::destroy(top.as_fd(), FSID.parse()?, removal.id,
+    match lifetime::destroy(top.as_fd(), super::storage::fsid()?.parse()?, removal.id,
         removal.native_uuid.parse()?, removal.received_uuid.parse()?) {
         Ok(()) => {},
         // Only ENOENT returned by this exact checked ABI proves absence across
@@ -455,7 +455,7 @@ pub fn abort_orphan(
     ensure!(state.journal.is_none(), "orphan admission requires no pending transaction");
     let suffix = name.strip_prefix("release-").context("not a reserved incoming release name")?;
     uuid::Uuid::parse_str(suffix).context("invalid incoming release name")?;
-    ensure!(received_id > OPT_ID && source_id > OPT_ID && received_id != source_id,
+    ensure!(received_id > super::storage::parent_subvolume()? && source_id > super::storage::parent_subvolume()? && received_id != source_id,
         "invalid orphan root IDs");
     let active = state.active.context("orphan cleanup requires a retained active release")?;
     let slot = active.other();
@@ -469,23 +469,23 @@ pub fn abort_orphan(
     }
     let candidate = {
         let top = top()?;
-        let retained = open_child(&top, Path::new(active.root()))?.context("active backing is missing")?;
+        let retained = open_child(&top, Path::new(active.root()?))?.context("active backing is missing")?;
         verify_root(&retained, state.release(active)?)?;
-        ensure!(open_child(&top, Path::new(slot.root()))?.is_none(),
+        ensure!(open_child(&top, Path::new(slot.root()?))?.is_none(),
             "unrecorded inactive slot exists; refusing orphan cleanup");
         let send = removal_parent(&top, "source")?;
         let source = open_child(&send, Path::new(name))?.context("orphan source is missing")?;
         let source_info = subvolume::subvolume_info(source.as_fd())?;
         ensure!(source.metadata()?.ino() == 256
-            && filesystem_info(source.as_fd())?.uuid.to_string() == FSID
-            && source_info.parent_id == OPT_ID && source_info.id == source_id
+            && filesystem_info(source.as_fd())?.uuid.to_string() == super::storage::fsid()?
+            && source_info.parent_id == super::storage::parent_subvolume()? && source_info.id == source_id
             && source_info.uuid == source_uuid && source_info.received_uuid.is_nil()
             && subvolume::subvolume_flags_get(source.as_fd())?.contains(SubvolumeFlags::RDONLY),
             "orphan source does not match the explicit read-only identity");
         let received = open_child(&top, Path::new(name))?.context("orphan receive is missing")?;
         let info = subvolume::subvolume_info(received.as_fd())?;
         ensure!(received.metadata()?.ino() == 256
-            && filesystem_info(received.as_fd())?.uuid.to_string() == FSID
+            && filesystem_info(received.as_fd())?.uuid.to_string() == super::storage::fsid()?
             && info.parent_id == 5 && info.id == received_id && info.uuid == received_uuid
             && info.received_uuid == source_uuid
             && subvolume::subvolume_flags_get(received.as_fd())?.contains(SubvolumeFlags::RDONLY),
@@ -523,7 +523,7 @@ pub fn abort_transfer(state: &mut State) -> Result<()> {
     if let Some(old) = &journal.evicted {
         ensure!(journal.removals.iter().all(|r| r.id != old.id || (!r.cleaned && r.rejected)),
             "occupied deletion may already have begun; abort cannot restore that generation. Reconcile the verified incoming with a non-abort release invocation");
-        let old_root = open_child(&top, Path::new(slot.root()))?.context("previous backing is already absent; complete verified-receive recovery instead")?;
+        let old_root = open_child(&top, Path::new(slot.root()?))?.context("previous backing is already absent; complete verified-receive recovery instead")?;
         verify_root(&old_root, old)?;
     }
     state.journal.as_mut().unwrap().aborting = true;
@@ -536,7 +536,7 @@ pub fn abort_transfer(state: &mut State) -> Result<()> {
         let send = removal_parent(&top, "source")?;
         if let Some(root) = open_child(&send, Path::new(name))? {
             let info = subvolume::subvolume_info(root.as_fd())?;
-            ensure!(root.metadata()?.ino() == 256 && info.parent_id == OPT_ID && info.received_uuid.is_nil(),
+            ensure!(root.metadata()?.ino() == 256 && info.parent_id == super::storage::parent_subvolume()? && info.received_uuid.is_nil(),
                 "unexpected source snapshot in abort");
             if let Some(expected) = &journal.source_uuid { ensure!(&info.uuid.to_string() == expected, "abort source UUID changed"); }
             if let Some(candidate) = &journal.candidate {
@@ -558,7 +558,8 @@ pub fn abort_transfer(state: &mut State) -> Result<()> {
         let located = if let Some(root) = open_child(&parent, Path::new(name))? {
             Some((root, "incoming", name))
         } else if journal.evicted.is_none() {
-            open_child(&top, Path::new(slot.root()))?.map(|root| (root, "slot", slot.root()))
+            let slot_name = slot.root()?;
+            open_child(&top, Path::new(slot_name))?.map(|root| (root, "slot", slot_name))
         } else { None };
         if let Some((root, parent, name)) = located {
             let info = subvolume::subvolume_info(root.as_fd())?;
@@ -608,8 +609,8 @@ fn reset_source_parent(kind: &str) -> Result<Option<File>> {
         Err(error) => return Err(error),
     };
     check_private(&parent)?;
-    ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == FSID
-        && subvolume::subvolume_info(parent.as_fd())?.id == OPT_ID, "reset source parent identity changed");
+    ensure!(filesystem_info(parent.as_fd())?.uuid.to_string() == super::storage::fsid()?
+        && subvolume::subvolume_info(parent.as_fd())?.id == super::storage::parent_subvolume()?, "reset source parent identity changed");
     Ok(Some(parent))
 }
 
@@ -635,7 +636,7 @@ fn reset_records(plan: &ResetPlan) -> Result<Vec<RootRemoval>> {
     let mut slots = std::collections::BTreeSet::new();
     for received in &plan.received {
         let parent = if let Some(slot) = received.slot {
-            ensure!(slots.insert(slot) && received.name == slot.root(), "reset slot name/uniqueness differs");
+            ensure!(slots.insert(slot) && received.name == slot.root()?, "reset slot name/uniqueness differs");
             "slot"
         } else {
             reset_release_name(&received.name)?;
@@ -662,7 +663,7 @@ fn reset_records(plan: &ResetPlan) -> Result<Vec<RootRemoval>> {
     let mut locations = std::collections::BTreeSet::new();
     for record in &records {
         let native: uuid::Uuid = record.native_uuid.parse()?;
-        ensure!(record.id > OPT_ID && ids.insert(record.id) && !native.is_nil() && uuids.insert(native)
+        ensure!(record.id > super::storage::parent_subvolume()? && ids.insert(record.id) && !native.is_nil() && uuids.insert(native)
             && locations.insert((record.parent.as_str(), record.name.as_str())),
             "invalid or aliased native reset identity/location");
     }
@@ -672,11 +673,11 @@ fn reset_records(plan: &ResetPlan) -> Result<Vec<RootRemoval>> {
 fn verify_reset_root(root: &File, record: &RootRemoval) -> Result<()> {
     let parent_id = match record.parent.as_str() {
         "slot" | "incoming" => 5,
-        "source" | "source-orphaned" => OPT_ID,
+        "source" | "source-orphaned" => super::storage::parent_subvolume()?,
         _ => bail!("invalid native reset root parent"),
     };
     let info = subvolume::subvolume_info(root.as_fd())?;
-    ensure!(root.metadata()?.ino() == 256 && filesystem_info(root.as_fd())?.uuid.to_string() == FSID
+    ensure!(root.metadata()?.ino() == 256 && filesystem_info(root.as_fd())?.uuid.to_string() == super::storage::fsid()?
         && info.parent_id == parent_id && info.id == record.id
         && info.uuid.to_string() == record.native_uuid && info.received_uuid.to_string() == record.received_uuid
         && subvolume::subvolume_flags_get(root.as_fd())?.contains(SubvolumeFlags::RDONLY),
@@ -687,7 +688,9 @@ fn verify_reset_root(root: &File, record: &RootRemoval) -> Result<()> {
 fn check_reset_namespace(top: &File, records: &[RootRemoval], require_present: bool) -> Result<()> {
     for entry in std::fs::read_dir(format!("/proc/self/fd/{}", top.as_raw_fd()))? {
         let name = entry?.file_name();
-        if name.as_encoded_bytes().starts_with(b"release-") || name.as_encoded_bytes().starts_with(b"@release-") {
+        if name.as_encoded_bytes().starts_with(b"release-")
+            || name == std::ffi::OsStr::new(Slot::A.root()?)
+            || name == std::ffi::OsStr::new(Slot::B.root()?) {
             ensure!(records.iter().any(|r| matches!(r.parent.as_str(), "slot" | "incoming")
                 && name == std::ffi::OsStr::new(&r.name)), "reserved release root is absent from the explicit reset plan");
         }

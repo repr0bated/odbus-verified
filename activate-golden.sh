@@ -2,17 +2,18 @@
 # activate-golden.sh — the one command for deploying a new version.
 #
 #   sudo ./activate-golden.sh
+#   sudo OP_RELEASE_DIR=target/x86_64-unknown-linux-gnu/release ./activate-golden.sh --install-kit
 #
 # Run it after the release build and seal:
-#   CXXFLAGS="-include cstdint" cargo build --workspace --release
-#   sudo target/release/opblob seal-shm && sudo target/release/opblob persist
+#   CXXFLAGS="-include cstdint" cargo build --workspace --release --target x86_64-unknown-linux-gnu
+#   sudo target/x86_64-unknown-linux-gnu/release/opblob seal-shm && sudo target/x86_64-unknown-linux-gnu/release/opblob persist
 # OP_RELEASE_DIR selects one prepared optimized artifact directory for both
-# release-controller verification and golden preparation (default target/release).
+# release-controller verification and golden preparation (default target/x86_64-unknown-linux-gnu/release).
 #
 # What it does:
 # 1. Native provision-slots reconciles any interrupted transaction and prepares
 #    the owned golden/slot layout. Recovery-only work stops this invocation.
-# 2. Prepares /opt/op-dbus/golden from target/release and the sealed catalog
+# 2. Prepares /opt/op-dbus/golden from that GNU release directory and the sealed catalog
 #    (internal helper deploy/lib/golden/build-golden.sh; it never builds or seals).
 # 3. Native release sends/receives the immutable generation into the inactive
 #    slot, rotates read-only overlays at the inventory's owned host targets,
@@ -26,7 +27,14 @@ LC_ALL=C
 export PATH LC_ALL
 
 REPO=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
-OP_RELEASE_DIR=$(realpath -e -- "${OP_RELEASE_DIR:-"$REPO/target/release"}")
+# Base kit installation is separate from application overlay activation.
+# It deliberately stops here; a later invocation performs the release.
+if [ "$#" = 1 ] && [ "$1" = --install-kit ]; then
+    exec "$REPO/deploy/release/install-kit.sh"
+fi
+OP_RELEASE_DIR=${OP_RELEASE_DIR:-"$REPO/target/x86_64-unknown-linux-gnu/release"}
+[ -d "$OP_RELEASE_DIR" ] || { echo "activate-golden.sh: GNU release directory missing: $OP_RELEASE_DIR" >&2; exit 1; }
+OP_RELEASE_DIR=$(realpath -e -- "$OP_RELEASE_DIR")
 export OP_RELEASE_DIR
 RELEASE_BASE=/usr/local/libexec/opdbus-release
 RELEASE_LAUNCH=$RELEASE_BASE/op-release-launch

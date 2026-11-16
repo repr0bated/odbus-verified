@@ -95,6 +95,14 @@ verify_release_kit() {
         *) fail 'kernel/BTF pair requires separate policy approval' ;;
     esac
 }
+# Serialize kit replacement without taking the transaction lock for status.
+# The installer creates this private lock atomically and never replaces it.
+for directory in / /usr /usr/local /usr/local/libexec "$base" /var /var/lib "$state"; do
+    secure_directory "$directory"
+done
+secure_file "$state/kit.lock" 600
+exec 8<"$state/kit.lock"
+flock -n -s 8 || fail 'release kit installation is active'
 verify_release_kit
 if [ "$verb" = status ]; then
     exec "$base/op-release" "$@"

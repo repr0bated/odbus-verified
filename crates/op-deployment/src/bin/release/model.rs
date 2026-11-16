@@ -7,13 +7,11 @@ pub const STATE: &str = "/var/lib/opdbus-release/slots.json";
 pub const LOCK: &str = "/var/lib/opdbus-release/lock";
 pub const READY: &str = "/run/opdbus-release/ready";
 pub const APPROVAL: &str = "/var/lib/opdbus-release/first-activation.json";
-pub const RELEASE_BASE: &str = "/var/lib/opdbus-release/base";
+pub const RELEASE_BASE: &str = "/opt/op-dbus/overlay-base";
 pub const GOLDEN: &str = "/opt/op-dbus/golden";
 pub const SEND: &str = "/opt/op-dbus/release-send";
 pub const SEND_ORPHANED: &str = "/opt/op-dbus/release-send-orphaned";
 pub const RESET_PLAN: &str = "/var/lib/opdbus-release/reset-plan.json";
-pub const FSID: &str = "d53eeac0-949b-499c-b051-9fecf8678f59";
-pub const OPT_ID: u64 = 271;
 pub const GRAPH: &str = "usr/share/op-dbus/graphs/release.json";
 pub const SHIPPED: &str = "/usr/share/op-dbus/plugin-blobs";
 pub const PERSISTED: &str = "/var/lib/opdbus/plugin-blobs";
@@ -27,7 +25,10 @@ pub const SERVICE_TARGET: &str = "/usr/local/libexec/op-dbus/sv";
 pub enum Slot { A, B }
 impl Slot {
     pub fn name(self) -> &'static str { match self { Self::A => "a", Self::B => "b" } }
-    pub fn root(self) -> &'static str { match self { Self::A => "@release-a", Self::B => "@release-b" } }
+    pub fn root(self) -> Result<&'static str> {
+        let storage = super::storage::config()?;
+        Ok(match self { Self::A => storage.slot_a.as_str(), Self::B => storage.slot_b.as_str() })
+    }
     pub fn other(self) -> Self { match self { Self::A => Self::B, Self::B => Self::A } }
     pub fn parse(s: &str) -> Result<Self> { match s { "a" => Ok(Self::A), "b" => Ok(Self::B), _ => anyhow::bail!("slot must be a or b") } }
 }
@@ -207,7 +208,7 @@ impl State {
     }
     pub fn root(&self, slot: Slot) -> Result<SlotRoot> {
         let release = self.release(slot)?;
-        let mount = fs::detached_btrfs(FSID, release.id, true)?;
+        let mount = fs::detached_btrfs(super::storage::fsid()?, release.id, true)?;
         let root = fs::directory(mount.as_fd())?;
         super::transfer::verify_root(&root, release)?;
         Ok(SlotRoot { dir: root, _mount: mount })

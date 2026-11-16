@@ -1,5 +1,6 @@
 #!/bin/sh
 # deploy.sh — the one command for deploying a prepared release.
+# Base kit only: OP_RELEASE_DIR=target/x86_64-unknown-linux-gnu/release ./deploy.sh --install-kit
 #
 #   sudo ./deploy.sh [--system]
 #
@@ -28,6 +29,11 @@ LC_ALL=C
 export PATH LC_ALL
 
 REPO=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
+# Base kit installation is separate from application overlay activation.
+# It deliberately stops here; a later invocation performs the release.
+if [ "$#" = 1 ] && [ "$1" = --install-kit ]; then
+    exec "$REPO/deploy/release/install-kit.sh"
+fi
 OP_RELEASE_DIR=$(realpath -e -- "${OP_RELEASE_DIR:-"$REPO/target/release"}")
 export OP_RELEASE_DIR
 RELEASE_BASE=/usr/local/libexec/opdbus-release

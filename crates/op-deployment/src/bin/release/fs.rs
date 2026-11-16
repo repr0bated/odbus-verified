@@ -146,6 +146,14 @@ pub fn release_base() -> Result<File> {
     ensure!(metadata.is_dir(), "release base is not a directory");
     ensure!(metadata.uid() == 0 && metadata.gid() == 0, "release base is not root-owned");
     ensure!(metadata.mode() & 0o7022 == 0, "release base has set-id/sticky or group/world write bits");
+    let storage = super::storage::config()?;
+    let info = btrfs_uapi::subvolume::subvolume_info(base.as_fd())?;
+    ensure!(metadata.ino() == 256
+        && btrfs_uapi::filesystem::filesystem_info(base.as_fd())?.uuid.to_string() == storage.fsid
+        && info.parent_id == storage.parent_subvolume
+        && btrfs_uapi::subvolume::subvolume_flags_get(base.as_fd())?
+            .contains(btrfs_uapi::subvolume::SubvolumeFlags::RDONLY),
+        "release base must be a native read-only subvolume on the configured preparation parent");
     // Enumerating through the pinned fd's /proc/self/fd link never re-resolves the path.
     ensure!(std::fs::read_dir(format!("/proc/self/fd/{}", base.as_raw_fd()))?.next().is_none(),
         "release base is not empty");

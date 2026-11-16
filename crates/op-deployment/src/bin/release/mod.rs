@@ -9,6 +9,7 @@ mod preserve;
 mod recovery;
 mod reset;
 mod services;
+mod storage;
 mod transfer;
 
 use anyhow::{Context, Result, bail, ensure};
@@ -114,6 +115,7 @@ pub fn run() -> Result<()> {
         _ => arguments.len() == 1,
     }, "invalid release arguments");
     ensure!(matches!(verb, "release" | "deploy" | "provision-slots" | "status" | "activate" | "rollback" | "reset" | "abort" | "boot"), "unsupported release verb");
+    storage::initialize()?;
     if verb == "status" {
         let state = State::load()?;
         println!("{}", serde_json::to_string_pretty(&serde_json::json!({"state":state,"mounts":mounts::table()?,"readiness":std::fs::read_to_string(READY).ok(),"transaction_in_progress":lock_observed()? ,"occupied_slot_reuse":"requires-running-kernel-quiescent-delete; status-does-not-probe"}))?);

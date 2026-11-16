@@ -41,7 +41,7 @@ pub fn validate_targets(targets: &[Target]) -> Result<()> {
     ensure!(!targets.is_empty(), "release has no target directories");
     for (i, t) in targets.iter().enumerate() {
         normalized(&t.path, true)?; normalized(&t.source, false)?;
-        for protected in ["/", "/usr", "/usr/bin", "/etc", "/etc/op-dbus", "/etc/opdbus", "/etc/emqx", "/etc/sv", "/etc/runit", "/usr/local/sbin", "/usr/local/libexec/opdbus-release", "/usr/local/libexec/opdbus-storage", "/var/lib/threetched", "/var/lib/opdbus/plugin-blobs"] {
+        for protected in ["/", "/usr", "/usr/bin", "/etc", "/etc/op-dbus", "/etc/opdbus", "/etc/emqx", "/etc/sv", "/etc/runit", "/usr/local/sbin", "/usr/local/libexec/opdbus-release", "/usr/local/libexec/opdbus-release-receiver", "/var/lib/opdbus-release", "/opt/op-dbus/golden", "/opt/op-dbus/overlay-base", "/opt/op-dbus/release-send", "/opt/op-dbus/release-send-orphaned", "/usr/local/libexec/opdbus-storage", "/var/lib/threetched", "/var/lib/opdbus/plugin-blobs"] {
             let protected = Path::new(protected);
             ensure!(!protected.starts_with(&t.path), "target covers protected host content: {}", t.path.display());
             if protected != Path::new("/") && protected != Path::new("/usr") {
