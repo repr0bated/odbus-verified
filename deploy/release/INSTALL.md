@@ -79,34 +79,3 @@ empty base, is verified as a native read-only subvolume. Overlay destinations
 may be on the ext4 control rootfs; ext4 parent identity uses its native UUID.
 The kit, controller state and credentials remain outside release overlays.
 
-## Backend-first bootstrap
-
-For the first release on a fresh golden tree, `OP_INCLUDE_UI=0` omits all UI
-repository checks, dependency checks, builds and asset staging:
-
-```sh
-OP_INCLUDE_UI=0 OP_RELEASE_DIR="$PWD/target/x86_64-unknown-linux-gnu/release" \
-  ./activate-golden.sh
-```
-
-This prepares an empty dashboard only. It refuses existing dashboard content,
-including symlinks, rather than deleting a previously prepared UI. The manifest
-records `omitted/backend-only` for UI source, HEAD and worktree, and uses SHA256
-of the empty file listing (`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`)
-for the UI asset tree. This records deliberate omission, not a frontend build.
-After the backend deployment, build and publish `3tched.com` separately. The
-default `OP_INCLUDE_UI=1` retains the existing combined release behavior.
-
-## Retired broker
-
-EMQX is no longer used. Golden preparation does not require, fetch, extract,
-or stage its broker artifact, configuration or preparation helper. The service
-is retired and omitted from enabled/managed declarations; bridge runit startup
-no longer prepares broker state or supplies ExHook credentials. Historical EMQX
-payloads already present in golden cause preparation to stop for explicit
-reconciliation. Runtime data and credentials under `/var/lib/emqx`,
-`/var/log/emqx` and `/etc/emqx` are preserved.
-The production bridge no longer binds the broker's private ExHook listener or
-starts its committed-MQTT-wake worker; readiness requires the authenticated TLS
-door and identity-bound lungs. The MQTT-only `op-chat-responder` service and
-binary are retired rather than replaced with another transport.
