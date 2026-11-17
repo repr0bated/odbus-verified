@@ -1,0 +1,9 @@
+#!/bin/sh
+# op-dbus-release: application
+# The host door: connections to 10.0.0.2:8090 are spliced over the shared door
+# socket /run/opdbus/tunnel/tunnel.sock into the door-owning container (the
+# control-plane chatbot), whose op-tunnel-door delivers them to its own
+# op-grpc-bridge door; TLS ends in the container. Inbound only.
+# Incus's remote API must not hold this address (it is on WARP, :8443).
+exec 2>&1
+exec /usr/local/bin/op-tunnel-mux --socket /run/opdbus/tunnel/tunnel.sock --door 10.0.0.2:8090
