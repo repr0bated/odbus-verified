@@ -211,6 +211,63 @@ pub async fn search_session_events(
     Ok((voyage.model().to_owned(), response.result))
 }
 
+/// One entry of an identity's sled ledger, ready to embed. `text` is already
+/// filtered by the sealed schema that created the event (no secret or private
+/// fields); `payload` carries the allow-listed provenance fields.
+pub struct LedgerPoint {
+    pub event_hash: String,
+    pub text: String,
+    pub payload: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Namespace for session-ledger points: keyed by event hash, so a retried
+/// end-of-session vectorization overwrites in place. Fixed forever.
+const LEDGER_POINT_NAMESPACE: uuid::Uuid =
+    uuid::Uuid::from_u128(0x3c0b_91e4_5a27_4d6f_8b12_e6f4_09d3_a751);
+
+pub fn ledger_point_id(event_hash: &str) -> uuid::Uuid {
+    uuid::Uuid::new_v5(&LEDGER_POINT_NAMESPACE, format!("ledger:{event_hash}").as_bytes())
+}
+
+/// End-of-session vectorization of a sled ledger (owner 2026-11-02: the
+/// snowball is a session ledger vectorized once at the end). Points go to the
+/// snowball collection with the payload `search_session_events` filters on.
+/// Returns the embedding model, the collection and each point id in order.
+pub async fn upsert_session_ledger(points: &[LedgerPoint]) -> Result<(String, String, Vec<String>)> {
+    let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
+    if points.is_empty() {
+        return Ok((String::new(), collection, Vec::new()));
+    }
+    let voyage = VoyageClient::new()?;
+    let client = Qdrant::from_url(&qdrant_url()).build()?;
+    if !client.collection_exists(&collection).await.context("probe snowball collection")? {
+        match client.create_collection(CreateCollectionBuilder::new(&collection)
+            .vectors_config(VectorParamsBuilder::new(DEFAULT_DIMS, Distance::Cosine))).await {
+            Ok(_) => {}
+            Err(error) if is_already_exists(&error) => {}
+            Err(error) => return Err(anyhow::Error::from(error).context("create snowball collection")),
+        }
+    }
+    let mut ids = Vec::with_capacity(points.len());
+    let mut structs = Vec::with_capacity(points.len());
+    for point in points {
+        let vector = voyage.embed(&point.text, Some("document")).await?;
+        let mut payload = point.payload.clone();
+        payload.insert("event_hash".into(), point.event_hash.clone().into());
+        payload.insert("text".into(), point.text.clone().into());
+        payload.insert("source".into(), "sled_ledger".into());
+        let payload: Payload = serde_json::Value::Object(payload).try_into()
+            .context("build ledger vector payload")?;
+        let id = ledger_point_id(&point.event_hash).to_string();
+        structs.push(PointStruct::new(id.clone(), vector, payload));
+        ids.push(id);
+    }
+    client.upsert_points(UpsertPointsBuilder::new(&collection, structs).wait(true)).await
+        .with_context(|| format!("upsert session ledger into '{collection}'"))?;
+    Ok((voyage.model().to_owned(), collection, ids))
+}
+
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct ProjectionSummary {
     pub embedded: usize,

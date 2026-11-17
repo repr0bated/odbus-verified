@@ -1639,6 +1639,19 @@ impl IncusRootRepairBackend {
         self.api.instance(name).await
     }
 
+    /// Names of the instances whose own config carries `user.opdbus.session_id
+    /// == session_id`. Read-only; the identity sled volume names the session,
+    /// Incus names the container.
+    pub async fn instances_with_session(&self, session_id: &str) -> Result<Vec<String>> {
+        let listed = self.api.call("GET", "/1.0/instances?recursion=1", None, None).await?;
+        let instances = listed.as_array().context("Incus instance list must be an array")?;
+        Ok(instances
+            .iter()
+            .filter(|instance| instance["config"]["user.opdbus.session_id"] == session_id)
+            .filter_map(|instance| instance["name"].as_str().map(str::to_owned))
+            .collect())
+    }
+
     /// Read the current running init PID for kernel-authenticated local lungs.
     /// The instance name comes from the committed identity binding, never a
     /// guest-selected REST path. This performs no lifecycle effect.

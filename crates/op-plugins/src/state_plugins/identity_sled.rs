@@ -559,6 +559,24 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         pub session_id: String,
         pub seq: u64,
     }
+    /// End the session's ledger: vectorize every entry on the identity's sled
+    /// ledger once, link each vector in Cozo, then clear the ledger. Fixed
+    /// identity data on the sled is never touched.
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct FinalizeSessionInput {
+        pub session_id: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct FinalizeSessionOutput {
+        pub session_id: String,
+        /// Ledger entries embedded and upserted to Qdrant.
+        pub vectorized: u64,
+        /// Qdrant collection holding the vectors.
+        pub collection: String,
+        /// Embedding model used; empty when the ledger was empty.
+        pub embedding_model: String,
+    }
 
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
     use op_state_store::SideEffect;
@@ -734,6 +752,16 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         ),
     );
     schema.methods.insert(
+        "finalize_session".to_string(),
+        method_decl_from_schemars_with_output::<FinalizeSessionInput, FinalizeSessionOutput>(
+            "finalize_session",
+            SideEffect::Mutation,
+            false,
+            "identity_sled.write",
+            "mut.service.identity-sled.session.finalize@v1",
+        ),
+    );
+    schema.methods.insert(
         "get_session_history".to_string(),
         method_decl_from_schemars_with_output::<GetSessionHistoryInput, GetSessionHistoryOutput>(
             "get_session_history",
@@ -771,7 +799,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         "identity_sled.write".to_string(),
         op_state_store::CapabilityDecl {
             id: "identity_sled.write".to_string(),
-            description: "Grants: write_identity, provision_container, inspect_provision_preflight, delete_provision_record, attach_btrfs_device, touch_session, record_session_event.".to_string(),
+            description: "Grants: write_identity, provision_container, inspect_provision_preflight, delete_provision_record, attach_btrfs_device, touch_session, record_session_event, finalize_session.".to_string(),
         },
     );
     schema.capabilities.insert(
@@ -980,6 +1008,7 @@ mod tests {
             "attach_btrfs_device",
             "touch_session",
             "record_session_event",
+            "finalize_session",
             "get_session_history",
         ] {
             assert!(schema.methods.contains_key(method), "missing {method}");

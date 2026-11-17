@@ -284,6 +284,7 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
     let catalog_dir = std::env::var_os("OP_BLOB_CATALOG_DIR").map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(op_blob::catalog::DEFAULT_SHM_DIR));
     let state_dir = op_core::projection_shm::shm_state_dir();
+    let identity_store = runtime.identity_store().clone();
     let path = std::env::var_os("OPDBUS_LUNGS_SOCKET").map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(DEFAULT_LUNGS_SOCKET));
     let objects: Arc<Vec<(String, String)>> = Arc::new(runtime.catalog().plugins().iter().map(|plugin| {
@@ -313,7 +314,7 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
                 incoming = listener.accept() => {
                     let (stream, _) = incoming.context("accept lungs connection")?;
                     let Ok(permit) = slots.clone().try_acquire_owned() else { continue; };
-                    let identity = match LungsIdentity::capture(&stream, host.clone(), catalog_dir.clone(), state_dir.clone()) {
+                    let identity = match LungsIdentity::capture(&stream, host.clone(), catalog_dir.clone(), state_dir.clone(), identity_store.clone()) {
                         Ok(identity) => identity,
                         Err(error) => {
                             tracing::warn!(%error, "lungs peer proof refused");

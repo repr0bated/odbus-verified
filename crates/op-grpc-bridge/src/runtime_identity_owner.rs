@@ -295,6 +295,118 @@ pub(crate) fn adopt_issued_identity_at_startup(cozo: &CozoGraphShuttle) -> anyho
     Ok(true)
 }
 
+/// The container IS the identity; its sled is the pool volume
+/// `identity-<session>` (provision-container.sh), mounted read-only in the
+/// container at /agent/user and holding the decoy-issued IID1 and its SID1.
+/// The volume is the source. This verifies each volume against the decoy
+/// trust store and the container that carries its session and key, then
+/// commits the Cozo identity record lungs binds by, or refreshes its
+/// container binding. Cozo stays an index. Returns how many records changed.
+pub(crate) async fn adopt_identity_volumes(cozo: Arc<CozoGraphShuttle>) -> anyhow::Result<usize> {
+    let pool = std::env::var("OP_CONTAINER_POOL").unwrap_or_else(|_| "3tched-pool".into());
+    let root = PathBuf::from(format!("/var/lib/incus/storage-pools/{pool}/custom"));
+    let entries = match std::fs::read_dir(&root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(error) => return Err(error).with_context(|| format!("reading {}", root.display())),
+    };
+    let trust_path = std::env::var("OP_DECOY_TRUST_STORE")
+        .unwrap_or_else(|_| crate::oracle_assertion::DEFAULT_DECOY_TRUST_STORE.into());
+    let trust = std::fs::read(&trust_path).with_context(|| format!("reading {trust_path}"))?;
+    let native = op_plugins::state_plugins::incus::IncusRootRepairBackend::local();
+    let mut changed = 0;
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Some(session) = name.strip_prefix("default_identity-") else { continue };
+        match adopt_identity_volume(&cozo, &native, &entry.path(), session, &trust).await {
+            Ok(true) => changed += 1,
+            Ok(false) => {}
+            Err(error) => tracing::warn!(%error, session, "identity volume not adopted"),
+        }
+    }
+    Ok(changed)
+}
+
+async fn adopt_identity_volume(
+    cozo: &Arc<CozoGraphShuttle>, native: &op_plugins::state_plugins::incus::IncusRootRepairBackend,
+    dir: &std::path::Path, session: &str, trust: &[u8],
+) -> anyhow::Result<bool> {
+    let stored = std::fs::read_to_string(dir.join("session_id")).context("sled has no session_id")?;
+    ensure!(stored.trim() == session, "sled session_id differs from its volume name");
+    let names = native.instances_with_session(session).await?;
+    let [name] = names.as_slice() else {
+        anyhow::bail!("session {session} has {} containers, expected one", names.len())
+    };
+    let (metadata, _) = native.instance(name).await?;
+    let instance = op_plugins::state_plugins::incus::IncusPlugin::instance_from_native_metadata(metadata)?;
+    ensure!(instance.instance_type == "container", "identity instance is not a container");
+    let key = instance.config.as_ref()
+        .and_then(|config| config.get("user.opdbus.wireguard_public_key")).cloned()
+        .context("identity container carries no key")?;
+    canonical_key(&key)?;
+    ensure!(op_identity::session::derive_session_id(&key) == session, "identity key does not derive the session");
+    let issued = std::fs::read_to_string(dir.join("issued_identity.iid1")).context("sled has no issued identity")?;
+    let claims = verify_issued_claims(&issued, trust, session, &key, 0)?;
+    let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let installed = std::fs::read_to_string(dir.join("sealed_id")).context("sled has no sealed_id")?;
+    ensure!(installed.trim() == inline, "sled sealed_id differs from the decoy-issued identity");
+    let cozo = cozo.clone();
+    tokio::task::spawn_blocking(move || commit_volume_identity(&cozo, &key, &claims, &inline, instance)).await?
+}
+
+fn commit_volume_identity(
+    cozo: &CozoGraphShuttle, key: &str, claims: &op_identity::sealed_id::SealedId, inline: &str,
+    instance: op_plugins::state_plugins::incus::IncusInstance,
+) -> anyhow::Result<bool> {
+    let session = claims.session_id.clone();
+    let kind = if crate::identity_binding::configured_chatbot_key().as_deref() == Some(key) { "service" } else { "human" };
+    let registry = crate::human_principal_registry::store().context("human principal store unavailable")?;
+    let principal = op_identity::session::derive_principal_id(key);
+    match registry.get_human_principal_by_pubkey(key)? {
+        Some(record) => ensure!(record.revoked_at == 0 && record.principal_id == principal,
+            "identity principal is revoked or rebound"),
+        None => registry.put_human_principal(&op_cozo_store::HumanPrincipalRecord {
+            principal_id: principal, human_pubkey: key.to_owned(), display_alias: instance.name.clone(),
+            registered_at: now(), revoked_at: 0 })?,
+    }
+    let expected = cozo.read_identity_revision(&session)?;
+    let uuid_of = |instance: &op_plugins::state_plugins::incus::IncusInstance| {
+        instance.config.as_ref().and_then(|config| config.get("volatile.uuid")).cloned()
+    };
+    if let Some(record) = &expected.record {
+        ensure!(record.sealed_id == inline, "the Cozo index holds a different identity than the sled");
+        let mut sled = crate::runtime_identity::record_to_sled(record, expected.genesis.as_ref())?;
+        let bound = sled.active && sled.instance.as_ref()
+            .is_some_and(|stored| stored.name == instance.name && uuid_of(stored) == uuid_of(&instance));
+        if bound { return Ok(false) }
+        sled.instance = Some(instance);
+        sled.active = true;
+        let operation = format!("sled-rebind-{}", uuid::Uuid::new_v4().simple());
+        let genesis = expected.genesis.clone();
+        cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+            expected, record: Some(sled_to_record(&sled)?), genesis })))?;
+        return Ok(true);
+    }
+    ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
+        "an identity sled cannot overwrite a deletion tombstone");
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session, "wireguard_pubkey": key, "principal_kind": kind,
+        "active": true, "expires_at": 0, "instance": instance,
+        "session_started_at": claims.arrival_timestamp, "last_seen_at": claims.arrival_timestamp,
+        "schema_version": claims.schema_version, "genesis": claims.session_genesis,
+        "trace_id": claims.trace_id, "sealed_id": inline,
+        "arrival_timestamp": claims.arrival_timestamp,
+        "chain_head_at_arrival": claims.chain_head_at_arrival,
+        "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": claims.head_timestamp_at_arrival
+    }))?;
+    let operation = format!("sled-adopt-{}", uuid::Uuid::new_v4().simple());
+    cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+        expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod issued_identity_tests {
     use base64::Engine as _;

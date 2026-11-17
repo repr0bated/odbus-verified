@@ -158,6 +158,8 @@ pub(super) struct LungsIdentity {
     host: Arc<ProcessIdentity>,
     catalog_dir: PathBuf,
     state_dir: String,
+    /// The Cozo index derived from identity sled volumes.
+    identity_store: Arc<op_cozo_store::CozoGraphShuttle>,
     binding: OnceLock<PinnedBinding>,
     bootstrap: tokio::sync::Mutex<()>,
     bound: tokio::sync::Notify,
@@ -169,6 +171,7 @@ impl LungsIdentity {
         host: Arc<ProcessIdentity>,
         catalog_dir: PathBuf,
         state_dir: String,
+        identity_store: Arc<op_cozo_store::CozoGraphShuttle>,
     ) -> Result<Arc<Self>> {
         // Capture the kernel's original-peer lifetime before any /proc lookup.
         let peer_lifetime = PeerLifetime::from_socket(stream)?;
@@ -177,7 +180,7 @@ impl LungsIdentity {
             .context("socket peer PID unavailable")?;
         let peer = peer_lifetime.read_process(pid)?;
         Ok(Arc::new(Self {
-            peer_uid: credentials.uid(), peer, peer_lifetime, host, catalog_dir, state_dir,
+            peer_uid: credentials.uid(), peer, peer_lifetime, host, catalog_dir, state_dir, identity_store,
             binding: OnceLock::new(), bootstrap: tokio::sync::Mutex::new(()),
             bound: tokio::sync::Notify::new(),
         }))
@@ -262,18 +265,33 @@ impl LungsIdentity {
             ensure!(self.binding.get().is_none(), "lungs connection is already bound");
             ensure!(self.peer.pid_namespace != self.host.pid_namespace,
                 "host process has no container binding");
-            let sessions = self.sessions().await?;
-            let mut candidate = None;
-            for sled in sessions.iter().filter(|sled| sled.active && sled.is_anchored()) {
-                if let Ok(binding) = self.container_binding(sled).await {
-                    ensure!(candidate.is_none(), "peer has no unique identity container");
-                    candidate = Some(binding);
+            let mut candidate = self.find_container_binding().await?;
+            if candidate.is_none() {
+                // The container IS the identity and its sled volume is the
+                // source: index any not yet adopted, republish, look again.
+                let adopted = crate::runtime_identity_owner::adopt_identity_volumes(self.identity_store.clone()).await?;
+                if adopted > 0 {
+                    crate::runtime_identity::recover_startup(self.identity_store.clone(), self.catalog_dir.clone()).await?;
+                    self.revalidate_peer()?;
+                    candidate = self.find_container_binding().await?;
                 }
             }
             let binding = candidate.context("peer has no committed live identity container")?;
             let session_id = binding.session_id.clone();
             self.publish_binding(Binding::Container(binding), &session_id).await
         }).await.context("container binding timed out")?
+    }
+
+    async fn find_container_binding(&self) -> Result<Option<ContainerBinding>> {
+        let sessions = self.sessions().await?;
+        let mut candidate = None;
+        for sled in sessions.iter().filter(|sled| sled.active && sled.is_anchored()) {
+            if let Ok(binding) = self.container_binding(sled).await {
+                ensure!(candidate.is_none(), "peer has no unique identity container");
+                candidate = Some(binding);
+            }
+        }
+        Ok(candidate)
     }
 
     async fn publish_binding(&self, target: Binding, session_id: &str) -> Result<()> {

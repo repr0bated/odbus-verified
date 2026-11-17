@@ -74,6 +74,8 @@ pub(crate) mod runtime_workspace;
 pub(crate) mod runtime_network;
 #[path = "runtime_tunnel.rs"]
 pub(crate) mod runtime_tunnel;
+#[path = "runtime_sled_ledger.rs"]
+pub(crate) mod runtime_sled_ledger;
 #[path = "runtime_mqtt.rs"]
 pub(crate) mod runtime_mqtt;
 #[path = "runtime_identity_owner.rs"]

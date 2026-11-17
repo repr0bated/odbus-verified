@@ -296,6 +296,9 @@ impl Runtime {
         {
             tracing::info!("committed the decoy-issued identity; this container owns it");
         }
+        let adopted = crate::runtime_identity_owner::adopt_identity_volumes(identity_store.clone()).await
+            .context("adopt identity sled volumes")?;
+        if adopted > 0 { tracing::info!(adopted, "indexed identity sled volumes"); }
         crate::runtime_identity::recover_startup(identity_store.clone(), catalog_dir.clone()).await?;
         let core = BridgeCore::open(catalog, database_path)?;
         let workspace = crate::runtime_workspace::WorkspaceRuntime::open(core.catalog(), &catalog_dir).await?;
@@ -467,6 +470,7 @@ impl Runtime {
         let commit = BackendCommit { mutation, scope, schema_hash: pinned.schema_hash, state, result: Some(result.clone()) };
         let receipt = self.core().complete_operation_with_updates(&operation, commit, additional)
             .map_err(|error| correlate(RuntimeError::unknown(error)))?;
+        crate::runtime_sled_ledger::append_committed(&caller, &plugin, &method, &declaration, &args, &receipt).await;
         let effective_hash = self.core().committed_snapshot(&committed_scope, &plugin, &committed_path)
             .map_err(|error| correlate(RuntimeError::unknown(error)))?
             .map(|snapshot| snapshot.effective_hash).unwrap_or_default();
@@ -501,6 +505,7 @@ impl Runtime {
         if crate::runtime_workspace::supports(plugin, method) { return crate::runtime_workspace::dispatch(ctx, plugin, method, args).await; }
         if crate::runtime_network::supports(plugin, method) { return self.network().dispatch(ctx, plugin, method, args).await; }
         if crate::runtime_tunnel::supports(plugin, method) { return crate::runtime_tunnel::dispatch(ctx, method, args).await; }
+        if crate::runtime_sled_ledger::supports(plugin, method) { return crate::runtime_sled_ledger::dispatch(ctx, args).await; }
         if plugin == "elevation" {
             let result = crate::task_elevation::dispatch(self, ctx.caller, method, args).await?;
             return Ok(BackendOutcome { result, state: BackendStateUpdate::Unchanged,
