@@ -1,5 +1,60 @@
 # Agent handoff
 
+## 2026-11-17 — Claude (Opus 5.5) — chatbot provisioning chain: identity, door, tunnel, sled ledger
+
+**Branch `dev`, commits not pushed.**
+
+| Commit | Change |
+|---|---|
+| 4004ec4 | NextDNS sealed into every IID1 (mandatory). |
+| 8294c02 | One variable store, `/etc/op-dbus/{env,secrets}`, loaded by `/etc/profile.d/op-dbus-env.sh`. |
+| e039d5f..9d97cbe | `op-tunnel-mux`: inbound-only door tunnel. The host bridge owns it as the sealed plugin `tunnel` (status / set_open / close_connections). In-container client: `op-tunnel-door`. The host bridge's tonic moves to 127.0.0.1:8090. |
+| d7e5658, 98684c7, 8c3ea06 | `deploy/seed/rootfs` (applied to `images/@seed`, which is read-only again). The container door on lo 10.0.0.2:8090 uses a TLS key generated in the container (`door-tls-init`). |
+| eb8263f | `provision-container.sh`: the identity sled is the volume `identity-<session>`, mounted read-only at `/agent/user`. It holds `session_id`, `issued_identity.iid1`, `sealed_id` and `ledger/`. |
+| 7c38825 | The bridge adopts sled volumes into Cozo, and lungs `BindCurrentContainer` re-indexes them. Every committed call goes to the sled ledger, filtered by the sealed schema. New `identity_sled.finalize_session` vectorizes the ledger into Qdrant, writes the Cozo `chain_vector_link` rows, and clears the ledger. |
+
+**Verified**
+- `cargo check` passes for op-grpc-bridge (lib and bins), including op-plugins and op-cognitive.
+- **Not run:** tests, clippy, fmt (none requested).
+- Bridge checks need `THREETCHED_CONFIG_DIR=<scratch>`, because `build.rs` captures the threetched config under root-owned `/var/lib/zeroclaw`. The release build needs a proper fix.
+
+**Live changes**
+- **Decoy:** `op-decoy-issuer` replaced and restarted (backup `.before-20261117`).
+- **Host Incus:** `core.https_address` is 100.96.0.5:8443 (WARP).
+- **Host env:** migrated to the store; backups in `/root/env-migration-20261117`.
+- **Not running yet:** the host bridge, lungs and FUSE mounts.
+
+**Owner model (2026-11-17)**
+- The container IS the identity.
+- **Sled:** a mounted volume, cleared after vectorization; fixed data stays.
+- **Cozo:** an index linking to Qdrant only.
+- **Door:** owned by the container.
+- **Lungs:** host only, bound read-only.
+- **Internet:** the chatbot has none.
+- **Lockdown** (no exec, two-human root) is the last step, in the week of 2026-11-23.
+- **Execution:** all tools go through the execution manager (`Runtime` `ExecutionAdmission`). The separate execution tracker (`op-execution-tracker`) validates responses, gates execution and delegation, and will likely become the orchestration engine. The fresh `Runtime` does not use it yet; only the unlinked `mutation_engine.rs` does.
+
+**Unlinked sources**
+- `lungs_socket.rs`, `mutation_engine.rs` and `chain_vector_projector.rs` in op-grpc-bridge are not declared in `lib.rs`, so they don't compile into the bridge.
+- The live lungs path is `runtime_lungs.rs` / `runtime_lungs_identity.rs`.
+
+**Open, in order**
+1. Release build: host bridge, `op-tunnel-door`, `3tched-fs`, seed bridge, `op-identity-accept`, `op-container`. Install `op-tunnel-door` and its unit into the seed.
+2. Reseal the catalog with `opblob`: new `tunnel` plugin, new `identity_sled.finalize_session`.
+3. Deploy via `./activate-golden.sh`.
+4. Create `/etc/op-dbus/decoy-trust.json` (`decoy-20260903`, the key from the decoy journal).
+5. Mint the IID1 for the chatbot key on the decoy.
+6. Delete the dead `3tchedChatbot` Incus record, provision, test; clients pin the new door certificate.
+
+**Later**
+- `record_session_event` still writes Cozo `session_events`; it should move to the sled ledger.
+- Nothing calls `finalize_session` automatically at session end.
+- The router (10.0.0.5) still has the old WireGuard key.
+- NextDNS vs ct-egress DNS for ID-N containers.
+- Rename `CONTROL_PLANE_NATIVE_NAME`.
+- Remove the bridge's local-mint fallback.
+- OD-127, OD-128.
+
 ## 2026-11-12 — Kiro — applied the 2026-11-11 omp container decisions
 
 Source: omp session `01a1c8f3-9cf8-70cd-b004-a16fa2049f4f` (cursor/grok-4.7) and
