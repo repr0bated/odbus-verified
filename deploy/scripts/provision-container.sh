@@ -30,9 +30,16 @@
 #      printed for pinning.
 #      The chatbot has no internet. ID-N get NIC-less egress from
 #      ct-egress-relay (loopback socat to host Unix sockets) after start.
-#   4. The decoy minted the identity (IID1, delivered over WARP). It is placed
-#      in the container and op-identity-accept installs its SID1 as sealed_id
-#      after verifying it against the decoy trust store. Nothing mints here.
+#   4. The decoy minted the identity (IID1, delivered over WARP). The
+#      container IS the identity; its sled is the identity volume
+#      identity-<session> on the pool, mounted read-only at /agent/user:
+#        session_id, issued_identity.iid1, sealed_id   fixed, never cleared
+#        ledger/   the snowball session ledger, written by the host bridge,
+#                  cleared after end-of-session vectorization
+#      op-identity-accept verifies the IID1 against the decoy trust store and
+#      installs its SID1 as sealed_id. The host's trust store (public keys)
+#      is bound read-only for the container's own startup check. Nothing
+#      mints here.
 #   5. Start. The container adopts its decoy-issued identity at startup.
 #
 # A failure after step 3 leaves the stopped container for inspection; it is
@@ -95,11 +102,17 @@ fi
 
 "$OP_CONTAINER" from-seed "$NAME"
 
-ROOT=/var/lib/incus/storage-pools/$POOL/containers/$NAME/rootfs
-install -d -m 0700 "$ROOT/agent" "$ROOT/agent/user"
-install -m 0600 "$ISSUED" "$ROOT/agent/user/issued_identity.iid1"
+SLED=identity-$SESSION
+incus storage volume create "$POOL" "$SLED" >/dev/null
+SLED_DIR=/var/lib/incus/storage-pools/$POOL/custom/default_$SLED
+[ -d "$SLED_DIR" ] || fail "identity volume $SLED_DIR is absent"
+printf '%s\n' "$SESSION" > "$SLED_DIR/session_id"
+install -m 0600 "$ISSUED" "$SLED_DIR/issued_identity.iid1"
 "$ACCEPT" --issued "$ISSUED" --pubkey "$KEY" --trust-store "$TRUST" \
-    --out "$ROOT/agent/user/sealed_id" >/dev/null
+    --out "$SLED_DIR/sealed_id" >/dev/null
+install -d -m 0700 "$SLED_DIR/ledger"
+incus config device add "$NAME" sled disk pool="$POOL" source="$SLED" path=/agent/user readonly=true >/dev/null
+incus config device add "$NAME" decoy-trust disk source="$TRUST" path=/etc/op-dbus/decoy-trust.json readonly=true shift=true >/dev/null
 
 incus start "$NAME"
 if [ "$NAME" != "$CHATBOT_NAME" ]; then
