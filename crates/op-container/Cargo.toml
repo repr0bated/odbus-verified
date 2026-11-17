@@ -1,0 +1,13 @@
+[package]
+name = "op-container"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Container storage: new Incus containers as writable CoW snapshots of the shared read-only seed"
+
+[dependencies]
+anyhow = { workspace = true }
+libc = { workspace = true }
+serde = { workspace = true }
+uuid = { workspace = true }

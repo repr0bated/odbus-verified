@@ -5964,6 +5964,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "op-container"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "libc",
+ "serde",
+ "uuid",
+]
+
+[[package]]
 name = "op-core"
 version = "0.1.0"
 dependencies = [
