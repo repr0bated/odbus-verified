@@ -31,7 +31,6 @@ use op_plugins::state_plugins::model_registry::{
     parse_models_response, parse_providers_toml, valid_model_id, valid_provider_id,
     validate_list_models, validate_set_model_profile,
 };
-use serde_json::Value;
 
 const FETCH_TIMEOUT: Duration = Duration::from_secs(30);
 // Bound provider response/parse working sets independently of the list size.

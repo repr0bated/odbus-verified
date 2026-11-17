@@ -28,7 +28,7 @@ use op_plugins::state_plugins::{
     },
     web_ui_methods,
 };
-use op_state_store::{PluginSchema, PublicStateProjectionError, SideEffect};
+use op_state_store::{PluginSchema, SideEffect};
 use serde_json::Value;
 
 use crate::{

@@ -6,9 +6,7 @@
 //! alone is deliberately NOT remote authentication.
 use anyhow::{Context, Result, ensure};
 use async_trait::async_trait;
-use base64::Engine as _;
 use op_network::dbus_tls::TlsDbusSocket;
-use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};

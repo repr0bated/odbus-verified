@@ -3,7 +3,6 @@
 
 use super::*;
 use anyhow::{Context, Result};
-use op_plugins::state_plugins::identity_sled::SledBtrfsDevice;
 use op_plugins::state_plugins::incus::IncusRootRepairBackend;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
