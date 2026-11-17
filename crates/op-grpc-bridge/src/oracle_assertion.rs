@@ -17,7 +17,7 @@ use op_identity::oracle_assertion::{MAX_LIFETIME_SECS, SignedAssertion, verify_s
 use op_identity::session::derive_principal_id;
 use thiserror::Error;
 
-pub const DEFAULT_DECOY_TRUST_STORE: &str = "/etc/opdbus/decoy-trust.json";
+pub const DEFAULT_DECOY_TRUST_STORE: &str = "/etc/op-dbus/decoy-trust.json";
 pub const DEFAULT_AUTH_REPLAY_DB_PATH: &str = "/var/lib/op-dbus/auth-replay.db";
 pub const AUTH_REPLAY_DB_PATH_ENV: &str = "OP_AUTH_REPLAY_DB_PATH";
 pub const SOURCE_BINDING_ENV: &str = "OP_ORACLE_ASSERTION_SOURCE_BINDING";

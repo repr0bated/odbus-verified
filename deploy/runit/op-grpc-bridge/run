@@ -193,11 +193,15 @@ if [ -x "$OP_NLM_BIN" ]; then
 else
     rm -f -- "$NLM_READY_DIR/notebooklm-mcp"
 fi
-# The singleton control-plane chatbot's service identity. These are public
-# selectors, not credentials; this identity belongs only to that chatbot.
-export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=}"
-export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}"
-export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
+# The singleton control-plane chatbot's service identity: its key is the decoy
+# WireGuard server key, kept once in the variable store. Session and
+# principal ids are derived from the key, never configured separately.
+. /etc/profile.d/op-dbus-env.sh
+: "${OP_CHATBOT_WIREGUARD_PUBKEY:?set /etc/op-dbus/env/op-chatbot-wireguard-pubkey}"
+export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="$OP_CHATBOT_WIREGUARD_PUBKEY"
+set -- $(/usr/local/bin/op-identity-accept derive --pubkey "$OP_CHATBOT_WIREGUARD_PUBKEY")
+export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="$1" OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="$2"
+set --
 # Provider credential-slot maintenance writes this host-owned configuration.
 # It must not point into the read-only release target.
 export OP_MODEL_PROVIDERS_PATH="${OP_MODEL_PROVIDERS_PATH:-/etc/op-dbus/model-providers.toml}"

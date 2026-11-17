@@ -4,8 +4,9 @@
 # Host root. Provision one identity container from the shared seed:
 #   1. session id = derived from the key (op-identity-accept derive); it is
 #      the container's lifetime identifier and its hostname.
-#   2. Incus name: 3tchedChatbot for the control-plane chatbot key (the decoy
-#      WireGuard server key), otherwise the next free ID-N.
+#   2. Incus name: 3tchedChatbot for the control-plane chatbot key
+#      (OP_CHATBOT_WIREGUARD_PUBKEY, the decoy WireGuard server key),
+#      otherwise the next free ID-N.
 #   3. incus create --empty on 3tched-pool, then op-container from-seed: the
 #      container volume becomes a writable CoW snapshot of images/@seed.
 #   4. The decoy minted the identity (IID1, delivered over WARP). It is placed
@@ -20,9 +21,9 @@ set -eu
 [ $# -eq 2 ] || { echo "usage: $0 <wireguard_pubkey> <issued_identity.iid1>" >&2; exit 2; }
 KEY=$1
 ISSUED=$2
-POOL=${OP_CONTAINER_POOL:-3tched-pool}
-TRUST=${OP_DECOY_TRUST_STORE:-/etc/opdbus/decoy-trust.json}
-CHATBOT_KEY_FILE=${OP_CHATBOT_KEY_FILE:-/etc/opdbus/chatbot-wireguard.pub}
+. /etc/profile.d/op-dbus-env.sh
+POOL=${OP_CONTAINER_POOL:?set /etc/op-dbus/env/op-container-pool}
+TRUST=${OP_DECOY_TRUST_STORE:-/etc/op-dbus/decoy-trust.json}
 ACCEPT=${OP_IDENTITY_ACCEPT:-/usr/local/bin/op-identity-accept}
 OP_CONTAINER=${OP_CONTAINER:-/usr/local/bin/op-container}
 CHATBOT_NAME=3tchedChatbot
@@ -40,7 +41,7 @@ if incus list -f csv -c n "user.opdbus.session_id=$SESSION" | grep -q .; then
     fail "session $SESSION already has a container"
 fi
 
-if [ -r "$CHATBOT_KEY_FILE" ] && [ "$(tr -d '[:space:]' < "$CHATBOT_KEY_FILE")" = "$KEY" ]; then
+if [ "$KEY" = "${OP_CHATBOT_WIREGUARD_PUBKEY:-}" ]; then
     NAME=$CHATBOT_NAME
 else
     last=$(incus list -f csv -c n | sed -n 's/^ID-\([1-9][0-9]*\)$/\1/p' | sort -n | tail -n1)
