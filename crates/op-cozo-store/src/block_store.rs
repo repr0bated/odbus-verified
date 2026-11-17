@@ -313,6 +313,32 @@ impl CozoBlockStore {
         self.remove(block_key(device, idx, None)?)
     }
 
+    /// Drop every stored chunk in `lo..hi` with one query that visits only
+    /// existing rows, so discarding a whole sparse device is cheap.
+    pub fn discard_blocks(&self, device: &BlockDevice, lo: u64, hi: u64) -> Result<(), CozoError> {
+        if lo >= hi {
+            return Ok(());
+        }
+        if hi > device.chunk_count() {
+            return Err(invalid(&format!(
+                "chunk range {lo}..{hi} is outside device {} ({} chunks)",
+                device.id,
+                device.chunk_count()
+            )));
+        }
+        self.run(
+            "?[device, idx] := *blocks{device, idx}, device = $device, idx >= $lo, idx < $hi \
+             :rm blocks { device, idx }",
+            Params::from([
+                ("device".into(), DataValue::from(device.id.as_str())),
+                ("lo".into(), DataValue::from(lo as i64)),
+                ("hi".into(), DataValue::from(hi as i64)),
+            ]),
+            ScriptMutability::Mutable,
+        )?;
+        Ok(())
+    }
+
     /// Durability barrier: every write that returned before this call is on
     /// stable storage when it returns. Flushes the whole host filesystem that
     /// holds the database (and its root directory's, if different).
@@ -524,6 +550,18 @@ mod tests {
         assert!(out.iter().all(|b| *b == 0));
         assert_eq!(store.counts().unwrap(), BlockStoreCounts { devices: 1, blocks: 0 });
         store.flush().unwrap();
+
+        for idx in 0..8 {
+            store.write_block(&dev, idx, &pattern(idx as u8 + 1)).unwrap();
+        }
+        store.discard_blocks(&dev, 2, 6).unwrap();
+        assert_eq!(store.block_count("dev-a").unwrap(), 4);
+        assert!(store.read_block(&dev, 1, &mut out).unwrap());
+        assert!(!store.read_block(&dev, 2, &mut out).unwrap());
+        assert!(store.read_block(&dev, 6, &mut out).unwrap());
+        assert!(store.discard_blocks(&dev, 0, 9).is_err());
+        store.discard_blocks(&dev, 0, 8).unwrap();
+        assert_eq!(store.block_count("dev-a").unwrap(), 0);
     }
 
     #[test]

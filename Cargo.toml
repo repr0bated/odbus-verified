@@ -40,6 +40,7 @@ members = [
     "crates/op-dbus-cli",
     "crates/op-chat-responder",
     "crates/_3tched-fs",
+    "crates/cozo-ublk",
 ]
 exclude = ["crates/op-uds-relay", "hackathon"]
 
