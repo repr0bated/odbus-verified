@@ -30,18 +30,6 @@ name = "list-genesis"
 path = "src/bin/list-genesis.rs"
 
 [[bin]]
-name = "update-chatbot-fsid"
-path = "src/bin/update-chatbot-fsid.rs"
-
-[[bin]]
-name = "migrate-chatbot-root"
-path = "src/bin/migrate-chatbot-root.rs"
-
-[[bin]]
-name = "validate-chatbot-state"
-path = "src/bin/validate-chatbot-state.rs"
-
-[[bin]]
 name = "sled-row"
 path = "src/bin/sled-row.rs"
 

@@ -96,7 +96,6 @@ RELEASE_HELPER_INPUTS='0755 runit/libexec-3tched/emqx-prepare emqx-prepare
 0755 runit/libexec-3tched/op-identity-root op-identity-root
 0755 runit/libexec-3tched/op-identity-image op-identity-image
 0755 runit/libexec-3tched/attach-host-workspace-folders attach-host-workspace-folders
-0755 runit/libexec-3tched/restore-chatbot-root restore-chatbot-root
 0755 workspace-image/prepare-lungs-client.sh prepare-lungs-client
 0755 workspace-image/3tchedfs-mount-preflight 3tchedfs-mount-preflight
 0755 workspace-image/mount.fuse.3tchedFS mount.fuse.3tchedFS
