@@ -8,6 +8,9 @@ this directory is their source.
   op-grpc-bridge on lo `10.0.0.2:8090`.
 - `3tchedfs.service`, `threetchedfs.service`: both 3tchedFS views, mounted in
   the container over the **host's** `lungs.sock`.
+- `op-tunnel-door.service`: only where provisioning bound `/run/opdbus/tunnel`
+  (the chatbot); holds the shared door socket and splices the host door into
+  the container door. Binary: `op-tunnel-door` from `crates/op-tunnel-mux`.
 - `opdbus-sockets.conf`: `/run/opdbus` -> `/opt/run-mounts/opdbus`, where
   provisioning binds the host directories (`lungs` read-only, `tunnel` for
   the chatbot).

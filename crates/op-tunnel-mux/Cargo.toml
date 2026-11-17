@@ -9,6 +9,10 @@ description = "Tonic mux for NIC-less container streams over lungs/tunnel.sock"
 name = "op-tunnel-mux"
 path = "src/main.rs"
 
+[[bin]]
+name = "op-tunnel-door"
+path = "src/bin/op-tunnel-door.rs"
+
 [dependencies]
 anyhow.workspace = true
 tokio.workspace = true
@@ -18,10 +22,8 @@ tonic-reflection.workspace = true
 prost.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+hyper-util.workspace = true
+tower.workspace = true
 
 [build-dependencies]
 tonic-build.workspace = true
-
-[dev-dependencies]
-tower.workspace = true
-hyper-util.workspace = true
