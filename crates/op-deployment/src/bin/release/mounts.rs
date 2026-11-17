@@ -1,16 +1,41 @@
-use anyhow::{Context, Result, ensure};
-use std::{fs::File, os::{fd::{AsFd, OwnedFd}, unix::fs::{FileTypeExt, MetadataExt}}, path::{Path, PathBuf}, time::Instant};
 use super::{fs, inventory, model::*};
+use anyhow::{Context, Result, ensure};
+use std::{
+    fs::File,
+    os::{
+        fd::{AsFd, OwnedFd},
+        unix::fs::{FileTypeExt, MetadataExt},
+    },
+    path::{Path, PathBuf},
+    time::Instant,
+};
 
 #[derive(Debug, serde::Serialize)]
-pub struct Mount { pub id: u64, pub parent: u64, pub path: PathBuf, pub kind: String, pub source: String, pub options: String, pub propagation: Vec<String> }
+pub struct Mount {
+    pub id: u64,
+    pub parent: u64,
+    pub path: PathBuf,
+    pub kind: String,
+    pub source: String,
+    pub options: String,
+    pub propagation: Vec<String>,
+}
 fn unescape(s: &str) -> Result<String> {
-    let mut bytes = Vec::with_capacity(s.len()); let mut iter = s.bytes();
+    let mut bytes = Vec::with_capacity(s.len());
+    let mut iter = s.bytes();
     while let Some(b) = iter.next() {
-        if b != b'\\' { bytes.push(b); continue; }
-        let a = iter.next().context("truncated mount escape")?; let b = iter.next().context("truncated mount escape")?; let c = iter.next().context("truncated mount escape")?;
-        ensure!([a,b,c].iter().all(|c| (b'0'..=b'7').contains(c)), "invalid mount escape");
-        bytes.push((a-b'0')*64+(b-b'0')*8+c-b'0');
+        if b != b'\\' {
+            bytes.push(b);
+            continue;
+        }
+        let a = iter.next().context("truncated mount escape")?;
+        let b = iter.next().context("truncated mount escape")?;
+        let c = iter.next().context("truncated mount escape")?;
+        ensure!(
+            [a, b, c].iter().all(|c| (b'0'..=b'7').contains(c)),
+            "invalid mount escape"
+        );
+        bytes.push((a - b'0') * 64 + (b - b'0') * 8 + c - b'0');
     }
     Ok(String::from_utf8(bytes)?)
 }
@@ -18,22 +43,47 @@ pub fn table() -> Result<Vec<Mount>> {
     let text = std::fs::read_to_string("/proc/self/mountinfo")?;
     let mut result = Vec::new();
     for line in text.lines() {
-        let (left,right) = line.split_once(" - ").context("invalid mountinfo")?;
-        let a: Vec<_> = left.split_whitespace().collect(); let b: Vec<_> = right.split_whitespace().collect();
+        let (left, right) = line.split_once(" - ").context("invalid mountinfo")?;
+        let a: Vec<_> = left.split_whitespace().collect();
+        let b: Vec<_> = right.split_whitespace().collect();
         ensure!(a.len() >= 6 && b.len() >= 3, "short mountinfo record");
-        result.push(Mount { id: a[0].parse()?, parent: a[1].parse()?, path: PathBuf::from(unescape(a[4])?), kind: b[0].into(), source: unescape(b[1])?, options: format!("{},{}", a[5], b[2]), propagation: a[6..].iter().map(|s| (*s).into()).collect() });
+        result.push(Mount {
+            id: a[0].parse()?,
+            parent: a[1].parse()?,
+            path: PathBuf::from(unescape(a[4])?),
+            kind: b[0].into(),
+            source: unescape(b[1])?,
+            options: format!("{},{}", a[5], b[2]),
+            propagation: a[6..].iter().map(|s| (*s).into()).collect(),
+        });
     }
     Ok(result)
 }
 pub fn parent(target: &Path) -> Result<Parent> {
-    let file = fs::secure_absolute(target.parent().context("target has no parent")?, libc::O_RDONLY | libc::O_DIRECTORY)?;
+    let file = fs::secure_absolute(
+        target.parent().context("target has no parent")?,
+        libc::O_RDONLY | libc::O_DIRECTORY,
+    )?;
     let id = fs::mount_id(file.as_fd())?;
-    let mounts = table()?; let m = mounts.iter().find(|m| m.id == id).context("target parent mount absent from host namespace")?;
-    ensure!(m.propagation.iter().all(|f| !f.starts_with("shared:") && !f.starts_with("master:")), "target parent propagation is not private");
+    let mounts = table()?;
+    let m = mounts
+        .iter()
+        .find(|m| m.id == id)
+        .context("target parent mount absent from host namespace")?;
+    ensure!(
+        m.propagation
+            .iter()
+            .all(|f| !f.starts_with("shared:") && !f.starts_with("master:")),
+        "target parent propagation is not private"
+    );
     let device = file.metadata()?.dev();
     let (fsid, subvolume) = match m.kind.as_str() {
-        "btrfs" => (btrfs_uapi::filesystem::filesystem_info(file.as_fd())?.uuid.to_string(),
-            btrfs_uapi::subvolume::subvolume_info(file.as_fd())?.id),
+        "btrfs" => (
+            btrfs_uapi::filesystem::filesystem_info(file.as_fd())?
+                .uuid
+                .to_string(),
+            btrfs_uapi::subvolume::subvolume_info(file.as_fd())?.id,
+        ),
         "ext4" => {
             // Resolve the native rootfs UUID from its block-device identity.
             // Device numbers and mount IDs remain runtime checks, not reboot pins.
@@ -46,52 +96,129 @@ pub fn parent(target: &Path) -> Result<Parent> {
                     Err(error) => return Err(error.into()),
                 };
                 if metadata.file_type().is_block_device() && metadata.rdev() == device {
-                    let name = entry.file_name().into_string().map_err(|_| anyhow::anyhow!("non-UTF8 filesystem UUID"))?;
+                    let name = entry
+                        .file_name()
+                        .into_string()
+                        .map_err(|_| anyhow::anyhow!("non-UTF8 filesystem UUID"))?;
                     let uuid: uuid::Uuid = name.parse().context("invalid ext4 UUID alias")?;
                     ensure!(!uuid.is_nil(), "nil ext4 filesystem UUID");
                     matches.push(uuid.to_string());
                 }
             }
-            ensure!(matches.len() == 1, "ext4 target parent must have exactly one native filesystem UUID alias");
+            ensure!(
+                matches.len() == 1,
+                "ext4 target parent must have exactly one native filesystem UUID alias"
+            );
             (format!("ext4:{}", matches[0]), 0)
         }
         _ => anyhow::bail!("unsupported overlay target parent filesystem: {}", m.kind),
     };
-    Ok(Parent { fsid, subvolume, device, mount_id: id })
+    Ok(Parent {
+        fsid,
+        subvolume,
+        device,
+        mount_id: id,
+    })
 }
 pub fn verify_parent(target: &Target) -> Result<Parent> {
-    let actual = parent(&target.path)?; let expected = target.parent.as_ref().context("target has no registered parent identity")?;
-    ensure!(actual.fsid == expected.fsid && actual.subvolume == expected.subvolume, "target parent filesystem/subvolume differs: {}", target.path.display());
+    let actual = parent(&target.path)?;
+    let expected = target
+        .parent
+        .as_ref()
+        .context("target has no registered parent identity")?;
+    ensure!(
+        actual.fsid == expected.fsid && actual.subvolume == expected.subvolume,
+        "target parent filesystem/subvolume differs: {}",
+        target.path.display()
+    );
     Ok(actual)
 }
 pub fn visible(target: &Target) -> Result<Option<String>> {
     let fd = fs::secure_absolute(&target.path, libc::O_PATH | libc::O_DIRECTORY)?;
-    let id = fs::mount_id(fd.as_fd())?; let mounts = table()?;
-    let m = mounts.iter().find(|m| m.id == id).context("target mount absent from host namespace")?;
-    if m.path != target.path { return Ok(None); }
-    ensure!(m.kind == "overlay" && m.source.starts_with("opdbus-release:"), "foreign mount covers target {}", target.path.display());
-    ensure!(m.options.split(',').any(|o| o == "ro") && !m.options.contains("upperdir=") && !m.options.contains("workdir="), "release target is not a read-only lower-only overlay");
+    let id = fs::mount_id(fd.as_fd())?;
+    let mounts = table()?;
+    let m = mounts
+        .iter()
+        .find(|m| m.id == id)
+        .context("target mount absent from host namespace")?;
+    if m.path != target.path {
+        return Ok(None);
+    }
+    ensure!(
+        m.kind == "overlay" && m.source.starts_with("opdbus-release:"),
+        "foreign mount covers target {}",
+        target.path.display()
+    );
+    ensure!(
+        m.options.split(',').any(|o| o == "ro")
+            && !m.options.contains("upperdir=")
+            && !m.options.contains("workdir="),
+        "release target is not a read-only lower-only overlay"
+    );
     Ok(Some(m.source.clone()))
 }
-pub struct Candidate { pub index: usize, pub mount: OwnedFd }
+pub struct Candidate {
+    pub index: usize,
+    pub mount: OwnedFd,
+}
 pub fn build(state: &mut State, slot: Slot) -> Result<Vec<Candidate>> {
-    let release = state.release(slot)?.clone(); let root = state.root(slot)?;
+    let release = state.release(slot)?.clone();
+    let root = state.root(slot)?;
     let inventory = inventory::load(&root)?;
-    ensure!(inventory.graph_sha256 == release.graph_sha256 && inventory.tree_sha256 == release.tree_sha256, "slot inventory differs from received record");
-    ensure!(std::fs::read_to_string("/proc/filesystems")?.lines().any(|l| l.split_whitespace().last() == Some("overlay")), "overlay module is not loaded; explicit base installation approval is required");
-    let started = Instant::now(); let mut candidates = Vec::with_capacity(release.targets.len());
+    ensure!(
+        inventory.graph_sha256 == release.graph_sha256
+            && inventory.tree_sha256 == release.tree_sha256,
+        "slot inventory differs from received record"
+    );
+    ensure!(
+        std::fs::read_to_string("/proc/filesystems")?
+            .lines()
+            .any(|l| l.split_whitespace().last() == Some("overlay")),
+        "overlay module is not loaded; explicit base installation approval is required"
+    );
+    let started = Instant::now();
+    let mut candidates = Vec::with_capacity(release.targets.len());
     let base = fs::release_base()?;
     for (index, target) in release.targets.iter().enumerate() {
         verify_parent(target)?;
-        let lower = fs::open_beneath(root.as_fd(), &target.source, libc::O_RDONLY | libc::O_DIRECTORY)?;
-        ensure!(lower.metadata()?.dev() == root.metadata()?.dev() && btrfs_uapi::subvolume::subvolume_info(lower.as_fd())?.id == release.id, "lower escaped verified slot");
-        state.intent(format!("build-overlay:{index}:{}", release.tag(slot,index)))?;
-        let mount = fs::detached_overlay(lower.as_fd(), base.as_fd(), &release.tag(slot,index), target.noexec)?;
+        let lower = fs::open_beneath(
+            root.as_fd(),
+            &target.source,
+            libc::O_RDONLY | libc::O_DIRECTORY,
+        )?;
+        ensure!(
+            lower.metadata()?.dev() == root.metadata()?.dev()
+                && btrfs_uapi::subvolume::subvolume_info(lower.as_fd())?.id == release.id,
+            "lower escaped verified slot"
+        );
+        state.intent(format!(
+            "build-overlay:{index}:{}",
+            release.tag(slot, index)
+        ))?;
+        let mount = fs::detached_overlay(
+            lower.as_fd(),
+            base.as_fd(),
+            &release.tag(slot, index),
+            target.noexec,
+        )?;
         let device = fs::directory(mount.as_fd())?.metadata()?.dev();
-        state.slots.get_mut(&slot).and_then(Option::as_mut).unwrap().devices.insert(device);
-        state.save()?; candidates.push(Candidate { index, mount });
+        state
+            .slots
+            .get_mut(&slot)
+            .and_then(Option::as_mut)
+            .unwrap()
+            .devices
+            .insert(device);
+        state.save()?;
+        candidates.push(Candidate { index, mount });
     }
-    state.journal.as_mut().unwrap().timings_ms.insert("overlay_build".into(), started.elapsed().as_millis()); state.save()?;
+    state
+        .journal
+        .as_mut()
+        .unwrap()
+        .timings_ms
+        .insert("overlay_build".into(), started.elapsed().as_millis());
+    state.save()?;
     Ok(candidates)
 }
 fn detach_old(state: &mut State, old: &File, index: usize) -> Result<()> {
@@ -99,41 +226,80 @@ fn detach_old(state: &mut State, old: &File, index: usize) -> Result<()> {
     if let Err(first) = fs::detach(old.as_fd()) {
         if let Err(second) = fs::detach(old.as_fd()) {
             state.journal.as_mut().unwrap().stacked.insert(index);
-            state.journal.as_mut().unwrap().error = Some(format!("detach target {index}: {first:#}; bounded retry: {second:#}"));
+            state.journal.as_mut().unwrap().error = Some(format!(
+                "detach target {index}: {first:#}; bounded retry: {second:#}"
+            ));
             state.save()?;
-            return Err(second).context("old top remains visible, candidate pinned beneath; candidate MUST NOT be detached");
+            return Err(second).context(
+                "old top remains visible, candidate pinned beneath; candidate MUST NOT be detached",
+            );
         }
     }
     Ok(())
 }
 pub fn switch(state: &mut State, slot: Slot, candidates: Vec<Candidate>) -> Result<()> {
-    let release = state.release(slot)?.clone(); let from = state.journal.as_ref().unwrap().from;
+    let release = state.release(slot)?.clone();
+    let from = state.journal.as_ref().unwrap().from;
     let started = Instant::now();
     for candidate in candidates {
-        let index = candidate.index; let target = &release.targets[index];
+        let index = candidate.index;
+        let target = &release.targets[index];
         let p = verify_parent(target)?;
         let before = visible(target)?;
         let old = fs::secure_absolute(&target.path, libc::O_PATH | libc::O_DIRECTORY)?;
         if let Some(from) = from {
-            let expected = state.release(from)?.tag(from,index);
-            ensure!(before.as_deref() == Some(expected.as_str()), "old target does not match committed release");
+            let expected = state.release(from)?.tag(from, index);
+            ensure!(
+                before.as_deref() == Some(expected.as_str()),
+                "old target does not match committed release"
+            );
         } else {
-            ensure!(before.is_none() && fs::mount_id(old.as_fd())? == p.mount_id && old.metadata()?.dev() == p.device, "first target is not on its registered parent");
-            ensure!(std::fs::read_dir(&target.path)?.next().is_none(), "first target is not empty after preservation");
+            ensure!(
+                before.is_none()
+                    && fs::mount_id(old.as_fd())? == p.mount_id
+                    && old.metadata()?.dev() == p.device,
+                "first target is not on its registered parent"
+            );
+            ensure!(
+                std::fs::read_dir(&target.path)?.next().is_none(),
+                "first target is not empty after preservation"
+            );
         }
-        state.intent(format!("place-overlay:{index}:{}", release.tag(slot,index)))?;
+        state.intent(format!(
+            "place-overlay:{index}:{}",
+            release.tag(slot, index)
+        ))?;
         fs::place(candidate.mount.as_fd(), old.as_fd(), before.is_some())?;
-        if before.is_some() { detach_old(state, &old, index)?; }
-        ensure!(visible(target)?.as_deref() == Some(release.tag(slot,index).as_str()), "candidate did not become visible");
-        state.journal.as_mut().unwrap().moved.insert(index); state.intent(format!("target-moved:{index}"))?;
+        if before.is_some() {
+            detach_old(state, &old, index)?;
+        }
+        ensure!(
+            visible(target)?.as_deref() == Some(release.tag(slot, index).as_str()),
+            "candidate did not become visible"
+        );
+        state.journal.as_mut().unwrap().moved.insert(index);
+        state.intent(format!("target-moved:{index}"))?;
     }
-    state.journal.as_mut().unwrap().timings_ms.insert("overlay_placement".into(), started.elapsed().as_millis()); state.save()
+    state
+        .journal
+        .as_mut()
+        .unwrap()
+        .timings_ms
+        .insert("overlay_placement".into(), started.elapsed().as_millis());
+    state.save()
 }
 pub fn revert(state: &mut State, resolve_stacks: bool) -> Result<()> {
-    let journal = state.journal.as_ref().context("missing mount recovery journal")?.clone();
+    let journal = state
+        .journal
+        .as_ref()
+        .context("missing mount recovery journal")?
+        .clone();
     let to = journal.to.context("missing candidate slot")?;
     let candidate = state.release(to)?.clone();
-    let from_release = journal.from.map(|s| state.release(s).cloned()).transpose()?;
+    let from_release = journal
+        .from
+        .map(|s| state.release(s).cloned())
+        .transpose()?;
     let from_root = journal.from.map(|s| state.root(s)).transpose()?;
     let base = fs::release_base()?;
     let mut unresolved_stack = false;
@@ -141,125 +307,255 @@ pub fn revert(state: &mut State, resolve_stacks: bool) -> Result<()> {
         verify_parent(target)?;
         match std::fs::symlink_metadata(&target.path) {
             Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound && journal.from.is_none() => continue,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound && journal.from.is_none() => {
+                continue;
+            }
             Err(e) => return Err(e.into()),
         }
         let mounts = table()?;
         let at: Vec<_> = mounts.iter().filter(|m| m.path == target.path).collect();
-        let new_tag = candidate.tag(to,index);
-        let old_tag = from_release.as_ref().zip(journal.from).map(|(r,s)| r.tag(s,index));
-        ensure!(at.iter().all(|m| m.source == new_tag || old_tag.as_ref() == Some(&m.source)), "unexpected mount at recovery target");
+        let new_tag = candidate.tag(to, index);
+        let old_tag = from_release
+            .as_ref()
+            .zip(journal.from)
+            .map(|(r, s)| r.tag(s, index));
+        ensure!(
+            at.iter()
+                .all(|m| m.source == new_tag || old_tag.as_ref() == Some(&m.source)),
+            "unexpected mount at recovery target"
+        );
         ensure!(at.len() <= 2, "unexplained target mount stack");
-        if at.is_empty() && journal.from.is_none() { continue; }
+        if at.is_empty() && journal.from.is_none() {
+            continue;
+        }
         if at.is_empty() {
             let root = from_root.as_ref().context("missing committed root")?;
             let release = from_release.as_ref().context("missing committed release")?;
             let slot = journal.from.context("missing committed slot")?;
             let parent = verify_parent(target)?;
             let destination = fs::secure_absolute(&target.path, libc::O_PATH | libc::O_DIRECTORY)?;
-            ensure!(fs::mount_id(destination.as_fd())? == parent.mount_id && std::fs::read_dir(&target.path)?.next().is_none(),
-                "missing committed target contains unrecorded content or a foreign parent");
-            let lower = fs::open_beneath(root.as_fd(), &release.targets[index].source, libc::O_RDONLY | libc::O_DIRECTORY)?;
+            ensure!(
+                fs::mount_id(destination.as_fd())? == parent.mount_id
+                    && std::fs::read_dir(&target.path)?.next().is_none(),
+                "missing committed target contains unrecorded content or a foreign parent"
+            );
+            let lower = fs::open_beneath(
+                root.as_fd(),
+                &release.targets[index].source,
+                libc::O_RDONLY | libc::O_DIRECTORY,
+            )?;
             state.intent(format!("recover-missing-target-build:{index}"))?;
-            let mount = fs::detached_overlay(lower.as_fd(), base.as_fd(), &release.tag(slot,index), release.targets[index].noexec)?;
-            state.slots.get_mut(&slot).and_then(Option::as_mut).unwrap().devices.insert(fs::directory(mount.as_fd())?.metadata()?.dev());
+            let mount = fs::detached_overlay(
+                lower.as_fd(),
+                base.as_fd(),
+                &release.tag(slot, index),
+                release.targets[index].noexec,
+            )?;
+            state
+                .slots
+                .get_mut(&slot)
+                .and_then(Option::as_mut)
+                .unwrap()
+                .devices
+                .insert(fs::directory(mount.as_fd())?.metadata()?.dev());
             state.intent(format!("recover-missing-target-place:{index}"))?;
             fs::place(mount.as_fd(), destination.as_fd(), false)?;
-            state.journal.as_mut().unwrap().moved.remove(&index); state.save()?;
+            state.journal.as_mut().unwrap().moved.remove(&index);
+            state.save()?;
             continue;
         }
         if at.len() == 2 {
             if !resolve_stacks {
-                state.journal.as_mut().unwrap().stacked.insert(index); state.save()?;
-                unresolved_stack = true; continue;
+                state.journal.as_mut().unwrap().stacked.insert(index);
+                state.save()?;
+                unresolved_stack = true;
+                continue;
             }
             let top = visible(target)?;
-            ensure!(top == old_tag || top.as_deref() == Some(new_tag.as_str()), "stacked target has an unexpected visible top");
+            ensure!(
+                top == old_tag || top.as_deref() == Some(new_tag.as_str()),
+                "stacked target has an unexpected visible top"
+            );
             let old = fs::secure_absolute(&target.path, libc::O_PATH | libc::O_DIRECTORY)?;
             detach_old(state, &old, index)?;
-            state.journal.as_mut().unwrap().stacked.remove(&index); state.save()?;
+            state.journal.as_mut().unwrap().stacked.remove(&index);
+            state.save()?;
         }
         let visible_tag = visible(target)?;
-        if visible_tag == old_tag { continue; }
-        ensure!(visible_tag.as_deref() == Some(new_tag.as_str()), "recovery target has neither expected generation");
+        if visible_tag == old_tag {
+            continue;
+        }
+        ensure!(
+            visible_tag.as_deref() == Some(new_tag.as_str()),
+            "recovery target has neither expected generation"
+        );
         let old = fs::secure_absolute(&target.path, libc::O_PATH | libc::O_DIRECTORY)?;
         if let (Some(root), Some(release), Some(slot)) = (&from_root, &from_release, journal.from) {
-            let lower = fs::open_beneath(root.as_fd(), &release.targets[index].source, libc::O_RDONLY | libc::O_DIRECTORY)?;
+            let lower = fs::open_beneath(
+                root.as_fd(),
+                &release.targets[index].source,
+                libc::O_RDONLY | libc::O_DIRECTORY,
+            )?;
             state.intent(format!("revert-build:{index}"))?;
-            let replacement = fs::detached_overlay(lower.as_fd(), base.as_fd(), &release.tag(slot,index), release.targets[index].noexec)?;
+            let replacement = fs::detached_overlay(
+                lower.as_fd(),
+                base.as_fd(),
+                &release.tag(slot, index),
+                release.targets[index].noexec,
+            )?;
             let device = fs::directory(replacement.as_fd())?.metadata()?.dev();
-            state.slots.get_mut(&slot).and_then(Option::as_mut).unwrap().devices.insert(device);
+            state
+                .slots
+                .get_mut(&slot)
+                .and_then(Option::as_mut)
+                .unwrap()
+                .devices
+                .insert(device);
             state.intent(format!("revert-place:{index}"))?;
             fs::place(replacement.as_fd(), old.as_fd(), true)?;
             detach_old(state, &old, index)?;
         } else {
-            state.intent(format!("first-activation-unmount:{index}"))?; fs::detach(old.as_fd())?;
+            state.intent(format!("first-activation-unmount:{index}"))?;
+            fs::detach(old.as_fd())?;
         }
-        state.journal.as_mut().unwrap().moved.remove(&index); state.intent(format!("target-reverted:{index}"))?;
+        state.journal.as_mut().unwrap().moved.remove(&index);
+        state.intent(format!("target-reverted:{index}"))?;
     }
-    ensure!(!unresolved_stack, "stacked target retained with visible old top; other moved targets reverted; explicit recovery required");
+    ensure!(
+        !unresolved_stack,
+        "stacked target retained with visible old top; other moved targets reverted; explicit recovery required"
+    );
     Ok(())
 }
 
 fn reset_empty_target(target: &Target) -> Result<()> {
     let parent = verify_parent(target)?;
     let root = fs::secure_absolute(&target.path, libc::O_RDONLY | libc::O_DIRECTORY)?;
-    ensure!(fs::mount_id(root.as_fd())? == parent.mount_id && root.metadata()?.dev() == parent.device,
-        "reset target is not on its registered parent: {}", target.path.display());
-    ensure!(std::fs::read_dir(&target.path)?.next().is_none(),
-        "unmounted reset target contains unrecorded content: {}", target.path.display());
+    ensure!(
+        fs::mount_id(root.as_fd())? == parent.mount_id && root.metadata()?.dev() == parent.device,
+        "reset target is not on its registered parent: {}",
+        target.path.display()
+    );
+    ensure!(
+        std::fs::read_dir(&target.path)?.next().is_none(),
+        "unmounted reset target contains unrecorded content: {}",
+        target.path.display()
+    );
     Ok(())
 }
 
-pub(super) fn check_reset(releases: &std::collections::BTreeMap<Slot, Release>, mounted: Option<Slot>, baseline: Option<&ResetBaseline>) -> Result<()> {
+pub(super) fn check_reset(
+    releases: &std::collections::BTreeMap<Slot, Release>,
+    mounted: Option<Slot>,
+    baseline: Option<&ResetBaseline>,
+) -> Result<()> {
     let mounts = table()?;
     let Some(baseline) = baseline else {
-        ensure!(mounts.iter().all(|m| !m.source.starts_with("opdbus-release:")),
-            "release mounts exist without a registered reset bootstrap");
+        ensure!(
+            mounts
+                .iter()
+                .all(|m| !m.source.starts_with("opdbus-release:")),
+            "release mounts exist without a registered reset bootstrap"
+        );
         return Ok(());
     };
     inventory::validate_targets(&baseline.targets)?;
-    let active = mounted.map(|slot| releases.get(&slot).map(|release| (slot, release))
-        .context("reset native mount owner is missing")).transpose()?;
+    let active = mounted
+        .map(|slot| {
+            releases
+                .get(&slot)
+                .map(|release| (slot, release))
+                .context("reset native mount owner is missing")
+        })
+        .transpose()?;
     if let Some((_, release)) = active {
-        ensure!(release.targets == baseline.targets, "reset target baseline differs from active release");
+        ensure!(
+            release.targets == baseline.targets,
+            "reset target baseline differs from active release"
+        );
     }
     for mount in &mounts {
         if mount.source.starts_with("opdbus-release:") {
-            let owned = active.is_some_and(|(slot, release)| release.targets.iter().enumerate()
-                .any(|(index, target)| mount.path == target.path && mount.source == release.tag(slot, index)));
-            ensure!(owned, "unexpected release mount during reset: {}", mount.path.display());
+            let owned = active.is_some_and(|(slot, release)| {
+                release.targets.iter().enumerate().any(|(index, target)| {
+                    mount.path == target.path && mount.source == release.tag(slot, index)
+                })
+            });
+            ensure!(
+                owned,
+                "unexpected release mount during reset: {}",
+                mount.path.display()
+            );
         }
     }
     for (index, target) in baseline.targets.iter().enumerate() {
         verify_parent(target)?;
         let at: Vec<_> = mounts.iter().filter(|m| m.path == target.path).collect();
-        ensure!(at.len() <= 1, "reset refuses a stacked mount at {}", target.path.display());
-        ensure!(!mounts.iter().any(|m| m.path != target.path && m.path.starts_with(&target.path)),
-            "reset target has a nested mount: {}", target.path.display());
+        ensure!(
+            at.len() <= 1,
+            "reset refuses a stacked mount at {}",
+            target.path.display()
+        );
+        ensure!(
+            !mounts
+                .iter()
+                .any(|m| m.path != target.path && m.path.starts_with(&target.path)),
+            "reset target has a nested mount: {}",
+            target.path.display()
+        );
         if let Some(mount) = at.first() {
             let (slot, release) = active.context("mounted reset target has no active owner")?;
-            ensure!(mount.source == release.tag(slot, index)
-                && visible(target)?.as_deref() == Some(mount.source.as_str()),
-                "reset target is not the exact owned read-only overlay: {}", target.path.display());
-        } else { reset_empty_target(target)?; }
+            ensure!(
+                mount.source == release.tag(slot, index)
+                    && visible(target)?.as_deref() == Some(mount.source.as_str()),
+                "reset target is not the exact owned read-only overlay: {}",
+                target.path.display()
+            );
+        } else {
+            reset_empty_target(target)?;
+        }
     }
     Ok(())
 }
 
 pub(super) fn detach_reset(state: &mut State) -> Result<()> {
-    let journal = state.journal.as_ref().context("reset unmount without journal")?;
-    check_reset(&journal.reset_releases, journal.from, state.reset_baseline.as_ref())?;
-    let targets = state.reset_baseline.as_ref().map(|b| b.targets.clone()).unwrap_or_default();
+    let journal = state
+        .journal
+        .as_ref()
+        .context("reset unmount without journal")?;
+    check_reset(
+        &journal.reset_releases,
+        journal.from,
+        state.reset_baseline.as_ref(),
+    )?;
+    let targets = state
+        .reset_baseline
+        .as_ref()
+        .map(|b| b.targets.clone())
+        .unwrap_or_default();
     for (index, target) in targets.iter().enumerate().rev() {
         if let Some(tag) = visible(target)? {
-            let journal = state.journal.as_ref().context("reset unmount without journal")?;
-            let slot = journal.from.context("reset unmount without approved native owner")?;
-            ensure!(tag == journal.reset_releases.get(&slot).context("native reset owner missing")?.tag(slot, index),
-                "reset mount ownership changed");
+            let journal = state
+                .journal
+                .as_ref()
+                .context("reset unmount without journal")?;
+            let slot = journal
+                .from
+                .context("reset unmount without approved native owner")?;
+            ensure!(
+                tag == journal
+                    .reset_releases
+                    .get(&slot)
+                    .context("native reset owner missing")?
+                    .tag(slot, index),
+                "reset mount ownership changed"
+            );
             state.intent(format!("reset-unmount:{index}"))?;
             verify_parent(target)?;
-            ensure!(visible(target)?.as_deref() == Some(tag.as_str()), "reset mount changed before unmount");
+            ensure!(
+                visible(target)?.as_deref() == Some(tag.as_str()),
+                "reset mount changed before unmount"
+            );
             // No O_PATH/root fd is kept across this ordinary unmount: an open
             // mount fd would itself make it busy. The fixed root-owned pathname
             // is checked under the launcher lock; UMOUNT_NOFOLLOW rejects links.
@@ -273,12 +569,19 @@ pub(super) fn detach_reset(state: &mut State) -> Result<()> {
 
 pub(super) fn check_reset_detached(state: &State) -> Result<()> {
     let mounts = table()?;
-    ensure!(mounts.iter().all(|m| !m.source.starts_with("opdbus-release:")),
-        "release overlay remains attached during reset retirement");
+    ensure!(
+        mounts
+            .iter()
+            .all(|m| !m.source.starts_with("opdbus-release:")),
+        "release overlay remains attached during reset retirement"
+    );
     if let Some(baseline) = &state.reset_baseline {
         for target in &baseline.targets {
-            ensure!(!mounts.iter().any(|m| m.path.starts_with(&target.path)),
-                "foreign or nested mount appeared at reset target {}", target.path.display());
+            ensure!(
+                !mounts.iter().any(|m| m.path.starts_with(&target.path)),
+                "foreign or nested mount appeared at reset target {}",
+                target.path.display()
+            );
             reset_empty_target(target)?;
         }
     }

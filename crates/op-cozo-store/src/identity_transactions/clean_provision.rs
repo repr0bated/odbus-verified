@@ -87,8 +87,10 @@ pub(super) fn validate(
     let provenance: Value = serde_json::from_str(&provision.provenance_json)?;
     let fresh_partitioned = provenance["version"] == 4
         && provenance["partitioned_overlay"].is_object()
-        && provision.expected.revision == 0 && provision.expected.operation_id.is_empty()
-        && old.is_none() && provision.expected.genesis.is_none();
+        && provision.expected.revision == 0
+        && provision.expected.operation_id.is_empty()
+        && old.is_none()
+        && provision.expected.genesis.is_none();
     if !explicitly_deleted && !fresh_partitioned && old.is_none() {
         return Err(err(
             "clean provision requires an existing key or explicit deletion tombstone",
@@ -151,8 +153,11 @@ pub(super) fn validate(
         || device["attached"] != true
         || instance["status"] != "Stopped"
         || instance["type"] != "container"
-        || !(instance["name"] == "3tchedChatbot" || instance["name"] == CONTROL_PLANE_NATIVE_NAME
-            || instance["name"].as_str().is_some_and(is_numbered_native_name))
+        || !(instance["name"] == "3tchedChatbot"
+            || instance["name"] == CONTROL_PLANE_NATIVE_NAME
+            || instance["name"]
+                .as_str()
+                .is_some_and(is_numbered_native_name))
         || !(provenance["version"] == if explicitly_deleted { 3 } else { 2 }
             || (provenance["version"] == 4 && (fresh_partitioned || explicitly_deleted)))
         || provenance["session_id"] != sid
@@ -344,7 +349,8 @@ pub(super) fn validate_cas(
         .as_object_mut()
         .ok_or_else(|| err("invalid clean device"))?
         .remove("attached");
-    let pinned = container_rename::current_instance(tx, &previous.session_id, &receipt.instance_json)?;
+    let pinned =
+        container_rename::current_instance(tx, &previous.session_id, &receipt.instance_json)?;
     if previous.revision < receipt.committed_revision
         || old_device != new_device
         || !clean_provision_instance_binding_matches(&pinned, &next.instance_json)

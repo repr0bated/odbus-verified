@@ -23,16 +23,15 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
 use op_plugins::state_plugins::model_registry::{
-    DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput,
-    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
-    MaintainCredentialsInput, MaintainCredentialsOutput, ModelListFormat, ModelRecord,
-    ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh, ProviderStatus, ProvidersFile,
-    RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput, SetModelProfileOutput,
-    bounded_error, page_limit, parse_models_response, parse_providers_toml, valid_model_id,
-    valid_provider_id, validate_list_models, validate_set_model_profile,
+    DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersOutput, MAX_KEY_BYTES,
+    MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES, MaintainCredentialsInput,
+    MaintainCredentialsOutput, ModelListFormat, ModelRecord, ObservedModel, ProviderAuth,
+    ProviderConfig, ProviderRefresh, ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput,
+    SECRETS_DIR, SetModelProfileInput, SetModelProfileOutput, bounded_error, page_limit,
+    parse_models_response, parse_providers_toml, valid_model_id, valid_provider_id,
+    validate_list_models, validate_set_model_profile,
 };
 use serde_json::Value;
-
 
 const FETCH_TIMEOUT: Duration = Duration::from_secs(30);
 // Bound provider response/parse working sets independently of the list size.
@@ -312,8 +311,14 @@ fn validate_credential_gate(provider: &ProviderConfig) -> Result<Option<Credenti
         }
         Some("key") => {
             ensure!(
-                provider.key_env.as_ref().is_some_and(|slot| !slot.trim().is_empty())
-                    || provider.key_file.as_ref().is_some_and(|slot| !slot.trim().is_empty()),
+                provider
+                    .key_env
+                    .as_ref()
+                    .is_some_and(|slot| !slot.trim().is_empty())
+                    || provider
+                        .key_file
+                        .as_ref()
+                        .is_some_and(|slot| !slot.trim().is_empty()),
                 "provider {} credential=key requires its key_env or key_file slot",
                 provider.id
             );
@@ -325,12 +330,12 @@ fn validate_credential_gate(provider: &ProviderConfig) -> Result<Option<Credenti
             Some(CredentialKind::Key)
         }
         Some("oauth") => {
-            let slot = provider
-                .credential_slot
-                .as_deref()
-                .with_context(|| {
-                    format!("provider {} credential=oauth requires credential_slot", provider.id)
-                })?;
+            let slot = provider.credential_slot.as_deref().with_context(|| {
+                format!(
+                    "provider {} credential=oauth requires credential_slot",
+                    provider.id
+                )
+            })?;
             ensure!(
                 !slot.trim().is_empty()
                     && slot.len() <= 128
@@ -350,7 +355,10 @@ fn validate_credential_gate(provider: &ProviderConfig) -> Result<Option<Credenti
             Some(CredentialKind::Off)
         }
         Some(other) => {
-            anyhow::bail!("provider {} has unknown credential class {other:?}", provider.id)
+            anyhow::bail!(
+                "provider {} has unknown credential class {other:?}",
+                provider.id
+            )
         }
     };
     Ok(kind)
@@ -375,7 +383,9 @@ pub(crate) async fn refresh(
     let gated = &gate;
     if let Some(explicit) = &input.provider_id {
         let refused = match gated.get(explicit) {
-            Some(CredentialKind::Off) => Some(format!("provider {explicit} is off in the credential gate")),
+            Some(CredentialKind::Off) => {
+                Some(format!("provider {explicit} is off in the credential gate"))
+            }
             Some(CredentialKind::Oauth) => Some(format!(
                 "provider {explicit} is an oauth credential; keyed discovery is not run for it"
             )),
@@ -400,7 +410,12 @@ pub(crate) async fn refresh(
             .providers
             .iter()
             .filter(|provider| provider.enabled)
-            .filter(|provider| !matches!(gated.get(&provider.id), Some(CredentialKind::Off | CredentialKind::Oauth)))
+            .filter(|provider| {
+                !matches!(
+                    gated.get(&provider.id),
+                    Some(CredentialKind::Off | CredentialKind::Oauth)
+                )
+            })
             .collect(),
     };
     let at = now();
@@ -513,11 +528,15 @@ pub(crate) async fn list_providers(
         .iter()
         .map(|provider| {
             let row = rows.iter().find(|row| row.provider_id == provider.id);
-            let credential = gate.get(&provider.id).cloned().flatten().map(|kind| match kind {
-                CredentialKind::Key => "key".to_string(),
-                CredentialKind::Oauth => "oauth".to_string(),
-                CredentialKind::Off => "off".to_string(),
-            });
+            let credential = gate
+                .get(&provider.id)
+                .cloned()
+                .flatten()
+                .map(|kind| match kind {
+                    CredentialKind::Key => "key".to_string(),
+                    CredentialKind::Oauth => "oauth".to_string(),
+                    CredentialKind::Off => "off".to_string(),
+                });
             ProviderStatus {
                 provider_id: provider.id.clone(),
                 native_provider_id: provider.native_provider_id.clone(),
@@ -641,7 +660,12 @@ pub(crate) async fn list_models(
     }
     let rows = {
         rows.into_iter()
-            .filter(|row| !matches!(gated.get(row.provider_id.as_str()), Some(CredentialKind::Off)))
+            .filter(|row| {
+                !matches!(
+                    gated.get(row.provider_id.as_str()),
+                    Some(CredentialKind::Off)
+                )
+            })
             .collect::<Vec<_>>()
     };
     let mut models: Vec<ModelRecord> = rows
@@ -730,13 +754,12 @@ pub(crate) async fn set_model_profile(
     Ok(SetModelProfileOutput { model, revision })
 }
 
-
 pub(crate) async fn binding_target_from(
     env: &Environment,
     store: Arc<CozoGraphShuttle>,
     provider_id: &str,
     model_id: &str,
-    ) -> Result<crate::chat_router_catalog_binding::BindingTarget> {
+) -> Result<crate::chat_router_catalog_binding::BindingTarget> {
     ensure!(valid_provider_id(provider_id), "invalid catalog provider");
     ensure!(valid_model_id(model_id), "invalid catalog model");
     let file = load_providers(env)?;
@@ -822,7 +845,6 @@ pub(crate) async fn binding_target_from(
     })
 }
 
-
 /// Apply gate-class operations to the provider TOML itself (the one
 /// governed provider file; no invented line format). Each operation names
 /// an existing `[[providers]]` entry and maintains its plain TOML gate
@@ -850,17 +872,27 @@ pub(crate) async fn maintain_credentials(
     let raw = tokio::fs::read_to_string(&path)
         .await
         .with_context(|| format!("provider TOML {path:?} is unreadable"))?;
-    let mut file: ProvidersFile =
-        parse_providers_toml(&raw).map_err(|error| anyhow!("provider TOML parse failed: {error}"))?;
+    let mut file: ProvidersFile = parse_providers_toml(&raw)
+        .map_err(|error| anyhow!("provider TOML parse failed: {error}"))?;
     for operation in &input.operations {
         let provider = file
             .providers
             .iter_mut()
             .find(|provider| provider.id == operation.provider_id)
-            .with_context(|| format!("credential op {}: not in the provider list", operation.provider_id))?;
+            .with_context(|| {
+                format!(
+                    "credential op {}: not in the provider list",
+                    operation.provider_id
+                )
+            })?;
         match operation.kind.as_str() {
             "key" => {
-                if let Some(slot) = operation.slot.as_deref().map(str::trim).filter(|slot| !slot.is_empty()) {
+                if let Some(slot) = operation
+                    .slot
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|slot| !slot.is_empty())
+                {
                     ensure!(
                         provider.key_env.as_deref() == Some(slot),
                         "credential op {}: keyed slot is the entry's key_env ({}), not a free argument",
@@ -869,7 +901,10 @@ pub(crate) async fn maintain_credentials(
                     );
                 }
                 ensure!(
-                    provider.key_env.as_ref().is_some_and(|slot| !slot.trim().is_empty()),
+                    provider
+                        .key_env
+                        .as_ref()
+                        .is_some_and(|slot| !slot.trim().is_empty()),
                     "credential op {}: provider has no key_env slot to gate on",
                     operation.provider_id
                 );
@@ -877,13 +912,12 @@ pub(crate) async fn maintain_credentials(
                 provider.credential_slot = None;
             }
             "oauth" => {
-                let slot = operation
-                    .slot
-                    .as_deref()
-                    .map(str::trim)
-                    .with_context(|| {
-                        format!("credential op {}: oauth needs credential_slot", operation.provider_id)
-                    })?;
+                let slot = operation.slot.as_deref().map(str::trim).with_context(|| {
+                    format!(
+                        "credential op {}: oauth needs credential_slot",
+                        operation.provider_id
+                    )
+                })?;
                 ensure!(
                     !slot.is_empty()
                         && slot.len() <= 128
@@ -914,14 +948,16 @@ pub(crate) async fn maintain_credentials(
                 provider.credential_slot = None;
             }
             other => {
-                anyhow::bail!("credential op {}: unknown kind {other:?}", operation.provider_id)
+                anyhow::bail!(
+                    "credential op {}: unknown kind {other:?}",
+                    operation.provider_id
+                )
             }
         }
     }
     crate::model_providers_validation::validate_providers_config(&file.providers)
         .context("credential op produced an invalid provider list")?;
-    let recomposed =
-        toml::to_string_pretty(&file).context("provider TOML serialization failed")?;
+    let recomposed = toml::to_string_pretty(&file).context("provider TOML serialization failed")?;
     // Atomic replace inside the same directory; concurrent readers re-parse
     // the same canonical path, so a failed rename never half-applies.
     let parent = path
@@ -954,7 +990,12 @@ pub(crate) async fn maintain_credentials(
             .providers
             .iter()
             .find(|provider| provider.id == operation.provider_id)
-            .with_context(|| format!("credential op {}: readback lost the provider", operation.provider_id))?;
+            .with_context(|| {
+                format!(
+                    "credential op {}: readback lost the provider",
+                    operation.provider_id
+                )
+            })?;
         match operation.kind.as_str() {
             "key" => ensure!(
                 declared.credential.as_deref() == Some("key") && declared.credential_slot.is_none(),
@@ -977,11 +1018,13 @@ pub(crate) async fn maintain_credentials(
                 "credential op {} readback diverged (expected credential columns gone)",
                 operation.provider_id
             ),
-            other => bail!("credential op {}: unknown kind {other:?}", operation.provider_id),
+            other => bail!(
+                "credential op {}: unknown kind {other:?}",
+                operation.provider_id
+            ),
         }
     }
     Ok(MaintainCredentialsOutput {
         applied: input.operations,
     })
 }
-

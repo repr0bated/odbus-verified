@@ -270,7 +270,8 @@ impl StreamingSnowball {
         let timing_subvol = base_path.join("timing");
         let vector_subvol = base_path.join("vectors");
         verify_chain_data_directory(&timing_subvol).context("invalid received timing directory")?;
-        verify_chain_data_directory(&vector_subvol).context("invalid received vectors directory")?;
+        verify_chain_data_directory(&vector_subvol)
+            .context("invalid received vectors directory")?;
 
         let resumed_from = highest_block_number(&timing_subvol).await?;
         let retention_policy = Self::load_retention_policy(&base_path)
@@ -2004,9 +2005,7 @@ async fn discard_unsent_dump(dump_dir: &Path) {
 }
 
 fn dump_validate_absolute_path(path: &Path) -> Result<()> {
-    let text = path
-        .to_str()
-        .context("dump paths must be UTF-8")?;
+    let text = path.to_str().context("dump paths must be UTF-8")?;
     ensure!(
         path.is_absolute() && path != Path::new("/"),
         "path must be absolute and must not be the filesystem root"
@@ -2056,11 +2055,7 @@ fn dump_ssh_arguments(host: &str, remote_command: String) -> Result<Vec<String>>
     .collect())
 }
 
-async fn remote_ssh_command(
-    host: &str,
-    remote_command: String,
-    timeout: Duration,
-) -> Result<()> {
+async fn remote_ssh_command(host: &str, remote_command: String, timeout: Duration) -> Result<()> {
     let arguments = dump_ssh_arguments(host, remote_command)?;
     let mut child = tokio::process::Command::new("ssh")
         .args(&arguments)
@@ -2100,7 +2095,11 @@ async fn remote_ssh_command(
     }
 }
 
-async fn remote_mkdir_chain_root(host: &str, remote_chain_root: &str, timeout: Duration) -> Result<()> {
+async fn remote_mkdir_chain_root(
+    host: &str,
+    remote_chain_root: &str,
+    timeout: Duration,
+) -> Result<()> {
     dump_validate_absolute_path(Path::new(remote_chain_root))?;
     let command = format!("exec mkdir -- {}", dump_shell_quote(remote_chain_root));
     remote_ssh_command(host, command, timeout).await
@@ -2363,10 +2362,7 @@ fn prune_snapshot_sets_sync(snapshot_dir: &Path, policy: &RetentionPolicy) -> Re
     }
     if deleted > 0 {
         StdFile::open(snapshot_dir)?.sync_all()?;
-        info!(
-            "Pruned {} snapshots; kept the send/receive parent",
-            deleted
-        );
+        info!("Pruned {} snapshots; kept the send/receive parent", deleted);
     }
     Ok(())
 }
@@ -3357,7 +3353,11 @@ pub(crate) mod tests {
                 .arg(chain.join(label))
                 .output()
                 .unwrap();
-            assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
         }
         let dumps = chain.join("dumps");
         std::fs::create_dir(&dumps).unwrap();

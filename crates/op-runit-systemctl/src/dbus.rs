@@ -19,7 +19,7 @@
 
 use std::process::Command;
 use tracing::{debug, error, info, warn};
-use zbus::{interface, message::Header, Connection};
+use zbus::{Connection, interface, message::Header};
 
 // Re-exported from `op_core::runit` so the layout is stated in exactly one
 // place; the local names are kept for readability at the call sites below.
@@ -193,13 +193,17 @@ mod path_security_tests {
         let root = std::env::temp_dir().join(format!("runit-unlink-test-{}", std::process::id()));
         std::fs::create_dir_all(root.join("service")).unwrap();
         let service = RunitSystemctlService::new();
-        assert!(service
-            .remove_symlink("service", root.to_str().unwrap())
-            .is_err());
+        assert!(
+            service
+                .remove_symlink("service", root.to_str().unwrap())
+                .is_err()
+        );
         std::fs::remove_dir(root.join("service")).unwrap();
-        assert!(service
-            .remove_symlink("service", root.to_str().unwrap())
-            .is_ok());
+        assert!(
+            service
+                .remove_symlink("service", root.to_str().unwrap())
+                .is_ok()
+        );
         std::fs::remove_dir(root).unwrap();
     }
 
@@ -214,14 +218,18 @@ mod path_security_tests {
     #[tokio::test]
     async fn read_only_methods_reject_traversal() {
         let service = RunitSystemctlService::new();
-        assert!(service
-            .show("../outside")
-            .await
-            .contains("invalid runit service name"));
-        assert!(service
-            .journalctl("../outside", 10)
-            .await
-            .contains("invalid runit service name"));
+        assert!(
+            service
+                .show("../outside")
+                .await
+                .contains("invalid runit service name")
+        );
+        assert!(
+            service
+                .journalctl("../outside", 10)
+                .await
+                .contains("invalid runit service name")
+        );
     }
 }
 

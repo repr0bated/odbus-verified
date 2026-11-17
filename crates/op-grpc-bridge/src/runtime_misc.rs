@@ -20,19 +20,30 @@ mod snowball;
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     match plugin {
         "cozo" => cozo::supports(method),
-        "freedesktop" => matches!(method, "GetManagedObjects" | "Get" | "GetAll" | "Set" | "Introspect" | "Ping" | "GetMachineId"),
+        "freedesktop" => matches!(
+            method,
+            "GetManagedObjects" | "Get" | "GetAll" | "Set" | "Introspect" | "Ping" | "GetMachineId"
+        ),
         "_3tched_fs" => matches!(method, "get_protocol" | "get_contract" | "get_receipt"),
-        "ghostbridge" => matches!(method, "GetState" | "GetIdentity" | "ListEndpoints" | "GetGhostrunner"),
+        "ghostbridge" => matches!(
+            method,
+            "GetState" | "GetIdentity" | "ListEndpoints" | "GetGhostrunner"
+        ),
         "snowball" => snowball::supports(method),
         _ => false,
     }
 }
 
 pub(crate) async fn dispatch(
-    ctx: &BackendContext<'_>, plugin: &str, method: &str, args: &Value,
+    ctx: &BackendContext<'_>,
+    plugin: &str,
+    method: &str,
+    args: &Value,
 ) -> Result<BackendOutcome, RuntimeError> {
     if !supports(plugin, method) {
-        return Err(RuntimeError::unsupported(format!("no native adapter for {plugin}.{method}")));
+        return Err(RuntimeError::unsupported(format!(
+            "no native adapter for {plugin}.{method}"
+        )));
     }
     revalidate(ctx).await?;
     match plugin {
@@ -46,28 +57,48 @@ pub(crate) async fn dispatch(
 }
 
 pub(super) async fn revalidate(ctx: &BackendContext<'_>) -> Result<(), RuntimeError> {
-    ctx.caller.authority.revalidate().await
+    ctx.caller
+        .authority
+        .revalidate()
+        .await
         .map_err(|_| RuntimeError::denied("identity authority is no longer valid"))
 }
 
 pub(super) fn private_result(
-    ctx: &BackendContext<'_>, result: Value, state: BackendStateUpdate,
+    ctx: &BackendContext<'_>,
+    result: Value,
+    state: BackendStateUpdate,
 ) -> BackendOutcome {
-    BackendOutcome { result, state, scope: ctx.caller.private_scope(), additional: Vec::new(), guard: None }
+    BackendOutcome {
+        result,
+        state,
+        scope: ctx.caller.private_scope(),
+        additional: Vec::new(),
+        guard: None,
+    }
 }
 
 async fn filesystem(
-    ctx: &BackendContext<'_>, method: &str, args: &Value,
+    ctx: &BackendContext<'_>,
+    method: &str,
+    args: &Value,
 ) -> Result<BackendOutcome, RuntimeError> {
     let result = if method == "get_receipt" {
         let input: op_state_store::method_receipt::GetMethodReceiptInput =
-            serde_json::from_value(args.clone()).map_err(|error| RuntimeError::before_effect(error.into()))?;
+            serde_json::from_value(args.clone())
+                .map_err(|error| RuntimeError::before_effect(error.into()))?;
         let runtime = ctx.runtime.clone();
         let caller = ctx.caller.clone();
         let receipt = tokio::task::spawn_blocking(move || {
-            runtime.core().recover_operation(&input.operation_id, &caller.principal_id, &caller.session_id)
-        }).await.map_err(|error| RuntimeError::backend(error.into()))?
-            .map_err(RuntimeError::backend)?;
+            runtime.core().recover_operation(
+                &input.operation_id,
+                &caller.principal_id,
+                &caller.session_id,
+            )
+        })
+        .await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(RuntimeError::backend)?;
         serde_json::to_value(receipt)?
     } else {
         // These are the actual immutable descriptor methods. The sealed
@@ -89,7 +120,8 @@ async fn filesystem(
 }
 
 async fn ghostbridge(
-    ctx: &BackendContext<'_>, method: &str,
+    ctx: &BackendContext<'_>,
+    method: &str,
 ) -> Result<BackendOutcome, RuntimeError> {
     let runtime = ctx.runtime.clone();
     let scope = ctx.caller.private_scope();
@@ -109,29 +141,63 @@ async fn ghostbridge(
     // not an observed TLS certificate, endpoint list or running UI. Do not use
     // GhostbridgePlugin::current_state or serde defaults to manufacture these.
     let observed = (|| -> anyhow::Result<ghostbridge::GhostbridgeState> {
-        let object = snapshot.state.as_object().context("Ghostbridge observation is not an object")?;
+        let object = snapshot
+            .state
+            .as_object()
+            .context("Ghostbridge observation is not an object")?;
         for field in ["status", "bridge_identity", "ghostrunner", "endpoints"] {
-            ensure!(object.contains_key(field), "Ghostbridge native observation is incomplete");
+            ensure!(
+                object.contains_key(field),
+                "Ghostbridge native observation is incomplete"
+            );
         }
-        ensure!(object["status"].as_str().is_some_and(|status| !status.is_empty() && status != "declared"),
-            "Ghostbridge state contains declaration defaults rather than a native observation");
+        ensure!(
+            object["status"]
+                .as_str()
+                .is_some_and(|status| !status.is_empty() && status != "declared"),
+            "Ghostbridge state contains declaration defaults rather than a native observation"
+        );
         for (field, members) in [
-            ("bridge_identity", &["wireguard_pubkey", "tls_subject", "tls_sans", "tls_expires", "tls_self_signed"][..]),
+            (
+                "bridge_identity",
+                &[
+                    "wireguard_pubkey",
+                    "tls_subject",
+                    "tls_sans",
+                    "tls_expires",
+                    "tls_self_signed",
+                ][..],
+            ),
             ("ghostrunner", &["port", "bind_addr", "path", "enabled"][..]),
         ] {
-            let value = object[field].as_object().context("Ghostbridge native observation has invalid shape")?;
-            ensure!(members.iter().all(|member| value.contains_key(*member)), "Ghostbridge native observation is incomplete");
+            let value = object[field]
+                .as_object()
+                .context("Ghostbridge native observation has invalid shape")?;
+            ensure!(
+                members.iter().all(|member| value.contains_key(*member)),
+                "Ghostbridge native observation is incomplete"
+            );
         }
-        let endpoints = object["endpoints"].as_array().context("Ghostbridge endpoints are invalid")?;
+        let endpoints = object["endpoints"]
+            .as_array()
+            .context("Ghostbridge endpoints are invalid")?;
         for endpoint in endpoints {
-            let endpoint = endpoint.as_object().context("Ghostbridge endpoint is invalid")?;
-            ensure!(["id", "address", "status", "peer_pubkey", "uptime_secs"].iter().all(|field| endpoint.contains_key(*field)),
-                "Ghostbridge native endpoint observation is incomplete");
+            let endpoint = endpoint
+                .as_object()
+                .context("Ghostbridge endpoint is invalid")?;
+            ensure!(
+                ["id", "address", "status", "peer_pubkey", "uptime_secs"]
+                    .iter()
+                    .all(|field| endpoint.contains_key(*field)),
+                "Ghostbridge native endpoint observation is incomplete"
+            );
         }
         Ok(serde_json::from_value(snapshot.state)?)
-    })().map_err(RuntimeError::backend)?;
+    })()
+    .map_err(RuntimeError::backend)?;
     revalidate(ctx).await?;
-    let result = ghostbridge::dispatch_ghostbridge_method(method, &observed).map_err(RuntimeError::backend)?;
+    let result = ghostbridge::dispatch_ghostbridge_method(method, &observed)
+        .map_err(RuntimeError::backend)?;
     // Read the existing authoritative observation without turning a read into
     // a new native observation, or copying a private document into public SHM.
     Ok(private_result(ctx, result, BackendStateUpdate::Unchanged))

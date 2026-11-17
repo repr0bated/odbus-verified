@@ -14,9 +14,9 @@ use op_grpc_bridge::proto::runtime_mirror_client::RuntimeMirrorClient;
 use op_grpc_bridge::proto::state_sync_client::StateSyncClient;
 use op_grpc_bridge::proto::state_sync_server::StateSync;
 use op_grpc_bridge::proto::{DbusCallRequest, MutateRequest, OperationType, OvsdbEchoRequest};
+use tokio_stream::StreamExt;
 use tonic_reflection::pb::v1::server_reflection_client::ServerReflectionClient;
 use tonic_reflection::pb::v1::{ServerReflectionRequest, server_reflection_request};
-use tokio_stream::StreamExt;
 
 fn test_catalog() -> Catalog {
     Catalog::from_entries(vec![PluginEntry {
@@ -274,7 +274,9 @@ async fn state_hydration_keeps_updates_received_while_output_is_full() {
         .await
         .expect("subscribe")
         .into_inner();
-    let first = next_stream_item(&mut stream).await.expect("first snapshot frame");
+    let first = next_stream_item(&mut stream)
+        .await
+        .expect("first snapshot frame");
     assert_eq!(first.frame_kind, StateFrameKind::InitialState as i32);
 
     // The producer is blocked sending hydration. Change an object already
@@ -318,14 +320,20 @@ async fn event_replay_keeps_concurrent_events_once_and_in_order() {
         .expect("subscribe events")
         .into_inner();
     assert_eq!(
-        next_stream_item(&mut stream).await.expect("first event").event_id,
+        next_stream_item(&mut stream)
+            .await
+            .expect("first event")
+            .event_id,
         1,
     );
     core.mutate(set_property_op("volume", serde_json::json!(999)))
         .expect("concurrent event");
     for expected in 2..=131 {
         assert_eq!(
-            next_stream_item(&mut stream).await.expect("next event").event_id,
+            next_stream_item(&mut stream)
+                .await
+                .expect("next event")
+                .event_id,
             expected,
         );
     }
@@ -333,7 +341,9 @@ async fn event_replay_keeps_concurrent_events_once_and_in_order() {
 
 #[tokio::test]
 async fn lagging_state_event_and_signal_streams_require_resynchronization() {
-    use op_grpc_bridge::proto::{SubscribeEventsRequest, SubscribeRequest, SubscribeSignalsRequest};
+    use op_grpc_bridge::proto::{
+        SubscribeEventsRequest, SubscribeRequest, SubscribeSignalsRequest,
+    };
     use op_grpc_bridge::service::BridgeService;
 
     let core = BridgeCore::new(test_catalog());
@@ -359,9 +369,15 @@ async fn lagging_state_event_and_signal_streams_require_resynchronization() {
         core.mutate(set_property_op("volume", serde_json::json!(index)))
             .expect("publish update");
     }
-    let state_error = next_stream_item(&mut states).await.expect_err("state lag is visible");
-    let event_error = next_stream_item(&mut events).await.expect_err("event lag is visible");
-    let signal_error = next_stream_item(&mut signals).await.expect_err("signal lag is visible");
+    let state_error = next_stream_item(&mut states)
+        .await
+        .expect_err("state lag is visible");
+    let event_error = next_stream_item(&mut events)
+        .await
+        .expect_err("event lag is visible");
+    let signal_error = next_stream_item(&mut signals)
+        .await
+        .expect_err("signal lag is visible");
     assert_eq!(state_error.code(), tonic::Code::DataLoss);
     assert_eq!(event_error.code(), tonic::Code::DataLoss);
     assert_eq!(signal_error.code(), tonic::Code::DataLoss);
@@ -394,9 +410,9 @@ async fn reflection_and_mounts_cover_exactly_three_services() {
     let (tx, rx) = tokio::sync::mpsc::channel(4);
     tx.send(ServerReflectionRequest {
         host: String::new(),
-        message_request: Some(
-            server_reflection_request::MessageRequest::ListServices(String::new()),
-        ),
+        message_request: Some(server_reflection_request::MessageRequest::ListServices(
+            String::new(),
+        )),
     })
     .await
     .expect("request send");
@@ -405,7 +421,11 @@ async fn reflection_and_mounts_cover_exactly_three_services() {
         .await
         .expect("reflection call")
         .into_inner();
-    let reply = inbound.message().await.expect("stream ok").expect("response");
+    let reply = inbound
+        .message()
+        .await
+        .expect("stream ok")
+        .expect("response");
     let names: Vec<String> = match reply.message_response {
         Some(
             tonic_reflection::pb::v1::server_reflection_response::MessageResponse::ListServicesResponse(
@@ -507,7 +527,9 @@ async fn reflection_and_mounts_cover_exactly_three_services() {
 
 #[tokio::test]
 async fn client_roundtrip_set_get_subscribe() {
-    use op_grpc_bridge::grpc_client::{GhostbridgeCallMetadata, GrpcClientPool, RemoteOperationClient};
+    use op_grpc_bridge::grpc_client::{
+        GhostbridgeCallMetadata, GrpcClientPool, RemoteOperationClient,
+    };
     use std::sync::Arc;
     use tokio_stream::StreamExt;
 

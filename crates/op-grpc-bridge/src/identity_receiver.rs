@@ -199,9 +199,11 @@ pub(crate) async fn verify_bound_registry(bound: BoundSid1) -> anyhow::Result<Ve
             .await
             .map_err(|_| anyhow::anyhow!("human principal registry unavailable"))?;
     let identity = verify_registered(bound, record)?;
-    anyhow::ensure!(identity.claims().expires_at == 0
-        || identity.claims().expires_at > chrono::Utc::now().timestamp(),
-        "identity expired during principal verification");
+    anyhow::ensure!(
+        identity.claims().expires_at == 0
+            || identity.claims().expires_at > chrono::Utc::now().timestamp(),
+        "identity expired during principal verification"
+    );
     Ok(identity)
 }
 
@@ -257,11 +259,16 @@ pub(crate) async fn authored_transport_wire(identity: &VerifiedSid1) -> anyhow::
             .ok_or_else(|| anyhow::anyhow!("authored identity credential is unavailable"))?;
         let wire = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(encoded)?;
         let current = crate::sid1_checks::match_bound_session(
-            &wire, &sled, "grpc", chrono::Utc::now().timestamp(),
-        ).map_err(anyhow::Error::msg)?;
+            &wire,
+            &sled,
+            "grpc",
+            chrono::Utc::now().timestamp(),
+        )
+        .map_err(anyhow::Error::msg)?;
         anyhow::ensure!(current == expected, "forwarded identity term changed");
         Ok::<_, anyhow::Error>((BoundSid1(current), wire))
-    }).await??;
+    })
+    .await??;
     verify_bound_registry(bound).await?;
     Ok(wire)
 }
@@ -520,31 +527,54 @@ mod tests {
         let replacement_wire = replacement.seal().unwrap();
         state["sleds"][0]["sealed_id"] = serde_json::json!(replacement.to_inline_ref().unwrap());
         op_core::projection_shm::update_projection_with_credentials_in(
-            state_dir, "identity_sled", nix::unistd::getgid().as_raw(), |_| {
-                Ok(Some((br#"{"sleds":[],"events":[]}"#.to_vec(), serde_json::to_vec(&state)?)))
+            state_dir,
+            "identity_sled",
+            nix::unistd::getgid().as_raw(),
+            |_| {
+                Ok(Some((
+                    br#"{"sleds":[],"events":[]}"#.to_vec(),
+                    serde_json::to_vec(&state)?,
+                )))
             },
-        ).unwrap();
+        )
+        .unwrap();
         assert!(verify_in(&catalog_dir, state_dir, &wire, "grpc", 150).is_err());
-        assert_eq!(verify_registered(
-            verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).unwrap(),
-            Some(record.clone()),
-        ).unwrap().claims(), &replacement);
+        assert_eq!(
+            verify_registered(
+                verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).unwrap(),
+                Some(record.clone()),
+            )
+            .unwrap()
+            .claims(),
+            &replacement
+        );
         let mut revoked = record.clone();
         revoked.revoked_at = 151;
-        assert!(verify_registered(
-            verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).unwrap(),
-            Some(revoked),
-        ).is_err());
+        assert!(
+            verify_registered(
+                verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).unwrap(),
+                Some(revoked),
+            )
+            .is_err()
+        );
         replacement.nextdns = Some(op_identity::sealed_id::NextDnsContext {
-            profile_id: "abcdef".into(), device_name: "replacement".into(),
+            profile_id: "abcdef".into(),
+            device_name: "replacement".into(),
         });
         let unrelated_wire = replacement.seal().unwrap();
         state["sleds"][0]["sealed_id"] = serde_json::json!(replacement.to_inline_ref().unwrap());
         op_core::projection_shm::update_projection_with_credentials_in(
-            state_dir, "identity_sled", nix::unistd::getgid().as_raw(), |_| {
-                Ok(Some((br#"{"sleds":[],"events":[]}"#.to_vec(), serde_json::to_vec(&state)?)))
+            state_dir,
+            "identity_sled",
+            nix::unistd::getgid().as_raw(),
+            |_| {
+                Ok(Some((
+                    br#"{"sleds":[],"events":[]}"#.to_vec(),
+                    serde_json::to_vec(&state)?,
+                )))
             },
-        ).unwrap();
+        )
+        .unwrap();
         assert!(verify_in(&catalog_dir, state_dir, &replacement_wire, "grpc", 150).is_err());
         assert!(verify_in(&catalog_dir, state_dir, &unrelated_wire, "grpc", 150).is_ok());
         schema.version.push_str("-drift");

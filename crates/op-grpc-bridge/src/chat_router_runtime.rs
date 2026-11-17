@@ -11,12 +11,11 @@ use tokio::sync::Mutex;
 
 use anyhow::{Context, anyhow};
 use futures::StreamExt;
-use op_plugins::state_plugins::common::llm_projection::{ModelRoute, Provider};
 use op_plugins::state_plugins::chat_router::{
-    ChatInput, ChatOutput, ConfigInitInput, ConfigMigrateInput, ConfigPatchInput,
+    ChatInput, ChatOutput, ChatRouterState, ConfigInitInput, ConfigMigrateInput, ConfigPatchInput,
     ConfigPatchOperation, ConfigSetInput, MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES,
-    ChatRouterState,
 };
+use op_plugins::state_plugins::common::llm_projection::{ModelRoute, Provider};
 use reqwest::RequestBuilder;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -293,9 +292,7 @@ impl ChatRouterRuntimeClient {
         &self,
         input: op_plugins::state_plugins::chat_router::generation::StartGenerationInput,
         native_session_id: String,
-        before_prompt: std::sync::Arc<
-            dyn crate::chat_router_generation::NativeGenerationAdmission,
-        >,
+        before_prompt: std::sync::Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>,
     ) -> anyhow::Result<crate::chat_router_generation::NativeGenerationTask> {
         self.spawn_stateless_generation_with_expectations(
             input,
@@ -310,9 +307,7 @@ impl ChatRouterRuntimeClient {
         &self,
         input: op_plugins::state_plugins::chat_router::generation::StartGenerationInput,
         native_session_id: String,
-        before_prompt: std::sync::Arc<
-            dyn crate::chat_router_generation::NativeGenerationAdmission,
-        >,
+        before_prompt: std::sync::Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>,
         expected_provider: Option<String>,
         expected_model: Option<String>,
     ) -> anyhow::Result<crate::chat_router_generation::NativeGenerationTask> {
@@ -346,9 +341,7 @@ impl ChatRouterRuntimeClient {
     pub(crate) async fn complete_under_guard(
         &self,
         input: ChatInput,
-        before_prompt: std::sync::Arc<
-            dyn crate::chat_router_generation::NativeGenerationAdmission,
-        >,
+        before_prompt: std::sync::Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>,
     ) -> anyhow::Result<ChatOutput> {
         let client = self
             .clone()
@@ -376,11 +369,10 @@ impl ChatRouterRuntimeClient {
         // public Chat contract may carry only the provider family.
         let expected_provider = Some(observed.reference.clone());
         let expected_model = Some(observed.selected_model.clone());
-        let task_input =
-            op_plugins::state_plugins::chat_router::generation::StartGenerationInput {
-                agent_alias: self.agent_alias.clone(),
-                prompt,
-            };
+        let task_input = op_plugins::state_plugins::chat_router::generation::StartGenerationInput {
+            agent_alias: self.agent_alias.clone(),
+            prompt,
+        };
         let mut task = client.spawn_stateless_generation_with_expectations(
             task_input,
             uuid::Uuid::new_v4().to_string(),
@@ -1454,9 +1446,7 @@ impl ChatRouterRuntimeClient {
         let selected = configured
             .iter()
             .find(|provider| provider.reference == selected_ref)
-            .context(
-                "chat_router selected provider is absent from the configured provider list",
-            )?;
+            .context("chat_router selected provider is absent from the configured provider list")?;
         anyhow::ensure!(
             selected.selected_model == selected_model,
             "chat_router selected provider model changed during observation"
@@ -2905,10 +2895,7 @@ mod tests {
         ) -> std::pin::Pin<
             Box<
                 dyn std::future::Future<
-                        Output = Result<
-                            (),
-                            crate::chat_router_generation::NativeGenerationError,
-                        >,
+                        Output = Result<(), crate::chat_router_generation::NativeGenerationError>,
                     > + Send
                     + '_,
             >,

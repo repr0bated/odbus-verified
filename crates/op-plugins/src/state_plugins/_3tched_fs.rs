@@ -11,8 +11,8 @@ use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 
-use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 use super::_3tched_fs_contract;
+use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 
 pub const PLUGIN_NAME: &str = "_3tched_fs";
 const VERSION: &str = "2.0.8";

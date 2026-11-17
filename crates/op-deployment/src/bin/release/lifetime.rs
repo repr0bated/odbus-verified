@@ -1,6 +1,9 @@
 //! Adapter for the pinned downstream Btrfs quiescent-destroy ABI.
 //! No userspace scan, kernel-version guess, or ordinary-delete fallback is safe.
-use std::{io, os::fd::{AsRawFd, BorrowedFd}};
+use std::{
+    io,
+    os::fd::{AsRawFd, BorrowedFd},
+};
 use uuid::Uuid;
 
 // deploy/release/lifetime/0001-btrfs-quiescent-destroy.patch, native Linux ABI:

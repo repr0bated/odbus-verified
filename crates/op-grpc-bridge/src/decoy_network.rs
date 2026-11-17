@@ -344,7 +344,8 @@ pub(crate) async fn dispatch(
     admission: crate::openflow_permit::FinalAdmission,
 ) -> Result<NativeNetworkReceipt> {
     let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
-        ctx.runtime.catalog_dir(), plugin,
+        ctx.runtime.catalog_dir(),
+        plugin,
     )?;
     crate::method_contract_admission::admit_compiled_state_contract(&pinned, plugin)?;
     let identity = ctx.runtime.identity_wire(ctx.caller).await?;
@@ -353,7 +354,10 @@ pub(crate) async fn dispatch(
         claims.principal_id == ctx.caller.principal_id
             && claims.session_id == ctx.caller.session_id
             && claims.session_genesis == ctx.caller.session_genesis
-            && claims.transport_scope.split(',').any(|scope| scope.trim() == "dbus"),
+            && claims
+                .transport_scope
+                .split(',')
+                .any(|scope| scope.trim() == "dbus"),
         "decoy credential differs from the verified caller or lacks D-Bus scope"
     );
     let address: SocketAddr = std::env::var("OP_DECOY_NATIVE_ADDRESS")
@@ -375,10 +379,16 @@ pub(crate) async fn dispatch(
     )
     .await
     .context("decoy D-Bus proxy negotiation timed out")??;
-    let capability = ctx.declaration.required_capability.as_deref()
+    let capability = ctx
+        .declaration
+        .required_capability
+        .as_deref()
         .context("decoy method omitted its required capability")?;
     let arguments = serde_json::to_string(arguments)?;
-    ensure!(arguments.len() <= MAX_ARGUMENT_BYTES, "decoy method arguments exceed limit");
+    ensure!(
+        arguments.len() <= MAX_ARGUMENT_BYTES,
+        "decoy method arguments exceed limit"
+    );
     admission().await?;
     let result: String = tokio::time::timeout(
         Duration::from_secs(60),

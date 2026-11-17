@@ -1,7 +1,7 @@
 //! Whole-record credential gate. Uses the base Secret_Guard, adding evidence
 //! digest provenance; it never hashes registered credentials for detection.
-use super::secret_guard::{GuardVerdict, SecretGuard};
 use super::secret_guard::CredentialClass;
+use super::secret_guard::{GuardVerdict, SecretGuard};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::{Duration, Instant};
@@ -33,13 +33,21 @@ pub struct EvidenceDigest {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum DigestAlgorithm { Sha256 }
+enum DigestAlgorithm {
+    Sha256,
+}
 
 impl EvidenceDigest {
-    pub fn from_source(guard: &RecordGuard<'_>, source_reference: &str, source: &[u8]) -> Result<Self, RecordError> {
+    pub fn from_source(
+        guard: &RecordGuard<'_>,
+        source_reference: &str,
+        source: &[u8],
+    ) -> Result<Self, RecordError> {
         guard.check(source_reference.as_bytes())?;
         guard.check(source)?;
-        if source_reference.trim().is_empty() { return Err(RecordError::Invalid("digest source absent")); }
+        if source_reference.trim().is_empty() {
+            return Err(RecordError::Invalid("digest source absent"));
+        }
         Ok(Self {
             algorithm: DigestAlgorithm::Sha256,
             value: hex::encode(Sha256::digest(source)),
@@ -48,7 +56,11 @@ impl EvidenceDigest {
         })
     }
 
-    pub fn reestablish_source(&mut self, guard: &RecordGuard<'_>, source: &[u8]) -> Result<(), RecordError> {
+    pub fn reestablish_source(
+        &mut self,
+        guard: &RecordGuard<'_>,
+        source: &[u8],
+    ) -> Result<(), RecordError> {
         self.checked_non_secret_source = false;
         let expected = Self::from_source(guard, &self.source_reference, source)?;
         if self.value != expected.value || self.algorithm != expected.algorithm {
@@ -59,17 +71,26 @@ impl EvidenceDigest {
     }
 
     pub fn validate(&self) -> Result<(), RecordError> {
-        if !self.checked_non_secret_source || self.source_reference.trim().is_empty()
-            || self.value.len() != 64 || !self.value.bytes().all(|c| c.is_ascii_hexdigit()) {
-            return Err(RecordError::Invalid("non-secret digest provenance unestablished"));
+        if !self.checked_non_secret_source
+            || self.source_reference.trim().is_empty()
+            || self.value.len() != 64
+            || !self.value.bytes().all(|c| c.is_ascii_hexdigit())
+        {
+            return Err(RecordError::Invalid(
+                "non-secret digest provenance unestablished",
+            ));
         }
         Ok(())
     }
 }
 
-pub struct RecordGuard<'a> { shared: &'a SecretGuard }
+pub struct RecordGuard<'a> {
+    shared: &'a SecretGuard,
+}
 impl<'a> RecordGuard<'a> {
-    pub fn new(shared: &'a SecretGuard) -> Self { Self { shared } }
+    pub fn new(shared: &'a SecretGuard) -> Self {
+        Self { shared }
+    }
 
     pub fn check(&self, bytes: &[u8]) -> Result<(), RecordError> {
         let started = Instant::now();
@@ -86,19 +107,31 @@ impl<'a> RecordGuard<'a> {
                 return Err(RecordError::Withheld("identity-key"));
             }
             let trimmed = line.trim();
-            if trimmed.starts_with("Authorization: Bearer ") || trimmed.starts_with("authorization: Bearer ") {
+            if trimmed.starts_with("Authorization: Bearer ")
+                || trimmed.starts_with("authorization: Bearer ")
+            {
                 return Err(RecordError::Withheld("session-credential"));
             }
         }
-        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(bytes) { inspect_json(&value)?; }
-        if started.elapsed() > Duration::from_millis(2000) { return Err(RecordError::Withheld("guard-timeout")); }
+        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(bytes) {
+            inspect_json(&value)?;
+        }
+        if started.elapsed() > Duration::from_millis(2000) {
+            return Err(RecordError::Withheld("guard-timeout"));
+        }
         Ok(())
     }
 
     /// The caller explicitly supplies the credential class. Redaction never
     /// returns any part, window, fingerprint, or digest of the unsafe error.
-    pub fn redact_error(&self, bytes: &[u8], declared_class: Option<CredentialClass>) -> Result<String, RecordError> {
-        if let Some(class) = declared_class { return Ok(format!("[redacted:{}]", class_name(class))); }
+    pub fn redact_error(
+        &self,
+        bytes: &[u8],
+        declared_class: Option<CredentialClass>,
+    ) -> Result<String, RecordError> {
+        if let Some(class) = declared_class {
+            return Ok(format!("[redacted:{}]", class_name(class)));
+        }
         match self.check(bytes) {
             Ok(()) => String::from_utf8(bytes.to_vec()).map_err(|_| RecordError::Encoding),
             Err(RecordError::Withheld(class)) => Ok(format!("[redacted:{class}]")),
@@ -106,7 +139,10 @@ impl<'a> RecordGuard<'a> {
         }
     }
 
-    pub(crate) fn serialize(&self, record: &super::records::EvidenceRecord) -> Result<Zeroizing<Vec<u8>>, RecordError> {
+    pub(crate) fn serialize(
+        &self,
+        record: &super::records::EvidenceRecord,
+    ) -> Result<Zeroizing<Vec<u8>>, RecordError> {
         record.validate()?;
         let bytes = Zeroizing::new(serde_json::to_vec(record).map_err(|_| RecordError::Encoding)?);
         self.check(&bytes)?;
@@ -130,16 +166,36 @@ fn inspect_json(value: &serde_json::Value) -> Result<(), RecordError> {
         serde_json::Value::Object(map) => {
             for (key, value) in map {
                 let normalized = key.to_ascii_lowercase().replace('-', "_");
-                if matches!(normalized.as_str(), "password" | "token" | "access_token" | "refresh_token"
-                    | "api_key" | "private_key" | "secret" | "client_secret" | "credential_material"
-                    | "credential_digest" | "secret_digest" | "credential_hash" | "secret_hash"
-                    | "sid1" | "oia1" | "sealed_id" | "authorization") {
+                if matches!(
+                    normalized.as_str(),
+                    "password"
+                        | "token"
+                        | "access_token"
+                        | "refresh_token"
+                        | "api_key"
+                        | "private_key"
+                        | "secret"
+                        | "client_secret"
+                        | "credential_material"
+                        | "credential_digest"
+                        | "secret_digest"
+                        | "credential_hash"
+                        | "secret_hash"
+                        | "sid1"
+                        | "oia1"
+                        | "sealed_id"
+                        | "authorization"
+                ) {
                     return Err(RecordError::Withheld("declared-secret-field"));
                 }
                 inspect_json(value)?;
             }
         }
-        serde_json::Value::Array(items) => for item in items { inspect_json(item)?; },
+        serde_json::Value::Array(items) => {
+            for item in items {
+                inspect_json(item)?;
+            }
+        }
         _ => {}
     }
     Ok(())

@@ -325,7 +325,15 @@ fn method_policy(name: &str) -> (&'static str, bool, &'static str, &'static str)
     let leaf = name.rsplit('_').next().unwrap_or(name);
     if matches!(
         leaf,
-        "get" | "head" | "options" | "info" | "list" | "search" | "show" | "status" | "stats"
+        "get"
+            | "head"
+            | "options"
+            | "info"
+            | "list"
+            | "search"
+            | "show"
+            | "status"
+            | "stats"
             | "version"
     ) || name.starts_with("get_")
         || name.starts_with("list_")
@@ -370,8 +378,7 @@ fn rust_ident(raw: &str) -> String {
     // `/1.0?public` → `1_0_public` must not become `0_public` after one digit strip.
     loop {
         let trimmed = out.trim_matches('_');
-        if trimmed.len() == out.len()
-            && !trimmed.chars().next().is_some_and(|c| c.is_ascii_digit())
+        if trimmed.len() == out.len() && !trimmed.chars().next().is_some_and(|c| c.is_ascii_digit())
         {
             break;
         }
@@ -527,40 +534,36 @@ mod tests {
 
     #[test]
     fn openapi_paths_use_rest_api_start_root() {
-        let (name, verb, route) = openapi_operation_parts(
-            "openapi.rest-api.paths./1.0/instances/{name}.get.operationId",
-        )
-        .expect("parse");
+        let (name, verb, route) =
+            openapi_operation_parts("openapi.rest-api.paths./1.0/instances/{name}.get.operationId")
+                .expect("parse");
         assert_eq!(name, "instances_name_get");
         assert_eq!(verb, "get");
         assert_eq!(route, "/1.0/instances/{name}");
         assert_eq!(method_policy(&name), ("read", true, "read", "obs"));
         assert_eq!(
-            command_tokens(
-                "openapi.rest-api.paths./1.0/instances/{name}.get.operationId"
-            ),
+            command_tokens("openapi.rest-api.paths./1.0/instances/{name}.get.operationId"),
             vec!["GET".to_string(), "/1.0/instances/{name}".to_string()]
         );
         // Packed from lxd/ (doc.rest-api) still works — start root may differ.
-        let (name2, _, _) = openapi_operation_parts(
-            "openapi.doc.rest-api.paths./1.0/instances.post.operationId",
-        )
-        .expect("doc-prefixed parse");
+        let (name2, _, _) =
+            openapi_operation_parts("openapi.doc.rest-api.paths./1.0/instances.post.operationId")
+                .expect("doc-prefixed parse");
         assert_eq!(name2, "instances_post");
         assert!(
-            openapi_operation_parts(
-                "openapi.devlxd-api.paths./1.0/config.get.operationId"
-            )
-            .is_none()
+            openapi_operation_parts("openapi.devlxd-api.paths./1.0/config.get.operationId")
+                .is_none()
         );
         let (qname, _, _) =
             openapi_operation_parts("openapi.rest-api.paths./1.0?public.get.operationId")
                 .expect("query root");
         assert_eq!(rust_ident(&qname), "public_get");
-        assert!(!pascal_case(&rust_ident(&qname))
-            .chars()
-            .next()
-            .unwrap()
-            .is_ascii_digit());
+        assert!(
+            !pascal_case(&rust_ident(&qname))
+                .chars()
+                .next()
+                .unwrap()
+                .is_ascii_digit()
+        );
     }
 }

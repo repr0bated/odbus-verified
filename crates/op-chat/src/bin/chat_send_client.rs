@@ -62,16 +62,28 @@ async fn main() -> Result<()> {
                 );
             }
             Some(chat_frame::Body::Error(e)) => {
-                println!("frame cursor={} ERROR code={} message={} retryable={}", frame.cursor, e.code, e.message, e.retryable);
+                println!(
+                    "frame cursor={} ERROR code={} message={} retryable={}",
+                    frame.cursor, e.code, e.message, e.retryable
+                );
             }
             Some(chat_frame::Body::Heartbeat(h)) => {
-                println!("frame cursor={} heartbeat server_time_ms={}", frame.cursor, h.server_time_ms);
+                println!(
+                    "frame cursor={} heartbeat server_time_ms={}",
+                    frame.cursor, h.server_time_ms
+                );
             }
             Some(chat_frame::Body::Done(d)) => {
-                println!("frame cursor={} DONE conversation_id={} total_parts={}", frame.cursor, d.conversation_id, d.total_parts);
+                println!(
+                    "frame cursor={} DONE conversation_id={} total_parts={}",
+                    frame.cursor, d.conversation_id, d.total_parts
+                );
             }
             Some(chat_frame::Body::Approval(a)) => {
-                println!("frame cursor={} APPROVAL tool_call_id={} tool_name={} description={}", frame.cursor, a.tool_call_id, a.tool_name, a.description);
+                println!(
+                    "frame cursor={} APPROVAL tool_call_id={} tool_name={} description={}",
+                    frame.cursor, a.tool_call_id, a.tool_name, a.description
+                );
                 if auto_approve {
                     println!("auto-approving tool_call_id={}", a.tool_call_id);
                     let resp = client
@@ -83,7 +95,10 @@ async fn main() -> Result<()> {
                         })
                         .await?
                         .into_inner();
-                    println!("approve response: success={} tool_call_id={} error={:?}", resp.success, resp.tool_call_id, resp.error);
+                    println!(
+                        "approve response: success={} tool_call_id={} error={:?}",
+                        resp.success, resp.tool_call_id, resp.error
+                    );
                 }
             }
             None => {

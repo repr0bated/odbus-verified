@@ -32,8 +32,8 @@ use op_cozo_store::CozoGraphShuttle;
 use op_snowball::btrfs_delta;
 use op_snowball::{ChainBlockRef, StreamingSnowball};
 use qdrant_client::qdrant::{
-    CreateCollectionBuilder, Distance, GetPointsBuilder, PointId, PointStruct, QueryPointsBuilder,
-    ScoredPoint, UpsertPointsBuilder, VectorParamsBuilder, Condition, Filter,
+    Condition, CreateCollectionBuilder, Distance, Filter, GetPointsBuilder, PointId, PointStruct,
+    QueryPointsBuilder, ScoredPoint, UpsertPointsBuilder, VectorParamsBuilder,
 };
 use qdrant_client::{Payload, Qdrant, QdrantError};
 use serde::Serialize;
@@ -62,25 +62,35 @@ const INDEXED_BLOCK_FILE: &str = ".vector-index-block";
 /// cannot split publication; readers only open the final checkpoint path.
 async fn publish_checkpoint(path: PathBuf, content: Vec<u8>) -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
-        let parent = path.parent().filter(|p| !p.as_os_str().is_empty())
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or_else(|| Path::new("."));
         let temporary = parent.join(format!(".vector-checkpoint-{}.tmp", uuid::Uuid::new_v4()));
         let mut file = std::fs::OpenOptions::new()
-            .write(true).create_new(true).mode(0o600).open(&temporary)
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&temporary)
             .context("create checkpoint temporary file")?;
         let result = (|| -> Result<()> {
-            file.write_all(&content).context("write complete checkpoint")?;
+            file.write_all(&content)
+                .context("write complete checkpoint")?;
             file.sync_all().context("sync checkpoint contents")?;
             drop(file);
             std::fs::rename(&temporary, &path).context("atomically replace checkpoint")?;
-            std::fs::File::open(parent)?.sync_all().context("sync checkpoint directory")?;
+            std::fs::File::open(parent)?
+                .sync_all()
+                .context("sync checkpoint directory")?;
             Ok(())
         })();
         if result.is_err() {
             let _ = std::fs::remove_file(&temporary);
         }
         result
-    }).await.context("checkpoint publication task failed")?
+    })
+    .await
+    .context("checkpoint publication task failed")?
 }
 
 /// Decides what of a block is signal. The bridge supplies the sealed plugin
@@ -190,24 +200,36 @@ pub async fn search_session_events(
     session_id: &str,
     limit: u32,
 ) -> Result<(String, Vec<ScoredPoint>)> {
-    anyhow::ensure!(!actor_id.is_empty() && !session_id.is_empty(), "verified event search scope is required");
-    anyhow::ensure!(!query.trim().is_empty() && query.len() <= 4000, "event search query must contain 1 to 4000 bytes");
-    anyhow::ensure!((1..=20).contains(&limit), "event search limit must be between 1 and 20");
+    anyhow::ensure!(
+        !actor_id.is_empty() && !session_id.is_empty(),
+        "verified event search scope is required"
+    );
+    anyhow::ensure!(
+        !query.trim().is_empty() && query.len() <= 4000,
+        "event search query must contain 1 to 4000 bytes"
+    );
+    anyhow::ensure!(
+        (1..=20).contains(&limit),
+        "event search limit must be between 1 and 20"
+    );
     let voyage = VoyageClient::new()?;
     let embedding = voyage.embed(query, Some("query")).await?;
     let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
         .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
     let client = Qdrant::from_url(&qdrant_url()).build()?;
-    let response = client.query(
-        QueryPointsBuilder::new(collection)
-            .query(embedding)
-            .filter(Filter::must([
-                Condition::matches("actor_id", actor_id.to_owned()),
-                Condition::matches("session_id", session_id.to_owned()),
-            ]))
-            .limit(u64::from(limit))
-            .with_payload(true),
-    ).await.context("canonical event index search failed")?;
+    let response = client
+        .query(
+            QueryPointsBuilder::new(collection)
+                .query(embedding)
+                .filter(Filter::must([
+                    Condition::matches("actor_id", actor_id.to_owned()),
+                    Condition::matches("session_id", session_id.to_owned()),
+                ]))
+                .limit(u64::from(limit))
+                .with_payload(true),
+        )
+        .await
+        .context("canonical event index search failed")?;
     Ok((voyage.model().to_owned(), response.result))
 }
 
@@ -533,9 +555,8 @@ impl ChainVectorIndex {
     /// Pass `None` to resume from the persisted watermark (`0` on first run,
     /// which indexes everything present).
     pub async fn ingest_received(&self, from_block: Option<u64>) -> Result<IngestSummary> {
-        let cozo_path = std::env::var("COGNITIVE_COZO_DB_PATH").context(
-            "COGNITIVE_COZO_DB_PATH is required to persist chain vector links",
-        )?;
+        let cozo_path = std::env::var("COGNITIVE_COZO_DB_PATH")
+            .context("COGNITIVE_COZO_DB_PATH is required to persist chain vector links")?;
         let cozo = CozoGraphShuttle::new_persistent(std::path::PathBuf::from(cozo_path))
             .map_err(|error| anyhow::anyhow!(error))
             .context("open Cozo for chain vector links")?;
@@ -577,15 +598,14 @@ impl ChainVectorIndex {
                         .iter()
                         .map(|(kind, value)| (kind.as_str(), value.as_str()))
                         .collect();
-                    cozo
-                        .replace_chain_vector_links(&point_id(block.block_num).to_string(), &link_refs)
-                        .map_err(|e| anyhow::Error::new(e))
-                        .with_context(|| {
-                            format!(
-                                "failed to write chain links for block {}",
-                                block.block_num
-                            )
-                        })?;
+                    cozo.replace_chain_vector_links(
+                        &point_id(block.block_num).to_string(),
+                        &link_refs,
+                    )
+                    .map_err(|e| anyhow::Error::new(e))
+                    .with_context(|| {
+                        format!("failed to write chain links for block {}", block.block_num)
+                    })?;
                     // A visible point suppresses gap retries: commit its links first.
                     self.upsert_block(block, vector).await?;
                 }
@@ -823,9 +843,12 @@ impl ChainVectorIndex {
     }
 
     async fn write_indexed_block(&self, block_num: u64) -> Result<()> {
-        publish_checkpoint(self.indexed_block_path(), format!("{block_num}\n").into_bytes())
-            .await
-            .context("failed to persist index watermark")
+        publish_checkpoint(
+            self.indexed_block_path(),
+            format!("{block_num}\n").into_bytes(),
+        )
+        .await
+        .context("failed to persist index watermark")
     }
 }
 
@@ -1052,15 +1075,36 @@ mod tests {
         }"#;
         let block = block_from_timing_json(json, 12);
         let links = links_map(&block);
-        assert_eq!(links.get("conversation_id").map(String::as_str), Some("conv-abc"));
+        assert_eq!(
+            links.get("conversation_id").map(String::as_str),
+            Some("conv-abc")
+        );
         assert_eq!(links.get("turn_id").map(String::as_str), Some("turn-7"));
-        assert_eq!(links.get("event_hash").map(String::as_str), Some("block-event-hash"));
-        assert_eq!(links.get("input_patch_hash").map(String::as_str), Some("patch-digest"));
-        assert_eq!(links.get("plugin_id").map(String::as_str), Some("chat_plugin"));
+        assert_eq!(
+            links.get("event_hash").map(String::as_str),
+            Some("block-event-hash")
+        );
+        assert_eq!(
+            links.get("input_patch_hash").map(String::as_str),
+            Some("patch-digest")
+        );
+        assert_eq!(
+            links.get("plugin_id").map(String::as_str),
+            Some("chat_plugin")
+        );
         assert_eq!(links.get("actor_id").map(String::as_str), Some("actor-1"));
-        assert_eq!(links.get("session_id").map(String::as_str), Some("session-1"));
-        assert_eq!(links.get("sealed_id_digest").map(String::as_str), Some("sealed-1"));
-        assert_eq!(links.get("capability_id").map(String::as_str), Some("cap-1"));
+        assert_eq!(
+            links.get("session_id").map(String::as_str),
+            Some("session-1")
+        );
+        assert_eq!(
+            links.get("sealed_id_digest").map(String::as_str),
+            Some("sealed-1")
+        );
+        assert_eq!(
+            links.get("capability_id").map(String::as_str),
+            Some("cap-1")
+        );
         assert_eq!(links.get("subid").map(String::as_str), Some("schema-subid"));
         assert!(!links.contains_key("chat_id"));
     }
@@ -1097,7 +1141,11 @@ mod tests {
         let links = chain_links(&block);
         assert_eq!(links.len(), 2);
         assert!(links.iter().any(|(k, v)| k == "event_hash" && v == "ev"));
-        assert!(links.iter().any(|(k, v)| k == "plugin_id" && v == "only-plugin"));
+        assert!(
+            links
+                .iter()
+                .any(|(k, v)| k == "plugin_id" && v == "only-plugin")
+        );
         for (kind, value) in &links {
             assert!(!value.is_empty(), "kind {kind} must not be an empty string");
         }

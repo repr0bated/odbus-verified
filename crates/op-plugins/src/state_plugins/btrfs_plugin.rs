@@ -1181,7 +1181,11 @@ mod tests {
             self.state.lock().unwrap().subvolumes.push(subvol(
                 301,
                 &name,
-                Some(self.snapshot_parent_uuid_override.as_deref().unwrap_or(&source_uuid)),
+                Some(
+                    self.snapshot_parent_uuid_override
+                        .as_deref()
+                        .unwrap_or(&source_uuid),
+                ),
                 self.snapshot_readonly_override.unwrap_or(readonly),
             ));
             Ok(())
@@ -1351,7 +1355,10 @@ mod tests {
                 "list_subvolumes" => {
                     assert_eq!(output["filesystem_uuid"], "fs-uuid");
                     assert_eq!(output["total"], 3);
-                    assert_eq!(output.get("maximum_supported"), Some(&serde_json::Value::Null));
+                    assert_eq!(
+                        output.get("maximum_supported"),
+                        Some(&serde_json::Value::Null)
+                    );
                     let subvolumes = output["subvolumes"].as_array().unwrap();
                     assert_eq!(subvolumes.len(), 3);
                     assert_eq!(subvolumes[0]["name"], "source");
@@ -1527,7 +1534,10 @@ mod tests {
     #[test]
     fn state_and_list_explicitly_report_no_application_count_cap() {
         let state = serde_json::to_value(BtrfsState::default()).unwrap();
-        assert_eq!(state.get("maximum_subvolumes"), Some(&serde_json::Value::Null));
+        assert_eq!(
+            state.get("maximum_subvolumes"),
+            Some(&serde_json::Value::Null)
+        );
         let backend = TestBackend::with_subvolume_count(3842);
         let output = dispatch_with_backend(
             &backend,
@@ -1535,7 +1545,10 @@ mod tests {
             &serde_json::json!({"path":"/mnt"}),
         )
         .unwrap();
-        assert_eq!(output.get("maximum_supported"), Some(&serde_json::Value::Null));
+        assert_eq!(
+            output.get("maximum_supported"),
+            Some(&serde_json::Value::Null)
+        );
         assert_eq!(output["total"], 3842);
         assert_eq!(output["subvolumes"].as_array().unwrap().len(), 3842);
         assert_eq!(backend.effects.load(Ordering::SeqCst), 0);
@@ -1566,7 +1579,11 @@ mod tests {
             &serde_json::json!({"path":"/mnt/new"}),
         )
         .unwrap_err();
-        assert!(error.to_string().contains("readback did not contain id 300"));
+        assert!(
+            error
+                .to_string()
+                .contains("readback did not contain id 300")
+        );
         assert_eq!(backend.effects.load(Ordering::SeqCst), 1);
     }
 

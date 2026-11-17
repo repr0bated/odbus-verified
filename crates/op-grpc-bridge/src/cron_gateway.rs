@@ -7,11 +7,10 @@ use async_trait::async_trait;
 use op_plugins::state_plugins::cron::*;
 use serde::Deserialize;
 
-use crate::cron_methods::{CronGateway, ProviderMutation};
 use crate::chat_router_runtime::{
-    GatewayJsonRequest, GatewayMethod, GatewayProfile, GatewayRequestError,
-    ChatRouterRuntimeClient,
+    ChatRouterRuntimeClient, GatewayJsonRequest, GatewayMethod, GatewayProfile, GatewayRequestError,
 };
+use crate::cron_methods::{CronGateway, ProviderMutation};
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

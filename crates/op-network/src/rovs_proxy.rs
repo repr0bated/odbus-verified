@@ -31,10 +31,8 @@ const DEFAULT_OVSDB_ADDR: &str = "unix:/var/run/openvswitch/db.sock";
 
 /// The canonical operation owner supplies this callback; the native client
 /// neither invents grants nor retains caller authority in long-lived sessions.
-pub type NativeAdmission = Arc<
-    dyn Fn() -> std::pin::Pin<Box<dyn Future<Output = Result<()>> + Send>>
-        + Send + Sync,
->;
+pub type NativeAdmission =
+    Arc<dyn Fn() -> std::pin::Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync>;
 
 /// High-level OVSDB client — wraps the real vendor `rovs_ovsdb::Client`
 /// (crates.io `rovs-ovsdb`, already a workspace dependency and already used
@@ -118,8 +116,10 @@ fn retained_key(owner: &str, id: &str) -> (String, String) {
 }
 
 fn transaction_has_effect(operation: &serde_json::Value) -> bool {
-    !matches!(operation.get("op").and_then(serde_json::Value::as_str),
-        Some("select" | "wait" | "comment" | "assert"))
+    !matches!(
+        operation.get("op").and_then(serde_json::Value::as_str),
+        Some("select" | "wait" | "comment" | "assert")
+    )
 }
 
 impl OvsdbDbusClient {
@@ -137,13 +137,17 @@ impl OvsdbDbusClient {
     /// Share native handles for one admitted operation, never a new authority.
     pub fn admitted(&self, admission: NativeAdmission) -> Self {
         Self {
-            client: self.client.clone(), locks: self.locks.clone(),
-            monitors: self.monitors.clone(), admission: Some(admission),
+            client: self.client.clone(),
+            locks: self.locks.clone(),
+            monitors: self.monitors.clone(),
+            admission: Some(admission),
         }
     }
 
     async fn admit(&self) -> Result<()> {
-        if let Some(admission) = &self.admission { admission().await?; }
+        if let Some(admission) = &self.admission {
+            admission().await?;
+        }
         Ok(())
     }
 
@@ -160,9 +164,8 @@ impl OvsdbDbusClient {
     where
         F: for<'a> FnOnce(
             &'a mut rovs_ovsdb::Client,
-        ) -> std::pin::Pin<
-            Box<dyn Future<Output = Result<T>> + Send + 'a>,
-        >,
+        )
+            -> std::pin::Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>,
     {
         let addr =
             std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_string());
@@ -172,12 +175,16 @@ impl OvsdbDbusClient {
         let mut client = match guard.take() {
             Some(client) => client,
             None => tokio::time::timeout(RPC_TIMEOUT, rovs_ovsdb::Client::connect(&addr))
-                .await.context("OVSDB connection timed out before request submission")?
+                .await
+                .context("OVSDB connection timed out before request submission")?
                 .with_context(|| format!("failed to connect to OVSDB at {addr}"))?,
         };
-        if mutating { self.admit().await?; }
+        if mutating {
+            self.admit().await?;
+        }
         let result = tokio::time::timeout(RPC_TIMEOUT, f(&mut client))
-            .await.context("OVSDB request timed out; outcome requires reconciliation")?;
+            .await
+            .context("OVSDB request timed out; outcome requires reconciliation")?;
         if result.is_ok() {
             *guard = Some(client);
         }
@@ -874,7 +881,9 @@ impl OvsdbDbusClient {
             .await
             .context("connect to OVSDB native RPC endpoint")?;
         let mut connection = rovs_jsonrpc::Connection::new(stream);
-        if !matches!(method, "echo" | "list_dbs" | "get_schema") { self.admit().await?; }
+        if !matches!(method, "echo" | "list_dbs" | "get_schema") {
+            self.admit().await?;
+        }
         tokio::time::timeout(RPC_TIMEOUT, connection.transact(method, params))
             .await
             .context("OVSDB native RPC timed out")?
@@ -1005,9 +1014,14 @@ impl OvsdbDbusClient {
         validate_lock_key(owner, lock_id)?;
         let key = retained_key(owner, lock_id);
         let mut locks = self.locks.lock().await;
-        anyhow::ensure!(locks.contains_key(&key), "OVSDB lock '{lock_id}' is not held");
+        anyhow::ensure!(
+            locks.contains_key(&key),
+            "OVSDB lock '{lock_id}' is not held"
+        );
         self.admit().await?;
-        let mut session = locks.remove(&key).expect("lock checked while retaining owner mutex");
+        let mut session = locks
+            .remove(&key)
+            .expect("lock checked while retaining owner mutex");
         drop(locks);
         let result = tokio::time::timeout(
             RPC_TIMEOUT,
@@ -1083,8 +1097,14 @@ impl OvsdbDbusClient {
         let address =
             std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_owned());
         let subscription = monitor::subscribe_protocol(
-            &address, database, monitor_id, method, requests, self.admission.as_ref(),
-        ).await?;
+            &address,
+            database,
+            monitor_id,
+            method,
+            requests,
+            self.admission.as_ref(),
+        )
+        .await?;
         let initial = match subscription.receiver.borrow().clone() {
             monitor::ProtocolObservation::Snapshot(snapshot) => snapshot,
             monitor::ProtocolObservation::Unavailable(reason) => {
@@ -1110,9 +1130,14 @@ impl OvsdbDbusClient {
         validate_session_key(owner, monitor_id)?;
         let mut monitors = self.monitors.lock().await;
         let key = retained_key(owner, monitor_id);
-        anyhow::ensure!(monitors.contains_key(&key), "OVSDB monitor '{monitor_id}' is not active for this caller");
+        anyhow::ensure!(
+            monitors.contains_key(&key),
+            "OVSDB monitor '{monitor_id}' is not active for this caller"
+        );
         self.admit().await?;
-        let subscription = monitors.remove(&key).expect("monitor checked while retaining owner mutex");
+        let subscription = monitors
+            .remove(&key)
+            .expect("monitor checked while retaining owner mutex");
         drop(monitors);
         subscription.cancel().await
     }

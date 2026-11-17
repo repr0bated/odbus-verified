@@ -25,8 +25,8 @@ mod hooks;
 #[path = "runtime_mqtt_wake.rs"]
 mod wake;
 
-pub use wake::WakePublisher;
 pub(crate) use auth::owner_key_for_claims;
+pub use wake::WakePublisher;
 
 mod protocol {
     tonic::include_proto!("emqx.exhook.v3");
@@ -55,13 +55,19 @@ impl ExHookServer {
         oracle: Arc<crate::oracle_assertion::AssertionValidator>,
     ) -> Result<Self> {
         if let Ok(enabled) = std::env::var("OP_EMQX_EXHOOK_ENABLE") {
-            ensure!(enabled == "1", "the production ExHook listener cannot be disabled");
+            ensure!(
+                enabled == "1",
+                "the production ExHook listener cannot be disabled"
+            );
         }
         let addr = std::env::var("OP_EMQX_EXHOOK_BIND_ADDR")
             .unwrap_or_else(|_| EXHOOK_ADDR.to_string())
             .parse::<SocketAddr>()
             .context("invalid private ExHook bind address")?;
-        ensure!(addr == EXHOOK_ADDR, "ExHook must bind exactly {EXHOOK_ADDR}");
+        ensure!(
+            addr == EXHOOK_ADDR,
+            "ExHook must bind exactly {EXHOOK_ADDR}"
+        );
         let (tls, peer) = tokio::task::spawn_blocking(load_tls).await??;
         // Other bridge consumers enable multiple rustls providers. Tonic 0.12
         // uses rustls's process default; select it explicitly before its builder.
@@ -74,12 +80,22 @@ impl ExHookServer {
             .max_concurrent_streams(64)
             .timeout(Duration::from_secs(15));
         let sessions = Arc::new(auth::Sessions::new(runtime, oracle));
-        let listener = TcpListener::bind(addr).await.context("binding private ExHook listener")?;
+        let listener = TcpListener::bind(addr)
+            .await
+            .context("binding private ExHook listener")?;
         let addr = listener.local_addr()?;
-        Ok(Self { listener, addr, server, peer, sessions })
+        Ok(Self {
+            listener,
+            addr,
+            server,
+            peer,
+            sessions,
+        })
     }
 
-    pub fn local_addr(&self) -> SocketAddr { self.addr }
+    pub fn local_addr(&self) -> SocketAddr {
+        self.addr
+    }
 
     pub fn wake_publisher(&self) -> WakePublisher {
         WakePublisher::new(self.sessions.clone())
@@ -92,7 +108,13 @@ impl ExHookServer {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        let Self { listener, mut server, peer, sessions, .. } = self;
+        let Self {
+            listener,
+            mut server,
+            peer,
+            sessions,
+            ..
+        } = self;
         let service = protocol::hook_provider_server::HookProviderServer::new(
             hooks::HookProviderService::new(sessions.clone()),
         )
@@ -109,9 +131,11 @@ impl ExHookServer {
         // Give the incoming error type explicitly: try_stream's `?` otherwise
         // has several possible conversions in tonic's generic incoming API.
         let incoming = incoming.map(|item: std::io::Result<tokio::net::TcpStream>| item);
-        let serving = server.add_service(service).serve_with_incoming_shutdown(incoming, async {
-            let _ = stop_rx.await;
-        });
+        let serving = server
+            .add_service(service)
+            .serve_with_incoming_shutdown(incoming, async {
+                let _ = stop_rx.await;
+            });
         tokio::pin!(serving);
         tokio::pin!(shutdown);
         tokio::select! {
@@ -136,36 +160,74 @@ struct PeerPin(Arc<[u8]>);
 
 impl tonic::service::Interceptor for PeerPin {
     fn call(&mut self, request: Request<()>) -> std::result::Result<Request<()>, Status> {
-        let certificates = request.peer_certs()
+        let certificates = request
+            .peer_certs()
             .ok_or_else(|| Status::unauthenticated("broker client certificate required"))?;
-        let leaf = certificates.first()
+        let leaf = certificates
+            .first()
             .ok_or_else(|| Status::unauthenticated("broker client certificate required"))?;
         if leaf.as_ref() != self.0.as_ref() {
-            return Err(Status::unauthenticated("broker client certificate does not match its pin"));
+            return Err(Status::unauthenticated(
+                "broker client certificate does not match its pin",
+            ));
         }
-        if !request.remote_addr().is_some_and(|peer| peer.ip().is_loopback()) {
-            return Err(Status::permission_denied("ExHook is a private loopback service"));
+        if !request
+            .remote_addr()
+            .is_some_and(|peer| peer.ip().is_loopback())
+        {
+            return Err(Status::permission_denied(
+                "ExHook is a private loopback service",
+            ));
         }
         Ok(request)
     }
 }
 
 fn configured_path(variable: &str, default: &str) -> PathBuf {
-    std::env::var_os(variable).map(PathBuf::from).unwrap_or_else(|| default.into())
+    std::env::var_os(variable)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default.into())
 }
 
 fn load_tls() -> Result<(ServerTlsConfig, PeerPin)> {
-    let cert = protected_file(&configured_path("OP_EMQX_EXHOOK_SERVER_CERT_FILE",
-        "/etc/op-dbus/tls/tonic-svc0.crt"), false, MAX_PEM_BYTES)?;
-    let key = zeroize::Zeroizing::new(protected_file(&configured_path(
-        "OP_EMQX_EXHOOK_SERVER_KEY_FILE", "/etc/op-dbus/tls/tonic-svc0.key"), true, MAX_PEM_BYTES)?);
-    let ca = protected_file(&configured_path("OP_EMQX_EXHOOK_CLIENT_CA_FILE",
-        "/etc/emqx/certs/opdbus-ca.crt"), false, MAX_PEM_BYTES)?;
-    let pin = protected_file(&configured_path("OP_EMQX_EXHOOK_CLIENT_CERT_FILE",
-        "/etc/emqx/certs/emqx-exhook-client.crt"), false, MAX_PEM_BYTES)?;
+    let cert = protected_file(
+        &configured_path(
+            "OP_EMQX_EXHOOK_SERVER_CERT_FILE",
+            "/etc/op-dbus/tls/tonic-svc0.crt",
+        ),
+        false,
+        MAX_PEM_BYTES,
+    )?;
+    let key = zeroize::Zeroizing::new(protected_file(
+        &configured_path(
+            "OP_EMQX_EXHOOK_SERVER_KEY_FILE",
+            "/etc/op-dbus/tls/tonic-svc0.key",
+        ),
+        true,
+        MAX_PEM_BYTES,
+    )?);
+    let ca = protected_file(
+        &configured_path(
+            "OP_EMQX_EXHOOK_CLIENT_CA_FILE",
+            "/etc/emqx/certs/opdbus-ca.crt",
+        ),
+        false,
+        MAX_PEM_BYTES,
+    )?;
+    let pin = protected_file(
+        &configured_path(
+            "OP_EMQX_EXHOOK_CLIENT_CERT_FILE",
+            "/etc/emqx/certs/emqx-exhook-client.crt",
+        ),
+        false,
+        MAX_PEM_BYTES,
+    )?;
     let certificates = rustls_pemfile::certs(&mut BufReader::new(pin.as_slice()))
         .collect::<std::io::Result<Vec<_>>>()?;
-    ensure!(certificates.len() == 1, "ExHook client pin must contain exactly one certificate");
+    ensure!(
+        certificates.len() == 1,
+        "ExHook client pin must contain exactly one certificate"
+    );
     let peer = PeerPin(Arc::from(certificates[0].as_ref()));
     let tls = ServerTlsConfig::new()
         .identity(Identity::from_pem(cert, key.as_slice()))
@@ -177,16 +239,27 @@ fn load_tls() -> Result<(ServerTlsConfig, PeerPin)> {
 /// Authority/configuration files are opened without following the final symlink
 /// and checked on the opened descriptor, never by an earlier pathname stat.
 fn protected_file(path: &Path, private: bool, maximum: u64) -> Result<Vec<u8>> {
-    let file = std::fs::OpenOptions::new().read(true)
+    let file = std::fs::OpenOptions::new()
+        .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK)
-        .open(path).with_context(|| format!("opening protected file {}", path.display()))?;
+        .open(path)
+        .with_context(|| format!("opening protected file {}", path.display()))?;
     let metadata = file.metadata()?;
     let forbidden = if private { 0o077 } else { 0o022 };
-    ensure!(metadata.is_file() && metadata.uid() == 0 && metadata.mode() & forbidden == 0,
-        "file must be a protected root-owned regular file: {}", path.display());
-    ensure!(metadata.len() <= maximum, "protected file exceeds its size bound");
+    ensure!(
+        metadata.is_file() && metadata.uid() == 0 && metadata.mode() & forbidden == 0,
+        "file must be a protected root-owned regular file: {}",
+        path.display()
+    );
+    ensure!(
+        metadata.len() <= maximum,
+        "protected file exceeds its size bound"
+    );
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take(maximum + 1).read_to_end(&mut bytes)?;
-    ensure!(bytes.len() as u64 <= maximum, "protected file exceeds its size bound");
+    ensure!(
+        bytes.len() as u64 <= maximum,
+        "protected file exceeds its size bound"
+    );
     Ok(bytes)
 }

@@ -765,7 +765,10 @@ impl AssertionValidator {
         Self::from_persistent_store(trust_store, &path)
     }
 
-    fn from_persistent_store(trust_store: DecoyTrustStore, path: &Path) -> Result<Self, ReplayStoreError> {
+    fn from_persistent_store(
+        trust_store: DecoyTrustStore,
+        path: &Path,
+    ) -> Result<Self, ReplayStoreError> {
         let replay_cache = AssertionReplayCache::persistent(path, CLOCK_LEEWAY_SECS)?;
         Ok(Self {
             trust_store,
@@ -1863,8 +1866,9 @@ pub mod tests {
         let issuer = test_issuer();
         let blocker = tempfile::NamedTempFile::new().expect("blocking file");
         let path = blocker.path().join("auth-replay.db");
-        let error = AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
-            .expect_err("production construction requires a usable durable replay store");
+        let error =
+            AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
+                .expect_err("production construction requires a usable durable replay store");
         assert!(error.to_string().contains("create replay-store parent"));
     }
 
@@ -1875,8 +1879,9 @@ pub mod tests {
         let path = dir.path().join("auth-replay.db");
         let corrupt = b"{\"envelope_kind\":";
         std::fs::write(&path, corrupt).expect("write interrupted journal");
-        let error = AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
-            .expect_err("corrupt replay history cannot become an empty store");
+        let error =
+            AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
+                .expect_err("corrupt replay history cannot become an empty store");
         assert!(error.to_string().contains("parse replay store"));
         assert_eq!(std::fs::read(&path).unwrap().as_slice(), corrupt);
     }
@@ -1891,16 +1896,22 @@ pub mod tests {
             let validator =
                 AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
                     .expect("production replay store");
-            assert!(validator.replay_cache()
-                .check_and_insert_for_issuer("decoy-key-1", [0x6C; 16], now + 60, now)
-                .expect("durably consume nonce"));
+            assert!(
+                validator
+                    .replay_cache()
+                    .check_and_insert_for_issuer("decoy-key-1", [0x6C; 16], now + 60, now)
+                    .expect("durably consume nonce")
+            );
         }
         let reopened =
             AssertionValidator::from_persistent_store(trust_store_for_issuer(&issuer), &path)
                 .expect("reopen production replay store");
-        assert!(reopened.replay_cache()
-            .contains("decoy-key-1", [0x6C; 16], now)
-            .expect("recovered nonce"));
+        assert!(
+            reopened
+                .replay_cache()
+                .contains("decoy-key-1", [0x6C; 16], now)
+                .expect("recovered nonce")
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

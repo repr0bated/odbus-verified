@@ -18,8 +18,8 @@ pub use system_graph::*;
 mod block_store;
 pub use block_store::{
     BlockDevice, BlockStoreCounts, CozoBlockStore, DEFAULT_UBLK_COZO_DB_PATH,
-    POOL_DEFAULT_PERSIST_BYTES, POOL_DEFAULT_PERSIST_DEVICE, POOL_PERSIST_ROLE,
-    UBLK_CHUNK_BYTES, UBLK_COZO_DB_PATH_ENV, UBLK_LOGICAL_BLOCK_BYTES, ublk_cozo_db_path,
+    POOL_DEFAULT_PERSIST_BYTES, POOL_DEFAULT_PERSIST_DEVICE, POOL_PERSIST_ROLE, UBLK_CHUNK_BYTES,
+    UBLK_COZO_DB_PATH_ENV, UBLK_LOGICAL_BLOCK_BYTES, ublk_cozo_db_path,
 };
 mod identity_inventory;
 mod identity_transactions;
@@ -27,12 +27,13 @@ pub use identity_inventory::{
     IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
 };
 pub use identity_transactions::{
-    ContainerRenameJournal, ContainerRenameRequest, CONTROL_PLANE_NATIVE_NAME, container_rename_native_matches,
-    NativeCreationRequest, NativeCreationRecord, is_numbered_native_name,
-    CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
-    IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
-    IdentityRecoverySnapshot, IdentityRevision, PhysicalRootMigrationReceipt, RootRepairJournal,
-    SeedProvisionJournal, physical_root_instance_binding_matches,
+    CONTROL_PLANE_NATIVE_NAME, CleanProvisionReceipt, ContainerRenameJournal,
+    ContainerRenameRequest, IdentityCleanProvision, IdentityCommit, IdentityCompareExchange,
+    IdentityIntent, IdentityPhysicalRootMigration, IdentityRecoverySnapshot, IdentityRevision,
+    NativeCreationRecord, NativeCreationRequest, PhysicalRootMigrationReceipt, RootRepairJournal,
+    SeedProvisionJournal, clean_provision_instance_binding_matches,
+    container_rename_native_matches, is_numbered_native_name,
+    physical_root_instance_binding_matches,
 };
 mod runtime_document_transactions;
 pub use runtime_document_transactions::{
@@ -55,12 +56,12 @@ pub use chat_response_conversations::{
 };
 mod ctl_plane_chatbot_episodes;
 mod workflow_executions;
-pub use workflow_executions::WorkflowExecutionRecord;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,
     MAX_CHATBOT_EPISODE_BYTES, MAX_CHATBOT_SNAPSHOT_BYTES, ScopedEpisodeRecord,
     ScopedKnowledgeRecord,
 };
+pub use workflow_executions::WorkflowExecutionRecord;
 
 /// Strongly-typed error for CozoDB graph operations.
 ///
@@ -1043,10 +1044,7 @@ impl CozoGraphShuttle {
     }
 
     /// Remove all rows from a set of relations. Used to clean up on deny/delete.
-    pub fn clear_relations(
-        &self,
-        names: &[String],
-    ) -> std::result::Result<(), CozoError> {
+    pub fn clear_relations(&self, names: &[String]) -> std::result::Result<(), CozoError> {
         if names.is_empty() {
             return Ok(());
         }

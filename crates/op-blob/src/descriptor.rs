@@ -591,7 +591,13 @@ fn json_name(snake: &str) -> String {
 pub fn proto_field_name(value: &str) -> String {
     let mut name: String = value
         .chars()
-        .map(|ch| if ch.is_ascii_alphanumeric() || ch == '_' { ch } else { '_' })
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '_' {
+                ch
+            } else {
+                '_'
+            }
+        })
         .collect();
     if name.is_empty() {
         name.push_str("field");
@@ -609,7 +615,11 @@ pub fn validate_proto_field_aliases<'a>(
     let mut aliases = std::collections::BTreeMap::<String, &'a str>::new();
     for original in names {
         let proto = proto_field_name(original);
-        let json = if proto == original { json_name(original) } else { original.to_owned() };
+        let json = if proto == original {
+            json_name(original)
+        } else {
+            original.to_owned()
+        };
         for alias in [proto, json] {
             if let Some(previous) = aliases.insert(alias.clone(), original)
                 && previous != original
@@ -826,8 +836,8 @@ impl<'a> Reader<'a> {
 mod tests {
     use super::*;
     use crate::adapter::{AckOutput, method_decl_from_schemars_with_output};
-    use serde::de::DeserializeSeed;
     use crate::schema::SideEffect;
+    use serde::de::DeserializeSeed;
     use serde::{Deserialize, Serialize};
 
     #[derive(Serialize, Deserialize, schemars::JsonSchema)]
@@ -906,11 +916,11 @@ mod tests {
             "obs.threetched.configure@v1",
         );
         decl.args = serde_json::json!({"type":"object","additionalProperties":false,
-            "properties":{
-                "--config-dir":{"type":"string"},
-                "-f":{"type":"boolean"},
-                "listen_port":{"type":"integer"}
-            }});
+        "properties":{
+            "--config-dir":{"type":"string"},
+            "-f":{"type":"boolean"},
+            "listen_port":{"type":"integer"}
+        }});
         let mut schema = PluginSchema::builder("threetched").build();
         schema.methods.insert("configure".into(), decl);
         let (bytes, methods) = descriptor_set_for_plugin("threetched", &schema);
@@ -940,11 +950,14 @@ mod tests {
         assert!(validate_proto_field_aliases(["--flag", "__flag"]).is_err());
         assert!(validate_proto_field_aliases(["foo_bar", "fooBar"]).is_err());
         assert!(validate_proto_field_aliases(["--flag", "-f", "snake_case"]).is_ok());
-        assert!(validate_json_schema_field_aliases(&serde_json::json!({
-            "type":"object","properties":{"nested":{"type":"object","properties":{
-                "--flag":{"type":"string"},"__flag":{"type":"string"}
-            }}}
-        })).is_err());
+        assert!(
+            validate_json_schema_field_aliases(&serde_json::json!({
+                "type":"object","properties":{"nested":{"type":"object","properties":{
+                    "--flag":{"type":"string"},"__flag":{"type":"string"}
+                }}}
+            }))
+            .is_err()
+        );
     }
 
     #[test]

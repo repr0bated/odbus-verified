@@ -47,8 +47,7 @@ pub fn ensure_enabled() -> Result<()> {
 
 /// Read a go-ipfs style swarm.key; it must not be accessible by group or others.
 pub fn read_swarm_key(path: &Path) -> Result<PreSharedKey> {
-    let meta =
-        std::fs::metadata(path).with_context(|| format!("swarm key {}", path.display()))?;
+    let meta = std::fs::metadata(path).with_context(|| format!("swarm key {}", path.display()))?;
     ensure!(
         meta.mode() & 0o077 == 0,
         "swarm key {} must not be accessible by group or others",
@@ -69,7 +68,10 @@ pub fn cid_for(hash: &str) -> Result<Cid> {
     for (index, byte) in digest.iter_mut().enumerate() {
         *byte = u8::from_str_radix(&hash[2 * index..2 * index + 2], 16)?;
     }
-    Ok(Cid::new_v1(RAW_CODEC, Multihash::<64>::wrap(BLAKE3_256, &digest)?))
+    Ok(Cid::new_v1(
+        RAW_CODEC,
+        Multihash::<64>::wrap(BLAKE3_256, &digest)?,
+    ))
 }
 
 /// 3tchedFS hash carried by a raw BLAKE3-256 CID.
@@ -79,7 +81,11 @@ pub fn hash_for(cid: &Cid) -> Result<String> {
         cid.codec() == RAW_CODEC && multihash.code() == BLAKE3_256 && multihash.size() == 32,
         "CID {cid} is not a raw blake3-256 3tchedFS block"
     );
-    Ok(multihash.digest().iter().map(|byte| format!("{byte:02x}")).collect())
+    Ok(multihash
+        .digest()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 /// Start a private node. Without `repo` the blockstore is in memory and
@@ -164,8 +170,12 @@ pub async fn fetch_view(
 async fn put(ipfs: &Ipfs, hash: &str, bytes: Vec<u8>) -> Result<Cid> {
     let cid = cid_for(hash)?;
     let block = Block::new(cid, bytes).with_context(|| format!("bytes do not match {hash}"))?;
-    ipfs.put_block(&block).await.with_context(|| format!("store block {cid}"))?;
-    ipfs.insert_pin(cid).await.with_context(|| format!("pin {cid}"))?;
+    ipfs.put_block(&block)
+        .await
+        .with_context(|| format!("store block {cid}"))?;
+    ipfs.insert_pin(cid)
+        .await
+        .with_context(|| format!("pin {cid}"))?;
     Ok(cid)
 }
 
@@ -176,7 +186,9 @@ async fn get(ipfs: &Ipfs, hash: &str, timeout: Duration) -> Result<Vec<u8>> {
         .timeout(timeout)
         .await
         .with_context(|| format!("fetch {cid}"))?;
-    block.verify().with_context(|| format!("block {cid} does not match its CID"))?;
+    block
+        .verify()
+        .with_context(|| format!("block {cid} does not match its CID"))?;
     Ok(block.data().to_vec())
 }
 

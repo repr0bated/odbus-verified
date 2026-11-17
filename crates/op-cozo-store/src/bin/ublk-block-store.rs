@@ -49,7 +49,8 @@ fn refuse_btrfs(path: &Path) -> Result<(), String> {
         .ancestors()
         .find(|candidate| candidate.exists())
         .ok_or_else(|| format!("no existing ancestor of {}", path.display()))?;
-    let fs = nix::sys::statfs::statfs(existing).map_err(|e| format!("statfs {}: {e}", existing.display()))?;
+    let fs = nix::sys::statfs::statfs(existing)
+        .map_err(|e| format!("statfs {}: {e}", existing.display()))?;
     if fs.filesystem_type() == nix::sys::statfs::BTRFS_SUPER_MAGIC {
         return Err(format!(
             "{} is on btrfs; the ublk block store must not live on the pool it backs",
@@ -82,14 +83,21 @@ fn print_device(device: &BlockDevice) {
 
 fn print_counts(label: &str, store: &CozoBlockStore) -> Result<(), String> {
     let counts = store.counts().map_err(|e| e.to_string())?;
-    println!("rows ({label}): devices={} blocks={}", counts.devices, counts.blocks);
+    println!(
+        "rows ({label}): devices={} blocks={}",
+        counts.devices, counts.blocks
+    );
     Ok(())
 }
 
 fn init() -> Result<(), String> {
     let store = open()?;
     let device = store
-        .register_device(POOL_DEFAULT_PERSIST_DEVICE, POOL_DEFAULT_PERSIST_BYTES, POOL_PERSIST_ROLE)
+        .register_device(
+            POOL_DEFAULT_PERSIST_DEVICE,
+            POOL_DEFAULT_PERSIST_BYTES,
+            POOL_PERSIST_ROLE,
+        )
         .map_err(|e| e.to_string())?;
     store.flush().map_err(|e| e.to_string())?;
     print_device(&device);
@@ -110,13 +118,22 @@ fn verify() -> Result<(), String> {
     // Last chunk: far from every btrfs superblock copy (64 KiB, 64 MiB, 256 GiB).
     let idx = device.chunk_count() - 1;
     let mut out = vec![0u8; chunk];
-    if store.read_block(&device, idx, &mut out).map_err(|e| e.to_string())? {
-        return Err(format!("chunk {idx} already holds data; refusing to use it as scratch"));
+    if store
+        .read_block(&device, idx, &mut out)
+        .map_err(|e| e.to_string())?
+    {
+        return Err(format!(
+            "chunk {idx} already holds data; refusing to use it as scratch"
+        ));
     }
     print_counts("before", &store)?;
 
-    let scratch: Vec<u8> = (0..chunk).map(|i| (i as u8).wrapping_mul(31).wrapping_add(7)).collect();
-    store.write_block(&device, idx, &scratch).map_err(|e| e.to_string())?;
+    let scratch: Vec<u8> = (0..chunk)
+        .map(|i| (i as u8).wrapping_mul(31).wrapping_add(7))
+        .collect();
+    store
+        .write_block(&device, idx, &scratch)
+        .map_err(|e| e.to_string())?;
     store.flush().map_err(|e| e.to_string())?;
     println!(
         "write: chunk {idx} ({} bytes at offset {}) blake3={}",
@@ -126,15 +143,23 @@ fn verify() -> Result<(), String> {
     );
     print_counts("after write", &store)?;
 
-    let stored = store.read_block(&device, idx, &mut out).map_err(|e| e.to_string())?;
+    let stored = store
+        .read_block(&device, idx, &mut out)
+        .map_err(|e| e.to_string())?;
     if !stored || out != scratch {
-        return Err(format!("read-back mismatch on chunk {idx} (stored={stored})"));
+        return Err(format!(
+            "read-back mismatch on chunk {idx} (stored={stored})"
+        ));
     }
     println!("read: chunk {idx} matches, blake3 verified");
 
-    store.discard_block(&device, idx).map_err(|e| e.to_string())?;
+    store
+        .discard_block(&device, idx)
+        .map_err(|e| e.to_string())?;
     store.flush().map_err(|e| e.to_string())?;
-    let stored = store.read_block(&device, idx, &mut out).map_err(|e| e.to_string())?;
+    let stored = store
+        .read_block(&device, idx, &mut out)
+        .map_err(|e| e.to_string())?;
     if stored || out.iter().any(|b| *b != 0) {
         return Err(format!("chunk {idx} still readable after delete"));
     }

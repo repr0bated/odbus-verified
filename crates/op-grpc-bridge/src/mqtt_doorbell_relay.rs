@@ -6,6 +6,7 @@
 
 use std::{io::BufReader, net::Ipv4Addr, sync::Arc, time::Duration};
 
+use crate::tls_door::ConnectionShutdown;
 use axum::{
     extract::{
         Extension,
@@ -19,7 +20,6 @@ use tokio::net::TcpStream;
 use tokio::sync::OnceCell;
 use tokio_rustls::{TlsConnector, rustls};
 use tokio_tungstenite::{WebSocketStream, tungstenite, tungstenite::protocol::WebSocketConfig};
-use crate::tls_door::ConnectionShutdown;
 
 pub(crate) const PUBLIC_LISTENER: &str = "wss://10.0.0.2:8090/mqtt";
 const BROKER_HOST: &str = op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_HOST;
@@ -153,8 +153,7 @@ async fn relay<S>(
     browser: WebSocket,
     broker: WebSocketStream<S>,
     mut shutdown: Option<ConnectionShutdown>,
-)
-where
+) where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
     let (mut browser_send, mut browser_recv) = browser.split();
@@ -280,15 +279,17 @@ mod tests {
         });
         let app = Router::new().route(
             "/mqtt",
-            get(move |ws: WebSocketUpgrade,
+            get(
+                move |ws: WebSocketUpgrade,
                       Extension(permit): Extension<Arc<tokio::sync::OwnedSemaphorePermit>>,
                       Extension(shutdown): Extension<ConnectionShutdown>| async move {
-                let (upstream, _) =
-                    tokio_tungstenite::connect_async(format!("ws://{broker_addr}/mqtt"))
-                        .await
-                        .unwrap();
-                accept_upgrade(ws, upstream, Some(permit), Some(shutdown))
-            }),
+                    let (upstream, _) =
+                        tokio_tungstenite::connect_async(format!("ws://{broker_addr}/mqtt"))
+                            .await
+                            .unwrap();
+                    accept_upgrade(ws, upstream, Some(permit), Some(shutdown))
+                },
+            ),
         );
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
@@ -301,9 +302,15 @@ mod tests {
         let (stop, stopped) = tokio::sync::oneshot::channel();
         let server = tokio::spawn(async move {
             crate::tls_door::serve_upgradeable_tcp_with_shutdown(
-                listener, server_tls, app, async { let _ = stopped.await; },
-            ).await
-                .unwrap();
+                listener,
+                server_tls,
+                app,
+                async {
+                    let _ = stopped.await;
+                },
+            )
+            .await
+            .unwrap();
         });
         let mut roots = rustls::RootCertStore::empty();
         roots.add(certificate.cert.der().clone()).unwrap();
@@ -341,7 +348,10 @@ mod tests {
         stop.send(()).unwrap();
         assert!(matches!(
             tokio::time::timeout(Duration::from_secs(3), client.next())
-                .await.unwrap().unwrap().unwrap(),
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap(),
             tungstenite::Message::Close(_),
         ));
         tokio::time::timeout(Duration::from_secs(3), broker)
@@ -349,6 +359,8 @@ mod tests {
             .unwrap()
             .unwrap();
         tokio::time::timeout(Duration::from_secs(3), server)
-            .await.unwrap().unwrap();
+            .await
+            .unwrap()
+            .unwrap();
     }
 }

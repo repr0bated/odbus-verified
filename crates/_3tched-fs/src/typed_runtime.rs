@@ -13,7 +13,9 @@ use std::sync::{Arc, Mutex};
 
 use crate::model::SideEffect;
 use crate::mounted::{MountedDiagnostic, MountedNamespace};
-use crate::namespace::{FileSource, MountIdentity, Namespace, NodeKind, ProjectionTarget, encode_component};
+use crate::namespace::{
+    FileSource, MountIdentity, Namespace, NodeKind, ProjectionTarget, encode_component,
+};
 use crate::store::ObjectStore;
 use crate::typed_bindings::*;
 

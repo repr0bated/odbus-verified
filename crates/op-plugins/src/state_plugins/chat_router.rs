@@ -899,7 +899,8 @@ impl ChatRouterPlugin {
         if !super::threetched::is_schema_capture() {
             let state = super::threetched::sealed_schema(PLUGIN_NAME)
                 .expect("chat_router runtime requires its sealed schema")
-                .example.expect("sealed chat_router schema has no declared state");
+                .example
+                .expect("sealed chat_router schema has no declared state");
             return simd_json::serde::from_owned_value(state)
                 .expect("sealed chat_router state must match its declared type");
         }
@@ -1738,10 +1739,7 @@ impl StatePlugin for ChatRouterPlugin {
             return Some(chat_router_schema());
         }
         let mut schema = chat_router_schema();
-        super::common::llm_projection::rewrite_projection_subids_for_plugin(
-            &mut schema,
-            "3tched",
-        );
+        super::common::llm_projection::rewrite_projection_subids_for_plugin(&mut schema, "3tched");
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
         Some(schema)
     }
@@ -2673,11 +2671,13 @@ mod tests {
         let field_schema = serde_json::to_value(field_schema.as_ref()).unwrap();
         let field_validator = jsonschema::Validator::new(&field_schema).unwrap();
         assert!(field_validator.is_valid(&serde_json::Value::Null));
-        assert!(!schema
-            .public_state
-            .paths
-            .iter()
-            .any(|p| p.starts_with("/catalog_model_binding")));
+        assert!(
+            !schema
+                .public_state
+                .paths
+                .iter()
+                .any(|p| p.starts_with("/catalog_model_binding"))
+        );
         for extra in ["reference", "path", "agent", "uri", "session_id"] {
             let mut args = serde_json::json!({"provider_id":"openai", "model_id":"test-model"});
             args[extra] = serde_json::json!("untrusted");
@@ -2790,16 +2790,20 @@ mod tests {
     #[test]
     fn declared_routes_do_not_invent_factory_routing_or_availability() {
         let state = ChatRouterPlugin::current_state();
-        assert!(state
-            .catalog
-            .model_routes
-            .iter()
-            .all(|route| !route.available));
-        assert!(state
-            .catalog
-            .model_routes
-            .iter()
-            .all(|route| route.provider != "factory"));
+        assert!(
+            state
+                .catalog
+                .model_routes
+                .iter()
+                .all(|route| !route.available)
+        );
+        assert!(
+            state
+                .catalog
+                .model_routes
+                .iter()
+                .all(|route| route.provider != "factory")
+        );
         let factory = state
             .catalog
             .providers
@@ -2863,11 +2867,13 @@ mod tests {
             )
             .unwrap()
         );
-        assert!(!schema
-            .public_state
-            .paths
-            .iter()
-            .any(|path| path == "/native_config" || path.starts_with("/native_config/")));
+        assert!(
+            !schema
+                .public_state
+                .paths
+                .iter()
+                .any(|path| path == "/native_config" || path.starts_with("/native_config/"))
+        );
     }
 
     #[test]
@@ -2880,9 +2886,11 @@ mod tests {
                 // MutationEngine owns authenticated private generation state;
                 // the synchronous helper must not bypass that owner.
                 let error = dispatch_chat_router_method(method, "{}", &state).unwrap_err();
-                assert!(error
-                    .to_string()
-                    .contains("requires admitted native bridge dispatch"));
+                assert!(
+                    error
+                        .to_string()
+                        .contains("requires admitted native bridge dispatch")
+                );
                 continue;
             }
             if method == "Chat" {
@@ -2952,9 +2960,11 @@ mod tests {
             assert_eq!(binding.argument, argument);
             let method = &schema.methods[method_name];
             assert_eq!(method.side_effect, op_state_store::SideEffect::Mutation);
-            assert!(schema
-                .capabilities
-                .contains_key(method.required_capability.as_ref().unwrap()));
+            assert!(
+                schema
+                    .capabilities
+                    .contains_key(method.required_capability.as_ref().unwrap())
+            );
             let args = serde_json::to_value(&method.args).unwrap();
             assert!(args["properties"].get(argument).is_some());
         }
@@ -2978,8 +2988,7 @@ inventory::submit! {
 
 /// Bare upstream version verified against the manifest at seal.
 pub fn chat_router_binary_version() -> &'static str {
-    super::threetched::binary_version()
-        .expect("threetched binary version must be captured at seal")
+    super::threetched::binary_version().expect("threetched binary version must be captured at seal")
 }
 
 #[cfg(test)]

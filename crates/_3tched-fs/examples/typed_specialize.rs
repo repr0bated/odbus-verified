@@ -63,6 +63,40 @@ fn append(out: &mut String, text: &str) -> Result<()> {
 fn literal(value: &str) -> String {
     format!("{value:?}")
 }
+
+/// Emit a path relative to `examples/` for `#[path=...]` in generated examples.
+fn pathdiff_from_examples(manifest_dir: &Path, target: &Path) -> Result<String> {
+    let examples = manifest_dir.join("examples");
+    let abs_target = if target.is_absolute() {
+        target.to_path_buf()
+    } else {
+        manifest_dir.join(target)
+    };
+    let rel = pathdiff_components(&examples, &abs_target)
+        .context("generated path is outside the crate")?;
+    Ok(rel)
+}
+
+fn pathdiff_components(from_dir: &Path, to_file: &Path) -> Option<String> {
+    let from = from_dir.components().collect::<Vec<_>>();
+    let to = to_file.components().collect::<Vec<_>>();
+    let mut i = 0;
+    while i < from.len() && i < to.len() && from[i] == to[i] {
+        i += 1;
+    }
+    let mut out = PathBuf::new();
+    for _ in i..from.len() {
+        out.push("..");
+    }
+    for component in &to[i..] {
+        out.push(component.as_os_str());
+    }
+    if out.as_os_str().is_empty() {
+        out.push(".");
+    }
+    Some(out.to_string_lossy().into_owned())
+}
+
 fn ident(value: &str) -> String {
     // Every non-identifier byte is escaped, including underscore, so distinct
     // authored names cannot collide after sanitization. A prefix avoids keywords.
@@ -896,6 +930,8 @@ fn usage_example(
     let mut example = String::from(
         "//! Generated typed read example; uses only the identity's existing mounted filesystem.\n#![allow(dead_code)]\n",
     );
+    // Paths are relative to examples/ so the example builds off any checkout
+    // path (not a host-absolute /srv/git/... prefix).
     for name in [
         "dispatch",
         "fuse_buffers",
@@ -908,27 +944,19 @@ fn usage_example(
         "typed_bindings",
         "typed_runtime",
     ] {
-        let path = root.join("src").join(format!("{name}.rs"));
         writeln!(
             example,
             "#[path={}] mod {name};",
-            literal(path.to_str().context("source path is not UTF-8")?)
+            literal(&format!("../src/{name}.rs"))
         )?;
     }
     writeln!(
         example,
         "#[path={}] mod threetched_surface;",
-        literal(
-            root.join("src/threetched-surface.rs")
-                .to_str()
-                .context("surface source path is not UTF-8")?
-        )
+        literal("../src/threetched-surface.rs")
     )?;
-    writeln!(
-        example,
-        "#[path={}] mod plugins;",
-        literal(generated.to_str().context("generated path is not UTF-8")?)
-    )?;
+    let plugins_path = pathdiff_from_examples(root, generated)?;
+    writeln!(example, "#[path={}] mod plugins;", literal(&plugins_path))?;
     append(
         &mut example,
         &format!(

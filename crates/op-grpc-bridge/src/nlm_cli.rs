@@ -1366,7 +1366,10 @@ mod tests {
     fn default_bin_is_release_owned_not_usr_bin() {
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::remove_var("OP_NLM_BIN") };
-        assert_eq!(nlm_bin().as_os_str(), "/usr/local/lib/opdbus-notebooklm/bin/nlm");
+        assert_eq!(
+            nlm_bin().as_os_str(),
+            "/usr/local/lib/opdbus-notebooklm/bin/nlm"
+        );
     }
 
     #[test]

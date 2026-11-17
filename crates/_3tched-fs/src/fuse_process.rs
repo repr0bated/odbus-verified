@@ -35,8 +35,12 @@ pub(crate) fn capture_surface_with_config(
     let cancelled = AtomicBool::new(false);
     let mut command = Command::new(binary);
     if let Some(config_dir) = config_dir {
-        anyhow::ensure!(config_dir.is_absolute(), "capture config directory must be absolute");
-        command.env_clear()
+        anyhow::ensure!(
+            config_dir.is_absolute(),
+            "capture config directory must be absolute"
+        );
+        command
+            .env_clear()
             .env("PATH", "/usr/bin:/bin")
             .env("HOME", config_dir.join("home"));
         command.arg("--config-dir").arg(config_dir);
@@ -419,11 +423,21 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let directory = tempfile::tempdir().unwrap();
         let script = directory.path().join("capture");
-        std::fs::write(&script, "#!/bin/sh\nprintf '%s' \"$1|$2|$HOME|$PATH|$LANGUAGE\"\n").unwrap();
+        std::fs::write(
+            &script,
+            "#!/bin/sh\nprintf '%s' \"$1|$2|$HOME|$PATH|$LANGUAGE\"\n",
+        )
+        .unwrap();
         std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
         let text = capture_surface_with_config(&script, &[], Some(directory.path())).unwrap();
-        assert_eq!(text, format!("--config-dir|{}|{}|/usr/bin:/bin|en", directory.path().display(),
-            directory.path().join("home").display()));
+        assert_eq!(
+            text,
+            format!(
+                "--config-dir|{}|{}|/usr/bin:/bin|en",
+                directory.path().display(),
+                directory.path().join("home").display()
+            )
+        );
     }
 
     #[test]
@@ -434,10 +448,15 @@ mod tests {
         assert_eq!(output.stdout, "hello");
         assert_eq!(output.stderr, "error");
         assert_eq!(output.exit, 7);
-        assert_eq!(serde_json::to_value(&output).unwrap(),
-            serde_json::json!({"stdout":"hello","stderr":"error","exit":7}));
+        assert_eq!(
+            serde_json::to_value(&output).unwrap(),
+            serde_json::json!({"stdout":"hello","stderr":"error","exit":7})
+        );
         let cancelled = AtomicBool::new(true);
-        assert!(matches!(run_command(&mut fixture("exit 91"), &cancelled), Err(Error::NotStarted(_))));
+        assert!(matches!(
+            run_command(&mut fixture("exit 91"), &cancelled),
+            Err(Error::NotStarted(_))
+        ));
     }
     use super::*;
 

@@ -27,14 +27,13 @@ mod transactions;
 pub use transactions::{
     CredentialPublication, PendingCredentialPublication, PendingDocumentPublication,
     PrivateDocumentCommit, PrivateDocumentPublication, PrivateProjectionDirectory,
-    ProjectionCommit, ProjectionSnapshot, commit_identity_projection_durable_in,
-    pending_projection_publication_in,
-    pending_identity_publication_in, prepare_projection_directory_in, read_projection_snapshot,
-    ProjectionBatchCommit, ProjectionBatchPublication, ProjectionDocuments,
-    commit_projection_batch_durable_in, recover_projection_batch_in,
-    read_projection_snapshot_bounded_in, read_projection_snapshot_in,
-    recover_identity_projection_in, restrict_projection_file_in, update_projection,
-    update_projection_in, update_projection_with_credentials_in,
+    ProjectionBatchCommit, ProjectionBatchPublication, ProjectionCommit, ProjectionDocuments,
+    ProjectionSnapshot, commit_identity_projection_durable_in, commit_projection_batch_durable_in,
+    pending_identity_publication_in, pending_projection_publication_in,
+    prepare_projection_directory_in, read_projection_snapshot, read_projection_snapshot_bounded_in,
+    read_projection_snapshot_in, recover_identity_projection_in, recover_projection_batch_in,
+    restrict_projection_file_in, update_projection, update_projection_in,
+    update_projection_with_credentials_in,
 };
 
 /// Canonical directory for per-plugin present-state files (one JSON file per

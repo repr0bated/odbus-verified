@@ -222,14 +222,7 @@ impl Namespace {
         lungs: bool,
         catalog_dir: &std::path::Path,
     ) -> Result<Self> {
-        Self::build_with_catalog_as(
-            store,
-            target,
-            state_dir,
-            lungs,
-            catalog_dir,
-            Surface::Our,
-        )
+        Self::build_with_catalog_as(store, target, state_dir, lungs, catalog_dir, Surface::Our)
     }
 
     pub fn build_with_catalog_as(

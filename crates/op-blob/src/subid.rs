@@ -80,10 +80,19 @@ fn hyphenated(segment: &str) -> bool {
     // Prefer hyphen; allow underscore for Muse-generated method verbs.
     let mut parts = segment.split(|c| c == '-' || c == '_');
     match parts.next() {
-        Some(first) if !first.is_empty() && first.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) => {}
+        Some(first)
+            if !first.is_empty()
+                && first
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) => {}
         _ => return false,
     }
-    parts.all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()))
+    parts.all(|part| {
+        !part.is_empty()
+            && part
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+    })
 }
 
 pub fn validate_subid(subid: &str) -> Result<(), String> {

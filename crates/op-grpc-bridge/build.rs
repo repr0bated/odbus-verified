@@ -39,14 +39,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let registry = op_plugins::DefaultPluginRegistry::new(std::sync::Arc::new(
         op_state_store::MemoryStore::new(),
     ));
-    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
     let plugins = runtime.block_on(registry.load_all_plugins())?;
     let mut contracts = std::collections::BTreeMap::new();
     for plugin in plugins {
-        let schema = plugin.schema().ok_or("native plugin has no compatibility contract")?;
-        contracts.insert(schema.name.clone(), serde_json::json!({
-            "version": schema.version, "fields": schema.fields, "methods": schema.methods,
-        }));
+        let schema = plugin
+            .schema()
+            .ok_or("native plugin has no compatibility contract")?;
+        contracts.insert(
+            schema.name.clone(),
+            serde_json::json!({
+                "version": schema.version, "fields": schema.fields, "methods": schema.methods,
+            }),
+        );
     }
     std::fs::write(
         out_dir.join("compiled_method_contracts.json"),

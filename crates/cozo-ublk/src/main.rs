@@ -51,7 +51,12 @@ fn run() -> Result<(), String> {
     let device = store
         .device(&device_id)
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| format!("device {device_id} is not registered in {}", store.path().display()))?;
+        .ok_or_else(|| {
+            format!(
+                "device {device_id} is not registered in {}",
+                store.path().display()
+            )
+        })?;
     if device.block_size != 4096 || device.chunk_size % device.block_size != 0 {
         return Err(format!("unsupported geometry {device:?}"));
     }
@@ -71,7 +76,9 @@ fn run() -> Result<(), String> {
     if let Ok(stale) = UblkCtrl::new_simple(dev_id) {
         eprintln!("removing stale ublk dev {dev_id}");
         let _ = stale.kill_dev();
-        stale.del_dev().map_err(|e| format!("delete stale ublk dev {dev_id}: {e}"))?;
+        stale
+            .del_dev()
+            .map_err(|e| format!("delete stale ublk dev {dev_id}: {e}"))?;
     }
 
     let ctrl = UblkCtrlBuilder::default()
@@ -238,7 +245,8 @@ fn handle_io(q: &UblkQueue<'_>, tag: u16, buf: &IoBuf<u8>, t: &Target) -> i32 {
             let result = if op == libublk::sys::UBLK_IO_OP_READ {
                 t.read_at(off, &mut io[..n])
             } else {
-                t.write_at(off, &io[..n]).and_then(|()| if fua { t.flush() } else { Ok(()) })
+                t.write_at(off, &io[..n])
+                    .and_then(|()| if fua { t.flush() } else { Ok(()) })
             };
             match result {
                 Ok(()) => bytes as i32,
@@ -250,7 +258,10 @@ fn handle_io(q: &UblkQueue<'_>, tag: u16, buf: &IoBuf<u8>, t: &Target) -> i32 {
             Err(err) => fail(err),
         },
         libublk::sys::UBLK_IO_OP_DISCARD | libublk::sys::UBLK_IO_OP_WRITE_ZEROES => {
-            match t.zero_at(off, bytes).and_then(|()| if fua { t.flush() } else { Ok(()) }) {
+            match t
+                .zero_at(off, bytes)
+                .and_then(|()| if fua { t.flush() } else { Ok(()) })
+            {
                 Ok(()) => 0,
                 Err(err) => fail(err),
             }

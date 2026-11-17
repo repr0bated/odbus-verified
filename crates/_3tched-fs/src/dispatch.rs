@@ -475,7 +475,10 @@ mod tests {
     fn unsupported_reply_retains_refusal_and_recovery_without_reclassifying_failures() {
         let operation = "00000000-0000-4000-8000-000000000001";
         let message = format!("method_failed_before_effect; operation_id={operation}; omit --edit");
-        let refused = method_call_error(zbus::fdo::Error::NotSupported(message.clone()).into(), operation);
+        let refused = method_call_error(
+            zbus::fdo::Error::NotSupported(message.clone()).into(),
+            operation,
+        );
         assert!(matches!(&refused, LungsError::Unsupported(_)));
         assert_eq!(refused.errno(), libc::EOPNOTSUPP);
         assert_eq!(refused.stage(), "call");
@@ -485,7 +488,10 @@ mod tests {
         assert!(matches!(&uncertain, LungsError::OutcomeUnknown(_)));
         assert_eq!(uncertain.errno(), libc::EIO);
         assert_eq!(uncertain.operation_id(), Some(operation));
-        let denied = method_call_error(zbus::fdo::Error::AccessDenied("denied".into()).into(), operation);
+        let denied = method_call_error(
+            zbus::fdo::Error::AccessDenied("denied".into()).into(),
+            operation,
+        );
         assert!(matches!(&denied, LungsError::Refused(_)));
         assert_eq!(denied.errno(), libc::EACCES);
     }

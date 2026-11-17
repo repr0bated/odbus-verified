@@ -82,7 +82,8 @@ impl Buffer {
         impl std::io::Write for Writer {
             fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
                 let previous = self.buffer.bytes.len();
-                let result = previous.checked_add(bytes.len())
+                let result = previous
+                    .checked_add(bytes.len())
                     .ok_or(EFBIG)
                     .and_then(|size| self.buffer.resize(size, DOCUMENT_LIMIT));
                 if let Err(errno) = result {
@@ -92,16 +93,23 @@ impl Buffer {
                 self.buffer.bytes[previous..].copy_from_slice(bytes);
                 Ok(bytes.len())
             }
-            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
         }
-        let mut writer = Writer { buffer: Self::empty(budget), errno: None };
+        let mut writer = Writer {
+            buffer: Self::empty(budget),
+            errno: None,
+        };
         serde_json::to_writer_pretty(&mut writer, value)
             .map_err(|_| writer.errno.unwrap_or(libc::EIO))?;
         std::io::Write::write_all(&mut writer, b"\n")
             .map_err(|_| writer.errno.unwrap_or(libc::EIO))?;
         Ok(writer.buffer)
     }
-    pub(super) fn into_parts(self) -> (Vec<u8>, Charge) { (self.bytes, self.charge) }
+    pub(super) fn into_parts(self) -> (Vec<u8>, Charge) {
+        (self.bytes, self.charge)
+    }
     pub(super) fn empty(budget: &Arc<Budget>) -> Self {
         Self {
             bytes: Vec::new(),

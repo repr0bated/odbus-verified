@@ -14,7 +14,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result, ensure};
-use op_state_store::method_receipt::{MAX_METHOD_ARGUMENT_BYTES, MAX_METHOD_RECEIPT_BYTES, MethodExecutionReceipt};
+use op_state_store::method_receipt::{
+    MAX_METHOD_ARGUMENT_BYTES, MAX_METHOD_RECEIPT_BYTES, MethodExecutionReceipt,
+};
 use tokio::sync::{Semaphore, oneshot};
 use tokio::task::{JoinHandle, JoinSet};
 
@@ -37,12 +39,18 @@ struct LungsBootstrap {
 #[zbus::interface(name = "org.opdbus.v1.LungsV1")]
 impl LungsBootstrap {
     async fn bind(&self, session_id: &str) -> zbus::fdo::Result<bool> {
-        self.identity.bind(session_id).await.map_err(binding_denial)?;
+        self.identity
+            .bind(session_id)
+            .await
+            .map_err(binding_denial)?;
         Ok(true)
     }
 
     async fn bind_current_container(&self) -> zbus::fdo::Result<bool> {
-        self.identity.bind_current_container().await.map_err(binding_denial)?;
+        self.identity
+            .bind_current_container()
+            .await
+            .map_err(binding_denial)?;
         Ok(true)
     }
 }
@@ -69,13 +77,16 @@ impl LungsPlugin {
     ) -> zbus::fdo::Result<String> {
         let operation = canonical_operation_id(operation_id)?;
         if arguments.len() > MAX_METHOD_ARGUMENT_BYTES {
-            return Err(zbus::fdo::Error::InvalidArgs("method arguments exceed byte bound".into()));
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "method arguments exceed byte bound".into(),
+            ));
         }
         let arguments: serde_json::Value = serde_json::from_str(arguments)
             .map_err(|_| zbus::fdo::Error::InvalidArgs("method arguments are not JSON".into()))?;
         let caller = self.identity.caller().await.map_err(binding_denial)?;
-        let permit = self.calls.clone().try_acquire_owned()
-            .map_err(|_| zbus::fdo::Error::LimitsExceeded("lungs runtime is busy or stopping".into()))?;
+        let permit = self.calls.clone().try_acquire_owned().map_err(|_| {
+            zbus::fdo::Error::LimitsExceeded("lungs runtime is busy or stopping".into())
+        })?;
         let runtime = self.runtime.clone();
         let plugin_id = self.plugin_id.clone();
         let method_owned = method.to_owned();
@@ -84,22 +95,36 @@ impl LungsPlugin {
         // shutdown; no timeout/cancellation is certified as before-effect.
         let execution = tokio::spawn(async move {
             let _permit = permit;
-            runtime.call(caller, &plugin_id, &method_owned, arguments, operation).await
+            runtime
+                .call(caller, &plugin_id, &method_owned, arguments, operation)
+                .await
         });
-        let completed = execution.await
+        let completed = execution
+            .await
             .map_err(|_| unknown_outcome(operation, "runtime worker ended"))?
             .map_err(|error| runtime_error(error, operation))?;
-        completed.receipt.validate_attribution(&self.plugin_id, method)
+        completed
+            .receipt
+            .validate_attribution(&self.plugin_id, method)
             .map_err(|_| unknown_outcome(operation, "runtime receipt is invalid"))?;
         if completed.receipt.operation_id != operation_id {
-            return Err(unknown_outcome(operation, "runtime receipt operation mismatch"));
+            return Err(unknown_outcome(
+                operation,
+                "runtime receipt operation mismatch",
+            ));
         }
         // Includes the original native peer proof, an exact committed refresh
         // transition when applicable, and the current sealed-method grant.
-        self.runtime.revalidate_result(&completed, &self.plugin_id, method).await
+        self.runtime
+            .revalidate_result(&completed, &self.plugin_id, method)
+            .await
             .map_err(|error| runtime_error(error, operation))?;
-        receipt_wire(&completed.receipt)
-            .map_err(|_| unknown_outcome(operation, "runtime receipt cannot be encoded within its byte bound"))
+        receipt_wire(&completed.receipt).map_err(|_| {
+            unknown_outcome(
+                operation,
+                "runtime receipt cannot be encoded within its byte bound",
+            )
+        })
     }
 }
 
@@ -113,7 +138,9 @@ fn receipt_wire(receipt: &MethodExecutionReceipt) -> Result<String> {
             self.0.extend_from_slice(bytes);
             Ok(bytes.len())
         }
-        fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
     }
     let mut encoded = BoundedJson(Vec::new());
     serde_json::to_writer(&mut encoded, receipt)?;
@@ -124,7 +151,9 @@ fn canonical_operation_id(text: &str) -> zbus::fdo::Result<uuid::Uuid> {
     let id = uuid::Uuid::parse_str(text)
         .map_err(|_| zbus::fdo::Error::InvalidArgs("operation ID is not a UUID".into()))?;
     if id.to_string() != text {
-        return Err(zbus::fdo::Error::InvalidArgs("operation ID is not canonical".into()));
+        return Err(zbus::fdo::Error::InvalidArgs(
+            "operation ID is not canonical".into(),
+        ));
     }
     Ok(id)
 }
@@ -144,9 +173,13 @@ fn runtime_error(error: RuntimeError, operation: uuid::Uuid) -> zbus::fdo::Error
             "outcome_unknown; operation_id={operation}; related_operation_ids={related}; canonical execution did not establish disclosure; do not retry automatically"
         ))
     } else if error.is_denied() {
-        zbus::fdo::Error::AccessDenied(format!("method admission refused; operation_id={operation}"))
+        zbus::fdo::Error::AccessDenied(format!(
+            "method admission refused; operation_id={operation}"
+        ))
     } else if error.failed_before_effect() {
-        zbus::fdo::Error::NotSupported(format!("method_failed_before_effect; operation_id={operation}"))
+        zbus::fdo::Error::NotSupported(format!(
+            "method_failed_before_effect; operation_id={operation}"
+        ))
     } else if error.is_unsupported() {
         zbus::fdo::Error::NotSupported(format!("method not admitted; operation_id={operation}"))
     } else {
@@ -166,7 +199,10 @@ struct SocketOwner {
 impl Drop for SocketOwner {
     fn drop(&mut self) {
         if let Ok(metadata) = std::fs::symlink_metadata(&self.path) {
-            if metadata.file_type().is_socket() && metadata.dev() == self.dev && metadata.ino() == self.ino {
+            if metadata.file_type().is_socket()
+                && metadata.dev() == self.dev
+                && metadata.ino() == self.ino
+            {
                 if let Err(error) = std::fs::remove_file(&self.path) {
                     tracing::warn!(%error, socket = %self.path.display(), "lungs socket cleanup failed");
                 }
@@ -187,7 +223,9 @@ pub(crate) struct LungsServer {
 }
 
 impl LungsServer {
-    pub(crate) fn socket_path(&self) -> &Path { &self.socket.path }
+    pub(crate) fn socket_path(&self) -> &Path {
+        &self.socket.path
+    }
 
     pub(crate) fn is_finished(&self) -> bool {
         self.task.as_ref().is_none_or(JoinHandle::is_finished)
@@ -197,7 +235,9 @@ impl LungsServer {
     /// Keep the handle in the guard while pending; remove it only after its
     /// result is consumed so shutdown never polls a completed handle twice.
     pub(crate) async fn terminated(&mut self) -> Result<()> {
-        let outcome = self.task.as_mut()
+        let outcome = self
+            .task
+            .as_mut()
             .context("lungs server owner has already terminated")?
             .await;
         self.task.take();
@@ -211,7 +251,9 @@ impl LungsServer {
 
     pub(crate) fn begin_shutdown(&mut self) {
         self.calls.close();
-        if let Some(stop) = self.stop.take() { let _ = stop.send(()); }
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
     }
 
     pub(crate) async fn shutdown(mut self) -> Result<()> {
@@ -228,41 +270,68 @@ impl LungsServer {
 impl Drop for LungsServer {
     fn drop(&mut self) {
         self.calls.close();
-        if let Some(stop) = self.stop.take() { let _ = stop.send(()); }
-        if let Some(task) = self.task.take() { task.abort(); }
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
+        if let Some(task) = self.task.take() {
+            task.abort();
+        }
     }
 }
 
 async fn bind_socket(path: &Path) -> Result<(tokio::net::UnixListener, SocketOwner)> {
     ensure!(path.is_absolute(), "lungs socket path must be absolute");
-    let parent = path.parent().context("lungs socket has no parent directory")?;
+    let parent = path
+        .parent()
+        .context("lungs socket has no parent directory")?;
     std::fs::create_dir_all(parent)?;
     let directory = std::fs::symlink_metadata(parent)?;
-    ensure!(directory.is_dir() && !directory.file_type().is_symlink()
-        && directory.uid() == 0 && directory.mode() & 0o022 == 0,
-        "lungs socket directory is not protected");
+    ensure!(
+        directory.is_dir()
+            && !directory.file_type().is_symlink()
+            && directory.uid() == 0
+            && directory.mode() & 0o022 == 0,
+        "lungs socket directory is not protected"
+    );
     let lock_path = path.with_extension("sock.lock");
-    let lock = OpenOptions::new().read(true).write(true).create(true).truncate(false)
-        .mode(0o600).custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC).open(&lock_path)?;
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(&lock_path)?;
     let metadata = lock.metadata()?;
-    ensure!(metadata.is_file() && metadata.uid() == 0 && metadata.mode() & 0o077 == 0,
-        "lungs socket owner lock is not protected");
+    ensure!(
+        metadata.is_file() && metadata.uid() == 0 && metadata.mode() & 0o077 == 0,
+        "lungs socket owner lock is not protected"
+    );
     // SAFETY: lock owns a live descriptor; nonblocking flock cannot stall startup.
     if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
         return Err(std::io::Error::last_os_error()).context("lungs socket already has an owner");
     }
     match std::fs::symlink_metadata(path) {
         Ok(metadata) => {
-            ensure!(metadata.file_type().is_socket() && metadata.uid() == 0,
-                "lungs path exists and is not an owned socket");
-            match tokio::time::timeout(Duration::from_secs(1), tokio::net::UnixStream::connect(path)).await {
+            ensure!(
+                metadata.file_type().is_socket() && metadata.uid() == 0,
+                "lungs path exists and is not an owned socket"
+            );
+            match tokio::time::timeout(
+                Duration::from_secs(1),
+                tokio::net::UnixStream::connect(path),
+            )
+            .await
+            {
                 Ok(Err(error)) if error.kind() == std::io::ErrorKind::ConnectionRefused => {}
                 Ok(Err(error)) => return Err(error).context("cannot establish stale lungs socket"),
                 _ => anyhow::bail!("lungs socket already has a listener"),
             }
             let current = std::fs::symlink_metadata(path)?;
-            ensure!(metadata.dev() == current.dev() && metadata.ino() == current.ino(),
-                "lungs socket changed during startup");
+            ensure!(
+                metadata.dev() == current.dev() && metadata.ino() == current.ino(),
+                "lungs socket changed during startup"
+            );
             std::fs::remove_file(path)?;
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -271,26 +340,48 @@ async fn bind_socket(path: &Path) -> Result<(tokio::net::UnixListener, SocketOwn
     let listener = tokio::net::UnixListener::bind(path)
         .with_context(|| format!("bind lungs socket {}", path.display()))?;
     let metadata = std::fs::symlink_metadata(path)?;
-    let owner = SocketOwner { path: path.to_owned(), dev: metadata.dev(), ino: metadata.ino(), _lock: lock };
+    let owner = SocketOwner {
+        path: path.to_owned(),
+        dev: metadata.dev(),
+        ino: metadata.ino(),
+        _lock: lock,
+    };
     // World access grants negotiation, not identity selection or method access.
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o666))?;
     Ok((listener, owner))
 }
 
 pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
-    ensure!(nix::unistd::geteuid().is_root(), "native lungs server requires host root");
+    ensure!(
+        nix::unistd::geteuid().is_root(),
+        "native lungs server requires host root"
+    );
     identity::require_peer_pidfd().context("SO_PEERPIDFD is required for lungs admission")?;
     let host = Arc::new(ProcessIdentity::current()?);
-    let catalog_dir = std::env::var_os("OP_BLOB_CATALOG_DIR").map(PathBuf::from)
+    let catalog_dir = std::env::var_os("OP_BLOB_CATALOG_DIR")
+        .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(op_blob::catalog::DEFAULT_SHM_DIR));
     let state_dir = op_core::projection_shm::shm_state_dir();
-    let path = std::env::var_os("OPDBUS_LUNGS_SOCKET").map(PathBuf::from)
+    let path = std::env::var_os("OPDBUS_LUNGS_SOCKET")
+        .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(DEFAULT_LUNGS_SOCKET));
-    let objects: Arc<Vec<(String, String)>> = Arc::new(runtime.catalog().plugins().iter().map(|plugin| {
-        (format!("/org/opdbus/v1/plugins/{}", plugin.id), plugin.id.clone())
-    }).collect());
+    let objects: Arc<Vec<(String, String)>> = Arc::new(
+        runtime
+            .catalog()
+            .plugins()
+            .iter()
+            .map(|plugin| {
+                (
+                    format!("/org/opdbus/v1/plugins/{}", plugin.id),
+                    plugin.id.clone(),
+                )
+            })
+            .collect(),
+    );
     // Validate paths before taking socket ownership; no partial listener is ready.
-    for (path, _) in objects.iter() { zbus::zvariant::ObjectPath::try_from(path.as_str())?; }
+    for (path, _) in objects.iter() {
+        zbus::zvariant::ObjectPath::try_from(path.as_str())?;
+    }
     let (listener, owner) = bind_socket(&path).await?;
     let socket = Arc::new(owner);
     let owned_socket = socket.clone();
@@ -337,7 +428,12 @@ pub(crate) async fn start(runtime: Arc<Runtime>) -> Result<LungsServer> {
         while connections.join_next().await.is_some() {}
         Ok(())
     });
-    Ok(LungsServer { socket, calls, stop: Some(stop), task: Some(task) })
+    Ok(LungsServer {
+        socket,
+        calls,
+        stop: Some(stop),
+        task: Some(task),
+    })
 }
 
 async fn serve_connection(
@@ -348,16 +444,29 @@ async fn serve_connection(
     calls: Arc<Semaphore>,
 ) -> Result<()> {
     let mut builder = zbus::connection::Builder::unix_stream(stream)
-        .server(zbus::Guid::generate())?.p2p()
+        .server(zbus::Guid::generate())?
+        .p2p()
         .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
-        .serve_at(LUNGS_OBJECT_PATH, LungsBootstrap { identity: identity.clone() })?;
+        .serve_at(
+            LUNGS_OBJECT_PATH,
+            LungsBootstrap {
+                identity: identity.clone(),
+            },
+        )?;
     for (path, plugin_id) in objects.iter() {
-        builder = builder.serve_at(path.clone(), LungsPlugin {
-            plugin_id: plugin_id.clone(), runtime: runtime.clone(), identity: identity.clone(), calls: calls.clone(),
-        })?;
+        builder = builder.serve_at(
+            path.clone(),
+            LungsPlugin {
+                plugin_id: plugin_id.clone(),
+                runtime: runtime.clone(),
+                identity: identity.clone(),
+                calls: calls.clone(),
+            },
+        )?;
     }
     let connection = tokio::time::timeout(NEGOTIATION_TIMEOUT, builder.build())
-        .await.context("lungs D-Bus negotiation timed out")??;
+        .await
+        .context("lungs D-Bus negotiation timed out")??;
     identity.wait_bound().await?;
     connection.closed().await;
     Ok(())

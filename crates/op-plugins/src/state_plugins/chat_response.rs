@@ -595,9 +595,10 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
             "get_turn_response" => {
                 declare::<GetTurnResponseInput, GetTurnResponseOutput>(name, subid, mutation)
             }
-            "submit_turn" => {
-                declare::<super::chat_response_methods::SubmitTurnInput, super::chat_response_methods::SubmitTurnOutput>(name, subid, mutation)
-            }
+            "submit_turn" => declare::<
+                super::chat_response_methods::SubmitTurnInput,
+                super::chat_response_methods::SubmitTurnOutput,
+            >(name, subid, mutation),
             "list_conversations" => {
                 declare::<ListConversationsInput, ListConversationsOutput>(name, subid, mutation)
             }

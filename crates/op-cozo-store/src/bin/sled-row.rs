@@ -6,13 +6,20 @@
 //! Usage: sled-row COZO_DB_PATH SESSION_ID
 fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1);
-    let db = args.next().ok_or_else(|| anyhow::anyhow!("usage: sled-row DB SESSION_ID"))?;
-    let sid = args.next().ok_or_else(|| anyhow::anyhow!("usage: sled-row DB SESSION_ID"))?;
+    let db = args
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("usage: sled-row DB SESSION_ID"))?;
+    let sid = args
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("usage: sled-row DB SESSION_ID"))?;
     let store = op_cozo_store::CozoGraphShuttle::new_persistent(std::path::PathBuf::from(db))?;
     let r = store
         .get_identity_sled(&sid)?
         .ok_or_else(|| anyhow::anyhow!("no identity sled row for {sid}"))?;
-    anyhow::ensure!(r.sealed_id.starts_with("sid1:"), "row {sid} has no minted sealed_id");
+    anyhow::ensure!(
+        r.sealed_id.starts_with("sid1:"),
+        "row {sid} has no minted sealed_id"
+    );
     // serde_json::Value objects are BTreeMap-ordered, so the output is canonical.
     let fixed = serde_json::json!({
         "session_id": r.session_id,

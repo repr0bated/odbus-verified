@@ -22,7 +22,11 @@ fn main() {
                     record.is_some(),
                     revision.genesis.is_some(),
                     record
-                        .map(|r| if r.instance_json.is_empty() { "absent" } else { "present" })
+                        .map(|r| if r.instance_json.is_empty() {
+                            "absent"
+                        } else {
+                            "present"
+                        })
                         .unwrap_or("absent"),
                     record
                         .and_then(|r| r.principal_kind.as_deref())
@@ -58,7 +62,8 @@ fn main() {
                             record.session_id,
                             !record.sealed_id.is_empty(),
                             record.schema_version,
-                            record.expires_at, record.wireguard_pubkey,
+                            record.expires_at,
+                            record.wireguard_pubkey,
                         );
                     }
                 }

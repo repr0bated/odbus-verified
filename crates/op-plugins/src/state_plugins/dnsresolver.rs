@@ -265,9 +265,12 @@ async fn query_manager_state() -> Result<Vec<DnsItem>> {
         id: "manager".into(),
         mode: Mode::ObserveOnly,
         servers,
-        search: Some(domains.into_iter()
-            .filter_map(|(_, domain, route_only)| (!route_only).then_some(domain))
-            .collect()),
+        search: Some(
+            domains
+                .into_iter()
+                .filter_map(|(_, domain, route_only)| (!route_only).then_some(domain))
+                .collect(),
+        ),
         options: None,
     }])
 }

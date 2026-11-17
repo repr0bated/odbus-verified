@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use op_plugins::state_plugins::{
+    chat_router::{ChatRouterPlugin, ChatRouterState},
     hardware::HardwareState,
     incus::IncusState,
     json_render::JsonRenderState,
     net::NetworkConfig,
     procfs::ProcfsState,
     schema_renderer::SchemaRendererState,
-    chat_router::{ChatRouterPlugin, ChatRouterState},
 };
 use op_plugins::{DefaultPluginRegistry, PluginSchema};
 use op_state_store::MemoryStore;

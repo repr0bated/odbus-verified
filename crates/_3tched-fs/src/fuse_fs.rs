@@ -1850,26 +1850,47 @@ mod tests {
         let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
         listener.set_nonblocking(true).unwrap();
         let server = std::thread::spawn(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
             runtime.block_on(async move {
                 let listener = tokio::net::UnixListener::from_std(listener).unwrap();
                 let (stream, _) = listener.accept().await.unwrap();
                 let connection = zbus::connection::Builder::unix_stream(stream)
-                    .server(zbus::Guid::generate()).unwrap().p2p()
+                    .server(zbus::Guid::generate())
+                    .unwrap()
+                    .p2p()
                     .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
-                    .serve_at("/org/opdbus/v1/lungs", FixtureLungs {
-                        bound: Arc::new(Mutex::new(None)), refuse: true,
-                    }).unwrap().build().await.unwrap();
+                    .serve_at(
+                        "/org/opdbus/v1/lungs",
+                        FixtureLungs {
+                            bound: Arc::new(Mutex::new(None)),
+                            refuse: true,
+                        },
+                    )
+                    .unwrap()
+                    .build()
+                    .await
+                    .unwrap();
                 connection.closed().await;
             });
         });
-        let (_fixture, mut fs) = lungs_fixture_plugin(Lungs::Socket {
-            path: socket, session: "named-session".into(),
-        }, "threetched");
+        let (_fixture, mut fs) = lungs_fixture_plugin(
+            Lungs::Socket {
+                path: socket,
+                session: "named-session".into(),
+            },
+            "threetched",
+        );
         assert!(fs.namespace.threetched_surface.is_none());
-        let ino = fs.namespace.nodes.values()
+        let ino = fs
+            .namespace
+            .nodes
+            .values()
             .find(|node| node.path == "/plugins/threetched/operations/record_event/call")
-            .unwrap().ino;
+            .unwrap()
+            .ino;
         let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
         {
             let mut handle = fs.open_files[&fh].lock();

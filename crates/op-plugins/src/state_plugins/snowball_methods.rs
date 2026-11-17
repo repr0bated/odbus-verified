@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_snowball::{RetentionPolicy, StreamingSnowball};
 use serde_json::Value;
 use tokio::sync::Mutex;
@@ -310,13 +310,15 @@ mod tests {
                 .unwrap(),
             "the older set is not a recovery archive"
         );
-        assert!(methods
-            .dispatch(
-                "rollback",
-                &serde_json::json!({"snapshot_name": "SNP-999999"})
-            )
-            .await
-            .is_err());
+        assert!(
+            methods
+                .dispatch(
+                    "rollback",
+                    &serde_json::json!({"snapshot_name": "SNP-999999"})
+                )
+                .await
+                .is_err()
+        );
         assert!(
             !tokio::fs::try_exists(dir.path().join("snowball/snapshots/SNP-999999"))
                 .await
@@ -362,11 +364,11 @@ mod tests {
         let second_name = second["snapshot"]["name"].as_str().unwrap();
         let listed = methods.dispatch("list_snapshots", &empty).await.unwrap();
         assert_eq!(listed["snapshots"].as_array().unwrap().len(), 1);
-        assert!(!tokio::fs::try_exists(
-            dir.path().join(format!("snowball/snapshots/{first_name}"))
-        )
-        .await
-        .unwrap());
+        assert!(
+            !tokio::fs::try_exists(dir.path().join(format!("snowball/snapshots/{first_name}")))
+                .await
+                .unwrap()
+        );
 
         let fetched = methods
             .dispatch(
@@ -420,31 +422,39 @@ mod tests {
     #[tokio::test]
     async fn rejects_missing_invalid_and_unsafe_requests() {
         let (_dir, chain, methods) = fixture().await;
-        assert!(methods
-            .dispatch(
-                "get_snapshot",
-                &serde_json::json!({"snapshot_name":"../state"})
-            )
-            .await
-            .is_err());
-        assert!(methods
-            .dispatch(
-                "rollback",
-                &serde_json::json!({"snapshot_name":"SNP-999999"})
-            )
-            .await
-            .is_err());
-        assert!(methods
-            .dispatch(
-                "set_retention",
-                &serde_json::json!({"hourly":0,"daily":0,"weekly":0,"quarterly":0}),
-            )
-            .await
-            .is_err());
-        assert!(methods
-            .dispatch("get_stats", &serde_json::json!({"unexpected":true}))
-            .await
-            .is_err());
+        assert!(
+            methods
+                .dispatch(
+                    "get_snapshot",
+                    &serde_json::json!({"snapshot_name":"../state"})
+                )
+                .await
+                .is_err()
+        );
+        assert!(
+            methods
+                .dispatch(
+                    "rollback",
+                    &serde_json::json!({"snapshot_name":"SNP-999999"})
+                )
+                .await
+                .is_err()
+        );
+        assert!(
+            methods
+                .dispatch(
+                    "set_retention",
+                    &serde_json::json!({"hourly":0,"daily":0,"weekly":0,"quarterly":0}),
+                )
+                .await
+                .is_err()
+        );
+        assert!(
+            methods
+                .dispatch("get_stats", &serde_json::json!({"unexpected":true}))
+                .await
+                .is_err()
+        );
 
         let corrupt = chain.base_path().join("snapshots/SNP-000001");
         tokio::fs::create_dir_all(corrupt.join("state"))
@@ -456,13 +466,15 @@ mod tests {
         tokio::fs::write(corrupt.join("state/current.json"), b"not-json")
             .await
             .unwrap();
-        assert!(methods
-            .dispatch(
-                "rollback",
-                &serde_json::json!({"snapshot_name":"SNP-000001"}),
-            )
-            .await
-            .is_err());
+        assert!(
+            methods
+                .dispatch(
+                    "rollback",
+                    &serde_json::json!({"snapshot_name":"SNP-000001"}),
+                )
+                .await
+                .is_err()
+        );
         assert_eq!(chain.current_state().await.unwrap(), None);
     }
 }

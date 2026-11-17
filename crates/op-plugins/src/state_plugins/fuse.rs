@@ -309,7 +309,10 @@ mod coerce_tests {
         assert!(serde_json::from_value::<StrBool>(json!(1)).is_err());
         // Always serializes back to a string.
         assert_eq!(serde_json::to_value(StrBool(true)).unwrap(), json!("true"));
-        assert_eq!(serde_json::to_value(StrBool(false)).unwrap(), json!("false"));
+        assert_eq!(
+            serde_json::to_value(StrBool(false)).unwrap(),
+            json!("false")
+        );
     }
 
     #[test]
@@ -371,7 +374,9 @@ pub enum FuseExtType {
 
 impl FuseExtType {
     /// The numeric wire value of this variant.
-    pub fn as_u32(self) -> u32 { self as u32 }
+    pub fn as_u32(self) -> u32 {
+        self as u32
+    }
 
     /// Build from a numeric wire value, if it is a known variant.
     pub fn from_u32(v: u32) -> Option<Self> {
@@ -445,7 +450,9 @@ pub enum FuseOpcode {
 
 impl FuseOpcode {
     /// The numeric wire value of this variant.
-    pub fn as_u32(self) -> u32 { self as u32 }
+    pub fn as_u32(self) -> u32 {
+        self as u32
+    }
 
     /// Build from a numeric wire value, if it is a known variant.
     pub fn from_u32(v: u32) -> Option<Self> {
@@ -526,7 +533,9 @@ pub enum FuseNotifyCode {
 
 impl FuseNotifyCode {
     /// The numeric wire value of this variant.
-    pub fn as_u32(self) -> u32 { self as u32 }
+    pub fn as_u32(self) -> u32 {
+        self as u32
+    }
 
     /// Build from a numeric wire value, if it is a known variant.
     pub fn from_u32(v: u32) -> Option<Self> {
@@ -558,7 +567,9 @@ pub enum FuseUringCmd {
 
 impl FuseUringCmd {
     /// The numeric wire value of this variant.
-    pub fn as_u32(self) -> u32 { self as u32 }
+    pub fn as_u32(self) -> u32 {
+        self as u32
+    }
 
     /// Build from a numeric wire value, if it is a known variant.
     pub fn from_u32(v: u32) -> Option<Self> {
@@ -1932,7 +1943,6 @@ pub const LIBFUSE_VERSION: LibfuseVersion = LibfuseVersion {
 // `private_data`, poll handles) are modelled as opaque `u64`
 // handles, documented as such.
 
-
 /// Opaque handle for `struct fuse *` (the high-level filesystem object).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct FuseHandle(pub u64);
@@ -2234,7 +2244,12 @@ pub trait FuseOperations: Send {
     }
 
     /// Synchronize file contents (`datasync` = data only, no metadata).
-    fn fsync(&mut self, path: &str, datasync: bool, fi: &mut FuseFileInfo) -> Result<(), FuseError> {
+    fn fsync(
+        &mut self,
+        path: &str,
+        datasync: bool,
+        fi: &mut FuseFileInfo,
+    ) -> Result<(), FuseError> {
         let _ = (path, datasync, fi);
         Err(FuseError::NotImplemented)
     }
@@ -2298,7 +2313,12 @@ pub trait FuseOperations: Send {
     }
 
     /// Synchronize directory contents.
-    fn fsyncdir(&mut self, path: &str, datasync: bool, fi: &mut FuseFileInfo) -> Result<(), FuseError> {
+    fn fsyncdir(
+        &mut self,
+        path: &str,
+        datasync: bool,
+        fi: &mut FuseFileInfo,
+    ) -> Result<(), FuseError> {
         let _ = (path, datasync, fi);
         Err(FuseError::NotImplemented)
     }
@@ -2440,7 +2460,9 @@ pub trait FuseOperations: Send {
         size: usize,
         flags: i32,
     ) -> Result<usize, FuseError> {
-        let _ = (path_in, fi_in, offset_in, path_out, fi_out, offset_out, size, flags);
+        let _ = (
+            path_in, fi_in, offset_in, path_out, fi_out, offset_out, size, flags,
+        );
         Err(FuseError::NotImplemented)
     }
 
@@ -2485,7 +2507,12 @@ pub trait FuseOperations: Send {
 /// module instance. Defaults return [`FuseError::NotImplemented`].
 pub trait FuseFs: Send {
     /// Get file attributes.
-    fn getattr(&mut self, path: &str, stat: &mut FileStat, fi: Option<&mut FuseFileInfo>) -> Result<(), FuseError> {
+    fn getattr(
+        &mut self,
+        path: &str,
+        stat: &mut FileStat,
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<(), FuseError> {
         let _ = (path, stat, fi);
         Err(FuseError::NotImplemented)
     }
@@ -2525,27 +2552,56 @@ pub trait FuseFs: Send {
         Err(FuseError::NotImplemented)
     }
     /// Read data from an open file.
-    fn read(&mut self, path: &str, size: usize, offset: i64, fi: &mut FuseFileInfo) -> Result<Vec<u8>, FuseError> {
+    fn read(
+        &mut self,
+        path: &str,
+        size: usize,
+        offset: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<Vec<u8>, FuseError> {
         let _ = (path, size, offset, fi);
         Err(FuseError::NotImplemented)
     }
     /// Read data into a generic buffer.
-    fn read_buf(&mut self, path: &str, size: usize, offset: i64, fi: &mut FuseFileInfo) -> Result<FuseBufvec, FuseError> {
+    fn read_buf(
+        &mut self,
+        path: &str,
+        size: usize,
+        offset: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<FuseBufvec, FuseError> {
         let _ = (path, size, offset, fi);
         Err(FuseError::NotImplemented)
     }
     /// Write data to an open file.
-    fn write(&mut self, path: &str, data: &[u8], offset: i64, fi: &mut FuseFileInfo) -> Result<usize, FuseError> {
+    fn write(
+        &mut self,
+        path: &str,
+        data: &[u8],
+        offset: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<usize, FuseError> {
         let _ = (path, data, offset, fi);
         Err(FuseError::NotImplemented)
     }
     /// Write data supplied in a generic buffer.
-    fn write_buf(&mut self, path: &str, buf: &FuseBufvec, offset: i64, fi: &mut FuseFileInfo) -> Result<usize, FuseError> {
+    fn write_buf(
+        &mut self,
+        path: &str,
+        buf: &FuseBufvec,
+        offset: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<usize, FuseError> {
         let _ = (path, buf, offset, fi);
         Err(FuseError::NotImplemented)
     }
     /// Synchronize file contents.
-    fn fsync(&mut self, path: &str, datasync: bool, fi: &mut FuseFileInfo) -> Result<(), FuseError> {
+    fn fsync(
+        &mut self,
+        path: &str,
+        datasync: bool,
+        fi: &mut FuseFileInfo,
+    ) -> Result<(), FuseError> {
         let _ = (path, datasync, fi);
         Err(FuseError::NotImplemented)
     }
@@ -2565,12 +2621,23 @@ pub trait FuseFs: Send {
         Err(FuseError::NotImplemented)
     }
     /// Read directory entries.
-    fn readdir(&mut self, path: &str, offset: i64, fi: &mut FuseFileInfo, flags: FuseReaddirFlags) -> Result<Vec<DirEntry>, FuseError> {
+    fn readdir(
+        &mut self,
+        path: &str,
+        offset: i64,
+        fi: &mut FuseFileInfo,
+        flags: FuseReaddirFlags,
+    ) -> Result<Vec<DirEntry>, FuseError> {
         let _ = (path, offset, fi, flags);
         Err(FuseError::NotImplemented)
     }
     /// Synchronize directory contents.
-    fn fsyncdir(&mut self, path: &str, datasync: bool, fi: &mut FuseFileInfo) -> Result<(), FuseError> {
+    fn fsyncdir(
+        &mut self,
+        path: &str,
+        datasync: bool,
+        fi: &mut FuseFileInfo,
+    ) -> Result<(), FuseError> {
         let _ = (path, datasync, fi);
         Err(FuseError::NotImplemented)
     }
@@ -2585,7 +2652,13 @@ pub trait FuseFs: Send {
         Err(FuseError::NotImplemented)
     }
     /// POSIX file locking.
-    fn lock(&mut self, path: &str, fi: &mut FuseFileInfo, cmd: i32, lock: &mut Flock) -> Result<(), FuseError> {
+    fn lock(
+        &mut self,
+        path: &str,
+        fi: &mut FuseFileInfo,
+        cmd: i32,
+        lock: &mut Flock,
+    ) -> Result<(), FuseError> {
         let _ = (path, fi, cmd, lock);
         Err(FuseError::NotImplemented)
     }
@@ -2595,22 +2668,43 @@ pub trait FuseFs: Send {
         Err(FuseError::NotImplemented)
     }
     /// Change the permission bits of a file.
-    fn chmod(&mut self, path: &str, mode: u32, fi: Option<&mut FuseFileInfo>) -> Result<(), FuseError> {
+    fn chmod(
+        &mut self,
+        path: &str,
+        mode: u32,
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<(), FuseError> {
         let _ = (path, mode, fi);
         Err(FuseError::NotImplemented)
     }
     /// Change the owner of a file.
-    fn chown(&mut self, path: &str, uid: u32, gid: u32, fi: Option<&mut FuseFileInfo>) -> Result<(), FuseError> {
+    fn chown(
+        &mut self,
+        path: &str,
+        uid: u32,
+        gid: u32,
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<(), FuseError> {
         let _ = (path, uid, gid, fi);
         Err(FuseError::NotImplemented)
     }
     /// Change the size of a file.
-    fn truncate(&mut self, path: &str, size: i64, fi: Option<&mut FuseFileInfo>) -> Result<(), FuseError> {
+    fn truncate(
+        &mut self,
+        path: &str,
+        size: i64,
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<(), FuseError> {
         let _ = (path, size, fi);
         Err(FuseError::NotImplemented)
     }
     /// Change the access and modification times of a file.
-    fn utimens(&mut self, path: &str, times: [Timespec; 2], fi: Option<&mut FuseFileInfo>) -> Result<(), FuseError> {
+    fn utimens(
+        &mut self,
+        path: &str,
+        times: [Timespec; 2],
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<(), FuseError> {
         let _ = (path, times, fi);
         Err(FuseError::NotImplemented)
     }
@@ -2635,7 +2729,13 @@ pub trait FuseFs: Send {
         Err(FuseError::NotImplemented)
     }
     /// Set an extended attribute.
-    fn setxattr(&mut self, path: &str, name: &str, value: &[u8], flags: i32) -> Result<(), FuseError> {
+    fn setxattr(
+        &mut self,
+        path: &str,
+        name: &str,
+        value: &[u8],
+        flags: i32,
+    ) -> Result<(), FuseError> {
         let _ = (path, name, value, flags);
         Err(FuseError::NotImplemented)
     }
@@ -2673,7 +2773,6 @@ pub trait FuseFs: Send {
 //
 // Requests are identified by the opaque [`FuseReq`] handle and
 // inodes by [`FuseIno`] (`u64`).
-
 
 /// `fuse_ino_t` — an inode number.
 pub type FuseIno = u64;
@@ -2998,7 +3097,12 @@ pub trait FuseLowlevelOps: Send {
     }
 
     /// Look up a name in a directory.
-    fn lookup(&mut self, req: FuseReq, parent: FuseIno, name: &str) -> Result<LowlevelReply, FuseError> {
+    fn lookup(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        name: &str,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, name);
         Err(FuseError::NotImplemented)
     }
@@ -3010,13 +3114,25 @@ pub trait FuseLowlevelOps: Send {
     }
 
     /// Get file attributes.
-    fn getattr(&mut self, req: FuseReq, ino: FuseIno, fi: Option<&mut FuseFileInfo>) -> Result<LowlevelReply, FuseError> {
+    fn getattr(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Set file attributes. `to_set` is a `setattr_flags` bitmask.
-    fn setattr(&mut self, req: FuseReq, ino: FuseIno, attr: &FileStat, to_set: i32, fi: Option<&mut FuseFileInfo>) -> Result<LowlevelReply, FuseError> {
+    fn setattr(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        attr: &FileStat,
+        to_set: i32,
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, attr, to_set, fi);
         Err(FuseError::NotImplemented)
     }
@@ -3028,104 +3144,205 @@ pub trait FuseLowlevelOps: Send {
     }
 
     /// Create a file node.
-    fn mknod(&mut self, req: FuseReq, parent: FuseIno, name: &str, mode: u32, rdev: u64) -> Result<LowlevelReply, FuseError> {
+    fn mknod(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        name: &str,
+        mode: u32,
+        rdev: u64,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, name, mode, rdev);
         Err(FuseError::NotImplemented)
     }
 
     /// Create a directory.
-    fn mkdir(&mut self, req: FuseReq, parent: FuseIno, name: &str, mode: u32) -> Result<LowlevelReply, FuseError> {
+    fn mkdir(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        name: &str,
+        mode: u32,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, name, mode);
         Err(FuseError::NotImplemented)
     }
 
     /// Remove a file.
-    fn unlink(&mut self, req: FuseReq, parent: FuseIno, name: &str) -> Result<LowlevelReply, FuseError> {
+    fn unlink(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        name: &str,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, name);
         Err(FuseError::NotImplemented)
     }
 
     /// Remove a directory.
-    fn rmdir(&mut self, req: FuseReq, parent: FuseIno, name: &str) -> Result<LowlevelReply, FuseError> {
+    fn rmdir(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        name: &str,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, name);
         Err(FuseError::NotImplemented)
     }
 
     /// Create a symbolic link.
-    fn symlink(&mut self, req: FuseReq, link: &str, parent: FuseIno, name: &str) -> Result<LowlevelReply, FuseError> {
+    fn symlink(
+        &mut self,
+        req: FuseReq,
+        link: &str,
+        parent: FuseIno,
+        name: &str,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, link, parent, name);
         Err(FuseError::NotImplemented)
     }
 
     /// Rename a file.
-    fn rename(&mut self, req: FuseReq, parent: FuseIno, name: &str, newparent: FuseIno, newname: &str, flags: u32) -> Result<LowlevelReply, FuseError> {
+    fn rename(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        name: &str,
+        newparent: FuseIno,
+        newname: &str,
+        flags: u32,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, name, newparent, newname, flags);
         Err(FuseError::NotImplemented)
     }
 
     /// Create a hard link.
-    fn link(&mut self, req: FuseReq, ino: FuseIno, newparent: FuseIno, newname: &str) -> Result<LowlevelReply, FuseError> {
+    fn link(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        newparent: FuseIno,
+        newname: &str,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, newparent, newname);
         Err(FuseError::NotImplemented)
     }
 
     /// Open a file.
-    fn open(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn open(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Read data from an open file.
-    fn read(&mut self, req: FuseReq, ino: FuseIno, size: usize, off: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn read(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        size: usize,
+        off: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, size, off, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Write data to an open file.
-    fn write(&mut self, req: FuseReq, ino: FuseIno, data: &[u8], off: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn write(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        data: &[u8],
+        off: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, data, off, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Possibly flush cached data on `close()`.
-    fn flush(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn flush(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Release an open file.
-    fn release(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn release(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Synchronize file contents.
-    fn fsync(&mut self, req: FuseReq, ino: FuseIno, datasync: bool, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn fsync(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        datasync: bool,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, datasync, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Open a directory.
-    fn opendir(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn opendir(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Read directory entries (raw bytes; build them with the
     /// `fuse_add_direntry` layout, see `FuseDirent`).
-    fn readdir(&mut self, req: FuseReq, ino: FuseIno, size: usize, off: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn readdir(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        size: usize,
+        off: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, size, off, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Release an open directory.
-    fn releasedir(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn releasedir(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Synchronize directory contents.
-    fn fsyncdir(&mut self, req: FuseReq, ino: FuseIno, datasync: bool, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn fsyncdir(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        datasync: bool,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, datasync, fi);
         Err(FuseError::NotImplemented)
     }
@@ -3137,80 +3354,164 @@ pub trait FuseLowlevelOps: Send {
     }
 
     /// Set an extended attribute.
-    fn setxattr(&mut self, req: FuseReq, ino: FuseIno, name: &str, value: &[u8], flags: i32) -> Result<LowlevelReply, FuseError> {
+    fn setxattr(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        name: &str,
+        value: &[u8],
+        flags: i32,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, name, value, flags);
         Err(FuseError::NotImplemented)
     }
 
     /// Get an extended attribute.
-    fn getxattr(&mut self, req: FuseReq, ino: FuseIno, name: &str, size: usize) -> Result<LowlevelReply, FuseError> {
+    fn getxattr(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        name: &str,
+        size: usize,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, name, size);
         Err(FuseError::NotImplemented)
     }
 
     /// List extended attributes.
-    fn listxattr(&mut self, req: FuseReq, ino: FuseIno, size: usize) -> Result<LowlevelReply, FuseError> {
+    fn listxattr(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        size: usize,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, size);
         Err(FuseError::NotImplemented)
     }
 
     /// Remove an extended attribute.
-    fn removexattr(&mut self, req: FuseReq, ino: FuseIno, name: &str) -> Result<LowlevelReply, FuseError> {
+    fn removexattr(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        name: &str,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, name);
         Err(FuseError::NotImplemented)
     }
 
     /// Check whether a file can be accessed with the given mode.
-    fn access(&mut self, req: FuseReq, ino: FuseIno, mask: i32) -> Result<LowlevelReply, FuseError> {
+    fn access(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        mask: i32,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, mask);
         Err(FuseError::NotImplemented)
     }
 
     /// Create and open a file.
-    fn create(&mut self, req: FuseReq, parent: FuseIno, name: &str, mode: u32, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn create(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        name: &str,
+        mode: u32,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, name, mode, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// POSIX file locking, `F_GETLK` — fill in the conflicting lock.
-    fn getlk(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo, lock: &mut Flock) -> Result<LowlevelReply, FuseError> {
+    fn getlk(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+        lock: &mut Flock,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi, lock);
         Err(FuseError::NotImplemented)
     }
 
     /// POSIX file locking, `F_SETLK` / `F_SETLKW`.
-    fn setlk(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo, lock: &Flock, sleep: bool) -> Result<LowlevelReply, FuseError> {
+    fn setlk(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+        lock: &Flock,
+        sleep: bool,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi, lock, sleep);
         Err(FuseError::NotImplemented)
     }
 
     /// Map a block index within a file.
-    fn bmap(&mut self, req: FuseReq, ino: FuseIno, blocksize: usize, idx: u64) -> Result<LowlevelReply, FuseError> {
+    fn bmap(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        blocksize: usize,
+        idx: u64,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, blocksize, idx);
         Err(FuseError::NotImplemented)
     }
 
     /// Control device (`ioctl`).
     #[allow(clippy::too_many_arguments)]
-    fn ioctl(&mut self, req: FuseReq, ino: FuseIno, cmd: u32, arg: u64, fi: &mut FuseFileInfo, flags: u32, in_buf: &[u8], out_buf_size: usize) -> Result<LowlevelReply, FuseError> {
+    fn ioctl(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        cmd: u32,
+        arg: u64,
+        fi: &mut FuseFileInfo,
+        flags: u32,
+        in_buf: &[u8],
+        out_buf_size: usize,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, cmd, arg, fi, flags, in_buf, out_buf_size);
         Err(FuseError::NotImplemented)
     }
 
     /// Poll for I/O readiness.
-    fn poll(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo, poll_handle: Option<PollHandle>) -> Result<LowlevelReply, FuseError> {
+    fn poll(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+        poll_handle: Option<PollHandle>,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi, poll_handle);
         Err(FuseError::NotImplemented)
     }
 
     /// Write data supplied in a generic buffer.
-    fn write_buf(&mut self, req: FuseReq, ino: FuseIno, buf: &FuseBufvec, off: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn write_buf(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        buf: &FuseBufvec,
+        off: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, buf, off, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Answer to a `fuse_lowlevel_notify_retrieve()` call. No reply.
-    fn retrieve_reply(&mut self, req: FuseReq, cookie: u64, ino: FuseIno, offset: i64, buf: &FuseBufvec) -> Result<(), FuseError> {
+    fn retrieve_reply(
+        &mut self,
+        req: FuseReq,
+        cookie: u64,
+        ino: FuseIno,
+        offset: i64,
+        buf: &FuseBufvec,
+    ) -> Result<(), FuseError> {
         let _ = (req, cookie, ino, offset, buf);
         Ok(())
     }
@@ -3222,44 +3523,98 @@ pub trait FuseLowlevelOps: Send {
     }
 
     /// BSD file locking (`flock(2)`).
-    fn flock(&mut self, req: FuseReq, ino: FuseIno, fi: &mut FuseFileInfo, op: i32) -> Result<LowlevelReply, FuseError> {
+    fn flock(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        fi: &mut FuseFileInfo,
+        op: i32,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, fi, op);
         Err(FuseError::NotImplemented)
     }
 
     /// Preallocate or deallocate space to a file.
-    fn fallocate(&mut self, req: FuseReq, ino: FuseIno, mode: i32, offset: i64, length: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn fallocate(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        mode: i32,
+        offset: i64,
+        length: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, mode, offset, length, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Read directory entries with attributes (readdirplus).
-    fn readdirplus(&mut self, req: FuseReq, ino: FuseIno, size: usize, off: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn readdirplus(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        size: usize,
+        off: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, size, off, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Copy a range of data between two open files.
     #[allow(clippy::too_many_arguments)]
-    fn copy_file_range(&mut self, req: FuseReq, ino_in: FuseIno, off_in: i64, fi_in: &mut FuseFileInfo, ino_out: FuseIno, off_out: i64, fi_out: &mut FuseFileInfo, len: usize, flags: i32) -> Result<LowlevelReply, FuseError> {
-        let _ = (req, ino_in, off_in, fi_in, ino_out, off_out, fi_out, len, flags);
+    fn copy_file_range(
+        &mut self,
+        req: FuseReq,
+        ino_in: FuseIno,
+        off_in: i64,
+        fi_in: &mut FuseFileInfo,
+        ino_out: FuseIno,
+        off_out: i64,
+        fi_out: &mut FuseFileInfo,
+        len: usize,
+        flags: i32,
+    ) -> Result<LowlevelReply, FuseError> {
+        let _ = (
+            req, ino_in, off_in, fi_in, ino_out, off_out, fi_out, len, flags,
+        );
         Err(FuseError::NotImplemented)
     }
 
     /// Seek within a file (`SEEK_DATA` / `SEEK_HOLE`).
-    fn lseek(&mut self, req: FuseReq, ino: FuseIno, off: i64, whence: i32, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn lseek(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        off: i64,
+        whence: i32,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, off, whence, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Create a temporary (unnamed) file.
-    fn tmpfile(&mut self, req: FuseReq, parent: FuseIno, mode: u32, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn tmpfile(
+        &mut self,
+        req: FuseReq,
+        parent: FuseIno,
+        mode: u32,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, parent, mode, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Extended file attributes (`statx(2)`).
-    fn statx(&mut self, req: FuseReq, ino: FuseIno, flags: i32, mask: i32, fi: Option<&mut FuseFileInfo>) -> Result<LowlevelReply, FuseError> {
+    fn statx(
+        &mut self,
+        req: FuseReq,
+        ino: FuseIno,
+        flags: i32,
+        mask: i32,
+        fi: Option<&mut FuseFileInfo>,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, ino, flags, mask, fi);
         Err(FuseError::NotImplemented)
     }
@@ -3279,7 +3634,6 @@ pub trait FuseLowlevelOps: Send {
 //
 // CUSE operations behave almost identically to the matching
 // low-level operations except that they do not take an inode number.
-
 
 /// `struct cuse_info` — information about the character device.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -3325,13 +3679,25 @@ pub trait CuseLowlevelOps: Send {
     }
 
     /// Read from the device (always direct I/O).
-    fn read(&mut self, req: FuseReq, size: usize, off: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn read(
+        &mut self,
+        req: FuseReq,
+        size: usize,
+        off: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, size, off, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Write to the device (always direct I/O).
-    fn write(&mut self, req: FuseReq, data: &[u8], off: i64, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn write(
+        &mut self,
+        req: FuseReq,
+        data: &[u8],
+        off: i64,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, data, off, fi);
         Err(FuseError::NotImplemented)
     }
@@ -3349,20 +3715,39 @@ pub trait CuseLowlevelOps: Send {
     }
 
     /// Synchronize device contents.
-    fn fsync(&mut self, req: FuseReq, datasync: bool, fi: &mut FuseFileInfo) -> Result<LowlevelReply, FuseError> {
+    fn fsync(
+        &mut self,
+        req: FuseReq,
+        datasync: bool,
+        fi: &mut FuseFileInfo,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, datasync, fi);
         Err(FuseError::NotImplemented)
     }
 
     /// Control device (`ioctl`); may be unrestricted depending on `CuseInfo::flags`.
     #[allow(clippy::too_many_arguments)]
-    fn ioctl(&mut self, req: FuseReq, cmd: u32, arg: u64, fi: &mut FuseFileInfo, flags: u32, in_buf: &[u8], out_buf_size: usize) -> Result<LowlevelReply, FuseError> {
+    fn ioctl(
+        &mut self,
+        req: FuseReq,
+        cmd: u32,
+        arg: u64,
+        fi: &mut FuseFileInfo,
+        flags: u32,
+        in_buf: &[u8],
+        out_buf_size: usize,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, cmd, arg, fi, flags, in_buf, out_buf_size);
         Err(FuseError::NotImplemented)
     }
 
     /// Poll for I/O readiness.
-    fn poll(&mut self, req: FuseReq, fi: &mut FuseFileInfo, poll_handle: Option<PollHandle>) -> Result<LowlevelReply, FuseError> {
+    fn poll(
+        &mut self,
+        req: FuseReq,
+        fi: &mut FuseFileInfo,
+        poll_handle: Option<PollHandle>,
+    ) -> Result<LowlevelReply, FuseError> {
         let _ = (req, fi, poll_handle);
         Err(FuseError::NotImplemented)
     }
@@ -3374,7 +3759,6 @@ pub trait CuseLowlevelOps: Send {
 
 // Daemonize helpers from `fuse_daemonize.h` and mount flags from
 // `fuse_mount_compat.h`.
-
 
 /// Flags for `fuse_daemonize_early_start()` (`FUSE_DAEMONIZE_*`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -3427,8 +3811,7 @@ pub trait DaemonizeApi: Send {
     }
 
     /// Report successful startup to the parent.
-    fn early_success(&mut self) {
-    }
+    fn early_success(&mut self) {}
 
     /// Report failed startup to the parent (`err` is an errno value).
     fn early_fail(&mut self, err: i32) {
@@ -3471,7 +3854,9 @@ pub mod mount_flags {
 // receiving a pre-formatted message.
 
 /// `enum fuse_log_level` — syslog-style log levels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[repr(u32)]
 pub enum FuseLogLevel {
     /// System is unusable.
@@ -3508,7 +3893,6 @@ pub trait LogHandler: Send {
 // The C processing callback (`fuse_opt_proc_t`, a function pointer)
 // is modelled as the [`FuseOptProc`] trait; function pointers
 // cannot be serialized, so it is not part of the schema types.
-
 
 /// Special `key` values passed to the option processing function.
 pub mod opt_keys {
@@ -3586,7 +3970,6 @@ pub trait FuseOptProc: Send {
 // mount and open files/block devices on its behalf. The service
 // context is an opaque handle.
 
-
 /// Opaque handle for `struct fuse_service *`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct FuseServiceHandle(pub u64);
@@ -3636,7 +4019,11 @@ pub trait FuseServiceApi: Send {
     }
 
     /// Append the service's arguments to `args`.
-    fn append_args(&mut self, handle: &FuseServiceHandle, args: &mut FuseArgs) -> Result<(), FuseError> {
+    fn append_args(
+        &mut self,
+        handle: &FuseServiceHandle,
+        args: &mut FuseArgs,
+    ) -> Result<(), FuseError> {
         let _ = (handle, args);
         Err(FuseError::NotLinked("fuse_service_append_args".into()))
     }
@@ -3650,18 +4037,42 @@ pub trait FuseServiceApi: Send {
     /// Parse the service's command-line options.
     fn parse_cmdline_opts(&self, args: &mut FuseArgs) -> Result<FuseCmdlineOpts, FuseError> {
         let _ = args;
-        Err(FuseError::NotLinked("fuse_service_parse_cmdline_opts".into()))
+        Err(FuseError::NotLinked(
+            "fuse_service_parse_cmdline_opts".into(),
+        ))
     }
 
     /// Ask the helper to open a file on the server's behalf.
-    fn request_file(&self, handle: &FuseServiceHandle, path: &str, open_flags: i32, create_mode: u32, request_flags: u32) -> Result<(), FuseError> {
+    fn request_file(
+        &self,
+        handle: &FuseServiceHandle,
+        path: &str,
+        open_flags: i32,
+        create_mode: u32,
+        request_flags: u32,
+    ) -> Result<(), FuseError> {
         let _ = (handle, path, open_flags, create_mode, request_flags);
         Err(FuseError::NotLinked("fuse_service_request_file".into()))
     }
 
     /// Ask the helper to open a block device on the server's behalf.
-    fn request_blockdev(&self, handle: &FuseServiceHandle, path: &str, open_flags: i32, create_mode: u32, request_flags: u32, block_size: u32) -> Result<(), FuseError> {
-        let _ = (handle, path, open_flags, create_mode, request_flags, block_size);
+    fn request_blockdev(
+        &self,
+        handle: &FuseServiceHandle,
+        path: &str,
+        open_flags: i32,
+        create_mode: u32,
+        request_flags: u32,
+        block_size: u32,
+    ) -> Result<(), FuseError> {
+        let _ = (
+            handle,
+            path,
+            open_flags,
+            create_mode,
+            request_flags,
+            block_size,
+        );
         Err(FuseError::NotLinked("fuse_service_request_blockdev".into()))
     }
 
@@ -3674,7 +4085,9 @@ pub trait FuseServiceApi: Send {
     /// Finish all pending file requests.
     fn finish_file_requests(&self, handle: &FuseServiceHandle) -> Result<(), FuseError> {
         let _ = handle;
-        Err(FuseError::NotLinked("fuse_service_finish_file_requests".into()))
+        Err(FuseError::NotLinked(
+            "fuse_service_finish_file_requests".into(),
+        ))
     }
 
     /// Expect the mount in the given format (`true` = new format).
@@ -3683,7 +4096,12 @@ pub trait FuseServiceApi: Send {
     }
 
     /// Mount a session through the service.
-    fn session_mount(&self, handle: &FuseServiceHandle, se: &FuseSessionHandle, mountpoint: &str) -> Result<(), FuseError> {
+    fn session_mount(
+        &self,
+        handle: &FuseServiceHandle,
+        se: &FuseSessionHandle,
+        mountpoint: &str,
+    ) -> Result<(), FuseError> {
         let _ = (handle, se, mountpoint);
         Err(FuseError::NotLinked("fuse_service_session_mount".into()))
     }
@@ -3705,7 +4123,6 @@ pub trait FuseServiceApi: Send {
 //
 // Handles are opaque `u64` newtypes: `struct fuse *` ->
 // [`FuseHandle`], `struct fuse_session *` -> [`FuseSessionHandle`].
-
 
 /// Opaque handle for `struct fuse_session *`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -3825,7 +4242,11 @@ pub trait FuseApi: Send {
     // ---- low-level sessions ----
 
     /// `fuse_session_new(args, op, userdata)` — create a low-level session.
-    fn session_new(&mut self, args: FuseArgs, ops: &dyn FuseLowlevelOps) -> Result<FuseSessionHandle, FuseError> {
+    fn session_new(
+        &mut self,
+        args: FuseArgs,
+        ops: &dyn FuseLowlevelOps,
+    ) -> Result<FuseSessionHandle, FuseError> {
         let _ = (args, ops);
         Err(FuseError::NotLinked("fuse_session_new".into()))
     }
@@ -3843,7 +4264,11 @@ pub trait FuseApi: Send {
     }
 
     /// `fuse_session_loop_mt(se, config)` — run the multi-threaded session loop.
-    fn session_loop_mt(&mut self, se: &FuseSessionHandle, config: &FuseLoopConfig) -> Result<(), FuseError> {
+    fn session_loop_mt(
+        &mut self,
+        se: &FuseSessionHandle,
+        config: &FuseLoopConfig,
+    ) -> Result<(), FuseError> {
         let _ = (se, config);
         Err(FuseError::NotLinked("fuse_session_loop_mt".into()))
     }
@@ -3887,7 +4312,11 @@ pub trait FuseApi: Send {
     }
 
     /// `fuse_session_receive_buf(se, buf)` — receive one request into `buf`.
-    fn session_receive_buf(&mut self, se: &FuseSessionHandle, buf: &mut FuseBuf) -> Result<(), FuseError> {
+    fn session_receive_buf(
+        &mut self,
+        se: &FuseSessionHandle,
+        buf: &mut FuseBuf,
+    ) -> Result<(), FuseError> {
         let _ = (se, buf);
         Err(FuseError::NotLinked("fuse_session_receive_buf".into()))
     }
@@ -3973,25 +4402,53 @@ pub trait FuseApi: Send {
     }
 
     /// `fuse_lowlevel_notify_inval_inode(se, ino, off, len)`.
-    fn notify_inval_inode(&mut self, se: &FuseSessionHandle, ino: FuseIno, off: i64, len: i64) -> Result<(), FuseError> {
+    fn notify_inval_inode(
+        &mut self,
+        se: &FuseSessionHandle,
+        ino: FuseIno,
+        off: i64,
+        len: i64,
+    ) -> Result<(), FuseError> {
         let _ = (se, ino, off, len);
-        Err(FuseError::NotLinked("fuse_lowlevel_notify_inval_inode".into()))
+        Err(FuseError::NotLinked(
+            "fuse_lowlevel_notify_inval_inode".into(),
+        ))
     }
 
     /// `fuse_lowlevel_notify_inval_entry(se, parent, name, flags)`.
-    fn notify_inval_entry(&mut self, se: &FuseSessionHandle, parent: FuseIno, name: &str, flags: FuseNotifyEntryFlags) -> Result<(), FuseError> {
+    fn notify_inval_entry(
+        &mut self,
+        se: &FuseSessionHandle,
+        parent: FuseIno,
+        name: &str,
+        flags: FuseNotifyEntryFlags,
+    ) -> Result<(), FuseError> {
         let _ = (se, parent, name, flags);
-        Err(FuseError::NotLinked("fuse_lowlevel_notify_inval_entry".into()))
+        Err(FuseError::NotLinked(
+            "fuse_lowlevel_notify_inval_entry".into(),
+        ))
     }
 
     /// `fuse_lowlevel_notify_delete(se, parent, child, name)`.
-    fn notify_delete(&mut self, se: &FuseSessionHandle, parent: FuseIno, child: FuseIno, name: &str) -> Result<(), FuseError> {
+    fn notify_delete(
+        &mut self,
+        se: &FuseSessionHandle,
+        parent: FuseIno,
+        child: FuseIno,
+        name: &str,
+    ) -> Result<(), FuseError> {
         let _ = (se, parent, child, name);
         Err(FuseError::NotLinked("fuse_lowlevel_notify_delete".into()))
     }
 
     /// `fuse_lowlevel_notify_store(se, ino, offset, data)`.
-    fn notify_store(&mut self, se: &FuseSessionHandle, ino: FuseIno, offset: i64, data: &[u8]) -> Result<(), FuseError> {
+    fn notify_store(
+        &mut self,
+        se: &FuseSessionHandle,
+        ino: FuseIno,
+        offset: i64,
+        data: &[u8],
+    ) -> Result<(), FuseError> {
         let _ = (se, ino, offset, data);
         Err(FuseError::NotLinked("fuse_lowlevel_notify_store".into()))
     }
@@ -3999,7 +4456,14 @@ pub trait FuseApi: Send {
     /// `fuse_lowlevel_notify_retrieve(se, ino, size, offset, cookie)` —
     /// returns the notify unique id; the data arrives via
     /// `retrieve_reply()`.
-    fn notify_retrieve(&mut self, se: &FuseSessionHandle, ino: FuseIno, size: usize, offset: i64, cookie: u64) -> Result<u64, FuseError> {
+    fn notify_retrieve(
+        &mut self,
+        se: &FuseSessionHandle,
+        ino: FuseIno,
+        size: usize,
+        offset: i64,
+        cookie: u64,
+    ) -> Result<u64, FuseError> {
         let _ = (se, ino, size, offset, cookie);
         Err(FuseError::NotLinked("fuse_lowlevel_notify_retrieve".into()))
     }
@@ -4007,12 +4471,18 @@ pub trait FuseApi: Send {
     /// `fuse_lowlevel_notify_increment_epoch(se)` — invalidate all entries.
     fn notify_increment_epoch(&mut self, se: &FuseSessionHandle) -> Result<(), FuseError> {
         let _ = se;
-        Err(FuseError::NotLinked("fuse_lowlevel_notify_increment_epoch".into()))
+        Err(FuseError::NotLinked(
+            "fuse_lowlevel_notify_increment_epoch".into(),
+        ))
     }
 
     /// `fuse_lowlevel_notify_prune(se, nodeids)` — prune the kernel's
     /// dentry/inode caches for the given inodes.
-    fn notify_prune(&mut self, se: &FuseSessionHandle, nodeids: &[FuseIno]) -> Result<(), FuseError> {
+    fn notify_prune(
+        &mut self,
+        se: &FuseSessionHandle,
+        nodeids: &[FuseIno],
+    ) -> Result<(), FuseError> {
         let _ = (se, nodeids);
         Err(FuseError::NotLinked("fuse_lowlevel_notify_prune".into()))
     }
@@ -4284,7 +4754,6 @@ pub fn schema_registry() -> Vec<(&'static str, schemars::Schema)> {
 // fields; `typed_input` rejects malformed arguments instead
 // of coercing them; unknown methods are errors.
 
-
 /// Deserialize dispatch arguments into the strict Input type
 /// for one method. A null argument list is the empty object;
 /// anything else must match the Input schema exactly —
@@ -4356,8 +4825,7 @@ pub struct MknodInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct MknodOutput {
-}
+pub struct MknodOutput {}
 
 /// Create a directory.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4373,8 +4841,7 @@ pub struct MkdirInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct MkdirOutput {
-}
+pub struct MkdirOutput {}
 
 /// Remove a file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4388,8 +4855,7 @@ pub struct UnlinkInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct UnlinkOutput {
-}
+pub struct UnlinkOutput {}
 
 /// Remove a directory.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4403,8 +4869,7 @@ pub struct RmdirInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct RmdirOutput {
-}
+pub struct RmdirOutput {}
 
 /// Create a symbolic link.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4420,8 +4885,7 @@ pub struct SymlinkInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct SymlinkOutput {
-}
+pub struct SymlinkOutput {}
 
 /// Rename a file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4439,8 +4903,7 @@ pub struct RenameInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct RenameOutput {
-}
+pub struct RenameOutput {}
 
 /// Create a hard link.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4456,8 +4919,7 @@ pub struct LinkInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct LinkOutput {
-}
+pub struct LinkOutput {}
 
 /// Change the permission bits of a file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4677,8 +5139,7 @@ pub struct SetxattrInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct SetxattrOutput {
-}
+pub struct SetxattrOutput {}
 
 /// Get an extended attribute.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4732,8 +5193,7 @@ pub struct RemovexattrInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct RemovexattrOutput {
-}
+pub struct RemovexattrOutput {}
 
 /// Open a directory.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4849,8 +5309,7 @@ pub struct DestroyInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct DestroyOutput {
-}
+pub struct DestroyOutput {}
 
 /// Check whether a file can be accessed with the given mode.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -4866,8 +5325,7 @@ pub struct AccessInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct AccessOutput {
-}
+pub struct AccessOutput {}
 
 /// Create and open a file.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -5189,8 +5647,7 @@ pub struct SyncfsInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct SyncfsOutput {
-}
+pub struct SyncfsOutput {}
 
 /// Initialize the filesystem.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -5222,8 +5679,7 @@ pub struct LlDestroyInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct LlDestroyOutput {
-}
+pub struct LlDestroyOutput {}
 
 /// Look up a name in a directory.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -5261,8 +5717,7 @@ pub struct LlForgetInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct LlForgetOutput {
-}
+pub struct LlForgetOutput {}
 
 /// Get file attributes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -6048,8 +6503,7 @@ pub struct LlRetrieveReplyInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct LlRetrieveReplyOutput {
-}
+pub struct LlRetrieveReplyOutput {}
 
 /// Forget several inodes at once.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -6065,8 +6519,7 @@ pub struct LlForgetMultiInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
 #[serde(deny_unknown_fields)]
 #[derive(Default)]
-pub struct LlForgetMultiOutput {
-}
+pub struct LlForgetMultiOutput {}
 
 /// BSD file locking.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Eq)]
@@ -6282,263 +6735,559 @@ pub struct LlSyncfsOutput {
 /// Unknown methods and malformed arguments are errors, never
 /// silent fallbacks. There is no acknowledgement step: the
 /// typed Output IS the response.
-pub fn dispatch_fuse_method(fs: &mut dyn FuseOperations, method: &str, args: &serde_json::Value) -> Result<serde_json::Value, FuseError> {
+pub fn dispatch_fuse_method(
+    fs: &mut dyn FuseOperations,
+    method: &str,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value, FuseError> {
     match method {
         "getattr" => {
             let input: GetattrInput = typed_input(args)?;
             let mut stat = FileStat::default();
             let mut file_info = input.file_info;
             fs.getattr(&input.path, &mut stat, file_info.as_mut())?;
-            Ok(serde_json::to_value(GetattrOutput { stat, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(GetattrOutput { stat, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "readlink" => {
             let input: ReadlinkInput = typed_input(args)?;
             let result = fs.readlink(&input.path)?;
-            Ok(serde_json::to_value(ReadlinkOutput { target: result }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(ReadlinkOutput { target: result }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "mknod" => {
             let input: MknodInput = typed_input(args)?;
             fs.mknod(&input.path, input.mode, input.rdev)?;
-            Ok(serde_json::to_value(MknodOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(MknodOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "mkdir" => {
             let input: MkdirInput = typed_input(args)?;
             fs.mkdir(&input.path, input.mode)?;
-            Ok(serde_json::to_value(MkdirOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(MkdirOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "unlink" => {
             let input: UnlinkInput = typed_input(args)?;
             fs.unlink(&input.path)?;
-            Ok(serde_json::to_value(UnlinkOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(UnlinkOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "rmdir" => {
             let input: RmdirInput = typed_input(args)?;
             fs.rmdir(&input.path)?;
-            Ok(serde_json::to_value(RmdirOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(RmdirOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "symlink" => {
             let input: SymlinkInput = typed_input(args)?;
             fs.symlink(&input.target, &input.link_path)?;
-            Ok(serde_json::to_value(SymlinkOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(SymlinkOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "rename" => {
             let input: RenameInput = typed_input(args)?;
             fs.rename(&input.old_path, &input.new_path, input.flags)?;
-            Ok(serde_json::to_value(RenameOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(RenameOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "link" => {
             let input: LinkInput = typed_input(args)?;
             fs.link(&input.old_path, &input.new_path)?;
-            Ok(serde_json::to_value(LinkOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(LinkOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "chmod" => {
             let input: ChmodInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.chmod(&input.path, input.mode, file_info.as_mut())?;
-            Ok(serde_json::to_value(ChmodOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(ChmodOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "chown" => {
             let input: ChownInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.chown(&input.path, input.uid, input.gid, file_info.as_mut())?;
-            Ok(serde_json::to_value(ChownOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(ChownOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "truncate" => {
             let input: TruncateInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.truncate(&input.path, input.size, file_info.as_mut())?;
-            Ok(serde_json::to_value(TruncateOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(TruncateOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "open" => {
             let input: OpenInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.open(&input.path, &mut file_info)?;
-            Ok(serde_json::to_value(OpenOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(OpenOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "read" => {
             let input: ReadInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let result = fs.read(&input.path, input.size, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(ReadOutput { data: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(ReadOutput {
+                data: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "write" => {
             let input: WriteInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let result = fs.write(&input.path, &input.data, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(WriteOutput { bytes_written: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(WriteOutput {
+                bytes_written: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "statfs" => {
             let input: StatfsInput = typed_input(args)?;
             let mut stat = Statvfs::default();
             fs.statfs(&input.path, &mut stat)?;
-            Ok(serde_json::to_value(StatfsOutput { stat }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(StatfsOutput { stat }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "flush" => {
             let input: FlushInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.flush(&input.path, &mut file_info)?;
-            Ok(serde_json::to_value(FlushOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(FlushOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "release" => {
             let input: ReleaseInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.release(&input.path, &mut file_info)?;
-            Ok(serde_json::to_value(ReleaseOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(ReleaseOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "fsync" => {
             let input: FsyncInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.fsync(&input.path, input.datasync, &mut file_info)?;
-            Ok(serde_json::to_value(FsyncOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(FsyncOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "setxattr" => {
             let input: SetxattrInput = typed_input(args)?;
             fs.setxattr(&input.path, &input.name, &input.value, input.flags)?;
-            Ok(serde_json::to_value(SetxattrOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(SetxattrOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "getxattr" => {
             let input: GetxattrInput = typed_input(args)?;
             let result = fs.getxattr(&input.path, &input.name, input.size)?;
-            Ok(serde_json::to_value(GetxattrOutput { value: result }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(GetxattrOutput { value: result }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "listxattr" => {
             let input: ListxattrInput = typed_input(args)?;
             let result = fs.listxattr(&input.path, input.size)?;
-            Ok(serde_json::to_value(ListxattrOutput { names: result }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(ListxattrOutput { names: result }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "removexattr" => {
             let input: RemovexattrInput = typed_input(args)?;
             fs.removexattr(&input.path, &input.name)?;
-            Ok(serde_json::to_value(RemovexattrOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(RemovexattrOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "opendir" => {
             let input: OpendirInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.opendir(&input.path, &mut file_info)?;
-            Ok(serde_json::to_value(OpendirOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(OpendirOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "readdir" => {
             let input: ReaddirInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let result = fs.readdir(&input.path, input.offset, &mut file_info, input.flags)?;
-            Ok(serde_json::to_value(ReaddirOutput { entries: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(ReaddirOutput {
+                entries: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "releasedir" => {
             let input: ReleasedirInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.releasedir(&input.path, &mut file_info)?;
-            Ok(serde_json::to_value(ReleasedirOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(ReleasedirOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "fsyncdir" => {
             let input: FsyncdirInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.fsyncdir(&input.path, input.datasync, &mut file_info)?;
-            Ok(serde_json::to_value(FsyncdirOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(FsyncdirOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "init" => {
             let input: InitInput = typed_input(args)?;
             let mut conn = input.conn;
             let mut config = input.config;
             let result = fs.init(&mut conn, &mut config)?;
-            Ok(serde_json::to_value(InitOutput { private_data: result, conn, config }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(InitOutput {
+                private_data: result,
+                conn,
+                config,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "destroy" => {
             let input: DestroyInput = typed_input(args)?;
             fs.destroy(input.private_data);
-            Ok(serde_json::to_value(DestroyOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(DestroyOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "access" => {
             let input: AccessInput = typed_input(args)?;
             fs.access(&input.path, input.mask)?;
-            Ok(serde_json::to_value(AccessOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(AccessOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "create" => {
             let input: CreateInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.create(&input.path, input.mode, &mut file_info)?;
-            Ok(serde_json::to_value(CreateOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(CreateOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "lock" => {
             let input: LockInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let mut lock = input.lock;
             fs.lock(&input.path, &mut file_info, input.cmd, &mut lock)?;
-            Ok(serde_json::to_value(LockOutput { file_info, lock }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LockOutput { file_info, lock }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "utimens" => {
             let input: UtimensInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.utimens(&input.path, input.times, file_info.as_mut())?;
-            Ok(serde_json::to_value(UtimensOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(UtimensOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "bmap" => {
             let input: BmapInput = typed_input(args)?;
             let mut idx = input.idx;
             fs.bmap(&input.path, input.blocksize, &mut idx)?;
-            Ok(serde_json::to_value(BmapOutput { idx }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(BmapOutput { idx }).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "ioctl" => {
             let input: IoctlInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let result = fs.ioctl(&input.path, input.cmd, input.arg, &mut file_info, input.flags, input.data)?;
-            Ok(serde_json::to_value(IoctlOutput { result: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let result = fs.ioctl(
+                &input.path,
+                input.cmd,
+                input.arg,
+                &mut file_info,
+                input.flags,
+                input.data,
+            )?;
+            Ok(serde_json::to_value(IoctlOutput {
+                result: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "poll" => {
             let input: PollInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let result = fs.poll(&input.path, &mut file_info, input.poll_handle)?;
-            Ok(serde_json::to_value(PollOutput { revents: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(PollOutput {
+                revents: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "write_buf" => {
             let input: WriteBufInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let result = fs.write_buf(&input.path, &input.buf, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(WriteBufOutput { bytes_written: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(WriteBufOutput {
+                bytes_written: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "read_buf" => {
             let input: ReadBufInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let result = fs.read_buf(&input.path, input.size, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(ReadBufOutput { buf: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(ReadBufOutput {
+                buf: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "flock" => {
             let input: FlockInput = typed_input(args)?;
             let mut file_info = input.file_info;
             fs.flock(&input.path, &mut file_info, input.op)?;
-            Ok(serde_json::to_value(FlockOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(FlockOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "fallocate" => {
             let input: FallocateInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            fs.fallocate(&input.path, input.mode, input.offset, input.length, &mut file_info)?;
-            Ok(serde_json::to_value(FallocateOutput { file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            fs.fallocate(
+                &input.path,
+                input.mode,
+                input.offset,
+                input.length,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(FallocateOutput { file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "copy_file_range" => {
             let input: CopyFileRangeInput = typed_input(args)?;
             let mut file_info_in = input.file_info_in;
             let mut file_info_out = input.file_info_out;
-            let result = fs.copy_file_range(&input.path_in, &mut file_info_in, input.offset_in, &input.path_out, &mut file_info_out, input.offset_out, input.size, input.flags)?;
-            Ok(serde_json::to_value(CopyFileRangeOutput { bytes_copied: result, file_info_in, file_info_out }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let result = fs.copy_file_range(
+                &input.path_in,
+                &mut file_info_in,
+                input.offset_in,
+                &input.path_out,
+                &mut file_info_out,
+                input.offset_out,
+                input.size,
+                input.flags,
+            )?;
+            Ok(serde_json::to_value(CopyFileRangeOutput {
+                bytes_copied: result,
+                file_info_in,
+                file_info_out,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "lseek" => {
             let input: LseekInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let result = fs.lseek(&input.path, input.offset, input.whence, &mut file_info)?;
-            Ok(serde_json::to_value(LseekOutput { offset: result, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(LseekOutput {
+                offset: result,
+                file_info,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "statx" => {
             let input: StatxInput = typed_input(args)?;
             let mut statx = Statx::default();
             let mut file_info = input.file_info;
-            fs.statx(&input.path, input.flags, input.mask, &mut statx, file_info.as_mut())?;
-            Ok(serde_json::to_value(StatxOutput { statx, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            fs.statx(
+                &input.path,
+                input.flags,
+                input.mask,
+                &mut statx,
+                file_info.as_mut(),
+            )?;
+            Ok(
+                serde_json::to_value(StatxOutput { statx, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "syncfs" => {
             let input: SyncfsInput = typed_input(args)?;
             fs.syncfs(&input.path)?;
-            Ok(serde_json::to_value(SyncfsOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(SyncfsOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
-        other => return Err(FuseError::Unsupported(format!("unknown fuse method: {other}"))),
+        other => {
+            return Err(FuseError::Unsupported(format!(
+                "unknown fuse method: {other}"
+            )));
+        }
     }
 }
 
@@ -6548,281 +7297,762 @@ pub fn dispatch_fuse_method(fs: &mut dyn FuseOperations, method: &str, args: &se
 /// Unknown methods and malformed arguments are errors, never
 /// silent fallbacks. There is no acknowledgement step: the
 /// typed Output IS the response.
-pub fn dispatch_fuse_lowlevel_method(fs: &mut dyn FuseLowlevelOps, method: &str, args: &serde_json::Value) -> Result<serde_json::Value, FuseError> {
+pub fn dispatch_fuse_lowlevel_method(
+    fs: &mut dyn FuseLowlevelOps,
+    method: &str,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value, FuseError> {
     match method {
         "ll_init" => {
             let input: LlInitInput = typed_input(args)?;
             let mut conn = input.conn;
             fs.init(input.userdata, &mut conn)?;
-            Ok(serde_json::to_value(LlInitOutput { conn }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlInitOutput { conn }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_destroy" => {
             let input: LlDestroyInput = typed_input(args)?;
             fs.destroy(input.userdata);
-            Ok(serde_json::to_value(LlDestroyOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(LlDestroyOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "ll_lookup" => {
             let input: LlLookupInput = typed_input(args)?;
             let reply = fs.lookup(input.req, input.parent, &input.name)?;
-            Ok(serde_json::to_value(LlLookupOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlLookupOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_forget" => {
             let input: LlForgetInput = typed_input(args)?;
             fs.forget(input.req, input.ino, input.nlookup)?;
-            Ok(serde_json::to_value(LlForgetOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(LlForgetOutput {}).map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "ll_getattr" => {
             let input: LlGetattrInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.getattr(input.req, input.ino, file_info.as_mut())?;
-            Ok(serde_json::to_value(LlGetattrOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlGetattrOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_setattr" => {
             let input: LlSetattrInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.setattr(input.req, input.ino, &input.attr, input.to_set, file_info.as_mut())?;
-            Ok(serde_json::to_value(LlSetattrOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.setattr(
+                input.req,
+                input.ino,
+                &input.attr,
+                input.to_set,
+                file_info.as_mut(),
+            )?;
+            Ok(
+                serde_json::to_value(LlSetattrOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_readlink" => {
             let input: LlReadlinkInput = typed_input(args)?;
             let reply = fs.readlink(input.req, input.ino)?;
-            Ok(serde_json::to_value(LlReadlinkOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlReadlinkOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_mknod" => {
             let input: LlMknodInput = typed_input(args)?;
             let reply = fs.mknod(input.req, input.parent, &input.name, input.mode, input.rdev)?;
-            Ok(serde_json::to_value(LlMknodOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlMknodOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_mkdir" => {
             let input: LlMkdirInput = typed_input(args)?;
             let reply = fs.mkdir(input.req, input.parent, &input.name, input.mode)?;
-            Ok(serde_json::to_value(LlMkdirOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlMkdirOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_unlink" => {
             let input: LlUnlinkInput = typed_input(args)?;
             let reply = fs.unlink(input.req, input.parent, &input.name)?;
-            Ok(serde_json::to_value(LlUnlinkOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlUnlinkOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_rmdir" => {
             let input: LlRmdirInput = typed_input(args)?;
             let reply = fs.rmdir(input.req, input.parent, &input.name)?;
-            Ok(serde_json::to_value(LlRmdirOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlRmdirOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_symlink" => {
             let input: LlSymlinkInput = typed_input(args)?;
             let reply = fs.symlink(input.req, &input.target, input.parent, &input.name)?;
-            Ok(serde_json::to_value(LlSymlinkOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlSymlinkOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_rename" => {
             let input: LlRenameInput = typed_input(args)?;
-            let reply = fs.rename(input.req, input.parent, &input.name, input.newparent, &input.newname, input.flags)?;
-            Ok(serde_json::to_value(LlRenameOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.rename(
+                input.req,
+                input.parent,
+                &input.name,
+                input.newparent,
+                &input.newname,
+                input.flags,
+            )?;
+            Ok(
+                serde_json::to_value(LlRenameOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_link" => {
             let input: LlLinkInput = typed_input(args)?;
             let reply = fs.link(input.req, input.ino, input.newparent, &input.newname)?;
-            Ok(serde_json::to_value(LlLinkOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlLinkOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_open" => {
             let input: LlOpenInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.open(input.req, input.ino, &mut file_info)?;
-            Ok(serde_json::to_value(LlOpenOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlOpenOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_read" => {
             let input: LlReadInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.read(input.req, input.ino, input.size, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(LlReadOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.read(
+                input.req,
+                input.ino,
+                input.size,
+                input.offset,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlReadOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_write" => {
             let input: LlWriteInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.write(input.req, input.ino, &input.data, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(LlWriteOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.write(
+                input.req,
+                input.ino,
+                &input.data,
+                input.offset,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlWriteOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_flush" => {
             let input: LlFlushInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.flush(input.req, input.ino, &mut file_info)?;
-            Ok(serde_json::to_value(LlFlushOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlFlushOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_release" => {
             let input: LlReleaseInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.release(input.req, input.ino, &mut file_info)?;
-            Ok(serde_json::to_value(LlReleaseOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlReleaseOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_fsync" => {
             let input: LlFsyncInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.fsync(input.req, input.ino, input.datasync, &mut file_info)?;
-            Ok(serde_json::to_value(LlFsyncOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlFsyncOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_opendir" => {
             let input: LlOpendirInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.opendir(input.req, input.ino, &mut file_info)?;
-            Ok(serde_json::to_value(LlOpendirOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlOpendirOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_readdir" => {
             let input: LlReaddirInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.readdir(input.req, input.ino, input.size, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(LlReaddirOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.readdir(
+                input.req,
+                input.ino,
+                input.size,
+                input.offset,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlReaddirOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_releasedir" => {
             let input: LlReleasedirInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.releasedir(input.req, input.ino, &mut file_info)?;
-            Ok(serde_json::to_value(LlReleasedirOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlReleasedirOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_fsyncdir" => {
             let input: LlFsyncdirInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.fsyncdir(input.req, input.ino, input.datasync, &mut file_info)?;
-            Ok(serde_json::to_value(LlFsyncdirOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlFsyncdirOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_statfs" => {
             let input: LlStatfsInput = typed_input(args)?;
             let reply = fs.statfs(input.req, input.ino)?;
-            Ok(serde_json::to_value(LlStatfsOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlStatfsOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_setxattr" => {
             let input: LlSetxattrInput = typed_input(args)?;
-            let reply = fs.setxattr(input.req, input.ino, &input.name, &input.value, input.flags)?;
-            Ok(serde_json::to_value(LlSetxattrOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply =
+                fs.setxattr(input.req, input.ino, &input.name, &input.value, input.flags)?;
+            Ok(
+                serde_json::to_value(LlSetxattrOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_getxattr" => {
             let input: LlGetxattrInput = typed_input(args)?;
             let reply = fs.getxattr(input.req, input.ino, &input.name, input.size)?;
-            Ok(serde_json::to_value(LlGetxattrOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlGetxattrOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_listxattr" => {
             let input: LlListxattrInput = typed_input(args)?;
             let reply = fs.listxattr(input.req, input.ino, input.size)?;
-            Ok(serde_json::to_value(LlListxattrOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlListxattrOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_removexattr" => {
             let input: LlRemovexattrInput = typed_input(args)?;
             let reply = fs.removexattr(input.req, input.ino, &input.name)?;
-            Ok(serde_json::to_value(LlRemovexattrOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlRemovexattrOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_access" => {
             let input: LlAccessInput = typed_input(args)?;
             let reply = fs.access(input.req, input.ino, input.mask)?;
-            Ok(serde_json::to_value(LlAccessOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlAccessOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_create" => {
             let input: LlCreateInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.create(input.req, input.parent, &input.name, input.mode, &mut file_info)?;
-            Ok(serde_json::to_value(LlCreateOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.create(
+                input.req,
+                input.parent,
+                &input.name,
+                input.mode,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlCreateOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_getlk" => {
             let input: LlGetlkInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let mut lock = input.lock;
             let reply = fs.getlk(input.req, input.ino, &mut file_info, &mut lock)?;
-            Ok(serde_json::to_value(LlGetlkOutput { reply, file_info, lock }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(serde_json::to_value(LlGetlkOutput {
+                reply,
+                file_info,
+                lock,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "ll_setlk" => {
             let input: LlSetlkInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.setlk(input.req, input.ino, &mut file_info, &input.lock, input.sleep)?;
-            Ok(serde_json::to_value(LlSetlkOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.setlk(
+                input.req,
+                input.ino,
+                &mut file_info,
+                &input.lock,
+                input.sleep,
+            )?;
+            Ok(
+                serde_json::to_value(LlSetlkOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_bmap" => {
             let input: LlBmapInput = typed_input(args)?;
             let reply = fs.bmap(input.req, input.ino, input.blocksize, input.idx)?;
-            Ok(serde_json::to_value(LlBmapOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlBmapOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_ioctl" => {
             let input: LlIoctlInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.ioctl(input.req, input.ino, input.cmd, input.arg, &mut file_info, input.flags, &input.in_buf, input.out_buf_size)?;
-            Ok(serde_json::to_value(LlIoctlOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.ioctl(
+                input.req,
+                input.ino,
+                input.cmd,
+                input.arg,
+                &mut file_info,
+                input.flags,
+                &input.in_buf,
+                input.out_buf_size,
+            )?;
+            Ok(
+                serde_json::to_value(LlIoctlOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_poll" => {
             let input: LlPollInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.poll(input.req, input.ino, &mut file_info, input.poll_handle)?;
-            Ok(serde_json::to_value(LlPollOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlPollOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_write_buf" => {
             let input: LlWriteBufInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.write_buf(input.req, input.ino, &input.buf, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(LlWriteBufOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.write_buf(
+                input.req,
+                input.ino,
+                &input.buf,
+                input.offset,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlWriteBufOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_retrieve_reply" => {
             let input: LlRetrieveReplyInput = typed_input(args)?;
             fs.retrieve_reply(input.req, input.cookie, input.ino, input.offset, &input.buf)?;
-            Ok(serde_json::to_value(LlRetrieveReplyOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlRetrieveReplyOutput {}).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_forget_multi" => {
             let input: LlForgetMultiInput = typed_input(args)?;
             fs.forget_multi(input.req, &input.forgets)?;
-            Ok(serde_json::to_value(LlForgetMultiOutput {}).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlForgetMultiOutput {}).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_flock" => {
             let input: LlFlockInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.flock(input.req, input.ino, &mut file_info, input.op)?;
-            Ok(serde_json::to_value(LlFlockOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlFlockOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_fallocate" => {
             let input: LlFallocateInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.fallocate(input.req, input.ino, input.mode, input.offset, input.length, &mut file_info)?;
-            Ok(serde_json::to_value(LlFallocateOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.fallocate(
+                input.req,
+                input.ino,
+                input.mode,
+                input.offset,
+                input.length,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlFallocateOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_readdirplus" => {
             let input: LlReaddirplusInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.readdirplus(input.req, input.ino, input.size, input.offset, &mut file_info)?;
-            Ok(serde_json::to_value(LlReaddirplusOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.readdirplus(
+                input.req,
+                input.ino,
+                input.size,
+                input.offset,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlReaddirplusOutput { reply, file_info }).map_err(
+                    |error| {
+                        FuseError::InvalidArgument(format!(
+                            "fuse method output does not serialize: {error}"
+                        ))
+                    },
+                )?,
+            )
         }
         "ll_copy_file_range" => {
             let input: LlCopyFileRangeInput = typed_input(args)?;
             let mut file_info_in = input.file_info_in;
             let mut file_info_out = input.file_info_out;
-            let reply = fs.copy_file_range(input.req, input.ino_in, input.offset_in, &mut file_info_in, input.ino_out, input.offset_out, &mut file_info_out, input.len, input.flags)?;
-            Ok(serde_json::to_value(LlCopyFileRangeOutput { reply, file_info_in, file_info_out }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.copy_file_range(
+                input.req,
+                input.ino_in,
+                input.offset_in,
+                &mut file_info_in,
+                input.ino_out,
+                input.offset_out,
+                &mut file_info_out,
+                input.len,
+                input.flags,
+            )?;
+            Ok(serde_json::to_value(LlCopyFileRangeOutput {
+                reply,
+                file_info_in,
+                file_info_out,
+            })
+            .map_err(|error| {
+                FuseError::InvalidArgument(format!(
+                    "fuse method output does not serialize: {error}"
+                ))
+            })?)
         }
         "ll_lseek" => {
             let input: LlLseekInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.lseek(input.req, input.ino, input.offset, input.whence, &mut file_info)?;
-            Ok(serde_json::to_value(LlLseekOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.lseek(
+                input.req,
+                input.ino,
+                input.offset,
+                input.whence,
+                &mut file_info,
+            )?;
+            Ok(
+                serde_json::to_value(LlLseekOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_tmpfile" => {
             let input: LlTmpfileInput = typed_input(args)?;
             let mut file_info = input.file_info;
             let reply = fs.tmpfile(input.req, input.parent, input.mode, &mut file_info)?;
-            Ok(serde_json::to_value(LlTmpfileOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlTmpfileOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_statx" => {
             let input: LlStatxInput = typed_input(args)?;
             let mut file_info = input.file_info;
-            let reply = fs.statx(input.req, input.ino, input.flags, input.mask, file_info.as_mut())?;
-            Ok(serde_json::to_value(LlStatxOutput { reply, file_info }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            let reply = fs.statx(
+                input.req,
+                input.ino,
+                input.flags,
+                input.mask,
+                file_info.as_mut(),
+            )?;
+            Ok(
+                serde_json::to_value(LlStatxOutput { reply, file_info }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
         "ll_syncfs" => {
             let input: LlSyncfsInput = typed_input(args)?;
             let reply = fs.syncfs(input.req, input.ino)?;
-            Ok(serde_json::to_value(LlSyncfsOutput { reply }).map_err(|error| FuseError::InvalidArgument(format!("fuse method output does not serialize: {error}")))?)
+            Ok(
+                serde_json::to_value(LlSyncfsOutput { reply }).map_err(|error| {
+                    FuseError::InvalidArgument(format!(
+                        "fuse method output does not serialize: {error}"
+                    ))
+                })?,
+            )
         }
-        other => return Err(FuseError::Unsupported(format!("unknown fuse lowlevel method: {other}"))),
+        other => {
+            return Err(FuseError::Unsupported(format!(
+                "unknown fuse lowlevel method: {other}"
+            )));
+        }
     }
 }
 
 /// High-level (`FuseOperations`) method names, in trait order.
-pub const FUSE_METHOD_NAMES: &[&str] = &["getattr", "readlink", "mknod", "mkdir", "unlink", "rmdir", "symlink", "rename", "link", "chmod", "chown", "truncate", "open", "read", "write", "statfs", "flush", "release", "fsync", "setxattr", "getxattr", "listxattr", "removexattr", "opendir", "readdir", "releasedir", "fsyncdir", "init", "destroy", "access", "create", "lock", "utimens", "bmap", "ioctl", "poll", "write_buf", "read_buf", "flock", "fallocate", "copy_file_range", "lseek", "statx", "syncfs"];
+pub const FUSE_METHOD_NAMES: &[&str] = &[
+    "getattr",
+    "readlink",
+    "mknod",
+    "mkdir",
+    "unlink",
+    "rmdir",
+    "symlink",
+    "rename",
+    "link",
+    "chmod",
+    "chown",
+    "truncate",
+    "open",
+    "read",
+    "write",
+    "statfs",
+    "flush",
+    "release",
+    "fsync",
+    "setxattr",
+    "getxattr",
+    "listxattr",
+    "removexattr",
+    "opendir",
+    "readdir",
+    "releasedir",
+    "fsyncdir",
+    "init",
+    "destroy",
+    "access",
+    "create",
+    "lock",
+    "utimens",
+    "bmap",
+    "ioctl",
+    "poll",
+    "write_buf",
+    "read_buf",
+    "flock",
+    "fallocate",
+    "copy_file_range",
+    "lseek",
+    "statx",
+    "syncfs",
+];
 
 /// Low-level (`FuseLowlevelOps`) method names, in trait order
 /// (wire names carry the `ll_` prefix).
-pub const FUSE_LOWLEVEL_METHOD_NAMES: &[&str] = &["ll_init", "ll_destroy", "ll_lookup", "ll_forget", "ll_getattr", "ll_setattr", "ll_readlink", "ll_mknod", "ll_mkdir", "ll_unlink", "ll_rmdir", "ll_symlink", "ll_rename", "ll_link", "ll_open", "ll_read", "ll_write", "ll_flush", "ll_release", "ll_fsync", "ll_opendir", "ll_readdir", "ll_releasedir", "ll_fsyncdir", "ll_statfs", "ll_setxattr", "ll_getxattr", "ll_listxattr", "ll_removexattr", "ll_access", "ll_create", "ll_getlk", "ll_setlk", "ll_bmap", "ll_ioctl", "ll_poll", "ll_write_buf", "ll_retrieve_reply", "ll_forget_multi", "ll_flock", "ll_fallocate", "ll_readdirplus", "ll_copy_file_range", "ll_lseek", "ll_tmpfile", "ll_statx", "ll_syncfs"];
+pub const FUSE_LOWLEVEL_METHOD_NAMES: &[&str] = &[
+    "ll_init",
+    "ll_destroy",
+    "ll_lookup",
+    "ll_forget",
+    "ll_getattr",
+    "ll_setattr",
+    "ll_readlink",
+    "ll_mknod",
+    "ll_mkdir",
+    "ll_unlink",
+    "ll_rmdir",
+    "ll_symlink",
+    "ll_rename",
+    "ll_link",
+    "ll_open",
+    "ll_read",
+    "ll_write",
+    "ll_flush",
+    "ll_release",
+    "ll_fsync",
+    "ll_opendir",
+    "ll_readdir",
+    "ll_releasedir",
+    "ll_fsyncdir",
+    "ll_statfs",
+    "ll_setxattr",
+    "ll_getxattr",
+    "ll_listxattr",
+    "ll_removexattr",
+    "ll_access",
+    "ll_create",
+    "ll_getlk",
+    "ll_setlk",
+    "ll_bmap",
+    "ll_ioctl",
+    "ll_poll",
+    "ll_write_buf",
+    "ll_retrieve_reply",
+    "ll_forget_multi",
+    "ll_flock",
+    "ll_fallocate",
+    "ll_readdirplus",
+    "ll_copy_file_range",
+    "ll_lseek",
+    "ll_tmpfile",
+    "ll_statx",
+    "ll_syncfs",
+];
 
 /// Register every dispatchable method in the plugin schema
 /// document, with its capability and subid. Capability IDs
@@ -6830,97 +8060,734 @@ pub const FUSE_LOWLEVEL_METHOD_NAMES: &[&str] = &["ll_init", "ll_destroy", "ll_l
 /// pattern; observation subids are `obs.…`, mutation subids
 /// are `mut.…`.
 pub(crate) fn register_methods(schema: &mut PluginSchema) {
-    add_method::<GetattrInput, GetattrOutput>(schema, "getattr", SideEffect::Read, true, "cap.storage.fuse.fs.getattr@v1", "obs.storage.fuse.fs.getattr@v1");
-    add_method::<ReadlinkInput, ReadlinkOutput>(schema, "readlink", SideEffect::Read, true, "cap.storage.fuse.fs.readlink@v1", "obs.storage.fuse.fs.readlink@v1");
-    add_method::<MknodInput, MknodOutput>(schema, "mknod", SideEffect::Mutation, false, "cap.storage.fuse.fs.mknod@v1", "mut.storage.fuse.fs.mknod@v1");
-    add_method::<MkdirInput, MkdirOutput>(schema, "mkdir", SideEffect::Mutation, false, "cap.storage.fuse.fs.mkdir@v1", "mut.storage.fuse.fs.mkdir@v1");
-    add_method::<UnlinkInput, UnlinkOutput>(schema, "unlink", SideEffect::Mutation, false, "cap.storage.fuse.fs.unlink@v1", "mut.storage.fuse.fs.unlink@v1");
-    add_method::<RmdirInput, RmdirOutput>(schema, "rmdir", SideEffect::Mutation, false, "cap.storage.fuse.fs.rmdir@v1", "mut.storage.fuse.fs.rmdir@v1");
-    add_method::<SymlinkInput, SymlinkOutput>(schema, "symlink", SideEffect::Mutation, false, "cap.storage.fuse.fs.symlink@v1", "mut.storage.fuse.fs.symlink@v1");
-    add_method::<RenameInput, RenameOutput>(schema, "rename", SideEffect::Mutation, false, "cap.storage.fuse.fs.rename@v1", "mut.storage.fuse.fs.rename@v1");
-    add_method::<LinkInput, LinkOutput>(schema, "link", SideEffect::Mutation, false, "cap.storage.fuse.fs.link@v1", "mut.storage.fuse.fs.link@v1");
-    add_method::<ChmodInput, ChmodOutput>(schema, "chmod", SideEffect::Mutation, true, "cap.storage.fuse.fs.chmod@v1", "mut.storage.fuse.fs.chmod@v1");
-    add_method::<ChownInput, ChownOutput>(schema, "chown", SideEffect::Mutation, true, "cap.storage.fuse.fs.chown@v1", "mut.storage.fuse.fs.chown@v1");
-    add_method::<TruncateInput, TruncateOutput>(schema, "truncate", SideEffect::Mutation, true, "cap.storage.fuse.fs.truncate@v1", "mut.storage.fuse.fs.truncate@v1");
-    add_method::<OpenInput, OpenOutput>(schema, "open", SideEffect::Mutation, false, "cap.storage.fuse.fs.open@v1", "mut.storage.fuse.fs.open@v1");
-    add_method::<ReadInput, ReadOutput>(schema, "read", SideEffect::Read, true, "cap.storage.fuse.fs.read@v1", "obs.storage.fuse.fs.read@v1");
-    add_method::<WriteInput, WriteOutput>(schema, "write", SideEffect::Mutation, false, "cap.storage.fuse.fs.write@v1", "mut.storage.fuse.fs.write@v1");
-    add_method::<StatfsInput, StatfsOutput>(schema, "statfs", SideEffect::Read, true, "cap.storage.fuse.fs.statfs@v1", "obs.storage.fuse.fs.statfs@v1");
-    add_method::<FlushInput, FlushOutput>(schema, "flush", SideEffect::Mutation, true, "cap.storage.fuse.fs.flush@v1", "mut.storage.fuse.fs.flush@v1");
-    add_method::<ReleaseInput, ReleaseOutput>(schema, "release", SideEffect::Mutation, false, "cap.storage.fuse.fs.release@v1", "mut.storage.fuse.fs.release@v1");
-    add_method::<FsyncInput, FsyncOutput>(schema, "fsync", SideEffect::Mutation, true, "cap.storage.fuse.fs.fsync@v1", "mut.storage.fuse.fs.fsync@v1");
-    add_method::<SetxattrInput, SetxattrOutput>(schema, "setxattr", SideEffect::Mutation, true, "cap.storage.fuse.fs.setxattr@v1", "mut.storage.fuse.fs.setxattr@v1");
-    add_method::<GetxattrInput, GetxattrOutput>(schema, "getxattr", SideEffect::Read, true, "cap.storage.fuse.fs.getxattr@v1", "obs.storage.fuse.fs.getxattr@v1");
-    add_method::<ListxattrInput, ListxattrOutput>(schema, "listxattr", SideEffect::Read, true, "cap.storage.fuse.fs.listxattr@v1", "obs.storage.fuse.fs.listxattr@v1");
-    add_method::<RemovexattrInput, RemovexattrOutput>(schema, "removexattr", SideEffect::Mutation, false, "cap.storage.fuse.fs.removexattr@v1", "mut.storage.fuse.fs.removexattr@v1");
-    add_method::<OpendirInput, OpendirOutput>(schema, "opendir", SideEffect::Mutation, false, "cap.storage.fuse.fs.opendir@v1", "mut.storage.fuse.fs.opendir@v1");
-    add_method::<ReaddirInput, ReaddirOutput>(schema, "readdir", SideEffect::Read, true, "cap.storage.fuse.fs.readdir@v1", "obs.storage.fuse.fs.readdir@v1");
-    add_method::<ReleasedirInput, ReleasedirOutput>(schema, "releasedir", SideEffect::Mutation, false, "cap.storage.fuse.fs.releasedir@v1", "mut.storage.fuse.fs.releasedir@v1");
-    add_method::<FsyncdirInput, FsyncdirOutput>(schema, "fsyncdir", SideEffect::Mutation, true, "cap.storage.fuse.fs.fsyncdir@v1", "mut.storage.fuse.fs.fsyncdir@v1");
-    add_method::<InitInput, InitOutput>(schema, "init", SideEffect::Mutation, false, "cap.storage.fuse.fs.init@v1", "mut.storage.fuse.fs.init@v1");
-    add_method::<DestroyInput, DestroyOutput>(schema, "destroy", SideEffect::Mutation, false, "cap.storage.fuse.fs.destroy@v1", "mut.storage.fuse.fs.destroy@v1");
-    add_method::<AccessInput, AccessOutput>(schema, "access", SideEffect::Read, true, "cap.storage.fuse.fs.access@v1", "obs.storage.fuse.fs.access@v1");
-    add_method::<CreateInput, CreateOutput>(schema, "create", SideEffect::Mutation, false, "cap.storage.fuse.fs.create@v1", "mut.storage.fuse.fs.create@v1");
-    add_method::<LockInput, LockOutput>(schema, "lock", SideEffect::Mutation, false, "cap.storage.fuse.fs.lock@v1", "mut.storage.fuse.fs.lock@v1");
-    add_method::<UtimensInput, UtimensOutput>(schema, "utimens", SideEffect::Mutation, true, "cap.storage.fuse.fs.utimens@v1", "mut.storage.fuse.fs.utimens@v1");
-    add_method::<BmapInput, BmapOutput>(schema, "bmap", SideEffect::Read, true, "cap.storage.fuse.fs.bmap@v1", "obs.storage.fuse.fs.bmap@v1");
-    add_method::<IoctlInput, IoctlOutput>(schema, "ioctl", SideEffect::Mutation, false, "cap.storage.fuse.fs.ioctl@v1", "mut.storage.fuse.fs.ioctl@v1");
-    add_method::<PollInput, PollOutput>(schema, "poll", SideEffect::Read, true, "cap.storage.fuse.fs.poll@v1", "obs.storage.fuse.fs.poll@v1");
-    add_method::<WriteBufInput, WriteBufOutput>(schema, "write_buf", SideEffect::Mutation, false, "cap.storage.fuse.fs.write_buf@v1", "mut.storage.fuse.fs.write_buf@v1");
-    add_method::<ReadBufInput, ReadBufOutput>(schema, "read_buf", SideEffect::Read, true, "cap.storage.fuse.fs.read_buf@v1", "obs.storage.fuse.fs.read_buf@v1");
-    add_method::<FlockInput, FlockOutput>(schema, "flock", SideEffect::Mutation, false, "cap.storage.fuse.fs.flock@v1", "mut.storage.fuse.fs.flock@v1");
-    add_method::<FallocateInput, FallocateOutput>(schema, "fallocate", SideEffect::Mutation, true, "cap.storage.fuse.fs.fallocate@v1", "mut.storage.fuse.fs.fallocate@v1");
-    add_method::<CopyFileRangeInput, CopyFileRangeOutput>(schema, "copy_file_range", SideEffect::Mutation, false, "cap.storage.fuse.fs.copy_file_range@v1", "mut.storage.fuse.fs.copy_file_range@v1");
-    add_method::<LseekInput, LseekOutput>(schema, "lseek", SideEffect::Read, true, "cap.storage.fuse.fs.lseek@v1", "obs.storage.fuse.fs.lseek@v1");
-    add_method::<StatxInput, StatxOutput>(schema, "statx", SideEffect::Read, true, "cap.storage.fuse.fs.statx@v1", "obs.storage.fuse.fs.statx@v1");
-    add_method::<SyncfsInput, SyncfsOutput>(schema, "syncfs", SideEffect::Mutation, true, "cap.storage.fuse.fs.syncfs@v1", "mut.storage.fuse.fs.syncfs@v1");
-    add_method::<LlInitInput, LlInitOutput>(schema, "ll_init", SideEffect::Mutation, false, "cap.storage.fuse.ll.init@v1", "mut.storage.fuse.ll.init@v1");
-    add_method::<LlDestroyInput, LlDestroyOutput>(schema, "ll_destroy", SideEffect::Mutation, false, "cap.storage.fuse.ll.destroy@v1", "mut.storage.fuse.ll.destroy@v1");
-    add_method::<LlLookupInput, LlLookupOutput>(schema, "ll_lookup", SideEffect::Read, true, "cap.storage.fuse.ll.lookup@v1", "obs.storage.fuse.ll.lookup@v1");
-    add_method::<LlForgetInput, LlForgetOutput>(schema, "ll_forget", SideEffect::Mutation, false, "cap.storage.fuse.ll.forget@v1", "mut.storage.fuse.ll.forget@v1");
-    add_method::<LlGetattrInput, LlGetattrOutput>(schema, "ll_getattr", SideEffect::Read, true, "cap.storage.fuse.ll.getattr@v1", "obs.storage.fuse.ll.getattr@v1");
-    add_method::<LlSetattrInput, LlSetattrOutput>(schema, "ll_setattr", SideEffect::Mutation, true, "cap.storage.fuse.ll.setattr@v1", "mut.storage.fuse.ll.setattr@v1");
-    add_method::<LlReadlinkInput, LlReadlinkOutput>(schema, "ll_readlink", SideEffect::Read, true, "cap.storage.fuse.ll.readlink@v1", "obs.storage.fuse.ll.readlink@v1");
-    add_method::<LlMknodInput, LlMknodOutput>(schema, "ll_mknod", SideEffect::Mutation, false, "cap.storage.fuse.ll.mknod@v1", "mut.storage.fuse.ll.mknod@v1");
-    add_method::<LlMkdirInput, LlMkdirOutput>(schema, "ll_mkdir", SideEffect::Mutation, false, "cap.storage.fuse.ll.mkdir@v1", "mut.storage.fuse.ll.mkdir@v1");
-    add_method::<LlUnlinkInput, LlUnlinkOutput>(schema, "ll_unlink", SideEffect::Mutation, false, "cap.storage.fuse.ll.unlink@v1", "mut.storage.fuse.ll.unlink@v1");
-    add_method::<LlRmdirInput, LlRmdirOutput>(schema, "ll_rmdir", SideEffect::Mutation, false, "cap.storage.fuse.ll.rmdir@v1", "mut.storage.fuse.ll.rmdir@v1");
-    add_method::<LlSymlinkInput, LlSymlinkOutput>(schema, "ll_symlink", SideEffect::Mutation, false, "cap.storage.fuse.ll.symlink@v1", "mut.storage.fuse.ll.symlink@v1");
-    add_method::<LlRenameInput, LlRenameOutput>(schema, "ll_rename", SideEffect::Mutation, false, "cap.storage.fuse.ll.rename@v1", "mut.storage.fuse.ll.rename@v1");
-    add_method::<LlLinkInput, LlLinkOutput>(schema, "ll_link", SideEffect::Mutation, false, "cap.storage.fuse.ll.link@v1", "mut.storage.fuse.ll.link@v1");
-    add_method::<LlOpenInput, LlOpenOutput>(schema, "ll_open", SideEffect::Mutation, false, "cap.storage.fuse.ll.open@v1", "mut.storage.fuse.ll.open@v1");
-    add_method::<LlReadInput, LlReadOutput>(schema, "ll_read", SideEffect::Read, true, "cap.storage.fuse.ll.read@v1", "obs.storage.fuse.ll.read@v1");
-    add_method::<LlWriteInput, LlWriteOutput>(schema, "ll_write", SideEffect::Mutation, false, "cap.storage.fuse.ll.write@v1", "mut.storage.fuse.ll.write@v1");
-    add_method::<LlFlushInput, LlFlushOutput>(schema, "ll_flush", SideEffect::Mutation, true, "cap.storage.fuse.ll.flush@v1", "mut.storage.fuse.ll.flush@v1");
-    add_method::<LlReleaseInput, LlReleaseOutput>(schema, "ll_release", SideEffect::Mutation, false, "cap.storage.fuse.ll.release@v1", "mut.storage.fuse.ll.release@v1");
-    add_method::<LlFsyncInput, LlFsyncOutput>(schema, "ll_fsync", SideEffect::Mutation, true, "cap.storage.fuse.ll.fsync@v1", "mut.storage.fuse.ll.fsync@v1");
-    add_method::<LlOpendirInput, LlOpendirOutput>(schema, "ll_opendir", SideEffect::Mutation, false, "cap.storage.fuse.ll.opendir@v1", "mut.storage.fuse.ll.opendir@v1");
-    add_method::<LlReaddirInput, LlReaddirOutput>(schema, "ll_readdir", SideEffect::Read, true, "cap.storage.fuse.ll.readdir@v1", "obs.storage.fuse.ll.readdir@v1");
-    add_method::<LlReleasedirInput, LlReleasedirOutput>(schema, "ll_releasedir", SideEffect::Mutation, false, "cap.storage.fuse.ll.releasedir@v1", "mut.storage.fuse.ll.releasedir@v1");
-    add_method::<LlFsyncdirInput, LlFsyncdirOutput>(schema, "ll_fsyncdir", SideEffect::Mutation, true, "cap.storage.fuse.ll.fsyncdir@v1", "mut.storage.fuse.ll.fsyncdir@v1");
-    add_method::<LlStatfsInput, LlStatfsOutput>(schema, "ll_statfs", SideEffect::Read, true, "cap.storage.fuse.ll.statfs@v1", "obs.storage.fuse.ll.statfs@v1");
-    add_method::<LlSetxattrInput, LlSetxattrOutput>(schema, "ll_setxattr", SideEffect::Mutation, true, "cap.storage.fuse.ll.setxattr@v1", "mut.storage.fuse.ll.setxattr@v1");
-    add_method::<LlGetxattrInput, LlGetxattrOutput>(schema, "ll_getxattr", SideEffect::Read, true, "cap.storage.fuse.ll.getxattr@v1", "obs.storage.fuse.ll.getxattr@v1");
-    add_method::<LlListxattrInput, LlListxattrOutput>(schema, "ll_listxattr", SideEffect::Read, true, "cap.storage.fuse.ll.listxattr@v1", "obs.storage.fuse.ll.listxattr@v1");
-    add_method::<LlRemovexattrInput, LlRemovexattrOutput>(schema, "ll_removexattr", SideEffect::Mutation, false, "cap.storage.fuse.ll.removexattr@v1", "mut.storage.fuse.ll.removexattr@v1");
-    add_method::<LlAccessInput, LlAccessOutput>(schema, "ll_access", SideEffect::Read, true, "cap.storage.fuse.ll.access@v1", "obs.storage.fuse.ll.access@v1");
-    add_method::<LlCreateInput, LlCreateOutput>(schema, "ll_create", SideEffect::Mutation, false, "cap.storage.fuse.ll.create@v1", "mut.storage.fuse.ll.create@v1");
-    add_method::<LlGetlkInput, LlGetlkOutput>(schema, "ll_getlk", SideEffect::Read, true, "cap.storage.fuse.ll.getlk@v1", "obs.storage.fuse.ll.getlk@v1");
-    add_method::<LlSetlkInput, LlSetlkOutput>(schema, "ll_setlk", SideEffect::Mutation, false, "cap.storage.fuse.ll.setlk@v1", "mut.storage.fuse.ll.setlk@v1");
-    add_method::<LlBmapInput, LlBmapOutput>(schema, "ll_bmap", SideEffect::Read, true, "cap.storage.fuse.ll.bmap@v1", "obs.storage.fuse.ll.bmap@v1");
-    add_method::<LlIoctlInput, LlIoctlOutput>(schema, "ll_ioctl", SideEffect::Mutation, false, "cap.storage.fuse.ll.ioctl@v1", "mut.storage.fuse.ll.ioctl@v1");
-    add_method::<LlPollInput, LlPollOutput>(schema, "ll_poll", SideEffect::Read, true, "cap.storage.fuse.ll.poll@v1", "obs.storage.fuse.ll.poll@v1");
-    add_method::<LlWriteBufInput, LlWriteBufOutput>(schema, "ll_write_buf", SideEffect::Mutation, false, "cap.storage.fuse.ll.write_buf@v1", "mut.storage.fuse.ll.write_buf@v1");
-    add_method::<LlRetrieveReplyInput, LlRetrieveReplyOutput>(schema, "ll_retrieve_reply", SideEffect::Mutation, false, "cap.storage.fuse.ll.retrieve_reply@v1", "mut.storage.fuse.ll.retrieve_reply@v1");
-    add_method::<LlForgetMultiInput, LlForgetMultiOutput>(schema, "ll_forget_multi", SideEffect::Mutation, false, "cap.storage.fuse.ll.forget_multi@v1", "mut.storage.fuse.ll.forget_multi@v1");
-    add_method::<LlFlockInput, LlFlockOutput>(schema, "ll_flock", SideEffect::Mutation, false, "cap.storage.fuse.ll.flock@v1", "mut.storage.fuse.ll.flock@v1");
-    add_method::<LlFallocateInput, LlFallocateOutput>(schema, "ll_fallocate", SideEffect::Mutation, true, "cap.storage.fuse.ll.fallocate@v1", "mut.storage.fuse.ll.fallocate@v1");
-    add_method::<LlReaddirplusInput, LlReaddirplusOutput>(schema, "ll_readdirplus", SideEffect::Read, true, "cap.storage.fuse.ll.readdirplus@v1", "obs.storage.fuse.ll.readdirplus@v1");
-    add_method::<LlCopyFileRangeInput, LlCopyFileRangeOutput>(schema, "ll_copy_file_range", SideEffect::Mutation, false, "cap.storage.fuse.ll.copy_file_range@v1", "mut.storage.fuse.ll.copy_file_range@v1");
-    add_method::<LlLseekInput, LlLseekOutput>(schema, "ll_lseek", SideEffect::Read, true, "cap.storage.fuse.ll.lseek@v1", "obs.storage.fuse.ll.lseek@v1");
-    add_method::<LlTmpfileInput, LlTmpfileOutput>(schema, "ll_tmpfile", SideEffect::Mutation, false, "cap.storage.fuse.ll.tmpfile@v1", "mut.storage.fuse.ll.tmpfile@v1");
-    add_method::<LlStatxInput, LlStatxOutput>(schema, "ll_statx", SideEffect::Read, true, "cap.storage.fuse.ll.statx@v1", "obs.storage.fuse.ll.statx@v1");
-    add_method::<LlSyncfsInput, LlSyncfsOutput>(schema, "ll_syncfs", SideEffect::Mutation, true, "cap.storage.fuse.ll.syncfs@v1", "mut.storage.fuse.ll.syncfs@v1");
+    add_method::<GetattrInput, GetattrOutput>(
+        schema,
+        "getattr",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.getattr@v1",
+        "obs.storage.fuse.fs.getattr@v1",
+    );
+    add_method::<ReadlinkInput, ReadlinkOutput>(
+        schema,
+        "readlink",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.readlink@v1",
+        "obs.storage.fuse.fs.readlink@v1",
+    );
+    add_method::<MknodInput, MknodOutput>(
+        schema,
+        "mknod",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.mknod@v1",
+        "mut.storage.fuse.fs.mknod@v1",
+    );
+    add_method::<MkdirInput, MkdirOutput>(
+        schema,
+        "mkdir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.mkdir@v1",
+        "mut.storage.fuse.fs.mkdir@v1",
+    );
+    add_method::<UnlinkInput, UnlinkOutput>(
+        schema,
+        "unlink",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.unlink@v1",
+        "mut.storage.fuse.fs.unlink@v1",
+    );
+    add_method::<RmdirInput, RmdirOutput>(
+        schema,
+        "rmdir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.rmdir@v1",
+        "mut.storage.fuse.fs.rmdir@v1",
+    );
+    add_method::<SymlinkInput, SymlinkOutput>(
+        schema,
+        "symlink",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.symlink@v1",
+        "mut.storage.fuse.fs.symlink@v1",
+    );
+    add_method::<RenameInput, RenameOutput>(
+        schema,
+        "rename",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.rename@v1",
+        "mut.storage.fuse.fs.rename@v1",
+    );
+    add_method::<LinkInput, LinkOutput>(
+        schema,
+        "link",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.link@v1",
+        "mut.storage.fuse.fs.link@v1",
+    );
+    add_method::<ChmodInput, ChmodOutput>(
+        schema,
+        "chmod",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.chmod@v1",
+        "mut.storage.fuse.fs.chmod@v1",
+    );
+    add_method::<ChownInput, ChownOutput>(
+        schema,
+        "chown",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.chown@v1",
+        "mut.storage.fuse.fs.chown@v1",
+    );
+    add_method::<TruncateInput, TruncateOutput>(
+        schema,
+        "truncate",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.truncate@v1",
+        "mut.storage.fuse.fs.truncate@v1",
+    );
+    add_method::<OpenInput, OpenOutput>(
+        schema,
+        "open",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.open@v1",
+        "mut.storage.fuse.fs.open@v1",
+    );
+    add_method::<ReadInput, ReadOutput>(
+        schema,
+        "read",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.read@v1",
+        "obs.storage.fuse.fs.read@v1",
+    );
+    add_method::<WriteInput, WriteOutput>(
+        schema,
+        "write",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.write@v1",
+        "mut.storage.fuse.fs.write@v1",
+    );
+    add_method::<StatfsInput, StatfsOutput>(
+        schema,
+        "statfs",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.statfs@v1",
+        "obs.storage.fuse.fs.statfs@v1",
+    );
+    add_method::<FlushInput, FlushOutput>(
+        schema,
+        "flush",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.flush@v1",
+        "mut.storage.fuse.fs.flush@v1",
+    );
+    add_method::<ReleaseInput, ReleaseOutput>(
+        schema,
+        "release",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.release@v1",
+        "mut.storage.fuse.fs.release@v1",
+    );
+    add_method::<FsyncInput, FsyncOutput>(
+        schema,
+        "fsync",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.fsync@v1",
+        "mut.storage.fuse.fs.fsync@v1",
+    );
+    add_method::<SetxattrInput, SetxattrOutput>(
+        schema,
+        "setxattr",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.setxattr@v1",
+        "mut.storage.fuse.fs.setxattr@v1",
+    );
+    add_method::<GetxattrInput, GetxattrOutput>(
+        schema,
+        "getxattr",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.getxattr@v1",
+        "obs.storage.fuse.fs.getxattr@v1",
+    );
+    add_method::<ListxattrInput, ListxattrOutput>(
+        schema,
+        "listxattr",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.listxattr@v1",
+        "obs.storage.fuse.fs.listxattr@v1",
+    );
+    add_method::<RemovexattrInput, RemovexattrOutput>(
+        schema,
+        "removexattr",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.removexattr@v1",
+        "mut.storage.fuse.fs.removexattr@v1",
+    );
+    add_method::<OpendirInput, OpendirOutput>(
+        schema,
+        "opendir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.opendir@v1",
+        "mut.storage.fuse.fs.opendir@v1",
+    );
+    add_method::<ReaddirInput, ReaddirOutput>(
+        schema,
+        "readdir",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.readdir@v1",
+        "obs.storage.fuse.fs.readdir@v1",
+    );
+    add_method::<ReleasedirInput, ReleasedirOutput>(
+        schema,
+        "releasedir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.releasedir@v1",
+        "mut.storage.fuse.fs.releasedir@v1",
+    );
+    add_method::<FsyncdirInput, FsyncdirOutput>(
+        schema,
+        "fsyncdir",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.fsyncdir@v1",
+        "mut.storage.fuse.fs.fsyncdir@v1",
+    );
+    add_method::<InitInput, InitOutput>(
+        schema,
+        "init",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.init@v1",
+        "mut.storage.fuse.fs.init@v1",
+    );
+    add_method::<DestroyInput, DestroyOutput>(
+        schema,
+        "destroy",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.destroy@v1",
+        "mut.storage.fuse.fs.destroy@v1",
+    );
+    add_method::<AccessInput, AccessOutput>(
+        schema,
+        "access",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.access@v1",
+        "obs.storage.fuse.fs.access@v1",
+    );
+    add_method::<CreateInput, CreateOutput>(
+        schema,
+        "create",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.create@v1",
+        "mut.storage.fuse.fs.create@v1",
+    );
+    add_method::<LockInput, LockOutput>(
+        schema,
+        "lock",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.lock@v1",
+        "mut.storage.fuse.fs.lock@v1",
+    );
+    add_method::<UtimensInput, UtimensOutput>(
+        schema,
+        "utimens",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.utimens@v1",
+        "mut.storage.fuse.fs.utimens@v1",
+    );
+    add_method::<BmapInput, BmapOutput>(
+        schema,
+        "bmap",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.bmap@v1",
+        "obs.storage.fuse.fs.bmap@v1",
+    );
+    add_method::<IoctlInput, IoctlOutput>(
+        schema,
+        "ioctl",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.ioctl@v1",
+        "mut.storage.fuse.fs.ioctl@v1",
+    );
+    add_method::<PollInput, PollOutput>(
+        schema,
+        "poll",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.poll@v1",
+        "obs.storage.fuse.fs.poll@v1",
+    );
+    add_method::<WriteBufInput, WriteBufOutput>(
+        schema,
+        "write_buf",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.write_buf@v1",
+        "mut.storage.fuse.fs.write_buf@v1",
+    );
+    add_method::<ReadBufInput, ReadBufOutput>(
+        schema,
+        "read_buf",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.read_buf@v1",
+        "obs.storage.fuse.fs.read_buf@v1",
+    );
+    add_method::<FlockInput, FlockOutput>(
+        schema,
+        "flock",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.flock@v1",
+        "mut.storage.fuse.fs.flock@v1",
+    );
+    add_method::<FallocateInput, FallocateOutput>(
+        schema,
+        "fallocate",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.fallocate@v1",
+        "mut.storage.fuse.fs.fallocate@v1",
+    );
+    add_method::<CopyFileRangeInput, CopyFileRangeOutput>(
+        schema,
+        "copy_file_range",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.fs.copy_file_range@v1",
+        "mut.storage.fuse.fs.copy_file_range@v1",
+    );
+    add_method::<LseekInput, LseekOutput>(
+        schema,
+        "lseek",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.lseek@v1",
+        "obs.storage.fuse.fs.lseek@v1",
+    );
+    add_method::<StatxInput, StatxOutput>(
+        schema,
+        "statx",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.fs.statx@v1",
+        "obs.storage.fuse.fs.statx@v1",
+    );
+    add_method::<SyncfsInput, SyncfsOutput>(
+        schema,
+        "syncfs",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.fs.syncfs@v1",
+        "mut.storage.fuse.fs.syncfs@v1",
+    );
+    add_method::<LlInitInput, LlInitOutput>(
+        schema,
+        "ll_init",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.init@v1",
+        "mut.storage.fuse.ll.init@v1",
+    );
+    add_method::<LlDestroyInput, LlDestroyOutput>(
+        schema,
+        "ll_destroy",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.destroy@v1",
+        "mut.storage.fuse.ll.destroy@v1",
+    );
+    add_method::<LlLookupInput, LlLookupOutput>(
+        schema,
+        "ll_lookup",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.lookup@v1",
+        "obs.storage.fuse.ll.lookup@v1",
+    );
+    add_method::<LlForgetInput, LlForgetOutput>(
+        schema,
+        "ll_forget",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.forget@v1",
+        "mut.storage.fuse.ll.forget@v1",
+    );
+    add_method::<LlGetattrInput, LlGetattrOutput>(
+        schema,
+        "ll_getattr",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.getattr@v1",
+        "obs.storage.fuse.ll.getattr@v1",
+    );
+    add_method::<LlSetattrInput, LlSetattrOutput>(
+        schema,
+        "ll_setattr",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.ll.setattr@v1",
+        "mut.storage.fuse.ll.setattr@v1",
+    );
+    add_method::<LlReadlinkInput, LlReadlinkOutput>(
+        schema,
+        "ll_readlink",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.readlink@v1",
+        "obs.storage.fuse.ll.readlink@v1",
+    );
+    add_method::<LlMknodInput, LlMknodOutput>(
+        schema,
+        "ll_mknod",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.mknod@v1",
+        "mut.storage.fuse.ll.mknod@v1",
+    );
+    add_method::<LlMkdirInput, LlMkdirOutput>(
+        schema,
+        "ll_mkdir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.mkdir@v1",
+        "mut.storage.fuse.ll.mkdir@v1",
+    );
+    add_method::<LlUnlinkInput, LlUnlinkOutput>(
+        schema,
+        "ll_unlink",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.unlink@v1",
+        "mut.storage.fuse.ll.unlink@v1",
+    );
+    add_method::<LlRmdirInput, LlRmdirOutput>(
+        schema,
+        "ll_rmdir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.rmdir@v1",
+        "mut.storage.fuse.ll.rmdir@v1",
+    );
+    add_method::<LlSymlinkInput, LlSymlinkOutput>(
+        schema,
+        "ll_symlink",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.symlink@v1",
+        "mut.storage.fuse.ll.symlink@v1",
+    );
+    add_method::<LlRenameInput, LlRenameOutput>(
+        schema,
+        "ll_rename",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.rename@v1",
+        "mut.storage.fuse.ll.rename@v1",
+    );
+    add_method::<LlLinkInput, LlLinkOutput>(
+        schema,
+        "ll_link",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.link@v1",
+        "mut.storage.fuse.ll.link@v1",
+    );
+    add_method::<LlOpenInput, LlOpenOutput>(
+        schema,
+        "ll_open",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.open@v1",
+        "mut.storage.fuse.ll.open@v1",
+    );
+    add_method::<LlReadInput, LlReadOutput>(
+        schema,
+        "ll_read",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.read@v1",
+        "obs.storage.fuse.ll.read@v1",
+    );
+    add_method::<LlWriteInput, LlWriteOutput>(
+        schema,
+        "ll_write",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.write@v1",
+        "mut.storage.fuse.ll.write@v1",
+    );
+    add_method::<LlFlushInput, LlFlushOutput>(
+        schema,
+        "ll_flush",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.ll.flush@v1",
+        "mut.storage.fuse.ll.flush@v1",
+    );
+    add_method::<LlReleaseInput, LlReleaseOutput>(
+        schema,
+        "ll_release",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.release@v1",
+        "mut.storage.fuse.ll.release@v1",
+    );
+    add_method::<LlFsyncInput, LlFsyncOutput>(
+        schema,
+        "ll_fsync",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.ll.fsync@v1",
+        "mut.storage.fuse.ll.fsync@v1",
+    );
+    add_method::<LlOpendirInput, LlOpendirOutput>(
+        schema,
+        "ll_opendir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.opendir@v1",
+        "mut.storage.fuse.ll.opendir@v1",
+    );
+    add_method::<LlReaddirInput, LlReaddirOutput>(
+        schema,
+        "ll_readdir",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.readdir@v1",
+        "obs.storage.fuse.ll.readdir@v1",
+    );
+    add_method::<LlReleasedirInput, LlReleasedirOutput>(
+        schema,
+        "ll_releasedir",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.releasedir@v1",
+        "mut.storage.fuse.ll.releasedir@v1",
+    );
+    add_method::<LlFsyncdirInput, LlFsyncdirOutput>(
+        schema,
+        "ll_fsyncdir",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.ll.fsyncdir@v1",
+        "mut.storage.fuse.ll.fsyncdir@v1",
+    );
+    add_method::<LlStatfsInput, LlStatfsOutput>(
+        schema,
+        "ll_statfs",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.statfs@v1",
+        "obs.storage.fuse.ll.statfs@v1",
+    );
+    add_method::<LlSetxattrInput, LlSetxattrOutput>(
+        schema,
+        "ll_setxattr",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.ll.setxattr@v1",
+        "mut.storage.fuse.ll.setxattr@v1",
+    );
+    add_method::<LlGetxattrInput, LlGetxattrOutput>(
+        schema,
+        "ll_getxattr",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.getxattr@v1",
+        "obs.storage.fuse.ll.getxattr@v1",
+    );
+    add_method::<LlListxattrInput, LlListxattrOutput>(
+        schema,
+        "ll_listxattr",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.listxattr@v1",
+        "obs.storage.fuse.ll.listxattr@v1",
+    );
+    add_method::<LlRemovexattrInput, LlRemovexattrOutput>(
+        schema,
+        "ll_removexattr",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.removexattr@v1",
+        "mut.storage.fuse.ll.removexattr@v1",
+    );
+    add_method::<LlAccessInput, LlAccessOutput>(
+        schema,
+        "ll_access",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.access@v1",
+        "obs.storage.fuse.ll.access@v1",
+    );
+    add_method::<LlCreateInput, LlCreateOutput>(
+        schema,
+        "ll_create",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.create@v1",
+        "mut.storage.fuse.ll.create@v1",
+    );
+    add_method::<LlGetlkInput, LlGetlkOutput>(
+        schema,
+        "ll_getlk",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.getlk@v1",
+        "obs.storage.fuse.ll.getlk@v1",
+    );
+    add_method::<LlSetlkInput, LlSetlkOutput>(
+        schema,
+        "ll_setlk",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.setlk@v1",
+        "mut.storage.fuse.ll.setlk@v1",
+    );
+    add_method::<LlBmapInput, LlBmapOutput>(
+        schema,
+        "ll_bmap",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.bmap@v1",
+        "obs.storage.fuse.ll.bmap@v1",
+    );
+    add_method::<LlIoctlInput, LlIoctlOutput>(
+        schema,
+        "ll_ioctl",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.ioctl@v1",
+        "mut.storage.fuse.ll.ioctl@v1",
+    );
+    add_method::<LlPollInput, LlPollOutput>(
+        schema,
+        "ll_poll",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.poll@v1",
+        "obs.storage.fuse.ll.poll@v1",
+    );
+    add_method::<LlWriteBufInput, LlWriteBufOutput>(
+        schema,
+        "ll_write_buf",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.write_buf@v1",
+        "mut.storage.fuse.ll.write_buf@v1",
+    );
+    add_method::<LlRetrieveReplyInput, LlRetrieveReplyOutput>(
+        schema,
+        "ll_retrieve_reply",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.retrieve_reply@v1",
+        "mut.storage.fuse.ll.retrieve_reply@v1",
+    );
+    add_method::<LlForgetMultiInput, LlForgetMultiOutput>(
+        schema,
+        "ll_forget_multi",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.forget_multi@v1",
+        "mut.storage.fuse.ll.forget_multi@v1",
+    );
+    add_method::<LlFlockInput, LlFlockOutput>(
+        schema,
+        "ll_flock",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.flock@v1",
+        "mut.storage.fuse.ll.flock@v1",
+    );
+    add_method::<LlFallocateInput, LlFallocateOutput>(
+        schema,
+        "ll_fallocate",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.ll.fallocate@v1",
+        "mut.storage.fuse.ll.fallocate@v1",
+    );
+    add_method::<LlReaddirplusInput, LlReaddirplusOutput>(
+        schema,
+        "ll_readdirplus",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.readdirplus@v1",
+        "obs.storage.fuse.ll.readdirplus@v1",
+    );
+    add_method::<LlCopyFileRangeInput, LlCopyFileRangeOutput>(
+        schema,
+        "ll_copy_file_range",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.copy_file_range@v1",
+        "mut.storage.fuse.ll.copy_file_range@v1",
+    );
+    add_method::<LlLseekInput, LlLseekOutput>(
+        schema,
+        "ll_lseek",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.lseek@v1",
+        "obs.storage.fuse.ll.lseek@v1",
+    );
+    add_method::<LlTmpfileInput, LlTmpfileOutput>(
+        schema,
+        "ll_tmpfile",
+        SideEffect::Mutation,
+        false,
+        "cap.storage.fuse.ll.tmpfile@v1",
+        "mut.storage.fuse.ll.tmpfile@v1",
+    );
+    add_method::<LlStatxInput, LlStatxOutput>(
+        schema,
+        "ll_statx",
+        SideEffect::Read,
+        true,
+        "cap.storage.fuse.ll.statx@v1",
+        "obs.storage.fuse.ll.statx@v1",
+    );
+    add_method::<LlSyncfsInput, LlSyncfsOutput>(
+        schema,
+        "ll_syncfs",
+        SideEffect::Mutation,
+        true,
+        "cap.storage.fuse.ll.syncfs@v1",
+        "mut.storage.fuse.ll.syncfs@v1",
+    );
 }
 
 /// One JSON Schema per generated Input/Output pair, for the
@@ -6973,7 +8840,10 @@ pub fn plugin_type_registry() -> Vec<(&'static str, schemars::Schema)> {
         ("ListxattrInput", schemars::schema_for!(ListxattrInput)),
         ("ListxattrOutput", schemars::schema_for!(ListxattrOutput)),
         ("RemovexattrInput", schemars::schema_for!(RemovexattrInput)),
-        ("RemovexattrOutput", schemars::schema_for!(RemovexattrOutput)),
+        (
+            "RemovexattrOutput",
+            schemars::schema_for!(RemovexattrOutput),
+        ),
         ("OpendirInput", schemars::schema_for!(OpendirInput)),
         ("OpendirOutput", schemars::schema_for!(OpendirOutput)),
         ("ReaddirInput", schemars::schema_for!(ReaddirInput)),
@@ -7008,8 +8878,14 @@ pub fn plugin_type_registry() -> Vec<(&'static str, schemars::Schema)> {
         ("FlockOutput", schemars::schema_for!(FlockOutput)),
         ("FallocateInput", schemars::schema_for!(FallocateInput)),
         ("FallocateOutput", schemars::schema_for!(FallocateOutput)),
-        ("CopyFileRangeInput", schemars::schema_for!(CopyFileRangeInput)),
-        ("CopyFileRangeOutput", schemars::schema_for!(CopyFileRangeOutput)),
+        (
+            "CopyFileRangeInput",
+            schemars::schema_for!(CopyFileRangeInput),
+        ),
+        (
+            "CopyFileRangeOutput",
+            schemars::schema_for!(CopyFileRangeOutput),
+        ),
         ("LseekInput", schemars::schema_for!(LseekInput)),
         ("LseekOutput", schemars::schema_for!(LseekOutput)),
         ("StatxInput", schemars::schema_for!(StatxInput)),
@@ -7060,8 +8936,14 @@ pub fn plugin_type_registry() -> Vec<(&'static str, schemars::Schema)> {
         ("LlOpendirOutput", schemars::schema_for!(LlOpendirOutput)),
         ("LlReaddirInput", schemars::schema_for!(LlReaddirInput)),
         ("LlReaddirOutput", schemars::schema_for!(LlReaddirOutput)),
-        ("LlReleasedirInput", schemars::schema_for!(LlReleasedirInput)),
-        ("LlReleasedirOutput", schemars::schema_for!(LlReleasedirOutput)),
+        (
+            "LlReleasedirInput",
+            schemars::schema_for!(LlReleasedirInput),
+        ),
+        (
+            "LlReleasedirOutput",
+            schemars::schema_for!(LlReleasedirOutput),
+        ),
         ("LlFsyncdirInput", schemars::schema_for!(LlFsyncdirInput)),
         ("LlFsyncdirOutput", schemars::schema_for!(LlFsyncdirOutput)),
         ("LlStatfsInput", schemars::schema_for!(LlStatfsInput)),
@@ -7071,9 +8953,18 @@ pub fn plugin_type_registry() -> Vec<(&'static str, schemars::Schema)> {
         ("LlGetxattrInput", schemars::schema_for!(LlGetxattrInput)),
         ("LlGetxattrOutput", schemars::schema_for!(LlGetxattrOutput)),
         ("LlListxattrInput", schemars::schema_for!(LlListxattrInput)),
-        ("LlListxattrOutput", schemars::schema_for!(LlListxattrOutput)),
-        ("LlRemovexattrInput", schemars::schema_for!(LlRemovexattrInput)),
-        ("LlRemovexattrOutput", schemars::schema_for!(LlRemovexattrOutput)),
+        (
+            "LlListxattrOutput",
+            schemars::schema_for!(LlListxattrOutput),
+        ),
+        (
+            "LlRemovexattrInput",
+            schemars::schema_for!(LlRemovexattrInput),
+        ),
+        (
+            "LlRemovexattrOutput",
+            schemars::schema_for!(LlRemovexattrOutput),
+        ),
         ("LlAccessInput", schemars::schema_for!(LlAccessInput)),
         ("LlAccessOutput", schemars::schema_for!(LlAccessOutput)),
         ("LlCreateInput", schemars::schema_for!(LlCreateInput)),
@@ -7090,18 +8981,45 @@ pub fn plugin_type_registry() -> Vec<(&'static str, schemars::Schema)> {
         ("LlPollOutput", schemars::schema_for!(LlPollOutput)),
         ("LlWriteBufInput", schemars::schema_for!(LlWriteBufInput)),
         ("LlWriteBufOutput", schemars::schema_for!(LlWriteBufOutput)),
-        ("LlRetrieveReplyInput", schemars::schema_for!(LlRetrieveReplyInput)),
-        ("LlRetrieveReplyOutput", schemars::schema_for!(LlRetrieveReplyOutput)),
-        ("LlForgetMultiInput", schemars::schema_for!(LlForgetMultiInput)),
-        ("LlForgetMultiOutput", schemars::schema_for!(LlForgetMultiOutput)),
+        (
+            "LlRetrieveReplyInput",
+            schemars::schema_for!(LlRetrieveReplyInput),
+        ),
+        (
+            "LlRetrieveReplyOutput",
+            schemars::schema_for!(LlRetrieveReplyOutput),
+        ),
+        (
+            "LlForgetMultiInput",
+            schemars::schema_for!(LlForgetMultiInput),
+        ),
+        (
+            "LlForgetMultiOutput",
+            schemars::schema_for!(LlForgetMultiOutput),
+        ),
         ("LlFlockInput", schemars::schema_for!(LlFlockInput)),
         ("LlFlockOutput", schemars::schema_for!(LlFlockOutput)),
         ("LlFallocateInput", schemars::schema_for!(LlFallocateInput)),
-        ("LlFallocateOutput", schemars::schema_for!(LlFallocateOutput)),
-        ("LlReaddirplusInput", schemars::schema_for!(LlReaddirplusInput)),
-        ("LlReaddirplusOutput", schemars::schema_for!(LlReaddirplusOutput)),
-        ("LlCopyFileRangeInput", schemars::schema_for!(LlCopyFileRangeInput)),
-        ("LlCopyFileRangeOutput", schemars::schema_for!(LlCopyFileRangeOutput)),
+        (
+            "LlFallocateOutput",
+            schemars::schema_for!(LlFallocateOutput),
+        ),
+        (
+            "LlReaddirplusInput",
+            schemars::schema_for!(LlReaddirplusInput),
+        ),
+        (
+            "LlReaddirplusOutput",
+            schemars::schema_for!(LlReaddirplusOutput),
+        ),
+        (
+            "LlCopyFileRangeInput",
+            schemars::schema_for!(LlCopyFileRangeInput),
+        ),
+        (
+            "LlCopyFileRangeOutput",
+            schemars::schema_for!(LlCopyFileRangeOutput),
+        ),
         ("LlLseekInput", schemars::schema_for!(LlLseekInput)),
         ("LlLseekOutput", schemars::schema_for!(LlLseekOutput)),
         ("LlTmpfileInput", schemars::schema_for!(LlTmpfileInput)),
@@ -7126,7 +9044,6 @@ pub fn plugin_type_registry() -> Vec<(&'static str, schemars::Schema)> {
 // travel on the wire as strings, so boolean/integer options use the
 // [`StrBool`]/[`StrInt`] coercion newtypes from coerce.
 
-
 /// Plugin name, as registered in the schema document.
 pub const PLUGIN_NAME: &str = "fuse";
 /// Plugin version (the crate version).
@@ -7136,8 +9053,7 @@ pub const PLUGIN_CATEGORY: &str = "storage";
 /// Human-readable plugin name.
 pub const PLUGIN_DISPLAY_NAME: &str = "GB.Fuse";
 /// One-line plugin description.
-pub const PLUGIN_DESCRIPTION: &str =
-    "FUSE filesystem operations: high-level and low-level callbacks, session lifecycle, and mount options";
+pub const PLUGIN_DESCRIPTION: &str = "FUSE filesystem operations: high-level and low-level callbacks, session lifecycle, and mount options";
 /// The libfuse version this crate's types were generated from.
 pub const LIBRARY_VERSION: &str = "3.19.0";
 /// The libfuse API version (`FUSE_MAKE_VERSION(3, 19)`).
@@ -7516,14 +9432,11 @@ impl FuseMountOptions {
             };
             let parse_int = |value: Option<&str>| -> Result<StrInt, FuseError> {
                 match value {
-                    Some(v) => v
-                        .parse::<i64>()
-                        .map(StrInt)
-                        .map_err(|_| {
-                            FuseError::InvalidArgument(format!(
-                                "invalid integer mount option value: {v:?}"
-                            ))
-                        }),
+                    Some(v) => v.parse::<i64>().map(StrInt).map_err(|_| {
+                        FuseError::InvalidArgument(format!(
+                            "invalid integer mount option value: {v:?}"
+                        ))
+                    }),
                     None => Err(FuseError::InvalidArgument(
                         "integer mount option requires a value".to_string(),
                     )),
@@ -7626,7 +9539,10 @@ mod state_tests {
         );
         let back = FuseMountOptions::from_args(&args).unwrap();
         assert_eq!(back, opts);
-        assert_eq!(FuseMountOptions::from_args("").unwrap(), FuseMountOptions::default());
+        assert_eq!(
+            FuseMountOptions::from_args("").unwrap(),
+            FuseMountOptions::default()
+        );
         assert_eq!(FuseMountOptions::default().to_args(), "");
     }
 
@@ -7650,7 +9566,9 @@ mod state_tests {
         }
         // Explicit false round-trips through the struct form.
         assert_eq!(
-            FuseMountOptions::from_args("allow_other=false").unwrap().allow_other,
+            FuseMountOptions::from_args("allow_other=false")
+                .unwrap()
+                .allow_other,
             Some(StrBool(false))
         );
     }
@@ -7877,8 +9795,9 @@ fn register_fs_projection_methods(schema: &mut PluginSchema) {
         READ_PROTOCOL.to_string(),
         CapabilityDecl {
             id: READ_PROTOCOL.to_string(),
-            description: "Read the shared fuse invocation convention; grants no target operation access."
-                .into(),
+            description:
+                "Read the shared fuse invocation convention; grants no target operation access."
+                    .into(),
         },
     );
     schema.capabilities.insert(
@@ -8025,7 +9944,10 @@ impl StatePlugin for FusePlugin {
 }
 
 /// Dispatch FS projection discovery methods (libfuse ops stay on trait dispatch).
-pub fn dispatch_fs_projection(method: &str, arguments: &serde_json::Value) -> Result<serde_json::Value> {
+pub fn dispatch_fs_projection(
+    method: &str,
+    arguments: &serde_json::Value,
+) -> Result<serde_json::Value> {
     match method {
         "get_protocol" => {
             let _: GetProtocolInput = serde_json::from_value(arguments.clone())?;

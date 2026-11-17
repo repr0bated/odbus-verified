@@ -1,30 +1,55 @@
 //! Fresh-runtime identity owners. Cozo owns revisions; identity alone publishes
 //! the paired metadata/credential generation. Native observations and guards are
 //! carried to the enclosing durable terminal, never synthesized from arguments.
-use std::{collections::{HashMap, HashSet}, path::PathBuf, sync::{Arc, LazyLock, Mutex, Weak, atomic::{AtomicBool, Ordering}}};
+use crate::{
+    core::{BackendProjection, BackendStateUpdate, StateScope},
+    identity_binding::{
+        CONTROL_PLANE_CHATBOT_CONTAINER, RESERVED_CHATBOT_CONTAINER, configured_chatbot_key,
+        control_plane_chatbot_session_id, identity_instance_matches,
+        identity_session_binding_matches, validate_sled,
+    },
+    runtime::{BackendContext, BackendOutcome, Runtime, RuntimeError, VerifiedCaller},
+    runtime_identity::record_to_sled,
+};
 use anyhow::{Context as _, ensure};
 use base64::Engine as _;
 use op_core::projection_shm::{self, CredentialPublication};
-use op_cozo_store::{CozoGraphShuttle, GenesisInputsRecord, IdentityCompareExchange, IdentityIntent,
-    IdentityRecoverySnapshot, IdentityRevision, IdentitySledRecord, SessionEventRecord};
-use op_plugins::state_plugins::{identity_sled::{ContainerIdentitySled, IdentitySledState,
-    RECORD_FORMAT, SCHEMA_CONTENT_HASH, SessionEvent}, incus::{IncusInstance, IncusPlugin,
-    IncusRootRepairBackend, IncusState, IdentitySessionPowerState}};
+use op_cozo_store::{
+    CozoGraphShuttle, GenesisInputsRecord, IdentityCompareExchange, IdentityIntent,
+    IdentityRecoverySnapshot, IdentityRevision, IdentitySledRecord, SessionEventRecord,
+};
+use op_plugins::state_plugins::{
+    identity_sled::{
+        ContainerIdentitySled, IdentitySledState, RECORD_FORMAT, SCHEMA_CONTENT_HASH, SessionEvent,
+    },
+    incus::{
+        IdentitySessionPowerState, IncusInstance, IncusPlugin, IncusRootRepairBackend, IncusState,
+    },
+};
 use serde_json::Value as JsonValue;
-use crate::{core::{BackendProjection, BackendStateUpdate, StateScope},
-    runtime::{BackendContext, BackendOutcome, Runtime, RuntimeError, VerifiedCaller},
-    identity_binding::{configured_chatbot_key, control_plane_chatbot_session_id,
-        identity_instance_matches, identity_session_binding_matches, validate_sled,
-        CONTROL_PLANE_CHATBOT_CONTAINER, RESERVED_CHATBOT_CONTAINER},
-    runtime_identity::record_to_sled};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+    sync::{
+        Arc, LazyLock, Mutex, Weak,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
-#[path = "runtime_identity_root.rs"] mod root_repair;
-#[path = "runtime_identity_clean.rs"] mod clean_provision;
-#[path = "runtime_identity_physical.rs"] mod physical_root;
-#[path = "runtime_identity_seed.rs"] mod seed_provision;
-#[path = "runtime_identity_delete.rs"] mod delete_provision;
-#[path = "runtime_identity_human.rs"] mod human;
-#[path = "runtime_identity_rename.rs"] mod rename;
+#[path = "runtime_identity_clean.rs"]
+mod clean_provision;
+#[path = "runtime_identity_delete.rs"]
+mod delete_provision;
+#[path = "runtime_identity_human.rs"]
+mod human;
+#[path = "runtime_identity_physical.rs"]
+mod physical_root;
+#[path = "runtime_identity_rename.rs"]
+mod rename;
+#[path = "runtime_identity_root.rs"]
+mod root_repair;
+#[path = "runtime_identity_seed.rs"]
+mod seed_provision;
 
 const MAX_EVENTS_IN_STATE: usize = 256;
 const MAX_HISTORY_LIMIT: usize = 4096;
@@ -32,14 +57,36 @@ const OWN_IDENTITY_READ_CAPABILITY: &str = "cap.identity.sled.self.read@v1";
 
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     match plugin {
-        "identity_sled" => matches!(method, "prepare_container" | "rename_container" | "get_identity" | "get_own_identity"
-            | "inspect_own_root_repair_preflight" | "write_identity" | "inspect_identity_inventory"
-            | "refresh_credential" | "provision_container" | "inspect_provision_preflight"
-            | "delete_provision_record" | "repair_own_root" | "migrate_own_physical_root"
-            | "inspect_own_physical_root_migration_preflight" | "attach_btrfs_device"
-            | "touch_session" | "record_session_event" | "get_session_history"),
-        "human_principal" => matches!(method, "register_key" | "revoke_key" | "set_alias"
-            | "resolve_key" | "get_principal" | "list_principals"),
+        "identity_sled" => matches!(
+            method,
+            "prepare_container"
+                | "rename_container"
+                | "get_identity"
+                | "get_own_identity"
+                | "inspect_own_root_repair_preflight"
+                | "write_identity"
+                | "inspect_identity_inventory"
+                | "refresh_credential"
+                | "provision_container"
+                | "inspect_provision_preflight"
+                | "delete_provision_record"
+                | "repair_own_root"
+                | "migrate_own_physical_root"
+                | "inspect_own_physical_root_migration_preflight"
+                | "attach_btrfs_device"
+                | "touch_session"
+                | "record_session_event"
+                | "get_session_history"
+        ),
+        "human_principal" => matches!(
+            method,
+            "register_key"
+                | "revoke_key"
+                | "set_alias"
+                | "resolve_key"
+                | "get_principal"
+                | "list_principals"
+        ),
         _ => false,
     }
 }
@@ -57,12 +104,17 @@ struct IdentitySledStore {
     allow_pending_rename: bool,
 }
 impl IdentitySledStore {
-    fn mark_effect(&self) { self.lifetime.effect.store(true, Ordering::Release); }
+    fn mark_effect(&self) {
+        self.lifetime.effect.store(true, Ordering::Release);
+    }
     async fn lifecycle_lock(&self, session: &str) -> Arc<tokio::sync::Mutex<()>> {
-        static LOCKS: LazyLock<Mutex<HashMap<String, Weak<tokio::sync::Mutex<()>>>>> = LazyLock::new(Default::default);
+        static LOCKS: LazyLock<Mutex<HashMap<String, Weak<tokio::sync::Mutex<()>>>>> =
+            LazyLock::new(Default::default);
         let mut locks = LOCKS.lock().expect("identity locks poisoned");
         locks.retain(|_, lock| lock.strong_count() != 0);
-        if let Some(lock) = locks.get(session).and_then(Weak::upgrade) { return lock; }
+        if let Some(lock) = locks.get(session).and_then(Weak::upgrade) {
+            return lock;
+        }
         let lock = Arc::new(tokio::sync::Mutex::new(()));
         locks.insert(session.into(), Arc::downgrade(&lock));
         lock
@@ -80,20 +132,36 @@ struct NativeOwner {
 }
 impl NativeOwner {
     fn retain(&self, guard: impl Send + Sync + 'static) {
-        self.lifetime.guards.lock().expect("native guards poisoned").push(Box::new(guard));
+        self.lifetime
+            .guards
+            .lock()
+            .expect("native guards poisoned")
+            .push(Box::new(guard));
     }
     fn require_actor(&self, principal: &str) -> anyhow::Result<()> {
-        ensure!(principal == self.caller.principal_id, "identity caller mismatch");
+        ensure!(
+            principal == self.caller.principal_id,
+            "identity caller mismatch"
+        );
         Ok(())
     }
     async fn revalidate(&self) -> anyhow::Result<()> {
-        self.runtime.authorize_nested(&self.caller, &self.plugin, &self.method).await?;
+        self.runtime
+            .authorize_nested(&self.caller, &self.plugin, &self.method)
+            .await?;
         if self.plugin == "identity_sled" {
             let pinned = strict_identity_contract()?;
-            let admitted = self.runtime.catalog().plugin("identity_sled").context("identity plugin absent")?;
-            ensure!(pinned.schema_hash == admitted.schema_hash
-                && admitted.sealed_schema_json.as_deref() == Some(pinned.blob.schema_json.as_str()),
-                "identity native owner and runtime catalog differ");
+            let admitted = self
+                .runtime
+                .catalog()
+                .plugin("identity_sled")
+                .context("identity plugin absent")?;
+            ensure!(
+                pinned.schema_hash == admitted.schema_hash
+                    && admitted.sealed_schema_json.as_deref()
+                        == Some(pinned.blob.schema_json.as_str()),
+                "identity native owner and runtime catalog differ"
+            );
         }
         Ok(())
     }
@@ -101,23 +169,41 @@ impl NativeOwner {
         self.revalidate().await?;
         verify_own_binding(&self.caller, sled)?;
         let wire = self.runtime.identity_wire(&self.caller).await?;
-        crate::sid1_checks::match_bound_session(&wire, sled, "grpc", now()).map_err(anyhow::Error::msg)?;
-        ensure!(self.caller.sealed_identity.as_deref() == sled.sealed_id.as_deref(),
-            "original caller credential no longer matches identity");
+        crate::sid1_checks::match_bound_session(&wire, sled, "grpc", now())
+            .map_err(anyhow::Error::msg)?;
+        ensure!(
+            self.caller.sealed_identity.as_deref() == sled.sealed_id.as_deref(),
+            "original caller credential no longer matches identity"
+        );
         // Inactive is power policy, not credential revocation.
         seed_provision::target_key_is_registered(&sled.wireguard_pubkey).await
     }
     async fn observe_incus(&self, snapshot: &IncusState) -> anyhow::Result<()> {
-        let updates = project_native(&self.runtime, &self.caller, "incus", serde_json::to_value(snapshot)?)?;
-        let mut observed = self.lifetime.observed.lock().expect("native observations poisoned");
+        let updates = project_native(
+            &self.runtime,
+            &self.caller,
+            "incus",
+            serde_json::to_value(snapshot)?,
+        )?;
+        let mut observed = self
+            .lifetime
+            .observed
+            .lock()
+            .expect("native observations poisoned");
         observed.retain(|projection| projection.plugin_id != "incus");
         observed.extend(updates);
         Ok(())
     }
-    async fn commit_identity_intent<T, F>(&self, operation_id: String, commit: F)
-        -> anyhow::Result<T>
-    where T: Send + 'static,
-        F: FnOnce(Option<&[u8]>) -> anyhow::Result<(Option<simd_json::OwnedValue>, T)> + Send + 'static,
+    async fn commit_identity_intent<T, F>(
+        &self,
+        operation_id: String,
+        commit: F,
+    ) -> anyhow::Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(Option<&[u8]>) -> anyhow::Result<(Option<simd_json::OwnedValue>, T)>
+            + Send
+            + 'static,
     {
         self.revalidate().await?;
         let runtime = self.runtime.clone();
@@ -162,71 +248,135 @@ impl NativeOwner {
             }
         }).await.context("identity publication owner failed")?
     }
-    async fn mint_identity_genesis_stamp(&self, session_id: &str, public_key: &str, expires_at: i64)
-        -> anyhow::Result<GenesisStamp> {
-        ensure!(self.method == "provision_container", "credential minting requires explicit provision");
+    async fn mint_identity_genesis_stamp(
+        &self,
+        session_id: &str,
+        public_key: &str,
+        expires_at: i64,
+    ) -> anyhow::Result<GenesisStamp> {
+        ensure!(
+            self.method == "provision_container",
+            "credential minting requires explicit provision"
+        );
         let key = canonical_key(public_key)?;
-        ensure!(op_identity::session::derive_session_id(public_key) == session_id && expires_at >= 0,
-            "invalid provision identity anchor");
+        ensure!(
+            op_identity::session::derive_session_id(public_key) == session_id && expires_at >= 0,
+            "invalid provision identity anchor"
+        );
         // The decoy terminates WireGuard and may issue the identity (IID1).
         // When one is present this owner verifies and adopts it instead of
         // minting locally; it never falls back to a local mint after a
         // present blob fails verification.
         if let Some(claims) = issued_identity_claims(session_id, public_key, expires_at)? {
             return Ok(GenesisStamp {
-                sealed_id: claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?,
+                sealed_id: claims
+                    .to_inline_ref()
+                    .map_err(|error| anyhow::anyhow!("seal identity: {error}"))?,
                 claims,
             });
         }
-        let events = self.runtime.core().journal_events(&self.caller.private_scope(), self.request_event_id, self.request_event_id)?;
-        let event = events.into_iter().next().context("durable provision attempt is absent")?;
-        ensure!(event.event_id == self.request_event_id && event.event_hash == self.request_event_hash,
-            "provision attempt receipt differs");
+        let events = self.runtime.core().journal_events(
+            &self.caller.private_scope(),
+            self.request_event_id,
+            self.request_event_id,
+        )?;
+        let event = events
+            .into_iter()
+            .next()
+            .context("durable provision attempt is absent")?;
+        ensure!(
+            event.event_id == self.request_event_id && event.event_hash == self.request_event_hash,
+            "provision attempt receipt differs"
+        );
         let head_timestamp = event.timestamp.seconds;
         let chain_head = hex::decode(&event.event_hash)?;
-        ensure!(matches!(chain_head.len(), 16 | 32), "invalid arrival chain digest");
-        let catalog = crate::sealed_schema_reader::read_manifest_pinned_catalog(self.runtime.catalog_dir())?;
-        ensure!(catalog.plugins.contains_key("identity_sled"), "identity plugin is not sealed");
-        let catalog_hash: [u8;32] = hex::decode(&catalog.catalog_hash)?.try_into()
+        ensure!(
+            matches!(chain_head.len(), 16 | 32),
+            "invalid arrival chain digest"
+        );
+        let catalog =
+            crate::sealed_schema_reader::read_manifest_pinned_catalog(self.runtime.catalog_dir())?;
+        ensure!(
+            catalog.plugins.contains_key("identity_sled"),
+            "identity plugin is not sealed"
+        );
+        let catalog_hash: [u8; 32] = hex::decode(&catalog.catalog_hash)?
+            .try_into()
             .map_err(|_| anyhow::anyhow!("invalid identity arrival catalog hash"))?;
         let arrival = now();
-        let genesis = op_identity::session_genesis::mint_genesis(&key, &chain_head, head_timestamp, &catalog_hash, arrival);
+        let genesis = op_identity::session_genesis::mint_genesis(
+            &key,
+            &chain_head,
+            head_timestamp,
+            &catalog_hash,
+            arrival,
+        );
         let bindings = crate::identity_nextdns::NextDnsBindings::from_env()?;
         let claims = op_identity::sealed_id::SealedId {
             principal_id: op_identity::session::derive_principal_id(public_key),
-            principal_kind: "wireguard-principal".into(), session_id: session_id.into(),
-            wireguard_pubkey: public_key.into(), session_genesis: hex::encode(genesis),
-            trace_id: hex::encode(uuid::Uuid::new_v4().as_bytes()), schema_version: RECORD_FORMAT,
-            issued_at: arrival, expires_at, arrival_timestamp: arrival,
-            chain_head_at_arrival: event.event_hash, catalog_hash_at_arrival: catalog.catalog_hash,
-            head_timestamp_at_arrival: head_timestamp, transport_scope: "dbus,grpc,mcp,mqtt".into(),
+            principal_kind: "wireguard-principal".into(),
+            session_id: session_id.into(),
+            wireguard_pubkey: public_key.into(),
+            session_genesis: hex::encode(genesis),
+            trace_id: hex::encode(uuid::Uuid::new_v4().as_bytes()),
+            schema_version: RECORD_FORMAT,
+            issued_at: arrival,
+            expires_at,
+            arrival_timestamp: arrival,
+            chain_head_at_arrival: event.event_hash,
+            catalog_hash_at_arrival: catalog.catalog_hash,
+            head_timestamp_at_arrival: head_timestamp,
+            transport_scope: "dbus,grpc,mcp,mqtt".into(),
             nextdns: bindings.get(public_key).cloned(),
         };
-        Ok(GenesisStamp { sealed_id: claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?, claims })
+        Ok(GenesisStamp {
+            sealed_id: claims
+                .to_inline_ref()
+                .map_err(|error| anyhow::anyhow!("seal identity: {error}"))?,
+            claims,
+        })
     }
 }
-struct GenesisStamp { sealed_id: String, claims: op_identity::sealed_id::SealedId }
+struct GenesisStamp {
+    sealed_id: String,
+    claims: op_identity::sealed_id::SealedId,
+}
 
 const DEFAULT_ISSUED_IDENTITY_PATH: &str = "/agent/user/issued_identity.iid1";
 
 /// Verify a decoy-issued identity (standard-base64 IID1) for exactly this
 /// session, key and term against the decoy trust store.
-fn verify_issued_claims(issued: &str, trust_store: &[u8], session_id: &str, public_key: &str,
-    expires_at: i64) -> anyhow::Result<op_identity::sealed_id::SealedId> {
+fn verify_issued_claims(
+    issued: &str,
+    trust_store: &[u8],
+    session_id: &str,
+    public_key: &str,
+    expires_at: i64,
+) -> anyhow::Result<op_identity::sealed_id::SealedId> {
     use op_identity::issued_identity::{IssuedIdentity, parse_trust_store};
-    let wire = base64::engine::general_purpose::STANDARD.decode(issued.trim())
+    let wire = base64::engine::general_purpose::STANDARD
+        .decode(issued.trim())
         .context("issued identity is not standard base64")?;
     let issued = IssuedIdentity::verify(&wire, &parse_trust_store(trust_store)?, public_key)?;
-    ensure!(issued.sealed.session_id == session_id, "issued identity is for a different session");
-    ensure!(issued.sealed.schema_version == RECORD_FORMAT && issued.sealed.expires_at == expires_at,
-        "issued identity has a different record format or term");
+    ensure!(
+        issued.sealed.session_id == session_id,
+        "issued identity is for a different session"
+    );
+    ensure!(
+        issued.sealed.schema_version == RECORD_FORMAT && issued.sealed.expires_at == expires_at,
+        "issued identity has a different record format or term"
+    );
     Ok(issued.sealed)
 }
 
 /// The decoy-issued claims at `OP_ISSUED_IDENTITY_PATH`, if a blob is present.
-fn issued_identity_claims(session_id: &str, public_key: &str, expires_at: i64)
-    -> anyhow::Result<Option<op_identity::sealed_id::SealedId>> {
-    let path = std::env::var("OP_ISSUED_IDENTITY_PATH").unwrap_or_else(|_| DEFAULT_ISSUED_IDENTITY_PATH.into());
+fn issued_identity_claims(
+    session_id: &str,
+    public_key: &str,
+    expires_at: i64,
+) -> anyhow::Result<Option<op_identity::sealed_id::SealedId>> {
+    let path = std::env::var("OP_ISSUED_IDENTITY_PATH")
+        .unwrap_or_else(|_| DEFAULT_ISSUED_IDENTITY_PATH.into());
     let issued = match std::fs::read_to_string(&path) {
         Ok(value) => value,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -249,35 +399,66 @@ fn issued_identity_claims(session_id: &str, public_key: &str, expires_at: i64)
 /// committed. The own key is `OP_IDENTITY_OWN_WIREGUARD_PUBKEY`, else the
 /// configured control-plane chatbot key.
 pub(crate) fn adopt_issued_identity_at_startup(cozo: &CozoGraphShuttle) -> anyhow::Result<bool> {
-    let Some(key) = ["OP_IDENTITY_OWN_WIREGUARD_PUBKEY", "OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY"]
-        .iter().find_map(|name| std::env::var(name).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty()))
-    else { return Ok(false) };
+    let Some(key) = [
+        "OP_IDENTITY_OWN_WIREGUARD_PUBKEY",
+        "OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY",
+    ]
+    .iter()
+    .find_map(|name| {
+        std::env::var(name)
+            .ok()
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+    }) else {
+        return Ok(false);
+    };
     canonical_key(&key)?;
     let session = op_identity::session::derive_session_id(&key);
-    let Some(claims) = issued_identity_claims(&session, &key, 0)? else { return Ok(false) };
-    let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
-    let installed_path = std::env::var("OP_ISSUED_SEALED_ID_PATH").unwrap_or_else(|_| "/agent/user/sealed_id".into());
+    let Some(claims) = issued_identity_claims(&session, &key, 0)? else {
+        return Ok(false);
+    };
+    let inline = claims
+        .to_inline_ref()
+        .map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let installed_path = std::env::var("OP_ISSUED_SEALED_ID_PATH")
+        .unwrap_or_else(|_| "/agent/user/sealed_id".into());
     match std::fs::read_to_string(&installed_path) {
-        Ok(installed) => ensure!(installed.trim() == inline, "installed sealed_id differs from the decoy-issued identity"),
+        Ok(installed) => ensure!(
+            installed.trim() == inline,
+            "installed sealed_id differs from the decoy-issued identity"
+        ),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(error) => return Err(error).with_context(|| format!("reading {installed_path}")),
     }
-    let registry = crate::human_principal_registry::store().context("human principal store unavailable")?;
+    let registry =
+        crate::human_principal_registry::store().context("human principal store unavailable")?;
     match registry.get_human_principal_by_pubkey(&key)? {
-        Some(record) => ensure!(record.revoked_at == 0
-            && record.principal_id == op_identity::session::derive_principal_id(&key), "own principal is revoked or rebound"),
+        Some(record) => ensure!(
+            record.revoked_at == 0
+                && record.principal_id == op_identity::session::derive_principal_id(&key),
+            "own principal is revoked or rebound"
+        ),
         None => registry.put_human_principal(&op_cozo_store::HumanPrincipalRecord {
-            principal_id: op_identity::session::derive_principal_id(&key), human_pubkey: key.clone(),
-            display_alias: std::env::var("OP_IDENTITY_OWN_DISPLAY_ALIAS").unwrap_or_else(|_| "control-plane-chatbot".into()),
-            registered_at: now(), revoked_at: 0 })?,
+            principal_id: op_identity::session::derive_principal_id(&key),
+            human_pubkey: key.clone(),
+            display_alias: std::env::var("OP_IDENTITY_OWN_DISPLAY_ALIAS")
+                .unwrap_or_else(|_| "control-plane-chatbot".into()),
+            registered_at: now(),
+            revoked_at: 0,
+        })?,
     }
     let expected = cozo.read_identity_revision(&session)?;
     if let Some(record) = &expected.record {
-        ensure!(record.sealed_id == inline, "the sled holds a different identity than the decoy issued");
+        ensure!(
+            record.sealed_id == inline,
+            "the sled holds a different identity than the decoy issued"
+        );
         return Ok(false);
     }
-    ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
-        "issued identity cannot overwrite a deletion tombstone");
+    ensure!(
+        expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
+        "issued identity cannot overwrite a deletion tombstone"
+    );
     let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
         "session_id": session, "wireguard_pubkey": key, "principal_kind": "service",
         "active": true, "expires_at": 0,
@@ -290,8 +471,15 @@ pub(crate) fn adopt_issued_identity_at_startup(cozo: &CozoGraphShuttle) -> anyho
         "head_timestamp_at_arrival": claims.head_timestamp_at_arrival
     }))?;
     let operation = format!("adopt-issued-{}", uuid::Uuid::new_v4().simple());
-    cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
-        expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
+    cozo.apply_identity_intent(
+        &session,
+        &operation,
+        IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+            expected,
+            record: Some(sled_to_record(&sled)?),
+            genesis: Some(sled_to_genesis(&sled)),
+        })),
+    )?;
     Ok(true)
 }
 
@@ -305,14 +493,31 @@ mod issued_identity_tests {
     #[test]
     fn adopts_only_a_signed_identity_for_this_session_key_and_term() {
         let signer = SigningKey::from_bytes(&[5u8; 32]);
-        let wire = IssuedIdentity::issue(&signer, "decoy-t", IssueRequest {
-            wireguard_pubkey: KEY, catalog_hash_hex: &"ab".repeat(32), nextdns: None,
-            schema_version: super::RECORD_FORMAT, now: 1_800_000_000 }).unwrap().to_wire().unwrap();
+        let wire = IssuedIdentity::issue(
+            &signer,
+            "decoy-t",
+            IssueRequest {
+                wireguard_pubkey: KEY,
+                catalog_hash_hex: &"ab".repeat(32),
+                nextdns: None,
+                schema_version: super::RECORD_FORMAT,
+                now: 1_800_000_000,
+            },
+        )
+        .unwrap()
+        .to_wire()
+        .unwrap();
         let issued = base64::engine::general_purpose::STANDARD.encode(wire);
-        let trust = |key: &SigningKey| format!(r#"{{"decoy_keys":{{"decoy-t":"{}"}}}}"#,
-            base64::engine::general_purpose::STANDARD.encode(key.verifying_key().to_bytes())).into_bytes();
+        let trust = |key: &SigningKey| {
+            format!(
+                r#"{{"decoy_keys":{{"decoy-t":"{}"}}}}"#,
+                base64::engine::general_purpose::STANDARD.encode(key.verifying_key().to_bytes())
+            )
+            .into_bytes()
+        };
         let session = op_identity::session::derive_session_id(KEY);
-        let claims = super::verify_issued_claims(&issued, &trust(&signer), &session, KEY, 0).unwrap();
+        let claims =
+            super::verify_issued_claims(&issued, &trust(&signer), &session, KEY, 0).unwrap();
         assert_eq!(claims.session_id, session);
         assert!(super::verify_issued_claims(&issued, &trust(&signer), "other", KEY, 0).is_err());
         assert!(super::verify_issued_claims(&issued, &trust(&signer), &session, KEY, 60).is_err());
@@ -320,13 +525,22 @@ mod issued_identity_tests {
         assert!(super::verify_issued_claims(&issued, &trust(&other), &session, KEY, 0).is_err());
     }
 }
-fn apply_genesis_stamp(sled: &mut ContainerIdentitySled, stamp: &GenesisStamp) -> anyhow::Result<()> {
-    ensure!(!sled.is_anchored() && sled.session_id == stamp.claims.session_id
-        && sled.wireguard_pubkey == stamp.claims.wireguard_pubkey, "provision anchor cannot overwrite existing identity");
-    ensure!(identity_session_binding_matches(sled)
-        && stamp.claims.schema_version == sled.schema_version
-        && stamp.claims.expires_at == sled.expires_at.unwrap_or(0),
-        "provision credential requires the exact native binding and immutable term");
+fn apply_genesis_stamp(
+    sled: &mut ContainerIdentitySled,
+    stamp: &GenesisStamp,
+) -> anyhow::Result<()> {
+    ensure!(
+        !sled.is_anchored()
+            && sled.session_id == stamp.claims.session_id
+            && sled.wireguard_pubkey == stamp.claims.wireguard_pubkey,
+        "provision anchor cannot overwrite existing identity"
+    );
+    ensure!(
+        identity_session_binding_matches(sled)
+            && stamp.claims.schema_version == sled.schema_version
+            && stamp.claims.expires_at == sled.expires_at.unwrap_or(0),
+        "provision credential requires the exact native binding and immutable term"
+    );
     sled.genesis = Some(stamp.claims.session_genesis.clone());
     sled.trace_id = stamp.claims.trace_id.clone();
     sled.sealed_id = Some(stamp.sealed_id.clone());
@@ -337,78 +551,167 @@ fn apply_genesis_stamp(sled: &mut ContainerIdentitySled, stamp: &GenesisStamp) -
     Ok(())
 }
 
-fn project_native(runtime: &Runtime, caller: &VerifiedCaller, plugin: &str, state: JsonValue) -> anyhow::Result<Vec<BackendProjection>> {
-    let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(runtime.catalog_dir(), plugin)?;
-    let entry = runtime.catalog().plugin(plugin).context("native observation plugin absent")?;
-    ensure!(entry.schema_hash == pinned.schema_hash, "native observation seal changed");
+fn project_native(
+    runtime: &Runtime,
+    caller: &VerifiedCaller,
+    plugin: &str,
+    state: JsonValue,
+) -> anyhow::Result<Vec<BackendProjection>> {
+    let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
+        runtime.catalog_dir(),
+        plugin,
+    )?;
+    let entry = runtime
+        .catalog()
+        .plugin(plugin)
+        .context("native observation plugin absent")?;
+    ensure!(
+        entry.schema_hash == pinned.schema_hash,
+        "native observation seal changed"
+    );
     pinned.schema.validate_public_state_policy()?;
-    let public = pinned.schema.project_public_state(&simd_json::serde::to_owned_value(&state)?)?;
+    let public = pinned
+        .schema
+        .project_public_state(&simd_json::serde::to_owned_value(&state)?)?;
     let mut updates = Vec::with_capacity(2);
     if let Some(public) = public {
-        updates.push(BackendProjection { plugin_id: plugin.into(), object_path: op_plugins::canonical::plugin_path(plugin),
-            schema_hash: pinned.schema_hash.clone(), scope: StateScope::Public,
-            state: BackendStateUpdate::Replace(serde_json::to_value(public)?) });
+        updates.push(BackendProjection {
+            plugin_id: plugin.into(),
+            object_path: op_plugins::canonical::plugin_path(plugin),
+            schema_hash: pinned.schema_hash.clone(),
+            scope: StateScope::Public,
+            state: BackendStateUpdate::Replace(serde_json::to_value(public)?),
+        });
     }
-    updates.push(BackendProjection { plugin_id: plugin.into(), object_path: op_plugins::canonical::plugin_path(plugin),
-        schema_hash: pinned.schema_hash, scope: caller.private_scope(), state: BackendStateUpdate::Replace(state) });
+    updates.push(BackendProjection {
+        plugin_id: plugin.into(),
+        object_path: op_plugins::canonical::plugin_path(plugin),
+        schema_hash: pinned.schema_hash,
+        scope: caller.private_scope(),
+        state: BackendStateUpdate::Replace(state),
+    });
     Ok(updates)
 }
 
-pub(crate) async fn dispatch(ctx: &BackendContext<'_>, plugin: &str, method: &str, args: &JsonValue)
-    -> Result<BackendOutcome, RuntimeError> {
-    if !supports(plugin, method) { return Err(RuntimeError::unsupported("unknown identity owner method")); }
-    ctx.runtime.authorize_nested(ctx.caller, plugin, method).await?;
+pub(crate) async fn dispatch(
+    ctx: &BackendContext<'_>,
+    plugin: &str,
+    method: &str,
+    args: &JsonValue,
+) -> Result<BackendOutcome, RuntimeError> {
+    if !supports(plugin, method) {
+        return Err(RuntimeError::unsupported("unknown identity owner method"));
+    }
+    ctx.runtime
+        .authorize_nested(ctx.caller, plugin, method)
+        .await?;
     let lifetime = Arc::new(NativeLifetime::default());
-    let engine = NativeOwner { runtime: ctx.runtime.clone(), caller: ctx.caller.clone(), plugin: plugin.into(),
-        method: method.into(), operation_id: ctx.operation_id.to_string(), request_event_id: ctx.request_event_id,
-        request_event_hash: ctx.request_event_hash.clone(), lifetime: lifetime.clone() };
-    let store = IdentitySledStore { cozo: ctx.runtime.identity_store().clone(), lifetime: lifetime.clone(),
-        allow_pending_rename: matches!(method, "rename_container" | "delete_provision_record") };
+    let engine = NativeOwner {
+        runtime: ctx.runtime.clone(),
+        caller: ctx.caller.clone(),
+        plugin: plugin.into(),
+        method: method.into(),
+        operation_id: ctx.operation_id.to_string(),
+        request_event_id: ctx.request_event_id,
+        request_event_hash: ctx.request_event_hash.clone(),
+        lifetime: lifetime.clone(),
+    };
+    let store = IdentitySledStore {
+        cozo: ctx.runtime.identity_store().clone(),
+        lifetime: lifetime.clone(),
+        allow_pending_rename: matches!(method, "rename_container" | "delete_provision_record"),
+    };
     let result = if plugin == "human_principal" {
         human::dispatch(&engine, method, args).await
     } else {
         identity_method(&engine, &store, method, args).await
     };
-    if result.is_err() && matches!(method, "repair_own_root" | "prepare_container" | "rename_container")
+    if result.is_err()
+        && matches!(
+            method,
+            "repair_own_root" | "prepare_container" | "rename_container"
+        )
         && (lifetime.effect.load(Ordering::Acquire)
-            || result.as_ref().err().and_then(|error| error.downcast_ref::<RuntimeError>())
-                .is_some_and(RuntimeError::outcome_unknown)) {
+            || result
+                .as_ref()
+                .err()
+                .and_then(|error| error.downcast_ref::<RuntimeError>())
+                .is_some_and(RuntimeError::outcome_unknown))
+    {
         // Observe once after an uncertain native maintenance request. A failed
         // readback leaves the original error unknown, never an empty success.
-        if let Ok(snapshot) = IncusRootRepairBackend::local().default_project_state().await {
+        if let Ok(snapshot) = IncusRootRepairBackend::local()
+            .default_project_state()
+            .await
+        {
             let _ = engine.observe_incus(&snapshot).await;
         }
     }
-    let additional = std::mem::take(&mut *lifetime.observed.lock().expect("native observations poisoned"));
-    let state = lifetime.identity.lock().expect("identity receipt poisoned").take()
-        .map(BackendStateUpdate::IdentityPublished).unwrap_or(BackendStateUpdate::Unchanged);
+    let additional = std::mem::take(
+        &mut *lifetime
+            .observed
+            .lock()
+            .expect("native observations poisoned"),
+    );
+    let state = lifetime
+        .identity
+        .lock()
+        .expect("identity receipt poisoned")
+        .take()
+        .map(BackendStateUpdate::IdentityPublished)
+        .unwrap_or(BackendStateUpdate::Unchanged);
     match result {
-        Ok(result) => Ok(BackendOutcome { result, state,
-            scope: ctx.caller.private_scope(), additional, guard: Some(Box::new(lifetime)) }),
+        Ok(result) => Ok(BackendOutcome {
+            result,
+            state,
+            scope: ctx.caller.private_scope(),
+            additional,
+            guard: Some(Box::new(lifetime)),
+        }),
         Err(error) => {
-            let mut error = if lifetime.effect.load(Ordering::Acquire) { RuntimeError::unknown(error) }
-                else { match error.downcast::<RuntimeError>() {
+            let mut error = if lifetime.effect.load(Ordering::Acquire) {
+                RuntimeError::unknown(error)
+            } else {
+                match error.downcast::<RuntimeError>() {
                     Ok(error) => error,
                     Err(error) => RuntimeError::before_effect(error),
-                } };
+                }
+            };
             if !matches!(state, BackendStateUpdate::Unchanged) {
                 error = error.with_state(state, ctx.caller.private_scope());
             }
-            if !additional.is_empty() { error = error.with_additional(additional); }
+            if !additional.is_empty() {
+                error = error.with_additional(additional);
+            }
             Err(error.with_guard(Box::new(lifetime)))
         }
     }
 }
 
-struct VerifiedIdentityActor<'a> { actor_id: &'a str, session_id: &'a str, genesis: &'a str }
+struct VerifiedIdentityActor<'a> {
+    actor_id: &'a str,
+    session_id: &'a str,
+    genesis: &'a str,
+}
 #[derive(Debug)]
-struct DurableResult<T> { value: T, replayed: bool }
-fn now() -> i64 { chrono::Utc::now().timestamp() }
-fn arg_str<'a>(args: &'a JsonValue, name: &str) -> &'a str { args.get(name).and_then(JsonValue::as_str).unwrap_or("") }
-fn canonical_key(key: &str) -> anyhow::Result<[u8;32]> {
+struct DurableResult<T> {
+    value: T,
+    replayed: bool,
+}
+fn now() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+fn arg_str<'a>(args: &'a JsonValue, name: &str) -> &'a str {
+    args.get(name).and_then(JsonValue::as_str).unwrap_or("")
+}
+fn canonical_key(key: &str) -> anyhow::Result<[u8; 32]> {
     let raw = base64::engine::general_purpose::STANDARD.decode(key)?;
-    ensure!(base64::engine::general_purpose::STANDARD.encode(&raw) == key, "noncanonical identity key");
-    raw.try_into().map_err(|_| anyhow::anyhow!("identity key must contain 32 bytes"))
+    ensure!(
+        base64::engine::general_purpose::STANDARD.encode(&raw) == key,
+        "noncanonical identity key"
+    );
+    raw.try_into()
+        .map_err(|_| anyhow::anyhow!("identity key must contain 32 bytes"))
 }
 fn sled_to_record(sled: &ContainerIdentitySled) -> anyhow::Result<IdentitySledRecord> {
     validate_sled(sled)?;
@@ -468,15 +771,35 @@ fn state_value(snapshot: &IdentityRecoverySnapshot) -> anyhow::Result<simd_json:
     let mut sessions = HashSet::with_capacity(snapshot.identities.len());
     let mut sleds = Vec::with_capacity(snapshot.identities.len());
     for revision in &snapshot.identities {
-        ensure!(sessions.insert(revision.session_id.as_str()), "duplicate durable identity revision");
-        ensure!(revision.record.as_ref().is_none_or(|record| record.session_id == revision.session_id)
-            && revision.genesis.as_ref().is_none_or(|genesis| genesis.session_id == revision.session_id),
-            "durable identity revision owner mismatch");
-        if let Some(sled) = revision_sled(revision)? { sleds.push(sled); }
+        ensure!(
+            sessions.insert(revision.session_id.as_str()),
+            "duplicate durable identity revision"
+        );
+        ensure!(
+            revision
+                .record
+                .as_ref()
+                .is_none_or(|record| record.session_id == revision.session_id)
+                && revision
+                    .genesis
+                    .as_ref()
+                    .is_none_or(|genesis| genesis.session_id == revision.session_id),
+            "durable identity revision owner mismatch"
+        );
+        if let Some(sled) = revision_sled(revision)? {
+            sleds.push(sled);
+        }
     }
-    sleds.sort_unstable_by(|a,b| a.session_id.cmp(&b.session_id));
-    let events = snapshot.events.iter().map(event_from_record).collect::<anyhow::Result<Vec<_>>>()?;
-    Ok(simd_json::serde::to_owned_value(IdentitySledState { sleds, events })?)
+    sleds.sort_unstable_by(|a, b| a.session_id.cmp(&b.session_id));
+    let events = snapshot
+        .events
+        .iter()
+        .map(event_from_record)
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    Ok(simd_json::serde::to_owned_value(IdentitySledState {
+        sleds,
+        events,
+    })?)
 }
 type SledCacheState = IdentitySledState;
 fn strict_identity_contract()
@@ -553,7 +876,10 @@ async fn read_private_state() -> anyhow::Result<SledCacheState> {
     tokio::task::spawn_blocking(strict_private_state).await?
 }
 fn publication_value<T>(durable: DurableResult<T>) -> anyhow::Result<T> {
-    tracing::debug!(replayed = durable.replayed, "identity native intent committed");
+    tracing::debug!(
+        replayed = durable.replayed,
+        "identity native intent committed"
+    );
     Ok(durable.value)
 }
 async fn require_published_identity(store: &IdentitySledStore) -> anyhow::Result<()> {
@@ -561,10 +887,13 @@ async fn require_published_identity(store: &IdentitySledStore) -> anyhow::Result
     tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
         let published = strict_private_state()?;
         let actual = state_value(&cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?)?;
-        ensure!(serde_json::to_value(published)? == serde_json::to_value(actual)?,
-            "identity replay requires already committed native credentials");
+        ensure!(
+            serde_json::to_value(published)? == serde_json::to_value(actual)?,
+            "identity replay requires already committed native credentials"
+        );
         Ok(())
-    }).await?
+    })
+    .await?
 }
 async fn commit_cas<T: Send + 'static>(
     engine: &NativeOwner,
@@ -647,12 +976,16 @@ async fn commit_sled_update<T: Send + 'static>(
     .await
 }
 fn verify_own_binding(caller: &VerifiedCaller, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
-    ensure!(sled.is_anchored() && sled.session_id == caller.session_id
-        && sled.genesis.as_deref() == Some(caller.session_genesis.as_str())
-        && sled.wireguard_pubkey == caller.claims().wireguard_pubkey
-        && op_identity::session::derive_principal_id(&sled.wireguard_pubkey) == caller.principal_id
-        && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id,
-        "verified caller does not own identity");
+    ensure!(
+        sled.is_anchored()
+            && sled.session_id == caller.session_id
+            && sled.genesis.as_deref() == Some(caller.session_genesis.as_str())
+            && sled.wireguard_pubkey == caller.claims().wireguard_pubkey
+            && op_identity::session::derive_principal_id(&sled.wireguard_pubkey)
+                == caller.principal_id
+            && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id,
+        "verified caller does not own identity"
+    );
     Ok(())
 }
 
@@ -695,8 +1028,10 @@ async fn own_identity_output(
     sled: ContainerIdentitySled,
     grants: HashSet<String>,
 ) -> anyhow::Result<JsonValue> {
-    ensure!(grants.contains(OWN_IDENTITY_READ_CAPABILITY),
-        "own identity requires the exact self-read capability in the current snapshot");
+    ensure!(
+        grants.contains(OWN_IDENTITY_READ_CAPABILITY),
+        "own identity requires the exact self-read capability in the current snapshot"
+    );
     let mut held_capabilities: Vec<_> = grants.into_iter().map(JsonValue::String).collect();
     held_capabilities.sort_unstable_by(|left, right| left.as_str().cmp(&right.as_str()));
     let mut output = redact_own_identity(sled)?;
@@ -735,7 +1070,12 @@ impl From<physical_root::PhysicalRootGuard> for IdentityRootStartGuard {
 }
 impl From<clean_provision::CleanRootGuard> for IdentityRootStartGuard {
     fn from(guard: clean_provision::CleanRootGuard) -> Self {
-        Self { should_start: guard.should_start, _legacy: None, _physical: None, _clean: Some(guard) }
+        Self {
+            should_start: guard.should_start,
+            _legacy: None,
+            _physical: None,
+            _clean: Some(guard),
+        }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -745,7 +1085,12 @@ enum IdentityStorageAttachment {
 }
 
 type IdentityStorageVerifier = Arc<
-    dyn Fn(IdentityStorageAttachment, &std::path::Path, &std::path::Path, &str) -> anyhow::Result<()>
+    dyn Fn(
+            IdentityStorageAttachment,
+            &std::path::Path,
+            &std::path::Path,
+            &str,
+        ) -> anyhow::Result<()>
         + Send
         + Sync,
 >;
@@ -787,7 +1132,9 @@ async fn prepare_identity_root_start(
     effector: &IdentityStorageVerifier,
 ) -> anyhow::Result<Option<IdentityRootStartGuard>> {
     if let Some(guard) = clean_provision::guard_start(store, expected, sled).await? {
-        if let Some(device) = sled.btrfs_device.as_mut() { device.attached = true; }
+        if let Some(device) = sled.btrfs_device.as_mut() {
+            device.attached = true;
+        }
         return Ok(Some(guard.into()));
     }
     let block_backed = sled
@@ -823,28 +1170,49 @@ async fn prepare_identity_root_start(
 }
 
 async fn stored_session(session_id: &str) -> anyhow::Result<Option<ContainerIdentitySled>> {
-    Ok(read_private_state().await?.sleds.into_iter().find(|sled| sled.session_id == session_id))
+    Ok(read_private_state()
+        .await?
+        .sleds
+        .into_iter()
+        .find(|sled| sled.session_id == session_id))
 }
-fn disclosed_identity(mut sled: ContainerIdentitySled, caller: &VerifiedCaller) -> anyhow::Result<JsonValue> {
-    if sled.session_id == caller.session_id && sled.genesis.as_deref() == Some(caller.session_genesis.as_str()) {
+fn disclosed_identity(
+    mut sled: ContainerIdentitySled,
+    caller: &VerifiedCaller,
+) -> anyhow::Result<JsonValue> {
+    if sled.session_id == caller.session_id
+        && sled.genesis.as_deref() == Some(caller.session_genesis.as_str())
+    {
         return Ok(serde_json::json!({"identity": sled}));
     }
     sled.sealed_id = None;
     redact_own_identity(sled)
 }
-async fn identity_method(engine: &NativeOwner, store: &IdentitySledStore, method: &str, args: &JsonValue)
-    -> anyhow::Result<JsonValue> {
+async fn identity_method(
+    engine: &NativeOwner,
+    store: &IdentitySledStore,
+    method: &str,
+    args: &JsonValue,
+) -> anyhow::Result<JsonValue> {
     engine.revalidate().await?;
     require_published_identity(store).await?;
-    let actor = VerifiedIdentityActor { actor_id: &engine.caller.principal_id,
-        session_id: &engine.caller.session_id, genesis: &engine.caller.session_genesis };
+    let actor = VerifiedIdentityActor {
+        actor_id: &engine.caller.principal_id,
+        session_id: &engine.caller.session_id,
+        genesis: &engine.caller.session_genesis,
+    };
     match method {
         "prepare_container" => prepare_container(engine, store, actor, args).await,
-        "rename_container" => rename::rename(engine, store, serde_json::from_value(args.clone())?).await,
+        "rename_container" => {
+            rename::rename(engine, store, serde_json::from_value(args.clone())?).await
+        }
         "get_own_identity" => {
-            ensure!(args.as_object().is_some_and(|args| args.is_empty()),
-                "get_own_identity accepts no arguments");
-            let sled = stored_session(&engine.caller.session_id).await?
+            ensure!(
+                args.as_object().is_some_and(|args| args.is_empty()),
+                "get_own_identity accepts no arguments"
+            );
+            let sled = stored_session(&engine.caller.session_id)
+                .await?
                 .context("identity session not found")?;
             engine.verify_own(&sled).await?;
             let grants = engine.runtime.current_grants(&engine.caller).await?;
@@ -856,37 +1224,91 @@ async fn identity_method(engine: &NativeOwner, store: &IdentitySledStore, method
         }
         "get_identity" => {
             let target = if arg_str(args, "session_id").is_empty() {
-                std::env::var("IDENTITY_SLED_HOST_SESSION_ID").ok().filter(|s| !s.trim().is_empty())
-                    .context("host identity session is not configured")?.trim().to_owned()
-            } else { arg_str(args, "session_id").into() };
-            let sled = stored_session(&target).await?.context("identity session not found")?;
+                std::env::var("IDENTITY_SLED_HOST_SESSION_ID")
+                    .ok()
+                    .filter(|s| !s.trim().is_empty())
+                    .context("host identity session is not configured")?
+                    .trim()
+                    .to_owned()
+            } else {
+                arg_str(args, "session_id").into()
+            };
+            let sled = stored_session(&target)
+                .await?
+                .context("identity session not found")?;
             engine.revalidate().await?;
             disclosed_identity(sled, &engine.caller)
         }
-        "inspect_own_root_repair_preflight" => root_repair::inspect_own_root_repair_preflight(
-            engine, store, actor.actor_id, actor.session_id, actor.genesis).await,
-        "repair_own_root" => root_repair::repair_own_root(engine, store, actor,
-            serde_json::from_value(args.clone())?, root_repair::capture_repair_seal()?, engine.operation_id.clone()).await,
-        "migrate_own_physical_root" => physical_root::migrate(engine, store, actor, serde_json::from_value(args.clone())?).await,
-        "inspect_own_physical_root_migration_preflight" => physical_root::preflight(engine, store, actor).await,
+        "inspect_own_root_repair_preflight" => {
+            root_repair::inspect_own_root_repair_preflight(
+                engine,
+                store,
+                actor.actor_id,
+                actor.session_id,
+                actor.genesis,
+            )
+            .await
+        }
+        "repair_own_root" => {
+            root_repair::repair_own_root(
+                engine,
+                store,
+                actor,
+                serde_json::from_value(args.clone())?,
+                root_repair::capture_repair_seal()?,
+                engine.operation_id.clone(),
+            )
+            .await
+        }
+        "migrate_own_physical_root" => {
+            physical_root::migrate(engine, store, actor, serde_json::from_value(args.clone())?)
+                .await
+        }
+        "inspect_own_physical_root_migration_preflight" => {
+            physical_root::preflight(engine, store, actor).await
+        }
         "provision_container" | "inspect_provision_preflight" => {
-            let input = seed_provision::ProvisionInput { wireguard_pubkey: arg_str(args, "wireguard_pubkey").into(),
-                plan_sha256: arg_str(args, "plan_sha256").into() };
-            let result = clean_provision::provision(engine, store, actor, input,
-                seed_provision::capture_method_seal(method)?, &engine.operation_id, method == "inspect_provision_preflight").await?;
+            let input = seed_provision::ProvisionInput {
+                wireguard_pubkey: arg_str(args, "wireguard_pubkey").into(),
+                plan_sha256: arg_str(args, "plan_sha256").into(),
+            };
+            let result = clean_provision::provision(
+                engine,
+                store,
+                actor,
+                input,
+                seed_provision::capture_method_seal(method)?,
+                &engine.operation_id,
+                method == "inspect_provision_preflight",
+            )
+            .await?;
             if method == "provision_container" {
                 let mut result = result;
-                let sled: ContainerIdentitySled = serde_json::from_value(result["identity"].clone())?;
+                let sled: ContainerIdentitySled =
+                    serde_json::from_value(result["identity"].clone())?;
                 result["identity"] = disclosed_identity(sled, &engine.caller)?["identity"].take();
                 Ok(result)
-            } else { Ok(result) }
+            } else {
+                Ok(result)
+            }
         }
-        "delete_provision_record" => delete_provision::delete(engine, store, actor,
-            serde_json::from_value(args.clone())?, seed_provision::capture_method_seal(method)?).await,
+        "delete_provision_record" => {
+            delete_provision::delete(
+                engine,
+                store,
+                actor,
+                serde_json::from_value(args.clone())?,
+                seed_provision::capture_method_seal(method)?,
+            )
+            .await
+        }
         "inspect_identity_inventory" => {
-            let query: op_cozo_store::IdentityInventoryQuery = serde_json::from_value(args.clone())?;
+            let query: op_cozo_store::IdentityInventoryQuery =
+                serde_json::from_value(args.clone())?;
             let cozo = store.cozo.clone();
-            let result = tokio::task::spawn_blocking(move || cozo.inspect_identity_inventory(query)).await??;
+            let result =
+                tokio::task::spawn_blocking(move || cozo.inspect_identity_inventory(query))
+                    .await??;
             engine.revalidate().await?;
             Ok(serde_json::to_value(result)?)
         }
@@ -897,126 +1319,274 @@ async fn identity_method(engine: &NativeOwner, store: &IdentitySledStore, method
             let session = op_identity::session::derive_session_id(key);
             engine.retain(store.lifecycle_lock(&session).await.lock_owned().await);
             let expected = load_revision(store, &session).await?;
-            let mut sled = revision_sled(&expected)?.context("explicit provision is required first")?;
-            ensure!(sled.wireguard_pubkey == key && sled.is_anchored() && sled.sealed_id.is_some(),
-                "write_identity cannot mint or replace a missing identity anchor");
+            let mut sled =
+                revision_sled(&expected)?.context("explicit provision is required first")?;
+            ensure!(
+                sled.wireguard_pubkey == key && sled.is_anchored() && sled.sealed_id.is_some(),
+                "write_identity cannot mint or replace a missing identity anchor"
+            );
             if let Some(value) = args.get("btrfs_device") {
-                let supplied: Option<op_plugins::state_plugins::identity_sled::SledBtrfsDevice> = serde_json::from_value(value.clone())?;
-                ensure!(supplied == sled.btrfs_device, "storage binding changes require the explicit native maintenance owner");
+                let supplied: Option<op_plugins::state_plugins::identity_sled::SledBtrfsDevice> =
+                    serde_json::from_value(value.clone())?;
+                ensure!(
+                    supplied == sled.btrfs_device,
+                    "storage binding changes require the explicit native maintenance owner"
+                );
             }
-            if let Some(interface) = args.get("interface").and_then(JsonValue::as_str) { sled.interface = interface.into(); }
-            if let Some(peer_ip) = args.get("peer_ip") { sled.peer_ip = serde_json::from_value(peer_ip.clone())?; }
+            if let Some(interface) = args.get("interface").and_then(JsonValue::as_str) {
+                sled.interface = interface.into();
+            }
+            if let Some(peer_ip) = args.get("peer_ip") {
+                sled.peer_ip = serde_json::from_value(peer_ip.clone())?;
+            }
             sled.last_seen_at = now();
-            sled.mutation_index = sled.mutation_index.checked_add(1).context("identity mutation index overflow")?;
+            sled.mutation_index = sled
+                .mutation_index
+                .checked_add(1)
+                .context("identity mutation index overflow")?;
             engine.revalidate().await?;
-            let sled = commit_sled_update(engine, store, engine.operation_id.clone(), expected, sled.clone(), sled).await?;
+            let sled = commit_sled_update(
+                engine,
+                store,
+                engine.operation_id.clone(),
+                expected,
+                sled.clone(),
+                sled,
+            )
+            .await?;
             disclosed_identity(sled, &engine.caller)
         }
         "attach_btrfs_device" | "touch_session" => {
-            lifecycle(engine, store, arg_str(args, "session_id"), method == "touch_session").await
+            lifecycle(
+                engine,
+                store,
+                arg_str(args, "session_id"),
+                method == "touch_session",
+            )
+            .await
         }
         "record_session_event" => {
             let session = arg_str(args, "session_id").to_owned();
             let kind = arg_str(args, "kind").to_owned();
-            ensure!(!session.is_empty() && !kind.is_empty(), "session event owner and kind are required");
+            ensure!(
+                !session.is_empty() && !kind.is_empty(),
+                "session event owner and kind are required"
+            );
             engine.retain(store.lifecycle_lock(&session).await.lock_owned().await);
-            ensure!(load_revision(store, &session).await?.record.is_some(), "identity session is absent");
+            ensure!(
+                load_revision(store, &session).await?.record.is_some(),
+                "identity session is absent"
+            );
             let cozo = store.cozo.clone();
-            let subid = arg_str(args,"subid").to_owned();
-            let content = arg_str(args,"content").to_owned();
+            let subid = arg_str(args, "subid").to_owned();
+            let content = arg_str(args, "content").to_owned();
             let target = session.clone();
-            let publication = engine.commit_identity_intent(engine.operation_id.clone(), move |_| {
-                let seq = cozo.append_session_event(&target, &kind, &subid, &content, now())?;
-                let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
-                Ok((Some(state_value(&snapshot)?), DurableResult { value: u64::try_from(seq)?, replayed: false }))
-            }).await?;
+            let publication = engine
+                .commit_identity_intent(engine.operation_id.clone(), move |_| {
+                    let seq = cozo.append_session_event(&target, &kind, &subid, &content, now())?;
+                    let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
+                    Ok((
+                        Some(state_value(&snapshot)?),
+                        DurableResult {
+                            value: u64::try_from(seq)?,
+                            replayed: false,
+                        },
+                    ))
+                })
+                .await?;
             Ok(serde_json::json!({"session_id":session,"seq":publication_value(publication)?}))
         }
         "get_session_history" => {
-            let session = arg_str(args,"session_id").to_owned();
+            let session = arg_str(args, "session_id").to_owned();
             ensure!(!session.is_empty(), "history session is required");
-            let requested = usize::try_from(args.get("limit").and_then(JsonValue::as_u64).unwrap_or(0))?;
+            let requested =
+                usize::try_from(args.get("limit").and_then(JsonValue::as_u64).unwrap_or(0))?;
             let limit = if requested == 0 { 100 } else { requested };
-            ensure!(limit <= MAX_HISTORY_LIMIT, "identity history limit exceeded");
+            ensure!(
+                limit <= MAX_HISTORY_LIMIT,
+                "identity history limit exceeded"
+            );
             let cozo = store.cozo.clone();
-            let rows = tokio::task::spawn_blocking(move || cozo.list_session_events(&session, limit)).await??;
+            let rows =
+                tokio::task::spawn_blocking(move || cozo.list_session_events(&session, limit))
+                    .await??;
             engine.revalidate().await?;
-            Ok(serde_json::json!({"events":rows.iter().map(event_from_record).collect::<anyhow::Result<Vec<_>>>()?}))
+            Ok(
+                serde_json::json!({"events":rows.iter().map(event_from_record).collect::<anyhow::Result<Vec<_>>>()?}),
+            )
         }
         _ => anyhow::bail!("identity owner method was not admitted"),
     }
 }
 
-async fn lifecycle(engine: &NativeOwner, store: &IdentitySledStore, session: &str, start: bool)
-    -> anyhow::Result<JsonValue> {
-    ensure!(!session.is_empty(), "identity lifecycle requires an exact target");
+async fn lifecycle(
+    engine: &NativeOwner,
+    store: &IdentitySledStore,
+    session: &str,
+    start: bool,
+) -> anyhow::Result<JsonValue> {
+    ensure!(
+        !session.is_empty(),
+        "identity lifecycle requires an exact target"
+    );
     engine.retain(store.lifecycle_lock(session).await.lock_owned().await);
     let expected = load_revision(store, session).await?;
     let mut sled = revision_sled(&expected)?.context("identity session is absent")?;
-    ensure!(sled.is_anchored() && sled.sealed_id.is_some(), "identity lifecycle requires existing credentials");
+    ensure!(
+        sled.is_anchored() && sled.sealed_id.is_some(),
+        "identity lifecycle requires existing credentials"
+    );
     preflight_native_identity_effect().await?;
-    let guard = prepare_identity_root_start(store, &expected, &mut sled, &native_identity_storage_verifier()).await?;
+    let guard = prepare_identity_root_start(
+        store,
+        &expected,
+        &mut sled,
+        &native_identity_storage_verifier(),
+    )
+    .await?;
     let should_start = guard.as_ref().map(|g| g.should_start);
-    if let Some(guard) = guard { engine.retain(guard); }
-    ensure!(load_revision(store, session).await? == expected, "identity revision changed before lifecycle effect");
+    if let Some(guard) = guard {
+        engine.retain(guard);
+    }
+    ensure!(
+        load_revision(store, session).await? == expected,
+        "identity revision changed before lifecycle effect"
+    );
     engine.revalidate().await?;
     if start {
         if let Some(bound) = &sled.instance {
-            ensure!(identity_instance_matches(&sled, bound), "native target differs from durable identity");
-            let before = IncusRootRepairBackend::local().default_project_state().await?;
-            let instance = before.instances.iter().find(|i| i.name == bound.name).context("native identity instance absent")?;
-            ensure!(identity_instance_matches(&sled, instance), "native identity owner changed");
-            let start_required = root_repair::decide_seeded_native_start(sled.active, &instance.status)?;
-            ensure!(should_start.is_none_or(|expected| expected == start_required), "native lifecycle guard raced");
+            ensure!(
+                identity_instance_matches(&sled, bound),
+                "native target differs from durable identity"
+            );
+            let before = IncusRootRepairBackend::local()
+                .default_project_state()
+                .await?;
+            let instance = before
+                .instances
+                .iter()
+                .find(|i| i.name == bound.name)
+                .context("native identity instance absent")?;
+            ensure!(
+                identity_instance_matches(&sled, instance),
+                "native identity owner changed"
+            );
+            let start_required =
+                root_repair::decide_seeded_native_start(sled.active, &instance.status)?;
+            ensure!(
+                should_start.is_none_or(|expected| expected == start_required),
+                "native lifecycle guard raced"
+            );
             let effect = if start_required {
                 store.mark_effect();
-                IncusPlugin::set_bound_identity_session_power_state(session, &bound.name, IdentitySessionPowerState::Running).await
-            } else { Ok(()) };
+                IncusPlugin::set_bound_identity_session_power_state(
+                    session,
+                    &bound.name,
+                    IdentitySessionPowerState::Running,
+                )
+                .await
+            } else {
+                Ok(())
+            };
             // A failed native request can still have taken effect. Observe once, never replay.
-            let snapshot = IncusRootRepairBackend::local().default_project_state().await?;
+            let snapshot = IncusRootRepairBackend::local()
+                .default_project_state()
+                .await?;
             engine.observe_incus(&snapshot).await?;
-            let observed = snapshot.instances.iter().find(|i| i.name == bound.name).context("native lifecycle readback absent")?;
-            ensure!(identity_instance_matches(&sled, observed), "native identity owner changed during lifecycle");
+            let observed = snapshot
+                .instances
+                .iter()
+                .find(|i| i.name == bound.name)
+                .context("native lifecycle readback absent")?;
+            ensure!(
+                identity_instance_matches(&sled, observed),
+                "native identity owner changed during lifecycle"
+            );
             effect?;
-            ensure!(observed.status == "Running", "native identity did not start");
+            ensure!(
+                observed.status == "Running",
+                "native identity did not start"
+            );
             sled.active = true;
             // Re-verify the exact existing storage receipt, never invent a Running record.
-            let verified = if let Some(instance) = clean_provision::observe_power(engine, store, &expected, &sled, "Running").await? {
+            let verified = if let Some(instance) =
+                clean_provision::observe_power(engine, store, &expected, &sled, "Running").await?
+            {
                 Some(instance)
-            } else if let Some(instance) = physical_root::observe_power(engine, store, &expected, &sled, "Running").await? {
+            } else if let Some(instance) =
+                physical_root::observe_power(engine, store, &expected, &sled, "Running").await?
+            {
                 Some(instance)
-            } else if let Some(instance) = root_repair::observe_owned_power_effect(engine, store, &expected, &sled, "Running").await? {
+            } else if let Some(instance) =
+                root_repair::observe_owned_power_effect(engine, store, &expected, &sled, "Running")
+                    .await?
+            {
                 Some(instance)
-            } else { seed_provision::observe_power(engine, store, &expected, &sled, "Running").await? };
+            } else {
+                seed_provision::observe_power(engine, store, &expected, &sled, "Running").await?
+            };
             sled.instance = Some(verified.unwrap_or_else(|| observed.clone()));
         } else {
-            ensure!(sled.principal_kind.as_deref() == Some("human"), "identity has no native or human binding");
+            ensure!(
+                sled.principal_kind.as_deref() == Some("human"),
+                "identity has no native or human binding"
+            );
             sled.active = true;
         }
     }
     sled.last_seen_at = now();
-    sled.mutation_index = sled.mutation_index.checked_add(1).context("identity mutation index overflow")?;
-    let result = commit_sled_update(engine, store, engine.operation_id.clone(), expected, sled.clone(), sled).await?;
+    sled.mutation_index = sled
+        .mutation_index
+        .checked_add(1)
+        .context("identity mutation index overflow")?;
+    let result = commit_sled_update(
+        engine,
+        store,
+        engine.operation_id.clone(),
+        expected,
+        sled.clone(),
+        sled,
+    )
+    .await?;
     disclosed_identity(result, &engine.caller)
 }
 
-async fn refresh_credential(engine: &NativeOwner, store: &IdentitySledStore) -> anyhow::Result<JsonValue> {
+async fn refresh_credential(
+    engine: &NativeOwner,
+    store: &IdentitySledStore,
+) -> anyhow::Result<JsonValue> {
     let session = &engine.caller.session_id;
     engine.retain(store.lifecycle_lock(session).await.lock_owned().await);
     let expected = load_revision(store, session).await?;
     let sled = revision_sled(&expected)?.context("refresh identity is absent")?;
     engine.verify_own(&sled).await?;
-    ensure!(sled.principal_kind.as_deref() == Some("human") && sled.schema_version == RECORD_FORMAT
-        && identity_session_binding_matches(&sled), "refresh requires a current anchored human identity");
-    let old = sled.sealed_id.as_deref().context("authored credential is absent")?;
+    ensure!(
+        sled.principal_kind.as_deref() == Some("human")
+            && sled.schema_version == RECORD_FORMAT
+            && identity_session_binding_matches(&sled),
+        "refresh requires a current anchored human identity"
+    );
+    let old = sled
+        .sealed_id
+        .as_deref()
+        .context("authored credential is absent")?;
     let mut claims = op_identity::sealed_id::SealedId::from_inline_ref(old)
         .map_err(|error| anyhow::anyhow!("stored identity credential is invalid: {error}"))?;
-    ensure!(matches!(claims.transport_scope.as_str(), "dbus,grpc,mcp" | "dbus,grpc,mcp,mqtt"),
-        "stored transport scope is not refreshable");
+    ensure!(
+        matches!(
+            claims.transport_scope.as_str(),
+            "dbus,grpc,mcp" | "dbus,grpc,mcp,mqtt"
+        ),
+        "stored transport scope is not refreshable"
+    );
     claims.transport_scope = "dbus,grpc,mcp,mqtt".into();
-    claims.nextdns = crate::identity_nextdns::NextDnsBindings::from_env()?.get(&sled.wireguard_pubkey).cloned();
+    claims.nextdns = crate::identity_nextdns::NextDnsBindings::from_env()?
+        .get(&sled.wireguard_pubkey)
+        .cloned();
     crate::runtime_identity::validate_refresh_claims(engine.caller.claims(), &claims, now())?;
-    let candidate = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let candidate = claims
+        .to_inline_ref()
+        .map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
     if candidate == old {
         require_published_identity(store).await?;
         return Ok(serde_json::json!({"refreshed":false,"session_id":session,
@@ -1026,61 +1596,125 @@ async fn refresh_credential(engine: &NativeOwner, store: &IdentitySledStore) -> 
     let target = session.clone();
     let operation = engine.operation_id.clone();
     let expected_credential = candidate.clone();
-    let publication = engine.commit_identity_intent(operation.clone(), move |_| {
-        let committed = cozo.apply_identity_intent(&target, &operation,
-            IdentityIntent::RefreshTransportCredential { expected: Box::new(expected), sealed_id: candidate })?;
-        let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
-        Ok((Some(state_value(&snapshot)?), DurableResult { value: (), replayed: committed.replayed }))
-    }).await?;
+    let publication = engine
+        .commit_identity_intent(operation.clone(), move |_| {
+            let committed = cozo.apply_identity_intent(
+                &target,
+                &operation,
+                IdentityIntent::RefreshTransportCredential {
+                    expected: Box::new(expected),
+                    sealed_id: candidate,
+                },
+            )?;
+            let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
+            Ok((
+                Some(state_value(&snapshot)?),
+                DurableResult {
+                    value: (),
+                    replayed: committed.replayed,
+                },
+            ))
+        })
+        .await?;
     publication_value(publication)?;
-    let published = stored_session(session).await?.context("refreshed credential publication is absent")?;
-    ensure!(published.sealed_id.as_deref() == Some(expected_credential.as_str()) && published.genesis == sled.genesis,
-        "refreshed credential does not match native publication");
+    let published = stored_session(session)
+        .await?
+        .context("refreshed credential publication is absent")?;
+    ensure!(
+        published.sealed_id.as_deref() == Some(expected_credential.as_str())
+            && published.genesis == sled.genesis,
+        "refreshed credential does not match native publication"
+    );
     Ok(serde_json::json!({"refreshed":true,"session_id":session,
         "transport_scope":claims.transport_scope,"sealed_id":expected_credential}))
 }
 
-async fn prepare_container(engine: &NativeOwner, store: &IdentitySledStore,
-    actor: VerifiedIdentityActor<'_>, args: &JsonValue) -> anyhow::Result<JsonValue> {
+async fn prepare_container(
+    engine: &NativeOwner,
+    store: &IdentitySledStore,
+    actor: VerifiedIdentityActor<'_>,
+    args: &JsonValue,
+) -> anyhow::Result<JsonValue> {
     let key = arg_str(args, "wireguard_pubkey");
     canonical_key(key)?;
     let session = op_identity::session::derive_session_id(key);
-    ensure!(configured_chatbot_key().as_deref() == Some(key)
-        && control_plane_chatbot_session_id().as_deref() == Some(session.as_str()),
-        "prepare is restricted to the configured service identity");
+    ensure!(
+        configured_chatbot_key().as_deref() == Some(key)
+            && control_plane_chatbot_session_id().as_deref() == Some(session.as_str()),
+        "prepare is restricted to the configured service identity"
+    );
     engine.retain(store.lifecycle_lock(&session).await.lock_owned().await);
-    seed_provision::admit(engine, store, actor.actor_id, actor.session_id, actor.genesis,
-        &seed_provision::capture_method_seal("prepare_container")?).await?;
+    seed_provision::admit(
+        engine,
+        store,
+        actor.actor_id,
+        actor.session_id,
+        actor.genesis,
+        &seed_provision::capture_method_seal("prepare_container")?,
+    )
+    .await?;
     seed_provision::target_key_is_registered(key).await?;
     preflight_native_identity_effect().await?;
     let operation = arg_str(args, "operation_id").to_owned();
     let cozo = store.cozo.clone();
     let records = tokio::task::spawn_blocking(move || cozo.native_creation_records()).await??;
-    let (body, reserved_name) = if let Some(record) = records.iter().find(|record| record.request.operation_id == operation) {
-        ensure!(record.request.owner_kind == "identity" && record.request.logical_target == session
-            && record.request.actor_id == actor.actor_id && record.request.caller_session == actor.session_id
-            && record.request.caller_genesis == actor.genesis,
-            "prepare operation belongs to a different caller or target");
-        (serde_json::from_str(&record.request.request_json)?, record.request.reserved_name.clone())
+    let (body, reserved_name) = if let Some(record) = records
+        .iter()
+        .find(|record| record.request.operation_id == operation)
+    {
+        ensure!(
+            record.request.owner_kind == "identity"
+                && record.request.logical_target == session
+                && record.request.actor_id == actor.actor_id
+                && record.request.caller_session == actor.session_id
+                && record.request.caller_genesis == actor.genesis,
+            "prepare operation belongs to a different caller or target"
+        );
+        (
+            serde_json::from_str(&record.request.request_json)?,
+            record.request.reserved_name.clone(),
+        )
     } else {
         let revision = load_revision(store, &session).await?;
-        ensure!(revision.record.is_none() && revision.genesis.is_none(),
-            "existing identity binding must be retained or explicitly retired");
-        let native = IncusRootRepairBackend::local().default_project_state().await?;
-        ensure!(!native.instances.iter().any(|instance| instance.name == session
-            || instance.name == crate::identity_binding::CONTROL_PLANE_CHATBOT_CONTAINER
-            || instance.name == crate::identity_binding::RESERVED_CHATBOT_CONTAINER
-            || instance.config.as_ref().is_some_and(|config| config.get("user.opdbus.session_id") == Some(&session))),
-            "existing native identity must be retained or explicitly retired");
-        (op_plugins::state_plugins::incus::identity_creation_body(&session, key).await?,
-            Some(crate::identity_binding::RESERVED_CHATBOT_CONTAINER.to_owned()))
+        ensure!(
+            revision.record.is_none() && revision.genesis.is_none(),
+            "existing identity binding must be retained or explicitly retired"
+        );
+        let native = IncusRootRepairBackend::local()
+            .default_project_state()
+            .await?;
+        ensure!(
+            !native
+                .instances
+                .iter()
+                .any(|instance| instance.name == session
+                    || instance.name == crate::identity_binding::CONTROL_PLANE_CHATBOT_CONTAINER
+                    || instance.name == crate::identity_binding::RESERVED_CHATBOT_CONTAINER
+                    || instance.config.as_ref().is_some_and(|config| config
+                        .get("user.opdbus.session_id")
+                        == Some(&session))),
+            "existing native identity must be retained or explicitly retired"
+        );
+        (
+            op_plugins::state_plugins::incus::identity_creation_body(&session, key).await?,
+            Some(crate::identity_binding::RESERVED_CHATBOT_CONTAINER.to_owned()),
+        )
     };
     let (record, snapshot, replayed) = crate::runtime_creation::create_identity_container(
-        &engine.runtime, &engine.caller, &operation, &session, body, reserved_name).await?;
+        &engine.runtime,
+        &engine.caller,
+        &operation,
+        &session,
+        body,
+        reserved_name,
+    )
+    .await?;
     store.mark_effect();
     engine.observe_incus(&snapshot).await?;
-    Ok(serde_json::json!({"session_id":session,"name":record.name,"native_uuid":record.native_uuid,
-        "operation_id":record.request.operation_id,"phase":record.phase,"replayed":replayed}))
+    Ok(
+        serde_json::json!({"session_id":session,"name":record.name,"native_uuid":record.native_uuid,
+        "operation_id":record.request.operation_id,"phase":record.phase,"replayed":replayed}),
+    )
 }
 
 #[cfg(test)]
@@ -1101,18 +1735,26 @@ mod tests {
     impl ProjectionAuthority {
         fn verify(&self) -> anyhow::Result<crate::identity_receiver::VerifiedSid1> {
             let bound = crate::identity_receiver::verify_in(
-                &self.catalog, self.state.to_str().unwrap(), &self.wire, "grpc",
+                &self.catalog,
+                self.state.to_str().unwrap(),
+                &self.wire,
+                "grpc",
                 self.now.load(Ordering::Acquire),
             )?;
             crate::identity_receiver::verify_registered_for_test(
-                bound, self.registered.load(Ordering::Acquire).then(|| self.principal.clone()),
+                bound,
+                self.registered
+                    .load(Ordering::Acquire)
+                    .then(|| self.principal.clone()),
             )
         }
     }
 
     #[async_trait::async_trait]
     impl CallerAuthority for ProjectionAuthority {
-        async fn revalidate(&self) -> anyhow::Result<()> { self.verify().map(|_| ()) }
+        async fn revalidate(&self) -> anyhow::Result<()> {
+            self.verify().map(|_| ())
+        }
     }
 
     struct OwnIdentityFixture {
@@ -1131,11 +1773,18 @@ mod tests {
             principal_id: op_identity::session::derive_principal_id(&key),
             principal_kind: "wireguard-principal".into(),
             session_id: op_identity::session::derive_session_id(&key),
-            wireguard_pubkey: key, session_genesis: "genesis".into(), trace_id: "trace".into(),
-            schema_version: RECORD_FORMAT, issued_at: 100, expires_at: 200,
-            arrival_timestamp: 100, chain_head_at_arrival: "chain".into(),
-            catalog_hash_at_arrival: "catalog".into(), head_timestamp_at_arrival: 99,
-            transport_scope: "dbus,grpc,mcp,mqtt".into(), nextdns: None,
+            wireguard_pubkey: key,
+            session_genesis: "genesis".into(),
+            trace_id: "trace".into(),
+            schema_version: RECORD_FORMAT,
+            issued_at: 100,
+            expires_at: 200,
+            arrival_timestamp: 100,
+            chain_head_at_arrival: "chain".into(),
+            catalog_hash_at_arrival: "catalog".into(),
+            head_timestamp_at_arrival: 99,
+            transport_scope: "dbus,grpc,mcp,mqtt".into(),
+            nextdns: None,
         };
         let inline = claims.to_inline_ref().unwrap();
         let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
@@ -1147,29 +1796,51 @@ mod tests {
             "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
             "head_timestamp_at_arrival": claims.head_timestamp_at_arrival,
             "sealed_id": inline
-        })).unwrap();
+        }))
+        .unwrap();
         let schema = op_state::StatePlugin::schema(
             &op_plugins::state_plugins::identity_sled::IdentitySledPlugin::new(),
-        ).unwrap();
-        op_blob::BlobStore::open(&catalog).unwrap()
-            .write(&op_blob::blobify_plugin_schema("identity_sled", schema)).unwrap();
+        )
+        .unwrap();
+        op_blob::BlobStore::open(&catalog)
+            .unwrap()
+            .write(&op_blob::blobify_plugin_schema("identity_sled", schema))
+            .unwrap();
         let private = serde_json::json!({"sleds": [&sled], "events": []});
         projection_shm::update_projection_with_credentials_in(
-            state.to_str().unwrap(), "identity_sled", nix::unistd::getgid().as_raw(), |_| {
-                Ok(Some((br#"{"sleds":[],"events":[]}"#.to_vec(), serde_json::to_vec(&private)?)))
+            state.to_str().unwrap(),
+            "identity_sled",
+            nix::unistd::getgid().as_raw(),
+            |_| {
+                Ok(Some((
+                    br#"{"sleds":[],"events":[]}"#.to_vec(),
+                    serde_json::to_vec(&private)?,
+                )))
             },
-        ).unwrap();
+        )
+        .unwrap();
         let authority = Arc::new(ProjectionAuthority {
-            catalog, state, wire: claims.seal().unwrap(),
+            catalog,
+            state,
+            wire: claims.seal().unwrap(),
             principal: op_cozo_store::HumanPrincipalRecord {
-                principal_id: claims.principal_id, human_pubkey: claims.wireguard_pubkey,
-                display_alias: String::new(), registered_at: 1, revoked_at: 0,
+                principal_id: claims.principal_id,
+                human_pubkey: claims.wireguard_pubkey,
+                display_alias: String::new(),
+                registered_at: 1,
+                revoked_at: 0,
             },
-            registered: AtomicBool::new(true), now: AtomicI64::new(150),
+            registered: AtomicBool::new(true),
+            now: AtomicI64::new(150),
         });
         let mut caller = VerifiedCaller::new(&authority.verify().unwrap(), authority.clone());
         caller.sealed_identity = Some(inline);
-        OwnIdentityFixture { _directory: directory, caller, sled, authority }
+        OwnIdentityFixture {
+            _directory: directory,
+            caller,
+            sled,
+            authority,
+        }
     }
 
     fn own_grants() -> HashSet<String> {
@@ -1187,25 +1858,35 @@ mod tests {
             "foreign-principal": {"capabilities": ["identity_sled.write"]}
         });
         let grants = crate::grant_document::capabilities_for_principal(
-            &document, &fixture.caller.principal_id,
+            &document,
+            &fixture.caller.principal_id,
         );
         verify_own_binding(&fixture.caller, &fixture.sled).unwrap();
         let redacted = redact_own_identity(fixture.sled.clone()).unwrap();
-        let result = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap();
-        assert_eq!(result, serde_json::json!({
-            "identity": redacted["identity"],
-            "principal_id": fixture.caller.principal_id,
-            "held_capabilities": ["alpha.read", "cap.identity.sled.self.read@v1", "zeta.read"]
-        }));
+        let result = own_identity_output(&fixture.caller, fixture.sled, grants)
+            .await
+            .unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!({
+                "identity": redacted["identity"],
+                "principal_id": fixture.caller.principal_id,
+                "held_capabilities": ["alpha.read", "cap.identity.sled.self.read@v1", "zeta.read"]
+            })
+        );
         assert_ne!(result["principal_id"], result["identity"]["genesis"]);
         assert!(result["identity"].get("sealed_id").is_none());
         let schema = op_state::StatePlugin::schema(
             &op_plugins::state_plugins::identity_sled::IdentitySledPlugin::new(),
-        ).unwrap();
-        let output = serde_json::to_value(
-            schema.methods["get_own_identity"].returns.as_ref().unwrap(),
-        ).unwrap();
-        jsonschema::Validator::new(&output).unwrap().validate(&result).unwrap();
+        )
+        .unwrap();
+        let output =
+            serde_json::to_value(schema.methods["get_own_identity"].returns.as_ref().unwrap())
+                .unwrap();
+        jsonschema::Validator::new(&output)
+            .unwrap()
+            .validate(&result)
+            .unwrap();
     }
 
     #[tokio::test]
@@ -1217,7 +1898,8 @@ mod tests {
             HashSet::from(["cap.identity.sled.*".to_owned()]),
         ] {
             let error = own_identity_output(&fixture.caller, fixture.sled.clone(), grants)
-                .await.unwrap_err();
+                .await
+                .unwrap_err();
             assert!(error.to_string().contains("exact self-read capability"));
         }
     }
@@ -1227,7 +1909,9 @@ mod tests {
         let fixture = own_identity_fixture();
         let grants = own_grants();
         fixture.authority.now.store(200, Ordering::Release);
-        let error = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap_err();
+        let error = own_identity_output(&fixture.caller, fixture.sled, grants)
+            .await
+            .unwrap_err();
         assert!(error.to_string().contains("expired"));
     }
 
@@ -1236,7 +1920,9 @@ mod tests {
         let fixture = own_identity_fixture();
         let grants = own_grants();
         fixture.authority.registered.store(false, Ordering::Release);
-        let error = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap_err();
+        let error = own_identity_output(&fixture.caller, fixture.sled, grants)
+            .await
+            .unwrap_err();
         assert!(error.to_string().contains("no registered principal"));
     }
 
@@ -1245,13 +1931,18 @@ mod tests {
         let fixture = own_identity_fixture();
         let grants = own_grants();
         projection_shm::update_projection_with_credentials_in(
-            fixture.authority.state.to_str().unwrap(), "identity_sled",
-            nix::unistd::getgid().as_raw(), |_| {
+            fixture.authority.state.to_str().unwrap(),
+            "identity_sled",
+            nix::unistd::getgid().as_raw(),
+            |_| {
                 let empty = br#"{"sleds":[],"events":[]}"#.to_vec();
                 Ok(Some((empty.clone(), empty)))
             },
-        ).unwrap();
-        let error = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap_err();
+        )
+        .unwrap();
+        let error = own_identity_output(&fixture.caller, fixture.sled, grants)
+            .await
+            .unwrap_err();
         assert!(error.to_string().contains("session was not found"));
     }
 
@@ -1262,7 +1953,10 @@ mod tests {
             let mut foreign = serde_json::to_value(&fixture.sled).unwrap();
             foreign[field] = serde_json::json!("foreign");
             let foreign = serde_json::from_value(foreign).unwrap();
-            assert!(verify_own_binding(&fixture.caller, &foreign).is_err(), "{field} accepted");
+            assert!(
+                verify_own_binding(&fixture.caller, &foreign).is_err(),
+                "{field} accepted"
+            );
         }
         let mut caller = fixture.caller.clone();
         caller.principal_id = "foreign-principal".into();
@@ -1277,22 +1971,31 @@ mod tests {
         sled.peer_ip = Some("PRIVATE_PEER_SENTINEL".into());
         sled.vector_id = "PRIVATE_VECTOR_SENTINEL".into();
         sled.instance = Some(IncusInstance {
-            name: sled.session_id.clone(), status: "Stopped".into(),
-            instance_type: "container".into(), status_code: Some(102),
+            name: sled.session_id.clone(),
+            status: "Stopped".into(),
+            instance_type: "container".into(),
+            status_code: Some(102),
             storage_pool: Some("identity-pool".into()),
             description: Some("PRIVATE_DESCRIPTION_SENTINEL".into()),
             image: Some("PRIVATE_IMAGE_SENTINEL".into()),
             profiles: vec!["PRIVATE_PROFILE_SENTINEL".into()],
-            config: Some(HashMap::from([("user.secret".into(), "PRIVATE_CONFIG_SENTINEL".into())])),
-            expanded_config: Some(HashMap::from([
-                ("user.secret".into(), "PRIVATE_EXPANDED_CONFIG_SENTINEL".into()),
-            ])),
+            config: Some(HashMap::from([(
+                "user.secret".into(),
+                "PRIVATE_CONFIG_SENTINEL".into(),
+            )])),
+            expanded_config: Some(HashMap::from([(
+                "user.secret".into(),
+                "PRIVATE_EXPANDED_CONFIG_SENTINEL".into(),
+            )])),
             ..IncusInstance::default()
         });
         let output = redact_own_identity(sled.clone()).unwrap();
         assert_eq!(output["identity"]["instance"]["name"], sled.session_id);
         assert_eq!(output["identity"]["instance"]["status"], "Stopped");
-        assert_eq!(output["identity"]["instance"]["storage_pool"], "identity-pool");
+        assert_eq!(
+            output["identity"]["instance"]["storage_pool"],
+            "identity-pool"
+        );
         assert!(output["identity"].get("sealed_id").is_none());
         let encoded = serde_json::to_string(&output).unwrap();
         assert!(!encoded.contains("PRIVATE_"));

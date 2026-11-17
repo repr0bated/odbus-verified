@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 
 // One bounded process-wide owner, including separately constructed MemoryTools.
@@ -862,11 +862,13 @@ mod semantic_lifecycle_tests {
             &current
         ));
         store.delete_entry("session/a/personal", "k").await.unwrap();
-        assert!(store
-            .retrieve_entry("session/a/personal", "k")
-            .await
-            .unwrap()
-            .is_none());
+        assert!(
+            store
+                .retrieve_entry("session/a/personal", "k")
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 }
 
