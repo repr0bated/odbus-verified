@@ -2993,30 +2993,38 @@ pub fn chat_router_binary_version() -> &'static str {
 
 #[cfg(test)]
 mod official_schema_tests {
-    //! Guard against truncated upstream imports and missing generated method fields.
+    //! Guard that the live threetched seal-capture produced a full config schema.
+    //! Capture remains `threetched::prepare_schema_capture` + `THREETCHED_*`;
+    //! there is no separate 3tched/3tchd seal-capture path for this contract.
 
     use super::chat_router_binary_version;
 
+    fn prepare_capture() {
+        super::super::threetched::prepare_schema_capture()
+            .expect("threetched schema capture must succeed for official_schema_tests");
+    }
+
     #[test]
     fn imported_contract_is_not_a_stub() {
+        prepare_capture();
         let value = super::super::chat_router_contract::document();
         let sections = value
             .get("properties")
             .and_then(|p| p.as_object())
-            .expect("imported contract has properties");
+            .expect("captured threetched config schema has properties");
         let defs = value
             .get("$defs")
             .and_then(|d| d.as_object())
-            .expect("imported contract has $defs");
+            .expect("captured threetched config schema has $defs");
         assert!(
             sections.len() >= 32,
-            "imported contract has only {} sections — import `threetched config schema` \
-             into chat_router_contract.rs's UPSTREAM IMPORT block before rebuilding",
+            "captured threetched config schema has only {} sections — run prepare_schema_capture \
+             against the pinned THREETCHED_* binary before asserting the contract",
             sections.len()
         );
         assert!(
             defs.len() >= 64,
-            "imported contract has only {} $defs — looks stubbed or truncated",
+            "captured threetched config schema has only {} $defs — looks stubbed or truncated",
             defs.len()
         );
 
@@ -3045,11 +3053,12 @@ mod official_schema_tests {
 
     #[test]
     fn imported_contract_records_the_binary_version() {
+        prepare_capture();
         let version = chat_router_binary_version();
         assert!(!version.is_empty());
         assert_ne!(
             version, "unknown",
-            "record the upstream version during the plugin contract import"
+            "record the upstream version during threetched prepare_schema_capture"
         );
     }
 }

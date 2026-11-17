@@ -486,7 +486,7 @@ pub(crate) async fn dispatch_gemma_workspace(
     method: &str,
     args: &Value,
 ) -> Result<BackendOutcome, RuntimeError> {
-    let methods = &ctx.runtime.workspace().ui;
+    let methods = ctx.runtime.workspace().ui_methods();
     let scope = private_scope(ctx);
     let access = UiAccessContext {
         principal_id: ctx.caller.principal_id.clone(),

@@ -882,6 +882,8 @@ Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff
 The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
 
 ## Active work
+| Cursor — COMPLETE: WIRE DEAD_CODE + SCRUB SECRETS + THREETCHED VERDICT | `fresh-bridge-wire-secrets-threetched-20261117` | Owner follow-up on `dev` only: (1) wire ~40 op-grpc-bridge dead_code stubs, (2) scrub secrets + `.env.example`, (3) threetched seal-capture verdict + test retarget. | 2026-11-17 | DONE on `dev`. Bridge never-used cleared. Secrets: SMTP_PASS (start-op-web.sh, MAIL-SETUP-COMPLETE.md). Threetched verdict REJECTED (still live). Workspace: build pass, clippy pass, tests 2129 ok / 75 fail / 33 ignored (was 2122/81/32). |
+| Cursor — COMPLETE: THREETCHED SEAL-CAPTURE CLAIM VERIFY | `threetched-seal-capture-verify-20261117` | Read-only: verify claim that old threetched/three-H seal-capture was replaced by 3tchd/3tched and is no longer live for chat_router tests. Owns no source edits. | 2026-11-17 | VERDICT REJECTED. Seal-capture still live via `threetched::prepare_schema_capture` + `THREETCHED_*` (`threetched_paths`, opblob, bridge `build.rs`). `chat_router` consumes that capture at seal; runtime uses sealed catalog. Fixture tests (`discovered_cli_flags`, `snapshot_restore`) do not need live binary. No `3TCHED_*` seal env; `_3tched-fs` is FS package only. |
 | OMP — ACTIVE: COMMIT AND PUSH AFTER EACH TASK | `commit-each-task-20261111` | Owner, 2026-11-11: after each task, commit on `dev` and push that repo. Do not batch tasks. Do not include unrelated dirty files. | 2026-11-11 | Applies from this session forward. Daytime session (Nov 11, 10:00-15:00 EST) wrote files but did not commit or execute runtime steps. Today (Nov 12) recovered: network repo committed and pushed, 3tchedChatbot moved onto 3tched-pool and started. `WATCHDOG.yml` is restored. The 3tched.com advisor model is `typesafe/jev-1.14.0`, not a LiteLLM Fusion route. |
 | OMP — COMPLETE: INSTANCE-AGNOSTIC CONTAINER CHAT SPEC | `container-chat-spec-20261111` | Owner: container-chat is the chat backend spec, instance-agnostic, and lives in `/srv/git/3tched.com`. It installs on odbus-verified and owns runtime chat. It does not name a live instance and does not adopt the in-repo loop-backed container design. Identity-chat and `crates/op-chat-interface` stay until the owner says this spec is done. | 2026-11-11 | Corrected spec committed and pushed at `470181b` on `dev` of `/srv/git/3tched.com`. `d070413` is the earlier draft. Three files: requirements.md (15 requirements), design.md, tasks.md (11 tasks). Names no instance and no loop device. Rust modules include `types`. The existing binary bind `10.0.0.2:50051` is recorded as the old host placement. Identity-chat sources stay. The odbus-verified copy is a pointer only. |
 | Grok — HANDED TO OMP: THREE-REPO BASE | `three-repo-base-20261111` | Read Grok session `01a1c842-0764-7220-868f-a42a6c10ff2d` (`chat_history.jsonl` under `~/.grok/sessions/%2Fhome%2Fjeremy/01a1c842-0764-7220-868f-a42a6c10ff2d/`). Specs drafted, not implemented: `.kiro/specs/3tched-core/`, `.kiro/specs/container-chat/`, `.kiro/specs/standalone-network/`. Do not build, move files, or redeploy the host bridge. | 2026-11-12 | Three repos committed and pushed:
@@ -1289,6 +1291,18 @@ Manually reviewed text files across all 39 directories under `crates/`, replacin
 | Claude (cloud) | OD-94 built and pushed at `d57c497`. Owner asked Grok to finish the uncommitted `set_model_profile` edits in place | branch `claude/amazing-carson-8bg4yr` | 2026-09-29 | Gallery files still Claude's: `json_render_gallery.rs`, `json_render_chat_canvas*.rs` |
 
 ## Handoffs
+
+### 2026-11-17 · Cursor — wire dead_code + scrub secrets + threetched verdict
+
+Task `fresh-bridge-wire-secrets-threetched-20261117` on `dev` only. Wired the
+~40 fresh-bridge `dead_code` symbols into live Runtime/bootstrap/service paths
+(decoy bin target, selection/ACK/A2A, nlm markers, oracle receiver, routing
+`require_owner`, sealed schema helpers, etc.). Scrubbed `SMTP_PASS` from
+`scripts/start-op-web.sh` and `scripts/MAIL-SETUP-COMPLETE.md`; added
+`.env.example` (placeholders). Threetched seal-capture claim REJECTED — still
+live via `THREETCHED_*` / `prepare_schema_capture`; retargeted
+`official_schema_tests` + contract section test to call capture first. Do not
+resurrect MutationEngine/MCP as control plane.
 
 ### 2026-11-09T10:16:24Z · OMP — combined chat/cockpit takeover; owner architecture correction
 

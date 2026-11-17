@@ -717,7 +717,19 @@ impl CognitiveBackend {
             }
             .into();
             state.auth.profile_configured = status == "configured";
+            let action = crate::nlm_cli::ready_marker_action(&status);
+            crate::nlm_cli::apply_ready_marker(crate::nlm_cli::NOTEBOOKLM_AUTH_READY, action)
+                .map_err(|error| {
+                    RuntimeError::unknown(anyhow!(
+                        "NotebookLM auth ready marker update failed: {error}"
+                    ))
+                })?;
         }
+        crate::nlm_cli::touch_bin_ready_marker(&crate::nlm_cli::nlm_bin()).map_err(|error| {
+            RuntimeError::unknown(anyhow!(
+                "NotebookLM binary ready marker update failed: {error}"
+            ))
+        })?;
         Ok(private_result(
             ctx,
             result,

@@ -68,6 +68,18 @@ async fn admit(
             || renamed.is_some_and(|journal| journal.request.schema_hash == pin.schema_hash),
         "native creation seal changed; explicit reconciliation required"
     );
+    // Registration compare: the sealed document must match the pin the
+    // creation request already named; reject drift before native work.
+    let registered = crate::sealed_schema_reader::read_registration_document(
+        runtime.catalog_dir(),
+        plugin,
+        &pin.schema,
+    )?;
+    ensure!(
+        registered.schema_hash == pin.schema_hash
+            && registered.blob.manifest == pin.blob.manifest,
+        "registration document drifted from the creation pin"
+    );
     Ok(())
 }
 

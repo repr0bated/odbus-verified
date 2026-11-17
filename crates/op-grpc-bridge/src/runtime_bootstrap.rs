@@ -168,6 +168,10 @@ pub async fn run_from_env() -> anyhow::Result<()> {
             }
         });
         tracing::info!(%addr, plugins = runtime.catalog().plugins().len(), "authenticated bridge owners are ready");
+        ensure!(
+            !lungs.is_finished(),
+            "lungs owner finished before readiness was published"
+        );
         tokio::select! {
             result = tokio::signal::ctrl_c() => result.map_err(anyhow::Error::from),
             _ = terminate.recv() => Ok(()),

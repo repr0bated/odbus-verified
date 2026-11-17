@@ -16,6 +16,22 @@ fn input(candidate: usize) -> AuthorizeTaskInput {
     }
 }
 
+struct RejectAllSudo;
+
+impl SudoAuthority for RejectAllSudo {
+    fn verify(&self, user: &str, _: &str) -> Result<bool> {
+        ensure!(user == "root", "elevation checks only the root password");
+        Ok(false)
+    }
+}
+
+#[test]
+fn test_authority_override_is_honored_by_password_check() {
+    let elevation = TaskElevation::default();
+    elevation.set_authority_for_test(std::sync::Arc::new(RejectAllSudo));
+    assert!(!elevation.authority().verify("root", "fixture-password").unwrap());
+}
+
 #[test]
 fn exact_owner_session_method_and_arguments_are_required_without_spending_the_ticket() {
     let elevation = TaskElevation::default();

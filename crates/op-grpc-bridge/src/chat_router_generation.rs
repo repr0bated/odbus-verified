@@ -284,6 +284,20 @@ async fn run_native(
         let _ = close_socket(&mut socket).await;
         return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
     }
+    // Stateless ACK must authenticate a forwarded SID1 and retain the
+    // selection the bridge admitted before prompt release.
+    if !identity_ack_is_authenticated(request.sealed_identity.is_some(), &connected) {
+        let _ = close_socket(&mut socket).await;
+        return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
+    }
+    if let Err(error) = verify_selection(
+        &request,
+        connected.get("provider").and_then(Value::as_str),
+        connected.get("model").and_then(Value::as_str),
+    ) {
+        let _ = close_socket(&mut socket).await;
+        return Err(error);
+    }
     // Upstream does not re-verify SID1; identity stays enforced by bridge
     // admission before this loopback, bearer-authenticated connection.
     tokio::select! {

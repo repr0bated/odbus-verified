@@ -247,7 +247,7 @@ async fn observe(
     provider: &ProviderConfig,
 ) -> Result<Vec<RegistryModel>> {
     let key = match &provider.key_file {
-        Some(path) => Some(read_key(env, path)?),
+        Some(path) => Some(read_provider_key(env, path)?),
         None => None,
     };
     let models = lister.list(provider, key.as_deref()).await?;

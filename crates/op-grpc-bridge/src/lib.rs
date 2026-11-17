@@ -53,7 +53,7 @@ pub(crate) mod cron_gateway;
 #[path = "cron_methods.rs"]
 pub(crate) mod cron_methods;
 #[path = "decoy_network.rs"]
-pub(crate) mod decoy_network;
+pub mod decoy_network;
 pub mod grant_document;
 pub mod grpc_client;
 pub mod human_principal_registry;
@@ -129,6 +129,7 @@ pub mod tls_door;
 #[path = "xray_methods.rs"]
 pub(crate) mod xray_methods;
 
+pub use decoy_network::run_decoy;
 pub use runtime_bootstrap::run_from_env;
 
 /// Generated protobuf types for `package operation.v1`.

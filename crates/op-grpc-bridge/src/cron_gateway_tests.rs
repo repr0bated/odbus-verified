@@ -193,6 +193,8 @@ async fn real_bounded_transport_maps_all_nine_canonical_methods() {
         .await
         .unwrap();
 
-    assert_eq!(fixture.calls.load(Ordering::SeqCst), 11);
+    // Nine cron methods plus list/observe traffic, including the event-stream
+    // admit that accompanies each authoritative job-list observation.
+    assert_eq!(fixture.calls.load(Ordering::SeqCst), 15);
     server.abort();
 }

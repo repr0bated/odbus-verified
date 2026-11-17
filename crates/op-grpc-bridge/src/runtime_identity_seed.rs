@@ -155,6 +155,30 @@ async fn completed_plan(
             && uuid::Uuid::parse_str(&binding.btrfs_uuid).is_ok(),
         "completed seeded binding differs from trusted plan"
     );
+    let leaf_bytes = std::fs::metadata(&plan.new_leaf_image_path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+    anyhow::ensure!(
+        plan.leaf_size_bytes > 0 && leaf_bytes >= plan.leaf_size_bytes,
+        "completed seed leaf image is smaller than the trusted plan size"
+    );
+    anyhow::ensure!(
+        plan.instance.name == plan.session_id
+            && plan.instance.instance_type == "container"
+            && plan
+                .instance
+                .storage_pool
+                .as_deref()
+                .is_none_or(|pool| pool == plan.pool_name),
+        "completed seed plan instance does not match the trusted leaf"
+    );
+    if let Some(pinned) = sled.instance.as_ref() {
+        anyhow::ensure!(
+            pinned.name == plan.instance.name
+                && pinned.instance_type == plan.instance.instance_type,
+            "committed Incus instance diverges from the trusted seed plan"
+        );
+    }
     Ok(Some(plan))
 }
 

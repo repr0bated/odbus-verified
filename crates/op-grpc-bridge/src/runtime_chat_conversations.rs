@@ -194,17 +194,36 @@ impl ConversationBackend {
                 };
                 let _operation = self.operation.lock().await;
                 let claim = self.turns.claim(&id, &ctx.caller.principal_id)?;
-                let (owner, _) = self
+                let (owner, _) = match self
                     .owners
                     .lock()
                     .map_err(|_| anyhow::anyhow!("pending chat owner lock poisoned"))?
                     .get(&id)
                     .cloned()
-                    .context("pending chat owner admission is absent")?;
-                owner.authority.revalidate().await?;
-                ctx.caller.authority.revalidate().await?;
-                let canvas_hash = canvas_hash(ctx, &content)?;
-                let (turn, snapshot) = self
+                    .context("pending chat owner admission is absent")
+                {
+                    Ok(owner) => owner,
+                    Err(error) => {
+                        claim.release();
+                        return Err(error);
+                    }
+                };
+                if let Err(error) = owner.authority.revalidate().await {
+                    claim.release();
+                    return Err(error.into());
+                }
+                if let Err(error) = ctx.caller.authority.revalidate().await {
+                    claim.release();
+                    return Err(error.into());
+                }
+                let canvas_hash = match canvas_hash(ctx, &content) {
+                    Ok(hash) => hash,
+                    Err(error) => {
+                        claim.release();
+                        return Err(error);
+                    }
+                };
+                let (turn, snapshot) = match self
                     .commit(
                         ctx,
                         claim.turn().clone(),
@@ -213,7 +232,13 @@ impl ConversationBackend {
                         canvas_hash,
                     )
                     .await
-                    .map_err(RuntimeError::unknown)?;
+                {
+                    Ok(committed) => committed,
+                    Err(error) => {
+                        claim.release();
+                        return Err(error);
+                    }
+                };
                 claim.answered();
                 self.owners
                     .lock()
@@ -397,8 +422,14 @@ impl ConversationBackend {
         let claim = self
             .turns
             .claim(pending.turn_id(), &responder.principal_id)?;
-        let canvas_hash = canvas_hash(ctx, &content)?;
-        let (_, snapshot) = self
+        let canvas_hash = match canvas_hash(ctx, &content) {
+            Ok(hash) => hash,
+            Err(error) => {
+                claim.release();
+                return Err(error);
+            }
+        };
+        let (_, snapshot) = match self
             .commit(
                 ctx,
                 claim.turn().clone(),
@@ -407,7 +438,13 @@ impl ConversationBackend {
                 canvas_hash,
             )
             .await
-            .map_err(RuntimeError::unknown)?;
+        {
+            Ok(committed) => committed,
+            Err(error) => {
+                claim.release();
+                return Err(error);
+            }
+        };
         claim.answered();
         self.owners
             .lock()

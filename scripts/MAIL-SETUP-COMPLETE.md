@@ -27,7 +27,7 @@ Add these environment variables to your op-web configuration:
 export SMTP_HOST="10.149.181.121"
 export SMTP_PORT="587"
 export SMTP_USER="jeremy@3tched.com"
-export SMTP_PASS="jeremy123"  # Change this!
+export SMTP_PASS  # required; set in the environment or ~/.bash_secrets (never commit)
 export SMTP_FROM_EMAIL="noreply@3tched.com"
 export SMTP_FROM_NAME="Operation DBUS"
 export BASE_URL="https://your-domain.com"

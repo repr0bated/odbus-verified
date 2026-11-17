@@ -930,6 +930,9 @@ impl AssertionValidator {
             assertion_digest: blake3::hash(wire).to_hex().to_string(),
             expires_at: assertion.expires_at,
         };
+        // Leave target_credential_digest empty until the receiver attaches the
+        // authored SID1. Binding the pubkey here would make later
+        // credential_matches reject that session credential.
         let bound_oracle = assigned.map(|binding| BoundOracleProof {
             binding: binding.clone(),
             assertion_digest: blake3::hash(wire).to_hex().to_string(),
@@ -1261,10 +1264,13 @@ pub mod tests {
                 false,
             )
             .unwrap();
-        let proof = pending.bound_oracle().unwrap();
+        let mut proof = pending.bound_oracle().unwrap().clone();
         assert_eq!(proof.peer_key(), peer);
         assert_eq!(proof.binding().session_id, derive_session_id(&target_key));
         assert!(!proof.audit_value().to_string().contains("SID1"));
+        assert!(proof.is_current(now));
+        proof.expire_for_test();
+        assert!(!proof.is_current(now));
         validator.consume_pending(pending).unwrap();
         assert_eq!(
             validator.validate(&signed.to_wire(), Some(source_at(test_ip())), now),

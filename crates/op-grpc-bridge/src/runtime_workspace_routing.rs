@@ -282,10 +282,18 @@ pub(super) async fn dispatch(
         serde_json::to_vec(args)?.len() <= limits.max_document_bytes,
         "routing input capacity",
     )?;
+    let reserved_bytes = limits.max_document_bytes * 6;
+    let reserved_audit = runtime.resources.audit_work_bytes();
     let mut reservation = runtime.resources.reserve(
         &owner.budget()?,
-        limits.max_document_bytes * 6,
-        runtime.resources.audit_work_bytes(),
+        reserved_bytes,
+        reserved_audit,
+    )?;
+    reservation.require_owner(
+        &runtime.resources,
+        &owner.budget()?,
+        serde_json::to_vec(args)?.len(),
+        0,
     )?;
     let guard = tokio::time::timeout(
         std::time::Duration::from_millis(limits.queue_wait_ms),

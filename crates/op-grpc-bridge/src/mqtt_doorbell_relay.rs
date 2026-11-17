@@ -63,6 +63,7 @@ pub(crate) async fn upgrade(
         Ok(Ok(broker)) => broker,
         _ => return StatusCode::BAD_GATEWAY.into_response(),
     };
+    tracing::info!(listener = PUBLIC_LISTENER, "mqtt doorbell browser upgrade admitted");
     accept_upgrade(ws, broker, Some(permit), Some(shutdown))
 }
 

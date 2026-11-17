@@ -82,6 +82,10 @@ pub async fn dispatch_openflow_flow_method_attributed(
     ).await.context("OpenFlow attributed compare/exchange timed out; outcome requires reconciliation, no automatic retry")?
 }
 
+/// Connection-only fixture entry for exact CAS decoding without attributed
+/// permits. Production always uses [`dispatch_openflow_flow_method`].
+/// Former MutationEngine test callers are unlinked from the fresh bridge; keep
+/// the helper for connection-owned fixtures that still need the CAS path.
 #[cfg(test)]
 pub(crate) async fn dispatch_openflow_flow_method_on(
     connection: &Connection,
@@ -327,6 +331,22 @@ mod tests {
             idle_timeout: 0,
             hard_timeout: 0,
         }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires a D-Bus session bus; kept so the connection-only helper stays linked"]
+    async fn unattributed_dispatch_helper_reachable_on_session_bus() {
+        let connection = Connection::session()
+            .await
+            .expect("session bus required for ignored OpenFlow helper fixture");
+        let err = dispatch_openflow_flow_method_on(
+            &connection,
+            "not_a_flow_method",
+            &serde_json::json!({}),
+        )
+        .await
+        .expect_err("unknown OpenFlow method must fail before native I/O");
+        assert!(!err.to_string().is_empty());
     }
 
     #[test]

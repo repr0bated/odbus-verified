@@ -329,6 +329,16 @@ impl GenerationBackend {
                 }
                 event = task.recv_event() => {
                     let Some(NativeGenerationEvent::TextDelta { delta }) = event else { break; };
+                    let mut queued = vec![delta];
+                    // Drain fragments already queued by the bounded native
+                    // transport without waiting for the next await.
+                    loop {
+                        match task.try_recv_event() {
+                            Ok(NativeGenerationEvent::TextDelta { delta }) => queued.push(delta),
+                            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
+                            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => break,
+                        }
+                    }
                     let _operation = self.operation.lock().await;
                     let current = self.methods.snapshot(owner).await?.context("generation document disappeared")?;
                     if current.generation_jobs.get(id).is_some_and(|job| job.status == GenerationStatus::CancelRequested) {
@@ -337,8 +347,10 @@ impl GenerationBackend {
                         continue;
                     }
                     runtime.authorize_nested(caller, "chat_router", "start_generation").await?;
-                    let state = self.methods.append(owner, id, delta).await?;
-                    publish(runtime, caller, &state).await?;
+                    for delta in queued {
+                        let state = self.methods.append(owner, id, delta).await?;
+                        publish(runtime, caller, &state).await?;
+                    }
                 }
             }
         }

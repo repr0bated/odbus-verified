@@ -739,6 +739,14 @@ impl Runtime {
         let outcome = match self.dispatch(&ctx, &plugin, &method, &args).await {
             Ok(outcome) => outcome,
             Err(mut error) => {
+                tracing::warn!(
+                    operation_id = %operation_id,
+                    plugin = %plugin,
+                    method = %method,
+                    event_id = ctx.operation.attempt().event_id,
+                    event_hash = %ctx.operation.attempt().event_hash,
+                    "native dispatch failed for admitted operation"
+                );
                 let nested = execution.nested_after(dispatch_index);
                 let before_effect = error.proves_before_effect(operation_id, !nested.is_empty());
                 let mut updates = std::mem::take(&mut error.additional);

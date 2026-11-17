@@ -359,32 +359,67 @@ impl ChatRuntime {
         .await
         .map_err(RuntimeError::unknown)?
         {
-            let (_, fields) = client
+            let (_, mut fields) = client
                 .observe_config_and_state(&secrets)
                 .await
                 .map_err(RuntimeError::unknown)?
                 .into_state_and_fields()?;
+            // Authoritative native readback from the mutation itself must stay
+            // attached to the committed observation; do not discard it.
+            if let Some(object) = fields.as_object_mut() {
+                object.insert("native_readback".into(), mutation.readback);
+            }
             return Ok(observed(ctx, mutation.result, fields));
         }
         match method {
             "SetProvider" => {
-                client
-                    .set_provider(&decode::<chat_router::SetProviderInput>(args)?.provider_id)
+                let provider_id =
+                    decode::<chat_router::SetProviderInput>(args)?.provider_id;
+                let selected = client
+                    .set_provider(&provider_id)
                     .await
                     .map_err(RuntimeError::unknown)?;
+                let observed = client
+                    .current_selection()
+                    .await
+                    .map_err(RuntimeError::unknown)?;
+                ensure!(
+                    observed.provider == selected.provider
+                        && observed.model == selected.model,
+                    "chat_router provider selection readback diverged"
+                );
             }
             "SetModel" => {
-                client
-                    .set_model(&decode::<chat_router::SetModelInput>(args)?.model_id)
+                let model_id = decode::<chat_router::SetModelInput>(args)?.model_id;
+                let selected = client
+                    .set_model(&model_id)
                     .await
                     .map_err(RuntimeError::unknown)?;
+                let observed = client
+                    .current_selection()
+                    .await
+                    .map_err(RuntimeError::unknown)?;
+                ensure!(
+                    observed.provider == selected.provider
+                        && observed.model == selected.model,
+                    "chat_router model selection readback diverged"
+                );
             }
             "SetSelection" => {
                 let input: chat_router::SetSelectionInput = decode(args)?;
-                client
+                let selected = client
                     .set_selection(&input.provider_id, &input.model_id)
                     .await
                     .map_err(RuntimeError::unknown)?;
+                let observed = client
+                    .current_selection()
+                    .await
+                    .map_err(RuntimeError::unknown)?;
+                ensure!(
+                    observed.provider == selected.provider
+                        && observed.model == selected.model,
+                    "chat_router selection readback diverged"
+                );
             }
             "resolve_catalog_model_binding" | "apply_catalog_model_binding" => {
                 let input: chat_router::ResolveCatalogModelBindingInput = decode(args)?;
@@ -440,6 +475,34 @@ impl ChatRuntime {
                         prior_context.as_ref() == Some(&current),
                         "committed chat context changed during model selection"
                     );
+                    // Create the native family.alias profile only when it is
+                    // absent. An existing profile, including a subscription
+                    // profile, keeps its credential and endpoint.
+                    let reference = binding.binding.reference.as_str();
+                    let auth_flag = format!("providers.models.{reference}.requires_openai_auth");
+                    let subscription = client
+                        .read_config_property(&auth_flag, &secrets)
+                        .await
+                        .ok()
+                        .and_then(|value| {
+                            value
+                                .get("value")
+                                .and_then(Value::as_str)
+                                .map(|flag| flag == "true")
+                        })
+                        .unwrap_or(false);
+                    let model_path = format!("providers.models.{reference}.model");
+                    if !subscription
+                        && client
+                            .read_config_property(&model_path, &secrets)
+                            .await
+                            .is_err()
+                    {
+                        client
+                            .init_provider_model_reference(reference, &secrets)
+                            .await
+                            .map_err(RuntimeError::unknown)?;
+                    }
                     client
                         .set_selection(&binding.binding.reference, &binding.binding.model)
                         .await
@@ -450,15 +513,20 @@ impl ChatRuntime {
                     binding.binding == current.binding,
                     "native model binding changed during selection"
                 );
+                ensure!(
+                    !current.native_config.is_null(),
+                    "catalog binding native configuration readback is absent"
+                );
                 let result = serde_json::to_value(&current.binding)?;
                 let (_, mut fields) = client
                     .observe_config_and_state(&secrets)
                     .await?
                     .into_state_and_fields()?;
-                fields
+                let object = fields
                     .as_object_mut()
-                    .context("native observation is not an object")?
-                    .insert("catalog_model_binding".into(), result.clone());
+                    .context("native observation is not an object")?;
+                object.insert("catalog_model_binding".into(), result.clone());
+                object.insert("catalog_binding_native_config".into(), current.native_config);
                 return Ok(observed(ctx, result, fields));
             }
             "get_own_agent_route" => {
@@ -554,10 +622,22 @@ impl ChatRuntime {
         let admission = generation_admission(ctx).await?;
         let _guard = ChatRouterRuntimeClient::selection_guard().await;
         ctx.caller.authority.revalidate().await?;
-        client
-            .complete_under_guard(input, admission)
-            .await
-            .map_err(|error| RuntimeError::unknown(error).into())
+        // Default remains the generation WebSocket. OP_CHAT_ROUTER_TRANSPORT=a2a
+        // selects the retained A2A chat_under_guard path without changing callers.
+        if std::env::var("OP_CHAT_ROUTER_TRANSPORT")
+            .ok()
+            .is_some_and(|value| value.eq_ignore_ascii_case("a2a"))
+        {
+            client
+                .chat_under_guard(input)
+                .await
+                .map_err(|error| RuntimeError::unknown(error).into())
+        } else {
+            client
+                .complete_under_guard(input, admission)
+                .await
+                .map_err(|error| RuntimeError::unknown(error).into())
+        }
     }
 
     async fn persona(
@@ -805,7 +885,17 @@ fn sealed_schema(ctx: &BackendContext<'_>, plugin: &str) -> Result<op_state_stor
             == Some(pinned.schema_hash.as_str()),
         "sealed native dependency changed; reopen the runtime"
     );
-    Ok(pinned.schema)
+    // Hash matched the catalog pin. Re-read through the schema-only helper and
+    // require the same document so a concurrent reseal cannot slip through.
+    let schema = crate::sealed_schema_reader::read_manifest_pinned_plugin_schema(
+        ctx.runtime.catalog_dir(),
+        plugin,
+    )?;
+    ensure!(
+        serde_json::to_value(&schema)? == serde_json::to_value(&pinned.schema)?,
+        "sealed schema changed during admission"
+    );
+    Ok(schema)
 }
 fn config_secrets(schema: &op_state_store::PluginSchema) -> Result<PinnedConfigSecretPolicy> {
     let field = schema
