@@ -32,7 +32,6 @@ op-warp-endpoint
 # Unix socket, relayed by socat into the container's own /run; the guest's
 # socat listens on loopback. Installed by deploy/runit/ct-egress-relay/install.sh.
 ct-egress-proxy
-ct-egress-relay-3tchedCtlChatbot
 
 # Host Qdrant (2026-10-16). Serves the verified 2026-10-14 restore from
 # /var/lib/qdrant/storage, a copy; /mnt/qdrant-recovered/storage stays the

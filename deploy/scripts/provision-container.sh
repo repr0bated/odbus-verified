@@ -9,6 +9,15 @@
 #      otherwise the next free ID-N.
 #   3. incus create --empty on 3tched-pool, then op-container from-seed: the
 #      container volume becomes a writable CoW snapshot of images/@seed.
+#      No NIC. An isolated idmap gives each container its own host uid range,
+#      so a socket peer credential names exactly one container. Devices:
+#        /dev/fuse           the container mounts its own 3tchedFS, bound to
+#                            itself over lungs.sock (BindCurrentContainer)
+#        /run/opdbus/lungs   lungs.sock, D-Bus: sealed method calls
+#        /run/opdbus/tunnel  chatbot only: op-tunnel-mux delivers the door
+#                            into its axum (pass-through UI, TLS ends inside)
+#      The chatbot has no internet. ID-N get NIC-less egress from
+#      ct-egress-relay (loopback socat to host Unix sockets) after start.
 #   4. The decoy minted the identity (IID1, delivered over WARP). It is placed
 #      in the container and op-identity-accept installs its SID1 as sealed_id
 #      after verifying it against the decoy trust store. Nothing mints here.
@@ -54,11 +63,16 @@ incus create --empty "$NAME" -s "$POOL" --no-profiles \
     -c boot.autostart=false \
     -c security.privileged=false \
     -c security.nesting=false \
+    -c security.idmap.isolated=true \
     -c "user.opdbus.session_id=$SESSION" \
     -c "user.opdbus.wireguard_public_key=$KEY" \
     -c "raw.lxc=lxc.uts.name = $SESSION
 lxc.mount.auto = cgroup2:force"
 incus config device add "$NAME" fuse unix-char source=/dev/fuse path=/dev/fuse mode=0666 >/dev/null
+incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/run/opdbus/lungs >/dev/null
+if [ "$NAME" = "$CHATBOT_NAME" ]; then
+    incus config device add "$NAME" tunnel disk source=/run/opdbus/tunnel path=/run/opdbus/tunnel >/dev/null
+fi
 
 "$OP_CONTAINER" from-seed "$NAME"
 
@@ -69,4 +83,7 @@ install -m 0600 "$ISSUED" "$ROOT/agent/user/issued_identity.iid1"
     --out "$ROOT/agent/user/sealed_id" >/dev/null
 
 incus start "$NAME"
+if [ "$NAME" != "$CHATBOT_NAME" ]; then
+    "$(dirname -- "$(readlink -f "$0")")/../runit/ct-egress-relay/install.sh" "$NAME"
+fi
 echo "$NAME $SESSION"

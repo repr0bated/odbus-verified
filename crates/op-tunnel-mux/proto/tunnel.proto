@@ -2,13 +2,10 @@ syntax = "proto3";
 
 package operation.tunnel.v1;
 
-// Host mux for a NIC-less container. Identity is the Unix peer credential,
-// never a field in these messages. TLS for the door ends in the container.
-// The control-plane chatbot is served an inbound-only socket where Open is
-// refused; its outbound actions are sealed method calls over lungs.sock.
+// Inbound door for the container that owns it. Identity is the Unix peer
+// credential, never a field in these messages. TLS for the door ends in the
+// container. Inbound only: container egress is ct-egress, not this service.
 service Tunnel {
-  // Container-originated connection. First client frame must be Target.
-  rpc Open(stream Frame) returns (stream Frame);
   // Bridge-originated connection spliced to the container door.
   // The server sends Target first. The client sends only bytes.
   rpc Accept(stream Frame) returns (stream Frame);
