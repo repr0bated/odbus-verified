@@ -38,6 +38,10 @@
 - `lungs_socket.rs`, `mutation_engine.rs` and `chain_vector_projector.rs` in op-grpc-bridge are not declared in `lib.rs`, so they don't compile into the bridge.
 - The live lungs path is `runtime_lungs.rs` / `runtime_lungs_identity.rs`.
 
+**Owner (2026-11-17), start here next session**
+- **The bridge is about 14k lines smaller than it was before the data loss.** Linked source is about 121k lines; another 9.3k are unlinked. Find a copy from before the loss: git history, `/opt/op-dbus/releases`, btrfs snapshots or send streams, other clones, or the decoy. Compare it with the current bridge file by file, and restore what is still current rather than rebuilding from memory.
+- **`provision-container.sh --system` was lost.** A system container does one job only, like Qdrant. It has no identity: no sled, no IID1, no session or key in its config. Its grants cover only that one job.
+
 **Open, in order**
 1. Release build: host bridge, `op-tunnel-door`, `3tched-fs`, seed bridge, `op-identity-accept`, `op-container`. Install `op-tunnel-door` and its unit into the seed.
 2. Reseal the catalog with `opblob`: new `tunnel` plugin, new `identity_sled.finalize_session`.
