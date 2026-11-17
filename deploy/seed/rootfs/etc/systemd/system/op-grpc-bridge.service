@@ -1,0 +1,15 @@
+[Unit]
+Description=Identity owner door (op-grpc-bridge) on 10.0.0.2:8090
+After=3tchedfs.service threetchedfs.service
+Requires=3tchedfs.service threetchedfs.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/op-dbus/bridge.env
+RuntimeDirectory=op-grpc-bridge
+ExecStart=/usr/local/libexec/op-dbus/bin/op-grpc-bridge
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
