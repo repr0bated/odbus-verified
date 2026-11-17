@@ -451,9 +451,9 @@ pub fn plan(state: &mut State, inventory: &Inventory, approval: &Approval) -> Re
                 continue;
             }
             // Missing service/log directories are described separately and created before member intents.
-            if let Some(parent) = path.parent() {
-                if !parent.try_exists()? && parent != base {
-                    if !state
+            if let Some(parent) = path.parent()
+                && !parent.try_exists()? && parent != base
+                    && !state
                         .journal
                         .as_ref()
                         .unwrap()
@@ -471,8 +471,6 @@ pub fn plan(state: &mut State, inventory: &Inventory, approval: &Approval) -> Re
                         });
                         state.save()?;
                     }
-                }
-            }
             let content = stub(name, member);
             if path
                 .parent()

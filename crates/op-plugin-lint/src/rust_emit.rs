@@ -247,14 +247,8 @@ fn openapi_operation_parts(path: &str) -> Option<(String, String, String)> {
         slug = "api_root";
     }
     let slug = slug
-        .replace('{', "")
-        .replace('}', "")
-        .replace('/', "_")
-        .replace('?', "_")
-        .replace('=', "_")
-        .replace('&', "_")
-        .replace('.', "_")
-        .replace('-', "_");
+        .replace(['{', '}'], "")
+        .replace(['/', '?', '=', '&', '.', '-'], "_");
     let name = format!("{slug}_{verb}");
     Some((name, verb.to_string(), route.to_string()))
 }

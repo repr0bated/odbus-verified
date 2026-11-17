@@ -807,8 +807,8 @@ pub fn reload_loggers(state: &mut State) -> Result<()> {
         );
         let deadline = Instant::now() + Duration::from_secs(30);
         loop {
-            if let Some(current) = supervisor_identity(&name)? {
-                if current != old {
+            if let Some(current) = supervisor_identity(&name)?
+                && current != old {
                     let _ = status(&name, false)?;
                     if !service_path(&name).join("log").try_exists()?
                         || supervisor_identity(&format!("{name}/log"))?.is_some()
@@ -816,7 +816,6 @@ pub fn reload_loggers(state: &mut State) -> Result<()> {
                         break;
                     }
                 }
-            }
             ensure!(
                 Instant::now() < deadline,
                 "runsvdir did not reload logger configuration for {name}"

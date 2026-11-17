@@ -1,6 +1,6 @@
 use super::{fs, inventory, model::*, mounts};
 use anyhow::{Context, Result, ensure};
-use std::{collections::BTreeSet, os::fd::AsFd, path::Path};
+use std::{os::fd::AsFd, path::Path};
 
 pub fn ready(text: &str) -> Result<()> {
     fs::atomic_text(Path::new(READY), text)

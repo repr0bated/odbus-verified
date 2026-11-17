@@ -78,7 +78,7 @@ pub const COMPONENT_TYPES: &[&str] = &[
 
 fn hyphenated(segment: &str) -> bool {
     // Prefer hyphen; allow underscore for Muse-generated method verbs.
-    let mut parts = segment.split(|c| c == '-' || c == '_');
+    let mut parts = segment.split(['-', '_']);
     match parts.next() {
         Some(first)
             if !first.is_empty()

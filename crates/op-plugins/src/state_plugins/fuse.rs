@@ -4162,6 +4162,7 @@ pub trait FuseApi: Send {
     }
 
     /// `fuse_new(args, op)` — create a high-level filesystem object.
+    #[allow(clippy::new_ret_no_self, clippy::wrong_self_convention)] // mirrors libfuse fuse_new(args, op)
     fn new(&mut self, args: FuseArgs, ops: &dyn FuseOperations) -> Result<FuseHandle, FuseError> {
         let _ = (args, ops);
         Err(FuseError::NotLinked("fuse_new".into()))
@@ -7135,7 +7136,7 @@ pub fn dispatch_fuse_method(
                 input.data,
             )?;
             Ok(serde_json::to_value(IoctlOutput {
-                result: result,
+                result,
                 file_info,
             })
             .map_err(|error| {
@@ -7284,9 +7285,9 @@ pub fn dispatch_fuse_method(
             })?)
         }
         other => {
-            return Err(FuseError::Unsupported(format!(
+            Err(FuseError::Unsupported(format!(
                 "unknown fuse method: {other}"
-            )));
+            )))
         }
     }
 }
@@ -7947,9 +7948,9 @@ pub fn dispatch_fuse_lowlevel_method(
             )
         }
         other => {
-            return Err(FuseError::Unsupported(format!(
+            Err(FuseError::Unsupported(format!(
                 "unknown fuse lowlevel method: {other}"
-            )));
+            )))
         }
     }
 }

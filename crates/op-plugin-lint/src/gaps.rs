@@ -269,14 +269,8 @@ fn openapi_operation_method_name(p: &str) -> Option<String> {
         slug = "api_root";
     }
     let slug = slug
-        .replace('{', "")
-        .replace('}', "")
-        .replace('/', "_")
-        .replace('?', "_")
-        .replace('=', "_")
-        .replace('&', "_")
-        .replace('.', "_")
-        .replace('-', "_");
+        .replace(['{', '}'], "")
+        .replace(['/', '?', '=', '&', '.', '-'], "_");
     Some(format!("{slug}_{verb}"))
 }
 
@@ -377,11 +371,10 @@ fn surface_covered(
     method_snakes: &BTreeSet<String>,
 ) -> bool {
     // OpenAPI operation leaves are always `operationId`; match on route+verb slug instead.
-    if let Some(name) = openapi_operation_method_name(path) {
-        if method_snakes.contains(&name) {
+    if let Some(name) = openapi_operation_method_name(path)
+        && method_snakes.contains(&name) {
             return true;
         }
-    }
     let leaf = path.rsplit('.').next().unwrap_or(path);
     let leaf_l = leaf.to_ascii_lowercase();
     let snake = camel_to_snake(leaf);

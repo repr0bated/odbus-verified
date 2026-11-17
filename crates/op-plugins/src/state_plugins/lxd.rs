@@ -9741,7 +9741,7 @@ pub mod devices {
         /// must contain a `type` key; coercion newtypes parse the string values.
         pub fn from_lxd_map(map: &BTreeMap<String, String>) -> Result<Self, serde_json::Error> {
             let value = serde_json::to_value(map)?;
-            Ok(serde_json::from_value(value)?)
+            serde_json::from_value(value)
         }
     }
 
@@ -10758,13 +10758,10 @@ pub mod client_extra {
         // rest are parts, each ending with CRLF (and the last with `--`).
         let mut chunks: Vec<&[u8]> = Vec::new();
         let mut start = 0usize;
-        loop {
-            let Some(rel) = body[start..]
-                .windows(delim.len())
-                .position(|w| w == delim.as_slice())
-            else {
-                break;
-            };
+        while let Some(rel) = body[start..]
+            .windows(delim.len())
+            .position(|w| w == delim.as_slice())
+        {
             let idx = start + rel;
             chunks.push(&body[start..idx]);
             start = idx + delim.len();

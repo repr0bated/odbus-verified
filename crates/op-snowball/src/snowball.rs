@@ -2110,12 +2110,15 @@ fn dump_remote_chain_root(remote_parent: &str, counter: u64) -> Result<String> {
     Ok(format!("{remote_parent}/{}", dump_set_name(counter)))
 }
 
+// Retained for the dump/send plan path; not yet called after the ledger model shift.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DumpSendPlanStep {
     pub member: &'static str,
     pub on_receive: bool,
 }
 
+#[allow(dead_code)] // dump/send plan helper retained pending ledger cutover
 pub(crate) fn dump_send_plan() -> [DumpSendPlanStep; 2] {
     [
         DumpSendPlanStep {
@@ -2129,6 +2132,7 @@ pub(crate) fn dump_send_plan() -> [DumpSendPlanStep; 2] {
     ]
 }
 
+#[allow(dead_code)] // dump retention helper retained pending ledger cutover
 pub(crate) fn local_dump_keep_set(dumps_dir: &Path, keep_counter: u64) -> Result<Vec<String>> {
     let keep_name = dump_set_name(keep_counter);
     let mut remaining = Vec::new();

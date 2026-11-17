@@ -758,11 +758,10 @@ fn shell_commands(line: &str) -> Result<Vec<Vec<&str>>> {
             start.get_or_insert(i.min(bytes.len()));
             i += 1;
         }
-        if let Some(begin) = start {
-            if begin < bytes.len() {
+        if let Some(begin) = start
+            && begin < bytes.len() {
                 words.push(&line[begin..]);
             }
-        }
         if !words.is_empty() {
             commands.push(words);
         }
@@ -947,16 +946,14 @@ fn declared_paths(word: &str, bindings: &BTreeMap<String, BTreeSet<String>>) -> 
             return result;
         }
         if let Some(at) = word.find(['$', '`', '*', '?']) {
-            if let Some(end) = word[..at].rfind('/') {
-                if end > 0 {
+            if let Some(end) = word[..at].rfind('/')
+                && end > 0 {
                     result.insert(word[..end].into());
                 }
-            }
-        } else if !word.contains("/../") && !word.ends_with("/..") {
-            if let Some(path) = normalize_absolute(Path::new(word)) {
+        } else if !word.contains("/../") && !word.ends_with("/..")
+            && let Some(path) = normalize_absolute(Path::new(word)) {
                 result.insert(path);
             }
-        }
         return result;
     }
     let Some(rest) = word.strip_prefix('$') else {
@@ -1424,11 +1421,10 @@ fn function_arguments(
     let mut incomplete = BTreeMap::<String, (usize, BTreeSet<usize>)>::new();
     let mut quoted = false;
     for (_, raw) in lines {
-        if let Some(name) = shell_function(shell_code(raw, &mut quoted).trim()) {
-            if name != "wait_dep" {
+        if let Some(name) = shell_function(shell_code(raw, &mut quoted).trim())
+            && name != "wait_dep" {
                 functions.insert(name.to_owned(), BTreeMap::new());
             }
-        }
     }
     quoted = false;
     let mut bindings = b.argument_paths.get(source).cloned().unwrap_or_default();
@@ -1441,11 +1437,10 @@ fn function_arguments(
         if shell_function(line).is_some() {
             outer = Some(bindings.clone());
             bindings.retain(|name, _| !name.bytes().all(|c| c.is_ascii_digit()));
-        } else if line == "}" {
-            if let Some(saved) = outer.take() {
+        } else if line == "}"
+            && let Some(saved) = outer.take() {
                 bindings = saved;
             }
-        }
         if line.starts_with('#') || shell_function(line).is_some() {
             continue;
         }
@@ -1581,12 +1576,11 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                 outer_bindings = Some(std::mem::replace(&mut bindings, scoped));
                 continue;
             }
-            if line == "}" {
-                if let Some(outer) = outer_bindings.take() {
+            if line == "}"
+                && let Some(outer) = outer_bindings.take() {
                     bindings = outer;
                     continue;
                 }
-            }
         }
         if line.starts_with('#') || line.is_empty() {
             continue;
@@ -1605,14 +1599,13 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                 wait_function = false;
                 continue;
             }
-            if let Some((name, value)) = line.split_once('=') {
-                if variable_name(name) && shell_word(value) == "$1" {
+            if let Some((name, value)) = line.split_once('=')
+                && variable_name(name) && shell_word(value) == "$1" {
                     wait_alias = name;
                 }
-            }
             for words in &commands {
-                if let Some((action, args)) = sv_call(&words) {
-                    if let Some(arg) = args.first() {
+                if let Some((action, args)) = sv_call(words)
+                    && let Some(arg) = args.first() {
                         let arg = shell_word(arg);
                         if arg == "$1" || arg.strip_prefix('$') == Some(wait_alias) {
                             wait_starts |= sv_starts(action);
@@ -1624,7 +1617,6 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                             );
                         }
                     }
-                }
             }
             continue;
         }
@@ -1670,8 +1662,8 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                             b.blocker(source, line_number, "unresolved wait_dep service argument")
                         }
                     }
-                } else if let Some((action, args)) = sv_call(&words) {
-                    if sv_starts(action) || matches!(action, "check" | "status") {
+                } else if let Some((action, args)) = sv_call(words)
+                    && (sv_starts(action) || matches!(action, "check" | "status")) {
                         let mut found = false;
                         for arg in args {
                             if arg.starts_with(['>', '<']) || arg.contains('>') || arg.contains('<')
@@ -1696,7 +1688,6 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                             b.blocker(source, line_number, "missing sv service argument");
                         }
                     }
-                }
             }
         }
         let mut paths = literal_paths(line);
@@ -1733,8 +1724,8 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                 // No function invocation, eval, command substitution or word splitting
                 // is executed to obtain these arguments.
                 let program_position = executable_position(words).unwrap_or(words.len());
-                if let Some(program) = words.get(program_position) {
-                    if let Some(staged) = b
+                if let Some(program) = words.get(program_position)
+                    && let Some(staged) = b
                         .staged_path(shell_word(program))
                         .filter(|path| b.paths.contains(path))
                     {
@@ -1750,7 +1741,6 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                             }
                         }
                     }
-                }
                 for (position, raw_word) in words.iter().enumerate() {
                     // Attached, unquoted redirection operators are shell syntax,
                     // not part of the path operand (e.g. wc -c <"$file").

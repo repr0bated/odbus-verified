@@ -186,7 +186,7 @@ fn commit_locked<T>(
     }
     match commit(previous.as_deref()) {
         Ok(PrivateDocumentCommit::Publish { current, durable }) => Ok(finish(
-            &locked, manifest, &name, previous, current, durable, false,
+            locked, manifest, &name, previous, current, durable, false,
         )),
         Ok(PrivateDocumentCommit::RetainPending { durable, error }) => {
             Ok(PrivateDocumentPublication::Pending {
@@ -263,7 +263,7 @@ fn recover_locked<T>(
     }
     match load_durable() {
         Ok(PrivateDocumentCommit::Publish { current, durable }) => Ok(finish(
-            &locked, manifest, &name, None, current, durable, true,
+            locked, manifest, &name, None, current, durable, true,
         )),
         Ok(PrivateDocumentCommit::RetainPending { durable, error }) => {
             Ok(PrivateDocumentPublication::Pending {

@@ -722,7 +722,8 @@ mod tests {
                 Some(READ_CAPABILITY)
             );
         }
-        for method in ["submit_turn"] {
+        {
+            let method = "submit_turn";
             assert_eq!(
                 schema.methods[method].required_capability.as_deref(),
                 Some(SUBMIT_CAPABILITY)

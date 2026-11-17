@@ -51,8 +51,7 @@ pub mod methods {
         _plan: &ToolsetConfig,
         _arguments: &Value,
     ) -> Result<Value, serde_json::Error> {
-        Err(serde_json::Error::io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(serde_json::Error::io(std::io::Error::other(
             "MCP retired",
         )))
     }
@@ -62,8 +61,7 @@ pub mod methods {
         _tool_name: &str,
         _schema: &serde_json::Value,
     ) -> Result<Value, serde_json::Error> {
-        Err(serde_json::Error::io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(serde_json::Error::io(std::io::Error::other(
             "MCP retired",
         )))
     }

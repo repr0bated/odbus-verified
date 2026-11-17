@@ -111,8 +111,8 @@ pub fn provision_resume(state: &mut State) -> Result<()> {
             && subvolume::subvolume_info(parent.as_fd())?.id == super::storage::parent_subvolume()?,
         "golden parent changed"
     );
-    if let Some(golden) = open_child(&parent, Path::new("golden"))? {
-        if golden.metadata()?.ino() != 256 {
+    if let Some(golden) = open_child(&parent, Path::new("golden"))?
+        && golden.metadata()?.ino() != 256 {
             ensure!(
                 std::fs::read_dir(format!("/proc/self/fd/{}", golden.as_raw_fd()))?
                     .next()
@@ -122,7 +122,6 @@ pub fn provision_resume(state: &mut State) -> Result<()> {
             state.intent("golden-remove-empty-directory")?;
             fs::remove_at(parent.as_fd(), Path::new("golden"), true)?;
         }
-    }
     if open_child(&parent, Path::new("golden"))?.is_none() {
         state.intent("golden-create-subvolume")?;
         subvolume::subvolume_create(parent.as_fd(), c"golden", &[])?;

@@ -34,8 +34,8 @@ fn main() {
                 );
             }
             for revision in &snapshot.identities {
-                if let Some(record) = &revision.record {
-                    if !record.instance_json.is_empty() {
+                if let Some(record) = &revision.record
+                    && !record.instance_json.is_empty() {
                         let instance: serde_json::Value =
                             serde_json::from_str(&record.instance_json).unwrap_or_default();
                         let config = instance.get("config");
@@ -66,7 +66,6 @@ fn main() {
                             record.wireguard_pubkey,
                         );
                     }
-                }
             }
             println!("events: {}", snapshot.events.len());
         }

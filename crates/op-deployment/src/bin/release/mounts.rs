@@ -223,8 +223,8 @@ pub fn build(state: &mut State, slot: Slot) -> Result<Vec<Candidate>> {
 }
 fn detach_old(state: &mut State, old: &File, index: usize) -> Result<()> {
     state.intent(format!("detach-old-top:{index}"))?;
-    if let Err(first) = fs::detach(old.as_fd()) {
-        if let Err(second) = fs::detach(old.as_fd()) {
+    if let Err(first) = fs::detach(old.as_fd())
+        && let Err(second) = fs::detach(old.as_fd()) {
             state.journal.as_mut().unwrap().stacked.insert(index);
             state.journal.as_mut().unwrap().error = Some(format!(
                 "detach target {index}: {first:#}; bounded retry: {second:#}"
@@ -234,7 +234,6 @@ fn detach_old(state: &mut State, old: &File, index: usize) -> Result<()> {
                 "old top remains visible, candidate pinned beneath; candidate MUST NOT be detached",
             );
         }
-    }
     Ok(())
 }
 pub fn switch(state: &mut State, slot: Slot, candidates: Vec<Candidate>) -> Result<()> {

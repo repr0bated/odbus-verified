@@ -184,7 +184,7 @@ impl CozoBlockStore {
             return Err(invalid("device role must not be empty"));
         }
         let chunk = u64::from(UBLK_CHUNK_BYTES);
-        if size_bytes == 0 || size_bytes % chunk != 0 || i64::try_from(size_bytes).is_err() {
+        if size_bytes == 0 || !size_bytes.is_multiple_of(chunk) || i64::try_from(size_bytes).is_err() {
             return Err(invalid(&format!(
                 "device size {size_bytes} must be a positive multiple of {chunk} bytes"
             )));
