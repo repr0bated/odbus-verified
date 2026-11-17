@@ -406,7 +406,9 @@ fn wireguard_keys(iface: &str) -> Result<Vec<String>> {
 }
 
 /// `op-decoy-issuer issue-identity --pubkey K --catalog-hash H
-///  [--nextdns-profile P --nextdns-device D] [--iface I] [--key F] [--key-id ID]`
+///  [--nextdns-profile P] [--nextdns-device D] [--iface I] [--key F] [--key-id ID]`
+/// (profile falls back to OP_NEXTDNS_PROFILE and is required; device
+/// defaults to the session id)
 ///
 /// One-shot: mint and sign the genesis and SID1 for K (IID1) and print it as
 /// standard base64. Opens no listener. K must be a key WireGuard terminates
@@ -420,13 +422,19 @@ fn issue_identity() -> Result<()> {
         wireguard_keys(&iface)?.contains(&pubkey),
         "{pubkey} is not a WireGuard key on {iface}"
     );
-    let nextdns = match (arg("--nextdns-profile"), arg("--nextdns-device")) {
-        (Some(profile_id), Some(device_name)) => Some(op_identity::sealed_id::NextDnsContext {
-            profile_id,
-            device_name,
-        }),
-        (None, None) => None,
-        _ => bail!("--nextdns-profile and --nextdns-device go together"),
+    // NextDNS is always sealed: the container's DNS is configured from it.
+    // Profile: --nextdns-profile, else OP_NEXTDNS_PROFILE. Device:
+    // --nextdns-device, else the session id (the container's lifetime id).
+    let profile_id = arg("--nextdns-profile")
+        .or_else(|| std::env::var("OP_NEXTDNS_PROFILE").ok())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .context("NextDNS profile is required: --nextdns-profile or OP_NEXTDNS_PROFILE")?;
+    let device_name = arg("--nextdns-device")
+        .unwrap_or_else(|| op_identity::session::derive_session_id(&pubkey));
+    let nextdns = op_identity::sealed_id::NextDnsContext {
+        profile_id,
+        device_name,
     };
     let key_path = PathBuf::from(arg("--key").unwrap_or_else(|| DEFAULT_KEY_PATH.to_string()));
     let signing_key = load_signing_key(&key_path)?;

@@ -10,7 +10,7 @@
 //! genesis, then writes the SID1 inline reference (`sid1:<base64url>`) to
 //! `<out>`. An existing `<out>` is kept: the identity is minted once, and a
 //! different SID1 for the same path is refused instead of replacing it.
-//! Prints the session id, which is the identity container's instance name.
+//! Prints `session_id nextdns_profile nextdns_device`.
 //!
 //! `derive` prints `session_id principal_id` for K without any envelope.
 use std::io::Write as _;
@@ -74,6 +74,11 @@ fn main() -> Result<()> {
         }
         Err(error) => return Err(error).with_context(|| format!("reading {}", out.display())),
     }
-    println!("{}", issued.sealed.session_id);
+    // session_id nextdns_profile nextdns_device (verify guarantees NextDNS).
+    let nextdns = issued.sealed.nextdns.as_ref().context("NextDNS absent")?;
+    println!(
+        "{} {} {}",
+        issued.sealed.session_id, nextdns.profile_id, nextdns.device_name
+    );
     Ok(())
 }

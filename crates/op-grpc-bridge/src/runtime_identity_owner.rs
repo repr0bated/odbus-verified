@@ -306,7 +306,7 @@ mod issued_identity_tests {
     fn adopts_only_a_signed_identity_for_this_session_key_and_term() {
         let signer = SigningKey::from_bytes(&[5u8; 32]);
         let wire = IssuedIdentity::issue(&signer, "decoy-t", IssueRequest {
-            wireguard_pubkey: KEY, catalog_hash_hex: &"ab".repeat(32), nextdns: None,
+            wireguard_pubkey: KEY, catalog_hash_hex: &"ab".repeat(32), nextdns: op_identity::sealed_id::NextDnsContext { profile_id: "689ec7".into(), device_name: "test".into() },
             schema_version: super::RECORD_FORMAT, now: 1_800_000_000 }).unwrap().to_wire().unwrap();
         let issued = base64::engine::general_purpose::STANDARD.encode(wire);
         let trust = |key: &SigningKey| format!(r#"{{"decoy_keys":{{"decoy-t":"{}"}}}}"#,

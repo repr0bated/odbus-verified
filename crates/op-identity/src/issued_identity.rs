@@ -56,6 +56,8 @@ pub enum IssuedIdentityError {
     DerivationMismatch,
     #[error("issued identity genesis does not match its inputs")]
     GenesisMismatch,
+    #[error("issued identity has no NextDNS profile/device sealed in")]
+    MissingNextDns,
     #[error("sealed identity: {0}")]
     Sealed(#[from] SealedIdError),
 }
@@ -64,7 +66,8 @@ pub enum IssuedIdentityError {
 pub struct IssueRequest<'a> {
     pub wireguard_pubkey: &'a str,
     pub catalog_hash_hex: &'a str,
-    pub nextdns: Option<NextDnsContext>,
+    /// Required: the container's DNS is configured from these sealed values.
+    pub nextdns: NextDnsContext,
     pub schema_version: u32,
     /// Unix seconds; the caller's clock.
     pub now: i64,
@@ -147,7 +150,7 @@ impl IssuedIdentity {
             catalog_hash_at_arrival: request.catalog_hash_hex.to_ascii_lowercase(),
             head_timestamp_at_arrival: request.now,
             transport_scope: TRANSPORT_SCOPE.to_string(),
-            nextdns: request.nextdns,
+            nextdns: Some(request.nextdns),
         };
         let sid1 = sealed.seal()?;
         let signature = signing_key
@@ -213,6 +216,9 @@ impl IssuedIdentity {
         let sealed = SealedId::open(sid1)?;
         if sealed.wireguard_pubkey != expected_pubkey {
             return Err(IssuedIdentityError::KeyMismatch);
+        }
+        if sealed.nextdns.is_none() {
+            return Err(IssuedIdentityError::MissingNextDns);
         }
         let key = decode_pubkey(&sealed.wireguard_pubkey)?;
         if sealed.session_id != crate::session::derive_session_id(&sealed.wireguard_pubkey)
@@ -285,10 +291,10 @@ mod tests {
             IssueRequest {
                 wireguard_pubkey: PUBKEY,
                 catalog_hash_hex: CATALOG,
-                nextdns: Some(NextDnsContext {
+                nextdns: NextDnsContext {
                     profile_id: "689ec7".into(),
                     device_name: "Ghostbridge-Incus".into(),
-                }),
+                },
                 schema_version: 1,
                 now: 1_800_000_000,
             },
@@ -361,7 +367,7 @@ mod tests {
                 IssueRequest {
                     wireguard_pubkey: pubkey,
                     catalog_hash_hex: catalog,
-                    nextdns: None,
+                    nextdns: NextDnsContext { profile_id: "689ec7".into(), device_name: "d".into() },
                     schema_version: 1,
                     now: 1,
                 },
