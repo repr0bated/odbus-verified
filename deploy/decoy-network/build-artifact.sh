@@ -9,8 +9,8 @@ die() {
     exit 1
 }
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)
 RELEASE_DIR=${OP_DECOY_RELEASE_DIR:-"$PROJECT_ROOT/target/release"}
 CATALOG_SOURCE=${OP_DECOY_PERSISTED_CATALOG_SOURCE:-/var/lib/opdbus/plugin-blobs}
 OUTPUT_DIR=${OP_DECOY_ARTIFACT_DIR:-"$PROJECT_ROOT/target/container-artifacts"}
@@ -56,7 +56,7 @@ actual_catalog_files=$(mktemp)
 trap 'rm -f -- "$catalog_files" "$actual_catalog_files"' HUP INT TERM
 jq -r '.plugins | to_entries[] | "\(.key).\(.value[0:16]).blob"' \
     "$CATALOG_SOURCE/.manifest.json" | sort > "$catalog_files"
-(CDPATH= cd -- "$CATALOG_SOURCE" && find . -maxdepth 1 -type f -name '*.blob' -print |
+(CDPATH='' cd -- "$CATALOG_SOURCE" && find . -maxdepth 1 -type f -name '*.blob' -print |
     sed 's|^\./||' | sort) > "$actual_catalog_files"
 cmp -s "$catalog_files" "$actual_catalog_files" ||
     die "persisted blob set differs from its sealer-owned manifest"
@@ -156,7 +156,7 @@ commit=$(git -C "$PROJECT_ROOT" rev-parse HEAD 2>/dev/null || printf unknown)
             "$CATALOG_SOURCE/.manifest.json"
     done
     printf '\n[sha256]\n'
-    (CDPATH= cd -- "$stage" && find apply-rootfs.sh rootfs -type f -print | sort |
+    (CDPATH='' cd -- "$stage" && find apply-rootfs.sh rootfs -type f -print | sort |
         while IFS= read -r file; do
             printf '%s  %s\n' "$(sha256sum "$file" | cut -d' ' -f1)" "$file"
         done)

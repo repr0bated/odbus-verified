@@ -1,6 +1,7 @@
 #!/bin/bash
 # Add A records for 3tched.com web server
 
+# shellcheck disable=SC1090 # optional operator secrets file outside the repo
 source ~/.bash_secrets
 
 DOMAIN="3tched.com"

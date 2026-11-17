@@ -3,6 +3,7 @@
 
 set -e
 
+# shellcheck disable=SC1090 # optional operator secrets file outside the repo
 source ~/.bash_secrets
 
 DOMAIN="3tched.com"

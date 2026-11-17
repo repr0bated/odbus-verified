@@ -6,7 +6,7 @@ export PATH
 umask 077
 fail() { printf 'install-receiver: %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] && [ "$#" = 0 ] || fail 'run as root without arguments'
-repo=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")/../.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f "$0")")/../.." && pwd)
 artifacts=$(realpath -e -- "${OP_RECEIVER_ARTIFACT_DIR:-$repo/target/btrfs-receiver-artifacts}")
 state=/var/lib/opdbus-release
 base=/usr/local/libexec/opdbus-release-receiver

@@ -26,8 +26,8 @@ for tool in incus jq nft setpriv socat svlogd chpst xray; do
     command -v "$tool" >/dev/null || die "missing $tool"
 done
 
-HERE=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
-PROXY_SRC=$(CDPATH= cd -- "$HERE/../ct-egress-proxy" && pwd)
+HERE=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
+PROXY_SRC=$(CDPATH='' cd -- "$HERE/../ct-egress-proxy" && pwd)
 GUEST=$HERE/guest
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 

@@ -71,7 +71,7 @@ awk '
     /^\[sha256\]$/ { hashes = 1; next }
     hashes && NF { print $2 }
 ' "$stage/MANIFEST" | sort > "$expected_files"
-(CDPATH= cd -- "$stage" && find . -type f -print | sed 's|^\./||' |
+(CDPATH='' cd -- "$stage" && find . -type f -print | sed 's|^\./||' |
     grep -vx MANIFEST | sort) > "$actual_files"
 cmp -s "$expected_files" "$actual_files" ||
     die "embedded manifest file set differs from the archive"

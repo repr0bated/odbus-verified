@@ -8,7 +8,7 @@ umask 077
 fail() { printf 'install-kit: %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || fail 'run as root'
 [ "$#" = 0 ] || fail 'takes no arguments; OP_RELEASE_DIR selects built artifacts'
-repo=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")/../.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f "$0")")/../.." && pwd)
 release_dir=${OP_RELEASE_DIR:-$repo/target/x86_64-unknown-linux-gnu/release}
 [ -d "$release_dir" ] || fail "GNU release directory missing: $release_dir"
 release=$(realpath -e -- "$release_dir")

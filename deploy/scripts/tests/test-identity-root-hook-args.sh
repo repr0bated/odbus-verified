@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise the actual helper invocation with a multiline value containing '='.
 set -eu
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 helper=$repo/deploy/runit/libexec-3tched/op-identity-root
 seed_name=fixture
 hook_selection='lxc.hook.version = 1

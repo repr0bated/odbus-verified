@@ -2,7 +2,7 @@
 # Exercises cursor-use-keepass against a fake home. No database is opened.
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname "$0")" && pwd)
 HELPER=$ROOT/cursor-use-keepass
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT

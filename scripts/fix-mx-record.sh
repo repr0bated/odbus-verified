@@ -5,6 +5,7 @@ set -e
 
 # Load credentials
 if [ -f ~/.bash_secrets ]; then
+    # shellcheck disable=SC1090 # optional operator secrets file outside the repo
     source ~/.bash_secrets
 else
     echo "❌ ~/.bash_secrets not found"

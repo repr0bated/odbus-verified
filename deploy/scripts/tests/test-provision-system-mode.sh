@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-PROVISIONER=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)/provision-workspace-subscriber.sh
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+PROVISIONER=$(CDPATH='' cd -- "$SCRIPT_DIR/.." && pwd)/provision-workspace-subscriber.sh
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/provision-system-test.XXXXXX")
 trap 'rm -rf "$TMP_ROOT"' EXIT HUP INT TERM
 BIN="$TMP_ROOT/bin"

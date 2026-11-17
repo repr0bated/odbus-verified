@@ -5,7 +5,7 @@
 set -eu
 
 NAME=${NETMAKER_INCUS_NAME:-NetMaker}
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 [ -r /etc/op-dbus/netmaker-broker.env ] && . /etc/op-dbus/netmaker-broker.env
 BROKER_PORT=${NETMAKER_BROKER_PORT:-8090}
 BROKER_PATH=${NETMAKER_BROKER_PATH:-/mqtt}

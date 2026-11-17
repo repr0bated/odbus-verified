@@ -44,9 +44,9 @@ DRY_RUN=0
 
 SCRIPT_PATH=$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")
 # Internal helper of ./activate-golden.sh; every relative input lives in deploy/runit.
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")/../../runit" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$SCRIPT_PATH")/../../runit" && pwd)
 if [ -f "$SCRIPT_DIR/../../Cargo.toml" ]; then
-    PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+    PROJECT_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)
 else
     PROJECT_ROOT=${OP_DBUS_ROOT:-$(pwd)}
 fi
@@ -219,7 +219,7 @@ done
 
 # ── Declared artifact pins ──────────────────────────────────────────────────
 [ -r "$EMQX_VERSION_FILE" ] || die "missing EMQX artifact declaration: $EMQX_VERSION_FILE"
-# shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated below.
+# shellcheck disable=SC1090 # release-owned, fixed-key declaration validated below.
 . "$EMQX_VERSION_FILE"
 case "${EMQX_VERSION:-}" in *[!0-9.]*|'') die "invalid EMQX_VERSION" ;; esac
 case "${EMQX_ARTIFACT:-}" in *[!A-Za-z0-9._-]*|'') die "invalid EMQX_ARTIFACT" ;; esac
@@ -254,7 +254,7 @@ printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/3tched-fs" ||
 
 # threetched: pinned upstream binary staged as usr/bin/threetched.
 [ -f "$THREETCHED_SOURCE_PIN" ] || die "missing threetched source pin: $THREETCHED_SOURCE_PIN"
-# shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated in the manifest check below.
+# shellcheck disable=SC1090 # release-owned, fixed-key declaration validated in the manifest check below.
 . "$THREETCHED_SOURCE_PIN"
 [ -x "$THREETCHED_BIN" ] || die "missing threetched binary; run vendor/threetched/build-threetched.sh"
 [ -f "$THREETCHED_MANIFEST" ] || die "missing threetched provenance manifest: $THREETCHED_MANIFEST"
@@ -308,7 +308,7 @@ else
     # Untracked build inputs (e.g. generated sources) live only in the
     # worktree; tracked files always come from HEAD above, never the worktree.
     if [ -n "$(git -C "$UI_REPO" ls-files --others --exclude-standard)" ]; then
-        (CDPATH= cd -- "$UI_REPO" && git ls-files --others --exclude-standard -z |
+        (CDPATH='' cd -- "$UI_REPO" && git ls-files --others --exclude-standard -z |
             tar --null -T - -cf -) | tar -x -C "$UI_TMP" ||
             die "cannot overlay untracked UI inputs from $UI_REPO"
     fi
@@ -321,7 +321,7 @@ else
             "PATH=/usr/local/bin:$PATH" "SVELTEKIT_BASE_PATH=" npm --prefix "$UI_TMP" run build >/dev/null ||
             die "UI build failed for clean HEAD of $UI_REPO"
     else
-        PATH="/usr/local/bin:$PATH" SVELTEKIT_BASE_PATH= npm --prefix "$UI_TMP" run build >/dev/null ||
+        PATH="/usr/local/bin:$PATH" SVELTEKIT_BASE_PATH='' npm --prefix "$UI_TMP" run build >/dev/null ||
             die "UI build failed for clean HEAD of $UI_REPO"
     fi
     [ -f "$UI_TMP/dist/index.html" ] || die "UI build produced no dist/index.html for clean HEAD of $UI_REPO"

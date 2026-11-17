@@ -3,6 +3,7 @@
 
 # Load bash secrets (contains other env vars)
 if [ -f ~/.bash_secrets ]; then
+    # shellcheck disable=SC1090 # optional operator secrets file outside the repo
     source ~/.bash_secrets
 fi
 
@@ -25,7 +26,7 @@ sleep 2
 # Start op-web server
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$REPO_ROOT/crates/op-web"
+cd "$REPO_ROOT/crates/op-web" || exit 1
 
 echo "🚀 Starting op-web server..."
 echo "   Port: $PORT"

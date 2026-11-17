@@ -1,7 +1,7 @@
 #!/bin/sh
 # Explicit operator-run fixture: no privileges, real mounts, or live services.
 set -eu
-source_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+source_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT HUP INT TERM
 export fixture
