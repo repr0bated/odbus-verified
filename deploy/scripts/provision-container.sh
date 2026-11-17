@@ -9,18 +9,21 @@
 #      otherwise the next free ID-N.
 #   3. incus create --empty on 3tched-pool, then op-container from-seed: the
 #      container volume becomes a writable CoW snapshot of images/@seed.
-#      No NIC. The seed runs the identity owner inside the container:
-#      opdbus-lo puts 10.0.0.2/32 on lo, op-grpc-bridge serves the door on
-#      10.0.0.2:8090 and lungs.sock, and 3tchedfs/threetchedfs mount both
-#      views over that lungs.sock. An isolated idmap gives each container its
-#      own host uid range. Devices (idmap-shifted):
+#      No NIC. Inside the container, opdbus-lo puts 10.0.0.2/32 on lo and the
+#      seed's op-grpc-bridge serves the door on 10.0.0.2:8090; 3tchedfs and
+#      threetchedfs mount both views. Lungs stay on the host: the host
+#      bridge's lungs.sock is shared into every container, which it binds to
+#      the calling container (BindCurrentContainer). An isolated idmap gives
+#      each container its own host uid range. Devices (idmap-shifted):
 #        /dev/fuse                     for the in-container 3tchedFS mounts
-#        /opt/run-mounts/opdbus        host /run/opdbus/ct/<name>; the seed
-#                                      links /run/opdbus here, so the host
-#                                      reaches this container's lungs.sock
+#        /opt/run-mounts/opdbus        host /run/opdbus/ct/<name> (the seed
+#                                      links /run/opdbus here)
+#        .../opdbus/lungs              host /run/opdbus/lungs, read-only, so
+#                                      nothing in the container can replace
+#                                      the host socket
 #        /dev/shm/opdbus/plugin-blobs  the host's sealed catalog, read-only
-#        /opt/run-mounts/opdbus/tunnel chatbot only: op-tunnel-mux delivers
-#                                      the host door into its door
+#        .../opdbus/tunnel             chatbot only: the shared door socket
+#                                      (op-tunnel-mux) its door connects out on
 #      The chatbot has no internet. ID-N get NIC-less egress from
 #      ct-egress-relay (loopback socat to host Unix sockets) after start.
 #   4. The decoy minted the identity (IID1, delivered over WARP). It is placed
@@ -49,6 +52,7 @@ fail() { echo "provision-container: $*" >&2; exit 1; }
 [ -r "$TRUST" ] || fail "decoy trust store $TRUST is absent"
 [ -x "$ACCEPT" ] && [ -x "$OP_CONTAINER" ] || fail "op-identity-accept and op-container are required"
 [ -d "$CATALOG" ] || fail "sealed catalog $CATALOG is absent"
+[ -S /run/opdbus/lungs/lungs.sock ] || fail "host lungs socket /run/opdbus/lungs/lungs.sock is absent"
 
 SESSION=$("$ACCEPT" derive --pubkey "$KEY" | awk '{print $1}')
 [ -n "$SESSION" ] || fail "cannot derive the session id for $KEY"
@@ -79,6 +83,7 @@ incus config device add "$NAME" fuse unix-char source=/dev/fuse path=/dev/fuse m
 RUNDIR=/run/opdbus/ct/$NAME
 install -d -m 0755 "$RUNDIR"
 incus config device add "$NAME" opdbus-run disk source="$RUNDIR" path=/opt/run-mounts/opdbus shift=true >/dev/null
+incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/opt/run-mounts/opdbus/lungs readonly=true shift=true >/dev/null
 incus config device add "$NAME" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true >/dev/null
 if [ "$NAME" = "$CHATBOT_NAME" ]; then
     incus config device add "$NAME" tunnel disk source=/run/opdbus/tunnel path=/opt/run-mounts/opdbus/tunnel shift=true >/dev/null
