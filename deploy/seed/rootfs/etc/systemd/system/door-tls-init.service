@@ -1,0 +1,12 @@
+[Unit]
+Description=Generate this container's door TLS pair (key stays in the container)
+After=local-fs.target systemd-tmpfiles-setup.service
+Before=op-grpc-bridge.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/libexec/op-dbus/door-tls-init
+
+[Install]
+WantedBy=multi-user.target

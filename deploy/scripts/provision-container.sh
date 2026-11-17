@@ -24,8 +24,10 @@
 #        /dev/shm/opdbus/plugin-blobs  the host's sealed catalog, read-only
 #        .../opdbus/tunnel             chatbot only: the shared door socket
 #                                      (op-tunnel-mux) its door connects out on
-#        /etc/op-dbus/tls              chatbot only, read-only: the door's
-#                                      TLS pair; TLS ends at its tonic door
+#      The door's TLS key is generated inside the container on first boot
+#      (door-tls-init) and never exists on the host; its public certificate
+#      appears at /run/opdbus/ct/<name>/door.crt and its fingerprint is
+#      printed for pinning.
 #      The chatbot has no internet. ID-N get NIC-less egress from
 #      ct-egress-relay (loopback socat to host Unix sockets) after start.
 #   4. The decoy minted the identity (IID1, delivered over WARP). It is placed
@@ -89,7 +91,6 @@ incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/opt/ru
 incus config device add "$NAME" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true >/dev/null
 if [ "$NAME" = "$CHATBOT_NAME" ]; then
     incus config device add "$NAME" tunnel disk source=/run/opdbus/tunnel path=/opt/run-mounts/opdbus/tunnel shift=true >/dev/null
-    incus config device add "$NAME" door-tls disk source=/etc/op-dbus/tls path=/etc/op-dbus/tls readonly=true shift=true >/dev/null
 fi
 
 "$OP_CONTAINER" from-seed "$NAME"
@@ -103,5 +104,14 @@ install -m 0600 "$ISSUED" "$ROOT/agent/user/issued_identity.iid1"
 incus start "$NAME"
 if [ "$NAME" != "$CHATBOT_NAME" ]; then
     "$(dirname -- "$(readlink -f "$0")")/../runit/ct-egress-relay/install.sh" "$NAME"
+fi
+if [ "$NAME" = "$CHATBOT_NAME" ]; then
+    i=0
+    until [ -s "$RUNDIR/door.crt" ]; do
+        i=$((i + 1)); [ "$i" -ge 60 ] && fail "door certificate did not appear in $RUNDIR"
+        sleep 1
+    done
+    echo "door certificate $RUNDIR/door.crt"
+    openssl x509 -in "$RUNDIR/door.crt" -noout -fingerprint -sha256
 fi
 echo "$NAME $SESSION"

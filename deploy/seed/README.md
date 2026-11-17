@@ -17,8 +17,13 @@ this directory is their source.
 - `bridge.env`: the container bridge's own lungs socket is private
   (`/run/op-grpc-bridge/lungs.sock`). Lungs stay on the host; the bridge's
   `bind_socket` unlinks an existing socket, so it must never share the
-  host's path. Door TLS uses `/etc/op-dbus/tls/tonic-svc0.{crt,key}`, which
-  provisioning binds read-only into the door-owning chatbot only.
+  host's path. Door TLS uses the container's own pair in
+  `/var/lib/op-dbus/door-tls/`.
+- `door-tls-init.service` + `usr/local/libexec/op-dbus/door-tls-init`:
+  generates the door key and self-signed certificate once, inside the
+  container; the key never exists on the host. Only the public certificate is
+  exported as `/run/opdbus/door.crt` (host `/run/opdbus/ct/<name>/door.crt`)
+  for clients and op-web to pin. End-to-end TLS: client to container.
 
 Apply by making the seed writable, copying these files, and setting it
 read-only again. Never while a container depends on the seed.

@@ -1,0 +1,28 @@
+#!/bin/sh
+# Generate this container's door TLS pair once, inside the container. The
+# private key never leaves it; only the public certificate is exported to the
+# shared host directory (/run/opdbus -> host /run/opdbus/ct/<name>) so clients
+# and op-web can pin it. TLS from the client ends here, at this container's
+# tonic door, with a key no other host holds. Self-signed and CA:TRUE, so
+# the certificate itself is the trust anchor clients pin (as tonic-svc0 was).
+set -eu
+DIR=/var/lib/op-dbus/door-tls
+umask 077
+install -d -m 0700 "$DIR"
+if [ ! -s "$DIR/door.key" ] || [ ! -s "$DIR/door.crt" ]; then
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+        -keyout "$DIR/door.key.new" -out "$DIR/door.crt.new" -days 3650 \
+        -subj "/CN=10.0.0.2" \
+        -addext "subjectAltName=IP:10.0.0.2,IP:127.0.0.1,DNS:localhost,DNS:dashboard.ghostbridge.tech" \
+        -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
+        -addext "keyUsage=critical,digitalSignature,keyCertSign" \
+        -addext "extendedKeyUsage=serverAuth" 2>/dev/null
+    mv "$DIR/door.key.new" "$DIR/door.key"
+    mv "$DIR/door.crt.new" "$DIR/door.crt"
+fi
+chmod 0600 "$DIR/door.key"
+chmod 0644 "$DIR/door.crt"
+if [ -d /run/opdbus ]; then
+    install -m 0644 "$DIR/door.crt" /run/opdbus/door.crt.new
+    mv /run/opdbus/door.crt.new /run/opdbus/door.crt
+fi
