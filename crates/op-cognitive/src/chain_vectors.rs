@@ -602,7 +602,7 @@ impl ChainVectorIndex {
                         &point_id(block.block_num).to_string(),
                         &link_refs,
                     )
-                    .map_err(|e| anyhow::Error::new(e))
+                    .map_err(anyhow::Error::new)
                     .with_context(|| {
                         format!("failed to write chain links for block {}", block.block_num)
                     })?;
@@ -1010,8 +1010,9 @@ mod tests {
     fn timing_u64(value: &simd_json::OwnedValue, key: &str) -> Option<u64> {
         match value {
             simd_json::OwnedValue::Object(map) => map.get(key).and_then(|v| match v {
-                simd_json::OwnedValue::I64(n) => Some(*n as u64),
-                simd_json::OwnedValue::U64(n) => Some(*n),
+                // simd-json 0.13 keeps integers under Static(StaticNode::…).
+                simd_json::OwnedValue::Static(simd_json::StaticNode::I64(n)) => Some(*n as u64),
+                simd_json::OwnedValue::Static(simd_json::StaticNode::U64(n)) => Some(*n),
                 _ => None,
             }),
             _ => None,
@@ -1025,7 +1026,7 @@ mod tests {
     ) {
         match value {
             simd_json::OwnedValue::Object(map) => {
-                for (key, child) in map {
+                for (key, child) in map.iter() {
                     flatten_timing_data(child, &format!("{prefix}.{key}"), out);
                 }
             }
@@ -1035,14 +1036,13 @@ mod tests {
                 }
             }
             simd_json::OwnedValue::String(s) => out.push((prefix.to_string(), s.to_string())),
-            simd_json::OwnedValue::I64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::U64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::F64(n) => out.push((prefix.to_string(), n.to_string())),
-            simd_json::OwnedValue::Bool(b) => out.push((prefix.to_string(), b.to_string())),
-            simd_json::OwnedValue::Static(simd_json::StaticNode::Null) => {}
-            simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(b)) => {
-                out.push((prefix.to_string(), b.to_string()));
-            }
+            simd_json::OwnedValue::Static(node) => match node {
+                simd_json::StaticNode::I64(n) => out.push((prefix.to_string(), n.to_string())),
+                simd_json::StaticNode::U64(n) => out.push((prefix.to_string(), n.to_string())),
+                simd_json::StaticNode::F64(n) => out.push((prefix.to_string(), n.to_string())),
+                simd_json::StaticNode::Bool(b) => out.push((prefix.to_string(), b.to_string())),
+                simd_json::StaticNode::Null => {}
+            },
         }
     }
 
