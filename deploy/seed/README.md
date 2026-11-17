@@ -17,7 +17,8 @@ this directory is their source.
 - `bridge.env`: the container bridge's own lungs socket is private
   (`/run/op-grpc-bridge/lungs.sock`). Lungs stay on the host; the bridge's
   `bind_socket` unlinks an existing socket, so it must never share the
-  host's path.
+  host's path. Door TLS uses `/etc/op-dbus/tls/tonic-svc0.{crt,key}`, which
+  provisioning binds read-only into the door-owning chatbot only.
 
 Apply by making the seed writable, copying these files, and setting it
 read-only again. Never while a container depends on the seed.

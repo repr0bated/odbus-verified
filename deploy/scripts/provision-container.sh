@@ -24,6 +24,8 @@
 #        /dev/shm/opdbus/plugin-blobs  the host's sealed catalog, read-only
 #        .../opdbus/tunnel             chatbot only: the shared door socket
 #                                      (op-tunnel-mux) its door connects out on
+#        /etc/op-dbus/tls              chatbot only, read-only: the door's
+#                                      TLS pair; TLS ends at its tonic door
 #      The chatbot has no internet. ID-N get NIC-less egress from
 #      ct-egress-relay (loopback socat to host Unix sockets) after start.
 #   4. The decoy minted the identity (IID1, delivered over WARP). It is placed
@@ -87,6 +89,7 @@ incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/opt/ru
 incus config device add "$NAME" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true >/dev/null
 if [ "$NAME" = "$CHATBOT_NAME" ]; then
     incus config device add "$NAME" tunnel disk source=/run/opdbus/tunnel path=/opt/run-mounts/opdbus/tunnel shift=true >/dev/null
+    incus config device add "$NAME" door-tls disk source=/etc/op-dbus/tls path=/etc/op-dbus/tls readonly=true shift=true >/dev/null
 fi
 
 "$OP_CONTAINER" from-seed "$NAME"
