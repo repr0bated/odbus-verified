@@ -1309,6 +1309,11 @@ fn hex_bytes(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02X}")).collect()
 }
 
+#[cfg_attr(not(test), allow(dead_code))] // exercised by namespace unit tests
+fn inode_for_path(path: &str) -> u64 {
+    inode_for_surface(Surface::Our, path)
+}
+
 fn inode_for_surface(surface: Surface, path: &str) -> u64 {
     let keyed = format!("{}:{path}", surface.as_str());
     let bytes = blake3::hash(keyed.as_bytes()).as_bytes()[..8]
