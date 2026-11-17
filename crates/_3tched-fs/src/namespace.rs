@@ -448,16 +448,15 @@ impl Namespace {
         identity: MountIdentity,
         instance_uuid: Option<&str>,
     ) -> Result<()> {
-        if let MountIdentity::HostSession { session } = &identity {
-            if session.is_empty()
+        if let MountIdentity::HostSession { session } = &identity
+            && (session.is_empty()
                 || session.len() > 128
                 || !session
                     .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')))
             {
                 bail!("invalid declared mount session");
             }
-        }
         if let Some(instance) = instance_uuid {
             uuid::Uuid::parse_str(instance).context("invalid mount instance UUID")?;
         }
@@ -1308,10 +1307,6 @@ pub fn encode_component(value: &str) -> String {
 
 fn hex_bytes(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02X}")).collect()
-}
-
-fn inode_for_path(path: &str) -> u64 {
-    inode_for_surface(Surface::Our, path)
 }
 
 fn inode_for_surface(surface: Surface, path: &str) -> u64 {

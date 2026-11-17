@@ -24,22 +24,6 @@ impl Budget {
         })
     }
 }
-
-#[cfg(test)]
-mod serialization_tests {
-    use super::*;
-
-    #[test]
-    fn serialization_keeps_document_newline_and_releases_charge_on_expansion_limit() {
-        let budget = Arc::new(Budget::default());
-        let output = Buffer::serialize(&budget, &serde_json::json!({"value":true})).unwrap();
-        assert_eq!(output.bytes, b"{\n  \"value\": true\n}\n");
-        drop(output);
-        let escaped = "\0".repeat(DOCUMENT_LIMIT / 4);
-        assert!(matches!(Buffer::serialize(&budget, &escaped), Err(EFBIG)));
-        assert!(budget.take(TOTAL_LIMIT, TOTAL_LIMIT).is_ok());
-    }
-}
 pub(super) struct Charge {
     budget: Arc<Budget>,
     amount: usize,
@@ -161,5 +145,21 @@ impl Buffer {
         }
         self.bytes.resize(size, 0);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod serialization_tests {
+    use super::*;
+
+    #[test]
+    fn serialization_keeps_document_newline_and_releases_charge_on_expansion_limit() {
+        let budget = Arc::new(Budget::default());
+        let output = Buffer::serialize(&budget, &serde_json::json!({"value":true})).unwrap();
+        assert_eq!(output.bytes, b"{\n  \"value\": true\n}\n");
+        drop(output);
+        let escaped = "\0".repeat(DOCUMENT_LIMIT / 4);
+        assert!(matches!(Buffer::serialize(&budget, &escaped), Err(EFBIG)));
+        assert!(budget.take(TOTAL_LIMIT, TOTAL_LIMIT).is_ok());
     }
 }

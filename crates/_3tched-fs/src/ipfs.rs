@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn block_verifies_against_blake3_cid() {
         let bytes = b"typed object".to_vec();
-        let cid = cid_for(&blake3::hash(&bytes).to_hex().to_string()).unwrap();
+        let cid = cid_for(blake3::hash(&bytes).to_hex().as_ref()).unwrap();
         assert!(Block::new(cid, bytes).is_ok());
         assert!(Block::new(cid, b"tampered".to_vec()).is_err());
     }

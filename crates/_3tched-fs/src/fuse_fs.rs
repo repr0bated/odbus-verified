@@ -1626,7 +1626,7 @@ mod tests {
         );
         fs.open_files.remove(&fh);
         let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
-        for replacement in [b'4', b'5'] {
+        for replacement in *b"45" {
             {
                 let mut handle = fs.open_files[&fh].lock();
                 handle.bytes.resize(1, DOCUMENT_LIMIT).unwrap();

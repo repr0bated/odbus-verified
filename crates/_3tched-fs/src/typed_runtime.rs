@@ -1,5 +1,6 @@
 //! Runtime for schema-generated node contracts. This module adds no backend control plane.
 #![allow(dead_code)]
+#![allow(clippy::result_large_err)] // NodeError carries mount diagnostics; boxing would change the public Result shape
 use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::ffi::CString;
