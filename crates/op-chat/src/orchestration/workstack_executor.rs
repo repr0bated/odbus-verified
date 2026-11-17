@@ -981,6 +981,8 @@ impl WorkstackExecutor {
 
     /// Execute rollback for a failed phase
     async fn execute_rollback(&self, ctx: &mut ExecutionContext, phase: &WorkstackPhase) {
+        // OrchestrationError is intentionally large; keep the admission Result unboxed.
+        #[allow(clippy::result_large_err)]
         let admitted = self
             .authorize_execution_control(
                 &ctx.scope.session_id,
