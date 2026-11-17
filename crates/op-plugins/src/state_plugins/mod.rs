@@ -104,6 +104,7 @@ pub mod threetched;
 pub mod _3tched_fs;
 pub mod _3tched_fs_contract;
 pub mod fuse;
+pub mod tunnel;
 pub mod unix_socket;
 pub mod users;
 pub mod web_ui;

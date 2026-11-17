@@ -3,11 +3,7 @@ name = "op-tunnel-mux"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Tonic mux for NIC-less container streams over lungs/tunnel.sock"
-
-[[bin]]
-name = "op-tunnel-mux"
-path = "src/main.rs"
+description = "Door tunnel: host door spliced into the door-owning container over a shared socket"
 
 [[bin]]
 name = "op-tunnel-door"

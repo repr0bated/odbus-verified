@@ -159,7 +159,7 @@ impl RuntimeError {
     }
     pub(crate) fn denied(message: impl Into<String>) -> Self { Self::new(ErrorKind::Denied, message) }
     pub(crate) fn unsupported(message: impl Into<String>) -> Self { Self::new(ErrorKind::Unsupported, message) }
-    fn unsupported_before_effect(message: impl Into<String>) -> Self {
+    pub(crate) fn unsupported_before_effect(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::BeforeEffect, message)
     }
     pub(crate) fn backend(error: anyhow::Error) -> Self {
@@ -500,6 +500,7 @@ impl Runtime {
         if crate::runtime_cognitive::supports(plugin, method) { return self.inner.cognitive.dispatch(ctx, plugin, method, args).await; }
         if crate::runtime_workspace::supports(plugin, method) { return crate::runtime_workspace::dispatch(ctx, plugin, method, args).await; }
         if crate::runtime_network::supports(plugin, method) { return self.network().dispatch(ctx, plugin, method, args).await; }
+        if crate::runtime_tunnel::supports(plugin, method) { return crate::runtime_tunnel::dispatch(ctx, method, args).await; }
         if plugin == "elevation" {
             let result = crate::task_elevation::dispatch(self, ctx.caller, method, args).await?;
             return Ok(BackendOutcome { result, state: BackendStateUpdate::Unchanged,

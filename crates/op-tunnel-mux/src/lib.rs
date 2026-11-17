@@ -7,11 +7,16 @@
 //! refused. Inbound only: NIC-less egress for identity containers is
 //! ct-egress (loopback socat to host Unix sockets); the chatbot has none.
 //! Identity is the Unix peer credential. Cancellation drops the TCP connection.
+//!
+//! The host bridge owns the mux as the sealed `tunnel` plugin: its status and
+//! open/close controls are methods visible through 3tchedFS; the bytes stay on
+//! this socket.
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::task::{Context, Poll};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -64,9 +69,41 @@ impl AcceptQueue {
     }
 }
 
-#[derive(Clone, Default)]
+struct Active {
+    uid: u32,
+    since: i64,
+    abort: tokio::task::AbortHandle,
+}
+
+#[derive(Clone)]
 pub struct Mux {
     accepts: AcceptQueue,
+    open: Arc<AtomicBool>,
+    next_id: Arc<AtomicU64>,
+    active: Arc<std::sync::Mutex<HashMap<u64, Active>>>,
+}
+
+impl Default for Mux {
+    fn default() -> Self {
+        Self {
+            accepts: AcceptQueue::default(),
+            open: Arc::new(AtomicBool::new(true)),
+            next_id: Arc::new(AtomicU64::new(1)),
+            active: Arc::default(),
+        }
+    }
+}
+
+/// A point-in-time view of the door, for the `tunnel` plugin state.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MuxStatus {
+    pub open: bool,
+    /// Peer uids holding an Accept; one is the door owner.
+    pub waiting_uids: Vec<u32>,
+    pub waiting: usize,
+    pub active: usize,
+    /// Unix seconds of the oldest active splice.
+    pub oldest_active_since: Option<i64>,
 }
 
 impl Mux {
@@ -75,7 +112,67 @@ impl Mux {
     }
 
     pub async fn deliver_inbound(&self, stream: TcpStream) -> Result<(), &'static str> {
+        if !self.open.load(Ordering::SeqCst) {
+            return Err("door is closed");
+        }
         self.accepts.deliver(stream).await
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open.load(Ordering::SeqCst)
+    }
+
+    /// Open or close the door. Closing refuses new door connections and
+    /// drops every active splice; returns how many were dropped.
+    pub fn set_open(&self, open: bool) -> usize {
+        self.open.store(open, Ordering::SeqCst);
+        if open { 0 } else { self.close_active() }
+    }
+
+    /// Drop every active splice without changing open/closed.
+    pub fn close_active(&self) -> usize {
+        let drained: Vec<Active> = self.active.lock().expect("active map").drain().map(|(_, a)| a).collect();
+        for conn in &drained {
+            conn.abort.abort();
+        }
+        drained.len()
+    }
+
+    pub async fn status(&self) -> MuxStatus {
+        let mut waiting_uids = Vec::new();
+        let mut waiting = 0;
+        {
+            let mut guard = self.accepts.inner.lock().await;
+            guard.retain(|_, waiters| {
+                waiters.retain(|tx| !tx.is_closed());
+                !waiters.is_empty()
+            });
+            for (uid, waiters) in guard.iter() {
+                waiting_uids.push(*uid);
+                waiting += waiters.len();
+            }
+        }
+        waiting_uids.sort_unstable();
+        let active = self.active.lock().expect("active map");
+        MuxStatus {
+            open: self.is_open(),
+            waiting_uids,
+            waiting,
+            active: active.len(),
+            oldest_active_since: active.values().map(|a| a.since).min(),
+        }
+    }
+
+    fn untrack(&self, id: u64) {
+        self.active.lock().expect("active map").remove(&id);
+    }
+
+    /// Active splices per owning uid (diagnostics).
+    pub fn active_uids(&self) -> Vec<u32> {
+        let mut uids: Vec<u32> = self.active.lock().expect("active map").values().map(|a| a.uid).collect();
+        uids.sort_unstable();
+        uids.dedup();
+        uids
     }
 }
 
@@ -123,9 +220,15 @@ impl tokio_stream::Stream for AbortOnDrop {
 
 /// Splice a gRPC frame stream with a TCP connection. `first` (the remote
 /// address) is sent to the container before any bytes.
-fn spawn_splice(mut inbound: Streaming<Frame>, tcp: TcpStream, first: Option<Frame>) -> AbortOnDrop {
+fn spawn_splice(
+    mut inbound: Streaming<Frame>,
+    tcp: TcpStream,
+    first: Option<Frame>,
+    done: impl FnOnce() + Send + 'static,
+) -> (AbortOnDrop, tokio::task::AbortHandle) {
     let (tx, rx) = mpsc::channel(32);
     let task = tokio::spawn(async move {
+        let _done = OnDrop(Some(done));
         if let Some(frame) = first {
             if tx.send(Ok(frame)).await.is_err() {
                 return;
@@ -173,7 +276,19 @@ fn spawn_splice(mut inbound: Streaming<Frame>, tcp: TcpStream, first: Option<Fra
         }
         writer.shutdown().await.ok();
     });
-    AbortOnDrop { rx, abort: task.abort_handle() }
+    let abort = task.abort_handle();
+    (AbortOnDrop { rx, abort: abort.clone() }, abort)
+}
+
+/// Runs its closure when dropped, including when the splice task is aborted.
+struct OnDrop<F: FnOnce()>(Option<F>);
+
+impl<F: FnOnce()> Drop for OnDrop<F> {
+    fn drop(&mut self) {
+        if let Some(done) = self.0.take() {
+            done();
+        }
+    }
 }
 
 #[tonic::async_trait]
@@ -187,7 +302,18 @@ impl Tunnel for Mux {
         self.accepts.push(uid, tx).await;
         let tcp = rx.await.map_err(|_| Status::cancelled("inbound splice cancelled"))?;
         let remote = tcp.peer_addr().unwrap_or(SocketAddr::from(([0, 0, 0, 0], 0)));
-        Ok(Response::new(spawn_splice(inbound, tcp, Some(frame_target(remote)))))
+        // Register before the splice can finish, so its untrack always follows.
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let mux = self.clone();
+        let (stream, abort) = spawn_splice(inbound, tcp, Some(frame_target(remote)), move || mux.untrack(id));
+        let since = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or_default();
+        if !abort.is_finished() {
+            self.active.lock().expect("active map").insert(id, Active { uid, since, abort });
+        }
+        Ok(Response::new(stream))
     }
 }
 
@@ -295,6 +421,21 @@ mod tests {
         let mut buf = [0u8; 4];
         remote.read_exact(&mut buf).await.unwrap();
         assert_eq!(&buf, b"back");
+    }
+
+    #[tokio::test]
+    async fn a_closed_door_refuses_and_drops_active_splices() {
+        let mux = Mux::new();
+        assert!(mux.is_open());
+        assert_eq!(mux.set_open(false), 0);
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let _client = TcpStream::connect(addr).await.unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
+        assert_eq!(mux.deliver_inbound(stream).await, Err("door is closed"));
+        let status = mux.status().await;
+        assert!(!status.open);
+        assert_eq!(status.active, 0);
     }
 
     #[tokio::test]

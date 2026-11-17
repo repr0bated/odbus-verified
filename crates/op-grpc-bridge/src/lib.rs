@@ -72,6 +72,8 @@ pub(crate) mod runtime_cognitive;
 pub(crate) mod runtime_workspace;
 #[path = "runtime_network.rs"]
 pub(crate) mod runtime_network;
+#[path = "runtime_tunnel.rs"]
+pub(crate) mod runtime_tunnel;
 #[path = "runtime_mqtt.rs"]
 pub(crate) mod runtime_mqtt;
 #[path = "runtime_identity_owner.rs"]

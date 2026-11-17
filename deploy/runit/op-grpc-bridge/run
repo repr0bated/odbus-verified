@@ -144,10 +144,15 @@ until has_local_ipv4 10.0.0.2; do
 done
 startup_phase private-door-address-ready
 
-# The fresh runtime's only ingress is TLS at the existing private door.
-# Local filesystem callers use OPDBUS_LUNGS_SOCKET, not a second gRPC listener.
-FABRIC_BIND="10.0.0.2:8090"
+# The door belongs to the door-owning container (the control-plane chatbot):
+# its own tonic door ends TLS. This bridge owns the door tunnel (sealed plugin
+# `tunnel`): 10.0.0.2:8090 is spliced over /run/opdbus/tunnel/tunnel.sock into
+# that container. The host bridge's own tonic listens on loopback only, for
+# host-local callers. Filesystem callers use OPDBUS_LUNGS_SOCKET.
+FABRIC_BIND="127.0.0.1:8090"
 export OP_GRPC_BRIDGE_LISTEN="$FABRIC_BIND"
+export OP_TUNNEL_DOOR="10.0.0.2:8090"
+export OP_TUNNEL_SOCKET=/run/opdbus/tunnel/tunnel.sock
 unset OP_DBUS_GRPC_LISTEN THREETCHED_BIND_ADDR GRPC_BIND THREETCHED_UNIX_SOCKET
 export THREETCHED_TLS_CERT_FILE="${THREETCHED_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export THREETCHED_TLS_KEY_FILE="${THREETCHED_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
