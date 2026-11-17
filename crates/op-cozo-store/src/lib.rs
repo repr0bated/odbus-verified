@@ -15,6 +15,12 @@ pub use external_mcp_sessions::ExternalMcpSessionRecord;
 mod system_graph;
 pub use system_graph::*;
 
+mod block_store;
+pub use block_store::{
+    BlockDevice, BlockStoreCounts, CozoBlockStore, DEFAULT_UBLK_COZO_DB_PATH,
+    POOL_DEFAULT_PERSIST_BYTES, POOL_DEFAULT_PERSIST_DEVICE, POOL_PERSIST_ROLE,
+    UBLK_CHUNK_BYTES, UBLK_COZO_DB_PATH_ENV, UBLK_LOGICAL_BLOCK_BYTES, ublk_cozo_db_path,
+};
 mod identity_inventory;
 mod identity_transactions;
 pub use identity_inventory::{

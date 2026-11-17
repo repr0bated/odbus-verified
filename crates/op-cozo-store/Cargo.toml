@@ -45,5 +45,9 @@ path = "src/bin/validate-chatbot-state.rs"
 name = "sled-row"
 path = "src/bin/sled-row.rs"
 
+[[bin]]
+name = "ublk-block-store"
+path = "src/bin/ublk-block-store.rs"
+
 [dev-dependencies]
 tempfile = { workspace = true }
