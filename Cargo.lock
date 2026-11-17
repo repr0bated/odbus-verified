@@ -6739,6 +6739,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "op-tunnel-mux"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "hyper-util",
+ "prost 0.13.5",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build 0.12.3",
+ "tonic-reflection",
+ "tower 0.4.13",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "op-web"
 version = "1.0.0"
 dependencies = [

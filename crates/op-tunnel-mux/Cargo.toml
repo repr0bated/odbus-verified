@@ -1,0 +1,27 @@
+[package]
+name = "op-tunnel-mux"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Tonic mux for NIC-less container streams over lungs/tunnel.sock"
+
+[[bin]]
+name = "op-tunnel-mux"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tonic.workspace = true
+tonic-reflection.workspace = true
+prost.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
+
+[dev-dependencies]
+tower.workspace = true
+hyper-util.workspace = true
