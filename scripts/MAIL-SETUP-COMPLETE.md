@@ -10,10 +10,10 @@ Your mail server is now running in the `crd-astral` container.
 
 ## Mail Accounts Created
 
-- **jeremy@3tched.com** (password: `jeremy123`)
-- **admin@3tched.com** (password: `admin123`)
+- **jeremy@3tched.com**
+- **admin@3tched.com**
 
-⚠️ **Change these passwords!**
+Passwords are host-only (Maddy creds store). Never commit them. Set or rotate with:
 ```bash
 incus exec crd-astral -- /usr/local/bin/maddy creds password jeremy@3tched.com
 incus exec crd-astral -- /usr/local/bin/maddy creds password admin@3tched.com
