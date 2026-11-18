@@ -58,12 +58,18 @@ impl SurfaceSnapshot {
         struct Ceiling(usize);
         impl std::io::Write for Ceiling {
             fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-                self.0 = self.0.checked_add(bytes.len())
+                self.0 = self
+                    .0
+                    .checked_add(bytes.len())
                     .filter(|size| *size <= CAPTURE_BYTES)
-                    .ok_or_else(|| std::io::Error::other("threetched snapshot exceeds byte ceiling"))?;
+                    .ok_or_else(|| {
+                        std::io::Error::other("threetched snapshot exceeds byte ceiling")
+                    })?;
                 Ok(bytes.len())
             }
-            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
         }
         serde_json::to_writer(Ceiling(0), self)?;
         Ok(())
@@ -112,7 +118,8 @@ impl Capture<'_> {
             Instant::now() < self.deadline,
             "threetched CLI discovery deadline exceeded"
         );
-        let text = crate::fuse_process::capture_surface_with_config(self.binary, args, self.config_dir)?;
+        let text =
+            crate::fuse_process::capture_surface_with_config(self.binary, args, self.config_dir)?;
         self.bytes = self
             .bytes
             .checked_add(text.len())
@@ -141,8 +148,8 @@ impl Capture<'_> {
             .with_context(|| format!("capture threetched help for {}", path.join(" ")))?;
         let children = command_words(&help)
             .with_context(|| format!("discover threetched children of {}", path.join(" ")))?;
-        let usage =
-            usage(&help).with_context(|| format!("parse threetched usage for {}", path.join(" ")))?;
+        let usage = usage(&help)
+            .with_context(|| format!("parse threetched usage for {}", path.join(" ")))?;
         if children.is_empty() || optional_command(&usage) {
             let id = path.join(".");
             ensure!(!id.is_empty(), "empty threetched method ID");
@@ -172,18 +179,21 @@ impl ThreetchedSurface {
         Self::capture_selected(binary.as_ref(), None)
     }
 
-    pub fn capture_with_config(binary: impl AsRef<Path>, config_dir: impl AsRef<Path>) -> Result<Self> {
-        ensure!(config_dir.as_ref().is_absolute(), "capture config directory must be absolute");
+    pub fn capture_with_config(
+        binary: impl AsRef<Path>,
+        config_dir: impl AsRef<Path>,
+    ) -> Result<Self> {
+        ensure!(
+            config_dir.as_ref().is_absolute(),
+            "capture config directory must be absolute"
+        );
         Self::capture_selected(binary.as_ref(), Some(config_dir.as_ref()))
     }
 
     fn capture_selected(binary: &Path, config_dir: Option<&Path>) -> Result<Self> {
-        let binary_path = binary.canonicalize().with_context(|| {
-            format!(
-                "resolve selected threetched binary {}",
-                binary.display()
-            )
-        })?;
+        let binary_path = binary
+            .canonicalize()
+            .with_context(|| format!("resolve selected threetched binary {}", binary.display()))?;
         let binary_sha256 = binary_digest(&binary_path)?;
         let mut capture = Capture {
             binary: &binary_path,
@@ -194,8 +204,8 @@ impl ThreetchedSurface {
             commands: BTreeMap::new(),
         };
         let schema_bytes = capture.run(&["config", "schema"])?.into_bytes();
-        let schema_json =
-            serde_json::from_slice(&schema_bytes).context("threetched config schema is not JSON")?;
+        let schema_json = serde_json::from_slice(&schema_bytes)
+            .context("threetched config schema is not JSON")?;
         let schema_sha256 = format!("{:x}", Sha256::digest(&schema_bytes));
         let root = capture.run(&["--help"])?;
         let children = command_words(&root)?;
@@ -232,55 +242,113 @@ impl ThreetchedSurface {
             config_schema: String::from_utf8(self.schema_bytes.clone()).expect("capture is UTF-8"),
             config_schema_sha256: self.schema_sha256.clone(),
             version: self.version.clone(),
-            commands: self.commands.iter().map(|(name, command)| {
-                (name.clone(), CapturedCommand {
-                    argv: command.argv.clone(), summary: command.summary.clone(), help: command.help.clone(),
-                    input_schema: self.input_schema(name).expect("captured input contract was checked"),
-                    output_schema: self.output_schema(name).expect("captured command exists"),
+            commands: self
+                .commands
+                .iter()
+                .map(|(name, command)| {
+                    (
+                        name.clone(),
+                        CapturedCommand {
+                            argv: command.argv.clone(),
+                            summary: command.summary.clone(),
+                            help: command.help.clone(),
+                            input_schema: self
+                                .input_schema(name)
+                                .expect("captured input contract was checked"),
+                            output_schema: self
+                                .output_schema(name)
+                                .expect("captured command exists"),
+                        },
+                    )
                 })
-            }).collect(),
+                .collect(),
         }
     }
 
     /// Rebuild contracts from sealed help without executing discovery commands.
     /// Runtime selection must resolve to the exact captured binary content.
     pub fn from_snapshot(binary: impl AsRef<Path>, snapshot: &SurfaceSnapshot) -> Result<Self> {
-        ensure!(snapshot.format == "threetched-cli/1", "unsupported threetched snapshot format");
-        ensure!(!snapshot.commands.is_empty() && snapshot.commands.len() <= CAPTURE_NODES,
-            "threetched snapshot exceeds command bounds");
+        ensure!(
+            snapshot.format == "threetched-cli/1",
+            "unsupported threetched snapshot format"
+        );
+        ensure!(
+            !snapshot.commands.is_empty() && snapshot.commands.len() <= CAPTURE_NODES,
+            "threetched snapshot exceeds command bounds"
+        );
         snapshot.validate_size()?;
-        ensure!(snapshot.binary_sha256.len() == 64
-            && snapshot.binary_sha256.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
-            "invalid threetched binary digest");
-        let binary_path = binary.as_ref().canonicalize().context("resolve threetched runtime binary")?;
-        ensure!(binary_digest(&binary_path)? == snapshot.binary_sha256,
-            "threetched runtime binary differs from sealed discovery");
+        ensure!(
+            snapshot.binary_sha256.len() == 64
+                && snapshot
+                    .binary_sha256
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+            "invalid threetched binary digest"
+        );
+        let binary_path = binary
+            .as_ref()
+            .canonicalize()
+            .context("resolve threetched runtime binary")?;
+        ensure!(
+            binary_digest(&binary_path)? == snapshot.binary_sha256,
+            "threetched runtime binary differs from sealed discovery"
+        );
         let schema_bytes = snapshot.config_schema.as_bytes().to_vec();
         let schema_json: Value = serde_json::from_slice(&schema_bytes)?;
-        ensure!(schema_json.is_object(), "threetched config schema must be an object");
+        ensure!(
+            schema_json.is_object(),
+            "threetched config schema must be an object"
+        );
         let schema_sha256 = format!("{:x}", Sha256::digest(&schema_bytes));
-        ensure!(schema_sha256 == snapshot.config_schema_sha256, "threetched config schema digest mismatch");
+        ensure!(
+            schema_sha256 == snapshot.config_schema_sha256,
+            "threetched config schema digest mismatch"
+        );
         let mut commands = BTreeMap::new();
         for (id, captured) in &snapshot.commands {
-            ensure!(!captured.argv.is_empty() && captured.argv.len() <= CAPTURE_DEPTH
-                && captured.argv.iter().all(|word| command_word_valid(word))
-                && captured.argv.join(".") == *id,
-                "invalid threetched command identity {id}");
+            ensure!(
+                !captured.argv.is_empty()
+                    && captured.argv.len() <= CAPTURE_DEPTH
+                    && captured.argv.iter().all(|word| command_word_valid(word))
+                    && captured.argv.join(".") == *id,
+                "invalid threetched command identity {id}"
+            );
             let usage = usage(&captured.help)?;
-            ensure!(usage.split_whitespace().skip(1).take(captured.argv.len())
-                .eq(captured.argv.iter().map(String::as_str)),
-                "threetched command argv differs from captured usage for {id}");
-            ensure!(command_words(&captured.help)?.is_empty() || optional_command(&usage),
-                "threetched snapshot contains a non-runnable command group");
-            let command = parse_surface(captured.argv.clone(), captured.summary.clone(), usage, captured.help.clone())?;
+            ensure!(
+                usage
+                    .split_whitespace()
+                    .skip(1)
+                    .take(captured.argv.len())
+                    .eq(captured.argv.iter().map(String::as_str)),
+                "threetched command argv differs from captured usage for {id}"
+            );
+            ensure!(
+                command_words(&captured.help)?.is_empty() || optional_command(&usage),
+                "threetched snapshot contains a non-runnable command group"
+            );
+            let command = parse_surface(
+                captured.argv.clone(),
+                captured.summary.clone(),
+                usage,
+                captured.help.clone(),
+            )?;
             commands.insert(id.clone(), command);
         }
-        let surface = Self { binary_path, binary_sha256: snapshot.binary_sha256.clone(), schema_bytes,
-            schema_json, schema_sha256, version: snapshot.version.clone(), commands };
+        let surface = Self {
+            binary_path,
+            binary_sha256: snapshot.binary_sha256.clone(),
+            schema_bytes,
+            schema_json,
+            schema_sha256,
+            version: snapshot.version.clone(),
+            commands,
+        };
         for (id, captured) in &snapshot.commands {
-            ensure!(surface.input_schema(id)? == captured.input_schema
-                && surface.output_schema(id)? == captured.output_schema,
-                "threetched sealed CLI contract differs from captured help for {id}");
+            ensure!(
+                surface.input_schema(id)? == captured.input_schema
+                    && surface.output_schema(id)? == captured.output_schema,
+                "threetched sealed CLI contract differs from captured help for {id}"
+            );
         }
         Ok(surface)
     }
@@ -316,8 +384,16 @@ impl ThreetchedSurface {
     /// All captured aliases for one option, for backend context restrictions.
     /// Missing options return an empty list; unknown methods remain errors.
     pub fn option_spellings(&self, method: &str, canonical_spelling: &str) -> Result<Vec<&str>> {
-        Ok(self.command(method)?.options.iter()
-            .find(|option| option.spellings.iter().any(|spelling| spelling == canonical_spelling))
+        Ok(self
+            .command(method)?
+            .options
+            .iter()
+            .find(|option| {
+                option
+                    .spellings
+                    .iter()
+                    .any(|spelling| spelling == canonical_spelling)
+            })
             .map(|option| option.spellings.iter().map(String::as_str).collect())
             .unwrap_or_default())
     }
@@ -497,7 +573,10 @@ fn binary_digest(path: &Path) -> Result<String> {
         File::open(path).with_context(|| format!("open threetched binary {}", path.display()))?;
     let maximum = 512 * 1024 * 1024_u64;
     let metadata = file.metadata()?;
-    ensure!(metadata.is_file(), "threetched binary is not a regular file");
+    ensure!(
+        metadata.is_file(),
+        "threetched binary is not a regular file"
+    );
     ensure!(
         metadata.len() <= maximum,
         "threetched binary exceeds bounded discovery input size"
@@ -656,8 +735,12 @@ fn command_words(help: &str) -> Result<BTreeMap<String, String>> {
 }
 
 fn command_word_valid(name: &str) -> bool {
-    !name.is_empty() && name != "help" && name.len() <= TOKEN_LIMIT
-        && name.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+    !name.is_empty()
+        && name != "help"
+        && name.len() <= TOKEN_LIMIT
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 fn usage(help: &str) -> Result<String> {
@@ -1026,19 +1109,35 @@ mod tests {
     fn option_context_guard_discovers_short_alias_from_captured_help() {
         let directory = tempfile::tempdir().unwrap();
         let surface = ThreetchedSurface::capture(test_fixture_binary(directory.path())).unwrap();
-        assert_eq!(surface.option_spellings("self-test", "--config-dir").unwrap(),
-            ["-c", "--config-dir"]);
-        assert!(surface.option_spellings("self-test", "--absent").unwrap().is_empty());
+        assert_eq!(
+            surface
+                .option_spellings("self-test", "--config-dir")
+                .unwrap(),
+            ["-c", "--config-dir"]
+        );
+        assert!(
+            surface
+                .option_spellings("self-test", "--absent")
+                .unwrap()
+                .is_empty()
+        );
         assert!(surface.option_spellings("unknown", "--config-dir").is_err());
-        let restored = ThreetchedSurface::from_snapshot(surface.binary_path(), &surface.snapshot()).unwrap();
-        assert_eq!(restored.option_spellings("self-test", "--config-dir").unwrap(),
-            ["-c", "--config-dir"]);
+        let restored =
+            ThreetchedSurface::from_snapshot(surface.binary_path(), &surface.snapshot()).unwrap();
+        assert_eq!(
+            restored
+                .option_spellings("self-test", "--config-dir")
+                .unwrap(),
+            ["-c", "--config-dir"]
+        );
     }
 
     #[test]
     fn serialized_snapshot_limit_counts_escaping_before_seal() {
         let directory = tempfile::tempdir().unwrap();
-        let mut snapshot = ThreetchedSurface::capture(test_fixture_binary(directory.path())).unwrap().snapshot();
+        let mut snapshot = ThreetchedSurface::capture(test_fixture_binary(directory.path()))
+            .unwrap()
+            .snapshot();
         // Raw bytes fit the discovery ceiling but escape expansion does not.
         snapshot.commands.get_mut("self-test").unwrap().summary = "\0".repeat(CAPTURE_BYTES / 4);
         assert!(snapshot.validate_size().is_err());
@@ -1049,15 +1148,21 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let binary = test_fixture_binary(directory.path());
         let captured = ThreetchedSurface::capture(&binary).unwrap();
-        let snapshot: SurfaceSnapshot = serde_json::from_value(
-            serde_json::to_value(captured.snapshot()).unwrap()).unwrap();
+        let snapshot: SurfaceSnapshot =
+            serde_json::from_value(serde_json::to_value(captured.snapshot()).unwrap()).unwrap();
         let runtime = directory.path().join("runtime-threetched");
         std::fs::copy(&binary, &runtime).unwrap();
         std::fs::remove_file(&binary).unwrap();
         let restored = ThreetchedSurface::from_snapshot(&runtime, &snapshot).unwrap();
         assert_eq!(restored.binary_sha256(), captured.binary_sha256());
-        assert_eq!(restored.commands().collect::<Vec<_>>(), captured.commands().collect::<Vec<_>>());
-        assert_eq!(restored.arguments("self-test", &json!({})).unwrap(), ["self-test"]);
+        assert_eq!(
+            restored.commands().collect::<Vec<_>>(),
+            captured.commands().collect::<Vec<_>>()
+        );
+        assert_eq!(
+            restored.arguments("self-test", &json!({})).unwrap(),
+            ["self-test"]
+        );
 
         let mut changed = snapshot.clone();
         changed.commands.get_mut("self-test").unwrap().input_schema = json!({"type":"null"});
@@ -1077,9 +1182,15 @@ mod tests {
         let binary = test_fixture_binary(directory.path());
         let marker = directory.path().join("capture-marker");
         let script = std::fs::read_to_string(&binary).unwrap();
-        let script = script.replacen("#!/bin/sh", &format!("#!/bin/sh\nprintf x >> '{}'", marker.display()), 1);
+        let script = script.replacen(
+            "#!/bin/sh",
+            &format!("#!/bin/sh\nprintf x >> '{}'", marker.display()),
+            1,
+        );
         std::fs::write(&binary, script).unwrap();
-        let snapshot = ThreetchedSurface::capture_with_config(&binary, directory.path()).unwrap().snapshot();
+        let snapshot = ThreetchedSurface::capture_with_config(&binary, directory.path())
+            .unwrap()
+            .snapshot();
         assert!(marker.exists());
         std::fs::remove_file(&marker).unwrap();
         ThreetchedSurface::from_snapshot(&binary, &snapshot).unwrap();
@@ -1222,7 +1333,8 @@ mod tests {
             "Usage: threetched stop [OPTIONS] [COMMAND]\n\nOptions:\n      --domain <DOMAIN>  Domain (repeatable)\n".into()).unwrap();
         assert!(optional_command(&surface.usage));
         let directory = tempfile::tempdir().unwrap();
-        let mut threetched = ThreetchedSurface::capture(test_fixture_binary(directory.path())).unwrap();
+        let mut threetched =
+            ThreetchedSurface::capture(test_fixture_binary(directory.path())).unwrap();
         threetched.commands = BTreeMap::from([("stop".into(), surface)]);
         assert_eq!(
             threetched
@@ -1321,7 +1433,8 @@ mod tests {
         )
         .unwrap();
         let directory = tempfile::tempdir().unwrap();
-        let mut threetched = ThreetchedSurface::capture(test_fixture_binary(directory.path())).unwrap();
+        let mut threetched =
+            ThreetchedSurface::capture(test_fixture_binary(directory.path())).unwrap();
         threetched.commands = BTreeMap::from([("inspect".into(), command)]);
         assert_eq!(
             threetched

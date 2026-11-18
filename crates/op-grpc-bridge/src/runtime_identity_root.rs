@@ -449,9 +449,6 @@ fn pending(operation_id: &str, phase: &str, error: impl Into<anyhow::Error>) -> 
     .into()
 }
 
-
-
-
 async fn phase(
     store: &IdentitySledStore,
     session_id: &str,
@@ -994,28 +991,38 @@ pub(super) fn decide_seeded_native_start(sled_active: bool, native_status: &str)
     }
 }
 
-async fn recheck_own_admission(engine: &NativeOwner, actor_id: &str, original: &RepairSealPin) -> Result<()> {
+async fn recheck_own_admission(
+    engine: &NativeOwner,
+    actor_id: &str,
+    original: &RepairSealPin,
+) -> Result<()> {
     engine.require_actor(actor_id)?;
     engine.revalidate().await?;
     let current = strict_identity_contract()?;
-    anyhow::ensure!(current.schema_hash == original.schema_hash
-        && current.blob.manifest == original.blob.manifest
-        && current.blob.schema_json == original.blob.schema_json
-        && current.blob.descriptor_set == original.blob.descriptor_set
-        && current.blob.meta_json == original.blob.meta_json,
-        "identity repair method seal changed while queued");
+    anyhow::ensure!(
+        current.schema_hash == original.schema_hash
+            && current.blob.manifest == original.blob.manifest
+            && current.blob.schema_json == original.blob.schema_json
+            && current.blob.descriptor_set == original.blob.descriptor_set
+            && current.blob.meta_json == original.blob.meta_json,
+        "identity repair method seal changed while queued"
+    );
     Ok(())
 }
 
-
 pub(super) async fn verify_current_repair_sid1(
-    engine: &NativeOwner, sled: &ContainerIdentitySled, actor_id: &str, session_genesis: &str,
+    engine: &NativeOwner,
+    sled: &ContainerIdentitySled,
+    actor_id: &str,
+    session_genesis: &str,
 ) -> Result<()> {
     engine.require_actor(actor_id)?;
-    anyhow::ensure!(engine.caller.session_genesis == session_genesis, "caller genesis changed");
+    anyhow::ensure!(
+        engine.caller.session_genesis == session_genesis,
+        "caller genesis changed"
+    );
     engine.verify_own(sled).await
 }
-
 
 fn descriptor_for_plan(
     plan: &RootRepairPlan,
@@ -1289,7 +1296,6 @@ pub(super) async fn observe_owned_power_effect(
     Ok(Some(observed))
 }
 
-
 async fn pre_effect_instance(
     native: &dyn NativeRootRepair,
     plan: &RootRepairPlan,
@@ -1360,13 +1366,14 @@ struct NativeRootPreflight {
     source_pool_source: String,
 }
 
-async fn admit_preflight_read(engine: &NativeOwner, actor_id: &str)
-    -> Result<crate::sealed_schema_reader::ManifestPinnedSchemaDocument> {
+async fn admit_preflight_read(
+    engine: &NativeOwner,
+    actor_id: &str,
+) -> Result<crate::sealed_schema_reader::ManifestPinnedSchemaDocument> {
     engine.require_actor(actor_id)?;
     engine.revalidate().await?;
     strict_identity_contract()
 }
-
 
 async fn verify_original_fstorage_empty(old: SledBtrfsDevice) -> Result<()> {
     tokio::task::spawn_blocking(move || {
@@ -2058,7 +2065,8 @@ async fn repair_own_root_with_backend(request: RepairRequest<'_>) -> Result<Json
     )
     .await
     .map_err(|error| pending(&operation_id, "prepared", error))?;
-    recheck_own_admission(engine, actor_id, original_seal).await
+    recheck_own_admission(engine, actor_id, original_seal)
+        .await
         .map_err(|error| pending(&operation_id, "prepared", error))?;
     phase(
         store,

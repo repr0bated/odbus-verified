@@ -13,7 +13,7 @@ use op_plugins::state_plugins::chat_router::{
 use serde_json::Value;
 
 use crate::chat_router_runtime::{
-    ConfigSecretPolicy, NativeConfigMutation, ChatRouterRuntimeClient,
+    ChatRouterRuntimeClient, ConfigSecretPolicy, NativeConfigMutation,
 };
 
 /// Backing for the authored typed config methods. The generated per-section

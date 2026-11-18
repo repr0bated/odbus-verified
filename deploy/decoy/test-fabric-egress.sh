@@ -6,7 +6,7 @@ if [ "$#" = 0 ]; then
 fi
 [ "$#" = 1 ] && [ "$1" = --inside ] &&
     [ "$(readlink /proc/self/ns/net)" != "$(readlink /proc/1/ns/net)" ] || exit 2
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 ip link set lo up
 for device in physical wg-opdbus wgcf-ingress; do
     ip link add "$device" type dummy

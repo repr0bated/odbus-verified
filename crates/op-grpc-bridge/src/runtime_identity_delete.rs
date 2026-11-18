@@ -186,4 +186,3 @@ pub(super) async fn delete(
     let result = serde_json::json!({"session_id":sid,"operation_id":operation,"committed_revision":revision,"record_present":false,"replayed":false});
     commit_cas(engine, store, operation, sid, expected, None, None, result).await
 }
-

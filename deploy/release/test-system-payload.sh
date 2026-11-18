@@ -1,7 +1,7 @@
 #!/bin/sh
 # Run only after deployment and explicit owner authorization. No live host writes.
 set -eu
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 fixture=$(mktemp -d)
 trap 'rm -rf -- "$fixture"' EXIT HUP INT TERM
 PROJECT_ROOT=$repo

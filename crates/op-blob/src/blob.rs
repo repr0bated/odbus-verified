@@ -222,7 +222,8 @@ pub fn try_blobify_canonical(
         hex(&h.finalize())
     };
 
-    let (descriptor_set, method_infos) = descriptor::try_descriptor_set_for_plugin(&plugin_id, schema)?;
+    let (descriptor_set, method_infos) =
+        descriptor::try_descriptor_set_for_plugin(&plugin_id, schema)?;
 
     let mut methods: Vec<MethodManifest> = method_infos
         .iter()

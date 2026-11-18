@@ -613,11 +613,7 @@ pub fn evaluate_gate(input: &GateInput) -> GateResult {
                         "classification_unresolved",
                         "tag policy cannot be evaluated without a resolved numeric tag id",
                     );
-                } else if input.resolved_tag.as_ref().map(|tag| tag.tag_id) != Some(*tag_id) {
-                    false
-                } else {
-                    true
-                }
+                } else { input.resolved_tag.as_ref().map(|tag| tag.tag_id) == Some(*tag_id) }
             }
             PolicyRule::EgressRule { .. } => {
                 input.requested_effect == RequestedEffect::Egress
@@ -713,7 +709,7 @@ pub fn evaluate_gate(input: &GateInput) -> GateResult {
                     || input
                         .provider_route
                         .as_ref()
-                        .map_or(true, |route| !allowed_provider_routes.contains(route))
+                        .is_none_or(|route| !allowed_provider_routes.contains(route))
                     || *required_policy_revision != snapshot.rule_revision
                 {
                     return GateResult {

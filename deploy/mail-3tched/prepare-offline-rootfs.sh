@@ -58,7 +58,7 @@ awk '
     hashes && NF { print $2 }
 ' "$stage/MANIFEST" > "$manifest_files"
 
-(CDPATH= cd -- "$stage" && find . -type f -print | sed 's|^\./||' |
+(CDPATH='' cd -- "$stage" && find . -type f -print | sed 's|^\./||' |
     grep -vx MANIFEST | sort) > "$actual_files"
 sort "$manifest_files" -o "$manifest_files"
 cmp -s "$manifest_files" "$actual_files" ||

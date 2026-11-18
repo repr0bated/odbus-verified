@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Disposable files and mocked storage operations only; no host storage effects.
+# Helpers below are intentionally eval'd from the production helper script.
+# shellcheck disable=SC2218
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/../../.." && pwd)
 helper=$repo/deploy/runit/libexec-3tched/op-identity-root
@@ -25,10 +27,14 @@ seed_name=another-alias
 if (seed_boot_name) 2>/dev/null; then exit 1; fi
 # Shared lock algorithm uses a disposable path, never /run in this fixture.
 eval "$(sed -n '/^seed_shared_lock() {/,/^}/p' "$helper" | sed "s|/run/opdbus-shared-seed|$fixture/shared|g")"
+# shellcheck disable=SC2218 # seed_shared_lock is eval-defined from helper above
 seed_shared_lock
+# shellcheck disable=SC2218 # same eval-defined helper
 seed_shared_lock # same process can reuse it
+# shellcheck disable=SC2218 # same eval-defined helper
 if (exec 8>&-; seed_shared_locked=false; seed_shared_lock) 2>/dev/null; then exit 1; fi
 exec 8>&-
+# shellcheck disable=SC2218 # same eval-defined helper
 seed_shared_locked=false; seed_shared_lock; exec 8>&-
 # The image contract accepts only safe immutable release pins.
 mkdir "$fixture/volume"

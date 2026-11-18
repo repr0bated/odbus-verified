@@ -7,11 +7,10 @@ use async_trait::async_trait;
 use op_plugins::state_plugins::cron::*;
 use serde::Deserialize;
 
-use crate::cron_methods::{CronGateway, ProviderMutation};
 use crate::chat_router_runtime::{
-    GatewayJsonRequest, GatewayMethod, GatewayProfile, GatewayRequestError,
-    ChatRouterRuntimeClient,
+    ChatRouterRuntimeClient, GatewayJsonRequest, GatewayMethod, GatewayProfile, GatewayRequestError,
 };
+use crate::cron_methods::{CronGateway, ProviderMutation};
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -40,9 +39,7 @@ pub(crate) struct ChatRouterCronGateway {
 }
 impl ChatRouterCronGateway {
     pub(crate) fn production() -> Self {
-        Self {
-            client: ChatRouterRuntimeClient::from_env(),
-        }
+        Self::from_client(ChatRouterRuntimeClient::from_env())
     }
 
     pub(crate) fn from_client(client: ChatRouterRuntimeClient) -> Self {
@@ -135,6 +132,15 @@ impl CronGateway for ChatRouterCronGateway {
             })
             .await
             .map_err(read_error)?;
+        // The job list is authoritative. The event stream is only the wakeup
+        // channel: admit it here, then release it. A closed subscribe must not
+        // hide the snapshot, and this observation does not keep a subscriber.
+        match self.client.open_gateway_event_stream().await {
+            Ok(stream) => drop(stream),
+            Err(error) => {
+                tracing::debug!(%error, "cron event stream was not admitted during job observation");
+            }
+        }
         Ok(response.jobs)
     }
 

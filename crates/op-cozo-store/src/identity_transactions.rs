@@ -2,14 +2,20 @@
 //! This is private persistence metadata, not plugin discovery/schema authority.
 //! Legacy writes are rejected after a session acquires a revision/tombstone.
 use super::*;
-mod physical_root;
 mod clean_provision;
+#[path = "identity_transactions/container_rename.rs"]
+mod container_rename;
 mod native_creation;
-#[path = "identity_transactions/container_rename.rs"] mod container_rename;
-pub use container_rename::{ContainerRenameJournal, ContainerRenameRequest, CONTROL_PLANE_NATIVE_NAME, container_rename_native_matches};
-pub use native_creation::{NativeCreationRequest, NativeCreationRecord, is_numbered_native_name};
-pub use clean_provision::{CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches};
+mod physical_root;
+pub use clean_provision::{
+    CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
+};
+pub use container_rename::{
+    CONTROL_PLANE_NATIVE_NAME, ContainerRenameJournal, ContainerRenameRequest,
+    container_rename_native_matches,
+};
 use cozo::{MultiTransaction, TransactionPayload};
+pub use native_creation::{NativeCreationRecord, NativeCreationRequest, is_numbered_native_name};
 use nix::{fcntl::OFlag, sys::stat::Mode};
 pub use physical_root::{
     IdentityPhysicalRootMigration, PhysicalRootMigrationReceipt,
@@ -823,13 +829,17 @@ impl CozoGraphShuttle {
         if session_id.is_empty() {
             return Err(err("invalid durable session event identity"));
         }
-        let _guard = self.identity_transaction.lock()
+        let _guard = self
+            .identity_transaction
+            .lock()
             .map_err(|_| err("identity transaction owner is poisoned"))?;
         self.sync_identity_store()?;
         let tx = self.db.multi_transaction(false);
-        let bounds = query(&tx,
+        let bounds = query(
+            &tx,
             "?[min(seq),max(seq)] := *session_events[session_id,seq,kind,subid,content,created_at], session_id = $sid",
-            sid_params(session_id))?;
+            sid_params(session_id),
+        )?;
         let last = match bounds.rows.as_slice() {
             [] => None,
             [row] if row.as_slice() == [DataValue::Null, DataValue::Null] => None,
@@ -847,10 +857,13 @@ impl CozoGraphShuttle {
             for seq in 0..=last {
                 let mut params = sid_params(session_id);
                 params.insert("seq".into(), dv_int(seq));
-                let rows = query(&tx,
+                let rows = query(
+                    &tx,
                     "?[session_id,seq,kind,subid,content,created_at] := \
                      *session_events[session_id,seq,kind,subid,content,created_at], \
-                     session_id = $sid, seq = $seq", params)?;
+                     session_id = $sid, seq = $seq",
+                    params,
+                )?;
                 let [row] = rows.rows.as_slice() else {
                     return Err(err("append ledger has a missing or duplicate sequence"));
                 };
@@ -1337,19 +1350,46 @@ impl CozoGraphShuttle {
             }
         }
         let (record, genesis, kind, value, replayed) = match intent {
-            IdentityIntent::RenameContainer { journal, native_after_json } => {
+            IdentityIntent::RenameContainer {
+                journal,
+                native_after_json,
+            } => {
                 let value = i64::try_from(journal.expected_revision).map_err(native)?;
-                let record = container_rename::complete(&tx, &previous, operation_id, &journal, &native_after_json)?;
-                (Some(record), previous.genesis.clone(), "container-rename", value, false)
+                let record = container_rename::complete(
+                    &tx,
+                    &previous,
+                    operation_id,
+                    &journal,
+                    &native_after_json,
+                )?;
+                (
+                    Some(record),
+                    previous.genesis.clone(),
+                    "container-rename",
+                    value,
+                    false,
+                )
             }
             IdentityIntent::CleanProvision(provision) => {
-                clean_provision::validate(&tx, session_id, operation_id, &previous, &metadata, &provision)?;
+                clean_provision::validate(
+                    &tx,
+                    session_id,
+                    operation_id,
+                    &previous,
+                    &metadata,
+                    &provision,
+                )?;
                 let replayed = previous.operation_id == operation_id;
                 if !replayed {
                     clean_provision::append(&tx, session_id, operation_id, &provision)?;
                 }
-                (Some(provision.record), Some(provision.genesis), "clean-provision",
-                    i64::try_from(provision.expected.revision).map_err(native)?, replayed)
+                (
+                    Some(provision.record),
+                    Some(provision.genesis),
+                    "clean-provision",
+                    i64::try_from(provision.expected.revision).map_err(native)?,
+                    replayed,
+                )
             }
             IdentityIntent::MigratePhysicalRoot(migration) => {
                 physical_root::validate_intent(
@@ -1650,7 +1690,12 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
         || !matches!(
             kind.as_str(),
-            "cas" | "advance" | "transport-refresh" | "physical-migrate" | "clean-provision" | "container-rename"
+            "cas"
+                | "advance"
+                | "transport-refresh"
+                | "physical-migrate"
+                | "clean-provision"
+                | "container-rename"
         )
         || value < 0
         || !matches!(principal_kind.as_str(), "" | "human" | "service")

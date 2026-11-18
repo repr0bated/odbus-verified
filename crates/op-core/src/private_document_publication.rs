@@ -131,7 +131,9 @@ pub fn pending_projection_publication_in(
     let Some(locked) = LockedDirectory::open(state_dir, false)? else {
         return Ok(None);
     };
-    Ok(locked.manifest()?.and_then(|(manifest, _)| manifest.document_pending))
+    Ok(locked
+        .manifest()?
+        .and_then(|(manifest, _)| manifest.document_pending))
 }
 
 fn commit_locked<T>(
@@ -140,79 +142,82 @@ fn commit_locked<T>(
     operation_id: &str,
     commit: impl FnOnce(Option<&[u8]>) -> Result<PrivateDocumentCommit<T>>,
 ) -> Result<PrivateDocumentPublication<T>> {
-        let name = filename(plugin_id)?;
-        ensure!(plugin_id != "identity_sled", "identity uses its dedicated paired projection");
-        identity_transaction::validate_operation_id(operation_id)?;
-        let old = locked.manifest()?;
-        let had_manifest = old.is_some();
-        let mut manifest = old.map_or_else(Manifest::default, |(manifest, _)| manifest);
-        ensure!(
-            manifest.document_pending.is_none(),
-            "private namespace has a pending document operation"
-        );
-        manifest.require_available(plugin_id)?;
-        manifest
-            .generation
-            .checked_add(1)
-            .context("projection generation overflow")?;
-        let previous = read_file(&locked.directory, &name, MAX_PROJECTION, false)?;
-        ensure!(
-            had_manifest || previous.is_none(),
-            "uncommitted private document has no manifest"
-        );
-        manifest.document_pending = Some(PendingDocumentPublication {
-            plugin_id: plugin_id.into(),
+    let name = filename(plugin_id)?;
+    ensure!(
+        plugin_id != "identity_sled",
+        "identity uses its dedicated paired projection"
+    );
+    identity_transaction::validate_operation_id(operation_id)?;
+    let old = locked.manifest()?;
+    let had_manifest = old.is_some();
+    let mut manifest = old.map_or_else(Manifest::default, |(manifest, _)| manifest);
+    ensure!(
+        manifest.document_pending.is_none(),
+        "private namespace has a pending document operation"
+    );
+    manifest.require_available(plugin_id)?;
+    manifest
+        .generation
+        .checked_add(1)
+        .context("projection generation overflow")?;
+    let previous = read_file(&locked.directory, &name, MAX_PROJECTION, false)?;
+    ensure!(
+        had_manifest || previous.is_none(),
+        "uncommitted private document has no manifest"
+    );
+    manifest.document_pending = Some(PendingDocumentPublication {
+        plugin_id: plugin_id.into(),
+        operation_id: operation_id.into(),
+        plugin_ids: Vec::new(),
+    });
+    write_file(
+        &locked.directory,
+        MANIFEST_NAME,
+        &simd_json::to_vec(&manifest)?,
+        0o644,
+        None,
+    )?;
+    if let Err(error) = sync_boundary(&locked.directory, "private_document_marker_sync") {
+        return Ok(PrivateDocumentPublication::Pending {
             operation_id: operation_id.into(),
-            plugin_ids: Vec::new(),
+            durable: None,
+            error,
         });
-        write_file(
-            &locked.directory,
-            MANIFEST_NAME,
-            &simd_json::to_vec(&manifest)?,
-            0o644,
-            None,
-        )?;
-        if let Err(error) = sync_boundary(&locked.directory, "private_document_marker_sync") {
-            return Ok(PrivateDocumentPublication::Pending {
+    }
+    match commit(previous.as_deref()) {
+        Ok(PrivateDocumentCommit::Publish { current, durable }) => Ok(finish(
+            locked, manifest, &name, previous, current, durable, false,
+        )),
+        Ok(PrivateDocumentCommit::RetainPending { durable, error }) => {
+            Ok(PrivateDocumentPublication::Pending {
                 operation_id: operation_id.into(),
-                durable: None,
+                durable: Some(durable),
                 error,
-            });
+            })
         }
-        match commit(previous.as_deref()) {
-            Ok(PrivateDocumentCommit::Publish { current, durable }) => Ok(finish(
-                &locked, manifest, &name, previous, current, durable, false,
-            )),
-            Ok(PrivateDocumentCommit::RetainPending { durable, error }) => {
-                Ok(PrivateDocumentPublication::Pending {
+        Ok(PrivateDocumentCommit::Abort { error }) => {
+            manifest.document_pending = None;
+            match write_file(
+                &locked.directory,
+                MANIFEST_NAME,
+                &simd_json::to_vec(&manifest)?,
+                0o644,
+                None,
+            ) {
+                Ok(()) => Err(error),
+                Err(cleanup) => Ok(PrivateDocumentPublication::Pending {
                     operation_id: operation_id.into(),
-                    durable: Some(durable),
-                    error,
-                })
+                    durable: None,
+                    error: cleanup.context("failed to clear rejected private operation"),
+                }),
             }
-            Ok(PrivateDocumentCommit::Abort { error }) => {
-                manifest.document_pending = None;
-                match write_file(
-                    &locked.directory,
-                    MANIFEST_NAME,
-                    &simd_json::to_vec(&manifest)?,
-                    0o644,
-                    None,
-                ) {
-                    Ok(()) => Err(error),
-                    Err(cleanup) => Ok(PrivateDocumentPublication::Pending {
-                        operation_id: operation_id.into(),
-                        durable: None,
-                        error: cleanup.context("failed to clear rejected private operation"),
-                    }),
-                }
-            }
-            Err(error) => Ok(PrivateDocumentPublication::Pending {
-                operation_id: operation_id.into(),
-                durable: None,
-                error,
-            }),
         }
+        Err(error) => Ok(PrivateDocumentPublication::Pending {
+            operation_id: operation_id.into(),
+            durable: None,
+            error,
+        }),
+    }
 }
 
 fn recover_locked<T>(
@@ -221,62 +226,65 @@ fn recover_locked<T>(
     operation_id: &str,
     load_durable: impl FnOnce() -> Result<PrivateDocumentCommit<T>>,
 ) -> Result<PrivateDocumentPublication<T>> {
-        let name = filename(plugin_id)?;
-        ensure!(plugin_id != "identity_sled", "identity uses its dedicated paired projection");
-        identity_transaction::validate_operation_id(operation_id)?;
-        let (manifest, _) = locked
-            .manifest()?
-            .context("private recovery requires a commit manifest")?;
-        ensure!(
-            manifest
-                .document_pending
-                .as_ref()
-                .is_some_and(|pending| pending.plugin_id == plugin_id
-                    && pending.operation_id == operation_id
-                    && (pending.plugin_ids.is_empty()
-                        || (pending.plugin_ids.len() == 1 && pending.plugin_ids[0] == plugin_id))),
-            "private recovery requires the exact pending plugin and operation"
-        );
+    let name = filename(plugin_id)?;
+    ensure!(
+        plugin_id != "identity_sled",
+        "identity uses its dedicated paired projection"
+    );
+    identity_transaction::validate_operation_id(operation_id)?;
+    let (manifest, _) = locked
+        .manifest()?
+        .context("private recovery requires a commit manifest")?;
+    ensure!(
         manifest
-            .generation
-            .checked_add(1)
-            .context("projection generation overflow")?;
-        // Check file safety without treating its potentially mixed bytes as a
-        // predecessor or recovery authority.
-        match open_at(
-            &locked.directory,
-            name.as_ref(),
-            OFlag::O_RDONLY | OFlag::O_NONBLOCK,
-            0,
-        ) {
-            Ok(file) => check_file(&file, false, locked.directory.metadata()?.uid())?,
-            Err(Errno::ENOENT) => {}
-            Err(error) => return Err(error.into()),
-        }
-        match load_durable() {
-            Ok(PrivateDocumentCommit::Publish { current, durable }) => Ok(finish(
-                &locked, manifest, &name, None, current, durable, true,
-            )),
-            Ok(PrivateDocumentCommit::RetainPending { durable, error }) => {
-                Ok(PrivateDocumentPublication::Pending {
-                    operation_id: operation_id.into(),
-                    durable: Some(durable),
-                    error,
-                })
-            }
-            Ok(PrivateDocumentCommit::Abort { .. }) => Ok(PrivateDocumentPublication::Pending {
+            .document_pending
+            .as_ref()
+            .is_some_and(|pending| pending.plugin_id == plugin_id
+                && pending.operation_id == operation_id
+                && (pending.plugin_ids.is_empty()
+                    || (pending.plugin_ids.len() == 1 && pending.plugin_ids[0] == plugin_id))),
+        "private recovery requires the exact pending plugin and operation"
+    );
+    manifest
+        .generation
+        .checked_add(1)
+        .context("projection generation overflow")?;
+    // Check file safety without treating its potentially mixed bytes as a
+    // predecessor or recovery authority.
+    match open_at(
+        &locked.directory,
+        name.as_ref(),
+        OFlag::O_RDONLY | OFlag::O_NONBLOCK,
+        0,
+    ) {
+        Ok(file) => check_file(&file, false, locked.directory.metadata()?.uid())?,
+        Err(Errno::ENOENT) => {}
+        Err(error) => return Err(error.into()),
+    }
+    match load_durable() {
+        Ok(PrivateDocumentCommit::Publish { current, durable }) => Ok(finish(
+            locked, manifest, &name, None, current, durable, true,
+        )),
+        Ok(PrivateDocumentCommit::RetainPending { durable, error }) => {
+            Ok(PrivateDocumentPublication::Pending {
                 operation_id: operation_id.into(),
-                durable: None,
-                error: anyhow::anyhow!(
-                    "private recovery owner did not provide an authoritative durable row"
-                ),
-            }),
-            Err(error) => Ok(PrivateDocumentPublication::Pending {
-                operation_id: operation_id.into(),
-                durable: None,
+                durable: Some(durable),
                 error,
-            }),
+            })
         }
+        Ok(PrivateDocumentCommit::Abort { .. }) => Ok(PrivateDocumentPublication::Pending {
+            operation_id: operation_id.into(),
+            durable: None,
+            error: anyhow::anyhow!(
+                "private recovery owner did not provide an authoritative durable row"
+            ),
+        }),
+        Err(error) => Ok(PrivateDocumentPublication::Pending {
+            operation_id: operation_id.into(),
+            durable: None,
+            error,
+        }),
+    }
 }
 
 #[allow(clippy::too_many_arguments)] // Explicit old/new document and durable receipt remain paired.

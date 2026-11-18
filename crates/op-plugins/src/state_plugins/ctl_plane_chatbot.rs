@@ -9,13 +9,13 @@
 //! Vectorization spec). This plugin covers REQ-2 (episode record fields)
 //! and REQ-3 (plugin schema registration).
 
+use crate::state_plugins::chat_router::{ChatInput, ChatMessage, ChatOutput};
 use anyhow::Result;
 use async_trait::async_trait;
 use op_state::{
     ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateAction, StateDiff, StatePlugin,
 };
 use op_state_store::PluginSchema;
-use crate::state_plugins::chat_router::{ChatInput, ChatMessage, ChatOutput};
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;

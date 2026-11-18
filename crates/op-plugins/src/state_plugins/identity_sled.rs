@@ -584,15 +584,21 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     schema.methods.insert(
         "prepare_container".to_string(),
         method_decl_from_schemars_with_output::<PrepareContainerInput, PrepareContainerOutput>(
-            "prepare_container", SideEffect::Mutation, true,
-            "identity_sled.write", "mut.service.identity-sled.container.prepare@v1",
+            "prepare_container",
+            SideEffect::Mutation,
+            true,
+            "identity_sled.write",
+            "mut.service.identity-sled.container.prepare@v1",
         ),
     );
     schema.methods.insert(
         "rename_container".to_string(),
         method_decl_from_schemars_with_output::<RenameContainerInput, RenameContainerOutput>(
-            "rename_container", SideEffect::Mutation, true,
-            "identity_sled.write", "mut.service.identity-sled.container.rename@v1",
+            "rename_container",
+            SideEffect::Mutation,
+            true,
+            "identity_sled.write",
+            "mut.service.identity-sled.container.rename@v1",
         ),
     );
     schema.methods.insert(
@@ -673,16 +679,28 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "inspect_provision_preflight".to_string(),
-        method_decl_from_schemars_with_output::<InspectProvisionPreflightInput, InspectProvisionPreflightOutput>(
-            "inspect_provision_preflight", SideEffect::Read, true,
-            "identity_sled.write", "obs.service.identity-sled.container.provision-preflight@v1",
+        method_decl_from_schemars_with_output::<
+            InspectProvisionPreflightInput,
+            InspectProvisionPreflightOutput,
+        >(
+            "inspect_provision_preflight",
+            SideEffect::Read,
+            true,
+            "identity_sled.write",
+            "obs.service.identity-sled.container.provision-preflight@v1",
         ),
     );
     schema.methods.insert(
         "delete_provision_record".to_string(),
-        method_decl_from_schemars_with_output::<DeleteProvisionRecordInput, DeleteProvisionRecordOutput>(
-            "delete_provision_record", SideEffect::Mutation, true,
-            "identity_sled.write", "mut.service.identity-sled.provision-record.delete@v1",
+        method_decl_from_schemars_with_output::<
+            DeleteProvisionRecordInput,
+            DeleteProvisionRecordOutput,
+        >(
+            "delete_provision_record",
+            SideEffect::Mutation,
+            true,
+            "identity_sled.write",
+            "mut.service.identity-sled.provision-record.delete@v1",
         ),
     );
     schema.methods.insert(
@@ -837,7 +855,10 @@ mod tests {
         let args = serde_json::to_value(&method.args).unwrap();
         let args = jsonschema::Validator::new(&args).unwrap();
         assert!(args.validate(&serde_json::json!({})).is_ok());
-        assert!(args.validate(&serde_json::json!({"session_id":"other"})).is_err());
+        assert!(
+            args.validate(&serde_json::json!({"session_id":"other"}))
+                .is_err()
+        );
         let output = serde_json::to_value(method.returns.as_ref().unwrap()).unwrap();
         let output = jsonschema::Validator::new(&output).unwrap();
         let mut value = serde_json::json!({
@@ -870,8 +891,13 @@ mod tests {
         let validator = jsonschema::Validator::new(&args).unwrap();
         assert!(validator.validate(&serde_json::json!({})).is_ok());
         for selector in [
-            "session_id", "trace_id", "identity", "host", "principal_id",
-            "held_capabilities", "sealed_id",
+            "session_id",
+            "trace_id",
+            "identity",
+            "host",
+            "principal_id",
+            "held_capabilities",
+            "sealed_id",
         ] {
             assert!(
                 validator
@@ -897,7 +923,10 @@ mod tests {
         for field in ["identity", "principal_id", "held_capabilities"] {
             let mut missing = value.clone();
             missing.as_object_mut().unwrap().remove(field);
-            assert!(validator.validate(&missing).is_err(), "missing {field} admitted");
+            assert!(
+                validator.validate(&missing).is_err(),
+                "missing {field} admitted"
+            );
         }
         for (field, invalid) in [
             ("principal_id", serde_json::json!(null)),
@@ -907,16 +936,26 @@ mod tests {
         ] {
             let mut malformed = value.clone();
             malformed[field] = invalid;
-            assert!(validator.validate(&malformed).is_err(), "invalid {field} admitted");
+            assert!(
+                validator.validate(&malformed).is_err(),
+                "invalid {field} admitted"
+            );
         }
 
-        let admin_output = serde_json::to_value(
-            schema.methods["get_identity"].returns.as_ref().unwrap(),
-        ).unwrap();
-        assert!(jsonschema::Validator::new(&admin_output).unwrap()
-            .validate(&serde_json::json!({"identity": identity})).is_ok());
+        let admin_output =
+            serde_json::to_value(schema.methods["get_identity"].returns.as_ref().unwrap()).unwrap();
+        assert!(
+            jsonschema::Validator::new(&admin_output)
+                .unwrap()
+                .validate(&serde_json::json!({"identity": identity}))
+                .is_ok()
+        );
         assert!(admin_output["properties"].get("principal_id").is_none());
-        assert!(admin_output["properties"].get("held_capabilities").is_none());
+        assert!(
+            admin_output["properties"]
+                .get("held_capabilities")
+                .is_none()
+        );
     }
     #[test]
     fn physical_migration_methods_are_typed_and_separately_owner_granted() {
@@ -1055,7 +1094,10 @@ mod tests {
     fn container_rename_uses_existing_write_grant_and_rejects_identity_inputs() {
         let schema = identity_sled_schema();
         let method = &schema.methods["rename_container"];
-        assert_eq!(method.required_capability.as_deref(), Some("identity_sled.write"));
+        assert_eq!(
+            method.required_capability.as_deref(),
+            Some("identity_sled.write")
+        );
         assert_eq!(method.side_effect, op_state_store::SideEffect::Mutation);
         assert!(method.idempotent);
         let args_schema = serde_json::to_value(&method.args).unwrap();

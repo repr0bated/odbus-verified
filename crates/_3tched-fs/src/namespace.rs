@@ -222,14 +222,7 @@ impl Namespace {
         lungs: bool,
         catalog_dir: &std::path::Path,
     ) -> Result<Self> {
-        Self::build_with_catalog_as(
-            store,
-            target,
-            state_dir,
-            lungs,
-            catalog_dir,
-            Surface::Our,
-        )
+        Self::build_with_catalog_as(store, target, state_dir, lungs, catalog_dir, Surface::Our)
     }
 
     pub fn build_with_catalog_as(
@@ -455,16 +448,15 @@ impl Namespace {
         identity: MountIdentity,
         instance_uuid: Option<&str>,
     ) -> Result<()> {
-        if let MountIdentity::HostSession { session } = &identity {
-            if session.is_empty()
+        if let MountIdentity::HostSession { session } = &identity
+            && (session.is_empty()
                 || session.len() > 128
                 || !session
                     .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')))
             {
                 bail!("invalid declared mount session");
             }
-        }
         if let Some(instance) = instance_uuid {
             uuid::Uuid::parse_str(instance).context("invalid mount instance UUID")?;
         }
@@ -1317,6 +1309,7 @@ fn hex_bytes(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02X}")).collect()
 }
 
+#[cfg_attr(not(test), allow(dead_code))] // exercised by namespace unit tests
 fn inode_for_path(path: &str) -> u64 {
     inode_for_surface(Surface::Our, path)
 }

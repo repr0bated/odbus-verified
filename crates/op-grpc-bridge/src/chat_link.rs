@@ -21,11 +21,14 @@
 //! caller authority and the exact sealed identity_sled.get_own_identity capability.
 
 use std::{
-    collections::{BTreeMap, HashMap},
     borrow::Cow,
+    collections::{BTreeMap, HashMap},
     fs::File,
     io::Read,
-    os::{fd::{AsRawFd, FromRawFd}, unix::fs::MetadataExt},
+    os::{
+        fd::{AsRawFd, FromRawFd},
+        unix::fs::MetadataExt,
+    },
     path::{Component, Path, PathBuf},
     pin::Pin,
     process::Stdio,
@@ -39,13 +42,13 @@ use serde_json::value::RawValue;
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
     process::{Child, Command},
-    sync::{mpsc, oneshot, OwnedSemaphorePermit, Semaphore},
+    sync::{OwnedSemaphorePermit, Semaphore, mpsc, oneshot},
 };
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
 use crate::{
-    proto::{chat_link_server::ChatLink, ChatLinkChunk, ChatLinkRequest},
+    proto::{ChatLinkChunk, ChatLinkRequest, chat_link_server::ChatLink},
     runtime::VerifiedCaller,
     service::BridgeService,
 };
@@ -74,14 +77,18 @@ impl ChatLinkService {
         let configs = match std::env::var_os("IDENTITY_CHAT_WORKERS_FILE") {
             None => Vec::new(),
             Some(path) => tokio::task::spawn_blocking(move || load_config(Path::new(&path)))
-                .await.map_err(|_| anyhow::anyhow!("chat worker configuration task failed"))??,
+                .await
+                .map_err(|_| anyhow::anyhow!("chat worker configuration task failed"))??,
         };
         let mut workers = BTreeMap::new();
         for config in configs {
             let principal = config.principal_id.clone();
             workers.insert(principal, start_worker(config).await?);
         }
-        Ok(Self { bridge, workers: Arc::new(workers) })
+        Ok(Self {
+            bridge,
+            workers: Arc::new(workers),
+        })
     }
 }
 
@@ -89,13 +96,18 @@ impl ChatLinkService {
 impl ChatLink for ChatLinkService {
     type ExchangeStream = Pin<Box<dyn Stream<Item = Result<ChatLinkChunk, Status>> + Send>>;
 
-    async fn exchange(&self, request: Request<ChatLinkRequest>) -> Result<Response<Self::ExchangeStream>, Status> {
+    async fn exchange(
+        &self,
+        request: Request<ChatLinkRequest>,
+    ) -> Result<Response<Self::ExchangeStream>, Status> {
         // This service never takes the fixture services' unauthenticated path.
         let caller = self.bridge.authenticate(&request).await?;
         self.bridge.authorize_chat(&caller).await?;
         let payload = parse_request(&request.get_ref().json)?;
         let identity = WorkerIdentity::from_caller(&caller);
-        let worker = self.workers.get(&identity.principal_id)
+        let worker = self
+            .workers
+            .get(&identity.principal_id)
             .ok_or_else(|| Status::unavailable("chat worker is not configured"))?;
         let mut response = worker.request(&identity, &payload)?;
         let bridge = self.bridge.clone();
@@ -114,7 +126,8 @@ fn parse_request(bytes: &[u8]) -> Result<Box<RawValue>, Status> {
     if bytes.len() > MAX_REQUEST_BYTES {
         return Err(Status::resource_exhausted("chat request exceeds 1 MiB"));
     }
-    serde_json::from_slice(bytes).map_err(|_| Status::invalid_argument("chat request must be valid JSON"))
+    serde_json::from_slice(bytes)
+        .map_err(|_| Status::invalid_argument("chat request must be valid JSON"))
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -159,16 +172,27 @@ impl WorkerConfig {
 
 fn load_config(path: &Path) -> anyhow::Result<Vec<WorkerConfig>> {
     let mut file = protected_file(path)?;
-    anyhow::ensure!(file.metadata()?.len() <= MAX_CONFIG_BYTES as u64, "chat worker configuration is oversized");
+    anyhow::ensure!(
+        file.metadata()?.len() <= MAX_CONFIG_BYTES as u64,
+        "chat worker configuration is oversized"
+    );
     let mut bytes = Vec::new();
-    file.by_ref().take(MAX_CONFIG_BYTES as u64 + 1).read_to_end(&mut bytes)?;
-    anyhow::ensure!(bytes.len() <= MAX_CONFIG_BYTES, "chat worker configuration is oversized");
+    file.by_ref()
+        .take(MAX_CONFIG_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)?;
+    anyhow::ensure!(
+        bytes.len() <= MAX_CONFIG_BYTES,
+        "chat worker configuration is oversized"
+    );
     let configs: Vec<WorkerConfig> = serde_json::from_slice(&bytes)
         .map_err(|_| anyhow::anyhow!("invalid chat worker configuration"))?;
     validate_configs(&configs)?;
     for config in &configs {
         let executable = protected_file(&config.executable)?;
-        anyhow::ensure!(executable.metadata()?.mode() & 0o111 != 0, "chat worker executable is not executable");
+        anyhow::ensure!(
+            executable.metadata()?.mode() & 0o111 != 0,
+            "chat worker executable is not executable"
+        );
         protected_file(&config.profile_path)?;
         protected_file(&config.provider_policy_path)?;
     }
@@ -176,16 +200,28 @@ fn load_config(path: &Path) -> anyhow::Result<Vec<WorkerConfig>> {
 }
 
 fn validate_configs(configs: &[WorkerConfig]) -> anyhow::Result<()> {
-    anyhow::ensure!(configs.len() <= MAX_WORKERS, "too many configured chat workers");
+    anyhow::ensure!(
+        configs.len() <= MAX_WORKERS,
+        "too many configured chat workers"
+    );
     let mut principals = std::collections::HashSet::new();
     for config in configs {
-        anyhow::ensure!(principals.insert(&config.principal_id), "duplicate chat worker principal");
+        anyhow::ensure!(
+            principals.insert(&config.principal_id),
+            "duplicate chat worker principal"
+        );
         for value in [&config.principal_id, &config.session_id, &config.genesis] {
-            anyhow::ensure!(!value.is_empty() && value.len() <= 1024 && !value.chars().any(char::is_control),
-                "invalid chat worker identity binding");
+            anyhow::ensure!(
+                !value.is_empty() && value.len() <= 1024 && !value.chars().any(char::is_control),
+                "invalid chat worker identity binding"
+            );
         }
-        anyhow::ensure!(config.executable.is_absolute() && config.profile_path.is_absolute()
-            && config.provider_policy_path.is_absolute(), "chat worker paths must be absolute");
+        anyhow::ensure!(
+            config.executable.is_absolute()
+                && config.profile_path.is_absolute()
+                && config.provider_policy_path.is_absolute(),
+            "chat worker paths must be absolute"
+        );
     }
     Ok(())
 }
@@ -196,8 +232,10 @@ fn protected_file(path: &Path) -> anyhow::Result<File> {
     anyhow::ensure!(path.is_absolute(), "chat worker path must be absolute");
     let mut directory = File::open("/")?;
     let root = directory.metadata()?;
-    anyhow::ensure!(root.uid() == 0 && root.mode() & 0o022 == 0,
-        "chat worker root directory is not protected");
+    anyhow::ensure!(
+        root.uid() == 0 && root.mode() & 0o022 == 0,
+        "chat worker root directory is not protected"
+    );
     let mut components = path.components().peekable();
     while let Some(component) = components.next() {
         let name = match component {
@@ -207,8 +245,15 @@ fn protected_file(path: &Path) -> anyhow::Result<File> {
         };
         let final_component = components.peek().is_none();
         let name = std::ffi::CString::new(name.as_encoded_bytes())?;
-        let flags = libc::O_RDONLY | libc::O_CLOEXEC | libc::O_NOFOLLOW | libc::O_NONBLOCK
-            | if final_component { 0 } else { libc::O_DIRECTORY };
+        let flags = libc::O_RDONLY
+            | libc::O_CLOEXEC
+            | libc::O_NOFOLLOW
+            | libc::O_NONBLOCK
+            | if final_component {
+                0
+            } else {
+                libc::O_DIRECTORY
+            };
         // SAFETY: both the held directory descriptor and NUL-terminated name are
         // valid for this call. A successful fd is immediately owned by File.
         let fd = unsafe { libc::openat(directory.as_raw_fd(), name.as_ptr(), flags) };
@@ -216,8 +261,10 @@ fn protected_file(path: &Path) -> anyhow::Result<File> {
         // SAFETY: openat returned a fresh, nonnegative descriptor.
         let opened = unsafe { File::from_raw_fd(fd) };
         let metadata = opened.metadata()?;
-        anyhow::ensure!(metadata.uid() == 0 && metadata.mode() & 0o022 == 0,
-            "chat worker path is not protected and root-owned");
+        anyhow::ensure!(
+            metadata.uid() == 0 && metadata.mode() & 0o022 == 0,
+            "chat worker path is not protected and root-owned"
+        );
         if final_component {
             anyhow::ensure!(metadata.is_file(), "chat worker path is not a regular file");
             return Ok(opened);
@@ -238,13 +285,19 @@ struct ReadyFrame {
     genesis: String,
 }
 
-async fn accept_ready<R: AsyncBufRead + Unpin>(reader: &mut FrameReader<R>, expected: &WorkerIdentity)
-    -> Result<(), WorkerFailure> {
+async fn accept_ready<R: AsyncBufRead + Unpin>(
+    reader: &mut FrameReader<R>,
+    expected: &WorkerIdentity,
+) -> Result<(), WorkerFailure> {
     let bytes = reader.next(4096).await?.ok_or(WorkerFailure::Unavailable)?;
-    let ready: ReadyFrame = serde_json::from_slice(&bytes).map_err(|_| WorkerFailure::Unavailable)?;
-    if ready.r#type != "ready" || ready.version != WORKER_VERSION
-        || ready.principal_id != expected.principal_id || ready.session_id != expected.session_id
-        || ready.genesis != expected.genesis {
+    let ready: ReadyFrame =
+        serde_json::from_slice(&bytes).map_err(|_| WorkerFailure::Unavailable)?;
+    if ready.r#type != "ready"
+        || ready.version != WORKER_VERSION
+        || ready.principal_id != expected.principal_id
+        || ready.session_id != expected.session_id
+        || ready.genesis != expected.genesis
+    {
         return Err(WorkerFailure::Unavailable);
     }
     Ok(())
@@ -252,12 +305,22 @@ async fn accept_ready<R: AsyncBufRead + Unpin>(reader: &mut FrameReader<R>, expe
 
 async fn start_worker(config: WorkerConfig) -> anyhow::Result<WorkerHandle> {
     let identity = config.identity();
-    let mut child = worker_command(&config).spawn()
+    let mut child = worker_command(&config)
+        .spawn()
         .map_err(|_| anyhow::anyhow!("chat worker could not start"))?;
-    let stdin = child.stdin.take().ok_or_else(|| anyhow::anyhow!("chat worker input is unavailable"))?;
-    let stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("chat worker output is unavailable"))?;
+    let stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("chat worker input is unavailable"))?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| anyhow::anyhow!("chat worker output is unavailable"))?;
     let mut reader = FrameReader::new(BufReader::new(stdout));
-    if !matches!(tokio::time::timeout(HANDSHAKE_TIMEOUT, accept_ready(&mut reader, &identity)).await, Ok(Ok(()))) {
+    if !matches!(
+        tokio::time::timeout(HANDSHAKE_TIMEOUT, accept_ready(&mut reader, &identity)).await,
+        Ok(Ok(()))
+    ) {
         let _ = child.kill().await;
         let _ = child.wait().await;
         anyhow::bail!("chat worker handshake failed");
@@ -267,13 +330,19 @@ async fn start_worker(config: WorkerConfig) -> anyhow::Result<WorkerHandle> {
 
 fn worker_command(config: &WorkerConfig) -> Command {
     let mut command = Command::new(&config.executable);
-    command.args(&config.args)
+    command
+        .args(&config.args)
         .current_dir("/")
         .env_clear()
         .env("NODE_ENV", "production")
         .env("IDENTITY_CHAT_PROFILE", &config.profile_path)
-        .env("IDENTITY_CHAT_PROVIDER_POLICY", &config.provider_policy_path)
-        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null())
+        .env(
+            "IDENTITY_CHAT_PROVIDER_POLICY",
+            &config.provider_policy_path,
+        )
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .kill_on_drop(true);
     command
 }
@@ -286,13 +355,26 @@ struct FrameReader<R> {
 }
 
 impl<R: AsyncBufRead + Unpin> FrameReader<R> {
-    fn new(reader: R) -> Self { Self { reader, partial: Vec::new() } }
+    fn new(reader: R) -> Self {
+        Self {
+            reader,
+            partial: Vec::new(),
+        }
+    }
 
     async fn next(&mut self, maximum: usize) -> Result<Option<Vec<u8>>, WorkerFailure> {
         loop {
-            let available = self.reader.fill_buf().await.map_err(|_| WorkerFailure::Unavailable)?;
+            let available = self
+                .reader
+                .fill_buf()
+                .await
+                .map_err(|_| WorkerFailure::Unavailable)?;
             if available.is_empty() {
-                return if self.partial.is_empty() { Ok(None) } else { Err(WorkerFailure::Unavailable) };
+                return if self.partial.is_empty() {
+                    Ok(None)
+                } else {
+                    Err(WorkerFailure::Unavailable)
+                };
             }
             let newline = available.iter().position(|byte| *byte == b'\n');
             let length = newline.unwrap_or(available.len());
@@ -303,7 +385,9 @@ impl<R: AsyncBufRead + Unpin> FrameReader<R> {
             }
             self.partial.extend_from_slice(&available[..length]);
             self.reader.consume(length + usize::from(newline.is_some()));
-            if newline.is_some() { return Ok(Some(std::mem::take(&mut self.partial))); }
+            if newline.is_some() {
+                return Ok(Some(std::mem::take(&mut self.partial)));
+            }
         }
     }
 }
@@ -325,7 +409,9 @@ impl WorkerFailure {
             Self::InvalidRequest => Status::invalid_argument("chat request was rejected"),
             Self::PermissionDenied => Status::permission_denied("chat request is not permitted"),
             Self::ResourceExhausted => Status::resource_exhausted("chat worker capacity exceeded"),
-            Self::Unavailable => Status::unavailable("chat worker unavailable; request outcome unknown"),
+            Self::Unavailable => {
+                Status::unavailable("chat worker unavailable; request outcome unknown")
+            }
             Self::Cancelled => Status::cancelled("chat request cancelled"),
             Self::Internal => Status::internal("chat worker failed"),
         }
@@ -375,31 +461,62 @@ struct RequestSlot {
 }
 
 enum WorkerCommand {
-    Start { id: Uuid, frame: Vec<u8>, slot: RequestSlot },
+    Start {
+        id: Uuid,
+        frame: Vec<u8>,
+        slot: RequestSlot,
+    },
     Cancel(Uuid),
 }
 
 impl WorkerHandle {
-    fn request(&self, caller: &WorkerIdentity, payload: &RawValue) -> Result<WorkerResponse, Status> {
+    fn request(
+        &self,
+        caller: &WorkerIdentity,
+        payload: &RawValue,
+    ) -> Result<WorkerResponse, Status> {
         if caller != &self.identity {
-            return Err(Status::permission_denied("chat worker identity does not match caller"));
+            return Err(Status::permission_denied(
+                "chat worker identity does not match caller",
+            ));
         }
-        if self.commands.is_closed() { return Err(WorkerFailure::Unavailable.status()); }
-        let permit = Arc::new(self.capacity.clone().try_acquire_owned()
-            .map_err(|_| WorkerFailure::ResourceExhausted.status())?);
+        if self.commands.is_closed() {
+            return Err(WorkerFailure::Unavailable.status());
+        }
+        let permit = Arc::new(
+            self.capacity
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| WorkerFailure::ResourceExhausted.status())?,
+        );
         let id = Uuid::new_v4();
-        let frame = serde_json::to_vec(&RequestFrame { r#type: "request", id, caller, payload })
-            .map_err(|_| WorkerFailure::Internal.status())?;
+        let frame = serde_json::to_vec(&RequestFrame {
+            r#type: "request",
+            id,
+            caller,
+            payload,
+        })
+        .map_err(|_| WorkerFailure::Internal.status())?;
         let (chunks, receiver) = mpsc::channel(CHUNK_QUEUE);
         let (terminal, outcome) = oneshot::channel();
-        let slot = RequestSlot { chunks, terminal, _permit: permit.clone() };
-        self.commands.try_send(WorkerCommand::Start { id, frame, slot }).map_err(|error| match error {
-            mpsc::error::TrySendError::Closed(_) => WorkerFailure::Unavailable.status(),
-            mpsc::error::TrySendError::Full(_) => WorkerFailure::ResourceExhausted.status(),
-        })?;
+        let slot = RequestSlot {
+            chunks,
+            terminal,
+            _permit: permit.clone(),
+        };
+        self.commands
+            .try_send(WorkerCommand::Start { id, frame, slot })
+            .map_err(|error| match error {
+                mpsc::error::TrySendError::Closed(_) => WorkerFailure::Unavailable.status(),
+                mpsc::error::TrySendError::Full(_) => WorkerFailure::ResourceExhausted.status(),
+            })?;
         Ok(WorkerResponse {
-            id, chunks: receiver, terminal: Some(outcome), commands: self.commands.clone(),
-            permit, finished: false,
+            id,
+            chunks: receiver,
+            terminal: Some(outcome),
+            commands: self.commands.clone(),
+            permit,
+            finished: false,
         })
     }
 }
@@ -416,10 +533,14 @@ struct WorkerResponse {
 impl WorkerResponse {
     async fn next(&mut self) -> Result<Option<Vec<u8>>, Status> {
         loop {
-            if self.finished { return Ok(None); }
+            if self.finished {
+                return Ok(None);
+            }
             let Some(terminal) = self.terminal.as_mut() else {
                 let chunk = self.chunks.recv().await;
-                if chunk.is_none() { self.finished = true; }
+                if chunk.is_none() {
+                    self.finished = true;
+                }
                 return Ok(chunk);
             };
             tokio::select! {
@@ -443,7 +564,9 @@ impl WorkerResponse {
 
 impl Drop for WorkerResponse {
     fn drop(&mut self) {
-        if self.finished { return; }
+        if self.finished {
+            return;
+        }
         let commands = self.commands.clone();
         let id = self.id;
         // Keeping admission until cancellation is queued bounds Drop tasks too.
@@ -508,7 +631,9 @@ impl<R: AsyncBufRead + Unpin> WorkerDriver<R> {
             None => return Ok(false),
             Some(WorkerCommand::Start { id, frame, slot }) => {
                 self.requests.insert(id, slot);
-                self.writes.try_send(frame).map_err(|_| WorkerFailure::Unavailable)?;
+                self.writes
+                    .try_send(frame)
+                    .map_err(|_| WorkerFailure::Unavailable)?;
             }
             Some(WorkerCommand::Cancel(id)) => self.cancel(id, WorkerFailure::Cancelled)?,
         }
@@ -518,42 +643,64 @@ impl<R: AsyncBufRead + Unpin> WorkerDriver<R> {
     fn cancel(&mut self, id: Uuid, reason: WorkerFailure) -> Result<(), WorkerFailure> {
         if let Some(slot) = self.requests.remove(&id) {
             let _ = slot.terminal.send(Err(reason));
-            let frame = serde_json::to_vec(&CancelFrame { r#type: "cancel", id })
-                .map_err(|_| WorkerFailure::Internal)?;
-            self.writes.try_send(frame).map_err(|_| WorkerFailure::Unavailable)?;
+            let frame = serde_json::to_vec(&CancelFrame {
+                r#type: "cancel",
+                id,
+            })
+            .map_err(|_| WorkerFailure::Internal)?;
+            self.writes
+                .try_send(frame)
+                .map_err(|_| WorkerFailure::Unavailable)?;
         }
         Ok(())
     }
 
     fn deliver(&mut self, bytes: &[u8]) -> Result<(), WorkerFailure> {
-        let frame: WorkerFrame<'_> = serde_json::from_slice(bytes).map_err(|_| WorkerFailure::Unavailable)?;
+        let frame: WorkerFrame<'_> =
+            serde_json::from_slice(bytes).map_err(|_| WorkerFailure::Unavailable)?;
         let id = frame.id;
-        match (frame.r#type.as_ref(), frame.chunk, frame.code, frame.message) {
+        match (
+            frame.r#type.as_ref(),
+            frame.chunk,
+            frame.code,
+            frame.message,
+        ) {
             ("chunk", Some(chunk), None, None) => {
                 if !chunk.get().starts_with('{') || chunk.get().len() > MAX_CHUNK_BYTES {
                     return Err(WorkerFailure::Unavailable);
                 }
                 #[derive(Deserialize)]
-                struct ChunkShape<'a> { #[serde(borrow)] r#type: Cow<'a, str> }
-                let shape: ChunkShape<'_> = serde_json::from_str(chunk.get())
-                    .map_err(|_| WorkerFailure::Unavailable)?;
+                struct ChunkShape<'a> {
+                    #[serde(borrow)]
+                    r#type: Cow<'a, str>,
+                }
+                let shape: ChunkShape<'_> =
+                    serde_json::from_str(chunk.get()).map_err(|_| WorkerFailure::Unavailable)?;
                 if shape.r#type.is_empty() {
                     return Err(WorkerFailure::Unavailable);
                 }
                 // Frames for finished/cancelled/unknown IDs are never disclosed.
-                let Some(slot) = self.requests.get(&id) else { return Ok(()); };
+                let Some(slot) = self.requests.get(&id) else {
+                    return Ok(());
+                };
                 match slot.chunks.try_send(chunk.get().as_bytes().to_vec()) {
-                    Ok(()) => {},
-                    Err(mpsc::error::TrySendError::Closed(_)) => self.cancel(id, WorkerFailure::Cancelled)?,
+                    Ok(()) => {}
+                    Err(mpsc::error::TrySendError::Closed(_)) => {
+                        self.cancel(id, WorkerFailure::Cancelled)?
+                    }
                     Err(mpsc::error::TrySendError::Full(chunk)) => self.pending = Some((id, chunk)),
                 }
             }
             ("end", None, None, None) => {
-                if let Some(slot) = self.requests.remove(&id) { let _ = slot.terminal.send(Ok(())); }
+                if let Some(slot) = self.requests.remove(&id) {
+                    let _ = slot.terminal.send(Ok(()));
+                }
             }
             ("error", None, Some(code), Some(_)) => {
                 // The worker's arbitrary message is deliberately never used.
-                if let Some(slot) = self.requests.remove(&id) { let _ = slot.terminal.send(Err(code)); }
+                if let Some(slot) = self.requests.remove(&id) {
+                    let _ = slot.terminal.send(Err(code));
+                }
             }
             _ => return Err(WorkerFailure::Unavailable),
         }
@@ -561,8 +708,12 @@ impl<R: AsyncBufRead + Unpin> WorkerDriver<R> {
     }
 }
 
-fn spawn_transport<R, W>(identity: WorkerIdentity, reader: FrameReader<R>, mut stdin: W, mut child: Option<Child>)
-    -> WorkerHandle
+fn spawn_transport<R, W>(
+    identity: WorkerIdentity,
+    reader: FrameReader<R>,
+    mut stdin: W,
+    mut child: Option<Child>,
+) -> WorkerHandle
 where
     R: AsyncBufRead + Unpin + Send + 'static,
     W: AsyncWrite + Unpin + Send + 'static,
@@ -581,7 +732,11 @@ where
             Ok::<(), std::io::Error>(())
         });
         let mut driver = WorkerDriver {
-            reader, commands: receiver, writes, requests: HashMap::new(), pending: None,
+            reader,
+            commands: receiver,
+            writes,
+            requests: HashMap::new(),
+            pending: None,
         };
         let writer_completed = if let Some(process) = child.as_mut() {
             tokio::select! {
@@ -604,29 +759,40 @@ where
             let _ = process.wait().await;
         }
     });
-    WorkerHandle { identity, commands, capacity: Arc::new(Semaphore::new(MAX_IN_FLIGHT)) }
+    WorkerHandle {
+        identity,
+        commands,
+        capacity: Arc::new(Semaphore::new(MAX_IN_FLIGHT)),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use tokio::io::{AsyncReadExt, DuplexStream};
 
     #[tokio::test]
     async fn chat_link_has_no_unauthenticated_fixture_bypass() {
         let core = crate::BridgeCore::new(crate::Catalog::from_entries(Vec::new()).unwrap());
         let service = ChatLinkService {
-            bridge: BridgeService::new(core), workers: Arc::new(BTreeMap::new()),
+            bridge: BridgeService::new(core),
+            workers: Arc::new(BTreeMap::new()),
         };
-        let result = service.exchange(Request::new(ChatLinkRequest { json: b"{}".to_vec() })).await;
+        let result = service
+            .exchange(Request::new(ChatLinkRequest {
+                json: b"{}".to_vec(),
+            }))
+            .await;
         assert_eq!(result.err().unwrap().code(), tonic::Code::Unauthenticated);
     }
 
     #[test]
     fn command_passes_only_explicit_server_environment_and_literal_arguments() {
         let config = WorkerConfig {
-            principal_id: "alice".into(), session_id: "session-a".into(), genesis: "genesis-a".into(),
+            principal_id: "alice".into(),
+            session_id: "session-a".into(),
+            genesis: "genesis-a".into(),
             executable: "/protected/node".into(),
             args: vec!["/protected/worker.mjs".into(), "$(not-a-shell)".into()],
             profile_path: "/protected/profile.json".into(),
@@ -634,12 +800,18 @@ mod tests {
         };
         let command = worker_command(&config);
         let command = command.as_std();
-        let environment: BTreeMap<_, _> = command.get_envs().map(|(key, value)| (key.to_str().unwrap(), value.unwrap().to_str().unwrap())).collect();
-        assert_eq!(environment, BTreeMap::from([
-            ("IDENTITY_CHAT_PROFILE", "/protected/profile.json"),
-            ("IDENTITY_CHAT_PROVIDER_POLICY", "/protected/policy.json"),
-            ("NODE_ENV", "production"),
-        ]));
+        let environment: BTreeMap<_, _> = command
+            .get_envs()
+            .map(|(key, value)| (key.to_str().unwrap(), value.unwrap().to_str().unwrap()))
+            .collect();
+        assert_eq!(
+            environment,
+            BTreeMap::from([
+                ("IDENTITY_CHAT_PROFILE", "/protected/profile.json"),
+                ("IDENTITY_CHAT_PROVIDER_POLICY", "/protected/policy.json"),
+                ("NODE_ENV", "production"),
+            ])
+        );
         assert_eq!(command.get_current_dir(), Some(Path::new("/")));
         assert_eq!(command.get_args().last().unwrap(), "$(not-a-shell)");
     }
@@ -650,7 +822,10 @@ mod tests {
         let (writes, _writer_queue) = mpsc::channel(1);
         let mut driver = WorkerDriver {
             reader: FrameReader::new(BufReader::new(b"".as_slice())),
-            commands: receiver, writes, requests: HashMap::new(), pending: None,
+            commands: receiver,
+            writes,
+            requests: HashMap::new(),
+            pending: None,
         };
         let id = Uuid::new_v4();
         let empty_chunk = r#"{"type":"text-delta","delta":""}"#;
@@ -662,45 +837,81 @@ mod tests {
         chunk["delta"] = json!("x".repeat(MAX_CHUNK_BYTES - empty_chunk.len() + 1));
         let bytes = serde_json::to_vec(&json!({"type":"chunk", "id":id, "chunk":chunk})).unwrap();
         assert!(driver.deliver(&bytes).is_err());
-        let bytes = serde_json::to_vec(&json!({"type":"chunk", "id":id, "chunk":["text-delta"]})).unwrap();
+        let bytes =
+            serde_json::to_vec(&json!({"type":"chunk", "id":id, "chunk":["text-delta"]})).unwrap();
         assert!(driver.deliver(&bytes).is_err());
     }
 
     fn identity() -> WorkerIdentity {
-        WorkerIdentity { principal_id: "alice".into(), session_id: "session-a".into(), genesis: "genesis-a".into() }
+        WorkerIdentity {
+            principal_id: "alice".into(),
+            session_id: "session-a".into(),
+            genesis: "genesis-a".into(),
+        }
     }
 
     fn synthetic_worker() -> (WorkerHandle, DuplexStream) {
         let (bridge, worker) = tokio::io::duplex(64 * 1024);
         let (reader, writer) = tokio::io::split(bridge);
-        (spawn_transport(identity(), FrameReader::new(BufReader::new(reader)), writer, None), worker)
+        (
+            spawn_transport(
+                identity(),
+                FrameReader::new(BufReader::new(reader)),
+                writer,
+                None,
+            ),
+            worker,
+        )
     }
 
     async fn read_json<R: AsyncBufRead + Unpin>(reader: &mut FrameReader<R>) -> Value {
-        let frame = tokio::time::timeout(Duration::from_secs(2), reader.next(MAX_WORKER_FRAME_BYTES))
-            .await.unwrap().unwrap().unwrap();
+        let frame =
+            tokio::time::timeout(Duration::from_secs(2), reader.next(MAX_WORKER_FRAME_BYTES))
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
         serde_json::from_slice(&frame).unwrap()
     }
 
     async fn send_json<W: AsyncWrite + Unpin>(writer: &mut W, value: Value) {
-        writer.write_all(&serde_json::to_vec(&value).unwrap()).await.unwrap();
+        writer
+            .write_all(&serde_json::to_vec(&value).unwrap())
+            .await
+            .unwrap();
         writer.write_all(b"\n").await.unwrap();
         writer.flush().await.unwrap();
     }
 
     async fn next(response: &mut WorkerResponse) -> Result<Option<Vec<u8>>, Status> {
-        tokio::time::timeout(Duration::from_secs(2), response.next()).await.unwrap()
+        tokio::time::timeout(Duration::from_secs(2), response.next())
+            .await
+            .unwrap()
     }
 
     #[test]
     fn request_json_is_validated_and_bounded() {
         for bytes in [b"".as_slice(), b"{", b"null trailing", &[0xff]] {
-            assert_eq!(parse_request(bytes).unwrap_err().code(), tonic::Code::InvalidArgument);
+            assert_eq!(
+                parse_request(bytes).unwrap_err().code(),
+                tonic::Code::InvalidArgument
+            );
         }
-        assert_eq!(parse_request(&vec![b' '; MAX_REQUEST_BYTES + 1]).unwrap_err().code(), tonic::Code::ResourceExhausted);
-        assert_eq!(parse_request(br#"{"messages":[]}"#).unwrap().get(), r#"{"messages":[]}"#);
+        assert_eq!(
+            parse_request(&vec![b' '; MAX_REQUEST_BYTES + 1])
+                .unwrap_err()
+                .code(),
+            tonic::Code::ResourceExhausted
+        );
+        assert_eq!(
+            parse_request(br#"{"messages":[]}"#).unwrap().get(),
+            r#"{"messages":[]}"#
+        );
         let exact = format!("\"{}\"", "x".repeat(MAX_REQUEST_BYTES - 2));
-        assert_eq!(parse_request(exact.as_bytes()).unwrap().get().len(), MAX_REQUEST_BYTES);
+        assert_eq!(
+            parse_request(exact.as_bytes()).unwrap().get().len(),
+            MAX_REQUEST_BYTES
+        );
     }
 
     #[tokio::test]
@@ -709,12 +920,25 @@ mod tests {
             let mut frame = json!({"type":"ready", "version":WORKER_VERSION,
                 "principalId":"alice", "sessionId":"session-a", "genesis":"genesis-a"});
             frame[field] = json!("wrong");
-            let mut bytes = serde_json::to_vec(&frame).unwrap(); bytes.push(b'\n');
+            let mut bytes = serde_json::to_vec(&frame).unwrap();
+            bytes.push(b'\n');
             let mut reader = FrameReader::new(BufReader::new(bytes.as_slice()));
-            assert!(accept_ready(&mut reader, &identity()).await.is_err(), "{field}");
+            assert!(
+                accept_ready(&mut reader, &identity()).await.is_err(),
+                "{field}"
+            );
         }
-        let bytes = format!("{{\"type\":\"ready\",\"version\":\"{WORKER_VERSION}\",\"principalId\":\"alice\",\"sessionId\":\"session-a\",\"genesis\":\"genesis-a\"}}\n");
-        assert!(accept_ready(&mut FrameReader::new(BufReader::new(bytes.as_bytes())), &identity()).await.is_ok());
+        let bytes = format!(
+            "{{\"type\":\"ready\",\"version\":\"{WORKER_VERSION}\",\"principalId\":\"alice\",\"sessionId\":\"session-a\",\"genesis\":\"genesis-a\"}}\n"
+        );
+        assert!(
+            accept_ready(
+                &mut FrameReader::new(BufReader::new(bytes.as_bytes())),
+                &identity()
+            )
+            .await
+            .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -733,9 +957,16 @@ mod tests {
         let (mut writer, reader) = tokio::io::duplex(32);
         let mut reader = FrameReader::new(BufReader::new(reader));
         writer.write_all(b"{\"type\":").await.unwrap();
-        assert!(tokio::time::timeout(Duration::from_millis(10), reader.next(128)).await.is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(10), reader.next(128))
+                .await
+                .is_err()
+        );
         writer.write_all(b"\"end\"}\n").await.unwrap();
-        assert_eq!(reader.next(128).await.unwrap().unwrap(), br#"{"type":"end"}"#);
+        assert_eq!(
+            reader.next(128).await.unwrap().unwrap(),
+            br#"{"type":"end"}"#
+        );
     }
 
     #[tokio::test]
@@ -744,11 +975,22 @@ mod tests {
         let payload = parse_request(b"{}").unwrap();
         for field in 0..3 {
             let mut caller = identity();
-            match field { 0 => caller.principal_id.push('x'), 1 => caller.session_id.push('x'), _ => caller.genesis.push('x') }
-            assert_eq!(handle.request(&caller, &payload).err().unwrap().code(), tonic::Code::PermissionDenied);
+            match field {
+                0 => caller.principal_id.push('x'),
+                1 => caller.session_id.push('x'),
+                _ => caller.genesis.push('x'),
+            }
+            assert_eq!(
+                handle.request(&caller, &payload).err().unwrap().code(),
+                tonic::Code::PermissionDenied
+            );
         }
         let mut byte = [0];
-        assert!(tokio::time::timeout(Duration::from_millis(10), worker.read(&mut byte)).await.is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(10), worker.read(&mut byte))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -756,23 +998,35 @@ mod tests {
         let (handle, worker) = synthetic_worker();
         let (reader, mut writer) = tokio::io::split(worker);
         let mut reader = FrameReader::new(BufReader::new(reader));
-        let payload = parse_request(br#"{"messages":[],"caller":{"principalId":"mallory"}}"#).unwrap();
+        let payload =
+            parse_request(br#"{"messages":[],"caller":{"principalId":"mallory"}}"#).unwrap();
         let first = handle.request(&identity(), &payload).unwrap();
         let mut second = handle.request(&identity(), &payload).unwrap();
         let first_request = read_json(&mut reader).await;
         let second_request = read_json(&mut reader).await;
         assert_ne!(first_request["id"], second_request["id"]);
-        assert_eq!(first_request["caller"], serde_json::to_value(identity()).unwrap());
+        assert_eq!(
+            first_request["caller"],
+            serde_json::to_value(identity()).unwrap()
+        );
         assert_eq!(first_request["payload"]["caller"]["principalId"], "mallory");
         assert_eq!(first_request.as_object().unwrap().len(), 4);
         assert!(Uuid::parse_str(first_request["id"].as_str().unwrap()).is_ok());
         drop(first);
         let cancellation = read_json(&mut reader).await;
-        assert_eq!(cancellation, json!({"type":"cancel", "id":first_request["id"]}));
+        assert_eq!(
+            cancellation,
+            json!({"type":"cancel", "id":first_request["id"]})
+        );
         send_json(&mut writer, json!({"type":"chunk", "id":first_request["id"], "chunk":{"type":"text-delta", "delta":"private-first"}})).await;
         send_json(&mut writer, json!({"type":"chunk", "id":second_request["id"], "chunk":{"type":"text-delta", "delta":"second"}})).await;
-        send_json(&mut writer, json!({"type":"end", "id":second_request["id"]})).await;
-        let chunk: Value = serde_json::from_slice(&next(&mut second).await.unwrap().unwrap()).unwrap();
+        send_json(
+            &mut writer,
+            json!({"type":"end", "id":second_request["id"]}),
+        )
+        .await;
+        let chunk: Value =
+            serde_json::from_slice(&next(&mut second).await.unwrap().unwrap()).unwrap();
         assert_eq!(chunk["delta"], "second");
         assert!(next(&mut second).await.unwrap().is_none());
     }
@@ -785,29 +1039,57 @@ mod tests {
         let mut response = handle.request(&identity(), &payload).unwrap();
         assert_eq!(read_json(&mut reader).await["type"], "request");
         drop(reader);
-        assert_eq!(next(&mut response).await.unwrap_err().code(), tonic::Code::Unavailable);
-        assert_eq!(handle.request(&identity(), &payload).err().unwrap().code(), tonic::Code::Unavailable);
+        assert_eq!(
+            next(&mut response).await.unwrap_err().code(),
+            tonic::Code::Unavailable
+        );
+        assert_eq!(
+            handle.request(&identity(), &payload).err().unwrap().code(),
+            tonic::Code::Unavailable
+        );
     }
 
     #[tokio::test]
     async fn malformed_worker_json_and_chunk_shape_close_transport() {
-        for frame in [b"not-json\n".as_slice(), b"{\"type\":\"ready\"}\n", b"{\"type\":\"chunk\",\"id\":\"bad-id\",\"chunk\":{}}\n"] {
+        for frame in [
+            b"not-json\n".as_slice(),
+            b"{\"type\":\"ready\"}\n",
+            b"{\"type\":\"chunk\",\"id\":\"bad-id\",\"chunk\":{}}\n",
+        ] {
             let (handle, worker) = synthetic_worker();
             let (reader, mut writer) = tokio::io::split(worker);
             let mut reader = FrameReader::new(BufReader::new(reader));
-            let mut response = handle.request(&identity(), &parse_request(b"{}").unwrap()).unwrap();
+            let mut response = handle
+                .request(&identity(), &parse_request(b"{}").unwrap())
+                .unwrap();
             read_json(&mut reader).await;
             writer.write_all(frame).await.unwrap();
-            assert_eq!(next(&mut response).await.unwrap_err().code(), tonic::Code::Unavailable);
+            assert_eq!(
+                next(&mut response).await.unwrap_err().code(),
+                tonic::Code::Unavailable
+            );
         }
-        for chunk in [json!("not an object"), json!({"delta":"no type"}), json!({"type":""})] {
+        for chunk in [
+            json!("not an object"),
+            json!({"delta":"no type"}),
+            json!({"type":""}),
+        ] {
             let (handle, worker) = synthetic_worker();
             let (reader, mut writer) = tokio::io::split(worker);
             let mut reader = FrameReader::new(BufReader::new(reader));
-            let mut response = handle.request(&identity(), &parse_request(b"{}").unwrap()).unwrap();
+            let mut response = handle
+                .request(&identity(), &parse_request(b"{}").unwrap())
+                .unwrap();
             let request = read_json(&mut reader).await;
-            send_json(&mut writer, json!({"type":"chunk", "id":request["id"], "chunk":chunk})).await;
-            assert_eq!(next(&mut response).await.unwrap_err().code(), tonic::Code::Unavailable);
+            send_json(
+                &mut writer,
+                json!({"type":"chunk", "id":request["id"], "chunk":chunk}),
+            )
+            .await;
+            assert_eq!(
+                next(&mut response).await.unwrap_err().code(),
+                tonic::Code::Unavailable
+            );
         }
     }
 
@@ -816,7 +1098,9 @@ mod tests {
         let (handle, worker) = synthetic_worker();
         let (reader, mut writer) = tokio::io::split(worker);
         let mut reader = FrameReader::new(BufReader::new(reader));
-        let mut response = handle.request(&identity(), &parse_request(b"{}").unwrap()).unwrap();
+        let mut response = handle
+            .request(&identity(), &parse_request(b"{}").unwrap())
+            .unwrap();
         let request = read_json(&mut reader).await;
         send_json(&mut writer, json!({"type":"error", "id":request["id"], "code":"internal", "message":"secret-token-and-provider-body"})).await;
         let error = next(&mut response).await.unwrap_err();
@@ -836,27 +1120,46 @@ mod tests {
             responses.push(handle.request(&identity(), &payload).unwrap());
             ids.push(read_json(&mut reader).await["id"].clone());
         }
-        assert_eq!(handle.request(&identity(), &payload).err().unwrap().code(), tonic::Code::ResourceExhausted);
+        assert_eq!(
+            handle.request(&identity(), &payload).err().unwrap().code(),
+            tonic::Code::ResourceExhausted
+        );
         for _ in 0..=CHUNK_QUEUE {
-            send_json(&mut writer, json!({"type":"chunk", "id":ids[0], "chunk":{"type":"text-delta", "delta":"slow"}})).await;
+            send_json(
+                &mut writer,
+                json!({"type":"chunk", "id":ids[0], "chunk":{"type":"text-delta", "delta":"slow"}}),
+            )
+            .await;
         }
         // The full response remains live instead of losing chunks. Its dropped
         // receiver must still cancel promptly while stdout is backpressured.
         drop(responses.remove(0));
-        assert_eq!(read_json(&mut reader).await, json!({"type":"cancel", "id":ids[0]}));
+        assert_eq!(
+            read_json(&mut reader).await,
+            json!({"type":"cancel", "id":ids[0]})
+        );
         send_json(&mut writer, json!({"type":"chunk", "id":ids[1], "chunk":{"type":"text-delta", "delta":"independent"}})).await;
-        assert!(String::from_utf8(next(&mut responses[0]).await.unwrap().unwrap()).unwrap().contains("independent"));
+        assert!(
+            String::from_utf8(next(&mut responses[0]).await.unwrap().unwrap())
+                .unwrap()
+                .contains("independent")
+        );
     }
 
     #[test]
     fn configuration_rejects_duplicate_principals_and_relative_paths() {
         let make = || WorkerConfig {
-            principal_id: "alice".into(), session_id: "session-a".into(), genesis: "genesis-a".into(),
-            executable: "/protected/node".into(), args: vec!["/protected/worker.mjs".into()],
-            profile_path: "/protected/profile.json".into(), provider_policy_path: "/protected/policy.json".into(),
+            principal_id: "alice".into(),
+            session_id: "session-a".into(),
+            genesis: "genesis-a".into(),
+            executable: "/protected/node".into(),
+            args: vec!["/protected/worker.mjs".into()],
+            profile_path: "/protected/profile.json".into(),
+            provider_policy_path: "/protected/policy.json".into(),
         };
         assert!(validate_configs(&[make(), make()]).is_err());
-        let mut invalid = make(); invalid.profile_path = "relative.json".into();
+        let mut invalid = make();
+        invalid.profile_path = "relative.json".into();
         assert!(validate_configs(&[invalid]).is_err());
         assert!(validate_configs(&[make()]).is_ok());
     }

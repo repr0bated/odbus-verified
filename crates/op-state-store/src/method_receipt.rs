@@ -39,7 +39,10 @@ pub struct AuditedMethodRefusal {
 
 impl AuditedMethodRefusal {
     pub fn new(operation_id: uuid::Uuid, refusal: UnsupportedBeforeEffect) -> Self {
-        Self { operation_id, refusal }
+        Self {
+            operation_id,
+            refusal,
+        }
     }
 }
 
@@ -186,11 +189,20 @@ mod tests {
     fn audited_refusal_does_not_certify_an_outer_call_as_before_effect() {
         let refusal = UnsupportedBeforeEffect::new("editor_unsupported", "omit --edit");
         let backend = anyhow::Error::new(refusal).context("private backend context");
-        assert_eq!(backend.downcast_ref::<UnsupportedBeforeEffect>().unwrap().code(), "editor_unsupported");
+        assert_eq!(
+            backend
+                .downcast_ref::<UnsupportedBeforeEffect>()
+                .unwrap()
+                .code(),
+            "editor_unsupported"
+        );
         let public = AuditedMethodRefusal::new(uuid::Uuid::nil(), refusal);
         let public = anyhow::Error::new(public).context("private transport context");
         assert!(public.downcast_ref::<UnsupportedBeforeEffect>().is_none());
-        let safe = public.downcast_ref::<AuditedMethodRefusal>().unwrap().to_string();
+        let safe = public
+            .downcast_ref::<AuditedMethodRefusal>()
+            .unwrap()
+            .to_string();
         assert!(safe.contains("method_failed_before_effect"));
         assert!(safe.contains("editor_unsupported; omit --edit"));
         assert!(!safe.contains("private"));

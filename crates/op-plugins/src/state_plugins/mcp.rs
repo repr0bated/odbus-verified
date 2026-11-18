@@ -43,24 +43,25 @@ pub enum ToolsetTemperature {
 use serde_json::Value;
 
 pub mod methods {
-    use super::{ToolsetConfig, ToolsetTemperature};
     use super::Value;
+    use super::{ToolsetConfig, ToolsetTemperature};
 
     /// Stub: complete a planning chain for an MCP tool call.
     pub fn complete_method(
         _plan: &ToolsetConfig,
         _arguments: &Value,
     ) -> Result<Value, serde_json::Error> {
-        Err(serde_json::Error::io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(serde_json::Error::io(std::io::Error::other(
             "MCP retired",
         )))
     }
 
     /// Stub: plan arguments for an MCP tool call.
-    pub fn plan_method(_tool_name: &str, _schema: &serde_json::Value) -> Result<Value, serde_json::Error> {
-        Err(serde_json::Error::io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+    pub fn plan_method(
+        _tool_name: &str,
+        _schema: &serde_json::Value,
+    ) -> Result<Value, serde_json::Error> {
+        Err(serde_json::Error::io(std::io::Error::other(
             "MCP retired",
         )))
     }
@@ -89,10 +90,20 @@ impl McpStatePlugin {
 
 #[async_trait::async_trait]
 impl op_state::StatePlugin for McpStatePlugin {
-    fn name(&self) -> &str { "mcp" }
-    fn version(&self) -> &str { "0.0.0" }
-    fn schema(&self) -> Option<op_state_store::PluginSchema> { self.schema.clone() }
-    async fn calculate_diff(&self, _current: &OwnedValue, _desired: &OwnedValue) -> Result<StateDiff> {
+    fn name(&self) -> &str {
+        "mcp"
+    }
+    fn version(&self) -> &str {
+        "0.0.0"
+    }
+    fn schema(&self) -> Option<op_state_store::PluginSchema> {
+        self.schema.clone()
+    }
+    async fn calculate_diff(
+        &self,
+        _current: &OwnedValue,
+        _desired: &OwnedValue,
+    ) -> Result<StateDiff> {
         Err(anyhow::anyhow!("MCP retired"))
     }
     async fn apply_state(&self, _diff: &StateDiff) -> Result<ApplyResult> {

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Native kernel fixtures only. Real SSH/WARP/peer health is a deployment gate.
 set -euo pipefail
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 if [ "$#" = 0 ]; then
     exec unshare --user --map-root-user --net "$0" --inside
 fi

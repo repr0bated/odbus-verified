@@ -8,7 +8,7 @@
 set -euo pipefail
 shopt -s nullglob
 
-repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$repo_dir"
 export PATH=/usr/bin:/bin
 

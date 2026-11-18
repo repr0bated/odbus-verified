@@ -113,7 +113,6 @@ fn is_hash(value: &str) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-
 /// Convert a capture marker (timestamp or empty) to a cozo DataValue.
 fn marker_string(value: &str) -> DataValue {
     DataValue::Str(value.to_string().into())
@@ -747,14 +746,8 @@ impl CozoGraphShuttle {
             "document".into(),
             DataValue::Str(serde_json::to_string(&record.turn)?.into()),
         );
-        values.insert(
-            "vectorized_at".into(),
-            marker_string(&record.vectorized_at),
-        );
-        values.insert(
-            "cleared_at".into(),
-            marker_string(&record.cleared_at),
-        );
+        values.insert("vectorized_at".into(), marker_string(&record.vectorized_at));
+        values.insert("cleared_at".into(), marker_string(&record.cleared_at));
         tx.run_script(
             "?[principal_id, conversation_id, turn_index, turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at] <- [[$principal, $conversation, $index, $turn, $prev, $hash, $content, $revision, $document, $vectorized_at, $cleared_at]] :put chat_response_turns {principal_id, conversation_id, turn_index => turn_id, prev_turn_hash, turn_hash, content_hash, revision, turn_json, vectorized_at, cleared_at}",
             values.clone(),

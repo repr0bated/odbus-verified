@@ -18,7 +18,7 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 umask 022
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
 SRC="$SCRIPT_DIR/mesh-exec"
 DEST=/usr/local/sbin/mesh-exec
 RESTORE_DIR=/etc/cloudflare-mesh/before-host-termination

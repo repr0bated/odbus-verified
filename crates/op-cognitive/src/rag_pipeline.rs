@@ -201,8 +201,7 @@ impl RetrievalProfile {
             RetrievalMode::Deep => env_u64("COGNITIVE_DEEP_FETCH_K", 50).clamp(limit, 100),
         };
 
-        let rerank_mode =
-            std::env::var("COGNITIVE_RERANK_MODE").unwrap_or_else(|_| "auto".into());
+        let rerank_mode = std::env::var("COGNITIVE_RERANK_MODE").unwrap_or_else(|_| "auto".into());
         let rerank_enabled = match mode {
             RetrievalMode::Completion => rerank_mode == "always",
             RetrievalMode::Search => rerank_mode == "always",
@@ -1230,8 +1229,8 @@ fn stable_uuid(hash: &str) -> String {
 ///
 /// Override the URL with `COGNITIVE_QDRANT_URL`.
 pub fn qdrant_client_from_env() -> Result<Qdrant> {
-    let url = std::env::var("COGNITIVE_QDRANT_URL")
-        .unwrap_or_else(|_| "http://127.0.0.1:6334".into());
+    let url =
+        std::env::var("COGNITIVE_QDRANT_URL").unwrap_or_else(|_| "http://127.0.0.1:6334".into());
     Qdrant::from_url(&url)
         .build()
         .context("Failed to build Qdrant client")

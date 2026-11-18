@@ -75,8 +75,7 @@ impl StatePlugin for CognitivePlugin {
     }
 
     fn unavailable_reason(&self) -> String {
-        "cognitive is compiled into op-grpc-bridge and has no external service dependency"
-            .into()
+        "cognitive is compiled into op-grpc-bridge and has no external service dependency".into()
     }
 
     async fn calculate_diff(&self, current: &Value, desired: &Value) -> Result<StateDiff> {
@@ -668,7 +667,6 @@ pub use super::workflows_plugin::{
     QueryWorkflowsInput as WorkflowQueryInput, StartWorkflowInput as WorkflowRunInput,
 };
 
-
 /// Read one exact manifest-pinned PluginSchema from the sealed blob store.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct SchemaReadInput {
@@ -854,7 +852,6 @@ pub struct MemoryEntrySummary {
 pub use super::workflows_plugin::{
     QueryWorkflowsOutput as WorkflowQueryOutput, StartWorkflowOutput as WorkflowRunOutput,
 };
-
 
 /// Exact sealed schema document returned by the bridge-owned blob reader.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -1596,10 +1593,7 @@ mod tests {
             schema_read.required_capability.as_deref(),
             Some("cognitive.read")
         );
-        assert_eq!(
-            schema_read.subid,
-            "obs.service.cognitive.schema.read@v1"
-        );
+        assert_eq!(schema_read.subid, "obs.service.cognitive.schema.read@v1");
 
         let oscal_subids = &schema.methods["oscal_subids"];
         assert_eq!(

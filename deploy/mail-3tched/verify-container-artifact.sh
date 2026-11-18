@@ -8,8 +8,8 @@ die() {
     exit 1
 }
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)
 ARTIFACT=${1:-"$PROJECT_ROOT/target/container-artifacts/mail-3tched-x86_64-linux-gnu-bundle.tar"}
 CONTAINER=${OP_MAIL_FIXTURE_CONTAINER:-mail-3tched}
 [ -f "$ARTIFACT" ] || die "artifact is absent: $ARTIFACT"

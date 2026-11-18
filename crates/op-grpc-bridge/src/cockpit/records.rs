@@ -11,16 +11,25 @@ pub const MAIN_SESSION: &str = "b0c777e3-0955-cd8b-3d01-ca12998cae28";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ViewKind { ThreeTched, Threetched }
+pub enum ViewKind {
+    ThreeTched,
+    Threetched,
+}
 impl ViewKind {
     pub fn mount_path(self) -> &'static str {
-        match self { Self::ThreeTched => "/run/mounts/3tchedFS", Self::Threetched => "/run/mounts/threetched" }
+        match self {
+            Self::ThreeTched => "/run/mounts/3tchedFS",
+            Self::Threetched => "/run/mounts/threetched",
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct CatalogPin { pub hash: String, pub generation: u64 }
+pub struct CatalogPin {
+    pub hash: String,
+    pub generation: u64,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -35,18 +44,34 @@ pub struct RecordHeader {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "classification", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Finding<T> {
-    ObservedRuntime { value: T, evidence: Vec<String> },
-    SourceDefinitionOnly { value: T, evidence: Vec<String> },
-    NotFound { searched: Vec<String>, reason: String },
+    ObservedRuntime {
+        value: T,
+        evidence: Vec<String>,
+    },
+    SourceDefinitionOnly {
+        value: T,
+        evidence: Vec<String>,
+    },
+    NotFound {
+        searched: Vec<String>,
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct SourceLocation { pub path: String, pub first_line: u32, pub last_line: u32 }
+pub struct SourceLocation {
+    pub path: String,
+    pub first_line: u32,
+    pub last_line: u32,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct SourceSymbol { pub location: SourceLocation, pub signature: String }
+pub struct SourceSymbol {
+    pub location: SourceLocation,
+    pub signature: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -63,18 +88,32 @@ pub struct SourceInterface {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct TraceTransition { pub caller: SourceSymbol, pub callee: SourceSymbol, pub evidence: Vec<String> }
+pub struct TraceTransition {
+    pub caller: SourceSymbol,
+    pub callee: SourceSymbol,
+    pub evidence: Vec<String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TraceEnd {
-    ReturnedThroughSameHandle { evidence: Vec<String> },
-    Unresolved { last_proven_symbol: SourceSymbol, missing_transition: String, dependent_tasks: Vec<String> },
+    ReturnedThroughSameHandle {
+        evidence: Vec<String>,
+    },
+    Unresolved {
+        last_proven_symbol: SourceSymbol,
+        missing_transition: String,
+        dependent_tasks: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct OperationTrace { pub view: ViewKind, pub transitions: Vec<TraceTransition>, pub end: TraceEnd }
+pub struct OperationTrace {
+    pub view: ViewKind,
+    pub transitions: Vec<TraceTransition>,
+    pub end: TraceEnd,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -86,7 +125,11 @@ pub struct BaselineRecord {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct GuestKernelIdentity { pub principal_id: String, pub session_id: String, pub mount_instance_id: String }
+pub struct GuestKernelIdentity {
+    pub principal_id: String,
+    pub session_id: String,
+    pub mount_instance_id: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -225,7 +268,14 @@ pub struct RuntimeRecord {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum BlockerKind { MissingPrerequisite, Denial, UnknownOutcome, AttributionMismatch, InvariantFailure, SourceTraceGap }
+pub enum BlockerKind {
+    MissingPrerequisite,
+    Denial,
+    UnknownOutcome,
+    AttributionMismatch,
+    InvariantFailure,
+    SourceTraceGap,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -268,7 +318,10 @@ pub struct InventoryItem {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct LegacyChatInventory { pub header: RecordHeader, pub items: Vec<InventoryItem> }
+pub struct LegacyChatInventory {
+    pub header: RecordHeader,
+    pub items: Vec<InventoryItem>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -289,7 +342,13 @@ pub struct OwnerAuthorization {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum EvidenceStage { NotStarted, Proposed, Complete, Blocked, Unconfirmed }
+pub enum EvidenceStage {
+    NotStarted,
+    Proposed,
+    Complete,
+    Blocked,
+    Unconfirmed,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -328,7 +387,10 @@ pub struct ComponentStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct OpenBlocker { pub record_id: String, pub dependent_tasks: Vec<String> }
+pub struct OpenBlocker {
+    pub record_id: String,
+    pub dependent_tasks: Vec<String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -341,14 +403,22 @@ pub struct StatusReport {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "format", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum EvidenceRecord {
-    #[serde(rename = "cockpit.baseline/1")] Baseline(BaselineRecord),
-    #[serde(rename = "cockpit.runtime/1")] Runtime(RuntimeRecord),
-    #[serde(rename = "cockpit.blocker/1")] Blocker(BlockerRecord),
-    #[serde(rename = "cockpit.legacy-chat-inventory/1")] LegacyChatInventory(LegacyChatInventory),
-    #[serde(rename = "cockpit.owner-authorization/1")] OwnerAuthorization(OwnerAuthorization),
-    #[serde(rename = "cockpit.status/1")] Status(StatusReport),
-    #[serde(rename = "cockpit.storage-layout/1")] StorageLayout(StorageLayoutRecord),
-    #[serde(rename = "cockpit.image-provisioning/1")] ImageProvisioning(ImageProvisioningRecord),
+    #[serde(rename = "cockpit.baseline/1")]
+    Baseline(BaselineRecord),
+    #[serde(rename = "cockpit.runtime/1")]
+    Runtime(RuntimeRecord),
+    #[serde(rename = "cockpit.blocker/1")]
+    Blocker(BlockerRecord),
+    #[serde(rename = "cockpit.legacy-chat-inventory/1")]
+    LegacyChatInventory(LegacyChatInventory),
+    #[serde(rename = "cockpit.owner-authorization/1")]
+    OwnerAuthorization(OwnerAuthorization),
+    #[serde(rename = "cockpit.status/1")]
+    Status(StatusReport),
+    #[serde(rename = "cockpit.storage-layout/1")]
+    StorageLayout(StorageLayoutRecord),
+    #[serde(rename = "cockpit.image-provisioning/1")]
+    ImageProvisioning(ImageProvisioningRecord),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -405,48 +475,88 @@ pub struct ImageProvisioningRecord {
 }
 
 fn nonempty(value: &str) -> Result<(), RecordError> {
-    if value.trim().is_empty() { Err(RecordError::Invalid("required value absent")) } else { Ok(()) }
+    if value.trim().is_empty() {
+        Err(RecordError::Invalid("required value absent"))
+    } else {
+        Ok(())
+    }
 }
 fn references(values: &[String]) -> Result<(), RecordError> {
-    if values.is_empty() { return Err(RecordError::Invalid("evidence references absent")); }
-    for value in values { nonempty(value)?; }
+    if values.is_empty() {
+        return Err(RecordError::Invalid("evidence references absent"));
+    }
+    for value in values {
+        nonempty(value)?;
+    }
     Ok(())
 }
 fn header(value: &RecordHeader) -> Result<(), RecordError> {
-    nonempty(&value.id)?; nonempty(&value.agent)?;
-    references(&value.task_ids)?; references(&value.source_references)
+    nonempty(&value.id)?;
+    nonempty(&value.agent)?;
+    references(&value.task_ids)?;
+    references(&value.source_references)
 }
 fn source(value: &SourceInterface) -> Result<(), RecordError> {
-    if value.commit.len() != 40 || !value.commit.bytes().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()) {
-        return Err(RecordError::Invalid("source commit is not a full lowercase SHA-1 pin"));
+    if value.commit.len() != 40
+        || !value
+            .commit
+            .bytes()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    {
+        return Err(RecordError::Invalid(
+            "source commit is not a full lowercase SHA-1 pin",
+        ));
     }
-    nonempty(&value.interface)?; nonempty(&value.repository)?;
-    symbol(&value.symbol)?; value.file_digest.validate()?;
-    for caller in &value.callers { symbol(caller)?; }
+    nonempty(&value.interface)?;
+    nonempty(&value.repository)?;
+    symbol(&value.symbol)?;
+    value.file_digest.validate()?;
+    for caller in &value.callers {
+        symbol(caller)?;
+    }
     Ok(())
 }
 fn symbol(value: &SourceSymbol) -> Result<(), RecordError> {
-    nonempty(&value.signature)?; nonempty(&value.location.path)?;
+    nonempty(&value.signature)?;
+    nonempty(&value.location.path)?;
     if value.location.first_line == 0 || value.location.last_line < value.location.first_line {
         return Err(RecordError::Invalid("source line range is invalid"));
     }
     Ok(())
 }
-fn finding<T>(value: &Finding<T>, validate: impl FnOnce(&T) -> Result<(), RecordError>) -> Result<(), RecordError> {
+fn finding<T>(
+    value: &Finding<T>,
+    validate: impl FnOnce(&T) -> Result<(), RecordError>,
+) -> Result<(), RecordError> {
     match value {
-        Finding::ObservedRuntime { value, evidence } | Finding::SourceDefinitionOnly { value, evidence } => {
-            references(evidence)?; validate(value)
+        Finding::ObservedRuntime { value, evidence }
+        | Finding::SourceDefinitionOnly { value, evidence } => {
+            references(evidence)?;
+            validate(value)
         }
-        Finding::NotFound { searched, reason } => { references(searched)?; nonempty(reason) }
+        Finding::NotFound { searched, reason } => {
+            references(searched)?;
+            nonempty(reason)
+        }
     }
 }
 fn runtime_finding(value: &RuntimeFinding) -> Result<(), RecordError> {
-    nonempty(&value.id)?; finding(&value.observation, |v| nonempty(v))
+    nonempty(&value.id)?;
+    finding(&value.observation, |v| nonempty(v))
 }
 
 fn attribution(value: &Attribution) -> Result<(), RecordError> {
-    for field in [&value.operation_id, &value.caller_identity, &value.caller_session,
-        &value.plugin, &value.method, &value.subid, &value.catalog_pin.hash] { nonempty(field)?; }
+    for field in [
+        &value.operation_id,
+        &value.caller_identity,
+        &value.caller_session,
+        &value.plugin,
+        &value.method,
+        &value.subid,
+        &value.catalog_pin.hash,
+    ] {
+        nonempty(field)?;
+    }
     Ok(())
 }
 
@@ -454,20 +564,26 @@ impl ToolCallObservation {
     pub fn validate(&self) -> Result<(), RecordError> {
         attribution(&self.attribution)?;
         references(&self.evidence)?;
-        let Some(proof) = &self.completion else { return references(&self.missing_or_mismatched); };
+        let Some(proof) = &self.completion else {
+            return references(&self.missing_or_mismatched);
+        };
         if !self.missing_or_mismatched.is_empty()
             || proof.attempt.attribution != self.attribution
             || proof.terminal.attribution != self.attribution
             || proof.receipt_attribution != self.attribution
             || proof.guest_identity.principal_id != self.attribution.caller_identity
             || proof.guest_identity.session_id != self.attribution.caller_session
-            || proof.attempt.event_id == 0 || proof.terminal.event_id <= proof.attempt.event_id
+            || proof.attempt.event_id == 0
+            || proof.terminal.event_id <= proof.attempt.event_id
             || proof.receipt_attempt_event_id != proof.attempt.event_id
             || proof.receipt_attempt_event_hash != proof.attempt.event_hash
             || proof.receipt_terminal_event_id != proof.terminal.event_id
             || proof.receipt_terminal_event_hash != proof.terminal.event_hash
-            || proof.receipt_outcome != proof.terminal_outcome {
-            return Err(RecordError::Invalid("completion attribution or event references mismatch"));
+            || proof.receipt_outcome != proof.terminal_outcome
+        {
+            return Err(RecordError::Invalid(
+                "completion attribution or event references mismatch",
+            ));
         }
         let read = &proof.post_terminal_state_read;
         attribution(&read.attempt.attribution)?;
@@ -484,49 +600,112 @@ impl ToolCallObservation {
             || read.receipt_attempt_event_id != read.attempt.event_id
             || read.receipt_attempt_event_hash != read.attempt.event_hash
             || read.receipt_terminal_event_id != read.terminal.event_id
-            || read.receipt_terminal_event_hash != read.terminal.event_hash {
-            return Err(RecordError::Invalid("post-terminal supporting read attribution mismatch"));
+            || read.receipt_terminal_event_hash != read.terminal.event_hash
+        {
+            return Err(RecordError::Invalid(
+                "post-terminal supporting read attribution mismatch",
+            ));
         }
-        for field in [&proof.guest_identity.mount_instance_id,
-            &proof.attempt.event_hash, &proof.attempt.previous_record_hash, &proof.attempt.evidence_reference,
-            &proof.terminal.event_hash, &proof.terminal.previous_record_hash, &proof.terminal.evidence_reference,
-            &proof.receipt_reference, &proof.authoritative_state_reference,
-            &read.attempt.event_hash, &read.attempt.previous_record_hash, &read.attempt.evidence_reference,
-            &read.terminal.event_hash, &read.terminal.previous_record_hash, &read.terminal.evidence_reference,
-            &read.receipt_reference, &read.hash_verification_reference, &read.outcome,
-            &proof.hash_verification_reference, &proof.state_comparison_reference, &proof.terminal_outcome] { nonempty(field)?; }
+        for field in [
+            &proof.guest_identity.mount_instance_id,
+            &proof.attempt.event_hash,
+            &proof.attempt.previous_record_hash,
+            &proof.attempt.evidence_reference,
+            &proof.terminal.event_hash,
+            &proof.terminal.previous_record_hash,
+            &proof.terminal.evidence_reference,
+            &proof.receipt_reference,
+            &proof.authoritative_state_reference,
+            &read.attempt.event_hash,
+            &read.attempt.previous_record_hash,
+            &read.attempt.evidence_reference,
+            &read.terminal.event_hash,
+            &read.terminal.previous_record_hash,
+            &read.terminal.evidence_reference,
+            &read.receipt_reference,
+            &read.hash_verification_reference,
+            &read.outcome,
+            &proof.hash_verification_reference,
+            &proof.state_comparison_reference,
+            &proof.terminal_outcome,
+        ] {
+            nonempty(field)?;
+        }
         Ok(())
     }
 }
 
 impl ComponentStatus {
     pub fn validate(&self) -> Result<(), RecordError> {
-        nonempty(&self.component)?; references(&self.task_ids)?;
-        for claim in [&self.proposed, &self.implemented, &self.built, &self.tested, &self.deployed] {
-            if claim.stage != EvidenceStage::NotStarted { references(&claim.evidence)?; }
+        nonempty(&self.component)?;
+        references(&self.task_ids)?;
+        for claim in [
+            &self.proposed,
+            &self.implemented,
+            &self.built,
+            &self.tested,
+            &self.deployed,
+        ] {
+            if claim.stage != EvidenceStage::NotStarted {
+                references(&claim.evidence)?;
+            }
         }
-        if self.implemented.stage == EvidenceStage::Complete { references(&self.source_files)?; }
-        for (claim, command, build) in [(&self.built, &self.build, true), (&self.tested, &self.test, false)] {
+        if self.implemented.stage == EvidenceStage::Complete {
+            references(&self.source_files)?;
+        }
+        for (claim, command, build) in [
+            (&self.built, &self.build, true),
+            (&self.tested, &self.test, false),
+        ] {
             if claim.stage == EvidenceStage::Complete {
-                let command = command.as_ref().ok_or(RecordError::Invalid("command evidence absent"))?;
-                nonempty(&command.command)?; nonempty(&command.owner_request)?; nonempty(&command.receipt)?;
-                if command.exit_status != 0 || (build && command.target.as_deref() != Some("x86_64-unknown-linux-gnu")) {
-                    return Err(RecordError::Invalid("successful native command evidence absent"));
+                let command = command
+                    .as_ref()
+                    .ok_or(RecordError::Invalid("command evidence absent"))?;
+                nonempty(&command.command)?;
+                nonempty(&command.owner_request)?;
+                nonempty(&command.receipt)?;
+                if command.exit_status != 0
+                    || (build && command.target.as_deref() != Some("x86_64-unknown-linux-gnu"))
+                {
+                    return Err(RecordError::Invalid(
+                        "successful native command evidence absent",
+                    ));
                 }
             }
         }
-        for item in &self.deployment_evidence { runtime_finding(item)?; }
-        for call in &self.completed_calls { call.validate()?; }
+        for item in &self.deployment_evidence {
+            runtime_finding(item)?;
+        }
+        for call in &self.completed_calls {
+            call.validate()?;
+        }
         if self.deployed.stage == EvidenceStage::Complete {
-            if self.completed_calls.is_empty() || self.completed_calls.iter().any(|call| call.completion.is_none()) {
-                return Err(RecordError::Invalid("correlated deployment completion evidence absent"));
+            if self.completed_calls.is_empty()
+                || self
+                    .completed_calls
+                    .iter()
+                    .any(|call| call.completion.is_none())
+            {
+                return Err(RecordError::Invalid(
+                    "correlated deployment completion evidence absent",
+                ));
             }
-            let observed: BTreeSet<_> = self.deployment_evidence.iter()
+            let observed: BTreeSet<_> = self
+                .deployment_evidence
+                .iter()
                 .filter(|e| matches!(e.observation, Finding::ObservedRuntime { .. }))
-                .map(|e| e.class).collect();
-            for required in [EvidenceClass::GuestKernelIdentity, EvidenceClass::TrackerAttempt,
-                EvidenceClass::TrackerTerminal, EvidenceClass::Receipt, EvidenceClass::AuthoritativeState] {
-                if !observed.contains(&required) { return Err(RecordError::Invalid("deployment evidence incomplete")); }
+                .map(|e| e.class)
+                .collect();
+            for required in [
+                EvidenceClass::GuestKernelIdentity,
+                EvidenceClass::TrackerAttempt,
+                EvidenceClass::TrackerTerminal,
+                EvidenceClass::Receipt,
+                EvidenceClass::AuthoritativeState,
+            ] {
+                if !observed.contains(&required) {
+                    return Err(RecordError::Invalid("deployment evidence incomplete"));
+                }
             }
         }
         Ok(())
@@ -536,20 +715,34 @@ impl ComponentStatus {
     /// build, or test. Completion attestation belongs to the later executor.
     pub fn calculate(mut self) -> Self {
         if self.implemented.stage == EvidenceStage::Complete
-            && (self.source_files.is_empty() || self.task_ids.is_empty()) {
+            && (self.source_files.is_empty() || self.task_ids.is_empty())
+        {
             self.implemented.stage = EvidenceStage::Unconfirmed;
         }
-        for (claim, command, native) in [(&mut self.built, &self.build, true), (&mut self.tested, &self.test, false)] {
-            if claim.stage == EvidenceStage::Complete && !command.as_ref().is_some_and(|command|
-                command.exit_status == 0 && !command.command.trim().is_empty()
-                && !command.owner_request.trim().is_empty() && !command.receipt.trim().is_empty()
-                && (!native || command.target.as_deref() == Some("x86_64-unknown-linux-gnu"))) {
+        for (claim, command, native) in [
+            (&mut self.built, &self.build, true),
+            (&mut self.tested, &self.test, false),
+        ] {
+            if claim.stage == EvidenceStage::Complete
+                && !command.as_ref().is_some_and(|command| {
+                    command.exit_status == 0
+                        && !command.command.trim().is_empty()
+                        && !command.owner_request.trim().is_empty()
+                        && !command.receipt.trim().is_empty()
+                        && (!native
+                            || command.target.as_deref() == Some("x86_64-unknown-linux-gnu"))
+                })
+            {
                 claim.stage = EvidenceStage::Unconfirmed;
             }
         }
-        if self.deployed.stage == EvidenceStage::Complete &&
-            (self.completed_calls.is_empty() || self.completed_calls.iter().any(|call|
-                call.completion.is_none() || call.validate().is_err())) {
+        if self.deployed.stage == EvidenceStage::Complete
+            && (self.completed_calls.is_empty()
+                || self
+                    .completed_calls
+                    .iter()
+                    .any(|call| call.completion.is_none() || call.validate().is_err()))
+        {
             self.deployed.stage = EvidenceStage::Unconfirmed;
         }
         self
@@ -561,20 +754,42 @@ impl EvidenceRecord {
         match self {
             Self::Baseline(record) => {
                 header(&record.header)?;
-                for item in &record.interfaces { finding(item, source)?; }
+                for item in &record.interfaces {
+                    finding(item, source)?;
+                }
                 let mut views = BTreeSet::new();
                 for trace in &record.operation_traces {
-                    if !views.insert(trace.view) { return Err(RecordError::Invalid("duplicate view trace")); }
-                    for pair in trace.transitions.windows(2) {
-                        if pair[0].callee != pair[1].caller { return Err(RecordError::Invalid("disconnected source trace")); }
+                    if !views.insert(trace.view) {
+                        return Err(RecordError::Invalid("duplicate view trace"));
                     }
-                    for transition in &trace.transitions { symbol(&transition.caller)?; symbol(&transition.callee)?; references(&transition.evidence)?; }
+                    for pair in trace.transitions.windows(2) {
+                        if pair[0].callee != pair[1].caller {
+                            return Err(RecordError::Invalid("disconnected source trace"));
+                        }
+                    }
+                    for transition in &trace.transitions {
+                        symbol(&transition.caller)?;
+                        symbol(&transition.callee)?;
+                        references(&transition.evidence)?;
+                    }
                     match &trace.end {
                         TraceEnd::ReturnedThroughSameHandle { evidence } => references(evidence)?,
-                        TraceEnd::Unresolved { last_proven_symbol, missing_transition, dependent_tasks } => {
-                            symbol(last_proven_symbol)?; nonempty(missing_transition)?; references(dependent_tasks)?;
-                            if trace.transitions.last().is_some_and(|step| step.callee != *last_proven_symbol) {
-                                return Err(RecordError::Invalid("trace continues beyond its last proven symbol"));
+                        TraceEnd::Unresolved {
+                            last_proven_symbol,
+                            missing_transition,
+                            dependent_tasks,
+                        } => {
+                            symbol(last_proven_symbol)?;
+                            nonempty(missing_transition)?;
+                            references(dependent_tasks)?;
+                            if trace
+                                .transitions
+                                .last()
+                                .is_some_and(|step| step.callee != *last_proven_symbol)
+                            {
+                                return Err(RecordError::Invalid(
+                                    "trace continues beyond its last proven symbol",
+                                ));
                             }
                         }
                     }
@@ -583,66 +798,132 @@ impl EvidenceRecord {
             Self::Runtime(record) => {
                 header(&record.header)?;
                 let preservation = &record.preservation;
-                for field in [&preservation.cockpit_name, &preservation.session, &preservation.native_uuid,
-                    &preservation.principal_id, &preservation.grants_identity, &preservation.credential_identity,
-                    &preservation.seed, &preservation.leaf] { finding(field, |value| nonempty(value))?; }
-                for field in [&preservation.btrfs_members, &preservation.subvolumes, &preservation.host_channels,
-                    &preservation.listeners] {
-                    finding(field, |values| { for value in values { nonempty(value)?; } Ok(()) })?;
+                for field in [
+                    &preservation.cockpit_name,
+                    &preservation.session,
+                    &preservation.native_uuid,
+                    &preservation.principal_id,
+                    &preservation.grants_identity,
+                    &preservation.credential_identity,
+                    &preservation.seed,
+                    &preservation.leaf,
+                ] {
+                    finding(field, |value| nonempty(value))?;
+                }
+                for field in [
+                    &preservation.btrfs_members,
+                    &preservation.subvolumes,
+                    &preservation.host_channels,
+                    &preservation.listeners,
+                ] {
+                    finding(field, |values| {
+                        for value in values {
+                            nonempty(value)?;
+                        }
+                        Ok(())
+                    })?;
                 }
                 for view in &record.views {
                     finding(view, |view| {
-                        if view.mount_path != view.view.mount_path() { return Err(RecordError::Invalid("view mount path mismatch")); }
+                        if view.mount_path != view.view.mount_path() {
+                            return Err(RecordError::Invalid("view mount path mismatch"));
+                        }
                         finding(&view.kernel_mount_source, |v| nonempty(v))?;
                         finding(&view.owning_process, |v| nonempty(v))?;
                         finding(&view.catalog_pin, |v| nonempty(&v.hash))?;
-                        finding(&view.guest_kernel_identity, |v| { nonempty(&v.principal_id)?; nonempty(&v.session_id)?; nonempty(&v.mount_instance_id) })
+                        finding(&view.guest_kernel_identity, |v| {
+                            nonempty(&v.principal_id)?;
+                            nonempty(&v.session_id)?;
+                            nonempty(&v.mount_instance_id)
+                        })
                     })?;
                 }
-                for item in &record.findings { runtime_finding(item)?; }
-                for call in &record.tool_calls { call.validate()?; }
+                for item in &record.findings {
+                    runtime_finding(item)?;
+                }
+                for call in &record.tool_calls {
+                    call.validate()?;
+                }
             }
             Self::Blocker(record) => {
-                header(&record.header)?; nonempty(&record.operation)?;
-                nonempty(&record.missing_capability_or_policy)?; nonempty(&record.redacted_error)?;
+                header(&record.header)?;
+                nonempty(&record.operation)?;
+                nonempty(&record.missing_capability_or_policy)?;
+                nonempty(&record.redacted_error)?;
                 references(&record.dependent_tasks)?;
                 if record.kind == BlockerKind::Denial {
-                    for field in [&record.operation_id, &record.caller_identity, &record.caller_session,
-                        &record.plugin, &record.method, &record.subid] {
-                        nonempty(field.as_deref().ok_or(RecordError::Invalid("denial attribution absent"))?)?;
+                    for field in [
+                        &record.operation_id,
+                        &record.caller_identity,
+                        &record.caller_session,
+                        &record.plugin,
+                        &record.method,
+                        &record.subid,
+                    ] {
+                        nonempty(
+                            field
+                                .as_deref()
+                                .ok_or(RecordError::Invalid("denial attribution absent"))?,
+                        )?;
                     }
-                    nonempty(&record.catalog_pin.as_ref().ok_or(RecordError::Invalid("denial catalog pin absent"))?.hash)?;
+                    nonempty(
+                        &record
+                            .catalog_pin
+                            .as_ref()
+                            .ok_or(RecordError::Invalid("denial catalog pin absent"))?
+                            .hash,
+                    )?;
                 }
             }
             Self::LegacyChatInventory(record) => {
                 header(&record.header)?;
-                for item in &record.items { source(&item.source)?; nonempty(&item.rationale)?; }
+                for item in &record.items {
+                    source(&item.source)?;
+                    nonempty(&item.rationale)?;
+                }
             }
             Self::OwnerAuthorization(record) => {
                 header(&record.header)?;
-                nonempty(&record.authorization_id)?; nonempty(&record.action)?;
-                nonempty(&record.target_identity)?; nonempty(&record.owner_request)?;
-                if record.target_cockpit != COCKPIT || record.expires_at.is_some_and(|at| at <= record.issued_at) {
-                    return Err(RecordError::Invalid("authorization target or validity interval invalid"));
+                nonempty(&record.authorization_id)?;
+                nonempty(&record.action)?;
+                nonempty(&record.target_identity)?;
+                nonempty(&record.owner_request)?;
+                if record.target_cockpit != COCKPIT
+                    || record.expires_at.is_some_and(|at| at <= record.issued_at)
+                {
+                    return Err(RecordError::Invalid(
+                        "authorization target or validity interval invalid",
+                    ));
                 }
-                if record.affected_files.is_empty() && record.affected_services.is_empty() && record.operation_files.is_empty() {
+                if record.affected_files.is_empty()
+                    && record.affected_services.is_empty()
+                    && record.operation_files.is_empty()
+                {
                     return Err(RecordError::Invalid("authorization scope absent"));
                 }
             }
             Self::Status(record) => {
                 header(&record.header)?;
-                for item in &record.components { item.validate()?; }
-                for item in &record.open_blockers { nonempty(&item.record_id)?; references(&item.dependent_tasks)?; }
+                for item in &record.components {
+                    item.validate()?;
+                }
+                for item in &record.open_blockers {
+                    nonempty(&item.record_id)?;
+                    references(&item.dependent_tasks)?;
+                }
             }
             Self::StorageLayout(record) => {
                 header(&record.header)?;
-                nonempty(&record.sled_description)?; nonempty(&record.image_directory)?;
+                nonempty(&record.sled_description)?;
+                nonempty(&record.image_directory)?;
             }
             Self::ImageProvisioning(record) => {
                 header(&record.header)?;
                 header(&record.expected_layout.header)?;
                 nonempty(&record.expected_layout.image_directory)?;
-                for file in &record.actual_files { nonempty(&file.name)?; }
+                for file in &record.actual_files {
+                    nonempty(&file.name)?;
+                }
             }
         }
         Ok(())

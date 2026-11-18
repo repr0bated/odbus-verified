@@ -595,9 +595,10 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
             "get_turn_response" => {
                 declare::<GetTurnResponseInput, GetTurnResponseOutput>(name, subid, mutation)
             }
-            "submit_turn" => {
-                declare::<super::chat_response_methods::SubmitTurnInput, super::chat_response_methods::SubmitTurnOutput>(name, subid, mutation)
-            }
+            "submit_turn" => declare::<
+                super::chat_response_methods::SubmitTurnInput,
+                super::chat_response_methods::SubmitTurnOutput,
+            >(name, subid, mutation),
             "list_conversations" => {
                 declare::<ListConversationsInput, ListConversationsOutput>(name, subid, mutation)
             }
@@ -721,7 +722,8 @@ mod tests {
                 Some(READ_CAPABILITY)
             );
         }
-        for method in ["submit_turn"] {
+        {
+            let method = "submit_turn";
             assert_eq!(
                 schema.methods[method].required_capability.as_deref(),
                 Some(SUBMIT_CAPABILITY)

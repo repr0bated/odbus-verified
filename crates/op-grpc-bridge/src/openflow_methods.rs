@@ -1,5 +1,6 @@
 //! Canonical exact compare-and-exchange adapter for OpenFlow flow members.
 
+use crate::openflow_permit::{FinalAdmission, OpenFlowPermitAuthority};
 use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::openflow::{
     AddFlowInput, DeleteFlowInput, FlowAction, FlowEntry, FlowMutationKind, FlowMutationOutput,
@@ -9,7 +10,6 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use zbus::{Connection, Proxy};
-use crate::openflow_permit::{FinalAdmission, OpenFlowPermitAuthority};
 
 const SERVICE: &str = "org.opdbus.v1.plugins.openflow";
 const PATH: &str = "/org/opdbus/v1/plugins/openflow";
@@ -82,6 +82,10 @@ pub async fn dispatch_openflow_flow_method_attributed(
     ).await.context("OpenFlow attributed compare/exchange timed out; outcome requires reconciliation, no automatic retry")?
 }
 
+/// Connection-only fixture entry for exact CAS decoding without attributed
+/// permits. Production always uses [`dispatch_openflow_flow_method`].
+/// Former MutationEngine test callers are unlinked from the fresh bridge; keep
+/// the helper for connection-owned fixtures that still need the CAS path.
 #[cfg(test)]
 pub(crate) async fn dispatch_openflow_flow_method_on(
     connection: &Connection,
@@ -106,31 +110,56 @@ async fn dispatch_request(
         .transpose()?
         .unwrap_or_default();
     let permit = if let Some((authority, admission)) = attributed {
-        Some(authority.issue(&request.bridge, &desired_json, &expected_json, request.delete, admission).await?)
-    } else { None };
+        Some(
+            authority
+                .issue(
+                    &request.bridge,
+                    &desired_json,
+                    &expected_json,
+                    request.delete,
+                    admission,
+                )
+                .await?,
+        )
+    } else {
+        None
+    };
     // Route to the pinned unique controller owner so a replacement cannot
     // receive a permit created for its predecessor.
-    let destination = permit.as_ref().map_or(SERVICE, |permit| permit.controller.as_str());
+    let destination = permit
+        .as_ref()
+        .map_or(SERVICE, |permit| permit.controller.as_str());
     let proxy = Proxy::new(connection, destination, PATH, INTERFACE)
         .await
         .context("create OpenFlow controller D-Bus proxy")?;
     let response: String = if let Some(permit) = &permit {
-        proxy.call("CompareExchangeFlowAttributed", &(
-            permit.id.as_str(), request.bridge.as_str(), desired_json.as_str(),
-            expected_json.as_str(), request.delete,
-        )).await.context("OpenFlow attributed compare/exchange failed; no automatic retry")?
-    } else { proxy
-        .call(
-            "CompareExchangeFlow",
-            &(
-                request.bridge.as_str(),
-                desired_json.as_str(),
-                expected_json.as_str(),
-                request.delete,
-            ),
-        )
-        .await
-        .context("OpenFlow native compare/exchange failed")? };
+        proxy
+            .call(
+                "CompareExchangeFlowAttributed",
+                &(
+                    permit.id.as_str(),
+                    request.bridge.as_str(),
+                    desired_json.as_str(),
+                    expected_json.as_str(),
+                    request.delete,
+                ),
+            )
+            .await
+            .context("OpenFlow attributed compare/exchange failed; no automatic retry")?
+    } else {
+        proxy
+            .call(
+                "CompareExchangeFlow",
+                &(
+                    request.bridge.as_str(),
+                    desired_json.as_str(),
+                    expected_json.as_str(),
+                    request.delete,
+                ),
+            )
+            .await
+            .context("OpenFlow native compare/exchange failed")?
+    };
     let native: Value = serde_json::from_str(&response)
         .context("OpenFlow owner returned malformed compare/exchange readback")?;
     ensure!(
@@ -304,6 +333,22 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    #[ignore = "requires a D-Bus session bus; kept so the connection-only helper stays linked"]
+    async fn unattributed_dispatch_helper_reachable_on_session_bus() {
+        let connection = Connection::session()
+            .await
+            .expect("session bus required for ignored OpenFlow helper fixture");
+        let err = dispatch_openflow_flow_method_on(
+            &connection,
+            "not_a_flow_method",
+            &serde_json::json!({}),
+        )
+        .await
+        .expect_err("unknown OpenFlow method must fail before native I/O");
+        assert!(!err.to_string().is_empty());
+    }
+
     #[test]
     fn three_methods_build_exact_compare_exchange_requests() {
         let before = flow(vec![FlowAction::Normal]);
@@ -370,19 +415,29 @@ mod tests {
             before: None,
             after: Some(flow.clone()),
             bridge: "ovsbr0".into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert_eq!(patch.as_object().unwrap().len(), 1);
         assert_eq!(patch["observed_flows"].as_object().unwrap().len(), 1);
-        assert_eq!(patch["observed_flows"]["ovsbr0"][&identity]["installed"], true);
+        assert_eq!(
+            patch["observed_flows"]["ovsbr0"][&identity]["installed"],
+            true
+        );
         let removed = projection_patch(&OpenFlowMethodReceipt {
             output: Value::Null,
             before: Some(flow.clone()),
             after: None,
             bridge: "ovsbr0".into(),
-        }).unwrap();
-        assert_eq!(removed["observed_flows"]["ovsbr0"][&identity]["installed"], false);
-        assert_eq!(removed["observed_flows"]["ovsbr0"][&identity]["flow"],
-            serde_json::to_value(flow).unwrap());
+        })
+        .unwrap();
+        assert_eq!(
+            removed["observed_flows"]["ovsbr0"][&identity]["installed"],
+            false
+        );
+        assert_eq!(
+            removed["observed_flows"]["ovsbr0"][&identity]["flow"],
+            serde_json::to_value(flow).unwrap()
+        );
         assert!(removed.get("bridges").is_none());
     }
 }

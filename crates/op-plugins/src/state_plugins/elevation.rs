@@ -432,11 +432,7 @@ mod tests {
             Some(CONTROL_PLANE_CONFIGURE)
         );
         assert_eq!(
-            protected_action(
-                "chat_router",
-                "config_init",
-                &json!({"section": "gateway"})
-            ),
+            protected_action("chat_router", "config_init", &json!({"section": "gateway"})),
             None
         );
         assert_eq!(

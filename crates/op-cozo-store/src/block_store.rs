@@ -71,7 +71,14 @@ const RELATIONS: [(&str, &str, &[&str]); 2] = [
     (
         "devices",
         ":create devices { id: String => size_bytes: Int, block_size: Int, chunk_size: Int, created_at: Int, role: String }",
-        &["id", "size_bytes", "block_size", "chunk_size", "created_at", "role"],
+        &[
+            "id",
+            "size_bytes",
+            "block_size",
+            "chunk_size",
+            "created_at",
+            "role",
+        ],
     ),
     (
         "blocks",
@@ -177,12 +184,15 @@ impl CozoBlockStore {
             return Err(invalid("device role must not be empty"));
         }
         let chunk = u64::from(UBLK_CHUNK_BYTES);
-        if size_bytes == 0 || size_bytes % chunk != 0 || i64::try_from(size_bytes).is_err() {
+        if size_bytes == 0 || !size_bytes.is_multiple_of(chunk) || i64::try_from(size_bytes).is_err() {
             return Err(invalid(&format!(
                 "device size {size_bytes} must be a positive multiple of {chunk} bytes"
             )));
         }
-        let _registry = self.registry.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _registry = self
+            .registry
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some(existing) = self.device(id)? {
             let same = existing.size_bytes == size_bytes
                 && existing.block_size == UBLK_LOGICAL_BLOCK_BYTES
@@ -198,8 +208,14 @@ impl CozoBlockStore {
         let params = Params::from([
             ("id".into(), DataValue::from(id)),
             ("size_bytes".into(), DataValue::from(size_bytes as i64)),
-            ("block_size".into(), DataValue::from(i64::from(UBLK_LOGICAL_BLOCK_BYTES))),
-            ("chunk_size".into(), DataValue::from(i64::from(UBLK_CHUNK_BYTES))),
+            (
+                "block_size".into(),
+                DataValue::from(i64::from(UBLK_LOGICAL_BLOCK_BYTES)),
+            ),
+            (
+                "chunk_size".into(),
+                DataValue::from(i64::from(UBLK_CHUNK_BYTES)),
+            ),
             ("created_at".into(), DataValue::from(now_unix()?)),
             ("role".into(), DataValue::from(role)),
         ]);
@@ -226,9 +242,9 @@ impl CozoBlockStore {
             return Ok(None);
         };
         let int = |index: usize| {
-            row.get(index)
-                .and_then(DataValue::get_int)
-                .ok_or_else(|| CozoError::Database(format!("device {id}: column {index} is not an Int")))
+            row.get(index).and_then(DataValue::get_int).ok_or_else(|| {
+                CozoError::Database(format!("device {id}: column {index} is not an Int"))
+            })
         };
         let size_bytes = u64::try_from(int(0)?).map_err(|_| corrupt(id, "negative size"))?;
         let block_size = u32::try_from(int(1)?).map_err(|_| corrupt(id, "bad block_size"))?;
@@ -275,7 +291,8 @@ impl CozoBlockStore {
         let digest = row.get(1).and_then(DataValue::get_bytes);
         match (data, digest) {
             (Some(data), Some(digest))
-                if data.len() == out.len() && blake3::hash(data).as_bytes().as_slice() == digest =>
+                if data.len() == out.len()
+                    && blake3::hash(data).as_bytes().as_slice() == digest =>
             {
                 out.copy_from_slice(data);
                 Ok(true)
@@ -289,7 +306,12 @@ impl CozoBlockStore {
 
     /// Store chunk `idx` (exactly one chunk long). An all-zero chunk deletes
     /// the row instead, keeping the device sparse.
-    pub fn write_block(&self, device: &BlockDevice, idx: u64, data: &[u8]) -> Result<(), CozoError> {
+    pub fn write_block(
+        &self,
+        device: &BlockDevice,
+        idx: u64,
+        data: &[u8],
+    ) -> Result<(), CozoError> {
         let mut params = block_key(device, idx, Some(data.len()))?;
         if data.iter().all(|byte| *byte == 0) {
             return self.remove(params);
@@ -389,7 +411,10 @@ impl CozoBlockStore {
 
     fn ensure_schema(&self) -> Result<(), CozoError> {
         for (name, create, expected) in RELATIONS {
-            if let Err(e) = self.db.run_script(create, Params::new(), ScriptMutability::Mutable) {
+            if let Err(e) = self
+                .db
+                .run_script(create, Params::new(), ScriptMutability::Mutable)
+            {
                 let msg = e.to_string();
                 if !(msg.contains("already exists")
                     || msg.contains("AlreadyExists")
@@ -465,7 +490,10 @@ fn first_count(rows: &NamedRows) -> Result<u64, CozoError> {
 fn validate_device_id(id: &str) -> Result<(), CozoError> {
     let valid = !id.is_empty()
         && id.len() <= 64
-        && id.bytes().next().is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        && id
+            .bytes()
+            .next()
+            .is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         && id
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
@@ -506,23 +534,47 @@ mod tests {
     }
 
     fn pattern(seed: u8) -> Vec<u8> {
-        (0..CHUNK).map(|i| (i as u8).wrapping_mul(31).wrapping_add(seed)).collect()
+        (0..CHUNK)
+            .map(|i| (i as u8).wrapping_mul(31).wrapping_add(seed))
+            .collect()
     }
 
     #[test]
     fn registration_is_idempotent_and_refuses_changes() {
         let (_dir, store) = store();
         let size = 16 * u64::from(UBLK_CHUNK_BYTES);
-        let first = store.register_device("dev-a", size, POOL_PERSIST_ROLE).unwrap();
+        let first = store
+            .register_device("dev-a", size, POOL_PERSIST_ROLE)
+            .unwrap();
         assert_eq!(first.chunk_count(), 16);
         assert_eq!(first.block_size, UBLK_LOGICAL_BLOCK_BYTES);
-        let again = store.register_device("dev-a", size, POOL_PERSIST_ROLE).unwrap();
+        let again = store
+            .register_device("dev-a", size, POOL_PERSIST_ROLE)
+            .unwrap();
         assert_eq!(first, again);
-        assert!(store.register_device("dev-a", size * 2, POOL_PERSIST_ROLE).is_err());
+        assert!(
+            store
+                .register_device("dev-a", size * 2, POOL_PERSIST_ROLE)
+                .is_err()
+        );
         assert!(store.register_device("dev-a", size, "other").is_err());
-        assert!(store.register_device("Bad_Id", size, POOL_PERSIST_ROLE).is_err());
-        assert!(store.register_device("dev-b", size + 1, POOL_PERSIST_ROLE).is_err());
-        assert_eq!(store.counts().unwrap(), BlockStoreCounts { devices: 1, blocks: 0 });
+        assert!(
+            store
+                .register_device("Bad_Id", size, POOL_PERSIST_ROLE)
+                .is_err()
+        );
+        assert!(
+            store
+                .register_device("dev-b", size + 1, POOL_PERSIST_ROLE)
+                .is_err()
+        );
+        assert_eq!(
+            store.counts().unwrap(),
+            BlockStoreCounts {
+                devices: 1,
+                blocks: 0
+            }
+        );
     }
 
     #[test]
@@ -548,11 +600,19 @@ mod tests {
         store.discard_block(&dev, 3).unwrap();
         assert!(!store.read_block(&dev, 3, &mut out).unwrap());
         assert!(out.iter().all(|b| *b == 0));
-        assert_eq!(store.counts().unwrap(), BlockStoreCounts { devices: 1, blocks: 0 });
+        assert_eq!(
+            store.counts().unwrap(),
+            BlockStoreCounts {
+                devices: 1,
+                blocks: 0
+            }
+        );
         store.flush().unwrap();
 
         for idx in 0..8 {
-            store.write_block(&dev, idx, &pattern(idx as u8 + 1)).unwrap();
+            store
+                .write_block(&dev, idx, &pattern(idx as u8 + 1))
+                .unwrap();
         }
         store.discard_blocks(&dev, 2, 6).unwrap();
         assert_eq!(store.block_count("dev-a").unwrap(), 4);
@@ -587,7 +647,10 @@ mod tests {
         store.write_block(&dev, 1, &pattern(3)).unwrap();
         let params = Params::from([
             ("data".into(), DataValue::Bytes(pattern(4))),
-            ("blake3".into(), DataValue::Bytes(blake3::hash(&pattern(3)).as_bytes().to_vec())),
+            (
+                "blake3".into(),
+                DataValue::Bytes(blake3::hash(&pattern(3)).as_bytes().to_vec()),
+            ),
         ]);
         store
             .run(
@@ -624,7 +687,10 @@ mod tests {
     fn default_path_and_override() {
         // SAFETY: no other test in this module reads this variable.
         unsafe { std::env::remove_var(UBLK_COZO_DB_PATH_ENV) };
-        assert_eq!(ublk_cozo_db_path(), PathBuf::from(DEFAULT_UBLK_COZO_DB_PATH));
+        assert_eq!(
+            ublk_cozo_db_path(),
+            PathBuf::from(DEFAULT_UBLK_COZO_DB_PATH)
+        );
         unsafe { std::env::set_var(UBLK_COZO_DB_PATH_ENV, "/tmp/ublk-override") };
         assert_eq!(ublk_cozo_db_path(), PathBuf::from("/tmp/ublk-override"));
         unsafe { std::env::remove_var(UBLK_COZO_DB_PATH_ENV) };

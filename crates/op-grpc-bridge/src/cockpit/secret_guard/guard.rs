@@ -3,8 +3,8 @@
 //! and declared-secret JSON fields. Fail-closed: detection, internal
 //! error, or exceeding the 2 000 ms check limit withholds the item.
 
-use super::credential_registry::CredentialRegistry;
 use super::CredentialClass;
+use super::credential_registry::CredentialRegistry;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
@@ -150,9 +150,7 @@ fn declared_secret_hit(item: &[u8]) -> bool {
                     if key == "sealed_id" {
                         return true;
                     }
-                    if key == "x-oscal-subid"
-                        && member.as_str() == Some(SEALED_ID_SUBID)
-                    {
+                    if key == "x-oscal-subid" && member.as_str() == Some(SEALED_ID_SUBID) {
                         return true;
                     }
                     if walk(member) {

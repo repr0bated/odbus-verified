@@ -450,7 +450,9 @@ pub async fn subscribe_protocol(
     bounded_json(&requests)?;
     let (mut connection, selection, initial) = tokio::time::timeout(
         HANDSHAKE_TIMEOUT,
-        connect_protocol(address, database, monitor_id, method, requests, version, admission),
+        connect_protocol(
+            address, database, monitor_id, method, requests, version, admission,
+        ),
     )
     .await
     .context("OVSDB protocol monitor handshake timed out")??;
@@ -532,7 +534,9 @@ async fn connect_protocol(
     let schema_id = connection.next_id();
     let raw_schema = request(&mut connection, schema_id, "get_schema", json!([database])).await?;
     let selection = validate_protocol_requests(&raw_schema, &requests, version)?;
-    if let Some(admission) = admission { admission().await?; }
+    if let Some(admission) = admission {
+        admission().await?;
+    }
     let monitor_request_id = connection.next_id();
     let initial = request(
         &mut connection,

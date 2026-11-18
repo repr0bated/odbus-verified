@@ -4,7 +4,7 @@
 # The policy script and hooks are taken from the main repository, because older branches may lack them.
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 main_repo=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
-cd "$root"
+cd "$root" || exit 0
 git config core.hooksPath "$main_repo/.githooks" 2>/dev/null || true
 report=$("$main_repo/scripts/branch-policy.sh" --apply 2>&1 || true)
 msg="Branch policy (owner, 2026-11-08): only main and dev may be used. This session ran the branch policy check with --apply, which archived stale local branches as tags. Remaining items, reported by the check:

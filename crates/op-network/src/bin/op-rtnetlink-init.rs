@@ -142,7 +142,9 @@ async fn main() -> Result<()> {
             if !matches!(env::var("OP_NETWORK_ROLE").as_deref(), Ok("decoy")) {
                 bail!("wgcf-policy requires OP_NETWORK_ROLE=decoy");
             }
-            let interface = args.next().context("wgcf-policy requires the retained interface")?;
+            let interface = args
+                .next()
+                .context("wgcf-policy requires the retained interface")?;
             if args.next().is_some() {
                 bail!("usage: op-rtnetlink-init wgcf-policy <interface>");
             }

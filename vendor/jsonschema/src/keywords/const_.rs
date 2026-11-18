@@ -15,7 +15,7 @@ struct ConstArrayValidator {
 }
 impl ConstArrayValidator {
     #[inline]
-    pub(crate) fn compile(value: &[Value], location: Location) -> CompilationResult {
+    pub(crate) fn compile(value: &[Value], location: Location) -> CompilationResult<'_> {
         Ok(Box::new(ConstArrayValidator {
             value: value.to_vec(),
             location,
@@ -127,7 +127,7 @@ struct ConstNumberValidator {
 
 impl ConstNumberValidator {
     #[inline]
-    pub(crate) fn compile(original_value: &Number, location: Location) -> CompilationResult {
+    pub(crate) fn compile(original_value: &Number, location: Location) -> CompilationResult<'_> {
         Ok(Box::new(ConstNumberValidator {
             original_value: original_value.clone(),
             location,
@@ -169,7 +169,7 @@ pub(crate) struct ConstObjectValidator {
 
 impl ConstObjectValidator {
     #[inline]
-    pub(crate) fn compile(value: &Map<String, Value>, location: Location) -> CompilationResult {
+    pub(crate) fn compile(value: &Map<String, Value>, location: Location) -> CompilationResult<'_> {
         Ok(Box::new(ConstObjectValidator {
             value: value.clone(),
             location,
@@ -210,7 +210,7 @@ pub(crate) struct ConstStringValidator {
 
 impl ConstStringValidator {
     #[inline]
-    pub(crate) fn compile(value: &str, location: Location) -> CompilationResult {
+    pub(crate) fn compile(value: &str, location: Location) -> CompilationResult<'_> {
         Ok(Box::new(ConstStringValidator {
             value: value.to_string(),
             location,

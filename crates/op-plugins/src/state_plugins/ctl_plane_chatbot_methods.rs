@@ -2,6 +2,7 @@
 //! control-plane chatbot. RuntimeDocuments owns the service-scoped row; this
 //! module does not create an episode collection or embedding authority.
 
+use super::chat_router::{MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES};
 use super::ctl_plane_chatbot::{
     CtlPlaneChatbotConfig, KnowledgePush, OutcomeClass, ReasoningEpisode, Significance,
     SignificanceLevel,
@@ -10,7 +11,6 @@ use super::embedding_model::methods::{
     EmbedInput, EmbedOutput, EmbeddingInputType, EmbeddingProvider,
 };
 use super::runtime_documents::RuntimeDocuments;
-use super::chat_router::{MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES};
 use anyhow::{Context, Result, ensure};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

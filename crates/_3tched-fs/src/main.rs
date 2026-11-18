@@ -64,10 +64,18 @@ enum Command {
         #[arg(long)]
         no_activate: bool,
         /// Project only these sealed plugins, retaining the source catalog pin.
-        #[arg(long = "include-plugin", value_delimiter = ',', conflicts_with = "exclude_plugins")]
+        #[arg(
+            long = "include-plugin",
+            value_delimiter = ',',
+            conflicts_with = "exclude_plugins"
+        )]
         include_plugins: Vec<String>,
         /// Omit these sealed plugins from this view, retaining their catalog authority.
-        #[arg(long = "exclude-plugin", value_delimiter = ',', conflicts_with = "include_plugins")]
+        #[arg(
+            long = "exclude-plugin",
+            value_delimiter = ',',
+            conflicts_with = "include_plugins"
+        )]
         exclude_plugins: Vec<String>,
     },
     /// Inspect an immutable view, workspace, or plugin object.
@@ -312,7 +320,11 @@ async fn run_ipfs(store: &ObjectStore, command: IpfsCommand) -> Result<()> {
         let parse = |addresses: &[String]| -> Result<Vec<rust_ipfs::Multiaddr>> {
             addresses
                 .iter()
-                .map(|address| address.parse().with_context(|| format!("invalid multiaddr {address}")))
+                .map(|address| {
+                    address
+                        .parse()
+                        .with_context(|| format!("invalid multiaddr {address}"))
+                })
                 .collect()
         };
         ipfs::start(
@@ -329,7 +341,12 @@ async fn run_ipfs(store: &ObjectStore, command: IpfsCommand) -> Result<()> {
             let objects = view
                 .objects
                 .iter()
-                .map(|(plugin, hash)| Ok((plugin.clone(), Value::from(ipfs::cid_for(hash)?.to_string()))))
+                .map(|(plugin, hash)| {
+                    Ok((
+                        plugin.clone(),
+                        Value::from(ipfs::cid_for(hash)?.to_string()),
+                    ))
+                })
                 .collect::<Result<serde_json::Map<_, _>>>()?;
             print_json(&serde_json::json!({
                 "view": ipfs::cid_for(&view.view_id)?.to_string(),
@@ -354,7 +371,11 @@ async fn run_ipfs(store: &ObjectStore, command: IpfsCommand) -> Result<()> {
                 }
             }
         }
-        IpfsCommand::Fetch { view, node, timeout_secs } => {
+        IpfsCommand::Fetch {
+            view,
+            node,
+            timeout_secs,
+        } => {
             let node_handle = start(&node).await?;
             let fetched = ipfs::fetch_view(
                 &node_handle,
@@ -787,10 +808,15 @@ async fn main() -> Result<()> {
             let surface = namespace::Surface::parse(&surface_str)?;
             reject_excluded_shm(&state)?;
             reject_excluded_shm(&catalog)?;
-            if fs_name.is_empty() || fs_name.len() > 63
-                || !fs_name.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+            if fs_name.is_empty()
+                || fs_name.len() > 63
+                || !fs_name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
             {
-                bail!("filesystem source name must contain 1-63 ASCII letters, digits, underscores or hyphens");
+                bail!(
+                    "filesystem source name must contain 1-63 ASCII letters, digits, underscores or hyphens"
+                );
             }
             if !mountpoint.is_dir() {
                 bail!("mountpoint {} is not a directory", mountpoint.display());
@@ -824,7 +850,10 @@ async fn main() -> Result<()> {
                     .unwrap_or_else(|_| "/usr/local/libexec/op-dbus/threetched/threetched".into());
                 let binary_path = std::path::PathBuf::from(binary_path);
                 if !binary_path.is_file() {
-                    bail!("threetched surface binary is missing: {}", binary_path.display());
+                    bail!(
+                        "threetched surface binary is missing: {}",
+                        binary_path.display()
+                    );
                 }
                 let captured = crate::threetched_surface::ThreetchedSurface::capture(&binary_path)?;
                 filesystem.graft_threetched(captured)?;
@@ -853,8 +882,9 @@ async fn main() -> Result<()> {
             if auto_unmount {
                 options.push(MountOption::AutoUnmount);
             }
-            fuser::mount2(filesystem, &mountpoint, &options)
-                .with_context(|| format!("mount {} at {}", surface.mount_name(), mountpoint.display()))?;
+            fuser::mount2(filesystem, &mountpoint, &options).with_context(|| {
+                format!("mount {} at {}", surface.mount_name(), mountpoint.display())
+            })?;
         }
     }
     Ok(())
@@ -927,7 +957,11 @@ mod cli_tests {
     fn guest_mounted_commands_reject_host_identity_and_direct_transport() {
         for command in [
             vec!["3tched-fs", "call", "demo", "get_status"],
-            vec!["3tched-fs", "invoke", "plugins/demo/operations/get_status/call"],
+            vec![
+                "3tched-fs",
+                "invoke",
+                "plugins/demo/operations/get_status/call",
+            ],
             vec!["3tched-fs", "describe"],
         ] {
             let mut missing_mount = command.clone();
@@ -936,10 +970,19 @@ mod cli_tests {
             let mut args = command;
             args.extend(["--mount", "/run/mounts/3tchedFS", "--guest-kernel"]);
             let parsed = Cli::try_parse_from(&args).unwrap();
-            assert!(matches!(parsed.command,
-                Command::Call { guest_kernel: true, .. }
-                | Command::Invoke { guest_kernel: true, .. }
-                | Command::Describe { guest_kernel: true, .. }));
+            assert!(matches!(
+                parsed.command,
+                Command::Call {
+                    guest_kernel: true,
+                    ..
+                } | Command::Invoke {
+                    guest_kernel: true,
+                    ..
+                } | Command::Describe {
+                    guest_kernel: true,
+                    ..
+                }
+            ));
             for alternate in [
                 ["--expected-session", "host"],
                 ["--bus-address", "unix:path=/alternate"],
@@ -952,9 +995,10 @@ mod cli_tests {
                 assert!(Cli::try_parse_from(conflicting).is_err());
             }
         }
-        assert!(Cli::try_parse_from([
-            "3tched-fs", "describe", "--mount", "/run/mounts/3tchedFS"
-        ]).is_err());
+        assert!(
+            Cli::try_parse_from(["3tched-fs", "describe", "--mount", "/run/mounts/3tchedFS"])
+                .is_err()
+        );
     }
 
     #[test]
@@ -980,9 +1024,7 @@ mod cli_tests {
             conflict.extend(fallback);
             assert!(Cli::try_parse_from(conflict).is_err());
         }
-        assert!(
-            Cli::try_parse_from(["3tched-fs", "mcp", "--expected-session", "human"]).is_err()
-        );
+        assert!(Cli::try_parse_from(["3tched-fs", "mcp", "--expected-session", "human"]).is_err());
         assert!(matches!(
             Cli::try_parse_from([
                 "3tched-fs",
@@ -1024,9 +1066,7 @@ mod cli_tests {
                 ..
             } if plugin == "cognitive"
         ));
-        assert!(
-            Cli::try_parse_from(["3tched-fs", "mcp", "--plugin", "cognitive"]).is_err()
-        );
+        assert!(Cli::try_parse_from(["3tched-fs", "mcp", "--plugin", "cognitive"]).is_err());
     }
 
     #[test]
@@ -1088,9 +1128,7 @@ mod cli_tests {
 
     #[test]
     fn host_session_still_requires_socket_and_preserves_selected_identity() {
-        assert!(
-            Cli::try_parse_from(["3tched-fs", "mcp", "--lungs-session", "session"]).is_err()
-        );
+        assert!(Cli::try_parse_from(["3tched-fs", "mcp", "--lungs-session", "session"]).is_err());
         let cli = Cli::try_parse_from([
             "3tched-fs",
             "mcp",

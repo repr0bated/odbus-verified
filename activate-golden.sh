@@ -26,7 +26,7 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 LC_ALL=C
 export PATH LC_ALL
 
-REPO=$(CDPATH= cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
+REPO=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f "$0")")" && pwd)
 # Base kit installation is separate from application overlay activation.
 # It deliberately stops here; a later invocation performs the release.
 if [ "$#" = 1 ] && [ "$1" = --install-kit ]; then

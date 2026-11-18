@@ -13,13 +13,13 @@ use op_state::{
 use op_state_store::PluginSchema;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::{json, prelude::*, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json, prelude::*};
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use tokio::net::UnixStream;
 use tokio_tungstenite::{
-    tungstenite::{protocol::WebSocketConfig, Message},
     WebSocketStream,
+    tungstenite::{Message, protocol::WebSocketConfig},
 };
 
 use super::incus_device::{Device, NamedDevice};
@@ -363,12 +363,20 @@ impl IncusPlugin {
     /// Provision the project plugin's restricted container in one Incus
     /// operation. Image/pool/path are trusted deployment policy, not chat input.
     pub fn project_creation_body(
-        project_id: &str, owner_session_id: &str, fingerprint: &str, pool: &str, persist_path: &str,
+        project_id: &str,
+        owner_session_id: &str,
+        fingerprint: &str,
+        pool: &str,
+        persist_path: &str,
     ) -> Result<serde_json::Value> {
-        anyhow::ensure!(uuid::Uuid::parse_str(project_id)?.to_string() == project_id
-            && fingerprint.len() == 64 && fingerprint.bytes().all(|c| c.is_ascii_hexdigit())
-            && !pool.is_empty() && std::path::Path::new(persist_path).is_absolute(),
-            "invalid project provisioning policy");
+        anyhow::ensure!(
+            uuid::Uuid::parse_str(project_id)?.to_string() == project_id
+                && fingerprint.len() == 64
+                && fingerprint.bytes().all(|c| c.is_ascii_hexdigit())
+                && !pool.is_empty()
+                && std::path::Path::new(persist_path).is_absolute(),
+            "invalid project provisioning policy"
+        );
         Ok(serde_json::json!({
             "type":"container", "ephemeral":false,
             "source":{"type":"image","fingerprint":fingerprint}, "profiles":[],
@@ -423,7 +431,9 @@ impl IncusPlugin {
             ["list", "--format=json"] => {
                 Self::incus_api_call("GET", "/1.0/instances?recursion=1", None).await
             }
-            ["init", ..] => anyhow::bail!("native creation requires the durable MutationEngine allocation owner"),
+            ["init", ..] => anyhow::bail!(
+                "native creation requires the durable MutationEngine allocation owner"
+            ),
             ["delete", name, "--force"] => {
                 Ok(serde_json::to_vec(&IncusApi::local().delete(name).await?)?)
             }
@@ -662,7 +672,9 @@ impl IncusPlugin {
 
     /// Apply a single Create action for an instance.
     pub async fn apply_create(_instance: &IncusInstance) -> Result<Vec<String>> {
-        anyhow::bail!("declarative creation is unsupported; use admitted create_instance for durable ID-N allocation")
+        anyhow::bail!(
+            "declarative creation is unsupported; use admitted create_instance for durable ID-N allocation"
+        )
     }
 
     async fn apply_modify(current: &IncusInstance, desired: &IncusInstance) -> Result<Vec<String>> {
@@ -1235,12 +1247,14 @@ mod tests {
             (sid, "another-container"),
             (sid, "../../host?project=default"),
         ] {
-            assert!(IncusPlugin::bound_identity_session_power_request(
-                session,
-                name,
-                IdentitySessionPowerState::Running,
-            )
-            .is_err());
+            assert!(
+                IncusPlugin::bound_identity_session_power_request(
+                    session,
+                    name,
+                    IdentitySessionPowerState::Running,
+                )
+                .is_err()
+            );
         }
     }
 
@@ -1261,16 +1275,20 @@ mod tests {
         )
         .expect("stop request");
         assert_eq!(stop_body, r#"{"action":"stop"}"#);
-        assert!(IncusPlugin::identity_session_power_request(
-            "../../host?project=default",
-            IdentitySessionPowerState::Running,
-        )
-        .is_err());
-        assert!(IncusPlugin::identity_session_power_request(
-            &session_id.to_uppercase(),
-            IdentitySessionPowerState::Running,
-        )
-        .is_err());
+        assert!(
+            IncusPlugin::identity_session_power_request(
+                "../../host?project=default",
+                IdentitySessionPowerState::Running,
+            )
+            .is_err()
+        );
+        assert!(
+            IncusPlugin::identity_session_power_request(
+                &session_id.to_uppercase(),
+                IdentitySessionPowerState::Running,
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1415,14 +1433,25 @@ pub struct ReconcileNativeCreationInput {
 }
 
 pub fn numbered_native_name(name: &str) -> bool {
-    name.strip_prefix("ID-").is_some_and(|n| n.parse::<i64>()
-        .is_ok_and(|value| value > 0 && value.to_string() == n))
+    name.strip_prefix("ID-").is_some_and(|n| {
+        n.parse::<i64>()
+            .is_ok_and(|value| value > 0 && value.to_string() == n)
+    })
 }
 
 /// Pure request preparation; only the bridge's durable owner may submit it.
 pub fn native_creation_body(input: &CreateInstanceInput) -> Result<serde_json::Value> {
-    anyhow::ensure!(input.name.is_empty(), "name is server assigned; omit name for ID-N creation");
-    anyhow::ensure!(matches!(input.instance_type.as_str(), "container" | "virtual-machine"), "invalid Incus instance type");
+    anyhow::ensure!(
+        input.name.is_empty(),
+        "name is server assigned; omit name for ID-N creation"
+    );
+    anyhow::ensure!(
+        matches!(
+            input.instance_type.as_str(),
+            "container" | "virtual-machine"
+        ),
+        "invalid Incus instance type"
+    );
     let source = match input.source_mode.as_str() {
         "image" => image_source(&input.image)?,
         "empty" if input.image.is_empty() => serde_json::json!({"type":"none"}),
@@ -1430,56 +1459,103 @@ pub fn native_creation_body(input: &CreateInstanceInput) -> Result<serde_json::V
     };
     let config = input.config.clone().unwrap_or_default();
     validate_config(&config)?;
-    anyhow::ensure!(!config.contains_key("user.opdbus.creation_operation")
-        && !config.contains_key("user.opdbus.creation_digest"),
-        "creation receipt markers are server assigned");
+    anyhow::ensure!(
+        !config.contains_key("user.opdbus.creation_operation")
+            && !config.contains_key("user.opdbus.creation_digest"),
+        "creation receipt markers are server assigned"
+    );
     let mut devices = BTreeMap::new();
     for named in &input.devices {
         validate_segment(&named.name, "device name")?;
-        anyhow::ensure!(devices.insert(named.name.clone(), named.device.to_incus_map()).is_none(), "duplicate Incus device name");
+        anyhow::ensure!(
+            devices
+                .insert(named.name.clone(), named.device.to_incus_map())
+                .is_none(),
+            "duplicate Incus device name"
+        );
     }
-    Ok(serde_json::json!({"type":input.instance_type,"source":source,
-        "profiles":input.profiles,"config":config,"devices":devices,"ephemeral":false}))
+    Ok(
+        serde_json::json!({"type":input.instance_type,"source":source,
+        "profiles":input.profiles,"config":config,"devices":devices,"ephemeral":false}),
+    )
 }
 
 /// Native transport only. Admission, allocation and the durable POST fence
 /// belong to MutationEngine; no plugin method dispatches here directly.
 pub async fn create_reserved_native(body: &serde_json::Value) -> Result<()> {
-    let name = body["name"].as_str().context("allocated native name missing")?;
+    let name = body["name"]
+        .as_str()
+        .context("allocated native name missing")?;
     let reserved_chatbot = name == op_cozo_store::CONTROL_PLANE_NATIVE_NAME
         && body["type"] == "container"
         && body["config"]["user.opdbus.session_id"] == "b0c777e3-0955-cd8b-3d01-ca12998cae28"
-        && std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY").ok()
-            .is_some_and(|key| !key.trim().is_empty()
-                && body["config"]["user.opdbus.wireguard_public_key"] == key.trim());
-    anyhow::ensure!((numbered_native_name(name) || reserved_chatbot)
-        && body["config"]["user.opdbus.creation_operation"].as_str().is_some_and(|op| uuid::Uuid::parse_str(op).is_ok_and(|id| id.to_string() == op))
-        && body["config"]["user.opdbus.creation_digest"].as_str().is_some_and(|digest| digest.len() == 64 && digest.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))),
-        "native create requires a numbered or configured chatbot durable reservation");
-    IncusApi::local().call("POST", "/1.0/instances", Some(&body.to_string()), None).await?;
+        && std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")
+            .ok()
+            .is_some_and(|key| {
+                !key.trim().is_empty()
+                    && body["config"]["user.opdbus.wireguard_public_key"] == key.trim()
+            });
+    anyhow::ensure!(
+        (numbered_native_name(name) || reserved_chatbot)
+            && body["config"]["user.opdbus.creation_operation"]
+                .as_str()
+                .is_some_and(|op| uuid::Uuid::parse_str(op).is_ok_and(|id| id.to_string() == op))
+            && body["config"]["user.opdbus.creation_digest"]
+                .as_str()
+                .is_some_and(|digest| digest.len() == 64
+                    && digest
+                        .bytes()
+                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))),
+        "native create requires a numbered or configured chatbot durable reservation"
+    );
+    IncusApi::local()
+        .call("POST", "/1.0/instances", Some(&body.to_string()), None)
+        .await?;
     Ok(())
 }
 
 /// Fixed stopped/unprivileged chatbot preparation; storage remains external.
 pub async fn identity_creation_body(session: &str, public_key: &str) -> Result<serde_json::Value> {
-    let pool = IncusApi::local().call("GET", "/1.0/storage-pools/identity-roots", None, None).await
+    let pool = IncusApi::local()
+        .call("GET", "/1.0/storage-pools/identity-roots", None, None)
+        .await
         .context("prepare requires the externally configured identity-roots pool")?;
-    anyhow::ensure!(pool["driver"] == "dir" && pool["status"] == "Created"
-        && pool["config"]["source"] == "/var/lib/incus-storage/identity-roots",
-        "identity-roots pool differs from trusted preparation policy");
-    let profile = IncusApi::local().call("GET", "/1.0/profiles/3tched-lungs", None, None).await?;
-    let devices = profile["devices"].as_object().context("3tched-lungs devices missing")?;
-    anyhow::ensure!(devices.keys().all(|key| matches!(key.as_str(), "runtime-run" | "lungs-socket-dir"))
-        && devices.get("lungs-socket-dir") == Some(&serde_json::json!({
+    anyhow::ensure!(
+        pool["driver"] == "dir"
+            && pool["status"] == "Created"
+            && pool["config"]["source"] == "/var/lib/incus-storage/identity-roots",
+        "identity-roots pool differs from trusted preparation policy"
+    );
+    let profile = IncusApi::local()
+        .call("GET", "/1.0/profiles/3tched-lungs", None, None)
+        .await?;
+    let devices = profile["devices"]
+        .as_object()
+        .context("3tched-lungs devices missing")?;
+    anyhow::ensure!(
+        devices
+            .keys()
+            .all(|key| matches!(key.as_str(), "runtime-run" | "lungs-socket-dir"))
+            && devices.get("lungs-socket-dir")
+                == Some(&serde_json::json!({
             "type":"disk","source":"/run/opdbus/lungs","path":"/run/opdbus/lungs","readonly":"true"})),
-        "3tched-lungs devices differ from trusted socket-only profile");
-    anyhow::ensure!(profile["config"].as_object().is_some_and(|config| config.is_empty()),
-        "3tched-lungs profile config must be empty");
+        "3tched-lungs devices differ from trusted socket-only profile"
+    );
+    anyhow::ensure!(
+        profile["config"]
+            .as_object()
+            .is_some_and(|config| config.is_empty()),
+        "3tched-lungs profile config must be empty"
+    );
     let mut runtime = profile["devices"]["runtime-run"].clone();
-    let runtime_object = runtime.as_object_mut().context("3tched-lungs runtime-run disk missing")?;
+    let runtime_object = runtime
+        .as_object_mut()
+        .context("3tched-lungs runtime-run disk missing")?;
     runtime_object.remove("initial.mode");
-    anyhow::ensure!(runtime == serde_json::json!({"type":"disk","source":"tmpfs:","path":"/run"}),
-        "runtime-run differs from trusted tmpfs disk");
+    anyhow::ensure!(
+        runtime == serde_json::json!({"type":"disk","source":"tmpfs:","path":"/run"}),
+        "runtime-run differs from trusted tmpfs disk"
+    );
     Ok(serde_json::json!({
         "type":"container","ephemeral":false,"source":{"type":"none"},"profiles":["3tched-lungs"],
         "config":{"security.privileged":"false","security.nesting":"false","security.protection.shift":"true",
@@ -1492,7 +1568,9 @@ pub async fn identity_creation_body(session: &str, public_key: &str) -> Result<s
     }))
 }
 
-fn default_source_mode() -> String { "image".into() }
+fn default_source_mode() -> String {
+    "image".into()
+}
 
 fn default_instance_type() -> String {
     "container".to_string()
@@ -1927,19 +2005,38 @@ impl IncusRootRepairBackend {
 
     /// One stopped, same-instance native rename. Admission, UUID ownership and
     /// the durable one-POST fence belong to the identity owner.
-    pub async fn rename_stopped_identity(&self, old_name: &str, new_name: &str,
-        native_uuid: &str, expected_etag: &str) -> Result<()> {
+    pub async fn rename_stopped_identity(
+        &self,
+        old_name: &str,
+        new_name: &str,
+        native_uuid: &str,
+        expected_etag: &str,
+    ) -> Result<()> {
         validate_segment(old_name, "old instance name")?;
         validate_segment(new_name, "new instance name")?;
-        anyhow::ensure!(old_name != new_name && !expected_etag.is_empty(),
-            "native rename requires distinct names and an ETag");
+        anyhow::ensure!(
+            old_name != new_name && !expected_etag.is_empty(),
+            "native rename requires distinct names and an ETag"
+        );
         let (current, etag) = self.instance(old_name).await?;
-        anyhow::ensure!(etag == expected_etag && current["name"] == old_name
-            && current["type"] == "container" && current["status"] == "Stopped"
-            && current["status_code"] == 102 && current["config"]["volatile.uuid"] == native_uuid,
-            "stopped native rename binding or ETag changed");
+        anyhow::ensure!(
+            etag == expected_etag
+                && current["name"] == old_name
+                && current["type"] == "container"
+                && current["status"] == "Stopped"
+                && current["status_code"] == 102
+                && current["config"]["volatile.uuid"] == native_uuid,
+            "stopped native rename binding or ETag changed"
+        );
         let body = serde_json::json!({"name":new_name, "migration":false});
-        self.api.call("POST", &instance_path(old_name)?, Some(&body.to_string()), Some(expected_etag)).await?;
+        self.api
+            .call(
+                "POST",
+                &instance_path(old_name)?,
+                Some(&body.to_string()),
+                Some(expected_etag),
+            )
+            .await?;
         Ok(())
     }
 
@@ -2462,7 +2559,11 @@ pub struct IncusMethodObservationError {
 
 impl std::fmt::Display for IncusMethodObservationError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "Incus authoritative state did not confirm the completed method receipt: {}", self.cause)
+        write!(
+            formatter,
+            "Incus authoritative state did not confirm the completed method receipt: {}",
+            self.cause
+        )
     }
 }
 
@@ -2669,7 +2770,9 @@ async fn dispatch_incus_with_api(
     args: &serde_json::Value,
 ) -> Result<serde_json::Value> {
     match method {
-        "create_instance" => anyhow::bail!("native creation requires the durable MutationEngine allocation owner"),
+        "create_instance" => {
+            anyhow::bail!("native creation requires the durable MutationEngine allocation owner")
+        }
         "modify_instance" => {
             let input: ModifyInstanceInput = serde_json::from_value(args.clone())
                 .context("invalid modify_instance arguments")?;
@@ -2947,10 +3050,19 @@ pub(crate) fn incus_schema() -> PluginSchema {
         ]
     }));
     let mut methods = std::collections::HashMap::new();
-    methods.insert("reconcile_creation".into(),
-        super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<ReconcileNativeCreationInput, CreateInstanceOutput>(
-            "reconcile_creation", op_state_store::SideEffect::Mutation, true,
-            "cap.service.incus.instance.create@v1", "mut.service.incus.instance.reconcile-creation@v1"));
+    methods.insert(
+        "reconcile_creation".into(),
+        super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
+            ReconcileNativeCreationInput,
+            CreateInstanceOutput,
+        >(
+            "reconcile_creation",
+            op_state_store::SideEffect::Mutation,
+            true,
+            "cap.service.incus.instance.create@v1",
+            "mut.service.incus.instance.reconcile-creation@v1",
+        ),
+    );
     methods.insert(
         "create_instance".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
@@ -3361,17 +3473,21 @@ mod transport_tests {
     #[tokio::test]
     async fn rejects_truncated_chunked_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n";
-        assert!(request_with_response(response, Duration::from_secs(1))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_secs(1))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn rejects_truncated_content_length_response() {
         let response = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhi";
-        assert!(request_with_response(response, Duration::from_secs(1))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_secs(1))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -3405,9 +3521,11 @@ mod transport_tests {
     #[tokio::test]
     async fn timeout_rejects_incomplete_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhe";
-        assert!(request_with_response(response, Duration::from_millis(30))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_millis(30))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -3416,9 +3534,11 @@ mod transport_tests {
             super::dispatch_incus_method("start_instance", &serde_json::json!({"name": 42}))
                 .await
                 .expect_err("typed input must reject non-string names");
-        assert!(malformed
-            .to_string()
-            .contains("invalid start_instance arguments"));
+        assert!(
+            malformed
+                .to_string()
+                .contains("invalid start_instance arguments")
+        );
 
         let unknown = super::dispatch_incus_method("not_declared", &serde_json::json!({}))
             .await
@@ -3728,10 +3848,10 @@ mod transport_tests {
 
         let mut wrong_project = observed_instance("demo", "Running", 103);
         wrong_project["project"] = "other".into();
-        assert!(IncusPlugin::parse_instance_list(
-            serde_json::to_vec(&vec![wrong_project]).unwrap()
-        )
-        .is_err());
+        assert!(
+            IncusPlugin::parse_instance_list(serde_json::to_vec(&vec![wrong_project]).unwrap())
+                .is_err()
+        );
     }
 
     #[test]
@@ -4188,9 +4308,11 @@ mod transport_tests {
             )
             .await
             .expect_err("unfinished or failed operation must not acknowledge completion");
-            assert!(result
-                .to_string()
-                .contains(if error.is_empty() { status } else { error }));
+            assert!(
+                result
+                    .to_string()
+                    .contains(if error.is_empty() { status } else { error })
+            );
         }
         let error = dispatch_fixture("delete_instance", serde_json::json!({"name": "demo"}), vec![
             instance_read(),
@@ -4269,11 +4391,13 @@ mod transport_tests {
             serde_json::json!({"name": "demo", "command": [""]}),
             serde_json::json!({"name": "demo", "command": ["tool", "\0"]}),
         ] {
-            assert!(super::dispatch_incus_with_api(&api, "exec_instance", &args)
-                .await
-                .unwrap_err()
-                .to_string()
-                .contains("Incus exec"));
+            assert!(
+                super::dispatch_incus_with_api(&api, "exec_instance", &args)
+                    .await
+                    .unwrap_err()
+                    .to_string()
+                    .contains("Incus exec")
+            );
         }
         let error = super::dispatch_incus_with_api(
             &api,

@@ -6,7 +6,7 @@ fail() { printf 'prepare-lungs-client: %s\n' "$*" >&2; exit 1; }
 usage='usage (host root): TOP READ_ONLY_RELEASE | --container NAME NATIVE_UUID ROOT_SUBVOLUME_UUID OLD_CLIENT_SHA256_OR_absent READ_ONLY_RELEASE'
 [[ $(id -u) == 0 ]] || fail "$usage"
 mode=image
-container= native_uuid= root_uuid= old_client= private_root= stage=
+container='' native_uuid='' root_uuid='' old_client='' private_root='' stage=''
 case "${1:-}" in
     --container)
         [[ $# == 6 ]] || fail "$usage"

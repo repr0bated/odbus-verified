@@ -43,10 +43,18 @@ pub(crate) fn capture_paths() -> Result<(PathBuf, PathBuf)> {
         (Some(binary), Some(manifest)) => {
             let binary = PathBuf::from(binary);
             let manifest = PathBuf::from(manifest);
-            ensure!(binary.is_absolute(), "THREETCHED_CAPTURE_BIN must be an absolute path");
-            ensure!(manifest.is_absolute(), "THREETCHED_CAPTURE_MANIFEST must be an absolute path");
+            ensure!(
+                binary.is_absolute(),
+                "THREETCHED_CAPTURE_BIN must be an absolute path"
+            );
+            ensure!(
+                manifest.is_absolute(),
+                "THREETCHED_CAPTURE_MANIFEST must be an absolute path"
+            );
             Ok((binary, manifest))
         }
-        _ => anyhow::bail!("THREETCHED_CAPTURE_BIN and THREETCHED_CAPTURE_MANIFEST must be supplied together"),
+        _ => anyhow::bail!(
+            "THREETCHED_CAPTURE_BIN and THREETCHED_CAPTURE_MANIFEST must be supplied together"
+        ),
     }
 }

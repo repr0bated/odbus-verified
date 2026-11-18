@@ -88,7 +88,9 @@ impl ProxyMethods {
 
     pub(crate) async fn shutdown(&self) {
         let listeners = std::mem::take(&mut *self.listeners.lock().await);
-        for (_, listener) in listeners { listener.stop().await; }
+        for (_, listener) in listeners {
+            listener.stop().await;
+        }
     }
 
     /// Caller retains the runtime operation guard through canonical publication.
@@ -267,7 +269,8 @@ impl ProxyMethods {
 #[cfg(test)]
 impl ProxyMethods {
     async fn dispatch(&self, method: &str, args: Value) -> Result<(Value, ProxyServerState)> {
-        self.dispatch_with_admission(method, args, Arc::new(|| Box::pin(async { Ok(()) }))).await
+        self.dispatch_with_admission(method, args, Arc::new(|| Box::pin(async { Ok(()) })))
+            .await
     }
 }
 

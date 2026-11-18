@@ -20,10 +20,11 @@
 //! device/inode identities after the publisher exits, not trust its exit code.
 
 use op_blob::{
-    BlobRef, blob, btrfs, try_blobify_plugin_schema,
+    BlobRef, blob, btrfs,
     catalog::{ActiveReflectionCatalog, DEFAULT_SHM_DIR},
     demo, descriptor,
     identity::WgKeypair,
+    try_blobify_plugin_schema,
 };
 use op_plugins::DefaultPluginRegistry;
 use op_state_store::MemoryStore;
@@ -349,7 +350,10 @@ fn directory_identity(metadata: &std::fs::Metadata) -> (u64, u64) {
 fn catalog_directory_identity(path: &Path) -> Result<Option<(u64, u64)>, String> {
     match std::fs::symlink_metadata(path) {
         Ok(metadata) if metadata.is_dir() => Ok(Some(directory_identity(&metadata))),
-        Ok(_) => Err(format!("not a nonsymlink catalog directory: {}", path.display())),
+        Ok(_) => Err(format!(
+            "not a nonsymlink catalog directory: {}",
+            path.display()
+        )),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(format!("inspect directory {}: {error}", path.display())),
     }
@@ -357,7 +361,10 @@ fn catalog_directory_identity(path: &Path) -> Result<Option<(u64, u64)>, String>
 
 fn require_directory_identity(path: &Path, expected: Option<(u64, u64)>) -> Result<(), String> {
     if catalog_directory_identity(path)? != expected {
-        return Err(format!("catalog directory identity changed: {}", path.display()));
+        return Err(format!(
+            "catalog directory identity changed: {}",
+            path.display()
+        ));
     }
     Ok(())
 }
@@ -391,8 +398,8 @@ fn write_release_file(
     bytes: &[u8],
     mode: u32,
 ) -> Result<(), String> {
-    let name = std::ffi::CString::new(name)
-        .map_err(|_| "catalog filename contains NUL".to_string())?;
+    let name =
+        std::ffi::CString::new(name).map_err(|_| "catalog filename contains NUL".to_string())?;
     let mut file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -449,7 +456,9 @@ fn copy_coordinated_catalog(
     if canonical_stage.as_os_str() != stage.as_os_str()
         || stage.parent() != Some(destination_parent)
     {
-        return Err("release catalog stage must be canonical and share the destination parent".into());
+        return Err(
+            "release catalog stage must be canonical and share the destination parent".into(),
+        );
     }
     if stage == source
         || stage == destination
@@ -471,7 +480,9 @@ fn copy_coordinated_catalog(
         &parent.metadata().map_err(|error| error.to_string())?,
     ));
     let parent_view = PathBuf::from(format!("/proc/self/fd/{}", parent.as_raw_fd()));
-    let stage_name = stage.file_name().ok_or("release catalog stage has no filename")?;
+    let stage_name = stage
+        .file_name()
+        .ok_or("release catalog stage has no filename")?;
     let destination_name = destination
         .file_name()
         .ok_or("destination catalog has no filename")?;
@@ -479,7 +490,9 @@ fn copy_coordinated_catalog(
     let pinned_destination = parent_view.join(destination_name);
     let stage_directory = open_release_directory(&pinned_stage)?;
     let stage_identity = Some(directory_identity(
-        &stage_directory.metadata().map_err(|error| error.to_string())?,
+        &stage_directory
+            .metadata()
+            .map_err(|error| error.to_string())?,
     ));
     let old_identity = catalog_directory_identity(&pinned_destination)?;
     let source_identity = catalog_directory_identity(source)?;
@@ -502,7 +515,13 @@ fn copy_coordinated_catalog(
     }
 
     for blob in &catalog.blobs {
-        write_release_file(&stage_directory, &stage_view, &blob.name, &blob.bytes, blob.mode)?;
+        write_release_file(
+            &stage_directory,
+            &stage_view,
+            &blob.name,
+            &blob.bytes,
+            blob.mode,
+        )?;
     }
     write_release_file(
         &stage_directory,
@@ -531,7 +550,9 @@ fn copy_coordinated_catalog(
             nix::fcntl::RenameFlags::RENAME_NOREPLACE
         },
     )
-    .map_err(|error| format!("publish coordinated catalog: {error}; controller reconciliation required"))?;
+    .map_err(|error| {
+        format!("publish coordinated catalog: {error}; controller reconciliation required")
+    })?;
     parent.sync_all().map_err(|error| {
         format!("sync published catalog parent: {error}; namespace changed, durability unknown; controller reconciliation required")
     })?;
@@ -972,13 +993,19 @@ mod copy_catalog_tests {
 
             copy_catalog_with_stage(&source, &destination, Some(&stage)).unwrap();
 
-            assert_eq!(catalog_directory_identity(&destination).unwrap(), stage_identity);
+            assert_eq!(
+                catalog_directory_identity(&destination).unwrap(),
+                stage_identity
+            );
             assert_eq!(catalog_directory_identity(&stage).unwrap(), old_identity);
             assert_eq!(committed_files(&destination), committed_files(&source));
             if let Some(old_files) = old_files {
                 assert_eq!(committed_files(&stage), old_files);
             }
-            assert_eq!(std::fs::read_dir(&root_path).unwrap().count(), if existing { 3 } else { 2 });
+            assert_eq!(
+                std::fs::read_dir(&root_path).unwrap().count(),
+                if existing { 3 } else { 2 }
+            );
         }
     }
 
@@ -997,11 +1024,17 @@ mod copy_catalog_tests {
         let stage_identity = catalog_directory_identity(&stage).unwrap();
         let before = committed_files(&destination);
 
-        assert!(copy_catalog_with_stage(&source, &destination, Some(&stage))
-            .unwrap_err().contains("not empty"));
+        assert!(
+            copy_catalog_with_stage(&source, &destination, Some(&stage))
+                .unwrap_err()
+                .contains("not empty")
+        );
 
         assert_eq!(catalog_directory_identity(&stage).unwrap(), stage_identity);
-        assert_eq!(std::fs::read(stage.join("foreign")).unwrap(), b"preserve me");
+        assert_eq!(
+            std::fs::read(stage.join("foreign")).unwrap(),
+            b"preserve me"
+        );
         assert_eq!(committed_files(&destination), before);
     }
 
@@ -1020,13 +1053,21 @@ mod copy_catalog_tests {
         std::fs::write(stage.join("foreign"), b"preserve me").unwrap();
 
         write_release_file(&directory, &view, "declared.blob", b"complete bytes", 0o644).unwrap();
-        assert!(write_release_file(&directory, &view, "declared.blob", b"replacement", 0o644).is_err());
+        assert!(
+            write_release_file(&directory, &view, "declared.blob", b"replacement", 0o644).is_err()
+        );
         assert!(require_directory_identity(&stage, identity).is_err());
         drop(directory);
 
-        assert_eq!(std::fs::read(retained.join("declared.blob")).unwrap(), b"complete bytes");
+        assert_eq!(
+            std::fs::read(retained.join("declared.blob")).unwrap(),
+            b"complete bytes"
+        );
         assert_eq!(std::fs::read_dir(&retained).unwrap().count(), 1);
-        assert_eq!(std::fs::read(stage.join("foreign")).unwrap(), b"preserve me");
+        assert_eq!(
+            std::fs::read(stage.join("foreign")).unwrap(),
+            b"preserve me"
+        );
         assert_eq!(std::fs::read_dir(&stage).unwrap().count(), 1);
     }
 }

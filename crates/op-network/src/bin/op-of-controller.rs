@@ -33,9 +33,15 @@ const ADMISSION_INTERFACE: &str = "org.opdbus.v1.RoutingAdmissionV1";
 
 async fn require_admission_owner(connection: &Connection, sender: &str) -> Result<()> {
     let proxy = zbus::fdo::DBusProxy::new(connection).await?;
-    let owner = tokio::time::timeout(Duration::from_secs(5),
-        proxy.get_name_owner(ADMISSION_OWNER.try_into()?)).await??;
-    anyhow::ensure!(owner.as_str() == sender, "OpenFlow sender is not the bridge admission owner");
+    let owner = tokio::time::timeout(
+        Duration::from_secs(5),
+        proxy.get_name_owner(ADMISSION_OWNER.try_into()?),
+    )
+    .await??;
+    anyhow::ensure!(
+        owner.as_str() == sender,
+        "OpenFlow sender is not the bridge admission owner"
+    );
     Ok(())
 }
 
@@ -68,12 +74,24 @@ impl OpenFlowDbusService {
         #[zbus(header)] header: Header<'_>,
         #[zbus(connection)] connection: &Connection,
     ) -> zbus::fdo::Result<String> {
-        let sender = header.sender().ok_or_else(deny_unattributed_mutation)?.to_string();
-        if permit.len() != 36 || bridge.len() > 15
-            || flow_json.len().saturating_add(expected_json.len()).saturating_add(bridge.len()) > 65_536 {
-            return Err(zbus::fdo::Error::InvalidArgs("OpenFlow attributed CAS exceeds its bounds".into()));
+        let sender = header
+            .sender()
+            .ok_or_else(deny_unattributed_mutation)?
+            .to_string();
+        if permit.len() != 36
+            || bridge.len() > 15
+            || flow_json
+                .len()
+                .saturating_add(expected_json.len())
+                .saturating_add(bridge.len())
+                > 65_536
+        {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "OpenFlow attributed CAS exceeds its bounds".into(),
+            ));
         }
-        require_admission_owner(connection, &sender).await
+        require_admission_owner(connection, &sender)
+            .await
             .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
         let callback_connection = connection.clone();
         let callback_bridge = bridge.clone();
@@ -88,16 +106,39 @@ impl OpenFlowDbusService {
             let expected = callback_expected.clone();
             Box::pin(async move {
                 require_admission_owner(&connection, &sender).await?;
-                let proxy = Proxy::new(&connection, sender.as_str(), ADMISSION_PATH, ADMISSION_INTERFACE).await?;
-                let admitted: bool = tokio::time::timeout(Duration::from_secs(10),
-                    proxy.call("ConsumeFlowPermit", &(permit, bridge, flow, expected, delete))).await??;
+                let proxy = Proxy::new(
+                    &connection,
+                    sender.as_str(),
+                    ADMISSION_PATH,
+                    ADMISSION_INTERFACE,
+                )
+                .await?;
+                let admitted: bool = tokio::time::timeout(
+                    Duration::from_secs(10),
+                    proxy.call(
+                        "ConsumeFlowPermit",
+                        &(permit, bridge, flow, expected, delete),
+                    ),
+                )
+                .await??;
                 anyhow::ensure!(admitted, "OpenFlow bridge denied final admission");
                 Ok(())
             })
         });
-        self.handle.compare_exchange_flow_attributed(
-            bridge, flow_json, if expected_json.is_empty() { None } else { Some(expected_json) }, delete, admission,
-        ).await.map_err(|error| zbus::fdo::Error::Failed(error.to_string()))
+        self.handle
+            .compare_exchange_flow_attributed(
+                bridge,
+                flow_json,
+                if expected_json.is_empty() {
+                    None
+                } else {
+                    Some(expected_json)
+                },
+                delete,
+                admission,
+            )
+            .await
+            .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))
     }
 
     /// Install an absent entry or replace/remove an exact live entry. Empty

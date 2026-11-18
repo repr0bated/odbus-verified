@@ -834,10 +834,12 @@ impl LlmProvider for GeminiClient {
             }
         );
 
-        let system_instruction = crate::graph_turn_reminder::ordered_system_content(&messages)
-            .map(|content| GeminiContent {
-                role: "user".to_string(),
-                parts: vec![GeminiPart { text: content }],
+        let system_instruction =
+            crate::graph_turn_reminder::ordered_system_content(&messages).map(|content| {
+                GeminiContent {
+                    role: "user".to_string(),
+                    parts: vec![GeminiPart { text: content }],
+                }
             });
 
         // Build contents excluding system messages
@@ -1030,10 +1032,12 @@ impl LlmProvider for GeminiClient {
             }
         );
 
-        let system_instruction = crate::graph_turn_reminder::ordered_system_content(&request.messages)
-            .map(|content| GeminiContent {
-                role: "user".to_string(),
-                parts: vec![GeminiPart { text: content }],
+        let system_instruction =
+            crate::graph_turn_reminder::ordered_system_content(&request.messages).map(|content| {
+                GeminiContent {
+                    role: "user".to_string(),
+                    parts: vec![GeminiPart { text: content }],
+                }
             });
 
         // Build contents excluding system messages

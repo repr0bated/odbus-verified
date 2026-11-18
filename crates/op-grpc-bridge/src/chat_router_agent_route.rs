@@ -4,7 +4,7 @@
 //! admission and authoritative observation publication around this helper.
 
 use anyhow::{Context, Result, ensure};
-use op_plugins::state_plugins::{project::ChatMode, chat_router::GetOwnAgentRouteOutput};
+use op_plugins::state_plugins::{chat_router::GetOwnAgentRouteOutput, project::ChatMode};
 use serde_json::Value;
 
 fn component(value: &str) -> bool {

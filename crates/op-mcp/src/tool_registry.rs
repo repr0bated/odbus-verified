@@ -408,10 +408,7 @@ mod descriptor_tests {
         let serialized = simd_json::serde::to_owned_value(&descriptor).unwrap();
         assert_eq!(serialized["name"], "safe_read");
         assert_eq!(serialized["required_capability"], "cognitive.read");
-        assert_eq!(
-            serialized["subid"],
-            "obs.service.cognitive.test.read@v1"
-        );
+        assert_eq!(serialized["subid"], "obs.service.cognitive.test.read@v1");
         assert_eq!(
             registry
                 .execute("safe_read", json!({"key": "status"}))

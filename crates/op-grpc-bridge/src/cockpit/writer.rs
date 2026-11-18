@@ -10,17 +10,26 @@ use std::path::Path;
 use super::records::EvidenceRecord;
 use super::safety::{RecordError, RecordGuard};
 
-pub struct EvidenceRecorder<'a> { root: File, guard: RecordGuard<'a> }
+pub struct EvidenceRecorder<'a> {
+    root: File,
+    guard: RecordGuard<'a>,
+}
 
 impl<'a> EvidenceRecorder<'a> {
     /// The directory must already exist. No implicit host directories, mounts,
     /// credentials, or runtime state are created by this evidence layer.
     pub fn open(root: &Path, guard: RecordGuard<'a>) -> Result<Self, RecordError> {
-        let root = OpenOptions::new().read(true)
-            .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC).open(root)?;
+        let root = OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(root)?;
         let metadata = root.metadata()?;
-        if metadata.uid() != unsafe { libc::geteuid() } || metadata.permissions().mode() & 0o022 != 0 {
-            return Err(RecordError::Invalid("evidence directory must be owned and not group/world writable"));
+        if metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.permissions().mode() & 0o022 != 0
+        {
+            return Err(RecordError::Invalid(
+                "evidence directory must be owned and not group/world writable",
+            ));
         }
         Ok(Self { root, guard })
     }
@@ -35,20 +44,38 @@ impl<'a> EvidenceRecorder<'a> {
     }
 
     fn open_relative(&self, name: &str, flags: i32) -> Result<File, RecordError> {
-        let name = CString::new(name).map_err(|_| RecordError::Invalid("record filename invalid"))?;
-        let fd = unsafe { libc::openat(self.root.as_raw_fd(), name.as_ptr(), flags | libc::O_NOFOLLOW | libc::O_CLOEXEC, 0o600) };
-        if fd < 0 { return Err(std::io::Error::last_os_error().into()); }
+        let name =
+            CString::new(name).map_err(|_| RecordError::Invalid("record filename invalid"))?;
+        let fd = unsafe {
+            libc::openat(
+                self.root.as_raw_fd(),
+                name.as_ptr(),
+                flags | libc::O_NOFOLLOW | libc::O_CLOEXEC,
+                0o600,
+            )
+        };
+        if fd < 0 {
+            return Err(std::io::Error::last_os_error().into());
+        }
         let file = unsafe { File::from_raw_fd(fd) };
         let metadata = file.metadata()?;
-        if !metadata.is_file() || metadata.uid() != unsafe { libc::geteuid() }
-            || metadata.permissions().mode() & 0o077 != 0 || metadata.nlink() != 1 {
-            return Err(RecordError::Invalid("evidence file is not a private owned regular file"));
+        if !metadata.is_file()
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.permissions().mode() & 0o077 != 0
+            || metadata.nlink() != 1
+        {
+            return Err(RecordError::Invalid(
+                "evidence file is not a private owned regular file",
+            ));
         }
         Ok(file)
     }
 
     fn append_blocker(&self, bytes: &[u8]) -> Result<(), RecordError> {
-        let mut file = self.open_relative("blockers.jsonl", libc::O_WRONLY | libc::O_CREAT | libc::O_APPEND)?;
+        let mut file = self.open_relative(
+            "blockers.jsonl",
+            libc::O_WRONLY | libc::O_CREAT | libc::O_APPEND,
+        )?;
         let _lock = FileLock::exclusive(&file)?;
         file.write_all(bytes)?;
         file.sync_all()?;
@@ -62,22 +89,36 @@ impl<'a> EvidenceRecorder<'a> {
         let lock_file = self.open_relative(".writer.lock", libc::O_WRONLY | libc::O_CREAT)?;
         let _lock = FileLock::exclusive(&lock_file)?;
         let temporary = format!(".{}.tmp", uuid::Uuid::new_v4());
-        let temporary_c = CString::new(temporary.as_str()).map_err(|_| RecordError::Invalid("temporary filename invalid"))?;
-        let destination = CString::new(name).map_err(|_| RecordError::Invalid("record filename invalid"))?;
+        let temporary_c = CString::new(temporary.as_str())
+            .map_err(|_| RecordError::Invalid("temporary filename invalid"))?;
+        let destination =
+            CString::new(name).map_err(|_| RecordError::Invalid("record filename invalid"))?;
         let mut created = false;
         let result = (|| {
-            let mut file = self.open_relative(&temporary, libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL)?;
+            let mut file =
+                self.open_relative(&temporary, libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL)?;
             created = true;
             file.write_all(bytes)?;
             file.sync_all()?;
-            let rc = unsafe { libc::renameat(self.root.as_raw_fd(), temporary_c.as_ptr(), self.root.as_raw_fd(), destination.as_ptr()) };
-            if rc != 0 { return Err(RecordError::Io(std::io::Error::last_os_error())); }
+            let rc = unsafe {
+                libc::renameat(
+                    self.root.as_raw_fd(),
+                    temporary_c.as_ptr(),
+                    self.root.as_raw_fd(),
+                    destination.as_ptr(),
+                )
+            };
+            if rc != 0 {
+                return Err(RecordError::Io(std::io::Error::last_os_error()));
+            }
             self.root.sync_all()?;
             Ok(())
         })();
         if result.is_err() && created {
             // Only our unpredictable O_EXCL temporary is eligible for cleanup.
-            unsafe { libc::unlinkat(self.root.as_raw_fd(), temporary_c.as_ptr(), 0); }
+            unsafe {
+                libc::unlinkat(self.root.as_raw_fd(), temporary_c.as_ptr(), 0);
+            }
         }
         result
     }
@@ -101,12 +142,20 @@ impl FileLock {
     fn exclusive(file: &File) -> Result<Self, RecordError> {
         let fd = file.as_raw_fd();
         loop {
-            if unsafe { libc::flock(fd, libc::LOCK_EX) } == 0 { return Ok(Self(fd)); }
+            if unsafe { libc::flock(fd, libc::LOCK_EX) } == 0 {
+                return Ok(Self(fd));
+            }
             let error = std::io::Error::last_os_error();
-            if error.kind() != std::io::ErrorKind::Interrupted { return Err(error.into()); }
+            if error.kind() != std::io::ErrorKind::Interrupted {
+                return Err(error.into());
+            }
         }
     }
 }
 impl Drop for FileLock {
-    fn drop(&mut self) { unsafe { libc::flock(self.0, libc::LOCK_UN); } }
+    fn drop(&mut self) {
+        unsafe {
+            libc::flock(self.0, libc::LOCK_UN);
+        }
+    }
 }

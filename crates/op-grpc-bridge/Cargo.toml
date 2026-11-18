@@ -123,6 +123,11 @@ name = "op-grants-materializer"
 path = "src/bin/op-grants-materializer.rs"
 test = false
 
+[[bin]]
+name = "op-decoy-network"
+path = "src/bin/op-decoy-network.rs"
+test = false
+
 [[test]]
 name = "fresh_bridge_contract"
 path = "tests/fresh_bridge_contract.rs"

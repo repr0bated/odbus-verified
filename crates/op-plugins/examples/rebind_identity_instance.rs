@@ -26,7 +26,10 @@ fn main() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("no identity sled row for {sid}"))?;
 
     let config = instance.config.clone().unwrap_or_default();
-    anyhow::ensure!(instance.instance_type == "container", "instance is not a container");
+    anyhow::ensure!(
+        instance.instance_type == "container",
+        "instance is not a container"
+    );
     anyhow::ensure!(
         config.get("user.opdbus.session_id") == Some(&row.session_id),
         "instance user.opdbus.session_id does not match the row"
@@ -61,7 +64,10 @@ fn main() -> anyhow::Result<()> {
     // compare/exchange against the current revision that replaces instance_json.
     let expected = store.read_identity_revision(sid)?;
     anyhow::ensure!(
-        expected.record.as_ref().is_some_and(|current| current.instance_json == row.instance_json),
+        expected
+            .record
+            .as_ref()
+            .is_some_and(|current| current.instance_json == row.instance_json),
         "identity changed while preparing the rebind"
     );
     row.instance_json = serde_json::to_string(&instance)?;
@@ -70,14 +76,21 @@ fn main() -> anyhow::Result<()> {
     store.apply_identity_intent(
         sid,
         &operation,
-        op_cozo_store::IdentityIntent::CompareExchange(Box::new(op_cozo_store::IdentityCompareExchange {
-            expected,
-            record: Some(row.clone()),
-            genesis,
-        })),
+        op_cozo_store::IdentityIntent::CompareExchange(Box::new(
+            op_cozo_store::IdentityCompareExchange {
+                expected,
+                record: Some(row.clone()),
+                genesis,
+            },
+        )),
     )?;
-    let check = store.get_identity_sled(sid)?.ok_or_else(|| anyhow::anyhow!("row vanished"))?;
-    anyhow::ensure!(check.instance_json == row.instance_json, "write did not persist");
+    let check = store
+        .get_identity_sled(sid)?
+        .ok_or_else(|| anyhow::anyhow!("row vanished"))?;
+    anyhow::ensure!(
+        check.instance_json == row.instance_json,
+        "write did not persist"
+    );
     eprintln!("written");
     Ok(())
 }

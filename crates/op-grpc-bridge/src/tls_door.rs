@@ -11,16 +11,16 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
+use axum::Router;
 use axum::body::Body;
 use axum::extract::connect_info::ConnectInfo;
-use axum::Router;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use hyper_util::server::conn::auto::Builder;
 use tokio::sync::watch;
 use tokio::task::JoinSet;
-use tokio_rustls::rustls;
 use tokio_rustls::TlsAcceptor;
+use tokio_rustls::rustls;
 use tonic::transport::server::TcpConnectInfo;
 use tower::Service;
 
@@ -90,10 +90,16 @@ fn read_identity_file(path: &Path, private: bool) -> anyhow::Result<Vec<u8>> {
         path.display(),
     );
     const MAX_PEM_BYTES: u64 = 1024 * 1024;
-    anyhow::ensure!(metadata.len() <= MAX_PEM_BYTES, "TLS identity file exceeds its size bound");
+    anyhow::ensure!(
+        metadata.len() <= MAX_PEM_BYTES,
+        "TLS identity file exceeds its size bound"
+    );
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take(MAX_PEM_BYTES + 1).read_to_end(&mut bytes)?;
-    anyhow::ensure!(bytes.len() as u64 <= MAX_PEM_BYTES, "TLS identity file exceeds its size bound");
+    anyhow::ensure!(
+        bytes.len() as u64 <= MAX_PEM_BYTES,
+        "TLS identity file exceeds its size bound"
+    );
     Ok(bytes)
 }
 
@@ -226,7 +232,8 @@ where
         // Upgraded MQTT sockets retain their permit until their close completes.
         let _all = permits.acquire_many(MAX_CONNECTIONS as u32).await?;
         Ok::<_, anyhow::Error>(())
-    }).await;
+    })
+    .await;
     if drained.is_err() {
         connections.abort_all();
         while connections.join_next().await.is_some() {}
@@ -243,10 +250,8 @@ mod tests {
     #[tokio::test]
     async fn tls_preserves_tonic_peer_and_identity_metadata_and_drains_on_shutdown() {
         let certificate = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
-        let identity = PemIdentity::from_pem(
-            certificate.cert.pem(),
-            certificate.key_pair.serialize_pem(),
-        );
+        let identity =
+            PemIdentity::from_pem(certificate.cert.pem(), certificate.key_pair.serialize_pem());
         let app = Router::new().route(
             "/peer",
             axum::routing::get(|request: axum::extract::Request| async move {
@@ -266,7 +271,12 @@ mod tests {
         let (stop, stopped) = tokio::sync::oneshot::channel();
         let tls = identity.server_config().unwrap();
         let server = tokio::spawn(serve_upgradeable_tcp_with_shutdown(
-            listener, tls, app, async { let _ = stopped.await; },
+            listener,
+            tls,
+            app,
+            async {
+                let _ = stopped.await;
+            },
         ));
         let mut roots = rustls::RootCertStore::empty();
         roots.add(certificate.cert.der().clone()).unwrap();
@@ -280,43 +290,63 @@ mod tests {
         let tcp = tokio::net::TcpStream::connect(addr).await.unwrap();
         let actual_peer = tcp.local_addr().unwrap();
         let tls = tokio_rustls::TlsConnector::from(Arc::new(client_tls))
-            .connect(rustls::pki_types::ServerName::try_from("localhost").unwrap(), tcp)
+            .connect(
+                rustls::pki_types::ServerName::try_from("localhost").unwrap(),
+                tcp,
+            )
             .await
             .unwrap();
-        let (mut sender, connection) =
-            hyper::client::conn::http1::handshake(TokioIo::new(tls)).await.unwrap();
+        let (mut sender, connection) = hyper::client::conn::http1::handshake(TokioIo::new(tls))
+            .await
+            .unwrap();
         let client = tokio::spawn(connection);
-        let response = sender.send_request(
-            hyper::Request::builder()
-                .uri("/peer")
-                .header("host", "localhost")
-                .header("x-oracle-identity-assertion-bin", "T0lBMQ==")
-                .header("x-forwarded-for", "203.0.113.1")
-                .body(tonic::body::empty_body())
-                .unwrap(),
-        ).await.unwrap();
-        let body = axum::body::to_bytes(Body::new(response.into_body()), 128).await.unwrap();
+        let response = sender
+            .send_request(
+                hyper::Request::builder()
+                    .uri("/peer")
+                    .header("host", "localhost")
+                    .header("x-oracle-identity-assertion-bin", "T0lBMQ==")
+                    .header("x-forwarded-for", "203.0.113.1")
+                    .body(tonic::body::empty_body())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(Body::new(response.into_body()), 128)
+            .await
+            .unwrap();
         assert_eq!(body.as_ref(), actual_peer.to_string().as_bytes());
         stop.send(()).unwrap();
-        tokio::time::timeout(Duration::from_secs(3), server).await.unwrap().unwrap().unwrap();
+        tokio::time::timeout(Duration::from_secs(3), server)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
         client.await.unwrap().unwrap();
     }
 
     #[tokio::test]
     async fn shutdown_does_not_wait_for_unfinished_tls_handshake() {
         let certificate = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
-        let identity = PemIdentity::from_pem(
-            certificate.cert.pem(), certificate.key_pair.serialize_pem(),
-        );
+        let identity =
+            PemIdentity::from_pem(certificate.cert.pem(), certificate.key_pair.serialize_pem());
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let (stop, stopped) = tokio::sync::oneshot::channel();
         let server = tokio::spawn(serve_upgradeable_tcp_with_shutdown(
-            listener, identity.server_config().unwrap(), Router::new(),
-            async { let _ = stopped.await; },
+            listener,
+            identity.server_config().unwrap(),
+            Router::new(),
+            async {
+                let _ = stopped.await;
+            },
         ));
         let _unfinished = tokio::net::TcpStream::connect(addr).await.unwrap();
         stop.send(()).unwrap();
-        tokio::time::timeout(Duration::from_secs(3), server).await.unwrap().unwrap().unwrap();
+        tokio::time::timeout(Duration::from_secs(3), server)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
     }
 }

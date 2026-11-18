@@ -26,7 +26,6 @@ use crate::proto::{
 /// Native chat can exceed tonic's 4 MiB default; identity admission is unchanged.
 pub const MAX_PLUGIN_STATE_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
 
-
 /// Configuration for a remote gRPC endpoint
 #[derive(Debug, Clone)]
 pub struct RemoteEndpoint {

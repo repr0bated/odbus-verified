@@ -345,10 +345,7 @@ mod tests {
             topic_filter: filter.into(),
             agent_session_id: "agent-session".into(),
             instructions: "Watch line telemetry and raise alerts.".into(),
-            allowed_methods: vec![
-                "emqx.publish_wake".into(),
-                "cognitive.memory_store".into(),
-            ],
+            allowed_methods: vec!["emqx.publish_wake".into(), "cognitive.memory_store".into()],
             max_payload_bytes: 4096,
             max_actions: 2,
             timeout_ms: 30_000,

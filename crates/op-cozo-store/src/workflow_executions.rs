@@ -162,10 +162,17 @@ impl CozoGraphShuttle {
                 Ok(record)
             })
             .collect::<Result<_, CozoError>>()?;
-        let mut records: BTreeMap<_, _> = records.into_iter()
-            .map(|record| (record.execution_id.clone(), record)).collect();
-        selected.iter().map(|id| records.remove(id)
-            .ok_or_else(|| CozoError::Other("selected workflow execution disappeared".into())))
+        let mut records: BTreeMap<_, _> = records
+            .into_iter()
+            .map(|record| (record.execution_id.clone(), record))
+            .collect();
+        selected
+            .iter()
+            .map(|id| {
+                records.remove(id).ok_or_else(|| {
+                    CozoError::Other("selected workflow execution disappeared".into())
+                })
+            })
             .collect()
     }
 
@@ -186,14 +193,19 @@ impl CozoGraphShuttle {
         loop {
             p["after"] = serde_json::json!(after);
             let result = self.run_query(&format!("?[execution_id, accepted_at] := *workflow_executions{{principal_id, session_id, session_genesis, execution_id, workflow_id, accepted_at}}, principal_id = $principal, session_id = $session, session_genesis = $genesis{filter}, execution_id > $after :order execution_id :limit {PAGE}"), Some(p.clone()))?;
-            let page = result.as_array()
+            let page = result
+                .as_array()
                 .ok_or_else(|| CozoError::Other("invalid workflow metadata rows".into()))?;
             for row in page {
-                let id = row["execution_id"].as_str()
+                let id = row["execution_id"]
+                    .as_str()
                     .filter(|id| *id > after.as_str())
-                    .ok_or_else(|| CozoError::Other("workflow metadata cursor did not advance".into()))?;
-                let accepted = row["accepted_at"].as_str()
-                    .ok_or_else(|| CozoError::Other("invalid workflow accepted timestamp".into()))?;
+                    .ok_or_else(|| {
+                        CozoError::Other("workflow metadata cursor did not advance".into())
+                    })?;
+                let accepted = row["accepted_at"].as_str().ok_or_else(|| {
+                    CozoError::Other("invalid workflow accepted timestamp".into())
+                })?;
                 let instant = chrono::DateTime::parse_from_rfc3339(accepted)
                     .map_err(|_| CozoError::Other("invalid workflow accepted timestamp".into()))?;
                 newest.push((instant, id.to_owned()));

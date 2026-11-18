@@ -16,7 +16,8 @@ use op_plugins::state_plugins::mcp::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-pub const DEFAULT_AUDIENCE_POLICY_PATH: &str = "/usr/share/op-dbus/etc/opdbus/mcp-audience-policy.json";
+pub const DEFAULT_AUDIENCE_POLICY_PATH: &str =
+    "/usr/share/op-dbus/etc/opdbus/mcp-audience-policy.json";
 pub const DEFAULT_TOOLSETS_PATH: &str = "/etc/opdbus/mcp-toolsets.json";
 
 pub const COMPACT_TOOL_NAMES: [&str; 4] = [

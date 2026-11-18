@@ -154,9 +154,16 @@ impl Default for UiAuthoring {
                 .iter()
                 .filter(|item| item.path == path)
                 .collect();
-            assert_eq!(matching.len(), 1, "one provenance record required for {path}");
+            assert_eq!(
+                matching.len(),
+                1,
+                "one provenance record required for {path}"
+            );
             let source = matching[0];
-            assert_eq!(source.upstream_sha256.is_some(), source.adaptation.is_some());
+            assert_eq!(
+                source.upstream_sha256.is_some(),
+                source.adaptation.is_some()
+            );
             if let Some(hash) = &source.upstream_sha256 {
                 assert!(hash.len() == 64 && hash.bytes().all(|b| b.is_ascii_hexdigit()));
             }
@@ -241,7 +248,8 @@ mod tests {
     fn sealed_defaults_retain_document_provenance_and_all_requested_skills() {
         let schema = super::super::json_render_schema();
         let seed = crate::projection_seed_state_from_schema(&schema);
-        let state: super::super::JsonRenderState = simd_json::serde::from_owned_value(seed).unwrap();
+        let state: super::super::JsonRenderState =
+            simd_json::serde::from_owned_value(seed).unwrap();
         assert_eq!(state.ui_authoring.format, FORMAT);
         assert_eq!(state.ui_authoring.instructions, INSTRUCTIONS);
         assert_eq!(state.ui_authoring.documents.len(), DOCUMENTS.len());
@@ -252,9 +260,20 @@ mod tests {
                 doc.sha256
             );
         }
-        assert!(state.ui_authoring.prompt_document_paths.len() < state.ui_authoring.documents.len());
-        for &(path, _) in DOCUMENTS.iter().filter(|(path, _)| path.starts_with("skills/")) {
-            assert!(state.ui_authoring.prompt_document_paths.iter().any(|selected| selected == path));
+        assert!(
+            state.ui_authoring.prompt_document_paths.len() < state.ui_authoring.documents.len()
+        );
+        for &(path, _) in DOCUMENTS
+            .iter()
+            .filter(|(path, _)| path.starts_with("skills/"))
+        {
+            assert!(
+                state
+                    .ui_authoring
+                    .prompt_document_paths
+                    .iter()
+                    .any(|selected| selected == path)
+            );
         }
         assert!(schema.fields["ui_authoring"].read_only);
     }
