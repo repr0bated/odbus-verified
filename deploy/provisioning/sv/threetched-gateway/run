@@ -1,0 +1,28 @@
+#!/bin/sh
+# runit TEMPLATE (not installed): zero claw = the threetched binary, in GATEWAY
+# mode only. All backend model traffic goes through this gateway; it is never
+# run standalone (no `agent`, no `daemon` here).
+#   source: threetched gateway start --help; main.rs:4013-4021 (Start -> run_gateway_if_enabled,
+#   does NOT shut down another gateway; only `gateway restart` does, main.rs:3848-3864)
+exec 2>&1
+set -eu
+BIN=${THREETCHED_BIN:-/usr/local/libexec/op-dbus/threetched/threetched}
+CONFIG_DIR=${ZEROCLAW_CONFIG_DIR:-/var/lib/zeroclaw}   # /var/lib/threetched -> /var/lib/zeroclaw
+HOST=127.0.0.1
+PORT=8084
+[ -x "$BIN" ] || { echo "threetched binary missing"; exit 78; }
+[ -f "$CONFIG_DIR/config.toml" ] || { echo "$CONFIG_DIR/config.toml missing"; exit 78; }
+[ -f "$CONFIG_DIR/.secret_key" ] || { echo "$CONFIG_DIR/.secret_key missing (paired tokens cannot be decrypted)"; exit 78; }
+# Refuse a second listener (another threetched daemon/gateway already on 8084).
+if ss -ltnH "sport = :$PORT" 2>/dev/null | grep -q .; then
+    echo "port $PORT already in use by another process; not starting"; sleep 30; exit 1
+fi
+install -d -m 0700 "$CONFIG_DIR/home"
+# Clean environment: no ambient provider credentials. Provider keys are the
+# ones already persisted (encrypted) in config.toml; the repo's
+# deploy/runit/threetched/run shows how they are (re)patched in at start.
+exec chpst -u root:root env -i \
+    HOME="$CONFIG_DIR/home" USER=root \
+    PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin \
+    ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
+    "$BIN" gateway start --config-dir "$CONFIG_DIR" --host "$HOST" --port "$PORT" --log-level warn

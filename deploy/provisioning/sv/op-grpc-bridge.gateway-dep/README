@@ -1,0 +1,10 @@
+Ordering snippet for the bridge run script (host deploy/runit/op-grpc-bridge/run
+and in-image runit/op-grpc-bridge/run). Insert before the runtime-token block:
+
+    # gateway up -> paired once -> bridge
+    sv check threetched-gateway >/dev/null 2>&1 || { echo "waiting for threetched-gateway"; sleep 3; exit 1; }
+    [ -e /run/threetched-paired ] || [ -s /etc/op-dbus/secrets/threetched-runtime-token ] \
+        || { echo "waiting for threetched pairing"; sleep 3; exit 1; }
+
+The token itself is then read by the existing checks
+(deploy/runit/op-grpc-bridge/run:86-109: root-owned, 0400/0600, [A-Za-z0-9._~-], <=8192).

@@ -1,0 +1,3 @@
+#!/bin/sh
+install -d -m 0750 /var/log/threetched-gateway
+exec svlogd -tt /var/log/threetched-gateway

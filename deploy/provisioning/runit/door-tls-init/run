@@ -1,0 +1,6 @@
+#!/bin/sh
+# Generate the door TLS pair once inside the container; key never leaves it.
+exec 2>&1
+/usr/local/libexec/op-dbus/door-tls-init || { sleep 5; exit 1; }
+touch /run/door-tls-init.ready
+exec sleep infinity

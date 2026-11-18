@@ -1,0 +1,34 @@
+#!/bin/sh
+# Identity owner door: the existing op-grpc-bridge binary on 10.0.0.2:8090.
+# gRPC libraries: compiled in (Rust crates), nothing to install at runtime.
+exec 2>&1
+for m in /run/mounts/3tchedFS /run/mounts/threetched; do
+  mountpoint -q "$m" || { echo "waiting for $m"; sleep 3; exit 1; }
+done
+[ -e /run/opdbus-lo.ready ] && [ -e /run/door-tls-init.ready ] || { echo "waiting for lo/tls"; sleep 3; exit 1; }
+[ -r /agent/user/sealed_id ] || echo "warning: identity sled not mounted at /agent/user"
+install -d -m 0755 /run/op-grpc-bridge
+set -a; . /etc/op-dbus/bridge.env; set +a
+# Order: threetched gateway up -> paired once -> bridge. Where the image runs
+# its own gateway (sv/threetched-gateway installed), wait for it and the pair step.
+if [ -d /etc/sv/threetched-gateway ]; then
+  sv check threetched-gateway >/dev/null 2>&1 || { echo "waiting for threetched-gateway"; sleep 3; exit 1; }
+  [ -e /run/threetched-paired ] || { echo "waiting for threetched pairing"; sleep 3; exit 1; }
+fi
+export THREETCHED_RUNTIME_ENDPOINT="${THREETCHED_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
+export THREETCHED_RUNTIME_AGENT="${THREETCHED_RUNTIME_AGENT:-dashboard}"
+# Runtime token: written by pair-threetched-gateway.sh, never generated here,
+# never logged. Same checks as deploy/runit/op-grpc-bridge/run:86-109.
+T=${THREETCHED_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/threetched-runtime-token}
+unset THREETCHED_RUNTIME_TOKEN
+if [ -f "$T" ] && [ ! -L "$T" ]; then
+  set -- $(stat -Lc '%u %a' "$T")
+  [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || { echo "runtime token file must be root-owned 0400/0600"; sleep 10; exit 78; }
+  THREETCHED_RUNTIME_TOKEN=$(cat "$T")
+  case "$THREETCHED_RUNTIME_TOKEN" in ''|*[!A-Za-z0-9._~-]*) echo "runtime token invalid"; sleep 10; exit 78;; esac
+  [ "${#THREETCHED_RUNTIME_TOKEN}" -le 8192 ] || { echo "runtime token too long"; sleep 10; exit 78; }
+  export THREETCHED_RUNTIME_TOKEN
+else
+  echo "runtime token absent ($T); run pair-threetched-gateway.sh; chat runtime calls will be refused"
+fi
+exec /usr/local/libexec/op-dbus/bin/op-grpc-bridge

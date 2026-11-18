@@ -1,0 +1,13 @@
+#!/bin/sh
+# threetched view (surface threetched). Needs the 3tched-fs build with the
+# /plugins/threetched duplicate-path fix (host: 3tched-fs-dupfix-b37bffa2).
+exec 2>&1
+B=/usr/local/libexec/op-dbus/bin/3tched-fs
+CAT=/dev/shm/opdbus/plugin-blobs; ST=/dev/shm/opdbus/state; MP=/run/mounts/threetched
+[ -r "$CAT/.manifest.json" ] || { echo "catalog $CAT absent (catalog device missing?)"; sleep 10; exit 1; }
+[ -S /run/opdbus/lungs/lungs.sock ] || { echo "host lungs socket absent (lungs device missing?)"; sleep 10; exit 1; }
+install -d -m 0700 /run/3tchedfs-threetched; install -d -m 0755 "$MP"
+mountpoint -q "$MP" && fusermount3 -u "$MP" 2>/dev/null || true
+"$B" capture --store /run/3tchedfs-threetched --schema-only --catalog "$CAT" --state "$ST" --include-plugin threetched || { sleep 5; exit 1; }
+exec "$B" mount --store /run/3tchedfs-threetched --fs-name threetched --surface threetched --catalog "$CAT" --state "$ST" \
+  --allow-other --auto-unmount --lungs-socket /run/opdbus/lungs/lungs.sock "$MP"

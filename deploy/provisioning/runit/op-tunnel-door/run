@@ -1,0 +1,8 @@
+#!/bin/sh
+# Chatbot only: splice the host door socket into this container's door.
+exec 2>&1
+if [ ! -S /run/opdbus/tunnel/tunnel.sock ]; then
+  echo "no tunnel device (not the chatbot); idle"; exec sleep infinity
+fi
+mountpoint -q /run/mounts/threetched || { sleep 3; exit 1; }
+exec /usr/local/libexec/op-dbus/bin/op-tunnel-door --socket /run/opdbus/tunnel/tunnel.sock --door 10.0.0.2:8090

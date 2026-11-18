@@ -134,6 +134,11 @@ establish that either mount is currently deployed; verify runtime receipts.
   verification status, and uncertainty. Mark superseded conclusions.
 - Store secrets only in the designated secret store, never in general
   conversation memory.
+- Environment variables and secrets (owner rule, 2026-11-18): every new
+  secret goes in `/etc/op-dbus/secrets/` as one file per secret, and every
+  new non-secret setting goes in `/etc/op-dbus/env/` as one file per
+  setting. Never put environment variables or secrets in `.bashrc`,
+  `.bash_profile`, `.profile`, `.bash_secrets`, or any `.env`/ENV file.
 
 ## Host-service policy (runit)
 
