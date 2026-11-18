@@ -33,7 +33,9 @@ built unless you pass `--apply`.
 ```
 
 `init --from` may CoW-snapshot a seed such as `images/@seed` into `work`. The
-seed is never written or deleted. The default root is `/opt/op-dbus/os` on the
+seed is never written or deleted. `--from` and `GOLDEN_ROOT` must already be on the same btrfs filesystem;
+cross-filesystem CoW snapshots are refused (send/receive or a full copy would
+need a separate go-ahead). The default root is `/opt/op-dbus/os` on the
 host btrfs (`@opdbus-prep` on antix1), a sibling of the historical payload
 tree, not on `3tched-pool` / cozo-ublk. A root on a ublk device is refused
 unless `GOLDEN_ALLOW_UBLK=1`, and even then Incus `images/` and container

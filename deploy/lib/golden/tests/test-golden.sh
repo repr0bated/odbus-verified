@@ -7,7 +7,7 @@ export PATH
 HERE=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f -- "$0")")" && pwd)
 # Globals consumed by sourced golden.sh helpers.
 ROOT='' WORK='' SLOTS='' LIVE='' ROLLBACK='' STATE=''
-export ROOT WORK SLOTS LIVE ROLLBACK STATE
+export ROOT WORK SLOTS LIVE ROLLBACK STATE FROM_OS
 GOLDEN=$HERE/../golden.sh
 PASS=0
 FAIL=0
@@ -184,6 +184,39 @@ fi
 ROOT=/opt/op-dbus/os
 resolve_layout
 
+printf 'same-filesystem check\n'
+# Mount-table only; no real btrfs or seed inodes.
+GOLDEN_BTRFS_MOUNTS="$(printf '%s\t%s\t%s\n%s\t%s\t%s\n' \
+    /opt/op-dbus 69ee351a-e4a4-44db-a318-b4574a2439ae '/dev/sdb3[/@opdbus-prep]' \
+    /var/lib/incus/storage-pools/3tched-pool 2f1ee116-e5a7-481f-a4ae-ddaff2bd2b1a /dev/ublkb1)"
+export GOLDEN_BTRFS_MOUNTS
+assert_eq "ident for /opt/op-dbus/os" "uuid:69ee351a-e4a4-44db-a318-b4574a2439ae" "$(btrfs_ident_for_path /opt/op-dbus/os)"
+assert_eq "ident for @antix-seed" "uuid:2f1ee116-e5a7-481f-a4ae-ddaff2bd2b1a" "$(btrfs_ident_for_path /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed)"
+assert_fail "antix-seed and /opt/op-dbus/os are different filesystems" same_btrfs_filesystem /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed /opt/op-dbus/os
+assert_ok "two paths under @opdbus-prep are the same filesystem" same_btrfs_filesystem /opt/op-dbus/os/work /opt/op-dbus/os
+
+# Empty UUID must not steal the SOURCE device (antix1 findmnt on 3tched-pool).
+_saved_mounts=$GOLDEN_BTRFS_MOUNTS
+GOLDEN_BTRFS_MOUNTS='TARGET="/var/lib/incus/storage-pools/3tched-pool" UUID="" SOURCE="/dev/ublkb1"
+TARGET="/opt/op-dbus" UUID="69ee351a-e4a4-44db-a318-b4574a2439ae" SOURCE="/dev/sdb3[/@opdbus-prep]"'
+assert_eq "empty UUID ident is the device" "dev:/dev/ublkb1" "$(btrfs_ident_for_path /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed)"
+assert_eq "pairs UUID ident stays a uuid" "uuid:69ee351a-e4a4-44db-a318-b4574a2439ae" "$(btrfs_ident_for_path /opt/op-dbus/os)"
+GOLDEN_BTRFS_MOUNTS=$_saved_mounts
+
+ROOT=/opt/op-dbus/os
+FROM_OS=/var/lib/incus/storage-pools/3tched-pool/images/@antix-seed
+resolve_layout
+if ( require_same_btrfs_for_from ) >/tmp/golden-test-out 2>/tmp/golden-test-err; then
+    FAIL=$((FAIL + 1))
+    printf '  FAIL cross-filesystem --from should have been refused\n'
+else
+    PASS=$((PASS + 1))
+    printf '  ok  cross-filesystem --from refused\n'
+fi
+assert_contains "cross-fs error names send/receive" "btrfs send/receive" "$(cat /tmp/golden-test-err)"
+assert_contains "cross-fs error names full copy" "rsync -aHAX" "$(cat /tmp/golden-test-err)"
+assert_contains "cross-fs error says snapshot only works same fs" "only works on the same filesystem" "$(cat /tmp/golden-test-err)"
+
 printf 'CLI dry-run\n'
 TMP=$(mktemp -d)
 trap 'rm -rf -- "$TMP"' EXIT
@@ -205,6 +238,19 @@ assert_not_contains "plan does not invoke apply language only" "mode: APPLY" "$(
 "$GOLDEN" --root "$TMP/os" init >"$out" 2>&1
 assert_ok "dry-run init does not create the work root" test ! -e "$TMP/os"
 assert_contains "dry-run init would create work" "btrfs subvolume create" "$(cat "$out")"
+
+if "$GOLDEN" --root /opt/op-dbus/os init --from /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed >"$out" 2>&1; then
+    FAIL=$((FAIL + 1))
+    printf '  FAIL CLI cross-filesystem init should have exited non-zero
+'
+else
+    PASS=$((PASS + 1))
+    printf '  ok  CLI cross-filesystem init exits non-zero
+'
+fi
+assert_contains "CLI cross-fs init mentions send/receive" "send/receive" "$(cat "$out")"
+assert_ok "CLI cross-fs init did not create /opt/op-dbus/os" test ! -e /opt/op-dbus/os
+unset GOLDEN_BTRFS_MOUNTS
 
 "$GOLDEN" --root "$TMP/os" cut >"$out" 2>&1
 assert_ok "dry-run cut does not create slots" test ! -e "$TMP/os"

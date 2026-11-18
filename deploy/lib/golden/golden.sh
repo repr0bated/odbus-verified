@@ -262,6 +262,105 @@ backing_is_ublk() {
     return 1
 }
 
+# Identify a path's btrfs filesystem from the mount table only (longest
+# TARGET prefix). This does not stat the path itself, so a seed on a busy
+# ublk device can be compared with /opt/op-dbus without touching the seed.
+btrfs_mount_table() {
+    if [ -n "${GOLDEN_BTRFS_MOUNTS:-}" ]; then
+        printf '%s\n' "$GOLDEN_BTRFS_MOUNTS"
+    else
+        # -P keeps an empty UUID column; plain columns would shift SOURCE left.
+        findmnt -t btrfs -n -P -o TARGET,UUID,SOURCE 2>/dev/null || true
+    fi
+}
+
+# Extract KEY="value" from a findmnt --pairs line without eval.
+findmnt_pair_value() {
+    local line=$1 key=$2 prefix rest
+    prefix="$key=\""
+    case "$line" in
+        *"$prefix"*)
+            rest=${line#*"$prefix"}
+            printf '%s' "${rest%%\"*}"
+            ;;
+    esac
+}
+
+normalize_btrfs_source() {
+    # /dev/sdb3[/@opdbus-prep] -> /dev/sdb3
+    local s=$1
+    s=${s%%[*}
+    printf '%s' "$s"
+}
+
+btrfs_ident_for_path() {
+    local path line target uuid source best_len=0 ident="" tlen
+    path=$(normalize_path "$1")
+    while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        target='' uuid='' source=''
+        case "$line" in
+            TARGET=*)
+                target=$(findmnt_pair_value "$line" TARGET)
+                uuid=$(findmnt_pair_value "$line" UUID)
+                source=$(findmnt_pair_value "$line" SOURCE)
+                ;;
+            *)
+                # Test table and fallback: TARGET UUID SOURCE (whitespace)
+                read -r target uuid source <<FRG
+$line
+FRG
+                ;;
+        esac
+        [ -n "$target" ] || continue
+        if path_under "$path" "$target" || [ "$path" = "$target" ]; then
+            tlen=${#target}
+            if [ "$tlen" -ge "$best_len" ]; then
+                best_len=$tlen
+                if [ -n "$uuid" ]; then
+                    ident="uuid:$uuid"
+                else
+                    ident="dev:$(normalize_btrfs_source "$source")"
+                fi
+            fi
+        fi
+    done <<EOF
+$(btrfs_mount_table)
+EOF
+    printf '%s' "$ident"
+}
+
+same_btrfs_filesystem() {
+    local a b
+    a=$(btrfs_ident_for_path "$1")
+    b=$(btrfs_ident_for_path "$2")
+    [ -n "$a" ] && [ -n "$b" ] && [ "$a" = "$b" ]
+}
+
+require_same_btrfs_for_from() {
+    local src_ident dst_ident
+    [ -n "$FROM_OS" ] || return 0
+    src_ident=$(btrfs_ident_for_path "$FROM_OS")
+    dst_ident=$(btrfs_ident_for_path "$ROOT")
+    if [ -z "$src_ident" ] || [ -z "$dst_ident" ]; then
+        die "cannot determine the btrfs filesystem for --from ($FROM_OS => ${src_ident:-unknown}) and GOLDEN_ROOT ($ROOT => ${dst_ident:-unknown}); refusing to plan a snapshot"
+    fi
+    if [ "$src_ident" = "$dst_ident" ]; then
+        return 0
+    fi
+    cat >&2 <<EOF
+golden: cannot CoW-snapshot --from $FROM_OS onto $WORK: they are on different btrfs filesystems
+  source: $src_ident  ($FROM_OS)
+  target: $dst_ident  ($ROOT)
+  btrfs subvolume snapshot only works on the same filesystem.
+  Options (not performed by this script):
+  1) btrfs send/receive: if the source is already read-only, send it and receive into $ROOT, then rename the received subvolume to work. That reads the source and writes only on the target filesystem; it does not write or delete the source. If the source is writable, send needs a read-only snapshot, which would create a new subvolume on the source filesystem and needs explicit approval.
+  2) full copy (rsync -aHAX or cp -a) into a newly created work subvolume on the target filesystem. No shared extents; more space and time. cp --reflink cannot work across filesystems.
+  This tool will not run send/receive or a copy unless that is approved separately.
+EOF
+    exit 1
+}
+
 assert_root_allowed() {
     path_is_protected "$ROOT" && die "GOLDEN_ROOT is a protected path: $ROOT"
     case "$ROOT" in
@@ -419,6 +518,7 @@ plan_init() {
     if [ -n "$FROM_OS" ]; then
         is_absolute "$FROM_OS" || die "--from must be an absolute path"
         path_under "$FROM_OS" "$ROOT" && die "--from must be outside the release root"
+        require_same_btrfs_for_from
         would "btrfs subvolume snapshot -- $FROM_OS $WORK   # source is not modified, including if it is a seed"
         printf '  note: --from may snapshot images/@seed into work; the seed itself is never written or deleted\n'
     else
@@ -542,6 +642,7 @@ do_init() {
         is_absolute "$FROM_OS" || die "--from must be an absolute path"
         [ -d "$FROM_OS" ] || die "--from is not a directory: $FROM_OS"
         path_under "$FROM_OS" "$ROOT" && die "--from must be outside the release root"
+        require_same_btrfs_for_from
         is_subvolume "$FROM_OS" || die "--from is not a btrfs subvolume: $FROM_OS"
         perform btrfs subvolume snapshot -- "$FROM_OS" "$WORK"
     else
