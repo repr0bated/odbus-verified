@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# golden.sh — approved golden release: OS subvolume, chroot build, two slots.
+# golden.sh — approved golden release: the pool seed IS the release image.
 #
-# A btrfs subvolume holds the OS (work). cargo builds inside a chroot of that
-# OS. The work tree is then snapshotted read-only; that snapshot is the overlay
-# lower dir forming the live system. There are exactly two slots: live and
-# rollback. Cutting a release demotes old live to rollback and deletes the
-# previous rollback.
+# The release image is the seed subvolume on the pool (default
+# images/@antix-seed on 3tched-pool). Nothing is sent, received, or copied to
+# another filesystem. work is a writable CoW snapshot of the seed on the SAME
+# btrfs; cargo builds inside a chroot of work. work is then snapshotted
+# read-only into the live slot; that snapshot (or, before the first release,
+# the seed itself) is the OverlayFS lower dir on the live rootfs. There are
+# exactly two slots: live and rollback. Cutting a release demotes old live to
+# rollback and deletes the previous rollback.
 #
 # This is not op-cache BtrfsCache (one subvolume per category: embeddings,
 # blocks, queries, diffs, kv) and it is not the historical application-payload
@@ -13,17 +16,22 @@
 # layouts are left alone.
 #
 # Dry-run by default. Any create/delete/snapshot/mount/build requires --apply.
-# --apply still refuses to delete images/@seed (and other protected paths) and
-# refuses to operate on cozo-ublk / 3tched-pool unless GOLDEN_ALLOW_UBLK=1,
-# which still cannot target Incus image/container paths.
+# --apply still refuses to delete or write the seeds (images/@seed,
+# images/@antix-seed) and Incus image/container paths. The only paths it
+# creates or deletes are work, slots/{live,rollback,.incoming-*}, the overlay
+# upper/work dirs, and state.json under GOLDEN_ROOT.
 #
 # Usage:
 #   deploy/lib/golden/golden.sh [flags] <verb>
-#   verbs: status | plan | init | build | cut | rollback | mount-overlay
-#   flags: --apply  --root PATH  --from PATH  --repo PATH  --jobs N
-#          --with-build  --mount PATH  --dry-run
+#   verbs: status | plan | init | build | cut | release | rotate | rollback | mount-overlay
+#   flags: --apply  --pool PATH  --seed PATH  --root PATH  --lower auto|live|seed
+#          --repo PATH  --jobs N  --with-build  --mount PATH  --dry-run
 #
-# Default root: /opt/op-dbus/os  (sibling of the historical golden payload)
+# Defaults (env overrides in brackets):
+#   pool  /var/lib/incus/storage-pools/3tched-pool     [GOLDEN_POOL_ROOT]
+#   seed  <pool>/images/@antix-seed                    [GOLDEN_SEED]
+#   root  <pool>/golden-os  (same btrfs as the seed)   [GOLDEN_ROOT]
+#   OS dir inside seed/slots: rootfs (Incus image)     [GOLDEN_OS_SUBDIR]
 set -euo pipefail
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
@@ -39,13 +47,20 @@ else
     DEFAULT_REPO=${OP_DBUS_ROOT:-/srv/git/odbus-verified}
 fi
 
+DEFAULT_POOL_ROOT=/var/lib/incus/storage-pools/3tched-pool
+DEFAULT_SEED_NAME=images/@antix-seed
+DEFAULT_ROOT_NAME=golden-os
+
 APPLY=0
 WITH_BUILD=0
-SEND_RECEIVE=0
-FROM_OS=
 MOUNT_POINT=
+LOWER_MODE=${GOLDEN_LOWER:-auto}
 JOBS=${GOLDEN_CARGO_JOBS:-2}
-ROOT=${GOLDEN_ROOT:-/opt/op-dbus/os}
+POOL_ROOT=${GOLDEN_POOL_ROOT:-$DEFAULT_POOL_ROOT}
+# SEED and ROOT default from POOL_ROOT in resolve_layout (after flags).
+SEED=${GOLDEN_SEED:-}
+ROOT=${GOLDEN_ROOT:-}
+OS_SUBDIR=${GOLDEN_OS_SUBDIR-rootfs}
 REPO=${GOLDEN_REPO:-$DEFAULT_REPO}
 VERB=
 
@@ -54,28 +69,32 @@ usage() {
 Usage: golden.sh [flags] <verb>
 
 Verbs:
-  status         Show work OS and live/rollback slots (read-only)
+  status         Show seed, work OS and live/rollback slots (read-only)
   plan           Print the full release plan without changing anything (default)
-  init           Create the work OS subvolume (optionally --from an existing OS)
+  init           CoW-snapshot the seed into the writable work subvolume (same btrfs)
   build          cargo build --workspace --release inside the work OS chroot
   cut            Snapshot work, demote live to rollback, drop previous rollback
   rollback       Swap live and rollback (promote the rollback snapshot)
   release        Snapshot work, rotate live to rollback, plan the live overlay
   rotate         Same slot rotation as release (no mount)
-  mount-overlay  Mount the live snapshot as an OverlayFS lower dir at --mount
+  mount-overlay  Mount the live release (or the seed) as the OverlayFS lower dir
 
 Flags:
   --dry-run      Print the plan only (default)
   --apply        Perform the verb (never the default)
-  --root PATH    Release root (default /opt/op-dbus/os or $GOLDEN_ROOT)
-  --from PATH    For init: OS subvolume to clone into work (source is not modified)
-  --send-receive For init --from on another btrfs: send the read-only source and
-                 receive it under GOLDEN_ROOT, then snapshot that copy to work.
-                 The received copy is kept as the maintained release image.
+  --pool PATH    Pool mount holding the seed (default
+                 /var/lib/incus/storage-pools/3tched-pool or $GOLDEN_POOL_ROOT)
+  --seed PATH    Seed subvolume = release image (default <pool>/images/@antix-seed
+                 or $GOLDEN_SEED). Never written or deleted. --from is an alias.
+  --root PATH    Release root for work/slots (default <pool>/golden-os or
+                 $GOLDEN_ROOT). Must be on the same btrfs as the seed.
+  --lower MODE   Overlay lower dir: auto (live release, else the seed), live, seed
   --repo PATH    Repo to export into the chroot (default: this checkout)
   --jobs N       cargo -j (default 2; keep this modest)
   --with-build   For cut/release: run the chroot build before snapshotting
   --mount PATH   For mount-overlay: overlay mount point (not / or other host roots)
+
+There is no send/receive and no copy of the seed to another filesystem.
 
 Dry-run is the default. --apply is required to create, delete, snapshot, mount,
 or build. The script will not delete images/@seed, Incus pool data, BtrfsCache
@@ -94,15 +113,27 @@ parse_args() {
             --apply) APPLY=1 ;;
             --dry-run) APPLY=0 ;;
             --with-build) WITH_BUILD=1 ;;
-            --send-receive) SEND_RECEIVE=1 ;;
+            --send-receive)
+                die "--send-receive was removed: the release image is the seed on the pool; init snapshots it on the same btrfs (see --seed / --root)"
+                ;;
+            --pool)
+                [ "$#" -ge 2 ] || die "missing value for --pool"
+                POOL_ROOT=$2
+                shift
+                ;;
+            --seed|--from)
+                [ "$#" -ge 2 ] || die "missing value for $1"
+                SEED=$2
+                shift
+                ;;
+            --lower)
+                [ "$#" -ge 2 ] || die "missing value for --lower"
+                LOWER_MODE=$2
+                shift
+                ;;
             --root)
                 [ "$#" -ge 2 ] || die "missing value for --root"
                 ROOT=$2
-                shift
-                ;;
-            --from)
-                [ "$#" -ge 2 ] || die "missing value for --from"
-                FROM_OS=$2
                 shift
                 ;;
             --repo)
@@ -137,6 +168,10 @@ parse_args() {
     case "$JOBS" in
         ''|*[!0-9]*|0) die "jobs must be a positive integer, got: $JOBS" ;;
     esac
+    case "$LOWER_MODE" in
+        auto|live|seed) ;;
+        *) die "--lower must be auto, live, or seed, got: $LOWER_MODE" ;;
+    esac
 }
 
 # Logical paths under ROOT. resolve_layout is called after parse_args.
@@ -150,6 +185,24 @@ OVERLAY_WORK=
 INCOMING_PREFIX=
 
 resolve_layout() {
+    case "$POOL_ROOT" in
+        /*) ;;
+        *) die "GOLDEN_POOL_ROOT must be an absolute path: $POOL_ROOT" ;;
+    esac
+    POOL_ROOT=$(normalize_path "$POOL_ROOT")
+    POOL_ROOT=${POOL_ROOT%/}
+    [ -n "$SEED" ] || SEED=$POOL_ROOT/$DEFAULT_SEED_NAME
+    [ -n "$ROOT" ] || ROOT=$POOL_ROOT/$DEFAULT_ROOT_NAME
+    case "$SEED" in
+        /*) ;;
+        *) die "seed must be an absolute path: $SEED" ;;
+    esac
+    SEED=$(normalize_path "$SEED")
+    SEED=${SEED%/}
+    case "$OS_SUBDIR" in
+        /*|*..*) die "GOLDEN_OS_SUBDIR must be a relative path without ..: $OS_SUBDIR" ;;
+    esac
+    OS_SUBDIR=${OS_SUBDIR%/}
     case "$ROOT" in
         /*) ;;
         *) die "GOLDEN_ROOT must be an absolute path: $ROOT" ;;
@@ -166,16 +219,6 @@ resolve_layout() {
     OVERLAY_UPPER=$ROOT/overlay-upper
     OVERLAY_WORK=$ROOT/overlay-work
     INCOMING_PREFIX=$SLOTS/.incoming-
-    IMAGE=
-    if [ -n "$FROM_OS" ]; then
-        case "$FROM_OS" in
-            /*) ;;
-            *) die "--from must be an absolute path" ;;
-        esac
-        FROM_OS=$(normalize_path "$FROM_OS")
-        # Maintained release image: received copy (or a same-FS --from) under ROOT.
-        IMAGE=$ROOT/$(basename -- "$FROM_OS")
-    fi
     if [ -n "$MOUNT_POINT" ]; then
         case "$MOUNT_POINT" in
             /*) ;;
@@ -190,12 +233,75 @@ is_absolute() {
 }
 
 # Path protection: never delete or overwrite these, even with --apply.
-# A source --from may be a protected seed (read-only CoW snapshot into work).
+# The seed may be the source of a CoW snapshot into work; it is never a destination.
 normalize_path() {
     # Resolve . and .. without requiring the path to exist. Keep "/" intact.
+    # -s: lexical only. Never lstat path components, which can block in D
+    # state on a hung pool (3tched-pool / ublkb1).
     local p=$1
     [ -n "$p" ] || return 1
-    realpath -m -- "$p"
+    realpath -s -m -- "$p"
+}
+
+# The OS tree inside a seed or slot (Incus image volumes keep it in rootfs/).
+os_dir_of() {
+    if [ -n "$OS_SUBDIR" ]; then
+        printf '%s/%s' "$1" "$OS_SUBDIR"
+    else
+        printf '%s' "$1"
+    fi
+}
+
+# Run a read-only probe with a hard timeout so status/plan never hang on a
+# pool whose I/O is stuck. Exit 124/137 means "unknown".
+probe() {
+    timeout -s KILL "${GOLDEN_PROBE_TIMEOUT:-5}" "$@"
+}
+
+# 0 = directory present, 1 = absent, 2 = could not tell (probe timed out).
+dir_state() {
+    local rc=0
+    probe test -d "$1" || rc=$?
+    case "$rc" in
+        0) return 0 ;;
+        1) return 1 ;;
+        *) return 2 ;;
+    esac
+}
+
+dir_present() {
+    local rc=0
+    dir_state "$1" || rc=$?
+    if [ "$rc" = 2 ]; then
+        warn "could not read $1 within ${GOLDEN_PROBE_TIMEOUT:-5}s (pool I/O may be hung); treating as absent for this plan"
+    fi
+    [ "$rc" = 0 ]
+}
+
+# Incus-managed names directly under a storage pool. golden never uses them.
+incus_pool_reserved() {
+    case "$1" in
+        images|containers|containers-snapshots|virtual-machines|virtual-machines-snapshots|custom|custom-snapshots|buckets|backups) return 0 ;;
+    esac
+    return 1
+}
+
+# GOLDEN_ROOT may be a dedicated directory directly under the pool (same btrfs
+# as the seed), e.g. <pool>/golden-os, but never an Incus-managed directory.
+root_is_pool_release_dir() {
+    local r=${1:-${ROOT:-}} parent name
+    [ -n "$r" ] && [ -n "${POOL_ROOT:-}" ] || return 1
+    r=$(normalize_path "$r")
+    r=${r%/}
+    parent=${r%/*}
+    name=${r##*/}
+    [ "$parent" = "$POOL_ROOT" ] || return 1
+    [ -n "$name" ] || return 1
+    case "$name" in
+        @*|.*) return 1 ;;
+    esac
+    incus_pool_reserved "$name" && return 1
+    return 0
 }
 
 path_is_protected() {
@@ -206,6 +312,16 @@ path_is_protected() {
     n=${p##*/}
     case "$p" in
         */images/@seed|*/images/@seed/*|*/images/@antix-seed|*/images/@antix-seed/*) return 0 ;;
+    esac
+    # The configured seed is the release image: never written or deleted.
+    if [ -n "${SEED:-}" ] && path_under "$p" "$SEED"; then
+        return 0
+    fi
+    # The dedicated release root under the pool (and its children) is ours.
+    if [ -n "${ROOT:-}" ] && root_is_pool_release_dir "$ROOT" && path_under "$p" "$ROOT"; then
+        return 1
+    fi
+    case "$p" in
         /var/lib/incus|/var/lib/incus/*) return 0 ;;
         /var/lib/op-dbus/cache|/var/lib/op-dbus/cache/*|/var/lib/op-dbus/@cache-snapshots|/var/lib/op-dbus/@cache-snapshots/*) return 0 ;;
         /var/lib/opdbus/cache|/var/lib/opdbus/cache/*) return 0 ;;
@@ -217,10 +333,6 @@ path_is_protected() {
     esac
     case "$n" in
         @seed|@antix-seed|@seed-send)
-            # Original seeds stay protected; a received copy under GOLDEN_ROOT is the release image.
-            if [ -n "${ROOT:-}" ] && path_under "$p" "$ROOT"; then
-                return 1
-            fi
             return 0
             ;;
         embeddings|blocks|queries|diffs|kv)
@@ -257,30 +369,31 @@ path_is_owned() {
         "$INCOMING_PREFIX"*) return 0 ;;
         "$SLOTS"/.incoming-*) return 0 ;;
     esac
-    # A received release image is a direct child of ROOT (e.g. $ROOT/@antix-seed).
-    if [ -n "${IMAGE:-}" ] && [ "$p" = "$IMAGE" ]; then
-        return 0
-    fi
-    case "$p" in
-        "$ROOT"/*)
-            base=${p#"$ROOT"/}
-            case "$base" in
-                work|slots|slots/*|overlay-upper|overlay-work|state.json|.state.*) return 1 ;;
-                */*) return 1 ;;
-                *) return 0 ;;
-            esac
-            ;;
-    esac
     return 1
 }
 
 backing_device() {
-    # Best-effort; empty if unreadable. Does not mount anything.
-    local probe=$1
-    while [ ! -e "$probe" ] && [ "$probe" != / ]; do
-        probe=$(dirname -- "$probe")
-    done
-    findmnt -n -o SOURCE -T "$probe" 2>/dev/null || true
+    # Mount table only (longest TARGET prefix); never stats the path, so a
+    # root on a hung pool does not block. Empty if unknown.
+    local path line target source best_len=0 best='' tlen
+    path=$(normalize_path "$1")
+    while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        target=${line%% *}
+        source=${line#* }
+        [ "$source" != "$line" ] || source=''
+        target=$(printf '%b' "$target")
+        if path_under "$path" "$target"; then
+            tlen=${#target}
+            if [ "$tlen" -ge "$best_len" ]; then
+                best_len=$tlen
+                best=$source
+            fi
+        fi
+    done <<EOF
+$(if [ -n "${GOLDEN_MOUNTS:-}" ]; then printf '%s\n' "$GOLDEN_MOUNTS"; else findmnt -rn -o TARGET,SOURCE 2>/dev/null || true; fi)
+EOF
+    printf '%s' "$best"
 }
 
 backing_is_ublk() {
@@ -373,122 +486,64 @@ same_btrfs_filesystem() {
     [ -n "$a" ] && [ -n "$b" ] && [ "$a" = "$b" ]
 }
 
-# --from may be a seed outside ROOT, or a received release image under ROOT.
-# It must not be work, a slot, or an overlay directory.
-from_path_allowed() {
-    local from=$1
-    from=$(normalize_path "$from")
-    case "$from" in
+# The seed is the release image. It must not be work, a slot, or an overlay
+# directory, and must not sit inside GOLDEN_ROOT.
+seed_path_allowed() {
+    local seed=$1
+    seed=$(normalize_path "$seed")
+    case "$seed" in
         "$ROOT"|"$WORK"|"$LIVE"|"$ROLLBACK"|"$SLOTS"|"$STATE"|"$OVERLAY_UPPER"|"$OVERLAY_WORK")
-            die "--from cannot be $from"
+            die "seed cannot be $seed"
             ;;
     esac
-    if path_under "$from" "$WORK" || path_under "$from" "$SLOTS" ||        path_under "$from" "$OVERLAY_UPPER" || path_under "$from" "$OVERLAY_WORK"; then
-        die "--from cannot be inside work, slots, or overlay dirs: $from"
+    if path_under "$seed" "$ROOT"; then
+        die "seed cannot be inside GOLDEN_ROOT ($ROOT): $seed"
+    fi
+    if path_under "$ROOT" "$seed"; then
+        die "GOLDEN_ROOT cannot be inside the seed ($seed): $ROOT"
     fi
 }
 
-source_is_readonly() {
-    local p=$1 value
-    if [ -n "${GOLDEN_FAKE_SOURCE_RO:-}" ]; then
-        case "$GOLDEN_FAKE_SOURCE_RO" in
-            1|true|yes) return 0 ;;
-            *) return 1 ;;
-        esac
-    fi
-    value=$(btrfs property get -ts "$p" ro 2>/dev/null || true)
-    # A seed under images/ may be unreadable without root; never set the property.
-    if [ -z "$value" ] && [ "$(id -u)" != 0 ] && command -v sudo >/dev/null 2>&1; then
-        value=$(sudo -n btrfs property get -ts "$p" ro 2>/dev/null || true)
-    fi
-    case "$value" in
-        ro=true) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
-# Dest avail vs source-filesystem used (upper bound for a send stream). Avoids
-# walking the seed tree, which can hang on ublk.
-check_receive_space() {
-    local dest_probe=$1 src_probe=$2 avail used margin
-    if [ -n "${GOLDEN_BTRFS_MOUNTS:-}" ] || [ "${GOLDEN_SKIP_SPACE:-0}" = 1 ]; then
-        return 0
-    fi
-    while [ ! -e "$dest_probe" ] && [ "$dest_probe" != / ]; do
-        dest_probe=$(dirname -- "$dest_probe")
-    done
-    while [ ! -e "$src_probe" ] && [ "$src_probe" != / ]; do
-        src_probe=$(dirname -- "$src_probe")
-    done
-    avail=$(df -B1 --output=avail "$dest_probe" | tail -n 1 | tr -d ' ')
-    used=$(df -B1 --output=used "$src_probe" | tail -n 1 | tr -d ' ')
-    case "$avail" in ''|*[!0-9]*) die "cannot read free space on $dest_probe" ;; esac
-    case "$used" in ''|*[!0-9]*) die "cannot read used space on $src_probe" ;; esac
-    margin=$((2 * 1024 * 1024 * 1024))
-    log "space: destination has $avail bytes free; source filesystem used $used bytes (upper bound for send)"
-    if [ "$avail" -lt $((used + margin)) ]; then
-        die "insufficient space to receive onto $dest_probe (avail=$avail, source-fs-used=$used, margin=$margin)"
-    fi
-}
-
-needs_send_receive() {
+# work/slots are CoW snapshots of the seed: both must be on one btrfs.
+# Identified from the mount table only, so the seed is not touched.
+require_same_btrfs_as_seed() {
     local src_ident dst_ident
-    [ -n "$FROM_OS" ] || return 1
-    src_ident=$(btrfs_ident_for_path "$FROM_OS")
-    dst_ident=$(btrfs_ident_for_path "$ROOT")
-    [ -n "$src_ident" ] && [ -n "$dst_ident" ] && [ "$src_ident" != "$dst_ident" ]
-}
-
-require_same_btrfs_for_from() {
-    local src_ident dst_ident
-    [ -n "$FROM_OS" ] || return 0
-    src_ident=$(btrfs_ident_for_path "$FROM_OS")
+    src_ident=$(btrfs_ident_for_path "$SEED")
     dst_ident=$(btrfs_ident_for_path "$ROOT")
     if [ -z "$src_ident" ] || [ -z "$dst_ident" ]; then
-        die "cannot determine the btrfs filesystem for --from ($FROM_OS => ${src_ident:-unknown}) and GOLDEN_ROOT ($ROOT => ${dst_ident:-unknown}); refusing to plan a snapshot"
+        die "cannot determine the btrfs filesystem for the seed ($SEED => ${src_ident:-unknown}) and GOLDEN_ROOT ($ROOT => ${dst_ident:-unknown}); refusing to plan a snapshot"
     fi
-    if [ "$src_ident" = "$dst_ident" ]; then
-        if [ "$SEND_RECEIVE" = 1 ]; then
-            log "source and GOLDEN_ROOT are already the same btrfs ($src_ident); --send-receive will snapshot, not send"
-        fi
-        return 0
-    fi
-    if [ "$SEND_RECEIVE" = 1 ]; then
-        return 0
-    fi
+    [ "$src_ident" = "$dst_ident" ] && return 0
     cat >&2 <<EOF
-golden: cannot CoW-snapshot --from $FROM_OS onto $WORK: they are on different btrfs filesystems
-  source: $src_ident  ($FROM_OS)
+golden: cannot CoW-snapshot the seed $SEED onto $WORK: they are on different btrfs filesystems
+  seed:   $src_ident  ($SEED)
   target: $dst_ident  ($ROOT)
   btrfs subvolume snapshot only works on the same filesystem.
-  Re-run with --send-receive to btrfs send the read-only source and receive it
-  under $ROOT (kept as the maintained release image), then snapshot that copy
-  to work. The source is not written or deleted. A full copy (rsync -aHAX)
-  would also work but is not performed here. cp --reflink cannot cross filesystems.
+  The release image is the seed itself; golden does not send/receive or copy it.
+  Put GOLDEN_ROOT on the seed's filesystem (default: $POOL_ROOT/$DEFAULT_ROOT_NAME),
+  or point --pool/--seed at a pool that holds the seed.
 EOF
     exit 1
-}
-
-require_send_source_readonly() {
-    [ -n "$FROM_OS" ] || return 0
-    if source_is_readonly "$FROM_OS"; then
-        return 0
-    fi
-    die "source is not read-only: $FROM_OS (creating a read-only snapshot on the source filesystem needs a separate go-ahead; this tool will not change the source ro property)"
 }
 
 assert_root_allowed() {
     path_is_protected "$ROOT" && die "GOLDEN_ROOT is a protected path: $ROOT"
     case "$ROOT" in
         /opt/op-dbus|/opt/op-dbus/golden|/opt/op-dbus/overlay-base|/opt/op-dbus/release-send)
-            die "GOLDEN_ROOT must be a dedicated OS-release directory, not $ROOT (default is /opt/op-dbus/os)"
+            die "GOLDEN_ROOT must be a dedicated OS-release directory, not $ROOT (default is $POOL_ROOT/$DEFAULT_ROOT_NAME)"
             ;;
     esac
-    if backing_is_ublk "$ROOT"; then
+    if path_under "$ROOT" /var/lib/incus && ! root_is_pool_release_dir "$ROOT"; then
+        die "GOLDEN_ROOT under /var/lib/incus must be a dedicated directory directly under the pool ($POOL_ROOT/<name>, not images/containers/...): $ROOT"
+    fi
+    # The pool is expected to be a ublk/cozo-ublk device: a dedicated release
+    # dir directly under it is the design. Any other ublk-backed root still
+    # needs GOLDEN_ALLOW_UBLK=1.
+    if backing_is_ublk "$ROOT" && ! root_is_pool_release_dir "$ROOT"; then
         if [ "${GOLDEN_ALLOW_UBLK:-0}" = 1 ]; then
-            warn "GOLDEN_ROOT is on a ublk device; GOLDEN_ALLOW_UBLK=1 accepted, Incus/seed paths remain forbidden"
+            warn "GOLDEN_ROOT is on a ublk device outside $POOL_ROOT; GOLDEN_ALLOW_UBLK=1 accepted, Incus/seed paths remain forbidden"
         else
-            die "GOLDEN_ROOT sits on a ublk / cozo-ublk / 3tched-pool device ($(backing_device "$ROOT")); refusing. Use /opt/op-dbus/os on the host btrfs, or set GOLDEN_ALLOW_UBLK=1 only if you intend a dedicated slot path on that filesystem (still never images/@seed)"
+            die "GOLDEN_ROOT sits on a ublk device ($(backing_device "$ROOT")) but is not a release dir directly under $POOL_ROOT; refusing (set GOLDEN_ALLOW_UBLK=1 to override; seeds stay forbidden)"
         fi
     fi
 }
@@ -526,6 +581,8 @@ announce_mode() {
     else
         log "mode: DRY-RUN (default; pass --apply to mutate)"
     fi
+    log "pool: $POOL_ROOT"
+    log "seed: $SEED (release image; read-only source, never written)"
     log "root: $ROOT"
     log "work: $WORK"
     log "live: $LIVE"
@@ -580,20 +637,29 @@ delete_slot_subvolume() {
 }
 
 print_status() {
-    local ro id
+    local ro id label p rc
     printf 'golden status\n'
-    printf '  root:     %s\n' "$ROOT"
-    if [ -e "$ROOT" ]; then
-        printf '  fstype:   %s\n' "$(stat -f -c %T "$ROOT" 2>/dev/null || echo unknown)"
-        printf '  backing:  %s\n' "$(backing_device "$ROOT")"
-    else
-        printf '  root does not exist yet (init will create it under /opt/op-dbus/os by default)\n'
-    fi
+    printf '  pool:     %s  (backing %s)\n' "$POOL_ROOT" "$(backing_device "$POOL_ROOT")"
+    rc=0; dir_state "$SEED" || rc=$?
+    case "$rc" in
+        0) printf '  seed:     present  %s  (release image, never written)\n' "$SEED" ;;
+        1) printf '  seed:     absent   %s\n' "$SEED" ;;
+        *) printf '  seed:     unknown  %s  (no answer within %ss; pool I/O may be hung)\n' "$SEED" "${GOLDEN_PROBE_TIMEOUT:-5}" ;;
+    esac
+    printf '  root:     %s  (backing %s)\n' "$ROOT" "$(backing_device "$ROOT")"
+    rc=0; dir_state "$ROOT" || rc=$?
+    case "$rc" in
+        0) ;;
+        1) printf '  root does not exist yet (init will create it next to the seed)\n' ;;
+        *) printf '  root unreadable within %ss (pool I/O may be hung); skipping slot probes\n' "${GOLDEN_PROBE_TIMEOUT:-5}"
+           print_status_footer
+           return 0 ;;
+    esac
     for label_path in "work:$WORK" "live:$LIVE" "rollback:$ROLLBACK"; do
-        local label=${label_path%%:*}
-        local p=${label_path#*:}
-        if [ -d "$p" ]; then
-            if is_subvolume "$p"; then
+        label=${label_path%%:*}
+        p=${label_path#*:}
+        if dir_present "$p"; then
+            if probe btrfs subvolume show "$p" >/dev/null 2>&1; then
                 if subvol_readonly "$p"; then ro=yes; else ro=no; fi
                 id=$(subvol_id "$p")
                 printf '  %-8s  present  subvolume id=%s ro=%s  %s\n' "$label" "${id:-?}" "$ro" "$p"
@@ -604,66 +670,51 @@ print_status() {
             printf '  %-8s  absent   %s\n' "$label" "$p"
         fi
     done
-    if [ -f "$STATE" ]; then
+    if probe test -f "$STATE"; then
         printf '  state:    %s\n' "$STATE"
         if command -v jq >/dev/null 2>&1; then
-            jq -e . "$STATE" 2>/dev/null || cat "$STATE"
+            probe jq -e . "$STATE" 2>/dev/null || probe cat "$STATE"
         else
-            cat "$STATE"
+            probe cat "$STATE"
         fi
     else
         printf '  state:    (none yet)\n'
     fi
-    if [ -n "${IMAGE:-}" ] && [ -d "$IMAGE" ]; then
-        printf '  image:    present  %s\n' "$IMAGE"
-    elif [ -n "${IMAGE:-}" ]; then
-        printf '  image:    absent   %s\n' "$IMAGE"
-    fi
+    print_status_footer
+}
+
+print_status_footer() {
     printf '  historical layouts left untouched:\n'
     printf '    /opt/op-dbus/golden  /opt/op-dbus/overlay-base  /opt/op-dbus/release-send\n'
-    printf '    @opdbus-system-a / @opdbus-system-b  images/@seed  3tched-pool  BtrfsCache\n'
+    printf '    @opdbus-system-a / @opdbus-system-b  images/@seed  Incus containers  BtrfsCache\n'
 }
 
 plan_safety() {
     printf 'safety:\n'
     printf '  default is dry-run; --apply is required to mutate\n'
-    printf '  will refuse to delete images/@seed, images/@antix-seed, Incus pool data,\n'
-    printf '    @seed-send, BtrfsCache categories, and any path outside %s/work|slots\n' "$ROOT"
-    printf '  will refuse a GOLDEN_ROOT on ublk/cozo-ublk/3tched-pool unless GOLDEN_ALLOW_UBLK=1\n'
+    printf '  will refuse to write or delete images/@seed, images/@antix-seed (the seed %s),\n' "$SEED"
+    printf '    Incus images/containers, @seed-send, BtrfsCache categories, and any path outside %s/work|slots\n' "$ROOT"
+    printf '  no btrfs send/receive and no copy of the seed to another filesystem\n'
+    printf '  GOLDEN_ROOT must be a dedicated dir on the seed'"'"'s btrfs (default %s/%s)\n' "$POOL_ROOT" "$DEFAULT_ROOT_NAME"
     printf '  will not restart services, remount the host root, or touch cozo-ublk\n'
 }
 
 plan_init() {
-    printf 'plan: init (create the writable OS work subvolume)\n'
+    printf 'plan: init (writable work OS = CoW snapshot of the seed, same btrfs)\n'
+    seed_path_allowed "$SEED"
+    require_same_btrfs_as_seed
     would "install -d -m 0755 -- $ROOT $SLOTS"
-    if [ -n "$FROM_OS" ]; then
-        is_absolute "$FROM_OS" || die "--from must be an absolute path"
-        from_path_allowed "$FROM_OS"
-        require_same_btrfs_for_from
-        if needs_send_receive && [ "$SEND_RECEIVE" = 1 ]; then
-            require_send_source_readonly
-            check_receive_space "$ROOT" "$FROM_OS"
-            would "nice -n 10 ionice -c 2 -n 7 btrfs send -- $FROM_OS | nice -n 10 ionice -c 2 -n 7 btrfs receive -- $ROOT"
-            printf '  received release image (read-only, kept): %s\n' "$IMAGE"
-            printf '  source %s is not written or deleted\n' "$FROM_OS"
-            would "btrfs subvolume snapshot -- $IMAGE $WORK   # writable work clone of the received image"
-        else
-            would "btrfs subvolume snapshot -- $FROM_OS $WORK   # source is not modified, including if it is a seed"
-            printf '  note: --from may be a received release image under %s; the source itself is never written or deleted\n' "$ROOT"
-        fi
-    else
-        would "btrfs subvolume create -- $WORK"
-        printf '  note: work will be an empty subvolume; populate it with an OS, or re-run init --from <os-subvolume>\n'
-    fi
-    would "write $STATE (work path, release image, empty live/rollback)"
+    would "btrfs subvolume snapshot -- $SEED $WORK   # the seed is the release image; it is not modified"
+    printf '  no send/receive, no copy: work shares extents with the seed on %s\n' "$(btrfs_ident_for_path "$SEED")"
+    would "write $STATE (seed path, work path, empty live/rollback)"
 }
 
 plan_build() {
     local src=/opt/op-build.src
     local tgt=/opt/op-build/target
     printf 'plan: build (cargo inside the work OS chroot)\n'
-    if [ ! -d "$WORK" ]; then
-        printf '  missing work OS at %s — run init (and --from an OS) first\n' "$WORK"
+    if ! dir_present "$WORK"; then
+        printf '  missing work OS at %s — run init first (snapshots the seed %s)\n' "$WORK" "$SEED"
     fi
     would "bind-mount proc, sys, dev, dev/pts, and optionally the cargo registry into $WORK"
     would "install a copy of /etc/resolv.conf inside the chroot for DNS"
@@ -683,31 +734,31 @@ plan_cut() {
     if [ "$WITH_BUILD" = 1 ]; then
         plan_build
     fi
-    if [ ! -d "$WORK" ]; then
+    if ! dir_present "$WORK"; then
         printf '  missing work OS at %s — nothing to snapshot until init+build have populated it\n' "$WORK"
     fi
     would "btrfs subvolume snapshot -r -- $WORK $incoming"
     would "btrfs property get -ts $incoming ro  # require ro=true"
     printf '  rotation rule: delete the previous rollback only (exactly %s), demote current live to rollback, promote incoming to live\n' "$ROLLBACK"
-    if [ -d "$ROLLBACK" ]; then
+    if dir_present "$ROLLBACK"; then
         would "btrfs subvolume delete -- $ROLLBACK"
     else
         printf '  no previous rollback is present to delete right now\n'
     fi
-    if [ -d "$LIVE" ]; then
+    if dir_present "$LIVE"; then
         would "mv -- $LIVE $ROLLBACK"
     else
         printf '  no current live slot; incoming becomes the first live snapshot\n'
     fi
     would "mv -- $incoming $LIVE"
     would "write $STATE with the new live and rollback identities"
-    printf '  live snapshot %s is then the OverlayFS lower dir for the live system\n' "$LIVE"
+    printf '  live snapshot %s (%s) is then the OverlayFS lower dir on the live rootfs\n' "$LIVE" "$(os_dir_of "$LIVE")"
     printf '  mounting that overlay is a separate verb (mount-overlay) and is not implied by cut\n'
 }
 
 plan_rollback() {
     printf 'plan: rollback (swap live and rollback)\n'
-    if [ ! -d "$ROLLBACK" ]; then
+    if ! dir_present "$ROLLBACK"; then
         printf '  no rollback slot is present; nothing to promote\n'
     fi
     would "mv -- $LIVE ${INCOMING_PREFIX}swap-live"
@@ -716,16 +767,39 @@ plan_rollback() {
     would "update $STATE"
 }
 
+# Pick the overlay lower base: the live release snapshot of the seed, or the
+# seed itself (before the first release, or with --lower seed).
+# Prints the base subvolume; the lowerdir is os_dir_of <base>.
+overlay_lower_base() {
+    case "$LOWER_MODE" in
+        seed) printf '%s' "$SEED" ;;
+        live) printf '%s' "$LIVE" ;;
+        auto)
+            if dir_present "$LIVE"; then
+                printf '%s' "$LIVE"
+            else
+                printf '%s' "$SEED"
+            fi
+            ;;
+    esac
+}
+
 plan_mount() {
-    local mnt=${MOUNT_POINT:-/run/opdbus-os-live}
-    printf 'plan: mount-overlay (live snapshot as OverlayFS lower dir)\n'
-    printf '  lower: %s\n' "$LIVE"
+    local mnt=${MOUNT_POINT:-/run/opdbus-os-live} base lower
+    base=$(overlay_lower_base)
+    lower=$(os_dir_of "$base")
+    printf 'plan: mount-overlay (release image as OverlayFS lower dir on the live rootfs)\n'
+    printf '  lower mode: %s (auto = live release snapshot of the seed, else the seed)\n' "$LOWER_MODE"
+    printf '  lower: %s\n' "$lower"
+    if [ "$base" = "$SEED" ]; then
+        printf '  lower is the seed itself (%s); overlayfs never writes the lower dir\n' "$SEED"
+    fi
     printf '  upper: %s\n' "$OVERLAY_UPPER"
     printf '  work:  %s\n' "$OVERLAY_WORK"
     printf '  mount: %s\n' "$mnt"
     would "install -d -m 0755 -- $OVERLAY_UPPER $OVERLAY_WORK $mnt"
-    would "mount -t overlay overlay -o lowerdir=$LIVE,upperdir=$OVERLAY_UPPER,workdir=$OVERLAY_WORK $mnt"
-    printf '  this does not remount the host root; / and other system paths are refused\n'
+    would "mount -t overlay overlay -o lowerdir=$lower,upperdir=$OVERLAY_UPPER,workdir=$OVERLAY_WORK $mnt"
+    printf '  this does not remount the host root at runtime; / and other system paths are refused\n'
 }
 
 write_state() {
@@ -741,16 +815,16 @@ write_state() {
             --arg work "$WORK" \
             --arg live "$LIVE" \
             --arg rollback "$ROLLBACK" \
-            --arg image "${IMAGE:-}" \
+            --arg seed "$SEED" \
             --arg commit "$commit" \
             --arg work_id "${work_id:-}" \
             --arg live_id "${live_id:-}" \
             --arg rollback_id "${rollback_id:-}" \
-            '{version:1,root:$root,work:{path:$work,id:$work_id},image:(if $image=="" then null else {path:$image} end),live:(if $live_id=="" then null else {path:$live,id:$live_id,readonly:true,commit:$commit} end),rollback:(if $rollback_id=="" then null else {path:$rollback,id:$rollback_id,readonly:true} end)}' \
+            '{version:1,root:$root,work:{path:$work,id:$work_id},seed:{path:$seed},live:(if $live_id=="" then null else {path:$live,id:$live_id,readonly:true,commit:$commit} end),rollback:(if $rollback_id=="" then null else {path:$rollback,id:$rollback_id,readonly:true} end)}' \
             > "$tmp"
     else
         cat > "$tmp" <<EOF
-{"version":1,"root":"$ROOT","work":{"path":"$WORK","id":"$work_id"},"image":{"path":"$IMAGE"},"live":{"path":"$LIVE","id":"$live_id"},"rollback":{"path":"$ROLLBACK","id":"$rollback_id"},"commit":"$commit"}
+{"version":1,"root":"$ROOT","work":{"path":"$WORK","id":"$work_id"},"seed":{"path":"$SEED"},"live":{"path":"$LIVE","id":"$live_id"},"rollback":{"path":"$ROLLBACK","id":"$rollback_id"},"commit":"$commit"}
 EOF
     fi
     chmod 0644 "$tmp"
@@ -766,46 +840,18 @@ do_init() {
         return 0
     fi
     [ "$(id -u)" = 0 ] || die "init --apply must run as root"
+    seed_path_allowed "$SEED"
+    require_same_btrfs_as_seed
+    [ -d "$SEED" ] || die "seed is not a directory: $SEED"
+    is_subvolume "$SEED" || die "seed is not a btrfs subvolume: $SEED"
     is_btrfs_path "$ROOT" || is_btrfs_path "$(dirname -- "$ROOT")" || die "GOLDEN_ROOT is not on btrfs: $ROOT"
     install -d -m 0755 -- "$ROOT" "$SLOTS"
     if [ -e "$WORK" ] || [ -L "$WORK" ]; then
         die "work already exists: $WORK"
     fi
-    if [ -n "$FROM_OS" ]; then
-        is_absolute "$FROM_OS" || die "--from must be an absolute path"
-        [ -d "$FROM_OS" ] || die "--from is not a directory: $FROM_OS"
-        from_path_allowed "$FROM_OS"
-        require_same_btrfs_for_from
-        is_subvolume "$FROM_OS" || die "--from is not a btrfs subvolume: $FROM_OS"
-        if needs_send_receive && [ "$SEND_RECEIVE" = 1 ]; then
-            require_send_source_readonly
-            check_receive_space "$ROOT" "$FROM_OS"
-            [ -n "$IMAGE" ] || die "internal error: received image path is unset"
-            if [ -e "$IMAGE" ] || [ -L "$IMAGE" ]; then
-                die "received release image already exists: $IMAGE"
-            fi
-            require_owned_destination "$IMAGE"
-            log "send/receive $FROM_OS -> $ROOT (nice/ionice; source is not modified)"
-            if [ "$APPLY" = 1 ]; then
-                # pipefail is on; source filesystem is only read.
-                nice -n 10 ionice -c 2 -n 7 btrfs send -- "$FROM_OS"                     | nice -n 10 ionice -c 2 -n 7 btrfs receive -- "$ROOT"
-                is_subvolume "$IMAGE" || die "receive did not create $IMAGE"
-                subvol_readonly "$IMAGE" || die "received release image is not read-only: $IMAGE"
-            else
-                would "nice -n 10 ionice -c 2 -n 7 btrfs send -- $FROM_OS | nice -n 10 ionice -c 2 -n 7 btrfs receive -- $ROOT"
-            fi
-            perform btrfs subvolume snapshot -- "$IMAGE" "$WORK"
-        else
-            perform btrfs subvolume snapshot -- "$FROM_OS" "$WORK"
-        fi
-    else
-        perform btrfs subvolume create -- "$WORK"
-    fi
+    perform btrfs subvolume snapshot -- "$SEED" "$WORK"
     write_state
-    log "work OS is ready at $WORK"
-    if [ -n "${IMAGE:-}" ] && [ -d "$IMAGE" ]; then
-        log "maintained release image: $IMAGE"
-    fi
+    log "work OS is ready at $WORK (CoW snapshot of the seed $SEED)"
 }
 
 # Incus image volumes (including @antix-seed) store the OS in rootfs/.
@@ -955,28 +1001,35 @@ forbid_system_mountpoint() {
 }
 
 do_mount_overlay() {
-    local mnt=${MOUNT_POINT:-/run/opdbus-os-live}
+    local mnt=${MOUNT_POINT:-/run/opdbus-os-live} base lower
     if [ "$APPLY" != 1 ]; then
         plan_mount
         return 0
     fi
     [ "$(id -u)" = 0 ] || die "mount-overlay --apply must run as root"
-    [ -d "$LIVE" ] || die "live snapshot is missing: $LIVE"
-    is_subvolume "$LIVE" || die "live is not a subvolume: $LIVE"
-    subvol_readonly "$LIVE" || die "live snapshot must be read-only"
+    base=$(overlay_lower_base)
+    [ -d "$base" ] || die "overlay lower base is missing: $base"
+    is_subvolume "$base" || die "overlay lower base is not a subvolume: $base"
+    if [ "$base" = "$LIVE" ]; then
+        subvol_readonly "$LIVE" || die "live snapshot must be read-only"
+    elif ! subvol_readonly "$base"; then
+        warn "seed $base is not read-only; overlayfs will still not write it"
+    fi
+    lower=$(os_dir_of "$base")
+    [ -d "$lower" ] || die "overlay lower dir is missing: $lower (set GOLDEN_OS_SUBDIR= for a flat subvolume)"
     forbid_system_mountpoint "$mnt"
     require_owned_destination "$OVERLAY_UPPER"
     require_owned_destination "$OVERLAY_WORK"
     install -d -m 0755 -- "$OVERLAY_UPPER" "$OVERLAY_WORK" "$mnt"
     perform mount -t overlay overlay \
-        -o "lowerdir=$LIVE,upperdir=$OVERLAY_UPPER,workdir=$OVERLAY_WORK" \
+        -o "lowerdir=$lower,upperdir=$OVERLAY_UPPER,workdir=$OVERLAY_WORK" \
         "$mnt"
-    log "mounted live OS overlay at $mnt (lower=$LIVE)"
+    log "mounted live OS overlay at $mnt (lower=$lower)"
 }
 
 plan_release() {
     printf 'plan: release (snapshot work, rotate live -> rollback, plan overlay)\n'
-    printf '  the maintained release image on this filesystem stays put; work is snapshotted for the live overlay\n'
+    printf '  the seed %s is the release image and stays put; work (its CoW clone) is snapshotted for the live overlay\n' "$SEED"
     printf '  will not touch /opt/op-dbus/golden or @opdbus-system-a/b\n'
     printf '  will not remount the host root; mount-overlay is a separate verb and refuses /\n'
     plan_cut

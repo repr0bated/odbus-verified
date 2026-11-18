@@ -1,20 +1,57 @@
 # Golden OS-slot release
 
-Approved design, implemented by `golden.sh` (also `./activate-golden.sh` and
-`build-golden.sh`):
+Approved design, implemented by `golden.sh` (front doors: `./activate-golden.sh`
+at the repo root and `build-golden.sh` here):
 
-1. A btrfs subvolume holds the OS (`$GOLDEN_ROOT/work`, default `/opt/op-dbus/os/work`).
-2. `cargo build --workspace --release` runs inside a chroot of that OS.
-3. The work OS is snapshotted read-only.
-4. That snapshot is the OverlayFS lower dir forming the live system
+1. The release image **is the seed subvolume on the pool** — by default
+   `images/@antix-seed` on 3tched-pool
+   (`/var/lib/incus/storage-pools/3tched-pool/images/@antix-seed`). It is never
+   sent, received, copied to another filesystem, written, or deleted.
+2. `work` is a writable CoW snapshot of the seed on the **same btrfs**
+   (`$GOLDEN_ROOT/work`, default `<pool>/golden-os/work`).
+3. `cargo build --workspace --release` runs inside a chroot of `work`, using the
+   work OS toolchain (`/root/.cargo/bin/cargo`, following
+   `25-build-in-chroot.sh`; host glibc binaries will not run on the seed's glibc).
+4. `work` is snapshotted read-only into the `live` slot
    (`$GOLDEN_ROOT/slots/live`).
-5. There are exactly two slots: `live` and `rollback`.
-6. Cutting a release demotes the old live snapshot to rollback and deletes
-   the previous rollback.
+5. The live snapshot — or, before the first release, the seed itself — is the
+   OverlayFS lower dir on the live rootfs (`lowerdir=<live-or-seed>/rootfs`).
+6. There are exactly two slots: `live` and `rollback`. Cutting a release
+   demotes the old live snapshot to rollback and deletes the previous rollback.
+
+There is no `btrfs send`/`receive` step and no copy under `/opt/op-dbus/os`.
+`init --send-receive` was removed and is rejected with an explanation.
 
 This is separate from op-cache `BtrfsCache` (one subvolume per category:
 embeddings, blocks, queries, diffs, kv) and does not use or delete those
 paths.
+
+## Configuration
+
+| Setting | Flag | Env | Default |
+| --- | --- | --- | --- |
+| Pool mount holding the seed | `--pool PATH` | `GOLDEN_POOL_ROOT` | `/var/lib/incus/storage-pools/3tched-pool` |
+| Seed = release image | `--seed PATH` (alias `--from`) | `GOLDEN_SEED` | `<pool>/images/@antix-seed` |
+| Release root (work, slots, overlay dirs, state) | `--root PATH` | `GOLDEN_ROOT` | `<pool>/golden-os` |
+| OS dir inside seed/slots | — | `GOLDEN_OS_SUBDIR` | `rootfs` (Incus image layout; set empty for a flat subvolume) |
+| Overlay lower dir | `--lower auto\|live\|seed` | `GOLDEN_LOWER` | `auto` (live release, else the seed) |
+| Probe timeout for status/plan | — | `GOLDEN_PROBE_TIMEOUT` | `5` seconds |
+
+`GOLDEN_ROOT` and the seed must be on the same btrfs filesystem: a
+cross-filesystem root is refused (snapshots only work on one filesystem), and
+the error points back at `<pool>/golden-os`. The filesystem is identified from
+the mount table only, so the seed itself is not touched. Under
+`/var/lib/incus`, the root must be a dedicated directory directly under the
+pool, never `images/`, `containers/`, `custom/`, or another Incus-managed
+directory. Being on a ublk/cozo-ublk device is expected for that pool release
+dir; any other ublk-backed root still needs `GOLDEN_ALLOW_UBLK=1`.
+
+When the host moves to a new pool, point `GOLDEN_POOL_ROOT` (or `--pool`) at
+it; the seed must exist on that pool.
+
+`status` and dry-run plans read the pool through hard-timed probes
+(`timeout -s KILL`), and path normalization is lexical, so a pool with hung
+I/O reports "unknown" instead of hanging the tool.
 
 ## Commands
 
@@ -23,77 +60,33 @@ built unless you pass `--apply`.
 
 ```sh
 ./activate-golden.sh                     # full plan
-./activate-golden.sh status              # current work / live / rollback
-./activate-golden.sh init --from /path/to/os-subvolume
-./activate-golden.sh build
+./activate-golden.sh status              # seed / work / live / rollback
+./activate-golden.sh init                # work = CoW snapshot of the seed
+./activate-golden.sh build               # chroot cargo build in work
+./activate-golden.sh release             # snapshot work, rotate live -> rollback
+./activate-golden.sh rotate              # slot rotation only
 ./activate-golden.sh cut --with-build
 ./activate-golden.sh rollback
 ./activate-golden.sh mount-overlay --mount /run/opdbus-os-live
 # The same verbs with --apply perform the work (root required).
 ```
 
-`init --from` may CoW-snapshot a seed such as `images/@seed` into `work`. The
-seed is never written or deleted. `--from` and `GOLDEN_ROOT` must be on the same btrfs filesystem for a CoW snapshot.
-Cross-filesystem sources require `--send-receive` (source must already be read-only). The default root is `/opt/op-dbus/os` on the
-host btrfs (`@opdbus-prep` on antix1), a sibling of the historical payload
-tree, not on `3tched-pool` / cozo-ublk. A root on a ublk device is refused
-unless `GOLDEN_ALLOW_UBLK=1`, and even then Incus `images/` and container
-paths stay forbidden.
+`cut`/`release` do not remount the host or restart services. `mount-overlay`
+mounts the chosen lower dir with upper/work dirs under `$GOLDEN_ROOT` at
+`--mount` (default `/run/opdbus-os-live`) and refuses `/`, `/usr`, `/etc`,
+`/home`, `/boot`, and other host system paths. Making it the boot-time root
+overlay is a separate step and is not done by this tool.
 
-`cut` does not remount the host or restart services. `mount-overlay` mounts
-the live snapshot as an overlay at `--mount` (default `/run/opdbus-os-live`)
-and refuses `/`, `/usr`, `/etc`, `/home`, `/boot`, and other host system
-paths.
+## What this tool leaves alone
 
-## What this rewrite left alone
-
-- `build-golden-payload.sh` — the previous payload stager that fills
-  `/opt/op-dbus/golden` from already-built artifacts. It never builds Rust
-  and never rotates slots.
-- `system-payload.sh` — helper for that stager.
+- The seed (`images/@antix-seed`), `images/@seed`, Incus images/containers.
+- `build-golden-payload.sh` / `system-payload.sh` — the previous payload
+  stager for `/opt/op-dbus/golden`.
 - `deploy/release/` — the native `op-release` kit and `@opdbus-system-a/b`
-  transfer slots. Still present; this tool does not call or delete them.
-- `deploy/reseal-plugins.sh` — plugin catalog reseal; a different operation.
-- `images/@seed`, Incus containers, cozo-ublk, and the live 3tched-pool data.
+  transfer slots.
+- `deploy/reseal-plugins.sh` — plugin catalog reseal.
+- cozo-ublk and its services.
 
-`--apply` on a host still needs an explicit go-ahead: it creates subvolumes
-and, for `cut`, deletes only the previous rollback slot under
-`$GOLDEN_ROOT/slots/rollback`.
-
-
-## Seeding work from another filesystem
-
-`--from` on the same btrfs CoW-snapshots into `work`. If the source is on
-another filesystem (on antix1, `@antix-seed` lives on 3tched-pool / `ublkb1`,
-while `/opt/op-dbus/os` is on `sdb3`), use:
-
-```sh
-sudo ./activate-golden.sh init --from /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed --send-receive --apply
-```
-
-That `btrfs send`s the read-only source and `btrfs receive`s it under
-`/opt/op-dbus/os/` (kept as the maintained release image, e.g.
-`/opt/op-dbus/os/@antix-seed`), then CoW-snapshots that copy to `work`.
-The source seed is not written or deleted. The source must already be
-read-only; this tool will not create a snapshot on 3tched-pool or change
-the seed's `ro` property.
-
-`/opt/op-dbus/golden` and the historical `@opdbus-system-a/b` slots are
-never used or deleted.
-
-## Deploy / release (rotate + overlay)
-
-After building inside `work` (chroot, using the work OS toolchain — host
-glibc binaries will not run on the `@antix-seed` glibc):
-
-```sh
-./activate-golden.sh release          # dry-run: snapshot work, rotate slots, plan overlay
-./activate-golden.sh rotate           # dry-run of the slot rotation only
-```
-
-`release` snapshots `work` read-only, demotes current `live` to `rollback`,
-deletes the previous rollback, and promotes the new snapshot to `live`.
-That live snapshot is the OverlayFS lower dir. `release` does not remount
-the host root; `mount-overlay` is a separate verb, dry-run by default, and
-refuses `/` and other system paths. `--apply` of rotate/overlay on the live
-rootfs needs an explicit go-ahead.
+`--apply` on a host still needs an explicit go-ahead: it creates `work` and the
+slots under `$GOLDEN_ROOT`, and for `cut`/`release` deletes only the previous
+rollback slot.
