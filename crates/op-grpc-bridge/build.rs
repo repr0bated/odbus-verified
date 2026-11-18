@@ -59,14 +59,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         out_dir.join("compiled_method_contracts.json"),
         serde_json::to_vec(&contracts)?,
     )?;
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(true)
         .build_client(true)
         .file_descriptor_set_path(out_dir.join("operation_descriptor.bin"))
         .compile_protos(&["proto/operation.proto"], &["proto"])?;
     // The broker's private protocol is not a public plugin service and must
     // not enter the door's reflection descriptor set.
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(true)
         .build_client(false)
         .file_descriptor_set_path(out_dir.join("exhook_descriptor.bin"))

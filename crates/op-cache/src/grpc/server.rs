@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use tonic::transport::Server;
-use tonic_web::enable as tw_enable;
+use tonic_web::GrpcWebLayer;
 use tracing::info;
 
 use super::agent_service::AgentServiceImpl;
@@ -140,14 +140,15 @@ impl GrpcServer {
 
         Server::builder()
             .accept_http1(true)
-            .add_service(tw_enable(AgentServiceServer::from_arc(self.agent_service)))
-            .add_service(tw_enable(CacheServiceServer::from_arc(self.cache_service)))
-            .add_service(tw_enable(OrchestratorServiceServer::from_arc(
+            .layer(GrpcWebLayer::new())
+            .add_service(AgentServiceServer::from_arc(self.agent_service))
+            .add_service(CacheServiceServer::from_arc(self.cache_service))
+            .add_service(OrchestratorServiceServer::from_arc(
                 self.orchestrator_service,
-            )))
-            .add_service(tw_enable(McpServiceServer::from_arc(self.mcp_service)))
-            .add_service(tw_enable(reflection))
-            .add_service(tw_enable(health_service))
+            ))
+            .add_service(McpServiceServer::from_arc(self.mcp_service))
+            .add_service(reflection)
+            .add_service(health_service)
             .serve(addr)
             .await?;
 
@@ -185,14 +186,15 @@ impl GrpcServer {
 
         Server::builder()
             .accept_http1(true)
-            .add_service(tw_enable(AgentServiceServer::from_arc(self.agent_service)))
-            .add_service(tw_enable(CacheServiceServer::from_arc(self.cache_service)))
-            .add_service(tw_enable(OrchestratorServiceServer::from_arc(
+            .layer(GrpcWebLayer::new())
+            .add_service(AgentServiceServer::from_arc(self.agent_service))
+            .add_service(CacheServiceServer::from_arc(self.cache_service))
+            .add_service(OrchestratorServiceServer::from_arc(
                 self.orchestrator_service,
-            )))
-            .add_service(tw_enable(McpServiceServer::from_arc(self.mcp_service)))
-            .add_service(tw_enable(reflection))
-            .add_service(tw_enable(health_service))
+            ))
+            .add_service(McpServiceServer::from_arc(self.mcp_service))
+            .add_service(reflection)
+            .add_service(health_service)
             .serve_with_shutdown(addr, shutdown)
             .await?;
 

@@ -15,6 +15,7 @@ op-core = { workspace = true }
 op-chat = { workspace = true }
 # gRPC
 tonic = { workspace = true }
+tonic-prost = { workspace = true }
 tonic-web = { workspace = true }
 prost = { workspace = true }
 prost-types = { workspace = true }
@@ -86,18 +87,21 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
+# Official grpc-rust preview client (feature grpc-preview); see src/grpc_preview.rs
+grpc = { workspace = true, optional = true }
+bytes = { version = "1", optional = true }
 async-trait = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 futures = "0.3"
 async-stream = "0.3"
 base64 = "0.21"
-qdrant-client = "1.17"
+qdrant-client = "1.20" # 1.20 uses tonic 0.14 (1.18 pulled in a second tonic 0.12)
 rcgen = "0.13"
 op-llm = { path = "../op-llm" }
 
 [build-dependencies]
-tonic-build = { workspace = true }
+tonic-prost-build = { workspace = true }
 op-blob = { path = "../op-blob" }
 op-plugins = { path = "../op-plugins" }
 op-state-store = { path = "../op-state-store" }
@@ -105,6 +109,10 @@ op-state = { path = "../op-state" }
 tokio = { workspace = true, features = ["rt"] }
 serde_json = { workspace = true }
 simd-json = { workspace = true }
+
+[features]
+# Opt-in interop with the official grpc crate (grpc 0.9 preview, client-only).
+grpc-preview = ["dep:grpc", "dep:bytes"]
 
 [dev-dependencies]
 google-cloud-auth = "1.15"

@@ -83,8 +83,10 @@ async fn start_tls_server() -> (SocketAddr, String) {
             .tls_config(tls_config)
             .expect("valid TLS config")
             .accept_http1(true)
+            // tonic 0.14: tonic_web::enable() was removed; GrpcWebLayer applies grpc-web to every service on this server
+            .layer(tonic_web::GrpcWebLayer::new())
             .add_routes(op_grpc_bridge::grpc_server::build_operation_routes(server))
-            .add_service(tonic_web::enable(health_service))
+            .add_service(health_service)
             .serve_with_incoming(incoming)
             .await
             .unwrap();

@@ -48,6 +48,8 @@ pub(crate) mod chat_router_generation;
 pub(crate) mod chat_router_runtime;
 pub mod cockpit;
 pub mod core;
+#[cfg(feature = "grpc-preview")]
+pub mod grpc_preview;
 #[path = "cron_gateway.rs"]
 pub(crate) mod cron_gateway;
 #[path = "cron_methods.rs"]

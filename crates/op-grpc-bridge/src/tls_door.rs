@@ -307,7 +307,7 @@ mod tests {
                     .header("host", "localhost")
                     .header("x-oracle-identity-assertion-bin", "T0lBMQ==")
                     .header("x-forwarded-for", "203.0.113.1")
-                    .body(tonic::body::empty_body())
+                    .body(tonic::body::Body::empty())
                     .unwrap(),
             )
             .await

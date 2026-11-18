@@ -87,13 +87,18 @@ pub async fn bind_production(
         )
         .add_service(web.layer(reflection))
         .prepare()
+        // tonic 0.14's router is axum 0.8 while this crate uses axum 0.7, so the
+        // gRPC router is finished here (CORS + 404 fallback, as before) and then
+        // mounted as a plain tower service under the axum 0.7 app.
         .into_axum_router()
         .layer(grpc_cors(origins))
+        .fallback(|| async { StatusCode::NOT_FOUND });
+    let app = axum::Router::new()
         .route(
             "/mqtt",
             axum::routing::get(crate::mqtt_doorbell_relay::upgrade),
         )
-        .fallback(|| async { StatusCode::NOT_FOUND });
+        .fallback_service(app);
     let listener = TcpListener::bind(addr).await?;
     let addr = listener.local_addr()?;
     Ok(ProductionServer {

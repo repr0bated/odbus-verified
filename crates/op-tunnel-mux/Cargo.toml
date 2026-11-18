@@ -14,6 +14,7 @@ anyhow.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
+tonic-prost.workspace = true
 tonic-reflection.workspace = true
 prost.workspace = true
 tracing.workspace = true
@@ -22,4 +23,4 @@ hyper-util.workspace = true
 tower.workspace = true
 
 [build-dependencies]
-tonic-build.workspace = true
+tonic-prost-build.workspace = true

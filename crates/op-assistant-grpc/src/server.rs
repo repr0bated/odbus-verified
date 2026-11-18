@@ -130,24 +130,26 @@ impl AssistantGrpcServer {
 
         let mut builder = Server::builder()
             .accept_http1(true)
-            .add_service(tonic_web::enable(agent))
-            .add_service(tonic_web::enable(session))
-            .add_service(tonic_web::enable(task))
-            .add_service(tonic_web::enable(model))
-            .add_service(tonic_web::enable(cron))
-            .add_service(tonic_web::enable(soul))
-            .add_service(tonic_web::enable(namespace))
-            .add_service(tonic_web::enable(memory));
+            // tonic 0.14: tonic_web::enable() was removed; GrpcWebLayer applies grpc-web to every service on this server
+            .layer(tonic_web::GrpcWebLayer::new())
+            .add_service(agent)
+            .add_service(session)
+            .add_service(task)
+            .add_service(model)
+            .add_service(cron)
+            .add_service(soul)
+            .add_service(namespace)
+            .add_service(memory);
 
         if self.cfg.enable_reflection {
             let reflection = tonic_reflection::server::Builder::configure()
                 .register_encoded_file_descriptor_set(crate::proto::FILE_DESCRIPTOR_SET)
                 .build_v1()?;
-            builder = builder.add_service(tonic_web::enable(reflection));
+            builder = builder.add_service(reflection);
         }
 
         let (_health_reporter, health_service) = tonic_health::server::health_reporter();
-        builder = builder.add_service(tonic_web::enable(health_service));
+        builder = builder.add_service(health_service);
 
         builder.serve(addr).await?;
         Ok(())
