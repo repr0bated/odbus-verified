@@ -33,9 +33,8 @@ built unless you pass `--apply`.
 ```
 
 `init --from` may CoW-snapshot a seed such as `images/@seed` into `work`. The
-seed is never written or deleted. `--from` and `GOLDEN_ROOT` must already be on the same btrfs filesystem;
-cross-filesystem CoW snapshots are refused (send/receive or a full copy would
-need a separate go-ahead). The default root is `/opt/op-dbus/os` on the
+seed is never written or deleted. `--from` and `GOLDEN_ROOT` must be on the same btrfs filesystem for a CoW snapshot.
+Cross-filesystem sources require `--send-receive` (source must already be read-only). The default root is `/opt/op-dbus/os` on the
 host btrfs (`@opdbus-prep` on antix1), a sibling of the historical payload
 tree, not on `3tched-pool` / cozo-ublk. A root on a ublk device is refused
 unless `GOLDEN_ALLOW_UBLK=1`, and even then Incus `images/` and container
@@ -60,3 +59,41 @@ paths.
 `--apply` on a host still needs an explicit go-ahead: it creates subvolumes
 and, for `cut`, deletes only the previous rollback slot under
 `$GOLDEN_ROOT/slots/rollback`.
+
+
+## Seeding work from another filesystem
+
+`--from` on the same btrfs CoW-snapshots into `work`. If the source is on
+another filesystem (on antix1, `@antix-seed` lives on 3tched-pool / `ublkb1`,
+while `/opt/op-dbus/os` is on `sdb3`), use:
+
+```sh
+sudo ./activate-golden.sh init --from /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed --send-receive --apply
+```
+
+That `btrfs send`s the read-only source and `btrfs receive`s it under
+`/opt/op-dbus/os/` (kept as the maintained release image, e.g.
+`/opt/op-dbus/os/@antix-seed`), then CoW-snapshots that copy to `work`.
+The source seed is not written or deleted. The source must already be
+read-only; this tool will not create a snapshot on 3tched-pool or change
+the seed's `ro` property.
+
+`/opt/op-dbus/golden` and the historical `@opdbus-system-a/b` slots are
+never used or deleted.
+
+## Deploy / release (rotate + overlay)
+
+After building inside `work` (chroot, using the work OS toolchain — host
+glibc binaries will not run on the `@antix-seed` glibc):
+
+```sh
+./activate-golden.sh release          # dry-run: snapshot work, rotate slots, plan overlay
+./activate-golden.sh rotate           # dry-run of the slot rotation only
+```
+
+`release` snapshots `work` read-only, demotes current `live` to `rollback`,
+deletes the previous rollback, and promotes the new snapshot to `live`.
+That live snapshot is the OverlayFS lower dir. `release` does not remount
+the host root; `mount-overlay` is a separate verb, dry-run by default, and
+refuses `/` and other system paths. `--apply` of rotate/overlay on the live
+rootfs needs an explicit go-ahead.

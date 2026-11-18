@@ -7,7 +7,7 @@ export PATH
 HERE=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f -- "$0")")" && pwd)
 # Globals consumed by sourced golden.sh helpers.
 ROOT='' WORK='' SLOTS='' LIVE='' ROLLBACK='' STATE=''
-export ROOT WORK SLOTS LIVE ROLLBACK STATE FROM_OS
+export ROOT WORK SLOTS LIVE ROLLBACK STATE FROM_OS IMAGE SEND_RECEIVE
 GOLDEN=$HERE/../golden.sh
 PASS=0
 FAIL=0
@@ -104,6 +104,9 @@ assert_ok "work is owned" path_is_owned "$WORK"
 assert_ok "live is owned" path_is_owned "$LIVE"
 assert_ok "rollback is owned" path_is_owned "$ROLLBACK"
 assert_ok "incoming is owned" path_is_owned "$SLOTS/.incoming-20261118-120000"
+IMAGE=$ROOT/@antix-seed
+assert_ok "received release image is owned" path_is_owned "$ROOT/@antix-seed"
+IMAGE=
 assert_fail "seed is not owned" path_is_owned /var/lib/incus/storage-pools/3tched-pool/images/@seed
 assert_fail "payload golden is not owned" path_is_owned /opt/op-dbus/golden
 assert_fail "sibling path is not owned" path_is_owned /opt/op-dbus/os/../golden
@@ -213,7 +216,7 @@ else
     PASS=$((PASS + 1))
     printf '  ok  cross-filesystem --from refused\n'
 fi
-assert_contains "cross-fs error names send/receive" "btrfs send/receive" "$(cat /tmp/golden-test-err)"
+assert_contains "cross-fs error names send/receive" "--send-receive" "$(cat /tmp/golden-test-err)"
 assert_contains "cross-fs error names full copy" "rsync -aHAX" "$(cat /tmp/golden-test-err)"
 assert_contains "cross-fs error says snapshot only works same fs" "only works on the same filesystem" "$(cat /tmp/golden-test-err)"
 
@@ -248,9 +251,64 @@ else
     printf '  ok  CLI cross-filesystem init exits non-zero
 '
 fi
-assert_contains "CLI cross-fs init mentions send/receive" "send/receive" "$(cat "$out")"
+assert_contains "CLI cross-fs init mentions send/receive" "--send-receive" "$(cat "$out")"
 assert_ok "CLI cross-fs init did not create /opt/op-dbus/os" test ! -e /opt/op-dbus/os
-unset GOLDEN_BTRFS_MOUNTS
+
+GOLDEN_FAKE_SOURCE_RO=true
+GOLDEN_SKIP_SPACE=1
+export GOLDEN_FAKE_SOURCE_RO GOLDEN_SKIP_SPACE
+if "$GOLDEN" --root /opt/op-dbus/os init --from /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed --send-receive >"$out" 2>&1; then
+    PASS=$((PASS + 1))
+    printf '  ok  CLI --send-receive dry-run exits 0\n'
+else
+    FAIL=$((FAIL + 1))
+    printf '  FAIL CLI --send-receive dry-run should have succeeded\n'
+    cat "$out"
+fi
+assert_contains "send-receive plan sends the seed" "btrfs send -- /var/lib/incus/storage-pools/3tched-pool/images/@antix-seed" "$(cat "$out")"
+assert_contains "send-receive plan receives under ROOT" "btrfs receive -- /opt/op-dbus/os" "$(cat "$out")"
+assert_contains "send-receive keeps received image" "received release image" "$(cat "$out")"
+assert_contains "send-receive snapshots image to work" "subvolume snapshot -- /opt/op-dbus/os/@antix-seed /opt/op-dbus/os/work" "$(cat "$out")"
+assert_ok "send-receive dry-run did not create /opt/op-dbus/os" test ! -e /opt/op-dbus/os
+
+# Same-FS --from of a received image under ROOT is allowed.
+FROM_OS=/opt/op-dbus/os/@antix-seed
+ROOT=/opt/op-dbus/os
+SEND_RECEIVE=0
+resolve_layout
+if ( from_path_allowed "$FROM_OS" && require_same_btrfs_for_from ); then
+    PASS=$((PASS + 1))
+    printf '  ok  --from a received image under ROOT is allowed\n'
+else
+    FAIL=$((FAIL + 1))
+    printf '  FAIL --from received image under ROOT should be allowed\n'
+fi
+if ( from_path_allowed /opt/op-dbus/os/work ) 2>/tmp/golden-test-err; then
+    FAIL=$((FAIL + 1))
+    printf '  FAIL --from work should have been refused\n'
+else
+    PASS=$((PASS + 1))
+    printf '  ok  --from work is refused\n'
+fi
+
+"$GOLDEN" --root /opt/op-dbus/os release >"$out" 2>&1
+assert_contains "release plan rotates live to rollback" "demote current live to rollback" "$(cat "$out")"
+assert_contains "release plan does not remount host root" "will not remount the host root" "$(cat "$out")"
+assert_not_contains "release plan has no btrfstune" "btrfstune" "$(cat "$out")"
+
+"$GOLDEN" --root /opt/op-dbus/os rotate >"$out" 2>&1
+assert_contains "rotate plan is slot rotation" "plan: rotate" "$(cat "$out")"
+assert_not_contains "rotate plan does not mount" "would: mount -t overlay" "$(cat "$out")"
+
+if grep -q btrfstune "$GOLDEN"; then
+    FAIL=$((FAIL + 1))
+    printf '  FAIL golden.sh unexpectedly mentions btrfstune\n'
+else
+    PASS=$((PASS + 1))
+    printf '  ok  golden.sh has no btrfstune\n'
+fi
+
+unset GOLDEN_BTRFS_MOUNTS GOLDEN_FAKE_SOURCE_RO GOLDEN_SKIP_SPACE
 
 "$GOLDEN" --root "$TMP/os" cut >"$out" 2>&1
 assert_ok "dry-run cut does not create slots" test ! -e "$TMP/os"
@@ -278,6 +336,8 @@ assert_contains "status mentions historical layouts" "images/@seed" "$(cat "$out
 
 "$GOLDEN" --help >"$out" 2>&1
 assert_contains "help lists verbs" "mount-overlay" "$(cat "$out")"
+assert_contains "help lists release" "release" "$(cat "$out")"
+assert_contains "help lists send-receive" "--send-receive" "$(cat "$out")"
 
 # Wrapper scripts stay executable and parse.
 assert_ok "build-golden.sh is a thin wrapper" grep -q 'exec .*/golden.sh' "$HERE/../build-golden.sh"
