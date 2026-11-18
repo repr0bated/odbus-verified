@@ -10,6 +10,8 @@ use crate::model::{FieldSchema, FieldType, PluginSchema, StateValueScope};
 use crate::store::{ObjectStore, ViewManifest, Workspace};
 
 pub const ROOT_INO: u64 = 1;
+/// Plugin ID the threetched surface grafts from its captured binary.
+const THREETCHED_PLUGIN_ID: &str = "threetched";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -279,6 +281,12 @@ impl Namespace {
                 .namespace
                 .source_schema_hashes
                 .insert(plugin_id.clone(), object.source_schema_hash.clone());
+            // The threetched surface grafts its own `/plugins/threetched` tree from the
+            // captured binary (`attach_threetched`); projecting the sealed object here
+            // too would create the same path twice.
+            if surface == Surface::Binary && plugin_id == THREETCHED_PLUGIN_ID {
+                continue;
+            }
             let plugin_name = encode_component(plugin_id);
             let plugin_dir = builder.add_dir(plugins, &plugin_name)?;
             builder.add_file(
@@ -466,12 +474,13 @@ impl Namespace {
     }
 
     pub fn refresh(&self, store: &ObjectStore) -> Result<Self> {
-        let mut fresh = Self::build_with_catalog(
+        let mut fresh = Self::build_with_catalog_as(
             store,
             self.target.clone(),
             self.state_dir.as_deref(),
             self.lungs,
             &self.declared_catalog_dir,
+            self.surface,
         )?;
         fresh.mount_identity = self.mount_identity.clone();
         fresh.instance_uuid = self.instance_uuid.clone();
@@ -876,7 +885,7 @@ impl NamespaceBuilder {
             .commands()
             .map(|command| command.to_owned())
             .collect();
-        let plugin_id = "threetched";
+        let plugin_id = THREETCHED_PLUGIN_ID;
         let plugin_name = encode_component(plugin_id);
         let plugin_dir = self.add_dir(plugins_parent, &plugin_name)?;
         self.add_file(
