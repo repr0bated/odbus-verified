@@ -13,6 +13,7 @@
 //! Runtime's admitted method path, never beside it.
 
 use std::io::Write as _;
+use std::os::unix::fs::DirBuilderExt as _;
 use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::PathBuf;
 use std::sync::Mutex;
