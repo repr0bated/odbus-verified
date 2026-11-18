@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 base64 = { workspace = true }
 blake3 = { workspace = true }
+crc32c = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 nix = { version = "0.28", features = ["fs", "user"] }
@@ -19,6 +20,7 @@ tracing = { workspace = true }
 schemars = { workspace = true }
 sha2 = { workspace = true }
 uuid = { workspace = true }
+zstd = { workspace = true }
 op-identity = { path = "../op-identity" }
 
 [[bin]]

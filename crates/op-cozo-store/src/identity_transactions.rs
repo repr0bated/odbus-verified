@@ -317,11 +317,15 @@ pub(super) struct PersistentIdentityBoundary {
     data: File,
     custom_options: bool,
     private: bool,
+    /// Known-good `options` file contents for this store profile.
+    expected_options: &'static [u8],
 }
 
 // Cozo's JSON constructor options do not configure RocksDB. Its root/options
 // file does, but replaces cozorocks defaults rather than merging with them.
-// Preserve the pinned cozorocks0.1.7 defaults; change only file preallocation.
+// Preserve the pinned cozorocks0.1.7 defaults; change only file preallocation
+// for identity stores. The ublk CBLK store additionally disables SST
+// compression so raw `CBLK` magic remains findable in `.sst` / WAL bytes.
 const SPARSE_ROCKSDB_OPTIONS: &[u8] = b"\
 [Version]\n\
 options_file_version=1.1\n\
@@ -335,7 +339,37 @@ compression=kLZ4Compression\n\
 level_compaction_dynamic_level_bytes=true\n\
 compaction_pri=kMinOverlappingRatio\n";
 
-fn create_sparse_options(root: &File) -> std::result::Result<(), CozoError> {
+/// RocksDB options-file profile for the ublk CBLK block store.
+///
+/// Cozo 0.7.6 ignores compression in its JSON constructor options; cozorocks
+/// loads this root `options` file with `LoadOptionsFromFile` and it replaces
+/// cozorocks' built-in LZ4/ZSTD defaults entirely. Compression is OFF at every
+/// RocksDB layer: SST (`compression`, `bottommost_compression`, and every entry
+/// of `compression_per_level`), blob files (`blob_compression_type`), and the
+/// WAL (`wal_compression`). The only compression is zstd inside each CBLK
+/// envelope (see `cblk.rs`), so on-disk bytes are exactly CBLK envelopes and
+/// raw `CBLK` magic stays findable for offline recovery. Blob GC reclaims
+/// superseded chunk versions from blob files.
+pub(super) const CBLK_ROCKSDB_OPTIONS: &[u8] = b"\
+[Version]\n\
+options_file_version=1.1\n\
+[DBOptions]\n\
+allow_fallocate=false\n\
+max_background_jobs=6\n\
+bytes_per_sync=1048576\n\
+wal_compression=kNoCompression\n\
+[CFOptions \"default\"]\n\
+compression=kNoCompression\n\
+bottommost_compression=kNoCompression\n\
+compression_per_level=kNoCompression:kNoCompression:kNoCompression:kNoCompression:kNoCompression:kNoCompression:kNoCompression\n\
+enable_blob_files=true\n\
+min_blob_size=4096\n\
+blob_compression_type=kNoCompression\n\
+enable_blob_garbage_collection=true\n\
+level_compaction_dynamic_level_bytes=true\n\
+compaction_pri=kMinOverlappingRatio\n";
+
+fn create_options_file(root: &File, contents: &[u8]) -> std::result::Result<(), CozoError> {
     let raw = match nix::fcntl::openat(
         Some(root.as_raw_fd()),
         "options",
@@ -348,13 +382,13 @@ fn create_sparse_options(root: &File) -> std::result::Result<(), CozoError> {
     };
     // SAFETY: openat returned a newly owned descriptor.
     let mut options = unsafe { File::from_raw_fd(raw) };
-    options.write_all(SPARSE_ROCKSDB_OPTIONS).map_err(native)?;
+    options.write_all(contents).map_err(native)?;
     options.sync_all().map_err(native)?;
     root.sync_all().map_err(native)?;
     Ok(())
 }
 
-fn has_custom_options(root: &File) -> std::result::Result<bool, CozoError> {
+fn options_mismatch_expected(root: &File, expected: &[u8]) -> std::result::Result<bool, CozoError> {
     let raw = match nix::fcntl::openat(
         Some(root.as_raw_fd()),
         "options",
@@ -372,25 +406,34 @@ fn has_custom_options(root: &File) -> std::result::Result<bool, CozoError> {
         || metadata.uid() != nix::unistd::geteuid().as_raw()
         || metadata.mode() & 0o022 != 0
         || metadata.nlink() != 1
-        || metadata.len() != SPARSE_ROCKSDB_OPTIONS.len() as u64
+        || metadata.len() != expected.len() as u64
     {
         return Ok(true);
     }
-    let mut contents = [0; SPARSE_ROCKSDB_OPTIONS.len()];
+    let mut contents = vec![0u8; expected.len()];
     options.read_exact(&mut contents).map_err(native)?;
-    Ok(contents != SPARSE_ROCKSDB_OPTIONS)
+    Ok(contents.as_slice() != expected)
 }
 
 impl PersistentIdentityBoundary {
     pub(super) fn open(path: &Path) -> std::result::Result<Self, CozoError> {
-        Self::open_with_privacy(path, false)
+        Self::open_with_profile(path, false, SPARSE_ROCKSDB_OPTIONS)
     }
 
     pub(super) fn open_private(path: &Path) -> std::result::Result<Self, CozoError> {
-        Self::open_with_privacy(path, true)
+        Self::open_with_profile(path, true, SPARSE_ROCKSDB_OPTIONS)
     }
 
-    fn open_with_privacy(path: &Path, private: bool) -> std::result::Result<Self, CozoError> {
+    /// Private Cozo root for the ublk CBLK block store (`kNoCompression` SST).
+    pub(super) fn open_private_ublk(path: &Path) -> std::result::Result<Self, CozoError> {
+        Self::open_with_profile(path, true, CBLK_ROCKSDB_OPTIONS)
+    }
+
+    fn open_with_profile(
+        path: &Path,
+        private: bool,
+        expected_options: &'static [u8],
+    ) -> std::result::Result<Self, CozoError> {
         let path = if path.is_absolute() {
             path.to_path_buf()
         } else {
@@ -404,9 +447,11 @@ impl PersistentIdentityBoundary {
         if private {
             restrict_directory(&data)?;
         }
-        create_sparse_options(&root)?;
-        let custom_options = has_custom_options(&root)?;
+        create_options_file(&root, expected_options)?;
+        let custom_options = options_mismatch_expected(&root, expected_options)?;
         if private && custom_options {
+            // Keep the historical identity wording so existing refusal tests match;
+            // ublk uses the same private gate for its known-good options profile.
             return Err(err(
                 "private identity store refuses custom Cozo options with unverified data/WAL locations",
             ));
@@ -417,6 +462,7 @@ impl PersistentIdentityBoundary {
             data,
             custom_options,
             private,
+            expected_options,
         })
     }
 
@@ -431,7 +477,7 @@ impl PersistentIdentityBoundary {
                 "private identity database directory permissions changed",
             ));
         }
-        if has_custom_options(&self.root)? != self.custom_options {
+        if options_mismatch_expected(&self.root, self.expected_options)? != self.custom_options {
             return Err(err("Cozo options layout changed while database was open"));
         }
         Ok(())

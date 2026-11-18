@@ -69,7 +69,7 @@ fn persist_device(store: &CozoBlockStore) -> Result<BlockDevice, String> {
 
 fn print_device(device: &BlockDevice) {
     println!(
-        "device: id={} size_bytes={} ({} GiB) block_size={} chunk_size={} chunks={} created_at={} role={}",
+        "device: id={} size_bytes={} ({} GiB) block_size={} chunk_size={} chunks={} created_at={} role={} write_generation={}",
         device.id,
         device.size_bytes,
         device.size_bytes >> 30,
@@ -77,15 +77,16 @@ fn print_device(device: &BlockDevice) {
         device.chunk_size,
         device.chunk_count(),
         device.created_at,
-        device.role
+        device.role,
+        device.write_generation
     );
 }
 
 fn print_counts(label: &str, store: &CozoBlockStore) -> Result<(), String> {
     let counts = store.counts().map_err(|e| e.to_string())?;
     println!(
-        "rows ({label}): devices={} blocks={}",
-        counts.devices, counts.blocks
+        "rows ({label}): devices={} blocks={} tombstones={}",
+        counts.devices, counts.blocks, counts.tombstones
     );
     Ok(())
 }
@@ -136,10 +137,9 @@ fn verify() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     store.flush().map_err(|e| e.to_string())?;
     println!(
-        "write: chunk {idx} ({} bytes at offset {}) blake3={}",
+        "write: chunk {idx} ({} bytes at offset {}) cblk-wrapped",
         chunk,
-        idx * u64::from(UBLK_CHUNK_BYTES),
-        blake3::hash(&scratch).to_hex()
+        idx * u64::from(UBLK_CHUNK_BYTES)
     );
     print_counts("after write", &store)?;
 
@@ -151,7 +151,7 @@ fn verify() -> Result<(), String> {
             "read-back mismatch on chunk {idx} (stored={stored})"
         ));
     }
-    println!("read: chunk {idx} matches, blake3 verified");
+    println!("read: chunk {idx} matches, cblk crc32c verified");
 
     store
         .discard_block(&device, idx)

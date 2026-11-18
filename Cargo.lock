@@ -6002,6 +6002,7 @@ dependencies = [
  "blake3",
  "chrono",
  "cozo",
+ "crc32c",
  "hex",
  "nix 0.28.0",
  "op-identity",
@@ -6013,6 +6014,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tracing",
  "uuid",
+ "zstd",
 ]
 
 [[package]]
