@@ -5,132 +5,25 @@
 //! AGENTS.md §4a:
 //!
 //! `<category>.<component-type>.<subject>.<verb>[.<facet>][@vN]`
+//!
+//! The taxonomy itself (categories, component types, aliases, the grammar) is
+//! owned by the OSCAL subid registry plugin and defined once in the
+//! `op-oscal-subid` crate. Everything here is a re-export under the names this
+//! crate has always used.
 
-use regex::Regex;
+pub use op_oscal_subid::{
+    COMPONENT_TYPE_ALIASES as CATEGORY_ALIASES, INTERNAL_COMPONENT_TYPES as INTERNAL_CATEGORIES,
+    OSCAL_COMPONENT_TYPES, SUBID_CATEGORIES, canonical_category, component_types,
+    is_component_type, subid_regex,
+};
 
-/// The seven subid categories. First segment of every subid.
-pub const SUBID_CATEGORIES: &[&str] = &["src", "prj", "sch", "mut", "obs", "evt", "exp"];
-
-/// Component types drawn from the OSCAL standard vocabulary.
+/// Validate a subid against the canonical taxonomy.
 ///
-/// This list mirrors OSCAL. Do not extend it to fit a local need — adding a
-/// type here is a claim about the standard. Put local types in
-/// [`INTERNAL_COMPONENT_TYPES`] instead.
-pub const OSCAL_COMPONENT_TYPES: &[&str] = &[
-    "this-system",
-    "system",
-    "interconnection",
-    "software",
-    "hardware",
-    "service",
-    "policy",
-    "physical",
-    "process-procedure",
-    "plan",
-    "guidance",
-    "standard",
-    "validation",
-];
-
-/// Categories local to this system, deliberately kept separate from the OSCAL
-/// list so the standard vocabulary stays recognisable as the standard. Extend
-/// this one freely — that is what it is for.
-///
-/// The internal/OSCAL split is an authoring concern, not a presentation one:
-/// at the render boundary these alias to plain `category`, so a UI never has to
-/// know which list a value came from.
-///
-/// Each entry below is already in use by a plugin that declares or derives it.
-pub const INTERNAL_CATEGORIES: &[&str] = &[
-    "network",   // local; OSCAL has no network component type. `src.network.xray.serve@v1`
-    "agent",     // persona
-    "container", // oci — `mut.container.oci.run@v1` and friends
-    "data",      // cozo
-    "privacy",   // privacy — `mut.privacy.data.mask@v1` and friends
-    "security",  // fail2ban
-    "storage",   // btrfs
-    "lxd",       // Muse LXD plugin — `obs.lxd.instances.get_instance@v1` and friends
-];
-
-/// Category aliases: a readable name a surface may declare, paired with the
-/// OSCAL category it actually means.
-///
-/// `ui` is the worked example. OSCAL has no vocabulary for "this is a user
-/// interface" — the nearest honest answer is `software` — but `software` says
-/// nothing useful when a dashboard is grouping surfaces for a human. So a
-/// plugin declares `ui`, the subid stays valid because the alias is accepted,
-/// and anything emitting OSCAL resolves it back to `software` via
-/// [`canonical_category`]. The readable name and the conformant one stay in
-/// sync because neither is written down twice.
-pub const CATEGORY_ALIASES: &[(&str, &str)] = &[
-    ("ui", "software"),
-    // Declared by `large_language_model`. A model integration is a service in
-    // OSCAL terms; `llm` is what it is called everywhere else in this system.
-    ("llm", "service"),
-    // Declared by the agent plugins. Distinct from the internal `agent`
-    // category, which `persona` uses for its own subids.
-    ("agents", "software"),
-];
-
-/// Resolve a possibly-aliased category to the OSCAL category it means.
-///
-/// Non-aliased values pass through untouched, so this is safe to call on any
-/// category — including internal ones, which have no OSCAL equivalent and are
-/// deliberately returned as-is rather than forced into the standard vocabulary.
-pub fn canonical_category(category: &str) -> &str {
-    CATEGORY_ALIASES
-        .iter()
-        .find(|(alias, _)| *alias == category)
-        .map(|(_, oscal)| *oscal)
-        .unwrap_or(category)
-}
-
-/// Every accepted value for a subid's second segment: OSCAL, internal, and
-/// aliases. Presented to consumers as simply the `category`.
-pub fn component_types() -> impl Iterator<Item = &'static str> {
-    OSCAL_COMPONENT_TYPES
-        .iter()
-        .chain(INTERNAL_CATEGORIES.iter())
-        .copied()
-        .chain(CATEGORY_ALIASES.iter().map(|(alias, _)| *alias))
-}
-
-/// Whether `candidate` is an accepted category from either vocabulary.
-pub fn is_component_type(candidate: &str) -> bool {
-    component_types().any(|t| t == candidate)
-}
-
-/// Regex validating an OSCAL subid.
-///
-/// Shared between the schemars adapter, the canonical subid registry schema,
-/// and any runtime validation that wants a single source of truth for the
-/// taxonomy format. Built from [`SUBID_CATEGORIES`], [`OSCAL_COMPONENT_TYPES`]
-/// and [`INTERNAL_CATEGORIES`] so a vocabulary change cannot leave the regex
-/// behind — adding a category is a one-line edit to one list.
-pub fn subid_regex() -> &'static str {
-    static PATTERN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-    PATTERN.get_or_init(|| {
-        // Hyphen is preferred; underscore is accepted for Muse-generated method verbs
-        // (e.g. fuse `forget_multi`, lxd `create_instance`).
-        let segment = r"[a-z0-9]+(?:[-_][a-z0-9]+)*";
-        let types: Vec<&str> = component_types().collect();
-        format!(
-            r"^({})\.({})\.{segment}\.{segment}(?:\.{segment}){{0,2}}(?:@v[1-9][0-9]*)?$",
-            SUBID_CATEGORIES.join("|"),
-            types.join("|"),
-        )
-    })
-}
-
-/// Validate a subid string against the canonical regex.
+/// Delegates to [`op_oscal_subid::validate_subid`]; only the error text is
+/// kept in this module's historical form.
 pub fn validate_subid(subid: &str) -> Result<(), String> {
-    static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(subid_regex()).expect("subid_regex is valid"));
-    if re.is_match(subid) {
-        Ok(())
-    } else {
-        Err(format!("subid does not match required pattern: {subid}"))
-    }
+    op_oscal_subid::validate_subid(subid)
+        .map_err(|_| format!("subid does not match required pattern: {subid}"))
 }
 
 /// Return the metadata fields that are required for a given subid category.

@@ -17,6 +17,8 @@ inspector-gadget = ["dep:op-inspector", "dep:tokio"]
 
 [dependencies]
 anyhow = { workspace = true }
+# Subid taxonomy, owned by the OSCAL subid registry plugin.
+op-oscal-subid = { workspace = true }
 clap = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }

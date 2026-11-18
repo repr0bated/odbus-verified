@@ -13,6 +13,7 @@ members = [
     "crates/op-state",
     "crates/op-state-store",
     "crates/op-blob",
+    "crates/op-oscal-subid",
     "crates/op-jsonrpc",
     "crates/op-llm",
     "crates/op-network",
@@ -72,6 +73,8 @@ op-dbus-model = { path = "crates/op-dbus-model" }
 op-execution-tracker = { path = "crates/op-execution-tracker" }
 op-state-store = { path = "crates/op-state-store" }
 op-blob = { path = "crates/op-blob" }
+# OSCAL subid registry taxonomy: single source of truth for subid categories.
+op-oscal-subid = { path = "crates/op-oscal-subid" }
 op-plugins = { path = "crates/op-plugins" }
 op-workflows = { path = "crates/op-workflows" }
 op-snowball = { path = "crates/op-snowball" }

@@ -141,7 +141,7 @@ pub(crate) fn tunnel_schema() -> PluginSchema {
             SideEffect::Read,
             true,
             "tunnel.read",
-            "qry.network.tunnel.status@v1",
+            "obs.network.tunnel.status@v1",
         ),
     );
     schema.methods.insert(

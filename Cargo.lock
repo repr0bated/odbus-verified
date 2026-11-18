@@ -5806,6 +5806,7 @@ dependencies = [
  "blake3",
  "hex",
  "jsonschema",
+ "op-oscal-subid",
  "op-state-store",
  "prost 0.13.5",
  "prost-reflect",
@@ -6513,12 +6514,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "op-oscal-subid"
+version = "1.0.0"
+dependencies = [
+ "regex",
+ "schemars 1.2.1",
+ "serde",
+]
+
+[[package]]
 name = "op-plugin-lint"
 version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
  "op-inspector",
+ "op-oscal-subid",
  "regex",
  "serde",
  "serde_json",
@@ -6553,6 +6564,7 @@ dependencies = [
  "op-cozo-store",
  "op-dbus-model",
  "op-network",
+ "op-oscal-subid",
  "op-plugin-lint",
  "op-snowball",
  "op-state",
