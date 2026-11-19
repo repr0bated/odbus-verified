@@ -23,7 +23,7 @@
 #
 # Usage:
 #   deploy/lib/golden/golden.sh [flags] <verb>
-#   verbs: status | plan | init | build | cut | release | rotate | rollback | mount-overlay
+#   verbs: status | plan | init | build | cut | release | rotate | rollback | mount-overlay | activate (install)
 #   flags: --apply  --pool PATH  --seed PATH  --root PATH  --lower auto|live|seed
 #          --repo PATH  --jobs N  --with-build  --mount PATH  --dry-run
 #
@@ -79,6 +79,9 @@ Verbs:
   release        Snapshot work, rotate live to rollback, plan the live overlay
   rotate         Same slot rotation as release (no mount)
   mount-overlay  Mount the live release (or the seed) as the OverlayFS lower dir
+  activate       (alias install) Stage live-slot release binaries into a versioned
+                 dir and flip enabled services one at a time with health checks
+                 and automatic rollback (table: activate-services.tsv)
 
 Flags:
   --dry-run      Print the plan only (default)
@@ -166,7 +169,8 @@ parse_args() {
     done
     [ -n "$VERB" ] || VERB=plan
     case "$VERB" in
-        status|plan|init|build|cut|rollback|release|rotate|mount-overlay) ;;
+        status|plan|init|build|cut|rollback|release|rotate|mount-overlay|activate) ;;
+        install) VERB=activate ;;
         *) die "unknown verb: $VERB (try --help)" ;;
     esac
     case "$JOBS" in
@@ -1115,8 +1119,12 @@ main() {
         release) do_release ;;
         rotate) do_rotate ;;
         mount-overlay) do_mount_overlay ;;
+        activate) do_activate ;;
     esac
 }
+
+# shellcheck source=activate.sh
+. "$SCRIPT_DIR/activate.sh"
 
 if [ "${GOLDEN_LIB:-0}" != 1 ]; then
     main "$@"

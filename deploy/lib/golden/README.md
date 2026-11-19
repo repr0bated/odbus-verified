@@ -90,3 +90,27 @@ overlay is a separate step and is not done by this tool.
 `--apply` on a host still needs an explicit go-ahead: it creates `work` and the
 slots under `$GOLDEN_ROOT`, and for `cut`/`release` deletes only the previous
 rollback slot.
+
+## Activation (`activate`, alias `install`)
+
+`cut` only snapshots. `activate` puts the live slot's binaries into service:
+
+1. Stages only the binaries named in `activate-services.tsv` for services that
+   will be swapped, from `<live>/opt/op-build/target/release`, into
+   `/usr/local/libexec/op-dbus/releases/<commit12>-<live-id>/bin` (sha-checked).
+   No target dir, source tree, or toolchain is copied.
+2. For each table service that is **enabled** on the host and whose run
+   script execs the listed path: preserves the current binary (copy into
+   `releases/pre-golden-<stamp>/bin` if it is a plain file), atomically flips
+   the exec path to a symlink into the release dir, `sv -w 30 restart`s it
+   (runs `./check` when present), and requires the pid to stay up for the
+   `stable:N` window. On any failure every service flipped in this run is
+   flipped back and restarted, and the command exits non-zero.
+3. Records active/previous in `/var/lib/opdbus-release/golden-activation.json`
+   (release id, commit and live id from `state.json`). The op-release kit
+   ledger `slots.json` is not modified: its schema is `deny_unknown_fields`
+   and its `active`/`previous` can only name kit slots `a`/`b`.
+
+Never swapped, even if listed: 3tched-fs / threetched*, op-grpc-bridge,
+cozo-ublk*, zeroclaw*, sddm*, the kernel. Activation never starts or enables
+a service and never touches runit `log/` services. Dry-run unless `--apply`.
