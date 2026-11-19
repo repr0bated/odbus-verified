@@ -22,7 +22,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
     `command` args are `shell`, memory never public.
   - _Requirements: 4.1–4.4, 7.1–7.3_
 
-- [ ] 3. Tiers, toolsets file and selection cap
+- [x] 3. Tiers, toolsets file and selection cap
   - `toolsets`: tiers, generation from the catalog, file read/write,
     selection parsing (path, query, header), 50 cap with counts.
   - CLI `op-mcp-door toolsets generate --mount <path> --out <file>`.

@@ -10,3 +10,4 @@ pub mod catalog;
 pub mod classify;
 pub mod config;
 pub mod encode;
+pub mod toolsets;

@@ -8,6 +8,10 @@ description = "TLS-only MCP Streamable HTTP endpoint on the door; every tool cal
 [lib]
 name = "op_mcp_door"
 
+[[bin]]
+name = "op-mcp-door"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1"
 thiserror = "1"
