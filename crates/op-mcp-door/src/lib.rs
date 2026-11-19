@@ -11,4 +11,5 @@ pub mod classify;
 pub mod config;
 pub mod encode;
 pub mod grants;
+pub mod policy;
 pub mod toolsets;

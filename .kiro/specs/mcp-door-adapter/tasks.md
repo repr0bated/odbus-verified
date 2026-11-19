@@ -38,7 +38,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
   - Unit tests for each scope and for the rejected document shapes.
   - _Requirements: 9.1–9.7, 10.1–10.3_
 
-- [ ] 5. The single `authorize()`
+- [x] 5. The single `authorize()`
   - `policy`: `Purpose::{Discover, Call}`, bases, confirmation, tickets,
     consumption only after all checks.
   - Unit tests: public vs anonymous, no mount → deny, shell only ephemeral,
