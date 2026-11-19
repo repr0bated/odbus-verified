@@ -5,7 +5,7 @@
 use std::{collections::BTreeSet, sync::Arc, time::Duration};
 
 use anyhow::{Context, anyhow, bail, ensure};
-use op_agents::dynamic::{PieceLibrary, TaskContext, assemble};
+use op_agents::dynamic::{TaskContext, ContextBudget, assemble};
 use op_cognitive::{CognitiveServer, memory_store::EntryQuery};
 use op_cozo_store::CozoGraphShuttle;
 use op_plugins::state_plugins::{
@@ -472,14 +472,10 @@ impl CognitiveBackend {
             domain_hints: input.domain_hints,
             activity: Vec::new(),
             snippets: Vec::new(),
-            executors: vec![
-                "rust_pro".into(),
-                "python_pro".into(),
-                "typescript_pro".into(),
-            ],
+            executors: Vec::new(),
         };
-        // Never keep caller-derived pieces in a process-global library.
-        let mut library = PieceLibrary::seeded_from_catalog();
+        // Immutable shared seed content; private memory is only scoped task data.
+        let library = &*op_agents::recipes::CATALOG_PIECES;
         if context.mode.has_memory() {
             let runtime = self.cognitive().await?;
             let store = runtime.memory_store();
@@ -493,9 +489,6 @@ impl CognitiveBackend {
                     })
                     .await?;
                 for entry in entries {
-                    if namespace == "agent_pieces" {
-                        library.add_from_memory_entry(namespace, &entry.key, &entry.value);
-                    }
                     if task.snippets.len() < 12 {
                         let text = match &entry.value {
                             Value::String(text) => text.clone(),
@@ -524,27 +517,19 @@ impl CognitiveBackend {
         if let Some(context) = args.get("context").and_then(Value::as_str) {
             task.snippets.push(context.chars().take(8000).collect());
         }
-        let persona = assemble(&library, &task, 12_000);
-        let mut prompt = persona.system_prompt;
-        let mut name = persona.name;
-        let mut sources = persona
-            .sources
-            .iter()
-            .map(serde_json::to_string)
-            .collect::<Result<Vec<_>, _>>()?;
-        if let Some(catalog) = catalog {
-            let agent = op_agents::unified::GLOBAL_REGISTRY
-                .get_normalized(&catalog.agent_type)
-                .context("catalog persona implementation is absent")?;
-            prompt.push_str("\n\nRequested catalog persona:\n");
-            prompt.push_str(agent.system_prompt());
-            if let Some(knowledge) = agent.knowledge_base() {
-                prompt.push('\n');
-                prompt.extend(knowledge.chars().take(8000));
-            }
-            name = format!("{} ({name})", agent.name());
-            sources.push(format!("catalog_agent:{}", catalog.agent_type));
-        }
+        let recipe_id = catalog.map(|binding| binding.agent_type.as_str())
+            .or_else(|| task.domain_hints.iter().find(|id| op_agents::unified::GLOBAL_REGISTRY.get(id).is_some()).map(String::as_str))
+            .context("specialist requires an exact recipe pin; semantic selection belongs to workstacks")?;
+        let recipes = op_agents::recipes::NATIVE_RECIPES.as_ref().map_err(|error| anyhow!("{error}"))?;
+        let recipe = recipes.get(recipe_id).context("recipe is absent from native registry")?;
+        op_agents::recipes::validate_recipe_pieces(recipe, &library, &BTreeSet::from(["catalog_visible".into()]))?;
+        let pins = recipe.piece_refs.iter().map(|piece| piece.piece_id.clone()).collect::<Vec<_>>();
+        let persona = assemble(&library, &task, ContextBudget {
+            total_bytes: 12_000, reserved_output_bytes: 2_000, reserved_tool_bytes: 0, framing_bytes: 512,
+        }, &pins)?;
+        let prompt = persona.system_prompt;
+        let name = recipe.name.clone();
+        let sources = persona.sources.iter().map(serde_json::to_string).collect::<Result<Vec<_>, _>>()?;
         let request = op_plugins::state_plugins::chat_router::ChatInput {
             messages: vec![
                 op_plugins::state_plugins::chat_router::ChatMessage {
