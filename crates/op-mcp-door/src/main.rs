@@ -102,7 +102,7 @@ enum TicketCommand {
 fn event(kind: &str, detail: Value) {
     eprintln!(
         "{}",
-        json!({"door_event": kind, "ts": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true), "detail": detail})
+        json!({"door_event": kind, "ts": op_mcp_door::audit::now_rfc3339(), "detail": detail})
     );
 }
 

@@ -51,7 +51,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
   - Integration tests on a tempdir tree with a fake engine.
   - _Requirements: 3.1–3.8_
 
-- [ ] 7. Audit log
+- [x] 7. Audit log
   - `audit`: record type, redaction rules, append-only writer (stdout or file).
   - Unit tests for redaction and append mode.
   - _Requirements: 11.1–11.3, 1.7_
