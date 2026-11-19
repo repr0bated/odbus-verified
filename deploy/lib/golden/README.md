@@ -114,3 +114,15 @@ rollback slot.
 Never swapped, even if listed: 3tched-fs / threetched*, op-grpc-bridge,
 cozo-ublk*, zeroclaw*, sddm*, the kernel. Activation never starts or enables
 a service and never touches runit `log/` services. Dry-run unless `--apply`.
+
+### 3tchedFS views (`fuse-swap.sh`)
+
+The host FUSE views (`3tched-fs`, `threetched-fs`) are launched by
+`opdbus-fuse-bootstrap/mount-3tchedfs`, which pins the binary by path and
+SHA256 in the service's 0600 `conf` and refuses symlinks, so `activate` does
+not flip them. `fuse-swap.sh <service-dir> <3tchedFS|threetched> <binary>
+[--apply]` rewrites the pin, restarts with a bounded `sv restart`, checks the
+mount against the capture and the sealed catalog with a stable pid, and
+restores the previous conf on failure. The installed `./check` also walks
+`.methods` in each `schema.json`, which the mounted documents do not carry, so
+it fails for every binary; fuse-swap does not use it.
