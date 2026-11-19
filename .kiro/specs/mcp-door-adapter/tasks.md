@@ -76,7 +76,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
     HTTP response; startup refuses a missing or group-readable key.
   - _Requirements: 1.1–1.5, 1.7_
 
-- [ ] 11. Deploy templates and handoff
+- [x] 11. Deploy templates and handoff
   - `deploy/runit/op-mcp-door/{run,check,log/run,README.md}`,
     `deploy/config/op-mcp-door/*.example`; not installed.
   - Update `HANDOFF.md` and this file's status.

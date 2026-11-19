@@ -1,0 +1,12 @@
+#!/bin/sh
+# op-mcp-door: TLS-only MCP endpoint on the door; 3tchedFS call files behind it.
+# Repository template only (spec mcp-door-adapter). Not installed or enabled.
+# Environment: one variable per file under /etc/op-dbus/env (see
+# deploy/config/op-mcp-door/env.example). No secrets are needed by the door;
+# the TLS key path points at the door's existing key.
+set -e
+exec 2>&1
+# The catalog mount must be up; the door never starts a mount itself.
+mountpoint -q /run/mounts/3tchedFS || { echo '{"door_event":"waiting","detail":"/run/mounts/3tchedFS not mounted"}'; sleep 5; exit 1; }
+install -d -m 0700 /dev/shm/opdbus/mcp-door /dev/shm/opdbus/mcp-door/grants /dev/shm/opdbus/mcp-door/tickets
+exec chpst -e /etc/op-dbus/env /usr/local/bin/op-mcp-door serve

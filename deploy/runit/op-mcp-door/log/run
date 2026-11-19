@@ -1,0 +1,6 @@
+#!/bin/sh
+# Append-only JSONL audit log. No -tt: every line stays pure JSON (records carry ts).
+set -e
+LOG=/var/log/runit/op-mcp-door
+install -d -o _runit-log -g adm -m 0750 "$LOG"
+exec chpst -u _runit-log svlogd "$LOG"

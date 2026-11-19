@@ -1,0 +1,7 @@
+#!/bin/bash
+# Ready when the TLS listener accepts a TCP connection (no plaintext request is sent).
+addr=${OP_MCP_DOOR_LISTEN:-127.0.0.1:8091}
+[ -r /etc/op-dbus/env/OP_MCP_DOOR_LISTEN ] && addr=$(cat /etc/op-dbus/env/OP_MCP_DOOR_LISTEN)
+host=${addr%:*}
+port=${addr##*:}
+exec timeout 3 sh -c "exec 3<>/dev/tcp/$host/$port" 2>/dev/null || exit 1
