@@ -207,7 +207,14 @@ impl Runtime {
         }
         let capability = declaration.required_capability.as_deref()
             .ok_or_else(|| RuntimeError::denied("sealed checkpoint capability absent"))?;
-        let record = self.core().record_execution_control(record, plugin, method, &pinned.schema_hash, capability)?;
+        let record = self.core().record_execution_control(record, plugin, method, &pinned.schema_hash, capability)
+            .map_err(|error| {
+                if BridgeCore::is_control_admission_capacity_refusal(&error) {
+                    RuntimeError::denied("execution checkpoint capacity refused before admission")
+                } else {
+                    RuntimeError::unknown(error)
+                }
+            })?;
         self.tracker().apply_committed(record.clone()).await?;
         let (cursor, stats) = self.core().execution_control_stats(&StateScope::Private {
             principal_id: context.executor_principal_id.clone().expect("validated checkpoint scope"),

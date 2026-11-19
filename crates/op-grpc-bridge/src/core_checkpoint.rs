@@ -134,16 +134,22 @@ impl PersistentCore {
                 anyhow::bail!("terminal checkpoint decision is immutable");
             }
         }
-        ensure!(record.status.is_terminal()
-            || self.active_controls.contains_key(&(scope.clone(), record.context.operation_id.clone()))
-            || self.active_controls.len() < BridgeCore::MAX_ACTIVE_EXECUTION_RECORDS,
-            "active or unresolved checkpoint capacity exhausted; explicit reconciliation required");
         Ok(None)
     }
 }
 
+/// Constructed only at the preappend reservation check, never by metadata
+/// reconciliation after a possibly durable append.
+#[derive(Debug, thiserror::Error)]
+#[error("execution checkpoint capacity refused before admission")]
+struct ControlAdmissionCapacityRefusal;
+
 impl BridgeCore {
     pub(crate) const MAX_ACTIVE_EXECUTION_RECORDS: usize = 1024;
+
+    pub(crate) fn is_control_admission_capacity_refusal(error: &anyhow::Error) -> bool {
+        error.is::<ControlAdmissionCapacityRefusal>()
+    }
 
     pub(crate) fn record_execution_control(
         &self, mut record: ExecutionRecord, plugin: &str, method: &str,
@@ -165,6 +171,11 @@ impl BridgeCore {
         owner.validate_execution_control(&scope, &record)?;
         if let Some(previous) = owner.validate_control_predecessor(&scope, &record, true)? {
             return Ok(previous);
+        }
+        if !record.status.is_terminal()
+            && !owner.active_controls.contains_key(&(scope.clone(), record.context.operation_id.clone()))
+            && owner.active_controls.len() >= Self::MAX_ACTIVE_EXECUTION_RECORDS {
+            return Err(ControlAdmissionCapacityRefusal.into());
         }
         let final_transition = record.status.is_terminal();
         record.cursor = None;
