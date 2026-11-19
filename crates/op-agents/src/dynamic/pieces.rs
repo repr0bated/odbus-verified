@@ -284,7 +284,7 @@ impl PieceLibrary {
                 domains: domains.clone(),
                 tags: tokenize(item).into_iter().collect(),
                 title: item.to_string(),
-                body: item.to_string(),
+                body: self.intern_body(item),
                 source: source.clone(),
             });
         }
