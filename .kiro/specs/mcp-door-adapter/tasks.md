@@ -45,7 +45,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
     unreadable grant document → public only.
   - _Requirements: 7.4, 8.1–8.4, 9.4, 10.1, 12.5_
 
-- [ ] 6. FUSE call-file client
+- [x] 6. FUSE call-file client
   - `fusecall`: mount declaration check, one write, fsync, same-handle receipt,
     attribution checks, unknown outcome, no retry; `CallOpener` trait.
   - Integration tests on a tempdir tree with a fake engine.

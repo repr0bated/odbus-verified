@@ -4,6 +4,7 @@ use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use op_mcp_door::catalog::Catalog;
 use op_mcp_door::config::Config;
+use op_mcp_door::fusecall::{Mount, MountSpec};
 use op_mcp_door::grants::{
     ArgsConstraint, EphemeralGrant, GrantStore, MAX_TICKET_LIFETIME, Ticket, TicketStore, now_unix,
 };
@@ -45,6 +46,9 @@ enum ToolsetsCommand {
     Generate {
         #[arg(long)]
         mount: PathBuf,
+        /// Expected mount identity, e.g. '{"kind":"guest_kernel"}'.
+        #[arg(long, default_value = r#"{"kind":"guest_kernel"}"#)]
+        mode: String,
         /// Output file; stdout when absent.
         #[arg(long)]
         out: Option<PathBuf>,
@@ -106,9 +110,12 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Toolsets {
-            command: ToolsetsCommand::Generate { mount, out },
+            command: ToolsetsCommand::Generate { mount, mode, out },
         } => {
-            let catalog = Catalog::scan(&mount)?;
+            let mode: Value = serde_json::from_str(&mode).context("--mode must be JSON")?;
+            let mount = Mount::open(&MountSpec { path: mount, mode })
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            let catalog = Catalog::scan(mount.root())?;
             let file = op_mcp_door::toolsets::generate(&catalog);
             let mut classes = std::collections::BTreeMap::<&str, usize>::new();
             for tool in &catalog.tools {
