@@ -13,6 +13,15 @@ single shared main ledger; each subsidiary chain has the id
 collection; Cozo edges for subsidiary activity are dual-written to the main
 ledger Cozo and the subsidiary's own Cozo DB.
 
+Revision 3 (owner decisions of 2026-11-19): chain edges are written in the
+same pass as the Qdrant upsert, into a new Cozo relation
+`subsidiary_chain_edge` (no relation for them exists today); a topology graph
+per subsidiary holds a full inventory (installed packages, binaries, services,
+sealed plugins, configs and their dependencies) of the container and of the
+host side it depends on, with every node's owner (unix and principal), the
+grant/capability that authorizes changing it, and its domain
+(`host|container`); drift against the sealed release is detected.
+
 Source material: a fresh read of `origin/dev` `879e7d7`:
 `crates/op-state-store/src/event_chain.rs` (`ChainEvent`, `EventChain`,
 `EventBatch`, `MerkleProof`), `crates/op-state-store/src/method_receipt.rs`
@@ -28,7 +37,11 @@ per-scope `heads`), `crates/op-grpc-bridge/src/core_operations.rs`,
 `crates/op-cognitive/src/chain_vectors.rs`,
 `crates/op-grpc-bridge/src/chain_vector_projector.rs`,
 `crates/op-grpc-bridge/src/runtime_sled_ledger.rs`,
-`crates/op-oscal-subid/src/lib.rs`, `crates/op-cozo-store/src/lib.rs`.
+`crates/op-oscal-subid/src/lib.rs`, `crates/op-cozo-store/src/lib.rs`
+(`graph_node`, `graph_edge`, `chain_vector_link`),
+`crates/op-cozo-store/src/system_graph.rs` (`GraphSnapshot`, `GraphNode`,
+`GraphEdge`, `GraphEvidence`, `GraphProvenanceKind`, namespaces),
+`crates/op-cozo-store/src/bin/inventory/mod.rs` (prepared-release inventory).
 
 Related specs, which this one does not override:
 `.kiro/specs/subsidiary-container/` (the container contract: unprivileged LXD
@@ -84,7 +97,8 @@ Cozo edges and their reconciliation; rollup queries and receipt export; one
 Qdrant collection per subsidiary; teardown and retention; clean integration
 with existing 3tched.
 
-Out of scope: running provisioning; LXD/OVN installation; container
+Out of scope: enforcing anything from the inventory (ownership, domain and
+drift are recorded as data; nothing is blocked on them); running provisioning; LXD/OVN installation; container
 networking; the anchor contract and the service/hire contract themselves; the
 application that runs inside a subsidiary; changing the main chain's hash
 function; changes to pools, the seed or the overlay; changes to the running
@@ -183,7 +197,7 @@ view is its whole world and leaks nothing about others.
 2. THE SYSTEM SHALL expose the subsidiary's own read operations (identity, head, activity, rollup, receipt export, receipt proof, verification) as sealed `subsidiary` plugin call files whose scope is the caller's resolved subsidiary.
 3. IF a subsidiary caller names another subsidiary in a `subsidiary` read call THEN THE SYSTEM SHALL refuse the call without revealing whether the other subsidiary exists.
 4. THE SYSTEM SHALL keep subsidiary registry state out of the public state scope.
-5. THE SYSTEM SHALL NOT introspect the container, route on its schemas, or read its tenant working directory while it is attached.
+5. THE SYSTEM SHALL NOT introspect the running container for routing or schemas, SHALL NOT execute anything inside it, and SHALL NOT read its tenant working directory while it is attached; the only container inspection SHALL be the read-only inventory collection of Requirement 15.
 
 ### Requirement 7 — One Cozo DB per subsidiary on host ext4
 
@@ -268,7 +282,7 @@ source of truth.
 
 #### Acceptance Criteria
 
-1. WHEN an edge for subsidiary activity is written (subsidiary link, checkpoint, anchor record, chain-vector link) THEN THE SYSTEM SHALL write it first to the main ledger Cozo and then to the subsidiary's own Cozo DB.
+1. WHEN an edge for subsidiary activity is written (subsidiary link, checkpoint, anchor record, chain edge, topology snapshot) THEN THE SYSTEM SHALL write it first to the main Cozo and then to the subsidiary's own Cozo DB.
 2. THE SYSTEM SHALL treat the main ledger Cozo as authoritative and the subsidiary's own Cozo DB as a replica, and SHALL answer every rollup, proof and verification from the main ledger Cozo.
 3. THE SYSTEM SHALL make every replica write idempotent, keyed by chain id and link sequence (or point id for chain-vector links), and SHALL record the replica's applied sequence in the replica in the same transaction as the edges.
 4. IF the replica write fails THEN THE SYSTEM SHALL keep the main write, SHALL NOT fail or retry the originating call, SHALL mark the replica `lagging` with its applied sequence and an error code, and SHALL record the lag as a ledger event at most once per lag episode.
@@ -277,3 +291,78 @@ source of truth.
 7. IF a replica edge differs from the main ledger edge with the same key, or the replica cannot be opened or verified, THEN THE SYSTEM SHALL mark it `diverged`, stop writing to it, rebuild a new replica from the main ledger alone, swap it in atomically, keep the diverged copy in the host-only directory, and record both digests as a ledger event.
 8. THE SYSTEM SHALL refuse a move, export bundle or retirement snapshot while the replica is not `current`.
 9. THE SYSTEM SHALL be able to rebuild any subsidiary's own Cozo DB edges from the main ledger alone, with an identical result to the incrementally written replica.
+
+### Requirement 13 — Chain edges written in the same pass as the Qdrant upsert
+
+**User Story:** As the owner, I want every vectorized subsidiary event to have
+typed Cozo edges written in the same pass as its Qdrant point, so that the
+graph and the vector index never disagree about what was indexed.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL store chain edges in a new Cozo relation `subsidiary_chain_edge` keyed by chain id, source node, relation and destination node, and SHALL store per-point index state in a new relation `subsidiary_chain_point`.
+2. THE SYSTEM SHALL derive each subsidiary point id deterministically from the event hash with the existing `ledger_point_id` scheme, so that re-ingesting an event yields the same point id and the same edge keys.
+3. WHEN the vector pass processes a subsidiary block THEN THE SYSTEM SHALL, in one pass and in this order: write the block's edges and a `pending` point row to the main Cozo in one transaction; upsert the point to the subsidiary's collection and wait for it; mark the point row `indexed` in the main Cozo; then apply the same edges and point row to the subsidiary's own Cozo DB.
+4. IF the main Cozo transaction fails THEN THE SYSTEM SHALL NOT upsert the point and SHALL NOT advance the vector watermark past that block.
+5. IF the Qdrant upsert fails THEN THE SYSTEM SHALL keep the edges and the `pending` point row, SHALL NOT advance the watermark past that block, and SHALL retry the upsert on the next pass.
+6. IF marking the point `indexed` fails after a successful upsert THEN THE SYSTEM SHALL resolve the row from Qdrant on the next pass (point present → `indexed`) without re-embedding.
+7. IF the subsidiary Cozo write fails THEN THE SYSTEM SHALL handle it as a lagging replica (Requirement 12.4–12.5) and SHALL NOT fail the pass.
+8. THE SYSTEM SHALL use only the closed relation vocabulary of the design for chain edges and SHALL refuse any other relation.
+
+### Requirement 14 — Topology graph per subsidiary
+
+**User Story:** As the owner, I want one graph per subsidiary linking it to
+its container, identity, grants, FUSE view, storage, DB, collection, chain and
+anchors, so that I can see and query everything a subsidiary is made of.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL keep a topology graph per subsidiary as a system-graph namespace `topology:subsidiary:<subsidiary_name>`, using the existing `GraphSnapshot` node and edge model.
+2. THE SYSTEM SHALL include at least these nodes and the edges between them: subsidiary, LXD instance (name and UUID), child principal, parent session, durable and ephemeral grants and their capabilities, FUSE mount and namespace view with its exposed operations, ext4 volume and its directories, the subsidiary's own Cozo DB, its Qdrant collection, its chain id and current head, and its anchors.
+3. THE SYSTEM SHALL write the topology graph to the main Cozo first and then replicate the same revision and digest to the subsidiary's own Cozo DB, under the rules of Requirement 12.
+4. WHEN a lifecycle event of the subsidiary is recorded (register, rebind, provision, attach, detach, snapshot, revoke, retire, destroy, checkpoint, anchor, collection state change, grant-delta proposal) THEN THE SYSTEM SHALL refresh the topology graph and record the new revision and digest as a ledger event tagged with the subsidiary.
+5. THE SYSTEM SHALL answer topology queries (neighbours, paths, traversal, by kind) only through the existing bounded, fixed system-graph queries, and SHALL scope a subsidiary caller to its own namespace.
+
+### Requirement 15 — Full inventory in the topology graph
+
+**User Story:** As the owner, I want the topology graph to hold a complete
+inventory of what is installed and configured in the container and on the
+host side it depends on, with dependencies, so that I know exactly what a
+subsidiary runs on.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL inventory, for each subsidiary container and for the host side it depends on: installed packages with versions; binaries with SHA-256; runit services and their log services; sealed plugins and sealed blobs with schema hashes; configuration files with paths, SHA-256 and consuming services.
+2. THE SYSTEM SHALL record dependencies as edges: package to package, binary to shared library, service to service, service to configuration, service to mount or FUSE view, and deployed binary to crate.
+3. THE SYSTEM SHALL record a secret only as a reference to its path and SHALL never read, hash or store a secret value.
+4. THE SYSTEM SHALL collect container inventory read-only from the container's storage on the host, SHALL never execute anything in the container, and SHALL never read the tenant working directory.
+5. THE SYSTEM SHALL keep the host-side inventory in a namespace `inventory:host` and SHALL copy into each subsidiary's topology graph the part of the host inventory that the subsidiary depends on.
+6. WHEN a refresh runs THEN THE SYSTEM SHALL refresh on every lifecycle event of Requirement 14.4, on every release activation or catalog reseal, and periodically (full every 6 hours, registry/LXD/grants every hour by default).
+7. IF a collector cannot read an item or a bound is reached THEN THE SYSTEM SHALL record it in the snapshot's limitations and SHALL still write the rest.
+
+### Requirement 16 — Owner and domain of every inventory node
+
+**User Story:** As the owner, I want every inventory and topology node to say
+who owns it, which domain it belongs to, and what authorizes changing it, so
+that responsibility for each item is explicit.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL record on every node (package, binary, service, configuration, mount, volume, directory, DB, collection, chain and every other topology node) an `owner` attribute with the unix owner, group and mode where the node is a file or directory, and the owning principal of kind `host_owner`, `subsidiary_principal`, `service_account` or `none`.
+2. THE SYSTEM SHALL record on every node a `change_authority` attribute naming the grant capability, protected action, release or owner procedure that authorizes changes to it.
+3. THE SYSTEM SHALL record on every node a `domain` attribute of `host` or `container`, and for `container` the subsidiary id, subsidiary name, LXD instance and instance UUID.
+4. THE SYSTEM SHALL add ownership edges from each node to its owning principal, its unix user and group, and the capability or protected action that authorizes changes.
+5. THE SYSTEM SHALL treat owner, change authority and domain as data only and SHALL NOT block or alter any operation based on them.
+
+### Requirement 17 — Drift against the sealed release
+
+**User Story:** As the owner, I want differences between what is installed and
+what was sealed and released to be visible, so that I can spot unplanned
+changes.
+
+#### Acceptance Criteria
+
+1. WHEN an inventory refresh completes THEN THE SYSTEM SHALL compare the host inventory with the prepared release graph (`release:<id>`) of the active release and the sealed catalog manifest, and each container inventory with its baseline taken at provisioning.
+2. THE SYSTEM SHALL report each difference as missing, extra, hash mismatch, version mismatch, owner or mode mismatch, or unsealed plugin, with the expected and observed values.
+3. THE SYSTEM SHALL write drift as a system-graph namespace `drift:host` or `drift:subsidiary:<subsidiary_name>` and record its digest and counts as a ledger event (tagged with the subsidiary for container drift).
+4. THE SYSTEM SHALL treat drift as data only and SHALL NOT block or alter any operation based on it.

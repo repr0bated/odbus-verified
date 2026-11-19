@@ -2,7 +2,7 @@
 
 Spec only. Not approved for implementation; waits for the owner's go-ahead
 and answers to the design's Open Questions (at least 1, 2, 3, 4, 9, 11, 12,
-14, 15). Tasks that change `op-grpc-bridge` or the `_3tched-fs` receipt
+14, 15, 17, 18, 19). Tasks that change `op-grpc-bridge` or the `_3tched-fs` receipt
 contract need explicit owner approval at that point, because both are shared,
 running components. Order matters: readers before writers (design "Error
 Handling").
@@ -62,13 +62,35 @@ Handling").
 - [ ] 17. Per-subsidiary Qdrant collections in `op-cognitive/src/chain_vectors.rs`
   - [ ] 17.1 `ensure_subsidiary_collection(name)` reusing `ensure_collection` (1024, cosine, idempotent, collision refusal)
   - [ ] 17.2 Per-block routing in `ingest_received`, `reindex_from_chain` and the manual origin path (tagged → `<name>__mainchain`, untagged → shared), one watermark, gap probe per routed collection; retired subsidiaries skipped
-  - [ ] 17.3 `chain_vector_link` rows gain `collection` and `chain_id` kinds and are dual-written before the upsert; `upsert_session_ledger` routes subsidiary principals the same way
+  - [ ] 17.3 Subsidiary points use `ledger_point_id(event_hash)`; `chain_vector_link` rows gain `collection` and `chain_id` kinds; `upsert_session_ledger` routes subsidiary principals the same way
   - [ ] 17.4 `search_session_events` selects the collection from admission (subsidiary → own only; others → shared; owner → by name)
   - [ ] 17.5 Tests with a fake Qdrant client: routing table, no subsidiary point in the shared collection, `pending` → `ready`, read-only after retire, skip on reindex
-  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.8, 12.1_
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.8, 12.1, 13.2_
 - [ ] 18. Footprint metadata key `subsidiary_id` in `event_to_footprint` and routing in `chain_vector_projector.rs` (inert until both are linked; Open Question 10)
   - _Requirements: 2.4, 9.3_
 - [ ] 19. Retirement and destruction: `retire` (stopped container, both devices detached, replica `current`, collection `read_only`), `destroy_data` after retention (volume and collection deleted, final digest and point-count event, main ledger edges untouched); tests that ledger events and main Cozo edges are never removed and the name stays reserved
   - _Requirements: 9.7, 10.2, 10.3, 10.4, 10.5, 11.5_
 - [ ] 20. FUSE terminal receipt carries optional `subsidiary` (shared FUSE contract; owner approval and Open Question 14); door `terminal_receipt` test that the extra key is accepted
   - _Requirements: 2.4, 4.4_
+- [ ] 21. Chain edge relations in `op-cozo-store`: `subsidiary_chain_edge` and `subsidiary_chain_point` schemas, closed relation vocabulary and typed node-id constructors, `replace_chain_edges(chain_id, event_hash, rows, point_row)` as one transaction (rm by `(chain_id, src)` + put), `mark_point_indexed`, `pending_points`; same API on the subsidiary replica
+  - [ ] 21.1 Tests: unknown relation refused, re-ingest byte-equal, no argument/result text accepted as a value
+  - _Requirements: 13.1, 13.2, 13.8_
+- [ ] 22. Same-pass ordering in `op-cognitive/src/chain_vectors.rs`: per subsidiary block, main edges + `pending` row → Qdrant upsert (wait) → `indexed` → replica apply; watermark only past `indexed`; `pending` rows resolved from Qdrant by id on the next pass
+  - [ ] 22.1 Tests with fault injection at each step (fake Qdrant, in-memory Cozo)
+  - _Requirements: 13.3, 13.4, 13.5, 13.6, 13.7, 12.1_
+- [ ] 23. Extract the shared inventory code from `op-cozo-store/src/bin/inventory/mod.rs` into library module `op-cozo-store/src/inventory/` (Builder, hashing, secret handling, runit/shell scanner, consumers, catalog reader, edge merge) with no behaviour change; golden test that `system_graph_inventory --prepared` output is byte-equal
+  - _Requirements: 15.1, 15.3_
+- [ ] 24. Node attribute contract and ownership: `owner`, `change_authority`, `domain`, `container` builders, the section 14 resolution table, ownership edges (`owned_by`, `unix_owner`, `unix_group`, `change_authorized_by`); tests that every node produced by every collector carries them
+  - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
+- [ ] 25. Inventory collectors (read-only, bounded, limitations on gaps)
+  - [ ] 25.1 packages (pacman local DB), binaries (ELF sha256, build-id, DT_NEEDED → shared libraries), crates (`.dep-v0` or release `source:` graph)
+  - [ ] 25.2 runit services and log services, configs and consumers, secret references by path only, live sealed catalog and blobs
+  - [ ] 25.3 host collector producing `inventory:host` (`ObservedRuntime` provenance) and container collector reading the base rootfs and overlay volume from the host, never `tenant/`, never executing in the container
+  - [ ] 25.4 Fixture tests for each collector, including an assertion that secret files are never opened
+  - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.7, 6.5_
+- [ ] 26. Topology graph: registry, lxd, identity/grants, FUSE view and volume collectors; assemble `topology:subsidiary:<name>` with the host-inventory dependency closure; write with `replace_system_graph` to main then replica with equal receipts; record revision/digest as a tagged ledger event; lifecycle, release/reseal and periodic refresh triggers with one retry on revision conflict; `baseline:subsidiary:<name>` frozen at provisioning
+  - [ ] 26.1 `subsidiary.topology_*` and `refresh_inventory` read/refresh methods over the fixed system-graph queries, scoped per caller
+  - [ ] 26.2 Tests: bounds pass, receipts equal, replica mismatch rebuilt from main, lifecycle event → new revision, subsidiary caller limited to its namespace
+  - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 15.5, 15.6, 12.1, 12.7_
+- [ ] 27. Drift: compare `inventory:host` with the active `release:<id>` namespace and the live catalog manifest, and each container inventory with its baseline; write `drift:*` namespaces with `drifts_from` edges and kinds; tagged ledger event with counts and digest; `subsidiary.drift` read method; fixture tests for every drift kind and that nothing is blocked
+  - _Requirements: 17.1, 17.2, 17.3, 17.4_

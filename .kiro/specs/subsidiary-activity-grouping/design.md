@@ -19,8 +19,14 @@ groups all of its activity under one `subsidiary_id` and one chain id
 5. **each subsidiary's own Cozo/RocksDB** on its own host ext4 volume (Req 7);
 6. **one Qdrant collection per subsidiary chain**, `<name>__mainchain`,
    voyage-4, 1024-d cosine (Req 9);
-7. **dual-written Cozo edges**: main ledger Cozo first (authoritative), then
-   the subsidiary's own Cozo DB as a rebuildable replica (Req 12).
+7. **dual-written Cozo edges**: main Cozo first (authoritative), then
+   the subsidiary's own Cozo DB as a rebuildable replica (Req 12);
+8. **chain edges** in a new `subsidiary_chain_edge` relation, written in the
+   same pass as the Qdrant upsert (Req 13);
+9. a **topology graph** per subsidiary, built on the existing `system_graph`
+   snapshots, holding a full inventory of the container and the host side it
+   depends on, with owner, change authority and domain on every node, and
+   drift against the sealed release (Req 14–17).
 
 Nothing here adds authority. Admission stays `identity ∧ grants ∧ sealed` in
 the bridge (Req 11.3). The subsidiary id is always *resolved* from the
@@ -70,6 +76,8 @@ flowchart LR
 | Footprints | `op-grpc-bridge/src/mutation_engine.rs::event_to_footprint` | Flat metadata keys (`actor_id`, `session_id`, `sealed_id_digest`, …) beside the lossless event. **Note:** `mutation_engine.rs` and `chain_vector_projector.rs` are not declared in `op-grpc-bridge/src/lib.rs` (HANDOFF 2026-11-17); the linked chain is `BridgeCore`. |
 | Vectors | `op-cognitive/src/chain_vectors.rs` | One `ChainVectorIndex` = one `collection` (`OPDBUS_QDRANT_SNOWBALL_COLLECTION`, default `snowball_footprints`), `DEFAULT_DIMS = 1024`, `ensure_collection` creates `Distance::Cosine` idempotently and tolerates "already exists"; Voyage (`voyage-4` family, Matryoshka, `fit_dims`). Origin embeds into the chain `vectors/` subvolume only; the replica upserts after `btrfs receive` (`ingest_received`, watermark file `.vector-index-block`, `missing_from_index` gap probe); point id = uuid v5 of `block:<n>`. Payload allow-list `actor_id, session_id, sealed_id_digest, capability_id, decision`; `search_session_events` filters `actor_id` + `session_id` from admission; `chain_links` feeds `CozoGraphShuttle::replace_chain_vector_links` (relation `chain_vector_link { point_id, kind => value }`, `op-cozo-store/src/lib.rs`), written before the point is upserted ("a visible point suppresses gap retries"); `upsert_session_ledger` (sled ledgers, `runtime_sled_ledger.rs`) also writes `chain_vector_link` rows with a `collection` kind. |
 | Subids | `op-oscal-subid` | `<category>.<component-type>.<subject>.<verb>[.<facet>]{0,2}[@vN]`; categories `src prj sch mut obs evt exp`; types include `service`, `container`, `data`, `lxd`. |
+| Graph relations | `op-cozo-store/src/lib.rs` `graph_node`, `graph_edge { src, rel, dst => props }` (`store_edge`, `query_edges_from`); `system_graph.rs` `system_graph_state/nodes/edges { namespace, … }`, `GraphSnapshot`, `replace_system_graph`, `traverse_system_graph`, `GraphProvenanceKind::{Source, PreparedRelease, ObservedRuntime}` | Namespaced, revisioned, digest-receipted snapshots with bounded fixed queries. `ObservedRuntime` has no producer today. |
+| Inventory | `op-cozo-store/src/bin/inventory/mod.rs` (`system_graph_inventory`) | Offline, prepared-release only ("never opens a live service"): file nodes with owner uid/gid/mode, `runit_service`, `sealed_plugin`, `unresolved_path`; relations `contains`, `depends_on`, `starts`, `references_path`, `configured_by`, `runs_bin`, `sealed_in`; secrets as protected, not read. No packages, ELF linkage or live state. |
 | Cozo | `op-cozo-store` `CozoGraphShuttle` | `new_persistent_private` (0700 boundary), `ensure_distinct_from` (domain owners never share a handle). No backup/restore wrapper exists. |
 | Container | `subsidiary-container` design | Labels `user.opdbus.*`, `opdbus-subsidiary` profile with `security.idmap.isolated=true`, backend channel bind `shift: true`. |
 
@@ -276,6 +284,9 @@ subids (all **New**; capability form follows `cap.lxd.*@v1`):
 | `verify` | self / owner | `cap.subsidiary.verify@v1` | `obs.service.subsidiary.verify@v1` | Req 3.6 |
 | `reconcile_replica` | owner | `cap.subsidiary.reconcile_replica@v1` | `mut.data.subsidiary.reconcile@v1` | Req 12.5–12.6 (also run automatically) |
 | `rebuild_replica` | owner | `cap.subsidiary.rebuild_replica@v1` | `mut.data.subsidiary.rebuild@v1` | Req 12.7, 12.9 |
+| `topology_nodes` / `topology_edges` / `topology_traverse` / `topology_status` | self / owner | `cap.subsidiary.topology_read@v1` | `obs.service.subsidiary.topology@v1` | Req 14.5; wraps the fixed system-graph queries |
+| `refresh_inventory` | owner | `cap.subsidiary.refresh_inventory@v1` | `obs.service.subsidiary.inventory.refresh@v1` | Req 15.6 |
+| `drift` | owner | `cap.subsidiary.drift_read@v1` | `obs.service.subsidiary.drift@v1` | Req 17 |
 
 Scope rule (Req 6.2–6.3): read methods take an optional `subsidiary_id` or
 `subsidiary_name` argument that is honoured only for the owner. For a subsidiary caller the
@@ -309,9 +320,12 @@ whose caller resolves to a subsidiary.
 The view is the child identity's existing projection (`subsidiary-container`
 Req 4; **Assumed** to be grant-filtered by the shared FUSE toolset projection,
 Open Question 3 there). This spec adds only the `subsidiary` plugin's read
-operations to it. No routing, no introspection: the bridge never reads the
-container's filesystem or its `tenant/` working directory; the pre-generated schema bundle is
+operations to it. No routing, no runtime introspection: the bridge never
+executes anything in the container, never routes on its schemas and never
+reads its `tenant/` working directory; the pre-generated schema bundle is
 recorded by digest at registration and on change, and is otherwise opaque.
+The only container inspection is the read-only, host-side inventory of its
+storage (section 13, Req 15.4).
 
 ### 7. Each subsidiary's own Cozo/RocksDB on host ext4 (Req 7)
 
@@ -415,8 +429,8 @@ the shared one.
   `collection_exists` and refuses a collision it does not own.
 - **Parameters** (Req 9.2): identical to the shared index —
   `VectorParamsBuilder::new(1024, Distance::Cosine)`, voyage-4 embeddings,
-  `fit_dims` to 1024. Same point id (`uuid v5` of `block:<n>`), same payload
-  allow-list plus `subsidiary_id` and `chain_id` for provenance.
+  `fit_dims` to 1024. Point id = `ledger_point_id(event_hash)` (section 9c),
+  same payload allow-list plus `subsidiary_id` and `chain_id` for provenance.
 - **Creation** (Req 9.2): `register` calls a new
   `chain_vectors::ensure_subsidiary_collection(name)` that reuses the body of
   `ensure_collection` (idempotent, tolerant of "already exists"). If Qdrant is
@@ -431,11 +445,8 @@ the shared one.
   subvolume; the replica upserts after `btrfs receive`; direct origin upsert
   stays the manual exception. `missing_from_index` probes each block in the
   collection it was routed to.
-- **Cozo links** (Req 12.1): `replace_chain_vector_links` rows for a
-  subsidiary block gain `("collection", "<name>__mainchain")` and
-  `("chain_id", …)` kinds (the sled-ledger path already writes a `collection`
-  kind), and are dual-written (9b) before the point is upserted, keeping the
-  existing "links first" ordering.
+- **Cozo edges** (Req 12.1, 13): written in the same pass as the upsert, see
+  section 9c.
 - **Search** (Req 9.5–9.6): `search_session_events` gains a
   `collection` selected by the caller's admission — a subsidiary caller gets
   its own collection only and any argument is ignored; other callers get the
@@ -453,8 +464,9 @@ the shared one.
 
 ### 9b. Dual-written Cozo edges (Req 12) — **New**
 
-Edges = `subsidiary_link`, `subsidiary_anchor`, checkpoint rows and
-`chain_vector_link` rows of a subsidiary's blocks.
+Edges = `subsidiary_link`, `subsidiary_anchor`, checkpoint rows,
+`subsidiary_chain_edge` / `subsidiary_chain_point` rows (9c) and the
+subsidiary's system-graph namespaces (section 12).
 
 Consistency rule: **the main ledger Cozo is authoritative; the subsidiary's
 own Cozo DB is a replica that is always rebuildable from the main ledger.**
@@ -490,6 +502,117 @@ own Cozo DB is a replica that is always rebuildable from the main ledger.**
   search routing use the main ledger Cozo. The replica exists so a
   subsidiary's volume is self-contained when moved or exported.
 
+### 9c. Chain edges, written in the same pass as the Qdrant upsert (Req 13) — **New**
+
+Nothing stores subsidiary chain edges today. Existing patterns it is modelled
+on (**Found**): `graph_edge { src, rel, dst => props }` and
+`store_edge` in `op-cozo-store/src/lib.rs`; `system_graph_edges { namespace,
+src, relation, dst => evidence, attributes }` in `system_graph.rs` (namespace
+as the first key, typed node ids, closed bounds); `chain_vector_link {
+point_id, kind => value }` with `replace_chain_vector_links` (rm + put per
+point, idempotent re-ingest); `ledger_point_id(event_hash)` = uuid v5 of
+`ledger:<event_hash>` under `LEDGER_POINT_NAMESPACE`, and `LedgerPoint`
+(`chain_vectors.rs` ~236–290).
+
+**Relations** (identical schema in the main Cozo and in each subsidiary's
+own Cozo DB):
+
+```
+:create subsidiary_chain_edge {
+    chain_id: String,          # "<subsidiary_name>::mainchain"  (namespace-style first key)
+    src: String,               # typed node id, always "event:<event_hash>" for chain edges
+    relation: String,          # closed vocabulary below
+    dst: String                # typed node id
+    =>
+    subsidiary_id: String,     # "sub-<uuid>"
+    seq: Int,                  # subsidiary link seq of the event
+    event_hash: String,        # ChainEvent.event_hash (md5 hex)
+    ledger_event_id: Int,      # main ledger event id
+    link_hash: String,         # blake3 link hash (section 3)
+    point_id: String,          # ledger_point_id(event_hash), uuid
+    collection: String,        # "<subsidiary_name>__mainchain"
+    embedding_model: String,   # e.g. "voyage-4"
+    evidence: String default "[]",   # JSON Vec<GraphEvidence>, as system_graph_edges
+    props: String default "{}",      # JSON, as graph_edge
+    written_at: Int            # unix seconds
+}
+
+:create subsidiary_chain_point {
+    collection: String,
+    point_id: String
+    =>
+    chain_id: String,
+    seq: Int,
+    event_hash: String,
+    state: String,             # pending | indexed
+    attempts: Int default 0,
+    last_error: String default "",   # error code only, never payload text
+    updated_at: Int
+}
+```
+
+**Typed node ids and closed relation vocabulary** (Req 13.8), one row per
+`(src, relation, dst)`; sources mirror today's `chain_links` kinds:
+
+| relation | dst | from |
+|---|---|---|
+| `in_chain` | `chain:<name>::mainchain` | registry |
+| `follows` | `event:<prev event_hash in this chain>` | link chain |
+| `recorded_as` | `ledger:<ledger_event_id>` | ledger |
+| `vectorized_as` | `point:<collection>/<point_id>` | this pass |
+| `acted_by` | `principal:<actor_id>` | `data.metadata.actor_id` |
+| `in_session` | `session:<session_id>` | `data.metadata.session_id` |
+| `sealed_identity` | `sealed_id:<sealed_id_digest>` | `data.metadata.sealed_id_digest` |
+| `used_capability` | `capability:<capability_id>` | `data.metadata.capability_id` |
+| `called` | `method:<plugin_id>.<method_name>` | event |
+| `on_plugin` | `plugin:<plugin_id>` | `block.category` |
+| `has_subid` | `subid:<subid>` | `chain_links` `subid` |
+| `in_operation` | `operation:<operation_id>` | ledger `Attempt`/`Terminal` |
+| `in_conversation` | `conversation:<conversation_id>` | `chain_links` |
+| `in_turn` | `turn:<turn_id>` | `chain_links` |
+| `input_digest` | `digest:<input_patch_hash>` | `chain_links` |
+| `decided` | `decision:allow` / `decision:deny` | `data.metadata.decision` |
+
+No argument, result or schema text is ever an edge value; only ids and hashes.
+
+**Point id** (Req 13.2): `ledger_point_id(event_hash)` (**Found** function).
+Subsidiary collections use it instead of the block-number id, so the id and
+all edge keys are a pure function of the event and survive reindexing.
+Blocks without a timing record stay on the shared-collection orphan path.
+
+**One pass, in order** (Req 13.3), inside `ingest_received` /
+`reindex_from_chain` / the manual origin path, per subsidiary block:
+
+1. Build edges + point id. Main Cozo, **one transaction**: `rm` every
+   `subsidiary_chain_edge` with `(chain_id, src = event:<hash>)`, `put` the new
+   rows, `put subsidiary_chain_point { state: pending, attempts+1 }`, and the
+   existing `replace_chain_vector_links(point_id, …)` rows (kept for
+   compatibility, with `collection` and `chain_id` kinds). Same "links first"
+   rule as today.
+2. Qdrant `upsert_points(…).wait(true)` into `<name>__mainchain`.
+3. Main Cozo: `subsidiary_chain_point.state = indexed`.
+4. Subsidiary own Cozo DB, one transaction: the same rm/put of edges, the point
+   row (`indexed`), and `replica_meta.applied_seq` (section 9b).
+5. Advance `.vector-index-block` only past blocks whose step 3 succeeded.
+
+Failures (Req 13.4–13.7): step 1 fails → nothing upserted, watermark held,
+pass reports the block; step 2 fails → rows stay `pending`, watermark held,
+next pass re-upserts the same id (idempotent); step 3 fails → next pass sees
+`pending`, probes Qdrant (`missing_from_index` already does `GetPoints` by
+id), present → `indexed` with no re-embedding; step 4 fails → replica
+`lagging` (Req 12.4), never fails the pass; the reconciler re-applies from
+the main Cozo rows. Rebuild of a replica copies `subsidiary_chain_edge` /
+`subsidiary_chain_point` rows for the chain id from the main Cozo.
+
+**Which "main Cozo".** The vector pass today opens `COGNITIVE_COZO_DB_PATH`
+(`ingest_received`), not the bridge ledger DB. Chain edges therefore live in
+that main-side Cozo next to `chain_vector_link`; they are derived from the
+main ledger (authoritative) and rebuildable from it plus the chain. Whether
+that path is the same file as the bridge DB, and whether the replica host is
+antix1 (where the subsidiary volumes are), is Open Question 17. If the vector
+pass runs where the subsidiary volume is not mounted, step 4 is skipped and
+the replica is marked `lagging` for the host-side reconciler.
+
 ### 10. Teardown and retention (Req 10)
 
 `revoke` → `retire` → `destroy_data`, each elevated. Retire requires stopped
@@ -514,6 +637,184 @@ anchors are kept forever.
 - `mutation_engine.rs` / `chain_vector_projector.rs` are unlinked today; their
   changes are specified but take effect only when relinked (Open Question 10).
 
+### 12. Topology graph per subsidiary (Req 14) — reuses `system_graph`
+
+**Reused (Found):** `GraphSnapshot`, `GraphNode { id, kind, label,
+attributes }`, `GraphEdge { src, relation, dst, evidence, attributes }`,
+`GraphEvidence { source, locator, assertion: declared|observed|inferred }`,
+`GraphProvenance` with `GraphProvenanceKind::ObservedRuntime` (defined, not
+used by any producer today), `replace_system_graph(snapshot,
+expected_revision)` (one checked transaction per namespace, revision + sha256
+digest receipt), `system_graph_status`, `list_system_graphs`,
+`query_system_graph_nodes/edges`, `traverse_system_graph` (bounded, fixed
+queries, no caller CozoScript), `system_graph_snapshot_digest`, bounds
+(`MAX_SYSTEM_GRAPH_NODES = 50_000`, `MAX_SYSTEM_GRAPH_EDGES = 200_000`,
+`MAX_SYSTEM_GRAPH_NAMESPACES = 256`).
+
+**New:** namespaces, node kinds, relations, attribute contract, collectors,
+the replication of a namespace into a subsidiary's own Cozo DB.
+
+Namespaces (all `ObservedRuntime` except `release:*`):
+
+| Namespace | Contents | Where |
+|---|---|---|
+| `release:<id>` | prepared release graph from `system_graph_inventory --prepared` (**Found**) | main |
+| `inventory:host` | host-side inventory (section 13) | main |
+| `baseline:subsidiary:<name>` | container inventory at provisioning (frozen) | main, replicated |
+| `topology:subsidiary:<name>` | topology + full container inventory + the host-inventory closure it depends on | main, replicated |
+| `drift:host`, `drift:subsidiary:<name>` | drift results (section 15) | main (subsidiary one replicated) |
+
+Main-authoritative rule: every namespace is written by `replace_system_graph`
+in the main Cozo first; the subsidiary's own Cozo DB gets the same snapshot
+written with the same expected revision, and its receipt (revision + digest)
+must equal the main receipt, else `diverged` → copy from main (Req 12.7).
+Cross-namespace use is by copying: `topology:` includes the host nodes it
+depends on (dependency closure from `inventory:host`), so one
+`traverse_system_graph` call covers the whole picture.
+
+Topology node kinds (ids are typed strings):
+
+```
+subsidiary:<sub-uuid>                     chain:<name>::mainchain
+lxd_instance:<instance_uuid>              chain_head:<name>::mainchain
+principal:<child principal_id>            anchor:<batch_root>
+session:<parent_session_id>               qdrant_collection:<name>__mainchain
+grant:durable:<principal_id>              cozo_db:<volume>/cozo
+grant:ephemeral:<grant_id>                volume:<sub-uuid>
+ticket:<ticket_id>                        volume_dir:<absolute path>
+capability:<capability_id>                fuse_mount:<host mountpoint>
+protected_action:<polkit action id>       namespace_view:<principal_id>
+operation:<plugin>.<method>               lxd_device:<instance_uuid>/<device>
+```
+
+Topology relations (new): `runs_in` (subsidiary→lxd_instance),
+`bound_to` (lxd_instance→principal), `child_of` (principal→session),
+`has_grant` (principal→grant), `grants` (grant→capability),
+`elevates_via` (operation→protected_action), `has_device`
+(lxd_instance→lxd_device), `mounts` (lxd_device→fuse_mount|volume_dir),
+`projects` (fuse_mount→namespace_view), `exposes`
+(namespace_view→operation), `requires` (operation→capability), `on_volume`
+(volume_dir→volume), `stored_in` (cozo_db→volume_dir), `owns_db`
+(subsidiary→cozo_db), `vectorized_into` (chain→qdrant_collection),
+`has_chain` (subsidiary→chain), `at_head` (chain→chain_head), `anchored_by`
+(chain_head→anchor), `replicates` (cozo_db→chain). Reused from the prepared
+inventory: `contains`, `depends_on`, `starts`, `references_path`,
+`configured_by`, `runs_bin`, `sealed_in`.
+
+Head/anchor nodes carry `seq`, `link_hash`, `anchor_ref`; the topology is
+refreshed on checkpoint and anchor, not on every link (per-link data is in
+`subsidiary_chain_edge`).
+
+Queries (fixed, through `subsidiary.topology_*` read methods; owner may name
+any subsidiary, a subsidiary only its own): node page by kind; neighbours of
+a node by relation and direction; bounded traversal from `subsidiary:<id>`
+(e.g. "what does acme's view expose and which capabilities guard it":
+`subsidiary → runs_in → bound_to → has_grant → grants`; "what does a config
+change affect": incoming `configured_by`/`references_path` from a
+`config:` node); status/receipt per namespace.
+
+Capacity: 4 namespaces per subsidiary + host ones against the 256 cap means
+at most ~60 subsidiaries; Open Question 19.
+
+### 13. Full inventory: collectors (Req 15)
+
+**Reused from `op-cozo-store/src/bin/inventory/mod.rs` (Found)**: the bounded
+`Builder` (`node`, `walk`, `edge`, `evidence`, `attrs`), `hash_file`
+(no-follow, metadata-stable SHA-256), `sensitive(path)` and the "protected
+content not read" handling for secrets, the runit/shell static analysis
+(`scan_text`, `scan_to_fixed_point`, `sv_starts`, `wait_dep`/`depends_on`/
+`starts` edges, `log/run` handling), `collect_consumers` (config → consuming
+service), the sealed catalog reader (`plugin-blobs/.manifest.json` →
+`sealed_plugin` nodes, `sealed_in` edges), `merge_edges`, `atomic_write`.
+These live in a bin-private module today; task 21 moves them unchanged into a
+library module `op-cozo-store/src/inventory/` so the CLI and the new
+collectors share one implementation (the CLI's output must stay byte-equal on
+its golden test). The CLI's `release:`/`source:` namespace rules stay as is.
+
+**New collectors** (each returns nodes + edges + limitations; all read-only,
+bounded, never execute inside a container, never read `tenant/`, secrets by
+path only):
+
+| Collector | Source | Nodes / edges |
+|---|---|---|
+| registry | main Cozo registry + link head + anchors | subsidiary, chain, chain_head, anchor, qdrant_collection, cozo_db, volume |
+| lxd | `lxd.get_instance` / `lxd.get_profile` via call files | lxd_instance, lxd_device, profile; `has_device`, `mounts`; idmap base |
+| identity & grants | child sled metadata, grant document (capability names only), `GrantStore::list`, ticket dir listing | principal, session, grant, ticket, capability; `child_of`, `has_grant`, `grants` |
+| FUSE view | host `/proc/self/mountinfo` for the child projection; the view's `operations/*/metadata.json` | fuse_mount, namespace_view, operation; `projects`, `exposes`, `requires`, `elevates_via` |
+| volume | `statx` of the volume and its dirs | volume, volume_dir; `on_volume`, `stored_in` |
+| packages | pacman local DB (`var/lib/pacman/local/*/{desc,files}`) of the container root (read-only base + overlay upper) and of the host | `package:<name>@<version>`; `package_depends_on`, `installs` (package→file) |
+| binaries | ELF headers of executables in `bin`, `sbin`, `libexec`, release roots | `binary:<path>` (sha256, build-id); `links_library` (DT_NEEDED → `shared_library:<soname>` → resolved file); `provided_by` (file→package) |
+| crates | `.dep-v0` cargo-auditable section if present, else the active release's `source:` graph `ext_crate` nodes mapped by binary name | `crate:<name>@<version>`; `built_from_crate`, `crate_depends_on` |
+| runit | reused scanner on the container's and host's service dirs | `runit_service`; `log_service_of`, `starts`, `depends_on`, `runs_bin`, `consumes_config`, `uses_mount` |
+| configs | reused scanner + `collect_consumers` on `/etc`, op-dbus config roots | `config:<path>` (sha256), `secret_ref:<path>` (no hash, no read); `configured_by`, `references_secret` |
+| sealed catalog | live `OP_BLOB_CATALOG_DIR` manifest + blob digests | `sealed_plugin`, `sealed_blob`; `sealed_in`, `implements` (plugin→operation) |
+
+Container storage paths (base rootfs, overlay volume) come from
+`lxd.get_instance` / storage-volume info; reading them is read-only from the
+host (**Assumed** path resolution; Open Question 18). Host-side scope =
+everything a subsidiary depends on: bridge, 3tched-fs, door, LXD, runit,
+catalog, grant documents, its volume; `inventory:host` holds the whole host
+set, `topology:` the closure.
+
+Refresh (Req 15.6): lifecycle events (Req 14.4) refresh `topology:` (registry,
+lxd, grants, FUSE, volume collectors; packages/binaries/runit/configs only on
+register, provision, attach, rebind and periodic); release activation or
+catalog reseal refresh `inventory:host` and every `topology:`; periodic full
+refresh every 6 h and light refresh every 1 h (configurable). A refresh that
+loses the `expected_revision` race re-reads and retries once, then reports.
+
+### 14. Owner and domain on every node (Req 16)
+
+Every node's `attributes` carries (**New** attribute contract; data only):
+
+```json
+"owner": {
+  "unix": {"uid": 0, "gid": 0, "user": "root", "group": "root", "mode": "0644"},  // null for non-file nodes
+  "principal": {"kind": "host_owner|subsidiary_principal|service_account|none", "id": "…"}
+},
+"change_authority": {"kind": "capability|protected_action|release|grant_delta|owner_procedure",
+                     "ref": "cap.subsidiary.attach@v1 | org.opdbus.v1.catalog.promote | release:<id> | …"},
+"domain": "host" | "container",
+"container": {"subsidiary_id": "sub-…", "subsidiary_name": "acme",
+              "lxd_instance": "sub-…", "lxd_instance_uuid": "…"}   // only when domain = container
+```
+
+Resolution rules (proposed defaults; Open Question 20):
+
+| Node | domain | principal | change_authority |
+|---|---|---|---|
+| host package / binary / config / runit service | host | `host_owner` (service user as `service_account:<user>` for running services) | `release:<active id>` |
+| sealed plugin / blob | host | `host_owner` | `protected_action:org.opdbus.v1.catalog.promote` / `…catalog.retire` (**Found**) |
+| grant document entry | host | `host_owner` | `grant_delta` (owner materializer) |
+| ephemeral grant / ticket | host | `host_owner` (issuer recorded) | `owner_procedure` (`grant`/`ticket` CLI) |
+| LXD instance / device / profile | host | `host_owner` | `cap.lxd.instances.update_instance@v1`, `cap.lxd.profiles.*` |
+| FUSE mount / view | host | `host_owner` | `owner_procedure` (shared FUSE contract) |
+| volume, `cozo/`, `host/`, Qdrant collection, chain, head, anchor | host | `host_owner` | `cap.subsidiary.*@v1` method that changes it |
+| container base packages / binaries / services / configs | container | `host_owner` (read-only base) | `owner_procedure` (reprovision) |
+| container overlay files | container | `subsidiary_principal:<principal_id>` | `owner_procedure` (overlay reset) |
+| `tenant/` directory node (not its contents) | container | `subsidiary_principal:<principal_id>` | `cap.subsidiary.attach@v1` / `…revoke@v1` |
+| child principal, subsidiary | host | `host_owner` | `cap.subsidiary.register@v1` |
+
+Ownership edges (Req 16.4): `owned_by` (node→`principal:`/`host_owner`/
+`service_account:`), `unix_owner` (node→`unix_user:<uid>`), `unix_group`
+(node→`unix_group:<gid>`), `change_authorized_by` (node→`capability:`/
+`protected_action:`/`release:`). Container uids are recorded raw and, when
+an idmap is known, also as `host_uid` attribute.
+
+### 15. Drift against the sealed release (Req 17)
+
+Baselines: host → the active `release:<id>` namespace (prepared graph) plus
+the live sealed catalog manifest; container → `baseline:subsidiary:<name>`
+frozen at provisioning (after the `provisioned-<stamp>` snapshot). Matching
+key: path (via the release graph's `release_target` mapping, **Found**), or
+package name, or plugin name. Drift kinds: `missing`, `extra`,
+`hash_mismatch`, `version_mismatch`, `owner_mismatch`, `mode_mismatch`,
+`unsealed_plugin` (schema hash differs from the catalog). Output: a
+`drift:*` namespace whose nodes are the observed items and whose edges are
+`drifts_from` (observed→baseline id) with attributes `{kind, expected,
+observed}`; counts and digest go into a ledger event. Data only: nothing is
+blocked (Req 17.4).
+
 ## Data Models (summary)
 
 - `ChainEvent.subsidiary_id: Option<String>`, `ChainEvent.subsidiary_role: Option<SubsidiaryRole>` (**New**, hashed when present). The chain id is not on `ChainEvent`; it is looked up from the registry.
@@ -522,7 +823,9 @@ anchors are kept forever.
 - `SubsidiaryReceiptRef { chain_id, subsidiary_id, seq, link_hash, receipt_leaf, salt: Option<String> }` (**New**; `salt` only to the holder/owner).
 - `SubsidiaryLink`, anchor payload, export bundle: above (**New**).
 - Main ledger Cozo relations (**New**): `subsidiary`, `subsidiary_by_name`, `subsidiary_by_principal`, `subsidiary_by_instance`, `subsidiary_link`, `subsidiary_anchor`, `subsidiary_replica { subsidiary_id => state, applied_seq, error_code, updated_at }`.
-- Subsidiary own Cozo DB relations (**New**): `subsidiary_link`, `subsidiary_anchor`, `chain_vector_link` (same schema as `op-cozo-store`), `replica_meta { chain_id => applied_seq, head_link_hash }`.
+- Subsidiary own Cozo DB relations (**New**): `subsidiary_link`, `subsidiary_anchor`, `subsidiary_chain_edge`, `subsidiary_chain_point`, `chain_vector_link` (same schema as `op-cozo-store`), the system-graph relations for its own namespaces, `replica_meta { chain_id => applied_seq, head_link_hash }`.
+- Main-side Cozo (**New**): `subsidiary_chain_edge`, `subsidiary_chain_point` (section 9c); namespaces `inventory:host`, `baseline:subsidiary:<name>`, `topology:subsidiary:<name>`, `drift:*` in the existing system-graph relations.
+- Node attribute contract `owner`, `change_authority`, `domain`, `container` (section 14).
 - Label `user.opdbus.subsidiary_id` (**New**) beside the existing `user.opdbus.mode=subsidiary`, `parent_session_id`, `admission`.
 
 ## Error Handling
@@ -588,6 +891,27 @@ anchors are kept forever.
 - Provisioning bats with the fake `lxd` operation tree: `tenant` disk device
   payload, `shift: true`, label set, `cozo/` and `host/` never in a device,
   no `lxc`/`lxd` invoked.
+- Chain edges (fake Qdrant + in-memory Cozo, fault injection at each of steps
+  1–4 of 9c): edges and point row before upsert; no upsert when step 1 fails;
+  watermark held on step 2 failure and re-upsert uses the same
+  `ledger_point_id`; `pending` resolved to `indexed` from Qdrant without
+  re-embedding; replica failure → `lagging` and the pass succeeds; unknown
+  relation refused; re-ingest leaves byte-equal rows.
+- Inventory library extraction: `system_graph_inventory --prepared` output is
+  byte-equal before and after moving the shared code (golden).
+- Collectors on fixture trees: pacman DB → packages, versions, deps; ELF
+  fixtures → DT_NEEDED edges and sha256; runit dirs → services, log services,
+  `starts`/`depends_on`; configs → consumers; secret paths → `secret_ref`
+  with no hash and no read (open of the file is asserted never to happen);
+  every node has `owner`, `change_authority`, `domain` (and `container` when
+  `domain = container`); ownership edges present; bounds produce
+  limitations, not failure.
+- Topology: snapshot passes `canonical` bounds; main and replica receipts
+  equal; replica digest mismatch → rebuilt from main; lifecycle event →
+  new revision and tagged ledger event; subsidiary caller limited to its
+  namespace.
+- Drift: fixture release vs observed tree yields each drift kind with
+  expected/observed; nothing is blocked.
 - Offline verifier golden test: receipt + proof + anchor payload → ok; one
   flipped byte → fail.
 
@@ -597,7 +921,9 @@ Resolved by owner decisions of 2026-11-19 (recorded, no longer open):
 chain topology — one shared main ledger, derived `<name>::mainchain` per
 subsidiary; vectors — one Qdrant collection per subsidiary chain; Cozo edges —
 dual-written, main ledger authoritative, subsidiary Cozo a rebuildable
-replica; each subsidiary keeps its own Cozo/RocksDB on its ext4 volume.
+replica; each subsidiary keeps its own Cozo/RocksDB on its ext4 volume. Revision 3: chain edges in the new `subsidiary_chain_edge` relation in the
+same pass as the Qdrant upsert; topology graph with full inventory, owner,
+change authority and domain on every node, and drift (data only).
 
 1. **Anchor tag.** The tag is derived from the chain id with a per-subsidiary key (blinded, proposed) so the name never appears on-chain. Or do you want the plain chain id `acme::mainchain` on-chain?
 2. **EtchedAnchor interface.** Confirm the field names/types the contract takes (`anchor_tag`, `batch_root`, `first_seq`, `last_seq`, `head_link_hash`, `prev_batch_root`), the anchor cadence (every N links, time-based, or on demand), and who submits the transaction while networking is deferred (host-side submitter to the local chain?).
@@ -615,3 +941,8 @@ replica; each subsidiary keeps its own Cozo/RocksDB on its ext4 volume.
 14. **FUSE receipt field.** Carrying `subsidiary` in the `_3tched-fs` terminal receipt is a change to the shared FUSE contract: within that contract, or a new one?
 15. **Collection name separator.** `acme::mainchain` → Qdrant collection `acme__mainchain` because `:` is not safe in collection names (assumed). OK, or a different mapping (e.g. `acme-mainchain`)?
 16. **Name length and reserved list.** 3–32 chars `[a-z0-9-]`, reserved `main mainchain host owner public system root snowball`. Any other names to reserve?
+17. **Main-side Cozo for chain edges.** The vector pass opens `COGNITIVE_COZO_DB_PATH`, not the bridge ledger DB. Keep chain edges there (next to `chain_vector_link`, proposed) or move them into the bridge DB? And does the vector/replica pass run on antix1 where the subsidiary volumes are mounted (otherwise every replica write goes through the reconciler)?
+18. **Container storage paths for inventory.** OK for the host to read the container's read-only base and overlay volume (paths from `lxd.get_instance` / storage volume info) for the inventory, never `tenant/`? And is it pacman (Artix) in every subsidiary image?
+19. **Namespace cap.** `MAX_SYSTEM_GRAPH_NAMESPACES = 256` and 4 namespaces per subsidiary allow about 60 subsidiaries. Raise the cap, or fold `baseline:`/`drift:` into `topology:`?
+20. **Owner/authority defaults.** Confirm the resolution table in section 14 (especially: container base files owned by `host_owner`, overlay files by the subsidiary principal, host packages changed only by `release:<id>`).
+21. **Crate dependencies.** Are deployed binaries built with `cargo auditable` (embedded `.dep-v0`)? If not, crate deps come from the release's `source:` graph `ext_crate` nodes, mapped by binary name.
