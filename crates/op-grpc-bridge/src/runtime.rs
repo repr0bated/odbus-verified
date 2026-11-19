@@ -986,6 +986,15 @@ impl Runtime {
             .core()
             .complete_operation_with_updates(&operation, commit, additional)
             .map_err(|error| correlate(RuntimeError::unknown(error)))?;
+        // complete_operation has validated the actual result and committed its
+        // private digest/proof. Capture before any current-role/disclosure or
+        // post-commit failure can discard the only original response body.
+        let mut completed_target = control_target.clone();
+        completed_target.result_digest = Some(BridgeCore::method_value_digest(&result)?);
+        let checkpoint = caller.checkpoint.as_ref()
+            .ok_or_else(|| correlate(RuntimeError::review("completed response owner unavailable")))?;
+        checkpoint.owner.capture_completed(self, &caller, &completed_target, &result, &receipt)
+            .await.map_err(correlate)?;
         crate::runtime_sled_ledger::append_committed(&caller, &plugin, &method, &declaration, &args, &receipt).await;
         let effective_hash = self.core().committed_snapshot(&committed_scope, &plugin, &committed_path)
             .map_err(|error| correlate(RuntimeError::unknown(error)))?
@@ -1016,14 +1025,12 @@ impl Runtime {
             caller.for_background()
         };
         disclosure_caller.checkpoint = caller.checkpoint.clone();
-        let mut checkpoint_target = control_target;
-        checkpoint_target.result_digest = Some(BridgeCore::method_value_digest(&result)?);
         let completed = RuntimeResult {
             result,
             receipt,
             effective_hash,
             disclosure_caller,
-            checkpoint_target,
+            checkpoint_target: completed_target,
         };
         self.revalidate_result(&completed, &plugin, &method)
             .await

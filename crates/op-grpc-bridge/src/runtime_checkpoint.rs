@@ -48,6 +48,12 @@ pub(crate) trait CheckpointEvidenceOwner: Send + Sync {
     async fn revalidate_provider_binding(&self, runtime: &Runtime, caller: &VerifiedCaller,
         target: &CheckpointTarget, profile: &op_agents::inference::NativeProviderProfile)
         -> Result<(), RuntimeError>;
+    /// Capture the actual native Completed response before current disclosure
+    /// can withhold it. Verify original scope/request/result/proofs and bound
+    /// the private transient frame; no SHM publication or provider/child calls.
+    async fn capture_completed(&self, runtime: &Runtime, caller: &VerifiedCaller,
+        target: &CheckpointTarget, result: &Value, receipt: &MethodExecutionReceipt)
+        -> Result<(), RuntimeError>;
     /// Read exact prepared core-backed request/response and apply the atomic
     /// judgment policy. No provider call, recursive judgment or heuristic here.
     async fn validate_committed_judgment(&self, runtime: &Runtime, caller: &VerifiedCaller,
@@ -293,5 +299,70 @@ impl Runtime {
             ExecutionStatus::NeedsReview => GroundedOutcome::NeedsReview,
             _ => GroundedOutcome::Unverified,
         })
+    }
+
+    /// Reconcile a privately captured ORIGINAL response after deferred judgment.
+    /// This never dispatches a method, reserves a new attempt or replays effects.
+    /// A missing/lost body or missing trusted evidence remains NeedsReview.
+    pub(crate) async fn reconcile_checkpoint(
+        &self, caller: &VerifiedCaller, plugin: &str, method: &str, arguments: &Value,
+        receipt: MethodExecutionReceipt, checkpoint: CallCheckpoint,
+    ) -> Result<RuntimeResult, RuntimeError> {
+        if caller.execution.is_some() {
+            return Err(RuntimeError::denied("checkpoint reconciliation requires ancestor-root release"));
+        }
+        let mut caller = caller.for_background();
+        caller.attach_checkpoint(Arc::new(checkpoint))?;
+        receipt.validate_attribution(plugin, method)?;
+        let operation_id = Uuid::parse_str(&receipt.operation_id)
+            .map_err(|_| RuntimeError::review("original checkpoint operation is invalid"))?;
+        let mut target = self.checkpoint_target(&caller, plugin, method, arguments, operation_id)?;
+        self.core().verify_operation_binding(&receipt.operation_id, &caller.principal_id,
+            &caller.session_id, plugin, method, &target.schema_hash, arguments,
+            caller.checkpoint.as_ref().map(|checkpoint| &checkpoint.attribution))?;
+        let original = self.core().verify_operation_result(&receipt.operation_id,
+            &caller.principal_id, &caller.session_id, &receipt.result)?;
+        let attempt = original.attempt.ok_or_else(|| RuntimeError::review("original attempt proof unavailable"))?;
+        let terminal = original.terminal.ok_or_else(|| RuntimeError::review("original terminal proof unavailable"))?;
+        if attempt.event_id != receipt.event_id || attempt.event_hash != receipt.event_hash
+            || terminal.event_id != receipt.terminal_event_id || terminal.event_hash != receipt.terminal_event_hash {
+            return Err(RuntimeError::review("captured response differs from the original native proof"));
+        }
+        let context = self.execution_context(&caller, plugin, method, operation_id)?;
+        let previous = self.core().execution_control_latest(&caller.private_scope(), &receipt.operation_id)?
+            .ok_or_else(|| RuntimeError::review("original control reference unavailable"))?;
+        if previous.context != context {
+            return Err(RuntimeError::review("original checkpoint policy or task attribution differs"));
+        }
+        target.result_digest = Some(BridgeCore::method_value_digest(&receipt.result)?);
+        let completed = RuntimeResult {
+            result: receipt.result.clone(), receipt, effective_hash: String::new(),
+            disclosure_caller: caller, checkpoint_target: target,
+        };
+        if previous.status.is_terminal() {
+            // A final decision cannot be reclassified by later evidence. Current
+            // policy/disclosure still applies before any original body is returned.
+            return match self.grounded_outcome(&completed).await? {
+                GroundedOutcome::Succeeded | GroundedOutcome::DomainFailed => Ok(completed),
+                _ => Err(RuntimeError::review("original final checkpoint is not releasable")),
+            };
+        }
+        // Only original core-backed records may hydrate a cold tracker. Neither
+        // the private body cache nor supplied JSON supplies a control decision.
+        self.tracker().apply_committed(previous).await?;
+        let outcome = self.checkpoint_postflight(&completed.disclosure_caller,
+            &completed.checkpoint_target, &completed).await?;
+        let status = match outcome {
+            GroundedOutcome::Succeeded => ExecutionStatus::Completed,
+            GroundedOutcome::DomainFailed => ExecutionStatus::DomainFailed,
+            GroundedOutcome::Unverified | GroundedOutcome::NeedsReview => ExecutionStatus::NeedsReview,
+        };
+        self.checkpoint_transition(&context, &completed.checkpoint_target, status,
+            Some(ExecutionProof { operation_id: context.operation_id.clone(), attempt, terminal: Some(terminal) })).await?;
+        if status == ExecutionStatus::NeedsReview {
+            return Err(RuntimeError::review("original response still requires trusted grounding"));
+        }
+        self.revalidate_result(&completed, plugin, method).await?;
+        Ok(completed)
     }
 }
