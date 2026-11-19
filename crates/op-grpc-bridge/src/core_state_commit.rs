@@ -46,6 +46,7 @@ impl PersistentCore {
         commit: BackendCommit,
         updates: Vec<BackendProjection>,
         terminal: Option<(String, MethodRecoveryStatus, String, Option<String>)>,
+        orchestration: Option<OrchestrationDelta>,
     ) -> Result<StateCommit> {
         self.require_available()?;
         validate_scope(&owner)?;
@@ -176,6 +177,7 @@ impl PersistentCore {
                 state: tree.state,
             });
         }
+        ensure!(terminal.is_none() || orchestration.is_none(), "orchestration delta belongs to its state append");
         let action = match terminal {
             Some((operation_id, status, code, result_digest)) => LedgerAction::Terminal {
                 operation_id,
@@ -190,7 +192,7 @@ impl PersistentCore {
                     !publications.is_empty(),
                     "state observation contains no authoritative update"
                 );
-                LedgerAction::State { publications }
+                LedgerAction::State { publications, orchestration }
             }
         };
         // Persist every recovery tree before any namespace can acquire a

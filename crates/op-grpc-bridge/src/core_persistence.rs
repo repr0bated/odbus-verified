@@ -53,6 +53,8 @@ pub(super) struct IdentityPublication {
 pub(super) enum LedgerAction {
     State {
         publications: Vec<Publication>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        orchestration: Option<OrchestrationDelta>,
     },
     Attempt {
         operation_id: String,
@@ -86,7 +88,7 @@ pub(super) enum LedgerAction {
 impl LedgerAction {
     pub(super) fn publications(&self) -> &[Publication] {
         match self {
-            Self::State { publications } | Self::Terminal { publications, .. } => publications,
+            Self::State { publications, .. } | Self::Terminal { publications, .. } => publications,
             Self::Attempt { .. } | Self::Control { .. } => &[],
         }
     }
@@ -233,6 +235,7 @@ impl PersistentCore {
         // Derived locators are rebuilt only from the original verified ledger.
         // A failed rebuild prevents this owner from admitting any request.
         owner.reset_control_index()?;
+        owner.reset_owner_definition_index()?;
         // Replay verifies every persisted event and scope binding. Only each
         // scope/plugin's final complete tree is retained for SHM reconstruction.
         let mut latest = BTreeMap::new();
@@ -241,7 +244,7 @@ impl PersistentCore {
             owner.accept_metadata(&record)?;
             let event_id = record.event.event_id;
             match record.action {
-                LedgerAction::State { publications }
+                LedgerAction::State { publications, .. }
                 | LedgerAction::Terminal { publications, .. } => {
                     for publication in publications {
                         latest.insert(
@@ -394,6 +397,7 @@ impl PersistentCore {
     pub(super) fn accept_metadata(&mut self, record: &LedgerRecord) -> Result<()> {
         self.accept_operation(record)?;
         self.index_execution_control(record)?;
+        self.index_owner_definitions(record)?;
         for publication in record.action.publications() {
             self.heads.insert(
                 (publication.scope.clone(), publication.plugin_id.clone()),
@@ -602,7 +606,7 @@ impl PersistentCore {
         commit: BackendCommit,
         terminal: Option<(String, MethodRecoveryStatus, String, Option<String>)>,
     ) -> Result<StateCommit> {
-        self.commit_with_updates(catalog, owner, commit, Vec::new(), terminal)
+        self.commit_with_updates(catalog, owner, commit, Vec::new(), terminal, None)
     }
 
     pub(super) fn snapshot(
@@ -825,7 +829,7 @@ impl BridgeCore {
         let mut latest = None;
         PersistentCore::walk_records(&owner.db, |record| {
             let publications = match record.action {
-                LedgerAction::State { publications }
+                LedgerAction::State { publications, .. }
                 | LedgerAction::Terminal { publications, .. } => publications,
                 LedgerAction::Attempt { .. } | LedgerAction::Control { .. } => Vec::new(),
             };
@@ -1157,4 +1161,12 @@ mod checkpoint_ledger_encoding_contracts {
         let action: LedgerAction = serde_json::from_slice(original).unwrap();
         assert_eq!(serde_json::to_vec(&action).unwrap(), original);
     }
+}
+
+#[cfg(test)]
+#[test]
+fn legacy_state_binding_does_not_gain_orchestration_metadata() {
+    let original = br#"{"kind":"state","publications":[]}"#;
+    let action: LedgerAction = serde_json::from_slice(original).unwrap();
+    assert_eq!(serde_json::to_vec(&action).unwrap(), original);
 }

@@ -50,7 +50,7 @@ fn latest_control(owner: &PersistentCore, scope: &StateScope, operation_id: &str
 }
 
 impl PersistentCore {
-    fn control_query(&self, script: &str, parameters: BTreeMap<String, DataValue>, write: bool) -> Result<NamedRows> {
+    pub(in crate::core) fn control_query(&self, script: &str, parameters: BTreeMap<String, DataValue>, write: bool) -> Result<NamedRows> {
         self.db.db().run_script(script, parameters,
             if write { ScriptMutability::Mutable } else { ScriptMutability::Immutable })
             .map_err(|_| anyhow::anyhow!("checkpoint locator query unavailable"))
@@ -94,8 +94,8 @@ impl PersistentCore {
         Ok(())
     }
 
-    fn control_record(&self, scope: &StateScope, operation_id: &str, event_id: u64,
-        event_hash: &str) -> Result<ExecutionRecord> {
+    pub(in crate::core) fn canonical_indexed_record(&self, scope: &StateScope, event_id: u64,
+        event_hash: &str) -> Result<LedgerRecord> {
         ensure!(event_id > 0 && event_id <= self.at_event_id(), "checkpoint locator exceeds canonical tip");
         let sequence = i64::try_from(event_id.checked_sub(1).context("checkpoint event identity invalid")?)?;
         let rows = self.control_query(
@@ -115,11 +115,23 @@ impl PersistentCore {
         let payload = entry.event.input_payload.as_ref().context("checkpoint canonical binding missing")?;
         ensure!(serde_json::to_value(payload)? == serde_json::json!({"record_digest": binding(&entry.owner, &entry.action)?}),
             "checkpoint canonical payload binding differs");
+        Ok(entry)
+    }
+
+    fn control_record(&self, scope: &StateScope, operation_id: &str, event_id: u64,
+        event_hash: &str) -> Result<ExecutionRecord> {
+        let entry = self.canonical_indexed_record(scope, event_id, event_hash)?;
         let LedgerAction::Control { mut record, .. } = entry.action else { anyhow::bail!("checkpoint locator points to another action"); };
         ensure!(record.context.operation_id == operation_id, "checkpoint locator operation differs");
         record.cursor = Some(event_id);
         Ok(record)
     }
+
+    pub(in crate::core) fn current_definition_control(&self, scope: &StateScope, operation_id: &str)
+        -> Result<Option<ExecutionRecord>> {
+        latest_control(self, scope, operation_id)
+    }
+
 
     /// Immutable decisions and their contexts are checked before append, and
     /// again against the immediately preceding canonical event during replay.

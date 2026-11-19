@@ -23,7 +23,8 @@ mod projection;
 #[path = "core_orchestration.rs"]
 mod orchestration;
 pub use orchestration::{OrchestrationCommit, OrchestrationRecord};
-pub(crate) use orchestration::OrchestrationWriter;
+pub(crate) use orchestration::{OrchestrationWriter, OwnerDefinition, DefinitionApprovalState};
+use orchestration::OrchestrationDelta;
 pub use operations::MethodOperation;
 
 // ---------------------------------------------------------------------------

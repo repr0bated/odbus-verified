@@ -27,6 +27,7 @@ pub(super) struct OperationState {
     status: MethodRecoveryStatus,
     /// Counted only by the ordered core ledger/replay, never cache delivery.
     control_terminal: Option<op_execution_tracker::ExecutionStatus>,
+    definition_version: Option<(String, u64, MethodEventProof)>,
 }
 
 /// Opaque admitted attempt. Constructed only after its Cozo durability barrier.
@@ -141,6 +142,7 @@ impl PersistentCore {
                         terminal: None,
                         status: MethodRecoveryStatus::Unknown,
                         control_terminal: None,
+                        definition_version: None,
                     },
                 );
             }
@@ -183,7 +185,26 @@ impl PersistentCore {
                 state.status = status.clone();
                 state.result_digest = result_digest.clone();
             }
-            LedgerAction::State { .. } => {}
+            LedgerAction::State { orchestration, .. } => {
+                if let Some((delta, version)) = orchestration.as_ref().filter(|delta| delta.domain == "workstacks")
+                    .and_then(|delta| delta.version.as_ref().map(|version| (delta, version))) {
+                    let kind = if delta.key.starts_with("role:") { Some("role") }
+                        else if delta.key.starts_with("policy:") { Some("policy") } else { None };
+                    if let Some(kind) = kind {
+                        let publication = record.action.publications().iter().find(|publication|
+                            publication.scope == record.owner && publication.plugin_id == "workstacks")
+                            .context("immutable definition has no original publication")?;
+                        self.validate_definition_delta(&record.owner, &delta.operation_id, kind, &record.event, &publication.schema_hash)?;
+                        let state = self.operations.get_mut(&(record.owner.clone(), delta.operation_id.clone()))
+                            .context("immutable definition has no management attempt")?;
+                        let method = if kind == "role" { "put_execution_role" } else { "put_utility_policy" };
+                        ensure!(state.method == method && version.revision == 1 && state.definition_version.is_none(),
+                            "immutable definition must be created once by its actual put operation");
+                        state.definition_version = Some((version.key.clone(), version.revision,
+                            MethodEventProof { event_id: record.event.event_id, event_hash: record.event.event_hash.clone() }));
+                    }
+                }
+            }
             LedgerAction::Control { record: control, final_transition } => {
                 self.validate_execution_control(&record.owner, control)?;
                 self.validate_control_predecessor(&record.owner, control, false)?;
@@ -261,6 +282,81 @@ impl PersistentCore {
         );
         Ok(state)
     }
+
+    pub(super) fn definition_attribution(&self, operation: &MethodOperation, kind: &str, put: bool)
+        -> Result<(StateScope, String, String, String)> {
+        let state = self.require_operation(operation)?;
+        let expected = match (kind, put) {
+            ("role", true) => "put_execution_role",
+            ("policy", true) => "put_utility_policy",
+            ("role", false) => "disable_execution_role",
+            ("policy", false) => "disable_utility_policy",
+            _ => anyhow::bail!("unknown native owner definition mutation"),
+        };
+        ensure!(state.plugin_id == "workstacks" && state.method == expected,
+            "definition requires its original exact admitted management method");
+        Ok((operation.owner.clone(), state.schema_hash.clone(), state.method.clone(), state.capability_id.clone()))
+    }
+
+    pub(super) fn validate_definition_delta(&self, scope: &StateScope, id: &str, kind: &str,
+        event: &op_state_store::ChainEvent, schema_hash: &str) -> Result<()> {
+        let state = self.operations.get(&(scope.clone(), id.to_owned())).context("definition writer attempt absent")?;
+        let methods = match kind {
+            "role" => ["put_execution_role", "disable_execution_role"],
+            "policy" => ["put_utility_policy", "disable_utility_policy"],
+            _ => anyhow::bail!("unknown native owner definition kind"),
+        };
+        ensure!(state.plugin_id == "workstacks" && methods.contains(&state.method.as_str())
+            && state.terminal.is_none() && state.schema_hash == schema_hash
+            && event.event_id > state.attempt.event_id && event.plugin_id == state.plugin_id
+            && event.method_name.as_deref() == Some(state.method.as_str())
+            && event.capability_id.as_deref() == Some(state.capability_id.as_str()),
+            "definition state delta differs from its original live management attempt");
+        Ok(())
+    }
+
+    pub(super) fn definition_management_proof(&self, scope: &StateScope, id: &str, kind: &str, head: bool)
+        -> Result<MethodReceiptRecovery> {
+        operation_id(id)?;
+        let state = self.operations.get(&(scope.clone(), id.to_owned())).context("original definition approval unavailable")?;
+        let methods = match kind {
+            "role" => ["put_execution_role", "disable_execution_role"],
+            "policy" => ["put_utility_policy", "disable_utility_policy"],
+            _ => anyhow::bail!("unknown owner definition kind"),
+        };
+        ensure!(state.plugin_id == "workstacks" && (state.method == methods[0] || head && state.method == methods[1]),
+            "owner definition management approval remains unverified; needs review");
+        Ok(recovery(id, Some(state)))
+    }
+
+    pub(super) fn require_live_definition_writer(&self, operation: &MethodOperation) -> Result<()> {
+        self.require_operation(operation).map(|_| ())
+    }
+
+    pub(super) fn definition_version_source(&self, scope: &StateScope, id: &str, key: &str, revision: u64)
+        -> Result<MethodEventProof> {
+        let state = self.operations.get(&(scope.clone(), id.to_owned())).context("original immutable version creator unavailable")?;
+        let (original_key, original_revision, proof) = state.definition_version.as_ref()
+            .context("immutable version has no typed original source; needs review")?;
+        ensure!(original_key == key && *original_revision == revision,
+            "immutable version differs from original publication");
+        Ok(proof.clone())
+    }
+
+    pub(super) fn definition_management_reader(&self, operation: &MethodOperation, owner: &str, kind: &str) -> Result<()> {
+        let state = self.require_operation(operation)?;
+        let methods = match kind {
+            "role" => ["get_execution_role", "list_execution_roles", "put_execution_role", "disable_execution_role"],
+            "policy" => ["get_utility_policy", "list_utility_policies", "put_utility_policy", "disable_utility_policy"],
+            _ => anyhow::bail!("unknown management definition kind"),
+        };
+        ensure!(matches!(&operation.owner, StateScope::Private { principal_id, .. } if principal_id == owner)
+            && state.plugin_id == "workstacks" && methods.contains(&state.method.as_str()),
+            "management read requires actual canonical-owner actor and exact native management method");
+        Ok(())
+    }
+
+
 
     pub(super) fn validate_execution_control(
         &self, scope: &StateScope, record: &op_execution_tracker::ExecutionRecord,
@@ -559,6 +655,7 @@ impl BridgeCore {
             commit,
             updates,
             Some((operation.operation_id.clone(), status, code.into(), result_digest)),
+            None,
         )?;
         let receipt = result.and_then(|result| {
             let receipt = MethodExecutionReceipt {
@@ -677,6 +774,7 @@ impl BridgeCore {
             commit,
             updates,
             Some((operation.operation_id.clone(), status, code.into(), None)),
+            None,
         )?;
         self.notify_committed(&state);
         let result = recovery(
