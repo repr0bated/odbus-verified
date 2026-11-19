@@ -1,0 +1,10 @@
+//! `op-mcp-door`: the external MCP endpoint on the door.
+//!
+//! TLS-only MCP Streamable HTTP in front; 3tchedFS call files behind. The
+//! door opens no gRPC channel, D-Bus connection or bridge socket: whatever
+//! serves a FUSE call behind the mount is not its concern.
+//! Spec: `.kiro/specs/mcp-door-adapter/`.
+
+pub mod canonical;
+pub mod config;
+pub mod encode;

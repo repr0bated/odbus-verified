@@ -6,7 +6,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
 (`.kiro/steering/subagent-cargo.md`). No task touches the bridge, 3tchedFS,
 `op-tunnel-mux`, live services, grants or sealed blobs.
 
-- [ ] 1. Crate scaffold, configuration and canonical encodings
+- [x] 1. Crate scaffold, configuration and canonical encodings
   - Add `crates/op-mcp-door` to the workspace (lib + bin `op-mcp-door`).
   - `config`: env resolution, TLS path fallback, listen default `127.0.0.1:8091`.
   - `canonical`: sorted-key canonical JSON and `args_sha256`.

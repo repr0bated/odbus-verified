@@ -44,6 +44,7 @@ members = [
     "crates/cozo-ublk",
     "crates/op-container",
     "crates/op-tunnel-mux",
+    "crates/op-mcp-door",
 ]
 exclude = ["crates/op-uds-relay", "hackathon"]
 
