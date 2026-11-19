@@ -4,6 +4,17 @@ Spec id: `mcp-door-adapter`. Requirements: `requirements.md` 1–12.
 Grounded in `origin/dev` at `c65d57e` (2026-11-19). Labels: **Found** = read
 in code or on antix1; **Assumed** = a working choice to be confirmed.
 
+## Interim pieces (Wonder's shared FUSE contracts)
+
+Wonder (Muse) is specifying identity binding, capability checks, toolset
+projection and auditable receipts as shared FUSE contracts in the FUSE spec,
+for MCP and the other adapters to consume. Until they land, `grants`
+(grant store and tickets), `toolsets` (file and generator), `policy`
+(`authorize()`) and `audit` are interim. When the contracts land, the door
+switches to them; it keeps only TLS, the OIA1 → principal/mount mapping and the
+MCP protocol (endpoints, sessions, meta-tools, 50-tool cap). No FUSE or bridge
+code is changed by this spec.
+
 ## Owner corrections (2026-11-19), which override the audit
 
 1. **All calls go through FUSE.** The door talks only to 3tchedFS mounts.

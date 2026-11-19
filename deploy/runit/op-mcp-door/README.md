@@ -38,6 +38,11 @@ FUSE-side by Wonder (Muse) as a general mechanism; once it lands, the door
 reads toolsets from it instead and this file and `toolsets generate` retire.
 Do not extend the generator's grouping rules in the meantime.
 
+The door-side grant store, tickets, `authorize()` and audit records are
+likewise interim, pending Wonder's shared FUSE contracts (identity binding,
+capability checks, toolset projection, auditable receipts). The door keeps
+TLS, auth mapping and the MCP protocol.
+
 Grants and tickets (root, with the same `/etc/op-dbus/env` loaded so the
 state directory matches):
 
