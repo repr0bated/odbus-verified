@@ -30,7 +30,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
     reported, shell/exec never in core, over-cap refusal.
   - _Requirements: 5.1–5.4, 6.2–6.4, 10.4_
 
-- [ ] 4. Grant store and elevation tickets
+- [x] 4. Grant store and elevation tickets
   - `grants`: durable document reader with the bridge contract; ephemeral
     grants with window, count, argument constraint, toolset scope rules;
     tickets with ≤300 s lifetime and atomic single use.
