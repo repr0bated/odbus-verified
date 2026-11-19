@@ -8,6 +8,11 @@ The center coordinates TWO SEPARATE native systems: **Workflows**, user-authored
 
 **Owner correction — mandatory call ingress:** every caller operation uses its identity-bound FUSE `operations/<plugin>/<method>/call` namespace, including workstack/workflow/agent, inference/judgment, graph management and checkpoint/resume operations. The bridge hosts the upgraded FUSE library with TWO SEPARATE mounts, `3tchedFS`/Our and `threetched`/Binary. Runtime is private callback backing/admission, not an alternative same-process caller API. All later references to Runtime calls/admission mean this private post-FUSE checkpoint path, never permission to bypass FUSE or add a raw client/socket.
 
+**Current integration clarifications, 2026-11-19:** deterministic operation-only workflows SHALL NOT require unused inference/Jev groups, grants, routes or model budgets. Optional provider groups are coupled approved data; the actual pinned operation/semantic policy determines which are required. Inference is an external network/cost operation, never a harmless Read merely because state is unchanged. Its actual mounted receiver MUST prove container-owned or explicitly authorized identity-scoped provider/config/key backing; host read-only mirrors cannot execute it. A zero-tool chatbot may submit/read/cancel through its own narrow native admission; final-result readers are not impersonated as the source executor or required to hold provider rights. Final reasoning stays explicitly unverified rather than claiming factual proof.
+
+Private executor/Jev arguments, raw output and their content-derived hashes SHALL NOT enter requestor SHM/projection. Exact content bindings stay in the private native frame/core attempt. A pending `arguments_binding_id` is an opaque non-bearer UUID, never a content hash or authority. Loss of a private original response frame requires `NeedsReview`, not reconstructed receipts, replay or a new inference request. The final getter is its own actual scoped read/checkpoint; original provider completion is not reclassified as agent-final success. See design §4.7 for requested canonical declarations and explicit undelivered owner hooks; no schema/FUSE-owner acknowledgement is assumed.
+
+
 ## Terms
 
 - **Requestor:** verified human/session or chatbot submitting a scoped request.

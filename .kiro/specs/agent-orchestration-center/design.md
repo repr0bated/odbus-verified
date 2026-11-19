@@ -278,5 +278,333 @@ The user implements the KiroWeen UI. This workstream supplies actual backend doc
 
 ### 4.7 Current ownership and schema/FUSE-owner docking handoff
 
+**Orchestration worker:** `crates/op-agents/**`, `crates/op-workflows/**`, bridge `runtime_workspace.rs`, `runtime_workspace_workflows.rs`, `runtime_cognitive.rs`, `runtime_chat*.rs` and new workspace-owned `runtime_workstacks*`, `runtime_workflow*`, `runtime_agent*` modules; existing three agent Kiro documents. **Control-foundation peer:** orchestration Runtime/tracker/core CAS/event hooks only. **Other GPT:** all canonical `op-plugins` schemas/registration/capture, generic FUSE/mount/toolsets and door/schema delivery. **User:** KiroWeen frontend. Deleted root boards/frontend source are not restored. No live credentials/grants/containers/storage/seals/services are changed.
 
-[Showing lines 1-280 of 587 (50.0KB limit). Use :281 to continue]
+The following are REQUESTED canonical declarations, not assumed existing/sealed methods. Derive the listed Rust DTOs directly; no second JSON-schema file/catalog/API. Capability families are proposals for the schema owner to declare, not authority; Runtime must resolve and enforce the actual sealed declaration. Missing delivered bindings return unavailable/NeedsReview, never fabricated success.
+
+| Requested methods | Input DTO (`op_agents::orchestration`) | Output DTO | Effect / proposed capability family |
+|---|---|---|---|
+| workstacks `list_agent_recipes`, `get_agent_recipe` | `PageInput`, `IdInput` | `RecordPage`, `RecordOutput` | Read / `cap.software.workstacks.recipes.read@v1` |
+| workstacks `create_agent_recipe`, `update_agent_recipe` | `PutRecipeInput` | `RecordOutput` | Mutation / `cap.software.workstacks.recipes.manage@v1` |
+| workstacks `disable_agent_recipe`, `retire_agent_recipe` | `RevisionInput` | `RecordOutput` | Mutation / recipe management |
+| workstacks `list_execution_roles`, `get_execution_role`, `list_utility_policies`, `get_utility_policy` | `PageInput`, `IdInput` | `RecordPage`, `RecordOutput` | Read / `cap.software.workstacks.policy.read@v1` |
+| workstacks `put_execution_role`, `put_utility_policy` | `PutRoleInput`, `PutUtilityPolicyInput` | `RecordOutput` | Mutation / `cap.software.workstacks.policy.manage@v1`, plus existing project/identity owner checks |
+| workstacks `disable_execution_role`, `disable_utility_policy` | `RevisionInput` | `RecordOutput` | Mutation / policy management |
+| workstacks `submit_intent` | `SubmitIntentInput` | `RunSummary` | Mutation / `cap.software.workstacks.submit@v1`, independent of executor tool grants |
+| workstacks `get_workstack`, `list_workstacks` | `IdInput`, `PageInput` | `RunSummary`, `RecordPage` | Read / `cap.software.workstacks.observe@v1` |
+| workstacks `pause_workstack`, `resume_workstack`, `cancel_workstack` | `RevisionInput` | `RunSummary` | Mutation / `cap.software.workstacks.control@v1` |
+| workflows `discover_nodes` | `DiscoveryInput` | `NodeDiscoveryOutput` | Read / actual graph discovery capability |
+| workflows `preview_workflow`, `validate_workflow` | `ObjectWorkflow` | `WorkflowValidationOutput` | Read / graph discovery |
+| workflows `create_workflow`, `update_workflow` | `PutWorkflowInput` | `RecordOutput` | Mutation / distinct graph author capability |
+| workflows `get_workflow`, `list_workflows` | `IdInput`, `PageInput` | `RecordOutput`, `RecordPage` | Read / distinct graph read capability |
+| workflows `disable_workflow` | `RevisionInput` | `RecordOutput` | Mutation / graph author |
+| workflows `run_workflow` | `RunWorkflowInput` | `RunSummary` | Mutation / distinct graph execution capability |
+| workflows `pause_workflow`, `resume_workflow`, `cancel_workflow` | `RevisionInput` | `RunSummary` | Mutation / graph control |
+| both domains `list_pending_checkpoints`, `resume_checkpoint` | `PageInput`, `ResumeCheckpointInput` | `RecordPage`, `RunSummary` | Read / observe; Mutation / control AND exact pending approver capability |
+| workflows `get_workflow_run`, `list_workflow_runs` | `IdInput`, `PageInput` | `RunSummary`, `RecordPage` | Read / actual scoped run-observation capability declared by schema owner |
+| workstacks `get_workstack_result` | `IdInput` | `op_agents::orchestration::WorkstackResultOutput`: typed pending / available `ReasoningResult` with closed `reasoning_unverified` classification / not-satisfied with original effect refs; DTO source exists, getter integration pending | Native scoped Read / actual result-read capability requested from schema owner; reader admission, sourceExecutor independently proven, no provider right required on reader |
+| chat_router `judge` (requested name) | `op_agents::judgment::SystemOneInput`; no model override or prompt parsing | `op_agents::judgment::SystemOneOutput` | Mutation: external inference/network/cost, not harmless Read; exact capability declared by schema owner, finite tracked infrastructure class |
+| chat_router `complete_text` (requested name) | `op_agents::inference::CompleteTextInput` (`messages`, bounded `max_output_tokens`; no model, alias, tools or delegation) | `op_agents::inference::CompleteTextOutput` | Mutation: external inference/network/cost, not harmless Read; exact capability declared by schema owner, ordinary attributed operation |
+
+Shared DTO detail: `ObjectWorkflow`, `ObjectNode`, `ObjectBinding`, `TypedPort`, `ObjectConnection` distinguish definitions from runs/tasks/attempts/operations. `recipes::{AgentRecipe,IntentSpec,RunBudget,OperationBinding,ExecutorDelegationRole,UtilityPolicy,ImportedEntry}` are credential-free versioned data. Verified management caller stamps role approval identity; a model/caller principal string is not authority. Both plugin states need separate private root `records` maps for core materialization; no workstack state in workflow records.
+
+Required executor resolution: `resolve_executor(requestor,exact_principal,exact_container) -> VerifiedCaller` resolves only an existing anchored binding. All checkpointed mounted operations use the single frozen hook below; no separate `invoke_fuse` plus correlation argument convention. Persist/defer continuation and release the ancestor root before every fresh operation; no nested direct Runtime fallback.
+
+**Frozen checkpointed ingress revision (after documentation commit `75d244bbacd99f0992eaa0d1b5bd05264c430d0a`):** orchestration callers use exactly `Runtime::invoke_fuse_with_checkpoint(&VerifiedCaller, plugin:&str, method:&str, args:Value, operation_id:Uuid, checkpoint:CallCheckpoint) -> Result<RuntimeResult,RuntimeError>`. The control-foundation peer supplies typed `CallCheckpoint` policy/attribution/evidence ownership; the FUSE/schema owner must implement the actual mounted call and trusted out-of-band reservation on the SAME FD. This is a requested dependency, not delivered/acknowledged mounted-client functionality. Do not substitute `invoke_fuse` plus ad-hoc argument metadata or a direct Runtime fallback.
+
+**Optional native provider groups:** `ExecutorDelegationRole.inference:Option<ProviderDelegation>` and `judgment:Option<JudgmentDelegation>` are coupled, all-or-none approved groups. `ProviderDelegation` owns the exact operation, existing native `agent_alias`, non-secret `NativeProviderProfile` and attributed owner-approved token/spend quote; `JudgmentDelegation` adds the question-policy version. `semantic_policy` explicitly selects `DeterministicOnly` or `RequireJudgment`. Plain deterministic operation-only workflows need neither group, model/Jev rights nor model budget. Actual recipe inference requires its inference group; actual semantic selection/required judgment requires its judgment group. Trusted checkpoint metadata derives the alias from the approved group; existing `for_agent_alias`/`current_provider` resolves and rechecks the actual configured provider/model, never global dashboard or caller model arguments.
+
+**Provider-only inference ruling:** stock websocket `Chat` is NOT a supported tool-free inference adapter: `chat_router_generation.rs` has no enforceable upstream stateless mode, and rejecting tool events after receipt cannot undo an upstream private tool loop. The orchestration-owned `runtime_agent_provider.rs` implements direct, single-request HTTP completion under the retained `ChatRouterRuntimeClient`. The approved inference group's `agent_alias` is an existing native agent key supplied only by trusted checkpoint context. Its actual enabled profile must explicitly declare `wire_api = chat_completions` or `responses`; the protected existing provider owner must authorize the actual HTTPS endpoint and credential kind. No family/model dispatcher, CLI/OAuth-to-HTTP fallback, redirects, tools, delegates or upstream websocket are used. This primitive is usable only AFTER real container-owned receiver admission; concrete handlers/interfaces alone do not prove mounted execution or activation.
+
+**Actual-resource docking requirement:** canonical operation metadata must declare the actual argument JSON pointers identifying project/resource selectors, their exact/canonical-descendant relations and read/write meaning. The receiving backend must independently enforce a pinned project/workspace and read-only boundary (or an equivalent exact argument/resource contract implemented by that handler). Controller checks compare actual schema-validated arguments against requestor-approved scope and that enforceable receiver binding. Intent resource lists, model read-only claims, semantic fit, generic shell grants or metadata asserting isolation are not evidence of backend enforcement. Until the canonical binding and real receiver enforcement exist, affected unsafe host/tool operations return `NeedsReview` BEFORE effects; no invented field permission, unconstrained helper process or fallback executor.
+
+**Container-owned inference backing dependency:** before constructing a native provider client or disclosing any bytes, the final orchestration adapter calls `Runtime::require_container_owned_inference(&VerifiedCaller) -> Result<(),RuntimeError>`. The actual FUSE/receiver owner must implement proof that the mounted callback reaches that verified executor's real container-owned provider/config/key namespace, or an explicitly authorized identity-scoped receiver. Role/container/principal strings alone cannot establish backing; a host read-only mirror is DENIED even if a stale method schema labels inference Read. This guard and the actual mounted checkpoint call are required dependencies, not a default no-op, local-loopback fallback or delivered positive execution claim.
+
+**Private delayed-postflight frame:** `EvidenceOwner::initialize` retains bounded actual arguments privately and durably records only safe operation/policy/schema/source references. The required `capture_completed` callback verifies the actual native request/result and immutable original receipt proofs, then captures the original response privately BEFORE any subsequent withholding; it performs no orchestration CAS/SHM publication or child/provider call. Raw arguments, executor output, Jev state and content-derived argument/request/result/target digests never enter requestor projection. Native core bindings remain private. After actual FUSE return and ancestor-root release, the coordinator may record safe receipt references, perform an explicitly permitted minimal fresh Jev request and use the private original-receipt-only `Runtime::reconcile_checkpoint` hook. No new native effect/attempt occurs during reconciliation. Lost private frames remain `NeedsReview`; never reconstruct a receipt/body or repeat inference. Reasoning permits cover a single actual provider invocation only and are dropped before child/Jev/approval/input continuations. Pending `arguments_binding_id` is a fresh opaque non-bearer locator; exact private args binding is retained only in the native gate frame.
+**Actual final-reader operation:** requested `workstacks.get_workstack_result(IdInput)` is a distinct native scoped reader operation, not a class switch or replacement attempt for an already-completed provider call. Native-owned resolver contract: `WorkspaceRuntime::resolve_result_checkpoint(runtime:&Runtime, caller:&VerifiedCaller, operation_id:Uuid, target:&CheckpointTarget, args:&Value, existing:Option<&CallCheckpoint>) -> Result<CallCheckpoint,RuntimeError>`, for this exact owned method before execution context/tracker reservation. With no existing checkpoint, the resolver may mint only a native reader `AgentFinal` checkpoint: its actual actor is the reader, while original sourceExecutor/run/task/receipt provenance is independently validated by the getter owner. Existing checkpoint restrictions are preserved and conjoined with mandatory getter evidence (or rejected), never replaced to expand permission; unknown methods have no fallback. Pending returns a typed pending state, method completion is not run completion, and failed/domain-false results preserve original effect references. A valid unverified analysis may be released using actual native domain/source proof and current reader disclosure authority without model/provider grants on the reader. The resolver/concrete getter integration remains in progress; canonical getter declaration and mounted backing remain other-owner dependencies.
+
+**Observed pushed source receipts; all UNBUILT / UNTESTED / UNDEPLOYED:** seed/context foundation `a87473c`; ownership docs `75d244b`; tracker cutover `2a41126`; typed inference/judgment contracts A `7a06c52855add277b86d3d74b48caba41be33b38`; private checkpoint B `518e3d6`; shared capacity fix `25c4d54d391b2e3a486422369c5d5ed2333adebd`; provider primitive C `1f053f66`; private capture/reconcile `908ee684`. Short SHAs are the parent-observed receipt prefixes, not inferred deployment state. Concrete controllers, private frames/semantic continuation, getter/caller cutover and generic/schema-owner hooks are NOT thereby accepted or complete.
+
+**Pure graph DTO docking:** the seven independent types `DefinitionStatus`, `ObjectBinding`, `TypedPort`, `ObjectNode`, `ObjectConnection`, `ObjectWorkflow`, `CheckpointRequirement` live in `op_agents::object_graph`, separate from unfinished role/workstack transport DTOs in `op_agents::orchestration`. Canonical schema delivery must derive the actual Rust contracts, not a parallel handwritten JSON schema.
+
+
+
+
+Core reads: `orchestration_get(scope,domain,key)` and cursor-paged `orchestration_list(scope,domain,prefix,after,limit)`. Writes derive an opaque `orchestration_writer` from the actual admitted mutation operation and use `orchestration_cas(writer,expected_revision,value) -> {record,proof}`. Writer pins scope/key/schema/capability; background reconciliation can retain it without acquiring another execution gate or tool grant. Exactly workflows/workstacks domains, one durable core append BEFORE SHM, no second database, one ROOT-shared expansion/capacity policy.
+
+Discover actual catalog object paths and declared Read-method output properties now. Field-only reads and children require actual canonical binding/introspection and exact authorization; absent declarations are explicitly unavailable, never synthesized permissions/objects. Schema/FUSE-owner acknowledgement is required before end-to-end availability claims.
+
+**Build handoff:** no Cargo/rustc/npm/Vite/typecheck/test/lint/fmt/smoke/API operation has run. A future native build requires actual interface delivery and the user's explicit release of the four-stream build hold. Record task commit SHAs only from delivery-coordinator receipts; no such receipt means no pushed-task claim.
+
+
+## 5. Scheduling, state machine and persistence
+
+### 5.1 Separate controllers sharing start-after-commit mechanics
+
+1. Chatbot requests enter the workstacks contract; graph author/run operations enter workflows. Validate domain definition, scope, approved executor/policy, typed inputs and shared capacity.
+2. Durably commit accepted WorkstackTask/IntentSpec or WorkflowRun plus receipt linkage through BridgeCore before acknowledging acceptance.
+3. Wake the appropriate controller after commit with no submitting root gate. WorkstackController chooses agents/optional workflow; WorkflowController executes graph readiness/ports, not intent utility.
+4. Claim eligible domain work through shared durable revision/epoch/fenced-lease/budget mechanics, without duplicate capacity pools or effect authority.
+5. Independent reasoning may overlap only outside native-effect admission. All actual provider/retrieval/tool operations enter identity-bound FUSE and mandatory tracker/private Runtime admission; parallel provider effects are not promised.
+6. Every NEW caller child/tool/judgment operation requires persisted/deferred continuation and release/end of its ancestor root BEFORE a fresh identity-bound FUSE call. Replace formerly synchronous gate-owning APIs with accepted/pending receipts and continuations, never direct nested/reentrant execution. Private non-operation callback helpers alone may share the current gate.
+7. Record the resulting receipt/outcome, update materialization once, release scheduling resources and wake dependents/control observers.
+
+Proposed **shared** limits: 64 aggregate active runs, 2 reasoning workers and 64 total expanded tasks/nodes per ROOT request across all child runs and both controllers/domains. Neither child nor domain receives fresh allowance. The proposed 64-task/node target supersedes the historical 1–32-step source bound documented above; it does not claim that source already implements the target. Effects stay serial. Policy supplies concrete token/cost/deadline/tool ceilings; missing values refuse. Retain 128 KiB plan/16 KiB step bounds unless canonical schema changes them; reasoning loops cap at 32 transitions. No automatic effect retries or throughput claim.
+
+### 5.2 Durable state transitions
+
+| Entity | States and transition rules |
+|---|---|
+| Run | `Accepted -> Planning -> Queued -> Running -> Succeeded` when all required tasks have verified acceptable outcomes. `NeedsReview`, `Paused`, `CancelRequested`, `Cancelled`, `Failed`, `Interrupted`, `OutcomeUnknown` preserve why work stopped and committed children. |
+| Task | `PendingDependencies -> Ready -> Leased -> Running -> Succeeded` or explicit `FailedBeforeEffect`, `DomainFailed`, `Denied`, `Skipped`, `NeedsReview`, `Interrupted`, `OutcomeUnknown`. A skipped condition is not success. |
+| Tool attempt | `Reserved -> Admitted -> Dispatched -> ReceiptCompleted/ProvenBeforeEffect/OutcomeUnknown`. A reserved ID without a core attempt is distinguishable from dispatched work. |
+| Control | `PauseRequested`/`CancelRequested` stops future dispatch; in-flight operation continues to a receipt or unresolved outcome. `Cancelled` never means effects undone. Resume revalidates policies, scopes, pins and original receipts. |
+
+Lease expiry fences further dispatch but does not prove the old native effect stopped. Persist operation ID before dispatch; if the lease expires while in flight, reconciliation owns that ID and no replacement attempt is scheduled. A stale worker may deliver real receipt evidence but cannot advance a new fenced plan revision. The controller validates the receipt against the existing operation, then reconciles under the current owner without executing it again.
+
+Transport waiter cancellation does not cancel native ownership. Complete/fail/unknown tracker updates occur inside the detached owner, including panic/join/recovery handling; the waiter only receives a result. Deadlines stop further dispatch and move uncertain effects to reconciliation. The current timeout around `Runtime::call_nested` (`runtime_workspace_workflows.rs:202-219`) can lose the waiter while its native task continues; preserve receipt correlation instead of trusting the timeout as failure-before-effect.
+### 5.2a Durable approval/input continuation
+
+Both domain owners commit `PendingCheckpoint {domain, run, task_or_node, revision, kind, response_schema, pending_plan_hash, arguments_hash, requester_scope, executor_delegation_ref, approver_capability, prior_receipts}` through the core writer, expose a safe authorized preview via scoped canonical SHM and end the call. Release permit/root gate; no waiting process.
+
+Resume supplies a non-authorizing locator and exactly one approval decision, JSON answer or cancellation. JSON may be any response_schema-valid value. Invalid parse/schema leaves the checkpoint pending. Revalidate verified principal/session/container, delegation/resources, required approver capability, definition/schema/policy pins and exact pending preview/args, then CAS-consume expected revision and commit transition before new dispatch. Duplicate/concurrent/stale/revoked/changed-plan resumes refuse. Another gate may follow; prior completed/unknown operations never replay. Consumed checkpoint audit remains; locator possession grants nothing.
+
+
+Shutdown preserves Runtime's close-and-drain contract. Stop new scheduling; let admitted roots finish; persist pending/nonterminal phases. Restart creates a new epoch, fences old leases and marks unowned tasks interrupted. Reconcile existing core attempt/terminal proofs before any explicit continuation. A missing terminal remains unknown, even if the process is no longer running. Never replay effectful work solely because the scheduler or subscriber lost a message.
+
+### 5.3 One effect ledger, rebuildable orchestration views
+
+Current BridgeCore persists through its Cozo-backed append owner (`core_persistence.rs:1,319-375`); the session sled ledger and Qdrant pipeline are separate ownership domains. This design does not change storage engines or promote an episode store to session authority.
+
+Keep workstack intent/utility/task, workflow graph/run and shared lease/receipt links as **distinct private plugin-owned projections** of the core writer. Extend versioned bindings as needed; no new general database or tracker effect history. Proven workflow CAS rows migrate only to WorkflowController materialization, preserving IDs/scope/unresolved phases. New workstack events populate workstacks state, not workflow tables. One core writer and rebuildable domain views prevent competing effect authorities.
+
+The core attempt ledger owns whether a method was attempted/completed/unknown. Run state owns orchestration progress and links those proofs; it cannot contradict them. Session sled append/vectorization at session end remains with its existing owner. Cozo indexes and tracker caches are derived views, not replacement ledgers. Workstack domain state remains distinct.
+
+### 5.4 Mandatory tracker-led control checkpoint and unified record model
+
+Evolve `ExecutionRecord` and `ExecutionContext` into one operation-correlated context/record contract used by `ExecutionTracker`, metrics and consumers. Carry trace/parent operation, run/task/attempt references, requestor/executor/responder attribution, schema/policy pins, safe status and receipt references in the real tracked records. Remove duplicate status/ID conventions after all callers migrate; no third model or permanent alias layer.
+
+The **target tracker is mandatory control**, not observation-only. Current source remains observational (N5); that gap is intentionally changed. One tracker-mediated admission coordinator lives under the existing Runtime owner: attributed request -> tracker preflight -> existing Runtime authorization -> core durable attempt/canonical operation ID -> dispatch once -> core receipt/outcome -> tracker response checkpoint -> authorized release. No externally reachable lower dispatch API can skip the coordinator. Reuse Runtime's exact grant evaluator; tracker neither duplicates policy evaluation nor grants credentials. Refactor inward calls to a private admitted dispatch stage, not recursive Runtime->Tracker->Runtime public calls.
+
+| Checkpoint duty | Deterministic enforcement | Jev's bounded role |
+|---|---|---|
+| Request grounding/appropriateness before dispatch | Match actual sealed plugin/object/method/port/capability/schema/args and task-intent scope; validate constraints; refuse invented endpoints, stale pins and impossible claims | Atomic Noul: “Does this described operation address the stated task intent?” over approved minimal state; configured required judgment uncertain/no-fit/API error -> NeedsReview/refusal, not appropriate=true |
+| Grants/capabilities before effect | Invoke existing Runtime evaluator for verified container/executor, exact method capability, delegation, resource scope, schema and budget; persist attempt before dispatch | None: model never grants/overrides permission |
+| Response grounding/appropriateness before release | Exact output schema, actual domain exit/outcome distinct from transport success, receipt attribution and canonical committed SHM state/version; bind claims to authorized source references and current disclosure authority | Atomic Noul: “Does this supplied evidence support this claimed task result?”; no effect proof from semantic score; unresolved required judgment -> withhold/NeedsReview |
+| Agent-final response | Same release contract for reasoning and tool-backed claims; unsupported or contradictory evidence is explicitly unverified or withheld; responder identity does not grant disclosure | Judge only approved semantic support/relevance, not truth from absent evidence or authority |
+
+This is a concrete hallucination-prevention boundary, **not an absolute hallucination-free guarantee**. Transport OK plus nonzero domain exit is not success. Missing/contradictory evidence cannot be filled by model assertions. A withheld response never erases the actual committed effect/receipt, changes it to before-effect refusal or justifies replay.
+
+Judgment inference is itself a tracked/admitted operation with a schema/policy-typed internal `JudgmentInfrastructure` class. The coordinator enforces that class in code: exact approved provider/schema, parent correlation, no tool recursion, bounded depth one and deterministic response validation. It does not recursively request semantic judgment of its own judgment call, but remains subject to ordinary authorization, budgets, durable tracking and disclosure. Other internal calls have no exemption. No optional/unconfigured semantic check silently satisfies a policy that requires one; deterministic-only policies explicitly declare which exact checks suffice. Minimal approved semantic state excludes secrets/private code by default.
+Gate ordering: root semantic preflight precedes target effect-lock acquisition; exact schema/authority is rechecked under private Runtime admission after FUSE ingress. Postflight follows terminal commit AND root release via a fresh tracked/admitted FUSE infrastructure call. If a new child or judgment is needed while a caller operation holds the gate, persist/defer continuation and end/release that root first. There is NO inherited/reentrant root option for new caller operations across FUSE. Migrate synchronous parent APIs to accepted/pending receipts plus continuation. Only private non-operation callback helpers share a gate. Finite runtime-selected JudgmentInfrastructure remains tracked, authorized and receipted, with no self-judgment recursion; correlation conveys no authorization. Durable Proposed/Checking/Refused/ReadyForAdmission states remain distinct from the target method attempt and cannot claim target effects.
+
+
+A Started event contains safe identifiers, method/schema, timestamps, bounded classification and authorized principal references—not raw `args`, prompt, stdout or secrets. Domain results remain with their private owner. If a schema has an explicit safe disclosure annotation, use it; absent annotation means omit, not best-effort string scrubbing. Error event/log values use closed codes and operation locators. Low-entropy private input digests are not exposed as a supposed anonymization technique.
+
+Active/unresolved operation references are never evicted. Keep a bounded resident active index and reject new work at capacity; page completed history from durable scoped records. Terminal history cache eviction does not delete proofs. A lagging subscriber receives a cursor-gap response and reloads an authorized snapshot/event page. Broadcast is only a wake-up. Counters derive once from terminal event identity; a repeated receipt does not double-count. `recent_completed` filters terminal records explicitly and treats unknown as unresolved, not successful history.
+
+## 6. Dynamic context and semantic routing
+
+### 6.1 Reusable pieces, complete coverage and one budget
+
+Preserve each registered specialist's exact intent ID as a recipe (Appendix A). `PieceLibrary` remains the representation for behavior/knowledge/examples/capability descriptors. Add immutable content/version/access/trust metadata, then compose a pinned per-run view rather than copying all catalog content on every consultation. Runtime/memory freshness can affect relevance only; it cannot outrank policy/trusted instructions. Scope memory and record shared `agent_pieces` publisher/provenance explicitly. Imported markdown and tool outputs remain untrusted data.
+
+Remove the appended static-persona second path after migration: requested specialist expertise is selected as pinned recipe pieces in the same composition, not added after budgeting. Grant-filter executor descriptors before rendering; do not advertise hardcoded Rust/Python/TypeScript names as permissions.
+
+Use one explicit budget unit throughout: model tokenizer accounting where supported, with a documented conservative byte bound if tokenizer accounting is unavailable. Reserve system policy, question, schema/tool framing and output allowance first. Add behaviors, knowledge, examples, retrieved context/activity and capabilities only if the whole rendered prompt fits. Reject an oversized required minimum; do not silently truncate authority/context needed to judge the task. Return selected and omitted piece IDs plus a safe omission reason. Capability text can describe a permitted tool but never creates that permission.
+
+### 6.2 TypeSafe: judgments from Jev, decisions in code
+
+Live documentation read for this design: [index](https://docs.typesafe.ai/llms.txt), [System One wire contract](https://docs.typesafe.ai/api/system-one.md), [skill suggestion](https://docs.typesafe.ai/cookbooks/skill_suggestion.md), [companion Noul](https://docs.typesafe.ai/patterns/companion-noul.md), [model jaggedness](https://docs.typesafe.ai/model-jaggedness.md). Documentation retrieval only; no live API requests, no key reads, and no private-code disclosure were performed.
+
+Use the existing JEV routing/provider owner, not a new model-selection daemon, Cargo dispatcher or hardcoded model version. A versioned `judgment_policy` unit keeps state format, question wording/options/criteria and thresholds together. The examples below define semantic contracts, not an independently callable endpoint.
+
+Code first filters the full addressable catalog by scope, enabled/version pins, exact sealed operation availability, executor capability and approved delegation. This is authority filtering, not keyword routing. The semantic selector then follows the cookbook's two-stage disclosure:
+
+1. Over authorized recipe descriptions, ask Choice **“Which candidate's expertise best matches the requested analysis in `task`?”** with meaningful candidate names, plus companion Noul **“Does any candidate describe expertise needed for the requested analysis in `task`?”** The false criterion is a task whose needed expertise is absent from the provided descriptions. Include only the approved, minimal task description and relevant candidate metadata.
+2. Deterministically shortlist at most three by Choice probabilities, stable-ID tie order. Over their full approved descriptions/representative pieces, ask the same Choice and companion Noul, plus one atomic Noul per candidate **“Does this candidate's documented expertise cover the requested analysis in `task`?”** Multi-domain piece inclusion uses independent Nouls, not one forced mutually exclusive Choice.
+3. Resolve the resulting typed judgments in code and separately revalidate authority/pins at execution. A positive answer never authorizes a tool.
+
+Proposed initial, **uncalibrated** policy values: Noul `> 0.7` is yes, `< 0.3` is no, boundaries and the middle band are uncertain; Choice selected probability must be `> 0.7` and selected-candidate coverage Noul `> 0.7`. Keep values with wording. Do not use answer `confidence` as a permission gate or copy the cookbook's empirical thresholds as proof they suit this system.
+
+| Deterministic observation | Outcome |
+|---|---|
+| Exact filtering leaves no authorized candidate | `NoAuthorizedCandidate`; no API call and no widening grants. |
+| API unavailable, malformed/missing answers, out-of-set choice, nonfinite/out-of-range probabilities | `JudgmentUnavailable`; no chosen agent and no keyword/random/default fallback. |
+| Any-fit Noul `< 0.3` | `NoSemanticMatch`; ignore the forced Choice. |
+| Any-fit or selected coverage uncertain/negative, selected probability `<= 0.7`, conflicting stage outcomes or exact tie | `NeedsReview`; preserve safe evidence and request clarification/authorized review. |
+| Any-fit, selected coverage and Choice exceed their thresholds | `Selected(candidate_id)`; still not execution authorization. |
+| Policy/grant/pin changed after selection | `AuthorizationChanged`; stop, do not silently choose another agent. |
+
+Jev does not generate DAGs or perform arithmetic/authorization: graph checks, dates/expiry, counts, budgets, target matching and scheduling remain deterministic code. A generative agent may propose a typed plan; Jev evaluates bounded atomic semantic questions, never “what should the orchestrator do next?” Adversarial text, option ordering, unrelated large state and multi-hop questions are known risks in the jaggedness documentation. Bound and minimize state; record approved request/question revision and response probabilities privately. No production calibration is claimed. Live representative/negative/adversarial/order-variant probes require explicit owner permission, spend budget and data disclosure first.
+
+## 7. Owned plugin contracts and clean cutover
+
+Two canonical Rust-owned schema branches are required: existing **workflows** owns user graph discovery/preview/CRUD/version/run/control; proposed **workstacks** owns task intent/utility orchestration, agent recipes and narrow chatbot submit/status/control. Workstack controller may select a workflow but is not required for standalone graph runs. No current method/plugin existence is claimed for proposed workstacks contracts. Actual executor resolves by approved policy, never free-form caller identity override. Distinct management/submit/control/read capabilities replace assumptions that broad current workflows.write alone represents delegation.
+
+All descriptors, operation files, gRPC shapes and projections derive from their owning PluginSchema/scaffold helpers. No separate schema directory, node catalog, per-persona service/proto, MCP or arbitrary binary-method table. Shared native registry remains the agent metadata source; binary functionality remains discovered sealed contract only.
+
+Cutover sends cognitive agent/orchestration/chatbot work to WorkstackController and authored graph runs to WorkflowController, sharing receipt/tracker primitives rather than a universal domain table. Preserve intent IDs as recipes and migrate all retained callers before removing superseded static persona conventions. Real execution backends stay controlled operations. Reuse old source expertise but no dormant transport/provider/raw shell path. Generator comment claiming orphaned code is stale (`op-agents/src/lib.rs:12` links generator); absent `.agents/generated` stays an honest observation, no unrequested generator run.
+
+## 8. Threat and failure boundaries
+
+- **Confused deputy:** prevent free-form executor identity, preserve requestor target scope and require approved delegation policy plus current executor authority.
+- **Prompt injection:** recipe/memory/examples/results cannot change grants, controller logic, operation binding or disclosure. Typed questions are judgments, not policy.
+- **Private-state leak:** no raw tracker input/Started payloads; exact scoped views, authorized receipt summaries, no credentials in events/helpers/model state.
+- **Double effect:** prebound operation IDs, durable attempt before dispatch, receipt recovery and no replay on timeout/disconnect/restart/missing terminal.
+- **Deadlock/starvation:** start-after-commit, no root gate across controller waits, event-driven bounded reasoning, unchanged serialized effects.
+- **Lease split brain:** CAS revision plus epoch/fence; expiry never automatically redispatches uncertain work.
+- **False completion:** distinguish method receipt from domain success, reasoning result from verified fact, submission from child completion, cancellation request from stopped effect.
+- **Catalog drift:** recipe/piece/schema/policy pins and immutable versions; updates do not silently rewrite running work.
+- **Domain collapse:** workstack phases and control ownership are not workflow execution rows; link IDs only.
+
+## Appendix A — Exhaustive native coverage inventory
+
+### A.1 Source-set accounting and mapping conventions
+
+This is **source-only extraction**, not execution of Rust factory code or a test/build. `unified/registry.rs:24-49` unions 5 execution + 9 persona + 2 orchestration stock keys with 21 explicit migrated keys (`legacy_catalog.rs:60-227`) and 62 migrated persona keys (`:229-853`): **99 unique registry keys**, comprising **81 persona, 12 execution-facing and 6 orchestration IDs**. Adapter `agent_type()` preserves the requested catalog key (`unified/adapter.rs:38-40`); therefore descriptor construction (`agent_catalog.rs:49-77`) is expected to preserve these 99 distinct IDs even where implementations are shared. This descriptor count is a static inference, not a runtime observation.
+
+Historical `agents/` has **86 distinct literal `agent_type()` declarations**: 82 match registry keys and 4 are unmatched (A.3). Those old modules are compiled library source through `agents/mod.rs:22-39`, but `create_agent` no longer selects those classes. Do not conflate compiled source with current factory dispatch. `.agents/generated` is absent: **0 generated markdown/frontmatter files observed**, not evidence all definitions were removed from the registry. `gen-agent-defs.rs:1-22,109-146` defines derived output, not a second authoritative input. No separate specialist/persona markdown input catalog was found in the inspected native directories; skill documentation is not a persona catalog.
+
+Table abbreviations: **U/** = `crates/op-agents/src/unified/`; **A/** = `crates/op-agents/src/agents/`. `P`, `E`, `O` are the current metadata categories, not grants. Each row maps its stable intent to `recipe:<id>` and attributed `catalog:<id>:behavior`, `:knowledge:<n>`, `:example:<n>` pieces; capability pieces are emitted only where supported and must be authority-filtered. Historical contributions add content-addressed provenance pieces without replacing newer catalog policy or re-enabling old execution.
+
+Current linked method status, applying to every row: **P-methods** means schema-generated `cognitive.agent_<sanitized-id>_<op>` for the seven `consult/review/explain/recommend/advise/analyze/help` advice operations, dispatched to retained specialist consultation. **E-methods** means schema-generated execution operations from the registered backend dispatched to `ExecuteCatalog`. **O-methods** means schema-generated metadata/list/validate/run operations dispatched by the retained cognitive workflow function. These are source-declared/linked surfaces, **not assertions of sealing, grants, runtime availability or deployment** (`cognitive_agents.rs:325-429`; `runtime_cognitive.rs:144-152,536-558,587-678`). All are future recipe mappings, not recipe implementation claims.
+
+| Current ID | Kind | Factory source; historical contribution where present | Proposed recipe / piece provenance | Current linked status |
+|---|---|---|---|---|
+| `ai-engineer` | P | U/legacy_catalog.rs; A/aiml/ai_engineer.rs:69 | `recipe:ai-engineer` / `catalog:ai-engineer:*` | P-methods |
+| `api-documenter` | P | U/legacy_catalog.rs; A/content/api_documenter.rs:80 | `recipe:api-documenter` / `catalog:api-documenter:*` | P-methods |
+| `arm-cortex-expert` | P | U/legacy_catalog.rs; A/specialty/arm_cortex_expert.rs:56 | `recipe:arm-cortex-expert` / `catalog:arm-cortex-expert:*` | P-methods |
+| `backend-architect` | P | U/persona/mod.rs; A/architecture/backend_architect.rs:134 | `recipe:backend-architect` / `catalog:backend-architect:*` | P-methods |
+| `backend-security-coder` | P | U/legacy_catalog.rs; A/security/backend_security_coder.rs:56 | `recipe:backend-security-coder` / `catalog:backend-security-coder:*` | P-methods |
+| `bash-pro` | E | U/legacy_catalog.rs; A/language/bash_pro.rs:113 | `recipe:bash-pro` / shared `catalog:shell-executor:*` | E-methods |
+| `business-analyst` | P | U/legacy_catalog.rs; A/business/business_analyst.rs:56 | `recipe:business-analyst` / `catalog:business-analyst:*` | P-methods |
+| `c-pro` | P | U/legacy_catalog.rs; A/language/c_pro.rs:121 | `recipe:c-pro` / `catalog:c-pro:*` | P-methods |
+| `cloud-architect` | P | U/legacy_catalog.rs; A/infrastructure/cloud.rs:73 | `recipe:cloud-architect` / `catalog:cloud-architect:*` | P-methods |
+| `code-review-orchestrator` | O | U/orchestration/mod.rs | `recipe:code-review-orchestrator` / `catalog:code-review-orchestrator:*` | O-methods |
+| `code-reviewer` | P | U/persona/mod.rs; A/analysis/code_reviewer.rs:105 | `recipe:code-reviewer` / `catalog:code-reviewer:*` | P-methods |
+| `compliance-trestle` | P | U/legacy_catalog.rs; A/compliance/trestle.rs:110 | `recipe:compliance-trestle` / `catalog:compliance-trestle:*` | P-methods |
+| `content-marketer` | P | U/legacy_catalog.rs; A/seo/content_marketer.rs:51 | `recipe:content-marketer` / `catalog:content-marketer:*` | P-methods |
+| `context-manager` | O | U/legacy_catalog.rs; A/orchestration/context_manager.rs:71 | `recipe:context-manager` / `catalog:context-manager:*` | O-methods |
+| `cpp-pro` | P | U/legacy_catalog.rs; A/language/cpp_pro.rs:91 | `recipe:cpp-pro` / `catalog:cpp-pro:*` | P-methods |
+| `csharp-pro` | P | U/legacy_catalog.rs; A/language/csharp_pro.rs:105 | `recipe:csharp-pro` / `catalog:csharp-pro:*` | P-methods |
+| `customer-support` | P | U/legacy_catalog.rs; A/business/customer_support.rs:56 | `recipe:customer-support` / `catalog:customer-support:*` | P-methods |
+| `data-engineer` | P | U/legacy_catalog.rs; A/aiml/data_engineer.rs:56 | `recipe:data-engineer` / `catalog:data-engineer:*` | P-methods |
+| `data-scientist` | P | U/legacy_catalog.rs; A/aiml/data_scientist.rs:56 | `recipe:data-scientist` / `catalog:data-scientist:*` | P-methods |
+| `database-architect` | P | U/legacy_catalog.rs; A/database/database_architect.rs:92 | `recipe:database-architect` / `catalog:database-architect:*` | P-methods |
+| `database-optimizer` | P | U/legacy_catalog.rs; A/database/database_optimizer.rs:96 | `recipe:database-optimizer` / `catalog:database-optimizer:*` | P-methods |
+| `dbus-expert` | P | U/persona/mod.rs | `recipe:dbus-expert` / `catalog:dbus-expert:*` | P-methods |
+| `debugger` | P | U/legacy_catalog.rs; A/analysis/debugger.rs:22 | `recipe:debugger` / `catalog:debugger:*` | P-methods |
+| `deployment` | P | U/legacy_catalog.rs | `recipe:deployment` / `catalog:deployment:*` | P-methods |
+| `devops-troubleshooter` | P | U/legacy_catalog.rs; A/operations/devops_troubleshooter.rs:103 | `recipe:devops-troubleshooter` / `catalog:devops-troubleshooter:*` | P-methods |
+| `django-expert` | P | U/persona/mod.rs | `recipe:django-expert` / `catalog:django-expert:*` | P-methods |
+| `django-pro` | P | U/legacy_catalog.rs; A/webframeworks/django_pro.rs:56 | `recipe:django-pro` / `catalog:django-pro:*` | P-methods |
+| `docs-architect` | P | U/legacy_catalog.rs; A/content/docs_architect.rs:82 | `recipe:docs-architect` / `catalog:docs-architect:*` | P-methods |
+| `dx-optimizer` | O | U/legacy_catalog.rs; A/orchestration/dx_optimizer.rs:109 | `recipe:dx-optimizer` / `catalog:dx-optimizer:*` | O-methods |
+| `elixir-pro` | P | U/legacy_catalog.rs; A/language/elixir_pro.rs:105 | `recipe:elixir-pro` / `catalog:elixir-pro:*` | P-methods |
+| `error-detective` | P | U/legacy_catalog.rs; A/specialty/error_detective.rs:51 | `recipe:error-detective` / `catalog:error-detective:*` | P-methods |
+| `fastapi-expert` | P | U/persona/mod.rs | `recipe:fastapi-expert` / `catalog:fastapi-expert:*` | P-methods |
+| `fastapi-pro` | P | U/legacy_catalog.rs; A/webframeworks/fastapi_pro.rs:56 | `recipe:fastapi-pro` / `catalog:fastapi-pro:*` | P-methods |
+| `fedramp` | P | U/legacy_catalog.rs; A/compliance/fedram_agent.rs:118 | `recipe:fedramp` / `catalog:fedramp:*` | P-methods |
+| `flutter-expert` | P | U/legacy_catalog.rs; A/mobile/flutter_expert.rs:56 | `recipe:flutter-expert` / `catalog:flutter-expert:*` | P-methods |
+| `frontend-developer` | P | U/legacy_catalog.rs; A/architecture/frontend_developer.rs:87 | `recipe:frontend-developer` / `catalog:frontend-developer:*` | P-methods |
+| `frontend-security-coder` | P | U/legacy_catalog.rs; A/security/frontend_security_coder.rs:56 | `recipe:frontend-security-coder` / `catalog:frontend-security-coder:*` | P-methods |
+| `gdpr-counsel` | P | U/legacy_catalog.rs; A/compliance/gdpr_counsel.rs:137 | `recipe:gdpr-counsel` / `catalog:gdpr-counsel:*` | P-methods |
+| `go-executor` | E | U/execution/mod.rs | `recipe:go-executor` / `catalog:go-executor:*` | E-methods |
+| `go-pro` | E | U/legacy_catalog.rs | `recipe:go-pro` / shared `catalog:go-executor:*` | E-methods |
+| `golang-pro` | E | U/legacy_catalog.rs; A/language/golang_pro.rs:203 | `recipe:golang-pro` / shared `catalog:go-executor:*` | E-methods |
+| `graphql-architect` | P | U/legacy_catalog.rs; A/architecture/graphql_architect.rs:78 | `recipe:graphql-architect` / `catalog:graphql-architect:*` | P-methods |
+| `hr-pro` | P | U/legacy_catalog.rs; A/business/hr_pro.rs:56 | `recipe:hr-pro` / `catalog:hr-pro:*` | P-methods |
+| `hybrid-cloud-architect` | P | U/legacy_catalog.rs; A/specialty/hybrid_cloud_architect.rs:51 | `recipe:hybrid-cloud-architect` / `catalog:hybrid-cloud-architect:*` | P-methods |
+| `incident-responder` | P | U/legacy_catalog.rs; A/operations/incident_responder.rs:103 | `recipe:incident-responder` / `catalog:incident-responder:*` | P-methods |
+| `ios-developer` | P | U/legacy_catalog.rs; A/mobile/ios_developer.rs:56 | `recipe:ios-developer` / `catalog:ios-developer:*` | P-methods |
+| `java-pro` | P | U/legacy_catalog.rs; A/language/java_pro.rs:114 | `recipe:java-pro` / `catalog:java-pro:*` | P-methods |
+| `javascript-executor` | E | U/execution/mod.rs | `recipe:javascript-executor` / `catalog:javascript-executor:*` | E-methods |
+| `javascript-pro` | E | U/legacy_catalog.rs; A/language/javascript_pro.rs:191 | `recipe:javascript-pro` / shared `catalog:javascript-executor:*` | E-methods |
+| `julia-pro` | P | U/legacy_catalog.rs; A/language/julia_pro.rs:87 | `recipe:julia-pro` / `catalog:julia-pro:*` | P-methods |
+| `k8s` | P | U/legacy_catalog.rs | `recipe:k8s` / `catalog:k8s:*` | P-methods |
+| `kubernetes` | P | U/legacy_catalog.rs | `recipe:kubernetes` / `catalog:kubernetes:*` | P-methods |
+| `kubernetes-expert` | P | U/persona/mod.rs | `recipe:kubernetes-expert` / `catalog:kubernetes-expert:*` | P-methods |
+| `legacy-modernizer` | P | U/legacy_catalog.rs; A/specialty/legacy_modernizer.rs:51 | `recipe:legacy-modernizer` / `catalog:legacy-modernizer:*` | P-methods |
+| `legal-advisor` | P | U/legacy_catalog.rs; A/business/legal_advisor.rs:57 | `recipe:legal-advisor` / `catalog:legal-advisor:*` | P-methods |
+| `memory` | O | U/legacy_catalog.rs; A/orchestration/memory.rs:456 | `recipe:memory` / `catalog:memory:*` | O-methods |
+| `mermaid-expert` | P | U/legacy_catalog.rs; A/content/mermaid_expert.rs:76 | `recipe:mermaid-expert` / `catalog:mermaid-expert:*` | P-methods |
+| `ml-engineer` | P | U/legacy_catalog.rs; A/aiml/ml_engineer.rs:51 | `recipe:ml-engineer` / `catalog:ml-engineer:*` | P-methods |
+| `mlops-engineer` | P | U/legacy_catalog.rs; A/aiml/mlops_engineer.rs:56 | `recipe:mlops-engineer` / `catalog:mlops-engineer:*` | P-methods |
+| `mobile-developer` | P | U/legacy_catalog.rs; A/mobile/mobile_developer.rs:59 | `recipe:mobile-developer` / `catalog:mobile-developer:*` | P-methods |
+| `mobile-security-coder` | P | U/legacy_catalog.rs; A/security/mobile_security_coder.rs:56 | `recipe:mobile-security-coder` / `catalog:mobile-security-coder:*` | P-methods |
+| `network-engineer` | P | U/legacy_catalog.rs; A/infrastructure/network.rs:46 | `recipe:network-engineer` / `catalog:network-engineer:*` | P-methods |
+| `observability-engineer` | P | U/legacy_catalog.rs; A/specialty/observability_engineer.rs:56 | `recipe:observability-engineer` / `catalog:observability-engineer:*` | P-methods |
+| `opencontrol` | P | U/legacy_catalog.rs; A/compliance/opencontrol.rs:112 | `recipe:opencontrol` / `catalog:opencontrol:*` | P-methods |
+| `oscal-auditor` | P | U/legacy_catalog.rs; A/compliance/oscal_auditor.rs:128 | `recipe:oscal-auditor` / `catalog:oscal-auditor:*` | P-methods |
+| `payment-integration` | P | U/legacy_catalog.rs; A/business/payment_integration.rs:57 | `recipe:payment-integration` / `catalog:payment-integration:*` | P-methods |
+| `performance-engineer` | P | U/legacy_catalog.rs; A/analysis/performance.rs:56 | `recipe:performance-engineer` / `catalog:performance-engineer:*` | P-methods |
+| `php-pro` | P | U/legacy_catalog.rs; A/language/php_pro.rs:133 | `recipe:php-pro` / `catalog:php-pro:*` | P-methods |
+| `policy-enforcer` | P | U/legacy_catalog.rs; A/compliance/policy_enforcer.rs:122 | `recipe:policy-enforcer` / `catalog:policy-enforcer:*` | P-methods |
+| `prompt-engineer` | P | U/legacy_catalog.rs; A/aiml/prompt_engineer.rs:57 | `recipe:prompt-engineer` / `catalog:prompt-engineer:*` | P-methods |
+| `python-executor` | E | U/execution/mod.rs | `recipe:python-executor` / `catalog:python-executor:*` | E-methods |
+| `python-pro` | E | U/legacy_catalog.rs; A/language/python_pro.rs:195 | `recipe:python-pro` / shared `catalog:python-executor:*` | E-methods |
+| `quant-analyst` | P | U/legacy_catalog.rs; A/specialty/quant_analyst.rs:51 | `recipe:quant-analyst` / `catalog:quant-analyst:*` | P-methods |
+| `react-expert` | P | U/persona/mod.rs | `recipe:react-expert` / `catalog:react-expert:*` | P-methods |
+| `ruby-pro` | P | U/legacy_catalog.rs; A/language/ruby_pro.rs:108 | `recipe:ruby-pro` / `catalog:ruby-pro:*` | P-methods |
+| `rust-executor` | E | U/execution/mod.rs | `recipe:rust-executor` / `catalog:rust-executor:*` | E-methods |
+| `rust-pro` | E | U/legacy_catalog.rs; A/language/rust_pro.rs:217 | `recipe:rust-pro` / shared `catalog:rust-executor:*` | E-methods |
+| `sales-automator` | P | U/legacy_catalog.rs; A/business/sales_automator.rs:56 | `recipe:sales-automator` / `catalog:sales-automator:*` | P-methods |
+| `scala-pro` | P | U/legacy_catalog.rs; A/language/scala_pro.rs:82 | `recipe:scala-pro` / `catalog:scala-pro:*` | P-methods |
+| `schema-as-code` | P | U/legacy_catalog.rs; A/compliance/schema_as_code.rs:379 | `recipe:schema-as-code` / `catalog:schema-as-code:*` | P-methods |
+| `search-specialist` | P | U/legacy_catalog.rs; A/seo/search_specialist.rs:301 | `recipe:search-specialist` / `catalog:search-specialist:*` | P-methods |
+| `security-auditor` | P | U/persona/mod.rs; A/analysis/security_auditor.rs:95 | `recipe:security-auditor` / `catalog:security-auditor:*` | P-methods |
+| `seo-content-writer` | P | U/legacy_catalog.rs; A/seo/seo_content_writer.rs:51 | `recipe:seo-content-writer` / `catalog:seo-content-writer:*` | P-methods |
+| `seo-keyword-strategist` | P | U/legacy_catalog.rs; A/seo/seo_keyword_strategist.rs:52 | `recipe:seo-keyword-strategist` / `catalog:seo-keyword-strategist:*` | P-methods |
+| `seo-meta-optimizer` | P | U/legacy_catalog.rs; A/seo/seo_meta_optimizer.rs:40 | `recipe:seo-meta-optimizer` / `catalog:seo-meta-optimizer:*` | P-methods |
+| `sequential-thinking` | O | U/legacy_catalog.rs; A/orchestration/sequential_thinking.rs:46 | `recipe:sequential-thinking` / `catalog:sequential-thinking:*` | O-methods |
+| `shell-executor` | E | U/execution/mod.rs | `recipe:shell-executor` / `catalog:shell-executor:*` | E-methods |
+| `snowball-developer` | P | U/legacy_catalog.rs; A/specialty/snowball_developer.rs:51 | `recipe:snowball-developer` / `catalog:snowball-developer:*` | P-methods |
+| `sql-pro` | P | U/legacy_catalog.rs; A/database/sql_pro.rs:98 | `recipe:sql-pro` / `catalog:sql-pro:*` | P-methods |
+| `stig-auditor` | P | U/legacy_catalog.rs; A/compliance/stig_auditor.rs:122 | `recipe:stig-auditor` / `catalog:stig-auditor:*` | P-methods |
+| `systemd-expert` | P | U/persona/mod.rs | `recipe:systemd-expert` / `catalog:systemd-expert:*` | P-methods |
+| `tdd-orchestrator` | O | U/orchestration/mod.rs; A/orchestration/tdd_orchestrator.rs:74 | `recipe:tdd-orchestrator` / `catalog:tdd-orchestrator:*` | O-methods |
+| `temporal-python-pro` | P | U/legacy_catalog.rs; A/webframeworks/temporal_python_pro.rs:57 | `recipe:temporal-python-pro` / `catalog:temporal-python-pro:*` | P-methods |
+| `terraform` | P | U/legacy_catalog.rs | `recipe:terraform` / `catalog:terraform:*` | P-methods |
+| `test-automator` | P | U/legacy_catalog.rs; A/operations/test_automator.rs:108 | `recipe:test-automator` / `catalog:test-automator:*` | P-methods |
+| `tutorial-engineer` | P | U/legacy_catalog.rs; A/content/tutorial_engineer.rs:72 | `recipe:tutorial-engineer` / `catalog:tutorial-engineer:*` | P-methods |
+| `typescript-pro` | E | U/legacy_catalog.rs; A/language/typescript_pro.rs:141 | `recipe:typescript-pro` / shared `catalog:javascript-executor:*` | E-methods |
+| `ui-ux-designer` | P | U/legacy_catalog.rs; A/specialty/ui_ux_designer.rs:56 | `recipe:ui-ux-designer` / `catalog:ui-ux-designer:*` | P-methods |
+| `unity-developer` | P | U/legacy_catalog.rs; A/specialty/unity_developer.rs:51 | `recipe:unity-developer` / `catalog:unity-developer:*` | P-methods |
+
+### A.2 Existing shared implementations and aliases
+
+There are no duplicate registry keys in the extracted union. Existing execution aliases are real current factory mappings, not new proposed compatibility shims: `rust-pro -> rust-executor`, `python-pro -> python-executor`, `javascript-pro -> javascript-executor`, `typescript-pro -> javascript-executor`, `golang-pro -> go-executor`, `go-pro -> go-executor`, `bash-pro -> shell-executor` (`legacy_catalog.rs:66-72`). Preserve their distinct current intent/provenance IDs in recipes while sharing backend components. `k8s`, `kubernetes`, `kubernetes-expert`, `django-pro`/`django-expert` and `fastapi-pro`/`fastapi-expert` are separately registered persona IDs, not established aliases to collapse. Names such as `java-pro`, `c-pro` and `cpp-pro` are currently personas despite RunCode capability metadata; do not fabricate executable backends from those labels. React/systemd expertise may be retained as knowledge while current application/host policy still forbids React implementation or systemctl service control here.
+
+### A.3 Unmatched historical declarations — preserved expertise, not hot dispatch
+
+| Historical ID and declaration | Current factory/method | Proposed attributed contribution | Cutover treatment |
+|---|---|---|---|
+| `deployment-engineer`, A/infrastructure/deployment.rs:100 | None under that ID | Release/deployment expertise pieces attached to `recipe:deployment`, retaining original ID/source digest | No asserted alias or old execution revival. |
+| `kubernetes-architect`, A/infrastructure/kubernetes.rs:111 | None under that ID | Kubernetes architecture pieces shared by the explicit Kubernetes recipes, retaining original ID/source digest | Preserve different intent provenance, not an invented live alias. |
+| `terraform-specialist`, A/infrastructure/terraform.rs:110 | None under that ID | Terraform expertise pieces attached to `recipe:terraform`, retaining original ID/source digest | No direct legacy command path. |
+| `mem0`, A/orchestration/mem0_wrapper.rs:65 | None under that ID | Memory-advisor expertise attributed within `recipe:memory` | Do not revive mem0 provider, historical storage dependency or duplicate session ledger. |
+
+All 86 historical declaration IDs are therefore either linked to one of the 99 current intent rows or explicitly classified above; none is silently counted as hot dispatch. Extraction preserves applicable expertise and examples, not historical canned outputs, obsolete deployment advice, arbitrary shell behavior or superseded identity policy. Import records account for each content section with preserved digest or an explicit policy-superseded reason; no useful knowledge/example may disappear merely because the current generic persona template is shorter.
+
+### A.4 Coverage acceptance contract
+
+At implementation time derive `registered_ids`, `descriptor_ids`, `recipe_seed_ids`, `historical_ids`, `historical_contribution_ids` and any `generated_frontmatter_ids` mechanically from their owners. Require `registered_ids == descriptor_ids == recipe_seed_ids` for the native stock set; every historical ID must be in the registered set or the explicit contribution classification set. Assert unique stable IDs and no accidental alias collapse. When generated markdown exists, its IDs must match its documented owner projection or be explicitly classified as stale/orphaned; absence now is recorded rather than manufactured into equality. No generator/build/test is run by this design.
+
+External configuration inventory uses **exact set reconciliation**, not just enabled/reachable delegates. For each authorized-visible snapshot enumerate every agent, risk-profile and runtime-profile map key, including disabled, unreachable and unused entries. Preserve enabled/reachability state, profile assignments and source revision. Use `(source_id, kind, alias)` identity with an importer namespace, so an external `memory` agent or two `balanced` profile kinds cannot collide with native recipes or each other. Require `visible_keys == represented_keys ∪ explicitly_unsupported_keys`, disjointly, per source/kind; unsupported entries retain a safe reason and provenance. Never silently drop an entry because no current agent uses it. Dynamic definitions cannot mint principals, add tools or replace native schema authority; native selectors can shortlist without hiding the full catalog.
+
+
+## Appendix B — Complete source-defined external profile/personality representation
+
+| Source-defined category | All named entries | Count / archive evidence | Native representation |
+|---|---|---|---|
+| Risk presets, not specialist agents | `locked_down`, `balanced`, `yolo` | 3; C/presets.rs:37-63, discovered by R/quickstart/mod.rs:543 | Provenance-bearing profile metadata only. Never import wildcard commands, sandbox-off or approval bypass as native grants. |
+| Runtime presets, not workers | `tight`, `local_small`, `balanced`, `unbounded` | 4; C/presets.rs:147-150,171-203; R/quickstart/mod.rs:544 | Budget/profile source metadata constrained by native policy; `unbounded` is not an accepted unlimited native budget. |
+| Server personality starter | `default` | 1; R/agent/personality_templates/mod.rs:51-80; U/crates/zeroclaw-gateway/src/api_personality.rs:328-375 | Importable context seed reference, not a specialist or execution identity. |
+| UI editing starts | `default`, `blank` | 2 choices; U/web/src/components/sections/PersonalityEditor.tsx:46-50,78-83,88-115 | Editor provenance; blank is not another runtime persona/template. |
+| Personality context files | `SOUL.md`, `IDENTITY.md`, `USER.md`, `AGENTS.md`, `TOOLS.md`, `HEARTBEAT.md`, `BOOTSTRAP.md`, `MEMORY.md` | 8 loaded names, 7 editable (excludes BOOTSTRAP); R/agent/personality.rs:10-30 | Attributed scoped context pieces. Upstream IDENTITY.md text is not native identity material or authority. |
+| Agent aliases and installed risk/runtime aliases | All authorized-visible configured keys, including disabled/unreachable agents and unused profiles | C/schema.rs:452-469,3860-3933; full-map discovery R/quickstart/mod.rs:521-525, separate reachable subset R/tools/mod.rs:1405-1414 | Reconcile exact source/kind/alias sets into represented or explicitly unsupported records; preserve state/assignments and apply native role policy. No invented researcher/coder/reviewer list. |
+
+Installed aliases, active profile assignments and discoverable methods were not queried. Their count remains unknown, not zero. Where a sealed discovery/config method is unavailable, report unsupported import, never read service-private files or invent an endpoint. Risk/runtime/personality entries above are fully represented as source concepts, not miscounted as specialist instances. A discovered imported delegate recipe cannot enable the stock autonomous adapter rejected in §2.6.
+
+Upstream `TaskKind` has Delegate/Subagent/Goal/PeerInbox (R/control_plane/task_registry.rs:7-18); these are task types, not specialist names or workstacks. Todo plans are display/plan lists (R/tools/todo_write.rs:6-10,24-73,114-136); SOP authored steps/checkpoints are workflows (R/sop/types.rs:237-297,688-715). The independent review found no production workstack implementation in the inspected upstream crates/root source. Do not rename tasks, plans, queues or SOP workflows as native workstacks.
