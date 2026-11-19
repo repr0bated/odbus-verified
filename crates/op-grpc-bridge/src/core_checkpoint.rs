@@ -135,7 +135,7 @@ impl PersistentCore {
 
     /// Immutable decisions and their contexts are checked before append, and
     /// again against the immediately preceding canonical event during replay.
-    pub(super) fn validate_control_predecessor(&self, scope: &StateScope,
+    pub(crate) fn validate_control_predecessor(&self, scope: &StateScope,
         record: &ExecutionRecord, allow_idempotent: bool) -> Result<Option<ExecutionRecord>> {
         if let Some(previous) = latest_control(self, scope, &record.context.operation_id)? {
             ensure!(previous.context == record.context, "checkpoint attribution is immutable");

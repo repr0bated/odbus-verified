@@ -269,8 +269,9 @@ impl ChatRuntime {
             input.validate()?;
             let _guard = ChatRouterRuntimeClient::selection_guard().await;
             let checkpoint = ctx.checkpoint.context("judgment requires an approved execution-role checkpoint")?;
-            ensure!(matches!(checkpoint.class, crate::runtime::CallClass::JudgmentInfrastructure { depth:1,.. }),
-                "judgment requires finite native judgment infrastructure");
+            if !matches!(checkpoint.class, crate::runtime::CallClass::JudgmentInfrastructure { depth:1,.. }) {
+                return Err(anyhow::anyhow!("judgment requires finite native judgment infrastructure").into());
+            }
             let alias = checkpoint.native_agent_alias.as_deref().context("approved judgment native-agent route is absent")?;
             let client = native_client(ctx, alias).await?;
             let result = client.judge_under_guard(input, direct_provider_admission(ctx)?, &config_secrets(ctx.schema)?).await
@@ -281,8 +282,9 @@ impl ChatRuntime {
             let input: op_agents::inference::CompleteTextInput = decode(args)?;
             input.validate()?;
             let checkpoint = ctx.checkpoint.context("text completion requires an approved execution-role checkpoint")?;
-            ensure!(matches!(checkpoint.class, crate::runtime::CallClass::Ordinary),
-                "text completion cannot run as judgment or final-response infrastructure");
+            if !matches!(checkpoint.class, crate::runtime::CallClass::Ordinary) {
+                return Err(anyhow::anyhow!("text completion cannot run as judgment or final-response infrastructure").into());
+            }
             let alias = checkpoint.native_agent_alias.as_deref().context("approved inference native-agent route is absent")?;
             let _guard = ChatRouterRuntimeClient::selection_guard().await;
             let client = native_client(ctx,alias).await?;
