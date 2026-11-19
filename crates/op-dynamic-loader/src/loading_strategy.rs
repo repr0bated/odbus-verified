@@ -62,11 +62,14 @@ impl LoadingStrategy for SmartLoadingStrategy {
         }
 
         // Check execution frequency
-        let recent_executions = self.execution_tracker.list_recent_completed(50).await;
+        // get_priority has no caller scope; use the unscoped legacy history
+        // view (same as op-chat get_history) since the tracker became scoped.
+        let scope = ExecutionContext::new("legacy.history");
+        let recent_executions = self.execution_tracker.recent_completed(&scope, 50).await;
 
         let tool_executions = recent_executions
             .iter()
-            .filter(|exec| exec.tool_name == tool_name)
+            .filter(|exec| exec.context.tool_name == tool_name)
             .count();
 
         // Priority based on usage frequency
