@@ -19,22 +19,21 @@ impl ExecutionTelemetry {
 
     /// Start execution span
     #[instrument(skip(self, context), fields(
-        execution_id = %context.execution_id,
+        operation_id = %context.operation_id,
         trace_id = %context.trace_id,
         tool_name = %context.tool_name,
-        status = %context.status,
         service = %self.service_name
     ))]
     pub fn start_execution_span(&self, context: &ExecutionContext) {
         info!(
-            parent_id = ?context.parent_id,
+            parent_operation_id = ?context.parent_operation_id,
             "Started execution trace span"
         );
     }
 
     /// End execution span
     #[instrument(skip(self, context, result), fields(
-        execution_id = %context.execution_id,
+        operation_id = %context.operation_id,
         tool_name = %context.tool_name,
         success = result.success,
         duration_ms = result.duration_ms,
@@ -43,28 +42,26 @@ impl ExecutionTelemetry {
     pub fn end_execution_span(&self, context: &ExecutionContext, result: &ExecutionResult) {
         if result.success {
             info!(
-                final_status = %context.status,
+                outcome = "domain_response",
                 "Execution completed successfully"
             );
         } else {
             info!(
-                final_status = %context.status,
-                error = ?result.error,
+                outcome = "domain_error",
                 "Execution failed"
             );
         }
     }
 
     /// Record execution event
-    #[instrument(skip(self, context), fields(
-        execution_id = %context.execution_id,
+    #[instrument(skip(self, context, event_name, _details), fields(
+        operation_id = %context.operation_id,
         tool_name = %context.tool_name,
         service = %self.service_name
     ))]
-    pub fn record_event(&self, context: &ExecutionContext, event_name: &str, details: &str) {
+    pub fn record_event(&self, context: &ExecutionContext, event_name: &str, _details: &str) {
         info!(
-            event = event_name,
-            details = details,
+            recognized_event = matches!(event_name, "reserved" | "admitted" | "completed" | "unknown"),
             "Recorded execution event"
         );
     }

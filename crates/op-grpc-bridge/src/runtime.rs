@@ -366,6 +366,7 @@ struct RuntimeInner {
     core: BridgeCore,
     catalog_dir: PathBuf,
     execution: ExecutionAdmission,
+    tracker: op_execution_tracker::ExecutionTracker,
     documents: Arc<RuntimeDocuments>,
     identity_store: Arc<CozoGraphShuttle>,
     chat: crate::runtime_chat::ChatRuntime,
@@ -430,6 +431,7 @@ impl Runtime {
                 core,
                 catalog_dir,
                 execution: ExecutionAdmission::default(),
+                tracker: op_execution_tracker::ExecutionTracker::new(1024),
                 documents,
                 identity_store,
                 chat,
@@ -629,18 +631,44 @@ impl Runtime {
         operation_id: Uuid,
     ) -> Pin<Box<dyn Future<Output = Result<RuntimeResult, RuntimeError>> + Send + 'a>> {
         Box::pin(async move {
-            // A transport dropping its waiter does not cancel a submitted native effect.
+            let context = op_execution_tracker::ExecutionContext {
+                operation_id: operation_id.to_string(), trace_id: caller.trace_id.clone(),
+                parent_operation_id: None, tool_name: format!("{plugin}.{method}"),
+                executor_principal_id: Some(caller.principal_id.clone()),
+                executor_session_id: Some(caller.session_id.clone()), attribution: None,
+            };
+            self.inner.tracker.reserve(context).await
+                .map_err(|_| RuntimeError::denied("execution checkpoint capacity or correlation refused"))?;
             let runtime = self.clone();
             let plugin = plugin.to_owned();
             let method = method.to_owned();
+            // The detached native owner, never the transport waiter, reconciles
+            // every outcome, including panic and withheld post-effect replies.
             tokio::spawn(async move {
-                runtime
-                    .call_owned(caller, plugin, method, args, operation_id)
-                    .await
-            })
-            .await
-            .map_err(|error| RuntimeError::unknown(error.into()).at_operation(operation_id))?
-            .map_err(|error| error.at_operation(operation_id))
+                use futures::FutureExt as _;
+                let principal = caller.principal_id.clone();
+                let session = caller.session_id.clone();
+                let outcome = std::panic::AssertUnwindSafe(
+                    runtime.call_owned(caller, plugin, method, args, operation_id),
+                ).catch_unwind().await.unwrap_or_else(|_| Err(
+                    RuntimeError::unknown(anyhow::anyhow!("native owner interrupted")).at_operation(operation_id),
+                ));
+                let recovery = runtime.core().recover_operation(&operation_id.to_string(), &principal, &session);
+                let proof = recovery.as_ref().ok().and_then(|recovery| recovery.attempt.clone().map(|attempt|
+                    op_execution_tracker::ExecutionProof { operation_id: operation_id.to_string(),
+                        attempt, terminal: recovery.terminal.clone() }));
+                use op_execution_tracker::ExecutionStatus as Status;
+                let status = match (&outcome, recovery.as_ref().ok().map(|receipt| &receipt.status)) {
+                    (Ok(_), _) => Status::ReceiptCompleted,
+                    (Err(_), Some(op_state_store::method_receipt::MethodRecoveryStatus::Completed)) => Status::NeedsReview,
+                    (Err(_), Some(op_state_store::method_receipt::MethodRecoveryStatus::Failed)) => Status::FailedBeforeEffect,
+                    (Err(error), _) if proof.is_none() && error.is_denied() => Status::Denied,
+                    _ => Status::OutcomeUnknown,
+                };
+                runtime.inner.tracker.finish(&operation_id.to_string(), status, proof).await
+                    .map_err(|_| RuntimeError::unknown(anyhow::anyhow!("execution checkpoint reconciliation unavailable")).at_operation(operation_id))?;
+                outcome
+            }).await.map_err(|error| RuntimeError::unknown(error.into()).at_operation(operation_id))?
         })
     }
     pub(crate) async fn call_nested(

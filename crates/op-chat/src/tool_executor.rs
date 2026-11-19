@@ -207,22 +207,9 @@ impl TrackedToolExecutor {
         };
 
         // Create execution context
-        let mut context = ExecutionContext::new(tool_name);
-
-        // Store input arguments and initiator in metadata
-        let mut metadata = simd_json::value::owned::Object::new();
-        metadata.insert("arguments".to_string(), arguments.clone());
-        if let Some(initiator) = &initiated_by {
-            metadata.insert("initiated_by".to_string(), Value::String(initiator.clone()));
-        }
-        context.set_metadata(Value::Object(Box::new(metadata)));
-
-        // Start tracking
-        let execution_record = self
-            .tracker
-            .start_execution(tool_name, Some(arguments.clone()), initiated_by.clone())
-            .await;
-        let execution_id = execution_record.id.clone();
+        let context = ExecutionContext::new(tool_name);
+        let execution_record = self.tracker.reserve(context).await?;
+        let execution_id = execution_record.context.operation_id.clone();
 
         info!(
             execution_id = %execution_id,
@@ -289,25 +276,10 @@ impl TrackedToolExecutor {
             }
         };
 
-        // Complete tracking
-        if execution_result.success {
-            self.tracker
-                .complete_execution(
-                    &execution_id,
-                    simd_json::to_string(&execution_result.result).ok(),
-                )
-                .await;
-        } else {
-            self.tracker
-                .fail_execution(
-                    &execution_id,
-                    execution_result
-                        .error
-                        .clone()
-                        .unwrap_or("Unknown error".to_string()),
-                )
-                .await;
-        }
+        // This legacy tool adapter owns a domain result, not a BridgeCore
+        // terminal proof. Do not advertise it as a receipted native effect.
+        self.tracker.finish(&execution_id,
+            op_execution_tracker::ExecutionStatus::OutcomeUnknown, None).await?;
 
         Ok(TrackedResult {
             result: execution_result,
@@ -354,15 +326,14 @@ impl TrackedToolExecutor {
 
     /// Get execution history (recent completed executions)
     pub async fn get_history(&self, limit: usize) -> Vec<Value> {
-        let records = self.tracker.get_recent(limit).await;
+        let records = self.tracker.recent_completed(&ExecutionContext::new("legacy.history"), limit).await;
         records
             .into_iter()
             .map(|r| {
                 simd_json::json!({
-                    "id": r.id,
-                    "tool_name": r.tool_name,
+                    "operation_id": r.context.operation_id,
+                    "tool_name": r.context.tool_name,
                     "status": format!("{:?}", r.status),
-                    "initiated_by": r.initiated_by,
                 })
             })
             .collect()
@@ -370,8 +341,12 @@ impl TrackedToolExecutor {
 
     /// Get execution statistics
     pub async fn get_stats(&self) -> Value {
-        let stats = self.tracker.get_stats().await;
+        let Some((through_cursor, stats)) = self.tracker.get_stats(&ExecutionContext::new("legacy.statistics")).await else {
+            return simd_json::json!({"status":"unavailable","reason":"durable_execution_aggregate_not_loaded"});
+        };
         simd_json::json!({
+            "status": "available",
+            "through_cursor": through_cursor,
             "total_executions": stats.total_executions,
             "successful_executions": stats.successful_executions,
             "failed_executions": stats.failed_executions,

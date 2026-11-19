@@ -33,18 +33,18 @@ impl SmartLoadingStrategy {
 
 #[async_trait]
 impl LoadingStrategy for SmartLoadingStrategy {
-    async fn should_load(&self, tool_name: &str, _context: &ExecutionContext) -> bool {
+    async fn should_load(&self, tool_name: &str, context: &ExecutionContext) -> bool {
         // Always load if it's a critical tool
         if self.is_critical_tool(tool_name) {
             return true;
         }
 
         // Check recent execution history
-        let recent_executions = self.execution_tracker.list_recent_completed(10).await;
+        let recent_executions = self.execution_tracker.recent_completed(context, 10).await;
 
         let recent_tool_executions = recent_executions
             .iter()
-            .filter(|exec| exec.tool_name == tool_name)
+            .filter(|exec| exec.context.tool_name == tool_name)
             .count();
 
         // Load if recently used (last 10 executions)
