@@ -1,58 +1,74 @@
 # Implementation Plan
 
 Spec only. Not approved for implementation; waits for the owner's go-ahead
-and answers to the design's Open Questions (at least 1, 2, 3, 4, 9, 12, 14).
-Tasks that change `op-grpc-bridge` or the `_3tched-fs` receipt contract need
-explicit owner approval at that point, because both are shared, running
-components. Order matters: readers before writers (design "Error Handling").
+and answers to the design's Open Questions (at least 1, 2, 3, 4, 9, 11, 12,
+14, 15). Tasks that change `op-grpc-bridge` or the `_3tched-fs` receipt
+contract need explicit owner approval at that point, because both are shared,
+running components. Order matters: readers before writers (design "Error
+Handling").
 
 - [ ] 1. Tag types and hashing in `op-state-store`
   - [ ] 1.1 Add `SubsidiaryRole` and optional `subsidiary_id` / `subsidiary_role` to `ChainEvent` and `CanonicalEventPayload` with `skip_serializing_if = "Option::is_none"` (same pattern as `sealed_id_digest`); leave `LegacyCanonicalEventPayload` unchanged
   - [ ] 1.2 Tests: untagged events from fixed fixtures hash byte-identically to today; a tagged event's hash changes and `verify()` passes; serialized untagged events contain no new keys
   - _Requirements: 2.3, 11.1, 11.2_
-- [ ] 2. Link chain module `op-state-store/src/subsidiary_chain.rs` (pure, no IO)
-  - [ ] 2.1 `SubsidiaryLink`, per-id genesis, `link_hash`, salted `receipt_leaf`, keyed `anchor_tag`, blake3 Merkle root and proof
-  - [ ] 2.2 Anchor payload type `op-subsidiary/anchor@1` with a constructor that only accepts hashes and integers
-  - [ ] 2.3 Tests: distinct genesis per id, linkage break detected by seq, proof round-trip, a flipped byte fails, payload contains no plaintext id
-  - _Requirements: 3.2, 3.3, 4.1, 4.2, 4.3, 4.6_
-- [ ] 3. `SubsidiaryReceiptRef` on `MethodExecutionReceipt` and `MethodReceiptRecovery` (optional, omitted when absent), with tests that existing receipts serialize unchanged
+- [ ] 2. Names, chain ids and the link chain in `op-state-store/src/subsidiary_chain.rs` (pure, no IO)
+  - [ ] 2.1 `SubsidiaryName` validator (regex, no `--`, reserved names) and `ChainId` = `<name>::mainchain` with `collection_name()` (`::` → `__`) and its reverse
+  - [ ] 2.2 `SubsidiaryLink` with `chain_id`, genesis from the chain id, `link_hash`, salted `receipt_leaf`, keyed `anchor_tag` over the chain id, blake3 Merkle root and proof
+  - [ ] 2.3 Anchor payload type `op-subsidiary/anchor@1` with a constructor that only accepts hashes and integers
+  - [ ] 2.4 Tests: name accept/refuse table, chain id and collection name round-trip, distinct genesis per chain id, linkage break detected by seq, proof round-trip, a flipped byte fails, payload contains no name, chain id or id in plaintext
+  - _Requirements: 1.8, 1.11, 3.2, 3.3, 4.1, 4.2, 4.3, 4.6, 9.1_
+- [ ] 3. `SubsidiaryReceiptRef` (with `chain_id`) on `MethodExecutionReceipt` and `MethodReceiptRecovery` (optional, omitted when absent), with tests that existing receipts serialize unchanged
   - _Requirements: 2.4, 4.4, 11.2_
 - [ ] 4. Execution tracker fields: optional `executor_subsidiary_id` / `requestor_subsidiary_id` on `ExecutionContext` and `DelegationAttribution`; tests for old JSON still parsing and new JSON round-trip
   - _Requirements: 2.4, 11.2_
 - [ ] 5. Offline verifier bin `op-subsidiary-verify` (receipt + proof + anchor payload → ok/fail, no network), with a golden test
   - _Requirements: 4.7_
-- [ ] 6. Registry relations in `op-cozo-store` (`subsidiary`, `subsidiary_by_principal`, `subsidiary_by_instance`, `subsidiary_link`, `subsidiary_anchor`)
-  - [ ] 6.1 Create/read/update functions with uniqueness checks on principal and instance UUID
-  - [ ] 6.2 Tests on an in-memory `CozoGraphShuttle`: mint format, refusal of a second binding, rebind keeps the id, retired ids listed
-  - _Requirements: 1.1, 1.2, 1.6, 1.7, 9.5_
-- [ ] 7. Bridge resolution and tagging in `PersistentCore` (owner approval required)
-  - [ ] 7.1 `SubsidiaryResolver::for_scope` called in `append` before `compute_hash`; `Public → None`; resolver error fails the append closed
-  - [ ] 7.2 Link index written in `accept_metadata`; rebuilt in `walk_records` on open and compared; mismatch latches `failure`
-  - [ ] 7.3 Write `/run/op-dbus/subsidiary-principals.json` and `subsidiary-ceilings.json` atomically on registry change
-  - [ ] 7.4 Tests: tagged append, untagged public append, tampered stored link latches failure, resolver failure writes nothing
-  - _Requirements: 1.4, 2.1, 2.5, 2.6, 3.1, 3.4_
-- [ ] 8. Capability ceiling check for subsidiary callers in bridge admission, and refusal of protected tasks for subsidiary principals in `task_elevation`; tests that the check only narrows
+- [ ] 6. Registry relations in `op-cozo-store` (main ledger Cozo): `subsidiary`, `subsidiary_by_name`, `subsidiary_by_principal`, `subsidiary_by_instance`, `subsidiary_link`, `subsidiary_anchor`, `subsidiary_replica`
+  - [ ] 6.1 Create/read/update functions with uniqueness checks on name (forever, including retired and destroyed), principal and instance UUID; no rename function
+  - [ ] 6.2 Tests on an in-memory `CozoGraphShuttle`: mint format, name refusal after retirement, refusal of a second binding, rebind keeps id and name, retired ids listed
+  - _Requirements: 1.1, 1.2, 1.6, 1.7, 1.9, 1.10, 9.8_
+- [ ] 7. Subsidiary replica store in `op-cozo-store`: open a subsidiary's own Cozo DB with `new_persistent_private`, relations `subsidiary_link`, `subsidiary_anchor`, `chain_vector_link`, `replica_meta`; idempotent `apply(edges, seq)` in one transaction; `rebuild_from(main)` using the same edge encoder
+  - [ ] 7.1 Tests: re-applying is a no-op, `applied_seq` advances atomically with edges, rebuild and incremental apply give byte-equal dumps, `ensure_distinct_from` refuses a shared handle
+  - _Requirements: 7.1, 12.3, 12.9_
+- [ ] 8. Bridge resolution, tagging and main edges in `PersistentCore` (owner approval required)
+  - [ ] 8.1 `SubsidiaryResolver::for_scope` called in `append` before `compute_hash`; `Public → None`; resolver error fails the append closed
+  - [ ] 8.2 Link index written to the main ledger Cozo in `accept_metadata`; rebuilt in `walk_records` on open and compared; mismatch latches `failure`
+  - [ ] 8.3 Write `/run/op-dbus/subsidiary-principals.json` and `subsidiary-ceilings.json` atomically on registry change
+  - [ ] 8.4 Tests: tagged append, untagged public append, tampered stored link latches failure, resolver failure writes nothing
+  - _Requirements: 1.4, 2.1, 2.5, 2.6, 3.1, 3.4, 12.1, 12.2_
+- [ ] 9. Replica dual-write and reconciliation in the bridge (owner approval required)
+  - [ ] 9.1 After the main edges commit, apply the same edges to the subsidiary's replica; on failure keep the main write, mark `lagging`, emit one lag event per episode, never fail the call
+  - [ ] 9.2 Per-subsidiary reconciler: catch up from `applied_seq + 1` with bounded back-off, then `current`; reconcile all non-retired replicas on open
+  - [ ] 9.3 Divergence: mark `diverged`, stop writes, rebuild into a new directory from the main ledger, rename-swap, quarantine the old copy under `host/diverged/`, record both digests
+  - [ ] 9.4 Tests with a fault-injecting replica: failed write → call succeeds and `lagging`; reconciler → `current`; tampered edge → `diverged` → rebuilt equal to main
+  - _Requirements: 12.1, 12.4, 12.5, 12.6, 12.7_
+- [ ] 10. Capability ceiling check for subsidiary callers in bridge admission, and refusal of protected tasks for subsidiary principals in `task_elevation`; tests that the check only narrows
   - _Requirements: 5.2, 5.4, 11.3_
-- [ ] 9. `subsidiary` sealed plugin skeleton in `op-plugins/src/state_plugins/subsidiary.rs`
-  - [ ] 9.1 Schema, methods, capabilities and subids from the design table; test all subids with `is_valid_subid`
-  - [ ] 9.2 Scope rule: self vs owner, cross-subsidiary "not found", owner-only methods refused for subsidiaries
-  - [ ] 9.3 Add `org.opdbus.v1.subsidiary.{revoke,retire,destroy-data}` to `elevation::protected_actions()` with tests
+- [ ] 11. `subsidiary` sealed plugin skeleton in `op-plugins/src/state_plugins/subsidiary.rs`
+  - [ ] 11.1 Schema, methods (including `reconcile_replica`, `rebuild_replica`), capabilities and subids from the design table; test all subids with `is_valid_subid`
+  - [ ] 11.2 Scope rule: self vs owner (by id or name), cross-subsidiary "not found", owner-only methods refused for subsidiaries
+  - [ ] 11.3 Add `org.opdbus.v1.subsidiary.{revoke,retire,destroy-data}` to `elevation::protected_actions()` with tests
   - _Requirements: 6.2, 6.3, 6.4, 10.1, 11.4_
-- [ ] 10. Lifecycle methods: `register`, `rebind_container`, `checkpoint`, `prepare_anchor`, `record_anchor` (events tagged `subject`), with tests against a fake `lxd` operation tree for label and `volatile.uuid` checks
-  - _Requirements: 1.3, 1.5, 1.6, 2.2, 3.5, 4.5, 7.8_
-- [ ] 11. Storage lifecycle methods: `provision_storage`, `attach`, `detach`, `snapshot`, `export_bundle`, `revoke` as `lxd.update_instance` disk-device plans (`shift: true`, idmap fallback), state machine enforcement, blake3 digests; tests that the host-only directory is never in a device payload, that the only devices are the child projection and `tenant-cozo`, and that snapshots (and any host open of the tenant DB) refuse while attached
-  - _Requirements: 6.1, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.9, 5.6_
-- [ ] 12. Read methods: `get_identity`, `get_head`, `list_activity`, `rollup`, `rollup_parent`, `export_receipts`, `prove_receipt`, `verify` with paging bounds; tests for salt inclusion only in own/owner exports and no other subsidiary's data
-  - _Requirements: 3.6, 4.4, 4.6, 8.1, 8.2, 8.3, 8.4, 8.5_
-- [ ] 13. Door tagging and ceiling in `op-mcp-door`: optional `subsidiary_id` on `AuditRecord`; principal map and ceiling file readers (mtime-cached like `DurableGrants`); refusal in grant/ticket consumption outside the ceiling; tests
+- [ ] 12. Lifecycle methods: `register` (name validation, chain id, own Cozo DB, Qdrant collection `pending`/`ready`), `rebind_container`, `checkpoint`, `prepare_anchor`, `record_anchor` (events tagged `subject`), with tests against a fake `lxd` operation tree for label and `volatile.uuid` checks and a fake Qdrant client
+  - _Requirements: 1.1, 1.3, 1.5, 1.6, 1.8, 1.9, 1.10, 1.11, 2.2, 3.5, 4.5, 7.8, 9.2_
+- [ ] 13. Storage lifecycle methods: `provision_storage` (volume with `cozo/`, `tenant/`, `host/`), `attach`, `detach`, `snapshot`, `export_bundle`, `revoke` as `lxd.update_instance` disk-device plans (`tenant` with `shift: true`, idmap fallback), state machine enforcement, blake3 digests; tests that `cozo/` and `host/` are never in a device payload, that the only devices are the child projection and `tenant`, that `tenant/` snapshots (and any host open of `tenant/`) refuse while attached, and that move/export refuse while the replica is not `current`
+  - _Requirements: 6.1, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.9, 5.6, 12.8_
+- [ ] 14. Read methods: `get_identity`, `get_head`, `list_activity`, `rollup`, `rollup_parent`, `export_receipts`, `prove_receipt`, `verify`, all answered from the main ledger Cozo, with paging bounds; tests for salt inclusion only in own/owner exports, no other subsidiary's data, and no replica reads
+  - _Requirements: 3.6, 4.4, 4.6, 8.1, 8.2, 8.3, 8.4, 8.5, 12.2_
+- [ ] 15. Door tagging and ceiling in `op-mcp-door`: optional `subsidiary_id` on `AuditRecord`; principal map and ceiling file readers (mtime-cached like `DurableGrants`); refusal in grant/ticket consumption outside the ceiling; tests
   - _Requirements: 2.4, 5.3_
-- [ ] 14. Revocation of grants and tickets: revoke every ephemeral grant and unconsumed ticket for the principal and write a removal grant-delta proposal; tests that no grant document is written
+- [ ] 16. Revocation of grants and tickets: revoke every ephemeral grant and unconsumed ticket for the principal and write a removal grant-delta proposal; tests that no grant document is written
   - _Requirements: 5.1, 5.5, 5.6_
-- [ ] 15. Vector partitioning in `op-cognitive/src/chain_vectors.rs`: payload key and `chain_links` entry, `LedgerPoint.subsidiary_id`, keyword index in `ensure_collection`, caller-typed filters in `search_session_events`, delete-by-filter and retired-id skip in reindex/ingest; tests for filter construction
-  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
-- [ ] 16. Footprint metadata key `subsidiary_id` in `event_to_footprint` (inert until `mutation_engine.rs` is linked; Open Question 10)
-  - _Requirements: 2.4_
-- [ ] 17. Retirement and destruction: `retire` (stopped container, both devices detached), `destroy_data` after retention with final digest event; tests that ledger events are never removed
-  - _Requirements: 10.2, 10.3, 10.4, 10.5, 11.5_
-- [ ] 18. FUSE terminal receipt carries optional `subsidiary` (shared FUSE contract; owner approval and Open Question 14); door `terminal_receipt` test that the extra key is accepted
+- [ ] 17. Per-subsidiary Qdrant collections in `op-cognitive/src/chain_vectors.rs`
+  - [ ] 17.1 `ensure_subsidiary_collection(name)` reusing `ensure_collection` (1024, cosine, idempotent, collision refusal)
+  - [ ] 17.2 Per-block routing in `ingest_received`, `reindex_from_chain` and the manual origin path (tagged → `<name>__mainchain`, untagged → shared), one watermark, gap probe per routed collection; retired subsidiaries skipped
+  - [ ] 17.3 `chain_vector_link` rows gain `collection` and `chain_id` kinds and are dual-written before the upsert; `upsert_session_ledger` routes subsidiary principals the same way
+  - [ ] 17.4 `search_session_events` selects the collection from admission (subsidiary → own only; others → shared; owner → by name)
+  - [ ] 17.5 Tests with a fake Qdrant client: routing table, no subsidiary point in the shared collection, `pending` → `ready`, read-only after retire, skip on reindex
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.8, 12.1_
+- [ ] 18. Footprint metadata key `subsidiary_id` in `event_to_footprint` and routing in `chain_vector_projector.rs` (inert until both are linked; Open Question 10)
+  - _Requirements: 2.4, 9.3_
+- [ ] 19. Retirement and destruction: `retire` (stopped container, both devices detached, replica `current`, collection `read_only`), `destroy_data` after retention (volume and collection deleted, final digest and point-count event, main ledger edges untouched); tests that ledger events and main Cozo edges are never removed and the name stays reserved
+  - _Requirements: 9.7, 10.2, 10.3, 10.4, 10.5, 11.5_
+- [ ] 20. FUSE terminal receipt carries optional `subsidiary` (shared FUSE contract; owner approval and Open Question 14); door `terminal_receipt` test that the extra key is accepted
   - _Requirements: 2.4, 4.4_
