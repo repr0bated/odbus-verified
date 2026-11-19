@@ -45,7 +45,7 @@ impl PersistentCore {
         owner: StateScope,
         commit: BackendCommit,
         updates: Vec<BackendProjection>,
-        terminal: Option<(String, MethodRecoveryStatus, String)>,
+        terminal: Option<(String, MethodRecoveryStatus, String, Option<String>)>,
     ) -> Result<StateCommit> {
         self.require_available()?;
         validate_scope(&owner)?;
@@ -177,12 +177,13 @@ impl PersistentCore {
             });
         }
         let action = match terminal {
-            Some((operation_id, status, code)) => LedgerAction::Terminal {
+            Some((operation_id, status, code, result_digest)) => LedgerAction::Terminal {
                 operation_id,
                 status,
                 code,
                 publications,
                 identity_publication,
+                result_digest,
             },
             None => {
                 ensure!(

@@ -864,9 +864,12 @@ impl CozoGraphShuttle {
         })
     }
 
-    /// Stream a coherent, contiguous append ledger with bounded row allocation.
-    /// One native barrier and indexed point reads avoid sorting the remaining
-    /// history for each event. The visitor must not reenter this Cozo owner.
+    /// Stream a coherent, contiguous append ledger with one owned row at a time.
+    /// One native barrier and the retained owner guard fix the canonical prefix.
+    /// Each engine read transaction closes before the visitor is invoked.
+    /// The visitor must not reenter owner methods/mutators: the native guard is
+    /// still held. Only direct `db()` queries for separate derived indexes may
+    /// run there; this is not permission to mutate the canonical session ledger.
     pub fn visit_session_events_durable(
         &self,
         session_id: &str,
@@ -899,24 +902,28 @@ impl CozoGraphShuttle {
             }
             _ => return Err(err("corrupt append ledger bounds result")),
         };
+        commit_checked(&tx)?;
+        drop(tx);
         if let Some(last) = last {
             for seq in 0..=last {
-                let mut params = sid_params(session_id);
-                params.insert("seq".into(), dv_int(seq));
-                let rows = query(
-                    &tx,
-                    "?[session_id,seq,kind,subid,content,created_at] := \
-                     *session_events[session_id,seq,kind,subid,content,created_at], \
-                     session_id = $sid, seq = $seq",
-                    params,
-                )?;
-                let [row] = rows.rows.as_slice() else {
-                    return Err(err("append ledger has a missing or duplicate sequence"));
+                let event = {
+                    let tx = self.db.multi_transaction(false);
+                    let mut params = sid_params(session_id);
+                    params.insert("seq".into(), dv_int(seq));
+                    let rows = query(&tx,
+                        "?[session_id,seq,kind,subid,content,created_at] := \
+                         *session_events[session_id,seq,kind,subid,content,created_at], \
+                         session_id = $sid, seq = $seq", params)?;
+                    let [row] = rows.rows.as_slice() else {
+                        return Err(err("append ledger has a missing or duplicate sequence"));
+                    };
+                    let event = decode_event(row)?;
+                    commit_checked(&tx)?;
+                    event
                 };
-                visit(decode_event(row)?)?;
+                visit(event)?;
             }
         }
-        commit_checked(&tx)?;
         Ok(())
     }
 

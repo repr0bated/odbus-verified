@@ -19,9 +19,14 @@ pub(super) struct OperationState {
     capability_id: String,
     schema_hash: String,
     arguments_digest: String,
+    attribution: Option<op_execution_tracker::DelegationAttribution>,
+    request_digest: Option<String>,
+    result_digest: Option<String>,
     attempt: MethodEventProof,
     terminal: Option<MethodEventProof>,
     status: MethodRecoveryStatus,
+    /// Counted only by the ordered core ledger/replay, never cache delivery.
+    control_terminal: Option<op_execution_tracker::ExecutionStatus>,
 }
 
 /// Opaque admitted attempt. Constructed only after its Cozo durability barrier.
@@ -90,6 +95,8 @@ impl PersistentCore {
                 operation_id: id,
                 schema_hash,
                 arguments_digest,
+                attribution,
+                request_digest,
             } => {
                 operation_id(id)?;
                 ensure!(
@@ -124,12 +131,16 @@ impl PersistentCore {
                             .context("method attempt capability missing")?,
                         schema_hash: schema_hash.clone(),
                         arguments_digest: arguments_digest.clone(),
+                        attribution: attribution.clone(),
+                        request_digest: request_digest.clone(),
+                        result_digest: None,
                         attempt: MethodEventProof {
                             event_id: record.event.event_id,
                             event_hash: record.event.event_hash.clone(),
                         },
                         terminal: None,
                         status: MethodRecoveryStatus::Unknown,
+                        control_terminal: None,
                     },
                 );
             }
@@ -137,6 +148,7 @@ impl PersistentCore {
                 operation_id: id,
                 status,
                 publications,
+                result_digest,
                 ..
             } => {
                 let state = self
@@ -169,8 +181,42 @@ impl PersistentCore {
                     event_hash: record.event.event_hash.clone(),
                 });
                 state.status = status.clone();
+                state.result_digest = result_digest.clone();
             }
             LedgerAction::State { .. } => {}
+            LedgerAction::Control { record: control, final_transition } => {
+                self.validate_execution_control(&record.owner, control)?;
+                self.validate_control_predecessor(&record.owner, control, false)?;
+                ensure!(*final_transition == control.status.is_terminal(), "invalid checkpoint terminal transition");
+                if *final_transition {
+                    let stats = self.control_stats.entry(record.owner.clone()).or_default();
+                    if control.proof.is_some() {
+                        let state = self.operations.get_mut(&(record.owner.clone(), control.context.operation_id.clone()))
+                            .context("final checkpoint operation is absent")?;
+                        ensure!(state.control_terminal.is_none(), "duplicate core terminal checkpoint");
+                        state.control_terminal = Some(control.status);
+                        stats.total_executions += 1;
+                        stats.total_duration_ms += control.duration_ms;
+                        *stats.executions_by_tool.entry(control.context.tool_name.clone()).or_default() += 1;
+                        match control.status {
+                            op_execution_tracker::ExecutionStatus::Completed => stats.successful_executions += 1,
+                            status => {
+                                stats.failed_executions += 1;
+                                *stats.failures_by_tool.entry(control.context.tool_name.clone()).or_default() += 1;
+                                if status == op_execution_tracker::ExecutionStatus::FailedBeforeEffect {
+                                    stats.failed_before_effect_executions += 1;
+                                }
+                            }
+                        }
+                    } else {
+                        match control.status {
+                            op_execution_tracker::ExecutionStatus::Denied => stats.denied_requests += 1,
+                            op_execution_tracker::ExecutionStatus::Cancelled => stats.cancelled_requests += 1,
+                            _ => anyhow::bail!("final request decision has no original operation proof"),
+                        }
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -215,9 +261,93 @@ impl PersistentCore {
         );
         Ok(state)
     }
+
+    pub(super) fn validate_execution_control(
+        &self, scope: &StateScope, record: &op_execution_tracker::ExecutionRecord,
+    ) -> Result<()> {
+        use op_execution_tracker::ExecutionStatus as Status;
+        record.context.validate()?;
+        let StateScope::Private { principal_id, session_id } = scope else {
+            anyhow::bail!("execution control requires private scope");
+        };
+        ensure!(record.context.executor_principal_id.as_deref() == Some(principal_id.as_str())
+            && record.context.executor_session_id.as_deref() == Some(session_id.as_str()),
+            "execution control scope differs from verified executor");
+        let state = self.operations.get(&(scope.clone(), record.context.operation_id.clone()));
+        match (&record.proof, state) {
+            (Some(proof), Some(state)) => {
+                proof.validate(&record.context.operation_id)?;
+                ensure!(state.control_terminal.is_none_or(|status| status == record.status),
+                    "final execution checkpoint is immutable");
+                ensure!(proof.attempt == state.attempt
+                    && proof.terminal == state.terminal
+                    && record.context.tool_name == format!("{}.{}", state.plugin_id, state.method)
+                    && record.context.attribution == state.attribution,
+                    "execution control differs from original operation proof");
+                match record.status {
+                    Status::ReceiptCompleted | Status::Completed | Status::DomainFailed => ensure!(state.status == MethodRecoveryStatus::Completed,
+                        "execution control claims completion without a completed core operation"),
+                    Status::FailedBeforeEffect => ensure!(state.status == MethodRecoveryStatus::Failed,
+                        "execution control claims no effect without native refusal proof"),
+                    Status::Denied | Status::Cancelled | Status::Proposed | Status::Checking | Status::ReadyForAdmission =>
+                        anyhow::bail!("admitted operation cannot become an unattempted request"),
+                    Status::Admitted | Status::Running => ensure!(state.terminal.is_none(),
+                        "running execution already has a terminal method receipt"),
+                    Status::CancelRequested | Status::Interrupted | Status::OutcomeUnknown | Status::NeedsReview => {}
+                }
+            }
+            (None, None) => ensure!(!matches!(record.status,
+                Status::Admitted | Status::Running | Status::ReceiptCompleted | Status::Completed | Status::DomainFailed | Status::FailedBeforeEffect),
+                "execution control has no durable attempt"),
+            _ => anyhow::bail!("execution control lost or invented its original attempt"),
+        }
+        Ok(())
+    }
 }
 
 impl BridgeCore {
+    pub(crate) fn method_value_digest(value: &serde_json::Value) -> Result<String> {
+        validate_json_size(value, MAX_METHOD_RECEIPT_BYTES)?;
+        super::projection::state_hash(Some(value))
+    }
+
+    pub(crate) fn verify_operation_result(
+        &self, id: &str, principal_id: &str, session_id: &str, result: &serde_json::Value,
+    ) -> Result<MethodReceiptRecovery> {
+        operation_id(id)?;
+        let scope = owner_scope(principal_id, session_id)?;
+        let digest = Self::method_value_digest(result)?;
+        let _boundary = self.inner.commit.lock().map_err(|_| anyhow::anyhow!("bridge commit owner poisoned"))?;
+        let owner = self.inner.persistent.as_ref().context("durable bridge required")?
+            .lock().map_err(|_| anyhow::anyhow!("durable bridge owner poisoned"))?;
+        owner.require_available()?;
+        let state = owner.operations.get(&(scope, id.to_owned())).context("original operation unavailable")?;
+        ensure!(state.status == MethodRecoveryStatus::Completed
+            && state.terminal.is_some() && state.result_digest.as_deref() == Some(digest.as_str()),
+            "original operation has no matching validated result binding");
+        Ok(recovery(id, Some(state)))
+    }
+
+    pub(crate) fn verify_operation_binding(
+        &self, id: &str, principal_id: &str, session_id: &str, plugin: &str, method: &str,
+        schema_hash: &str, arguments: &serde_json::Value,
+        attribution: Option<&op_execution_tracker::DelegationAttribution>,
+    ) -> Result<MethodReceiptRecovery> {
+        operation_id(id)?;
+        let scope = owner_scope(principal_id, session_id)?;
+        let digest = argument_digest(arguments)?;
+        let _boundary = self.inner.commit.lock().map_err(|_| anyhow::anyhow!("bridge commit owner poisoned"))?;
+        let owner = self.inner.persistent.as_ref().context("durable bridge required")?
+            .lock().map_err(|_| anyhow::anyhow!("durable bridge owner poisoned"))?;
+        owner.require_available()?;
+        let state = owner.operations.get(&(scope, id.to_owned())).context("original operation unavailable")?;
+        ensure!(state.plugin_id == plugin && state.method == method && state.schema_hash == schema_hash
+            && state.request_digest.as_deref().unwrap_or(&state.arguments_digest) == digest.as_str()
+            && state.attribution.as_ref() == attribution,
+            "original operation request or orchestration binding differs");
+        Ok(recovery(id, Some(state)))
+    }
+
     /// Persist the scoped attempt before any backend execution. Duplicate IDs
     /// never execute again, even after restart or a transport cancellation.
     pub fn begin_operation(
@@ -234,12 +364,24 @@ impl BridgeCore {
             session_id,
             mutation,
             schema_hash,
+            None,
+            None,
         )
         .map_err(|_| {
             anyhow::anyhow!(
                 "method_attempt_unavailable; operation_id={operation_id}; recover before retry"
             )
         })
+    }
+
+    pub(crate) fn begin_operation_attributed(
+        &self, operation_id: &str, principal_id: &str, session_id: &str,
+        mutation: &CoreMutation, schema_hash: &str,
+        attribution: Option<&op_execution_tracker::DelegationAttribution>,
+        request_digest: &str,
+    ) -> Result<MethodOperation> {
+        self.begin_operation_inner(operation_id, principal_id, session_id, mutation, schema_hash, attribution, Some(request_digest))
+            .map_err(|_| anyhow::anyhow!("method_attempt_unavailable; operation_id={operation_id}; recover before retry"))
     }
 
     fn begin_operation_inner(
@@ -249,13 +391,23 @@ impl BridgeCore {
         session_id: &str,
         mutation: &CoreMutation,
         schema_hash: &str,
+        attribution: Option<&op_execution_tracker::DelegationAttribution>,
+        request_digest: Option<&str>,
     ) -> Result<MethodOperation> {
         operation_id(id)?;
+        if let Some(digest) = request_digest {
+            ensure!(blake3::Hash::from_hex(digest).is_ok(), "actual method request binding is invalid");
+        }
         let scope = owner_scope(principal_id, session_id)?;
         ensure!(
             mutation.operation == CoreOperation::CallMethod && mutation.actor_id == principal_id,
             "method attempt requires receiver-authenticated principal"
         );
+        if let Some(attribution) = attribution {
+            ensure!(attribution.executor_principal_id == principal_id
+                && attribution.executor_session_id == session_id && attribution.policy_revision > 0,
+                "operation delegation attribution differs from its verified executor");
+        }
         let digest = argument_digest(&mutation.value)?;
         super::projection::path_segments(&mutation.plugin_id, &mutation.object_path)?;
         let _boundary = self
@@ -298,6 +450,8 @@ impl BridgeCore {
                 operation_id: id.into(),
                 schema_hash: schema_hash.into(),
                 arguments_digest: digest,
+                attribution: attribution.cloned(),
+                request_digest: request_digest.map(str::to_owned),
             },
         )?;
         let state = owner
@@ -398,12 +552,13 @@ impl BridgeCore {
         } else {
             (MethodRecoveryStatus::Unknown, "invalid_backend_result")
         };
+        let result_digest = result.as_ref().ok().map(|result| Self::method_value_digest(result)).transpose()?;
         let state = owner.commit_with_updates(
             &self.inner.catalog,
             operation.owner.clone(),
             commit,
             updates,
-            Some((operation.operation_id.clone(), status, code.into())),
+            Some((operation.operation_id.clone(), status, code.into(), result_digest)),
         )?;
         let receipt = result.and_then(|result| {
             let receipt = MethodExecutionReceipt {
@@ -521,7 +676,7 @@ impl BridgeCore {
             operation.owner.clone(),
             commit,
             updates,
-            Some((operation.operation_id.clone(), status, code.into())),
+            Some((operation.operation_id.clone(), status, code.into(), None)),
         )?;
         self.notify_committed(&state);
         let result = recovery(

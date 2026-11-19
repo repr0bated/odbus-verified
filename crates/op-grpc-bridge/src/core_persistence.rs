@@ -24,6 +24,8 @@ const MAX_RECORD_BYTES: usize = 64 * 1024 * 1024;
 
 #[path = "core_state_commit.rs"]
 mod state_commit;
+#[path = "core_checkpoint.rs"]
+mod checkpoint;
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -56,6 +58,18 @@ pub(super) enum LedgerAction {
         operation_id: String,
         schema_hash: String,
         arguments_digest: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        attribution: Option<op_execution_tracker::DelegationAttribution>,
+        /// Actual sealed input binding, separate from an intentionally redacted
+        /// audit mutation payload. Never exposed as a recovery result.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        request_digest: Option<String>,
+    },
+    /// Redacted execution control, never method arguments or domain output.
+    Control {
+        record: op_execution_tracker::ExecutionRecord,
+        /// Derived by the append owner from the prior durable decision.
+        final_transition: bool,
     },
     Terminal {
         operation_id: String,
@@ -64,6 +78,8 @@ pub(super) enum LedgerAction {
         publications: Vec<Publication>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         identity_publication: Option<IdentityPublication>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        result_digest: Option<String>,
     },
 }
 
@@ -71,7 +87,7 @@ impl LedgerAction {
     pub(super) fn publications(&self) -> &[Publication] {
         match self {
             Self::State { publications } | Self::Terminal { publications, .. } => publications,
-            Self::Attempt { .. } => &[],
+            Self::Attempt { .. } | Self::Control { .. } => &[],
         }
     }
 
@@ -131,6 +147,8 @@ pub(super) struct PersistentCore {
     identity_head: Option<IdentityProjectionHead>,
     pub(super) operations: BTreeMap<(StateScope, String), OperationState>,
     failure: Option<String>,
+    pub(super) control_stats: BTreeMap<StateScope, op_execution_tracker::ExecutionStats>,
+    pub(super) active_controls: BTreeMap<(StateScope, String), op_execution_tracker::ExecutionRecord>,
 }
 
 pub(super) struct StateCommit {
@@ -205,11 +223,16 @@ impl PersistentCore {
             heads: BTreeMap::new(),
             identity_head: None,
             operations: BTreeMap::new(),
+            control_stats: BTreeMap::new(),
+            active_controls: BTreeMap::new(),
             failure: None,
         };
         for plugin in catalog.plugins() {
             owner.pin(catalog, &plugin.id, &plugin.schema_hash)?;
         }
+        // Derived locators are rebuilt only from the original verified ledger.
+        // A failed rebuild prevents this owner from admitting any request.
+        owner.reset_control_index()?;
         // Replay verifies every persisted event and scope binding. Only each
         // scope/plugin's final complete tree is retained for SHM reconstruction.
         let mut latest = BTreeMap::new();
@@ -370,6 +393,7 @@ impl PersistentCore {
 
     pub(super) fn accept_metadata(&mut self, record: &LedgerRecord) -> Result<()> {
         self.accept_operation(record)?;
+        self.index_execution_control(record)?;
         for publication in record.action.publications() {
             self.heads.insert(
                 (publication.scope.clone(), publication.plugin_id.clone()),
@@ -412,6 +436,7 @@ impl PersistentCore {
             LedgerAction::Attempt { .. } => OperationType::MethodCall,
             LedgerAction::Terminal { .. } => OperationType::Custom("method_outcome".into()),
             LedgerAction::State { .. } => OperationType::PropertySet,
+            LedgerAction::Control { .. } => OperationType::Custom("execution_checkpoint".into()),
         };
         let decision = if matches!(
             &action,
@@ -575,7 +600,7 @@ impl PersistentCore {
         catalog: &Catalog,
         owner: StateScope,
         commit: BackendCommit,
-        terminal: Option<(String, MethodRecoveryStatus, String)>,
+        terminal: Option<(String, MethodRecoveryStatus, String, Option<String>)>,
     ) -> Result<StateCommit> {
         self.commit_with_updates(catalog, owner, commit, Vec::new(), terminal)
     }
@@ -802,7 +827,7 @@ impl BridgeCore {
             let publications = match record.action {
                 LedgerAction::State { publications }
                 | LedgerAction::Terminal { publications, .. } => publications,
-                LedgerAction::Attempt { .. } => Vec::new(),
+                LedgerAction::Attempt { .. } | LedgerAction::Control { .. } => Vec::new(),
             };
             for publication in publications {
                 if &publication.scope == scope && publication.plugin_id == plugin_id {
@@ -1113,5 +1138,23 @@ impl BridgeCore {
                 })
                 .map_or(0, |(_, _, generation)| *generation),
         }
+    }
+}
+#[cfg(test)]
+mod checkpoint_ledger_encoding_contracts {
+    use super::LedgerAction;
+
+    #[test]
+    fn legacy_attempt_binding_does_not_gain_optional_attribution() {
+        let original = br#"{"kind":"attempt","operation_id":"00000000-0000-0000-0000-000000000001","schema_hash":"schema","arguments_digest":"arguments"}"#;
+        let action: LedgerAction = serde_json::from_slice(original).unwrap();
+        assert_eq!(serde_json::to_vec(&action).unwrap(), original);
+    }
+
+    #[test]
+    fn legacy_terminal_binding_does_not_gain_null_result_digest() {
+        let original = br#"{"kind":"terminal","operation_id":"00000000-0000-0000-0000-000000000001","status":"completed","code":"completed","publications":[]}"#;
+        let action: LedgerAction = serde_json::from_slice(original).unwrap();
+        assert_eq!(serde_json::to_vec(&action).unwrap(), original);
     }
 }

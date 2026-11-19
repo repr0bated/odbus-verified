@@ -30,6 +30,11 @@ use std::{
 use tokio::sync::{Mutex, OwnedMutexGuard};
 use uuid::Uuid;
 
+#[path = "runtime_checkpoint.rs"]
+mod checkpoint;
+pub(crate) use checkpoint::{CallCheckpoint, CallClass, CheckpointEvidenceOwner,
+    CheckpointPolicy, CheckpointStage, CheckpointTarget, GroundedOutcome};
+
 #[async_trait::async_trait]
 pub(crate) trait CallerAuthority: Send + Sync {
     async fn revalidate(&self) -> anyhow::Result<()>;
@@ -54,6 +59,8 @@ pub(crate) struct VerifiedCaller {
     identity: VerifiedSid1,
     execution: Option<Arc<Execution>>,
     call_path: Vec<(String, String)>,
+    checkpoint: Option<Arc<CallCheckpoint>>,
+    requires_checkpoint: bool,
 }
 
 impl VerifiedCaller {
@@ -69,6 +76,8 @@ impl VerifiedCaller {
             identity: identity.clone(),
             execution: None,
             call_path: Vec::new(),
+            checkpoint: None,
+            requires_checkpoint: false,
         }
     }
     pub(crate) fn claims(&self) -> &SealedId {
@@ -80,6 +89,16 @@ impl VerifiedCaller {
             session_id: self.session_id.clone(),
         }
     }
+    pub(crate) fn attach_checkpoint(&mut self, checkpoint: Arc<CallCheckpoint>) -> Result<(), RuntimeError> {
+        if self.execution.is_some() { return Err(RuntimeError::denied("checkpoint cannot inherit an ancestor execution gate")); }
+        checkpoint.validate_caller(self)?;
+        self.checkpoint = Some(checkpoint);
+        self.requires_checkpoint = true;
+        Ok(())
+    }
+
+    pub(crate) fn require_delegated_checkpoint(&mut self) { self.requires_checkpoint = true; }
+
     pub(crate) fn inherit_execution(&mut self, caller: &Self) {
         self.execution = caller.execution.clone();
         self.call_path = caller.call_path.clone();
@@ -87,6 +106,7 @@ impl VerifiedCaller {
     pub(crate) fn for_background(&self) -> Self {
         let mut caller = Self::new(&self.identity, self.authority.clone());
         caller.sealed_identity = self.sealed_identity.clone();
+        caller.requires_checkpoint = self.requires_checkpoint;
         caller
     }
 }
@@ -100,6 +120,8 @@ pub(crate) struct BackendContext<'a> {
     pub operation: &'a MethodOperation,
     pub request_event_id: u64,
     pub request_event_hash: String,
+    pub checkpoint: Option<&'a CallCheckpoint>,
+    pub checkpoint_target: &'a CheckpointTarget,
 }
 
 pub(crate) struct BackendOutcome {
@@ -117,6 +139,7 @@ pub(crate) struct RuntimeResult {
     pub effective_hash: String,
     /// Verified disclosure authority, with no execution gate or inherited path.
     pub disclosure_caller: VerifiedCaller,
+    checkpoint_target: CheckpointTarget,
 }
 
 /// One admitted root retains the gate until all of its nested native work ends.
@@ -219,6 +242,8 @@ impl ExecutionAdmission {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ErrorKind {
     Denied,
+    Cancelled,
+    NeedsReview,
     Unsupported,
     BeforeEffect,
     FailedBeforeEffect,
@@ -254,6 +279,9 @@ impl RuntimeError {
     pub(crate) fn denied(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Denied, message)
     }
+    pub(crate) fn cancelled(message: impl Into<String>) -> Self { Self::new(ErrorKind::Cancelled, message) }
+    pub(crate) fn review(message: impl Into<String>) -> Self { Self::new(ErrorKind::NeedsReview, message) }
+
     pub(crate) fn unsupported(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Unsupported, message)
     }
@@ -301,6 +329,9 @@ impl RuntimeError {
     pub(crate) fn is_denied(&self) -> bool {
         self.kind == ErrorKind::Denied
     }
+    pub(crate) fn is_cancelled(&self) -> bool { self.kind == ErrorKind::Cancelled }
+    pub(crate) fn is_review(&self) -> bool { self.kind == ErrorKind::NeedsReview }
+
     pub(crate) fn is_unsupported(&self) -> bool {
         self.kind == ErrorKind::Unsupported
     }
@@ -466,7 +497,7 @@ impl Runtime {
                 core,
                 catalog_dir,
                 execution: ExecutionAdmission::default(),
-                tracker: op_execution_tracker::ExecutionTracker::new(1024),
+                tracker: op_execution_tracker::ExecutionTracker::new(BridgeCore::MAX_ACTIVE_EXECUTION_RECORDS),
                 documents,
                 identity_store,
                 chat,
@@ -480,6 +511,10 @@ impl Runtime {
     pub(crate) fn core(&self) -> &BridgeCore {
         &self.inner.core
     }
+    pub(crate) fn tracker(&self) -> &op_execution_tracker::ExecutionTracker {
+        &self.inner.tracker
+    }
+
     pub(crate) fn root_release(&self, caller: &VerifiedCaller) -> Result<RootRelease, RuntimeError> {
         let execution = caller.execution.as_ref()
             .ok_or_else(|| RuntimeError::denied("ancestor root execution is absent"))?;
@@ -538,6 +573,13 @@ impl Runtime {
             .map_err(|error| RuntimeError::unknown(error).at_operation(operation_id))?;
         self.authorize_nested(&result.disclosure_caller, plugin, method)
             .await
+            .map_err(|error| RuntimeError::unknown(error.into()).at_operation(operation_id))?;
+        let checkpoint = result.disclosure_caller.checkpoint.as_ref()
+            .ok_or_else(|| RuntimeError::unknown(anyhow::anyhow!("disclosure policy binding unavailable")).at_operation(operation_id))?;
+        let stage = if matches!(&checkpoint.class, CallClass::AgentFinal) {
+            CheckpointStage::AgentFinal
+        } else { CheckpointStage::Postflight };
+        checkpoint.owner.revalidate_binding(self, &result.disclosure_caller, &result.checkpoint_target, stage).await
             .map_err(|error| RuntimeError::unknown(error.into()).at_operation(operation_id))
     }
 
@@ -671,13 +713,8 @@ impl Runtime {
         operation_id: Uuid,
     ) -> Pin<Box<dyn Future<Output = Result<RuntimeResult, RuntimeError>> + Send + 'a>> {
         Box::pin(async move {
-            let context = op_execution_tracker::ExecutionContext {
-                operation_id: operation_id.to_string(), trace_id: caller.trace_id.clone(),
-                parent_operation_id: None, tool_name: format!("{plugin}.{method}"),
-                executor_principal_id: Some(caller.principal_id.clone()),
-                executor_session_id: Some(caller.session_id.clone()), attribution: None,
-            };
-            self.inner.tracker.reserve(context).await
+            let context = self.execution_context(&caller, plugin, method, operation_id)?;
+            self.inner.tracker.reserve(context.clone()).await
                 .map_err(|_| RuntimeError::denied("execution checkpoint capacity or correlation refused"))?;
             let runtime = self.clone();
             let plugin = plugin.to_owned();
@@ -686,27 +723,73 @@ impl Runtime {
             // every outcome, including panic and withheld post-effect replies.
             tokio::spawn(async move {
                 use futures::FutureExt as _;
-                let principal = caller.principal_id.clone();
-                let session = caller.session_id.clone();
-                let outcome = std::panic::AssertUnwindSafe(
-                    runtime.call_owned(caller, plugin, method, args, operation_id),
-                ).catch_unwind().await.unwrap_or_else(|_| Err(
-                    RuntimeError::unknown(anyhow::anyhow!("native owner interrupted")).at_operation(operation_id),
-                ));
-                let recovery = runtime.core().recover_operation(&operation_id.to_string(), &principal, &session);
-                let proof = recovery.as_ref().ok().and_then(|recovery| recovery.attempt.clone().map(|attempt|
-                    op_execution_tracker::ExecutionProof { operation_id: operation_id.to_string(),
-                        attempt, terminal: recovery.terminal.clone() }));
-                use op_execution_tracker::ExecutionStatus as Status;
-                let status = match (&outcome, recovery.as_ref().ok().map(|receipt| &receipt.status)) {
-                    (Ok(_), _) => Status::ReceiptCompleted,
-                    (Err(_), Some(op_state_store::method_receipt::MethodRecoveryStatus::Completed)) => Status::NeedsReview,
-                    (Err(_), Some(op_state_store::method_receipt::MethodRecoveryStatus::Failed)) => Status::FailedBeforeEffect,
-                    (Err(error), _) if proof.is_none() && error.is_denied() => Status::Denied,
-                    _ => Status::OutcomeUnknown,
+                use op_execution_tracker::{ExecutionProof, ExecutionStatus as Status};
+                let target = match runtime.checkpoint_target(&caller, &plugin, &method, &args, operation_id) {
+                    Ok(target) => target,
+                    Err(error) => {
+                        if let Err(refusal) = runtime.checkpoint_rejection(&context, &plugin, &method).await {
+                            let missing_method = runtime.catalog().plugin(&plugin).is_none() || error.is_unsupported();
+                            let status = if missing_method { Status::Denied } else { Status::OutcomeUnknown };
+                            runtime.tracker().finish(&context.operation_id, status, None).await
+                                .map_err(|error| RuntimeError::unknown(error).at_operation(operation_id))?;
+                            if !missing_method {
+                                return Err(RuntimeError::unknown(refusal.into()).at_operation(operation_id));
+                            }
+                        }
+                        return Err(error.at_operation(operation_id));
+                    }
                 };
-                runtime.inner.tracker.finish(&operation_id.to_string(), status, proof).await
-                    .map_err(|_| RuntimeError::unknown(anyhow::anyhow!("execution checkpoint reconciliation unavailable")).at_operation(operation_id))?;
+                let owned = async {
+                    runtime.checkpoint_transition(&context, &target, Status::Checking, None).await?;
+                    if caller.execution.is_some() {
+                        return Err(RuntimeError::denied("new operation requires persisted continuation and ancestor-root release"));
+                    }
+                    runtime.checkpoint_preflight(&caller, &target, &args).await?;
+                    runtime.checkpoint_transition(&context, &target, Status::ReadyForAdmission, None).await?;
+                    let completed = runtime.call_owned(caller.clone(), plugin.clone(), method.clone(), args, operation_id).await?;
+                    let proof = ExecutionProof {
+                        operation_id: context.operation_id.clone(),
+                        attempt: op_state_store::method_receipt::MethodEventProof {
+                            event_id: completed.receipt.event_id, event_hash: completed.receipt.event_hash.clone(),
+                        },
+                        terminal: Some(op_state_store::method_receipt::MethodEventProof {
+                            event_id: completed.receipt.terminal_event_id, event_hash: completed.receipt.terminal_event_hash.clone(),
+                        }),
+                    };
+                    runtime.checkpoint_transition(&context, &target, Status::ReceiptCompleted, Some(proof.clone())).await?;
+                    // call_owned has returned: no root gate is retained here.
+                    let status = match runtime.checkpoint_postflight(&caller, &target, &completed).await? {
+                        GroundedOutcome::Succeeded => Status::Completed,
+                        GroundedOutcome::DomainFailed => Status::DomainFailed,
+                        GroundedOutcome::Unverified | GroundedOutcome::NeedsReview => {
+                            runtime.checkpoint_transition(&context, &target, Status::NeedsReview, Some(proof)).await?;
+                            return Err(RuntimeError::unknown(anyhow::anyhow!("response grounding requires review")));
+                        }
+                    };
+                    runtime.checkpoint_transition(&context, &target, status, Some(proof)).await?;
+                    Ok(completed)
+                };
+                let outcome = std::panic::AssertUnwindSafe(owned).catch_unwind().await
+                    .unwrap_or_else(|_| Err(RuntimeError::unknown(anyhow::anyhow!("native owner interrupted"))));
+                if let Err(error) = outcome {
+                    let recovery = runtime.core().recover_operation(&context.operation_id, &caller.principal_id, &caller.session_id);
+                    let proof = recovery.as_ref().ok().and_then(|recovery| recovery.attempt.clone().map(|attempt|
+                        ExecutionProof { operation_id: context.operation_id.clone(), attempt, terminal: recovery.terminal.clone() }));
+                    let status = match recovery.as_ref().ok().map(|receipt| &receipt.status) {
+                        Some(op_state_store::method_receipt::MethodRecoveryStatus::Completed) => Status::NeedsReview,
+                        Some(op_state_store::method_receipt::MethodRecoveryStatus::Failed) => Status::FailedBeforeEffect,
+                        _ if proof.is_none() && error.is_review() => Status::NeedsReview,
+                        _ if proof.is_none() && error.is_cancelled() => Status::Cancelled,
+                        _ if proof.is_none() && error.is_denied() => Status::Denied,
+                        _ => Status::OutcomeUnknown,
+                    };
+                    if runtime.checkpoint_transition(&context, &target, status, proof.clone()).await.is_err() {
+                        // Keep the reference even if the durable owner became
+                        // unavailable; no missing proof is turned into success.
+                        let _ = runtime.tracker().finish(&context.operation_id, status, proof).await;
+                    }
+                    return Err(error.at_operation(operation_id));
+                }
                 outcome
             }).await.map_err(|error| RuntimeError::unknown(error.into()).at_operation(operation_id))?
         })
@@ -756,6 +839,8 @@ impl Runtime {
             op_state_store::method_receipt::MAX_METHOD_ARGUMENT_BYTES,
         )?;
         crate::method_contract_admission::validate_admitted_arguments(&declaration, &args)?;
+        let effect_target = self.checkpoint_target(&caller, &plugin, &method, &args, operation_id)?;
+        self.checkpoint_preflight(&caller, &effect_target, &args).await?;
         caller.sealed_identity = Some(format!(
             "{}{}",
             op_identity::sealed_id::INLINE_PREFIX,
@@ -779,21 +864,22 @@ impl Runtime {
             capability_id: declaration.required_capability.clone().unwrap_or_default(),
             idempotency_key: operation_id.to_string(),
         };
-        let operation = self
-            .core()
-            .begin_operation(
-                &operation_id.to_string(),
-                &caller.principal_id,
-                &caller.session_id,
-                &mutation,
-                &pinned.schema_hash,
-            )
+        let operation = self.core().begin_operation_attributed(&operation_id.to_string(), &caller.principal_id,
+            &caller.session_id, &mutation, &pinned.schema_hash,
+            caller.checkpoint.as_ref().map(|checkpoint| &checkpoint.attribution), &effect_target.arguments_digest)
             .map_err(|error| RuntimeError::unknown(error).at_operation(operation_id))?;
+        let control_context = self.execution_context(&caller, &plugin, &method, operation_id)?;
+        let control_target = effect_target;
+        self.checkpoint_transition(&control_context, &control_target, op_execution_tracker::ExecutionStatus::Running,
+            Some(op_execution_tracker::ExecutionProof { operation_id: operation_id.to_string(),
+                attempt: operation.attempt().clone(), terminal: None })).await?;
         let ctx = BackendContext {
             runtime: self,
             caller: &caller,
             schema: &pinned.schema,
             declaration: &declaration,
+            checkpoint: caller.checkpoint.as_deref(),
+            checkpoint_target: &control_target,
             operation_id,
             request_event_id: operation.attempt().event_id,
             request_event_hash: operation.attempt().event_hash.clone(),
@@ -917,7 +1003,7 @@ impl Runtime {
         if let Err(error) = post_commit {
             return Err(correlate(RuntimeError::unknown(error.into())));
         }
-        let disclosure_caller = if refreshed {
+        let mut disclosure_caller = if refreshed {
             if !refresh_publication {
                 return Err(correlate(RuntimeError::unknown(anyhow::anyhow!(
                     "refresh lacks its paired native publication"
@@ -929,11 +1015,15 @@ impl Runtime {
         } else {
             caller.for_background()
         };
+        disclosure_caller.checkpoint = caller.checkpoint.clone();
+        let mut checkpoint_target = control_target;
+        checkpoint_target.result_digest = Some(BridgeCore::method_value_digest(&result)?);
         let completed = RuntimeResult {
             result,
             receipt,
             effective_hash,
             disclosure_caller,
+            checkpoint_target,
         };
         self.revalidate_result(&completed, &plugin, &method)
             .await
