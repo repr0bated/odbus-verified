@@ -98,7 +98,13 @@ Crate `crates/op-mcp-door` (workspace member), binary `op-mcp-door`.
   sanitized to `[A-Za-z0-9_-]`; names over 64 characters become the first 55
   characters + `_` + 8 hex of SHA-256 of the full name.
 - Collisions after sanitizing get the hash suffix too.
-- `inputSchema` is `input.schema.json`; mutations get an extra optional
+- `inputSchema` is the metadata `args`, byte-identical to `input.schema.json`
+  (checked on the live mount). Only `metadata.json` is read per operation,
+  with a 64 KiB first read and 8 scan threads: every mounted read is a FUSE
+  request, and a live scan of ~1,600 operations takes about 3 minutes.
+  The method id is the decoded directory name (the `schema.methods` key);
+  metadata `name` can differ (D-Bus member names such as `AttachDevice`).
+  Mutations get an extra optional
   boolean `confirm_side_effects`, stripped before validation and the write.
 
 ### Classes (Req 7)

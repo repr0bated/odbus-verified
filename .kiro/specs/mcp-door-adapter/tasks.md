@@ -14,7 +14,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
   - Unit tests for all three.
   - _Requirements: 1.5, 1.6, 1.8, 3.1, 10.1_
 
-- [ ] 2. Catalog scan, tool naming and capability classes
+- [x] 2. Catalog scan, tool naming and capability classes
   - `catalog`: scan `plugins/*/operations/*`, skip broken entries, names,
     annotations, `confirm_side_effects` on mutations.
   - `classify`: ordered class rules, public allow-list, hard deny-list.

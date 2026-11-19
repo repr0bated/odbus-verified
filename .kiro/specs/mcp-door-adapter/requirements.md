@@ -143,7 +143,8 @@ operation schemas, so that argument errors are caught before a call.
 #### Acceptance Criteria
 
 1. WHEN the door starts THEN THE SYSTEM SHALL build its catalog from
-   `plugins/*/operations/*/{metadata.json,input.schema.json,output.schema.json}`
+   each `plugins/*/operations/*/metadata.json` (its `args` and `returns` are the
+   documents also mounted as `input.schema.json` and `output.schema.json`)
    and SHALL NOT require a plugin-level `schema.json` with `.methods`.
 2. THE SYSTEM SHALL name hot tools by their bare method name and every other
    tool `<plugin>__<method>`, restricted to `[A-Za-z0-9_-]` and at most 64

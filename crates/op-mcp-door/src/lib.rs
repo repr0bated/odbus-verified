@@ -6,5 +6,7 @@
 //! Spec: `.kiro/specs/mcp-door-adapter/`.
 
 pub mod canonical;
+pub mod catalog;
+pub mod classify;
 pub mod config;
 pub mod encode;
