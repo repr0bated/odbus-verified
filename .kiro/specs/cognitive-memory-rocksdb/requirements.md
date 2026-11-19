@@ -1,6 +1,6 @@
 # Requirements Document — cognitive memory on the identity's own RocksDB
 
-Status: APPROVED FOR IMPLEMENTATION. Owner request of 2026-11-19 ("did you
+Status: SPEC ONLY: implementation deferred until after the build. Owner request of 2026-11-19 ("did you
 map the soul and namespace memories to the rocksdb in container ... you
 decide"). Implementation authorizes source and tests in `crates/op-cognitive`
 and one visibility change in `crates/op-plugins` (`memory_methods.rs`). It
