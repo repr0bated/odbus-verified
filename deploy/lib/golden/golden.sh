@@ -53,6 +53,7 @@ DEFAULT_ROOT_NAME=golden-os
 
 APPLY=0
 WITH_BUILD=0
+TOOLCHAIN=0
 MOUNT_POINT=
 LOWER_MODE=${GOLDEN_LOWER:-auto}
 JOBS=${GOLDEN_CARGO_JOBS:-2}
@@ -92,6 +93,8 @@ Flags:
   --repo PATH    Repo to export into the chroot (default: this checkout)
   --jobs N       cargo -j (default 2; keep this modest)
   --with-build   For cut/release: run the chroot build before snapshotting
+  --toolchain    For build: if the work OS has no /root/.cargo/bin/cargo, apt-install
+                 build deps and rustup (minimal) inside the work chroot first
   --mount PATH   For mount-overlay: overlay mount point (not / or other host roots)
 
 There is no send/receive and no copy of the seed to another filesystem.
@@ -113,6 +116,7 @@ parse_args() {
             --apply) APPLY=1 ;;
             --dry-run) APPLY=0 ;;
             --with-build) WITH_BUILD=1 ;;
+            --toolchain) TOOLCHAIN=1 ;;
             --send-receive)
                 die "--send-receive was removed: the release image is the seed on the pool; init snapshots it on the same btrfs (see --seed / --root)"
                 ;;
@@ -719,7 +723,10 @@ plan_build() {
     would "bind-mount proc, sys, dev, dev/pts, and optionally the cargo registry into $WORK"
     would "install a copy of /etc/resolv.conf inside the chroot for DNS"
     would "git -C $REPO archive HEAD | tar -x -C $WORK$src  (clean tree, no worktree state)"
-    would "chroot <work-or-work/rootfs> env CXXFLAGS=-include\\ cstdint CARGO_TARGET_DIR=$tgt /root/.cargo/bin/cargo build --workspace --release -j$JOBS"
+    if [ "$TOOLCHAIN" = 1 ]; then
+        would "if /root/.cargo/bin/cargo is missing in work: chroot apt-get install build deps; rustup --profile minimal"
+    fi
+    would "chroot <work-or-work/rootfs> env CXXFLAGS='-include cstdint' CARGO_TARGET_DIR=$tgt HOME=/root sh -c 'cd $src && /root/.cargo/bin/cargo build --workspace --release -j$JOBS'"
     would "unmount chroot bind mounts"
     printf '  chroot root is %s/rootfs if this is an Incus image layout, otherwise %s\n' "$WORK" "$WORK"
     printf '  uses the work OS toolchain at /root/.cargo/bin/cargo (host glibc bins will not run here)\n'
@@ -879,7 +886,7 @@ chroot_build() {
     if [ ! -d "$REPO" ] || [ ! -f "$REPO/Cargo.toml" ]; then
         die "repo is missing Cargo.toml: $REPO"
     fi
-    if [ ! -x "$os_root$cargo_bin" ]; then
+    if [ ! -x "$os_root$cargo_bin" ] && [ "$TOOLCHAIN" != 1 ]; then
         die "no cargo toolchain in the work OS at $os_root$cargo_bin (the seed needs the overlay toolchain; host binaries will not run on this glibc)"
     fi
     require_owned_destination "$WORK"
@@ -902,13 +909,35 @@ chroot_build() {
     done
     # shellcheck disable=SC2064
     trap "chroot_cleanup '$os_root'" EXIT HUP INT TERM
+    if [ ! -x "$os_root$cargo_bin" ]; then
+        chroot_toolchain "$os_root"
+    fi
+    # chroot(1) chdirs to /, so cd into the exported tree before cargo runs
+    # (otherwise cargo cannot find Cargo.toml).
     chroot "$os_root" env \
         CXXFLAGS="-include cstdint" \
         CARGO_TARGET_DIR=/opt/op-build/target \
         PATH="/root/.cargo/bin:/usr/local/cargo/bin:/usr/bin:/bin" \
-        "$cargo_bin" build --workspace --release -j"$JOBS"
+        HOME=/root \
+        sh -c 'cd /opt/op-build.src && exec "$0" build --workspace --release -j"$1"' \
+        "$cargo_bin" "$JOBS"
     chroot_cleanup "$os_root"
     trap - EXIT HUP INT TERM
+}
+
+# Same packages and rustup install as 20-seed-overlay.sh --toolchain, but only
+# inside the writable work OS (never the seed).
+chroot_toolchain() {
+    local os_root=$1
+    log "installing build deps and rustup inside the work OS chroot $os_root"
+    chroot "$os_root" env DEBIAN_FRONTEND=noninteractive HOME=/root \
+        PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+        sh -c 'apt-get update -q && apt-get install -y -q --no-install-recommends ca-certificates curl build-essential pkg-config protobuf-compiler libprotobuf-dev libssl-dev clang cmake git' \
+        || die "apt in the work chroot failed"
+    chroot "$os_root" env HOME=/root PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+        sh -c 'curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal' \
+        || die "rustup in the work chroot failed"
+    [ -x "$os_root/root/.cargo/bin/cargo" ] || die "rustup finished but $os_root/root/.cargo/bin/cargo is missing"
 }
 
 chroot_cleanup() {

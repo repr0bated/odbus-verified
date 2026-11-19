@@ -387,5 +387,9 @@ assert_not_contains "help no longer offers --send-receive" "--send-receive" "$(c
 # Wrapper scripts stay executable and parse.
 assert_ok "build-golden.sh is a thin wrapper" grep -q 'exec .*/golden.sh' "$HERE/../build-golden.sh"
 
+# chroot(1) chdirs to /: the build must cd into the exported tree.
+assert_ok "chroot build cds into the exported source" grep -q 'cd /opt/op-build.src && exec' "$GOLDEN"
+assert_contains "help lists --toolchain" "--toolchain" "$(cat "$out")"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" = 0 ]
