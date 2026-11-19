@@ -89,8 +89,6 @@ impl PieceLibrary {
                 library.add_from_agent(agent.as_ref());
             }
         }
-            }
-        }
         for seed in crate::historical_sources::HISTORICAL_SOURCES {
             for &(line, body, content_digest) in seed.knowledge.iter().chain(seed.examples.iter()) {
                 let kind = if seed.examples.iter().any(|entry| entry.0 == line && entry.2 == content_digest) { PieceKind::Example } else { PieceKind::Knowledge };
@@ -102,6 +100,8 @@ impl PieceLibrary {
                         agent_id: seed.id.into(), path: format!("{}:{line}", seed.path), source_digest: seed.source_digest.into(),
                     },
                 });
+            }
+        }
         library
     }
 
