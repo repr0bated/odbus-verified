@@ -1010,6 +1010,46 @@ implement the stated interim behaviour now; the remainder is gated.
       (Requirement 17.1); tests run only as steering allows (17.2).
     - _Requirements: 17.1, 17.3_
 
+- [ ] 25. Execution tracker coverage for chat turns and tool calls (owner, 2026-11-19: high priority)
+  - Inventory and evidence: `records/ts-rust-conversion-inventory.md`
+    ("Execution tracker: what already happens").
+  - [x] 25.1 Record that every Operation_File call is already an
+    execution-tracker record keyed by verified principal and session, with the
+    ledger attempt and terminal events as its proof (`op-grpc-bridge/src/runtime.rs:707-790`,
+    `runtime_checkpoint.rs:102-117`). No chat-side tracker code is needed.
+  - [ ] 25.2 Run every tool call as exactly one Operation_File call in the
+    Rust Chat_Route (this is task 10.1/10.6 in `3tched.com:crates/op-chat-interface`).
+    Container repo; not started here.
+  - [ ] 25.3 Start each chat turn's generation through a sealed method
+    (`chat_router.start_generation` or `threetched.agent`) so the turn itself is a tracked
+    operation (with 19.9). Container repo.
+  - [ ] 25.4 Turn correlation: carry the chat turn id as the
+    `ExecutionContext.trace_id` of every call in that turn (BLOCKED: bridge
+    and 3tchedFS change R2 in `records/model-selection-receiver.md`).
+  - [ ] 25.5 Read own Execution_Records (BLOCKED: bridge change R3, reseal;
+    same gate as 19.3/D-12).
+  - _Requirements: 8, 10.1, 10.6, 30_
+
+- [ ] 26. Model selection receiving side (owner, 2026-11-19: we build the receiver; the GUI picker is not ours)
+  - Contract and evidence: `records/model-selection-receiver.md`.
+  - [x] 26.1 Record the existing receivers (`chat_router.SetSelection`,
+    `SetProvider`, `SetModel`, the five role setters,
+    `apply_catalog_model_binding`, `config_set`/`config_patch`) with their
+    grants, ledger path and system-wide effect. All are deployed in the host view.
+  - [x] 26.2 Define the GUI -> host request/response contract (Operation_File
+    `SetSelection` call, closed input `{provider_id, model_id}`, receipt
+    with authoritative readback, no repeat on unknown outcome).
+  - [ ] 26.3 Remove the receiver's second validation of the choice (owner:
+    the GUI's choices already come from threetched). BLOCKED: bridge change R1
+    (`chat_router_runtime.rs` `set_selection`/`set_model` catalog membership refusal).
+  - [ ] 26.4 Grant the picker's container identity
+    `cap.software.threetched.selection.set@v1` (plus the provider and model
+    reads and any role setters). BLOCKED: Owner_Authorization; not applied.
+  - [ ] 26.5 Container UI: replace stale `cap.software.tched-router.*` /
+    `3tched-router.*` capability names and the unsealed
+    `apply_own_agent_route` call. Container repo; not ours.
+  - _Requirements: 7, 12, 30; owner model-selection exception (plan step 3)_
+
 ## Notes
 
 - Tasks marked `*` are optional test sub-tasks and can be skipped for a
