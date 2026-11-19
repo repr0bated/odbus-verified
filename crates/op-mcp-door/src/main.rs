@@ -42,6 +42,19 @@ enum Command {
         #[command(subcommand)]
         command: TicketCommand,
     },
+    /// Vector readiness of the hot coding and knowledge tools.
+    Vectors {
+        #[command(subcommand)]
+        command: VectorsCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum VectorsCommand {
+    /// Probe the configured Qdrant collections (read-only GETs; never
+    /// creates, writes or re-vectorizes anything). Exit 0 when every gate
+    /// is ready, 3 while any is pending re-vectorization.
+    Status,
 }
 
 #[derive(Subcommand)]
@@ -138,6 +151,19 @@ fn main() -> Result<()> {
             Ok(())
         }
         Command::Grant { command } => grant(command),
+        Command::Vectors {
+            command: VectorsCommand::Status,
+        } => {
+            let config = Config::from_env()?;
+            let readiness = op_mcp_door::app::build_readiness(&config)?;
+            let snapshot = readiness.snapshot();
+            println!("{}", serde_json::to_string_pretty(&snapshot)?);
+            if snapshot.iter().all(|s| s.is_ready()) {
+                Ok(())
+            } else {
+                std::process::exit(3)
+            }
+        }
         Command::Ticket {
             command:
                 TicketCommand::Issue {

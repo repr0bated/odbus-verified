@@ -3,7 +3,7 @@
 use crate::catalog::{Catalog, TIER_HOT, TIER_MEMORY};
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
 pub const FORMAT: &str = "op-mcp-door/toolsets@1";
@@ -47,20 +47,6 @@ pub struct ToolsetFile {
     pub missing: Vec<String>,
     pub toolsets: Vec<Toolset>,
 }
-
-const AGENT_VERBS: &[&str] = &[
-    "_advise",
-    "_analyze",
-    "_consult",
-    "_explain",
-    "_help",
-    "_recommend",
-    "_review",
-    "_exec",
-    "_list_steps",
-    "_run_workflow",
-    "_validate",
-];
 
 fn plugin_sets() -> Vec<(&'static str, &'static str, &'static [&'static str])> {
     vec![
@@ -144,30 +130,16 @@ fn plugin_sets() -> Vec<(&'static str, &'static str, &'static [&'static str])> {
     ]
 }
 
-const CODING: &[&str] = &[
-    "code_search",
-    "code_context",
-    "code_index",
-    "rust_pro",
-    "python_pro",
-    "typescript_pro",
-    "code_review_orchestrator",
-];
-const REASONING: &[&str] = &[
-    "sequential_thinking",
-    "context_manager",
-    "specialist",
-    "gemini_query",
-    "workflow_query",
-    "workflow_run",
-];
-const SCHEMA_COGNITIVE: &[&str] = &[
-    "schema_read",
-    "oscal_subids",
-    "blob_catalog",
-    "search_blob_vectors",
-    "refresh_blob_vectors",
-];
+/// The single lazy toolset holding every `cognitive` operation that is
+/// neither memory (tier 1) nor hot (tier 2). Owner decision 2026-11-19:
+/// cognitive is grouped into ONE set; memory is never grouped.
+pub const COGNITIVE_SET: &str = "cognitive";
+/// Temperature of a set that is projected only on request (FUSE
+/// `toolsets/<id>/` in the identity's mount, grant-gated).
+pub const LAZY: &str = "lazy";
+/// The only toolset allowed to contain tier-1 memory tools.
+pub const MEMORY_SET: &str = "memory";
+
 const SCHEMA_PLUGINS: &[&str] = &[
     "schema_tag_registry",
     "schema_renderer",
@@ -239,21 +211,14 @@ pub fn generate(catalog: &Catalog) -> ToolsetFile {
         "hot",
         tiers.memory.clone(),
     );
+    // Schema plugins only; the cognitive schema methods are hot
+    // (`schema_read`) or in the single `cognitive` set.
     push(
-        "coding",
-        "Context-aware coding",
+        "schema",
+        "Schema server plugins (sealed blobs)",
         "warm",
-        pick("cognitive", CODING),
+        whole(SCHEMA_PLUGINS),
     );
-    push(
-        "reasoning",
-        "Reasoning and workflows",
-        "warm",
-        pick("cognitive", REASONING),
-    );
-    let mut schema = pick("cognitive", SCHEMA_COGNITIVE);
-    schema.extend(whole(SCHEMA_PLUGINS));
-    push("schema", "Schema server (sealed blobs)", "warm", schema);
     let core_nb = pick("notebooklm", NOTEBOOK_CORE);
     let admin_nb: Vec<String> = whole(&["notebooklm"])
         .into_iter()
@@ -269,31 +234,27 @@ pub fn generate(catalog: &Catalog) -> ToolsetFile {
     for (id, title, plugins) in plugin_sets() {
         push(id, title, "cold", whole(plugins));
     }
-    let mut personas: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for tool in catalog
-        .tools
-        .iter()
-        .filter(|t| t.plugin == "cognitive" && t.method.starts_with("agent_"))
-    {
-        if let Some(verb) = AGENT_VERBS.iter().find(|v| tool.method.ends_with(*v)) {
-            let persona = &tool.method["agent_".len()..tool.method.len() - verb.len()];
-            if !persona.is_empty() {
-                personas
-                    .entry(persona.to_owned())
-                    .or_default()
-                    .push(tool.key());
-            }
-        }
-    }
-    for (persona, tools) in personas {
-        push(
-            &format!("agents:{persona}"),
-            &format!("Agent persona {persona}"),
-            "cold",
-            tools,
-        );
-    }
+    let tiered: BTreeSet<&String> = tiers.memory.iter().chain(&tiers.hot).collect();
+    let memory_names: BTreeSet<&str> = TIER_MEMORY.iter().copied().collect();
+    push(
+        COGNITIVE_SET,
+        "Cognitive (everything but memory and the hot tools), lazy-loaded",
+        LAZY,
+        catalog
+            .tools
+            .iter()
+            .filter(|t| t.plugin == "cognitive")
+            .filter(|t| !memory_names.contains(t.method.as_str()))
+            .map(|t| t.key())
+            .filter(|k| !tiered.contains(k))
+            .collect(),
+    );
     for plugin in catalog.plugins() {
+        // `cognitive` is covered by tier 1 + tier 2 + the one `cognitive`
+        // set; a whole-plugin set would group memory with everything else.
+        if plugin == "cognitive" {
+            continue;
+        }
         push(
             &format!("plugin:{plugin}"),
             &format!("Every {plugin} operation"),
@@ -341,8 +302,24 @@ impl Toolsets {
         file.tiers
             .hot
             .retain(|k| !catalog.by_key(k).is_some_and(|t| t.class.never_default()));
+        // Memory is never grouped: tier-1 tools live only in tier 1 and the
+        // `memory` set, whatever a hand-edited file says.
+        let memory: BTreeSet<String> = file
+            .tiers
+            .memory
+            .iter()
+            .cloned()
+            .chain(
+                TIER_MEMORY
+                    .iter()
+                    .filter_map(|n| catalog.by_name(n).map(|t| t.key())),
+            )
+            .collect();
         for set in &mut file.toolsets {
             keep(&mut set.tools);
+            if set.id != MEMORY_SET {
+                set.tools.retain(|k| !memory.contains(k));
+            }
         }
         file.toolsets.retain(|s| !s.tools.is_empty());
         let index = file
@@ -442,7 +419,10 @@ mod tests {
                 "cognitive.read",
             );
         }
-        for m in TIER_HOT.iter().filter(|m| **m != "notebook_query") {
+        for m in TIER_HOT
+            .iter()
+            .filter(|m| !matches!(**m, "notebook_query" | "search_own_events"))
+        {
             write_op(
                 root,
                 "cognitive",
@@ -452,6 +432,23 @@ mod tests {
                 "cognitive.read",
             );
         }
+        write_op(
+            root,
+            "snowball",
+            "search_own_events",
+            false,
+            args(),
+            "cap.obs.snowball.events.self.search@v1",
+        );
+        // Not hot any more: lands in the lazy `cognitive` set.
+        write_op(
+            root,
+            "cognitive",
+            "oscal_subids",
+            false,
+            args(),
+            "cognitive.read",
+        );
         write_op(
             root,
             "notebooklm",
@@ -508,15 +505,93 @@ mod tests {
     }
 
     #[test]
-    fn domain_persona_and_plugin_sets_are_generated() {
+    fn hot_ten_is_the_owner_list_with_knowledge_and_coding() {
+        assert_eq!(TIER_HOT.len(), 10);
+        for name in [
+            "code_search",
+            "code_context",
+            "code_index",
+            "search_own_events",
+        ] {
+            assert!(TIER_HOT.contains(&name), "{name} must be hot");
+        }
+        assert!(TIER_HOT.iter().all(|n| !TIER_MEMORY.contains(n)));
+        let (_dir, catalog) = full_catalog();
+        let file = generate(&catalog);
+        assert_eq!(file.tiers.hot.len(), 10);
+        assert!(
+            file.tiers
+                .hot
+                .contains(&"snowball.search_own_events".to_owned())
+        );
+        assert!(
+            file.tiers
+                .hot
+                .contains(&"notebooklm.notebook_query".to_owned())
+        );
+    }
+
+    #[test]
+    fn cognitive_is_one_lazy_set_and_memory_is_never_grouped() {
         let (_dir, catalog) = full_catalog();
         let file = generate(&catalog);
         let sets = Toolsets::new(file, &catalog);
-        assert_eq!(sets.get("agents:rust_pro").unwrap().tools.len(), 2);
+        let cognitive = sets.get(COGNITIVE_SET).unwrap();
+        assert_eq!(cognitive.temperature, LAZY);
         assert_eq!(
-            sets.get("agents:bash_pro").unwrap().tools,
-            vec!["cognitive.agent_bash_pro_review"]
+            cognitive.tools,
+            vec![
+                "cognitive.agent_bash_pro_review",
+                "cognitive.agent_rust_pro_advise",
+                "cognitive.agent_rust_pro_exec",
+                "cognitive.oscal_subids",
+            ]
         );
+        // Exactly one cognitive grouping: no persona, coding, reasoning or
+        // whole-plugin cognitive sets.
+        for id in ["coding", "reasoning", "plugin:cognitive", "agents:rust_pro"] {
+            assert!(sets.get(id).is_none(), "{id}");
+        }
+        let memory = sets.get(MEMORY_SET).unwrap();
+        assert_eq!(memory.tools.len(), TIER_MEMORY.len());
+        for set in sets.file.toolsets.iter().filter(|s| s.id != MEMORY_SET) {
+            for key in &memory.tools {
+                assert!(!set.tools.contains(key), "{} groups {key}", set.id);
+            }
+        }
+        // Hot tools are tier 2, not members of the lazy set.
+        for key in &sets.file.tiers.hot {
+            assert!(!cognitive.tools.contains(key), "{key}");
+        }
+    }
+
+    #[test]
+    fn a_hand_edited_file_cannot_group_memory() {
+        let (_dir, catalog) = full_catalog();
+        let mut file = generate(&catalog);
+        let index = file
+            .toolsets
+            .iter()
+            .position(|s| s.id == COGNITIVE_SET)
+            .unwrap();
+        file.toolsets[index]
+            .tools
+            .push("cognitive.memory_store".into());
+        let sets = Toolsets::new(file, &catalog);
+        assert!(
+            !sets
+                .get(COGNITIVE_SET)
+                .unwrap()
+                .tools
+                .contains(&"cognitive.memory_store".to_owned())
+        );
+    }
+
+    #[test]
+    fn domain_and_plugin_sets_are_generated() {
+        let (_dir, catalog) = full_catalog();
+        let file = generate(&catalog);
+        let sets = Toolsets::new(file, &catalog);
         assert_eq!(
             sets.get("memory_store").unwrap().tools,
             vec!["memory.get_entry"]
@@ -530,13 +605,15 @@ mod tests {
             vec!["notebooklm.notebook_delete"]
         );
         assert!(sets.get("plugin:btrfs").is_some());
-        // Every tool is in at least one set.
+        // Every tool is in a tier or at least one set.
         for tool in &catalog.tools {
             assert!(
-                sets.file
-                    .toolsets
-                    .iter()
-                    .any(|s| s.tools.contains(&tool.key())),
+                sets.core_keys().contains(&tool.key())
+                    || sets
+                        .file
+                        .toolsets
+                        .iter()
+                        .any(|s| s.tools.contains(&tool.key())),
                 "{}",
                 tool.key()
             );
@@ -600,11 +677,11 @@ mod tests {
     fn selection_parsing_and_cap() {
         assert_eq!(
             parse_selection(
-                Some("full+coding+reasoning"),
-                Some("schema, coding"),
+                Some("full+cognitive+schema"),
+                Some("schema, cognitive"),
                 Some("notebooklm_core")
             ),
-            vec!["coding", "reasoning", "schema", "notebooklm_core"]
+            vec!["cognitive", "schema", "notebooklm_core"]
         );
         assert!(parse_selection(None, None, None).is_empty());
         assert!(ensure_within_cap(50).is_ok());

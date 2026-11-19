@@ -17,5 +17,6 @@ pub mod grants;
 pub mod identity;
 pub mod mcp;
 pub mod policy;
+pub mod readiness;
 pub mod server;
 pub mod toolsets;

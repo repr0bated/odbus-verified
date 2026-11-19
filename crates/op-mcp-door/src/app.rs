@@ -8,9 +8,28 @@ use crate::grants::{DurableGrants, GrantStore, TicketStore};
 use crate::identity::{MountMap, Verifier};
 use crate::mcp::{Door, RateLimiter};
 use crate::policy::Policy;
+use crate::readiness::{QdrantRest, Readiness, default_gates};
 use crate::toolsets::Toolsets;
 use anyhow::{Context, Result};
 use std::sync::Arc;
+use std::time::Duration;
+
+/// How long a vector-readiness probe result is reused.
+pub const READINESS_TTL: Duration = Duration::from_secs(30);
+
+/// The coding/knowledge vector gates from configuration.
+pub fn build_readiness(config: &Config) -> Result<Readiness> {
+    let probe = QdrantRest::new(&config.qdrant_rest_url, config.qdrant_api_key_file.clone())
+        .map_err(|e| anyhow::anyhow!("OP_MCP_QDRANT_REST_URL: {e}"))?;
+    Ok(Readiness::new(
+        Arc::new(probe),
+        default_gates(
+            config.coding_collections.clone(),
+            config.knowledge_collections.clone(),
+        ),
+        READINESS_TTL,
+    ))
+}
 
 /// Load the mount map; the catalog is projected from its `default` mount.
 pub fn load_mounts(config: &Config) -> Result<MountMap> {
@@ -65,6 +84,7 @@ pub fn build_door(
         RateLimiter::new(config.public_rate_per_minute),
         config.allowed_origins.clone(),
         config.max_body_bytes,
-    );
+    )
+    .with_readiness(Arc::new(build_readiness(config)?));
     Ok((door, warnings))
 }

@@ -81,3 +81,39 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
     `deploy/config/op-mcp-door/*.example`; not installed.
   - Update `HANDOFF.md` and this file's status.
   - _Requirements: 11.4_
+
+- [x] 12. Cognitive hot/lazy layout (owner decision 2026-11-19)
+  - `catalog::TIER_HOT`: the owner's ten, with coding and knowledge
+    (`search_own_events`) mandatory; `oscal_subids` leaves the hot tier.
+  - `toolsets::generate`: one lazy `cognitive` set (every cognitive operation
+    in neither tier); drop `coding`, `reasoning`, `agents:<persona>` and
+    `plugin:cognitive`; `schema` keeps the schema plugins only.
+  - `Toolsets::new`: memory is never grouped, even from a hand-edited file.
+  - Unit tests: hot ten, single lazy set, memory never grouped, every tool in
+    a tier or a set.
+  - _Requirements: 5.1, 5.2, 5.5, 5.6_
+
+- [x] 13. Vector readiness gate for the hot coding and knowledge tools
+  - `readiness`: read-only Qdrant REST probe (`GET /collections/<name>`),
+    coding/knowledge gates, 30 s cache, `pending_revectorization` body.
+  - `config`: `OP_MCP_QDRANT_REST_URL`, `OP_MCP_QDRANT_API_KEY_FILE`,
+    `OP_MCP_CODING_COLLECTIONS`, `OP_MCP_KNOWLEDGE_COLLECTIONS`.
+  - `mcp`: gate in the single call path before the call-purpose
+    `authorize()`; `list_toolsets` reports `vector_readiness`.
+  - CLI `op-mcp-door vectors status` (exit 3 while pending).
+  - Tests: probe against a local socket (GET only, api-key header), chunked
+    parsing, cache, path-safe names; door flow: pending answer with zero FUSE
+    writes and an audit line, pass-through once populated.
+  - _Requirements: 5.7, 5.8, 5.9_
+
+- [x] 14. FUSE toolset manifest for Wonder's projection
+  - `deploy/config/toolsets/cognitive.toolsets.json` (data only, not
+    installed) + `README.md` listing what the projection must read and do.
+  - `tests/manifest.rs`: manifest tiers, single lazy set and gates equal the
+    door's constants.
+  - _Requirements: 5.10_
+
+- [ ] 15. Switch to Wonder's toolset projection when the shared FUSE contract
+  lands on `dev` (read the manifest through it; retire `toolsets generate`).
+  Blocked on that contract.
+  - _Requirements: 5.3, 5.10_

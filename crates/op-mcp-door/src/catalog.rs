@@ -33,16 +33,22 @@ pub const TIER_MEMORY: &[&str] = &[
     "memory_semantic_query",
 ];
 
-/// Tier 2: the ten other always-hot tools.
+/// Tier 2: the ten other always-hot tools (owner decision 2026-11-19).
+///
+/// Coding (`code_search`, `code_context`, `code_index`) and knowledge
+/// (`search_own_events`) are mandatory and always loaded, but they answer
+/// "pending re-vectorization" until their vector collections are populated
+/// (see [`crate::readiness`]). Everything else in `cognitive` that is neither
+/// memory nor hot lazy-loads as the single `cognitive` toolset.
 pub const TIER_HOT: &[&str] = &[
     "code_search",
     "code_context",
     "code_index",
+    "search_own_events",
     "sequential_thinking",
     "context_manager",
     "specialist",
     "schema_read",
-    "oscal_subids",
     "notebook_query",
     "workflow_query",
 ];
@@ -57,7 +63,7 @@ pub const META_TOOLS: &[&str] = &[
 ];
 
 /// Plugins searched, in order, for a bare hot-tool name.
-const HOT_PLUGIN_ORDER: &[&str] = &["cognitive", "notebooklm"];
+const HOT_PLUGIN_ORDER: &[&str] = &["cognitive", "notebooklm", "snowball"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

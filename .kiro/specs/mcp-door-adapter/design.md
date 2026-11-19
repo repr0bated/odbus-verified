@@ -169,16 +169,58 @@ File (**Assumed** path `/etc/opdbus/mcp-toolsets.json`, env
 ```
 
 Members are `<plugin>.<method>` (stable), mapped to tool names at load.
-Domain sets follow audit §5.3 (`memory`, `memory_store`, `coding`,
-`reasoning`, `schema`, `notebooklm_core`, `notebooklm_admin`, `knowledge`,
-`storage`, `lxd`, `fuse`, `network`, `chat`, `system`, `identity`, plus one
-`agents:<persona>` per persona and a `plugin:<id>` set per plugin so every
-tool is in at least one set). A set larger than 50 can never be loaded on
+Domain sets: `memory`, `memory_store`, `schema` (schema plugins only),
+`notebooklm_core`, `notebooklm_admin`, `knowledge`, `storage`, `lxd`, `fuse`,
+`network`, `chat`, `system`, `identity`, one `plugin:<id>` set per plugin
+except `cognitive`, and the single lazy `cognitive` set (below). Every tool is
+in a tier or at least one set. A set larger than 50 can never be loaded on
 `/mcp/full`; it is still reachable through `/mcp/loader`.
 
 `core` = tier 1 + tier 2 + `list_toolsets` + `load_toolset` (19 when all
 present). Selection is the union of path, query and header sets; the
 authorized size of `core ∪ selection` must be ≤ 50 (Req 6.3).
+
+### Cognitive layout (owner decision 2026-11-19; Req 5.1, 5.5–5.10)
+
+- **Memory** (tier 1, 7 tools) is always loaded, per identity, and never
+  grouped: `Toolsets::new` strips tier-1 keys from every set except `memory`,
+  even from a hand-edited file.
+- **Hot** (tier 2, 10 tools): `code_search`, `code_context`, `code_index`
+  (coding), `search_own_events` (knowledge, `snowball` plugin),
+  `sequential_thinking`, `context_manager`, `specialist`, `schema_read`,
+  `notebook_query`, `workflow_query`. Bare-name resolution order is
+  `cognitive`, `notebooklm`, `snowball`.
+- **`cognitive`** (temperature `lazy`): every other `cognitive` operation
+  (on the live catalog: 644 `agent_*` plus `rust_pro`, `python_pro`,
+  `typescript_pro`, `code_review_orchestrator`, `gemini_query`,
+  `workflow_run`, `oscal_subids`, `get_health`, `list_tools`, `invoke_tool`).
+  The former `coding`, `reasoning`, `agents:<persona>` and `plugin:cognitive`
+  sets are gone. On `/mcp/full` the set exceeds the cap, so it is used through
+  `/mcp/loader`; through FUSE it is projected as `toolsets/cognitive/` on
+  request (Wonder's projection, see `deploy/config/toolsets/README.md`).
+- **Knowledge choice (Assumed).** The sealed catalog has no method named
+  "knowledge". `snowball.search_own_events` is the vector-backed,
+  natural-language, per-identity search whose Qdrant collection
+  (`snowball_footprints`) was lost; the specs/docs knowledge collection
+  (`repos_specs_docs_voyage_4_lite`) is already read by `code_search` /
+  `code_context` and is gated with coding. Swapping the knowledge tool is a
+  one-line change to `TIER_HOT` plus `readiness::KNOWLEDGE_TOOLS`.
+
+### Vector readiness (`readiness`; Req 5.7–5.9)
+
+`Readiness` holds two gates (`coding`, `knowledge`) built by
+`app::build_readiness` from `OP_MCP_QDRANT_REST_URL` (default
+`http://127.0.0.1:6333`, plain HTTP, loopback), optional
+`OP_MCP_QDRANT_API_KEY_FILE`, and optional `OP_MCP_CODING_COLLECTIONS` /
+`OP_MCP_KNOWLEDGE_COLLECTIONS` overrides (names restricted to
+`[A-Za-z0-9_.-]`). The probe is `GET /collections/<name>` only; a gate is
+`ready` when every collection exists with `points_count > 0`, else
+`pending_revectorization` with per-collection counts and a reason. Results are
+cached 30 s. In `Ctx::call` the gate runs after argument validation and before
+mount resolution and the call-purpose `authorize()`, so a pending call is
+audited as `deny`/`pending_revectorization`/`not_sent`, nothing is written to
+FUSE and no grant use or ticket is consumed. `op-mcp-door vectors status`
+prints the same snapshot (exit 3 while pending).
 
 ### Policy: the single `authorize()` (Req 8)
 

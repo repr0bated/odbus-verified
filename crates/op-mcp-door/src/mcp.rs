@@ -15,6 +15,7 @@ use crate::identity::{
     ASSERTION_HEADER, Identity, MountMap, NonceBindings, Verifier, extract_assertion,
 };
 use crate::policy::{Caller, Decision, Policy, Purpose};
+use crate::readiness::{PENDING, Readiness};
 use crate::toolsets::{CAP, FULL_META, LOADER_META, Toolsets, ensure_within_cap, parse_selection};
 use axum::Router;
 use axum::body::Bytes;
@@ -102,6 +103,9 @@ pub struct Door {
     pub rate: RateLimiter,
     pub allowed_origins: Vec<String>,
     pub max_body: usize,
+    /// Vector readiness of the hot coding and knowledge tools; `None`
+    /// disables the gate (tests and catalogs without those tools).
+    pub readiness: Option<Arc<Readiness>>,
     nonces: NonceBindings,
     sessions: Mutex<HashMap<String, Session>>,
 }
@@ -131,9 +135,27 @@ impl Door {
             rate,
             allowed_origins,
             max_body,
+            readiness: None,
             nonces: NonceBindings::default(),
             sessions: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Gate the hot coding and knowledge tools on vector readiness.
+    pub fn with_readiness(mut self, readiness: Arc<Readiness>) -> Self {
+        self.readiness = Some(readiness);
+        self
+    }
+
+    /// Every gate's status, probed off the async runtime (cached).
+    async fn vector_readiness(&self) -> Value {
+        let Some(readiness) = self.readiness.clone() else {
+            return Value::Null;
+        };
+        tokio::task::spawn_blocking(move || readiness.snapshot())
+            .await
+            .map(|s| json!(s))
+            .unwrap_or_else(|_| json!("readiness probe failed"))
     }
 
     fn caller(&self, identity: Option<&Identity>) -> Caller {
@@ -370,7 +392,7 @@ impl Ctx<'_> {
         record.basis = Some("public".into());
         record.decision = "allow".into();
         let result = match name {
-            "list_toolsets" => Ok(self.list_toolsets()),
+            "list_toolsets" => Ok(self.list_toolsets(self.door.vector_readiness().await)),
             "search_tools" => Ok(self.search_tools(args)),
             "describe_tool" => self.describe_tool(args),
             "load_toolset" => self.load_toolset(args),
@@ -388,7 +410,7 @@ impl Ctx<'_> {
         result
     }
 
-    fn list_toolsets(&self) -> Value {
+    fn list_toolsets(&self, vector_readiness: Value) -> Value {
         let loaded = self.session_sets();
         let sets: Vec<Value> = self
             .door
@@ -406,7 +428,8 @@ impl Ctx<'_> {
             .collect();
         let core = self.door.full_tools(&self.caller, &[]).len() + FULL_META.len();
         tool_text(
-            &json!({"cap":CAP,"core_tool_count":core,"missing_hot_tools":self.door.toolsets.file.missing,"toolsets":sets}),
+            &json!({"cap":CAP,"core_tool_count":core,"missing_hot_tools":self.door.toolsets.file.missing,
+                    "vector_readiness":vector_readiness,"toolsets":sets}),
             false,
         )
     }
@@ -546,6 +569,27 @@ impl Ctx<'_> {
         if let Err(error) = validate_arguments(tool, &args) {
             deny(record, "invalid_arguments");
             return Ok(tool_text(&json!(error.to_string()), true));
+        }
+        // Hot coding/knowledge tools stay listed, but answer with a clear
+        // status (and write nothing to FUSE) until their vectors exist. This
+        // runs before the call-purpose authorize(), so no grant use or
+        // elevation ticket is consumed by a call that is never sent.
+        if let Some(readiness) = self.door.readiness.clone() {
+            let key = tool.key();
+            if readiness.gate_for(&key).is_some() {
+                let probe_key = key.clone();
+                match tokio::task::spawn_blocking(move || readiness.pending(&probe_key)).await {
+                    Ok(None) => {}
+                    Ok(Some(status)) => {
+                        deny(record, PENDING);
+                        return Ok(tool_text(&status.pending_body(&key), true));
+                    }
+                    Err(_) => {
+                        deny(record, "readiness_unknown");
+                        return Ok(tool_text(&json!("vector readiness probe failed"), true));
+                    }
+                }
+            }
         }
         let spec: Option<MountSpec> = match &self.caller.principal {
             Some(principal) => self.door.mounts.for_principal(principal).cloned(),

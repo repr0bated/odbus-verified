@@ -33,10 +33,27 @@ op-mcp-door toolsets generate --mount /run/mounts/3tchedFS \
   --mode '{"kind":"guest_kernel"}' --out /etc/opdbus/mcp-toolsets.json
 ```
 
+`deploy/config/op-mcp-door/mcp-toolsets.json.example` is that command's
+output against the live antix1 catalog on 2026-11-19 (1,620 tools, view
+`c75d9fcf…`); regenerate after any reseal rather than copying it.
+
 The toolsets file is an **interim** source. Tool grouping is being built
 FUSE-side by Wonder (Muse) as a general mechanism; once it lands, the door
 reads toolsets from it instead and this file and `toolsets generate` retire.
-Do not extend the generator's grouping rules in the meantime.
+Do not extend the generator's grouping rules in the meantime, beyond the
+owner's 2026-11-19 cognitive layout: memory (7) always loaded and never
+grouped, ten hot tools (coding and knowledge mandatory), and every other
+`cognitive` operation in one lazy `cognitive` set. The same layout is recorded
+for the FUSE projection in `deploy/config/toolsets/` (see its README).
+
+Coding (`code_search`, `code_context`, `code_index`) and knowledge
+(`search_own_events`) stay listed but answer `pending_revectorization` until
+their Qdrant collections exist and hold points. Check without changing
+anything (read-only GETs, exit 3 while pending):
+
+```sh
+chpst -e /etc/op-dbus/env op-mcp-door vectors status
+```
 
 The door-side grant store, tickets, `authorize()` and audit records are
 likewise interim, pending Wonder's shared FUSE contracts (identity binding,

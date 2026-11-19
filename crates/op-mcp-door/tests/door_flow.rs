@@ -46,6 +46,12 @@ struct World {
 }
 
 fn world() -> World {
+    world_with(&[], false)
+}
+
+/// `vector_tools` adds the hot coding and knowledge tools; `extra` adds
+/// environment (e.g. the Qdrant URL the readiness gate probes).
+fn world_with(extra: &[(&'static str, String)], vector_tools: bool) -> World {
     let dir = tempfile::tempdir().unwrap();
     let mount = dir.path().join("mount");
     let mode = json!({"kind":"guest_kernel"});
@@ -82,6 +88,24 @@ fn world() -> World {
         json!({"command":{"type":"string"}}),
         "cognitive.agent.bash_pro",
     );
+    if vector_tools {
+        write_op(
+            &mount,
+            "cognitive",
+            "code_search",
+            false,
+            json!({"query":{"type":"string"}}),
+            "cognitive.read",
+        );
+        write_op(
+            &mount,
+            "snowball",
+            "search_own_events",
+            false,
+            json!({"query":{"type":"string"}}),
+            "cap.obs.snowball.events.self.search@v1",
+        );
+    }
     for i in 0..60 {
         write_op(
             &mount,
@@ -115,12 +139,13 @@ fn world() -> World {
     let grants_doc = dir.path().join("grants.json");
     std::fs::write(
         &grants_doc,
-        json!({"p-1": {"capabilities": ["cognitive.read", "cognitive.write", "lxd.read"]}})
-            .to_string(),
+        json!({"p-1": {"capabilities": ["cognitive.read", "cognitive.write", "lxd.read",
+            "cap.obs.snowball.events.self.search@v1"]}})
+        .to_string(),
     )
     .unwrap();
     let state = dir.path().join("state");
-    let env: HashMap<&str, String> = HashMap::from([
+    let mut env: HashMap<&str, String> = HashMap::from([
         ("OP_MCP_DOOR_CONFIG_DIR", config_dir.display().to_string()),
         ("OP_MCP_DOOR_STATE_DIR", state.display().to_string()),
         (
@@ -140,6 +165,7 @@ fn world() -> World {
         ),
         ("OP_MCP_DOOR_PUBLIC_RATE", "3".into()),
     ]);
+    env.extend(extra.iter().cloned());
     let config = Config::from_lookup(|k| env.get(k).cloned()).unwrap();
     let opener = Arc::new(FakeOpener::new(|path, _written| {
         let meta: Value = serde_json::from_slice(&std::fs::read(
@@ -669,4 +695,89 @@ async fn transport_rules() {
     )
     .await;
     assert_eq!(reuse.status, StatusCode::FORBIDDEN);
+}
+
+/// A read-only fake Qdrant REST server: every collection holds `points`
+/// (`None` = 404). Returns its URL and a log of request lines.
+fn fake_qdrant(points: Option<u64>) -> (String, Arc<std::sync::Mutex<Vec<String>>>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let log = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen = log.clone();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { break };
+            let mut buf = [0u8; 2048];
+            let n = stream.read(&mut buf).unwrap_or(0);
+            let request = String::from_utf8_lossy(&buf[..n]).to_string();
+            seen.lock()
+                .unwrap()
+                .push(request.lines().next().unwrap_or("").to_owned());
+            let reply = match points {
+                Some(p) => {
+                    let body = format!(r#"{{"result":{{"points_count":{p}}},"status":"ok"}}"#);
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{body}",
+                        body.len()
+                    )
+                }
+                None => "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".to_owned(),
+            };
+            let _ = stream.write_all(reply.as_bytes());
+        }
+    });
+    (url, log)
+}
+
+#[tokio::test]
+async fn hot_vector_tools_answer_pending_until_vectors_exist() {
+    // Collections absent (404): coding and knowledge are listed but pending.
+    let (url, log) = fake_qdrant(None);
+    let w = world_with(&[("OP_MCP_QDRANT_REST_URL", url)], true);
+    let mut c = Client::open(&w, "/mcp/full", Some(assertion(11))).await;
+    let names = c.names().await;
+    assert!(names.contains(&"code_search".to_owned()), "{names:?}");
+    assert!(names.contains(&"search_own_events".to_owned()), "{names:?}");
+    for tool in ["code_search", "search_own_events"] {
+        let pending = c.call(tool, json!({"query": "x"})).await;
+        assert_eq!(pending["result"]["isError"], true, "{pending}");
+        assert_eq!(text(&pending)["status"], "pending_revectorization");
+    }
+    assert_eq!(w.opener.writes(), 0, "nothing reaches FUSE while pending");
+    // Ungated hot/memory tools are unaffected.
+    let ok = c.call("memory_recall", json!({})).await;
+    assert_eq!(ok["result"]["isError"], false, "{ok}");
+    assert_eq!(w.opener.writes(), 1);
+    let listed = c.call("list_toolsets", json!({})).await;
+    let readiness = &text(&listed)["vector_readiness"];
+    assert_eq!(readiness[0]["group"], "coding");
+    assert_eq!(readiness[0]["status"], "pending_revectorization");
+    assert_eq!(readiness[1]["group"], "knowledge");
+    assert!(
+        log.lock()
+            .unwrap()
+            .iter()
+            .all(|l| l.starts_with("GET /collections/")),
+        "the probe only reads"
+    );
+    let lines = w.door.audit.lines();
+    assert!(
+        lines
+            .iter()
+            .any(|l| l["reason"] == "pending_revectorization" && l["outcome"] == "not_sent"),
+        "{lines:?}"
+    );
+}
+
+#[tokio::test]
+async fn hot_vector_tools_call_through_once_vectors_are_populated() {
+    let (url, _log) = fake_qdrant(Some(1200));
+    let w = world_with(&[("OP_MCP_QDRANT_REST_URL", url)], true);
+    let mut c = Client::open(&w, "/mcp/full", Some(assertion(12))).await;
+    let ok = c.call("code_search", json!({"query": "x"})).await;
+    assert_eq!(ok["result"]["isError"], false, "{ok}");
+    let ok = c.call("search_own_events", json!({"query": "x"})).await;
+    assert_eq!(ok["result"]["isError"], false, "{ok}");
+    assert_eq!(w.opener.writes(), 2);
 }

@@ -163,15 +163,35 @@ always loaded and the rest grouped, so that I choose what fills my slots.
 
 1. THE SYSTEM SHALL define tier 1 as the seven memory tools and tier 2 as the
    ten hot tools (`code_search`, `code_context`, `code_index`,
-   `sequential_thinking`, `context_manager`, `specialist`, `schema_read`,
-   `oscal_subids`, `notebook_query`, `workflow_query`).
+   `search_own_events`, `sequential_thinking`, `context_manager`,
+   `specialist`, `schema_read`, `notebook_query`, `workflow_query`), with the
+   coding tools and the knowledge tool (`search_own_events`) mandatory
+   (owner decision 2026-11-19; `oscal_subids` moved to the `cognitive` set).
 2. WHEN `op-mcp-door toolsets generate` runs THEN THE SYSTEM SHALL write a
-   toolsets file from the mounted catalog containing `core`, the domain
-   toolsets and one `agents:<persona>` toolset per persona.
+   toolsets file from the mounted catalog containing the tiers, the domain
+   toolsets and exactly one `cognitive` toolset holding every `cognitive`
+   operation that is in neither tier.
 3. WHERE a toolsets file is configured and readable THE SYSTEM SHALL use it;
    otherwise THE SYSTEM SHALL generate the toolsets in memory at startup.
 4. IF a tool named in a tier is absent from the catalog THEN THE SYSTEM SHALL
    omit it and report it in `list_toolsets`.
+5. THE SYSTEM SHALL NOT place a tier-1 memory tool in any toolset other than
+   `memory`, including when a hand-edited toolsets file lists one.
+6. THE SYSTEM SHALL mark the `cognitive` toolset `lazy` and SHALL NOT generate
+   any other toolset (persona, coding, reasoning or whole-plugin) that groups
+   `cognitive` operations.
+7. WHILE any collection a vector-backed hot tool depends on (coding: the seven
+   voyage-4 retrieval collections; knowledge: `snowball_footprints`) is absent,
+   empty or unreadable THE SYSTEM SHALL keep the tool listed and SHALL answer
+   its calls with a `pending_revectorization` status, writing nothing to FUSE
+   and consuming no grant use or elevation ticket.
+8. THE SYSTEM SHALL determine vector readiness with read-only requests and
+   SHALL NOT create collections, write points or start re-vectorization.
+9. WHEN `list_toolsets` is called THEN THE SYSTEM SHALL include each vector
+   gate's status.
+10. THE SYSTEM SHALL keep `deploy/config/toolsets/cognitive.toolsets.json`
+    (the manifest for the FUSE toolset projection) consistent with its tiers,
+    `cognitive` set and vector gates, and a test SHALL fail when they differ.
 
 ### Requirement 6 — Two endpoints
 
