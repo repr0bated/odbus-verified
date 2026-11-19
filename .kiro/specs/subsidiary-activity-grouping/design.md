@@ -26,7 +26,11 @@ groups all of its activity under one `subsidiary_id` and one chain id
 9. a **topology graph** per subsidiary, built on the existing `system_graph`
    snapshots, holding a full inventory of the container and the host side it
    depends on, with owner, change authority and domain on every node, and
-   drift against the sealed release (Req 14–17).
+   drift against the sealed release (Req 14–17);
+10. an **allowed resources list** per subsidiary: a typed, extensible
+   allowlist of consumables (agent, persona, workflow, notebook, chat_mode,
+   ui_generator, tool, model, skill), never infrastructure, stored as data
+   and enforced only by the existing grant/capability gate (Req 18).
 
 Nothing here adds authority. Admission stays `identity ∧ grants ∧ sealed` in
 the bridge (Req 11.3). The subsidiary id is always *resolved* from the
@@ -742,7 +746,7 @@ path only):
 | identity & grants | child sled metadata, grant document (capability names only), `GrantStore::list`, ticket dir listing | principal, session, grant, ticket, capability; `child_of`, `has_grant`, `grants` |
 | FUSE view | host `/proc/self/mountinfo` for the child projection; the view's `operations/*/metadata.json` | fuse_mount, namespace_view, operation; `projects`, `exposes`, `requires`, `elevates_via` |
 | volume | `statx` of the volume and its dirs | volume, volume_dir; `on_volume`, `stored_in` |
-| packages | pacman local DB (`var/lib/pacman/local/*/{desc,files}`) of the container root (read-only base + overlay upper) and of the host | `package:<name>@<version>`; `package_depends_on`, `installs` (package→file) |
+| packages | detected per inspected root (Req 15.8). dpkg (default; antix1 is Debian with apt/dpkg, no pacman — checked 2026-11-19): `var/lib/dpkg/status` (Package, Version, Architecture, Status, Depends/Pre-Depends, Provides), `var/lib/dpkg/info/<pkg>[:arch].list` (files), `.md5sums` (shipped file digests, used for drift), `.conffiles` (marks config nodes). pacman, only if `var/lib/pacman/local` exists (other seed images): `*/{desc,files}`. Neither → limitation | `package:<manager>:<name>@<version>` with `manager: dpkg|pacman`, `arch`; `package_depends_on` (alternatives kept as `depends_on_any` attribute), `installs` (package→file), `declares_conffile` (package→config) |
 | binaries | ELF headers of executables in `bin`, `sbin`, `libexec`, release roots | `binary:<path>` (sha256, build-id); `links_library` (DT_NEEDED → `shared_library:<soname>` → resolved file); `provided_by` (file→package) |
 | crates | `.dep-v0` cargo-auditable section if present, else the active release's `source:` graph `ext_crate` nodes mapped by binary name | `crate:<name>@<version>`; `built_from_crate`, `crate_depends_on` |
 | runit | reused scanner on the container's and host's service dirs | `runit_service`; `log_service_of`, `starts`, `depends_on`, `runs_bin`, `consumes_config`, `uses_mount` |
@@ -815,6 +819,134 @@ package name, or plugin name. Drift kinds: `missing`, `extra`,
 observed}`; counts and digest go into a ledger event. Data only: nothing is
 blocked (Req 17.4).
 
+### 16. Allowed resources per subsidiary (Req 18) — **New**
+
+A typed allowlist of **consumables**: things a subsidiary uses, not things it
+runs on. Each entry is `(kind, resource_id)`. The list is data; the only
+enforcement is the existing bridge gate (`identity ∧ grants ∧ sealed`), fed
+by grant-delta proposals the owner applies (Req 5, 11.3).
+
+**Kinds, bound to existing concepts (Found unless marked):**
+
+| kind | resource_id is | existing concept (path) | capabilities an entry needs | argument constraint |
+|---|---|---|---|---|
+| `agent` | agent type, e.g. `rust-pro` | `op-agents` `AgentDescriptor` / `AgentSpec` (`agent_catalog.rs`, `agent_registry.rs`); exposed by `state_plugins/cognitive_agents.rs` as `agent_<type>_<op>` methods | the agent's declared capability (`cognitive.agent.<type>` form from `cognitive_agents.rs`) | none (one capability per agent) |
+| `persona` | persona id | `state_plugins/persona.rs` (`persona.read`, `persona.execute`) and cognitive personas in `cognitive.rs` | `persona.read`, `persona.execute` (never `persona.write`) | `persona_id` ∈ allowed ids (**New** constraint key, name to confirm, OQ 24) |
+| `workflow` | `workflow_id` | `op-workflows` `WorkflowDefinition` (`flow.rs`); `state_plugins/workflows_plugin.rs` `StartWorkflowInput.workflow_id` | `workflows.read`, `workflows.write` (start/pause/resume) | `workflow_id` ∈ allowed ids |
+| `notebook` | NotebookLM notebook id | `state_plugins/notebooklm.rs` (`notebook_id`, `selected_notebook_id`); `ChatMode::NotebookLm` ("the selected NotebookLM notebook is the partition", `project.rs`) | `notebooklm.read`, `notebooklm.invoke` (never `notebooklm.admin`) | `notebook_id` / `selected_notebook_id` ∈ allowed ids |
+| `chat_mode` | one of `ChatMode` (`state_plugins/project.rs`): `personal`, `project`, `control_plane`, `accountability`, `notebook_lm`, `ui_render` (same set as `json_render_gallery.rs` `MODES`) | `chat_router.rs` (mode carried on chat requests; `GetOwnAgentRouteOutput.mode`) | `chat_router.chat` (+ `chat.context` where the mode reads memory) | `mode` ∈ allowed modes |
+| `ui_generator` | json-render profile id (`ApplicationProfile` in `json_render_application.rs`, `CanvasProfile` in `json_render_canvas_profile.rs`) | `json_render_generation.rs`, `json_render_methods.rs`; chat surface `ChatMode::UiRender` ("rendering surface only: no memory is read or written") | `json_render.read`, `json_render.invoke` (never `json_render.promote`, `json_render.gallery` promotion) | `profile` ∈ allowed ids (constraint key per method, OQ 24) |
+| `tool` | door tool key `<plugin>.<method>` or `toolset:<name>` | `op-mcp-door/src/toolsets.rs` (`op-mcp-door/toolsets@1`, `Toolset`), door catalog | the tool's `required_capability` from the sealed catalog; for a toolset, the union over its tools | none |
+| `model` | model reference | `state_plugins/model_registry.rs`; `chat_router.rs` model assignments | `model_registry.read` (read side); selection rides on the chat call | `model` ∈ allowed refs |
+| `skill` | skill name | `state_plugins/threetched.rs` `skills.*` methods | the capability of the skill read/run methods in the catalog (**Assumed**; edit/add are owner-only and never allowed) | `skill` ∈ allowed names |
+
+"Only the personal UI generator mode" is expressed as entries
+`chat_mode:ui_render` + `ui_generator:<personal profile id>` (and, if wanted,
+`chat_mode:personal`), with no other `chat_mode` entry. Which exact profile
+id is "the personal UI generator" is OQ 23.
+
+**Extensibility.** Kinds are rows, not an enum in the gate:
+
+```
+:create subsidiary_resource_kind {
+    kind: String                      # [a-z][a-z0-9_]{1,31}
+    =>
+    binding_plugin: String,           # sealed plugin that owns the resource
+    capabilities: String,             # JSON: capability ids an entry needs; "{id}" placeholder allowed
+    arg_keys: String default "[]",    # JSON: method argument names that select the resource
+    id_source: String,                # catalog read used to validate ids, e.g. "workflows.query"
+    excluded_capabilities: String default "[]",  # never granted through this kind
+    description: String,
+    added_event_id: Int
+}
+```
+
+The nine kinds above are seeded rows. A new kind is added by the owner
+(`subsidiary.add_resource_kind`, protected action) with a binding to an
+existing sealed plugin; no code change in the gate.
+
+**Infrastructure is never a kind (Req 18.3).** Refused at kind creation and
+at entry creation: any binding plugin or capability in the infra set
+`{lxd, incus, btrfs, fuse, _3tched-fs, storage, network, openflow, ovs,
+dnsresolver, systemd/runit services, packagekit, provisioning, subsidiary,
+grants, secrets}` plus any capability classified shell/exec/admin/secret by
+the ceiling classifier (section 5), plus operations whose OSCAL component
+type (`op-oscal-subid`) is `network`, `storage`, `hardware`,
+`interconnection` or `physical`. The exact set is OQ 22.
+
+**Entries:**
+
+```
+:create subsidiary_allowed_resource {
+    subsidiary_id: String,
+    kind: String,
+    resource_id: String
+    =>
+    capabilities: String,         # JSON list resolved from the kind at entry time
+    arg_constraint: String default "",  # JSON in the door ArgsConstraint shape, "" if none
+    status: String,               # proposed | active | revoked
+    grant_delta_ref: String,      # path of the grant-delta proposal that carries it
+    added_event_id: Int,          # main ledger event ids
+    updated_event_id: Int,
+    note: String default ""
+}
+```
+
+Stored in the main Cozo (bridge ledger DB, beside the registry), replicated to
+the subsidiary's own Cozo DB under section 9b, every change a ledger event
+tagged `subject` with the subsidiary (Req 18.7).
+
+**From entries to grants (Req 18.5, 18.6).**
+
+1. Validate: kind exists and is not infra; `resource_id` exists via the
+   kind's `id_source` read; every capability ∈ `ceiling(sid)` (section 5);
+   none in `excluded_capabilities`.
+2. Compute the needed set for the principal: `caps = ∪ capabilities` of
+   non-revoked entries; for each argument-selected kind, one
+   `ArgsConstraint { properties: { <arg_key>: { enum: [ids…] } } }` per
+   capability, merging ids of the same kind.
+3. Write one `op-provisioning/grant-delta@1` proposal (add/remove) for the
+   child principal. Entries are `proposed` until the materialized grant
+   document carries them; then `active`. Nothing writes or materializes the
+   grant document (Req 5.4 unchanged).
+4. Enforcement at call time is the existing gate: no capability → refused.
+   Argument constraints reuse the door's existing `ArgsConstraint` /
+   `PropertyConstraint` (`op-mcp-door/src/grants.rs`: `const`, `enum`,
+   `prefix`; `matches(args)`), today only on ephemeral grants. **New:** an
+   optional `args` field on a durable grant entry with that same shape,
+   evaluated by the same gate in bridge admission and door
+   `DurableGrants`. Absent field = today's behaviour. This is a widening of
+   the grant document schema, so it needs owner approval (OQ 25).
+5. A workflow's steps call agents (`agent.operation` strings in
+   `StartWorkflowInput.params.steps`); each step is admitted on its own
+   capability, so a workflow entry alone does not unlock its agents. The
+   plugin warns when an allowed workflow references an agent not on the
+   list (**Assumed** that step execution is re-admitted per step; OQ 26).
+
+**Topology (Req 18.8).** New node kinds `agent:<id>`, `persona:<id>`,
+`workflow:<id>`, `notebook:<id>`, `chat_mode:<mode>`, `ui_generator:<id>`,
+`tool:<key>`, `model:<ref>`, `skill:<name>` (generally `<kind>:<id>`), domain
+`host`, owner `host_owner`, change authority `capability:
+cap.subsidiary.allowed_resources@v1` (New, owner-only). Edges
+`subsidiary:<sub-uuid> --allowed_<kind>--> <kind>:<id>` (e.g.
+`allowed_agent`, `allowed_workflow`, `allowed_notebook`,
+`allowed_chat_mode`, `allowed_ui_generator`, `allowed_tool`, `allowed_model`,
+`allowed_skill`, `allowed_persona`) with attribute `status`, and
+`<kind>:<id> --requires--> capability:<id>`, so the existing
+`principal → has_grant → grant → grants → capability` path shows whether
+each allowed resource is actually granted.
+
+**Drift (Req 18.9).** `drift:subsidiary:<name>` gets kind
+`allowlist_grant_mismatch`: capability or arg id needed by an active entry
+but not materialized, or materialized for the principal but needed by no
+entry. Data only.
+
+**Plugin methods (`subsidiary`, New):** `list_resource_kinds`,
+`list_allowed_resources` (owner; subsidiary caller sees only its own),
+`propose_allowed_resources { add: [{kind, resource_id}], remove: [...] }`
+(owner, writes the grant-delta proposal), `add_resource_kind` (owner,
+protected action).
+
 ## Data Models (summary)
 
 - `ChainEvent.subsidiary_id: Option<String>`, `ChainEvent.subsidiary_role: Option<SubsidiaryRole>` (**New**, hashed when present). The chain id is not on `ChainEvent`; it is looked up from the registry.
@@ -826,6 +958,8 @@ blocked (Req 17.4).
 - Subsidiary own Cozo DB relations (**New**): `subsidiary_link`, `subsidiary_anchor`, `subsidiary_chain_edge`, `subsidiary_chain_point`, `chain_vector_link` (same schema as `op-cozo-store`), the system-graph relations for its own namespaces, `replica_meta { chain_id => applied_seq, head_link_hash }`.
 - Main-side Cozo (**New**): `subsidiary_chain_edge`, `subsidiary_chain_point` (section 9c); namespaces `inventory:host`, `baseline:subsidiary:<name>`, `topology:subsidiary:<name>`, `drift:*` in the existing system-graph relations.
 - Node attribute contract `owner`, `change_authority`, `domain`, `container` (section 14).
+- Main Cozo (**New**): `subsidiary_resource_kind`, `subsidiary_allowed_resource` (section 16), replicated; topology `<kind>:<id>` nodes and `allowed_<kind>` edges.
+- Durable grant entry optional `args` (door `ArgsConstraint` shape) (**New**, OQ 25).
 - Label `user.opdbus.subsidiary_id` (**New**) beside the existing `user.opdbus.mode=subsidiary`, `parent_session_id`, `admission`.
 
 ## Error Handling
@@ -861,6 +995,9 @@ blocked (Req 17.4).
   collection per subsidiary chosen from admission; denial of service —
   bounded pages, bounded reconciler back-off; elevation — ceiling check, no
   protected tasks for subsidiaries, destructive lifecycle steps elevated.
+- Allowed resources add no authority path: the list only produces
+  grant-delta proposals the owner applies; entries outside the ceiling or in
+  the infra set are refused; the gate stays the single enforcement point.
 - `tenant/` is container-writable by design; it is data, not evidence.
   Evidence lives only in the main ledger and its main Cozo edges.
 
@@ -899,7 +1036,15 @@ blocked (Req 17.4).
   relation refused; re-ingest leaves byte-equal rows.
 - Inventory library extraction: `system_graph_inventory --prepared` output is
   byte-equal before and after moving the shared code (golden).
-- Collectors on fixture trees: pacman DB → packages, versions, deps; ELF
+- Allowed resources: kind seeding; infra kinds/entries refused; ceiling
+  refusal; ids validated via `id_source`; grant-delta contents (capabilities
+  + merged `enum` constraints) golden; durable `args` absent = unchanged
+  admission, present = arguments outside the set refused by the gate;
+  `chat_mode:ui_render` only → `mode: personal` refused; topology
+  `allowed_*` edges; `allowlist_grant_mismatch` drift.
+- Collectors on fixture trees: dpkg `status`/`info` → packages, versions,
+  deps, conffiles, md5sums; pacman DB the same where present; no DB →
+  limitation; ELF
   fixtures → DT_NEEDED edges and sha256; runit dirs → services, log services,
   `starts`/`depends_on`; configs → consumers; secret paths → `secret_ref`
   with no hash and no read (open of the file is asserted never to happen);
@@ -924,6 +1069,8 @@ dual-written, main ledger authoritative, subsidiary Cozo a rebuildable
 replica; each subsidiary keeps its own Cozo/RocksDB on its ext4 volume. Revision 3: chain edges in the new `subsidiary_chain_edge` relation in the
 same pass as the Qdrant upsert; topology graph with full inventory, owner,
 change authority and domain on every node, and drift (data only).
+Revision 4: allowed resources = typed extensible allowlist of consumables,
+never infra, enforced only via the existing grant gate; dpkg package DB.
 
 1. **Anchor tag.** The tag is derived from the chain id with a per-subsidiary key (blinded, proposed) so the name never appears on-chain. Or do you want the plain chain id `acme::mainchain` on-chain?
 2. **EtchedAnchor interface.** Confirm the field names/types the contract takes (`anchor_tag`, `batch_root`, `first_seq`, `last_seq`, `head_link_hash`, `prev_batch_root`), the anchor cadence (every N links, time-based, or on demand), and who submits the transaction while networking is deferred (host-side submitter to the local chain?).
@@ -942,7 +1089,13 @@ change authority and domain on every node, and drift (data only).
 15. **Collection name separator.** `acme::mainchain` → Qdrant collection `acme__mainchain` because `:` is not safe in collection names (assumed). OK, or a different mapping (e.g. `acme-mainchain`)?
 16. **Name length and reserved list.** 3–32 chars `[a-z0-9-]`, reserved `main mainchain host owner public system root snowball`. Any other names to reserve?
 17. **Main-side Cozo for chain edges.** The vector pass opens `COGNITIVE_COZO_DB_PATH`, not the bridge ledger DB. Keep chain edges there (next to `chain_vector_link`, proposed) or move them into the bridge DB? And does the vector/replica pass run on antix1 where the subsidiary volumes are mounted (otherwise every replica write goes through the reconciler)?
-18. **Container storage paths for inventory.** OK for the host to read the container's read-only base and overlay volume (paths from `lxd.get_instance` / storage volume info) for the inventory, never `tenant/`? And is it pacman (Artix) in every subsidiary image?
+18. **Container storage paths for inventory.** OK for the host to read the container's read-only base and overlay volume (paths from `lxd.get_instance` / storage volume info) for the inventory, never `tenant/`? Package DB: antix1 is Debian (apt/dpkg; no pacman, checked 2026-11-19), so dpkg is the default collector; pacman is read only where `var/lib/pacman/local` exists. Which base image(s) will subsidiaries use (Debian/dpkg for all)?
 19. **Namespace cap.** `MAX_SYSTEM_GRAPH_NAMESPACES = 256` and 4 namespaces per subsidiary allow about 60 subsidiaries. Raise the cap, or fold `baseline:`/`drift:` into `topology:`?
 20. **Owner/authority defaults.** Confirm the resolution table in section 14 (especially: container base files owned by `host_owner`, overlay files by the subsidiary principal, host packages changed only by `release:<id>`).
 21. **Crate dependencies.** Are deployed binaries built with `cargo auditable` (embedded `.dep-v0`)? If not, crate deps come from the release's `source:` graph `ext_crate` nodes, mapped by binary name.
+22. **Infra set.** Confirm the plugins/capabilities that can never be an allowed resource (section 16 list). Is `chat_mode:control_plane` (and `accountability`) also never allowed for subsidiaries (proposed: yes, they are host-wide)?
+23. **"Personal UI generator mode".** Is that `ChatMode::UiRender` with a specific json-render profile (which id: an `ApplicationProfile` or `CanvasProfile`?), or `ChatMode::Personal` with generation on? The spec models it as `chat_mode:ui_render` + `ui_generator:<id>`.
+24. **Argument keys.** Confirm the argument names that select a resource per method (`workflow_id`, `notebook_id`/`selected_notebook_id`, `mode`, `model`, json-render profile key, persona id key, skill name key). Methods without a selecting argument can only be allowed or not as a whole.
+25. **Durable `args` constraints.** Add an optional `args` (door `ArgsConstraint` shape) to durable grant entries, evaluated by the existing gate (proposed), or use only whole-capability grants (then workflow/notebook/mode/model cannot be narrowed to ids)?
+26. **Workflow steps.** Is each workflow step re-admitted on its agent's capability (assumed), or does `workflows.write` run steps under the workflow's authority (then an allowed workflow implicitly allows its agents)?
+

@@ -83,14 +83,28 @@ Handling").
 - [ ] 24. Node attribute contract and ownership: `owner`, `change_authority`, `domain`, `container` builders, the section 14 resolution table, ownership edges (`owned_by`, `unix_owner`, `unix_group`, `change_authorized_by`); tests that every node produced by every collector carries them
   - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
 - [ ] 25. Inventory collectors (read-only, bounded, limitations on gaps)
-  - [ ] 25.1 packages (pacman local DB), binaries (ELF sha256, build-id, DT_NEEDED → shared libraries), crates (`.dep-v0` or release `source:` graph)
+  - [ ] 25.1 packages (package-manager detection per root; dpkg `status`/`info/*.{list,md5sums,conffiles}` default, pacman local DB where present, limitation if neither), binaries (ELF sha256, build-id, DT_NEEDED → shared libraries), crates (`.dep-v0` or release `source:` graph)
   - [ ] 25.2 runit services and log services, configs and consumers, secret references by path only, live sealed catalog and blobs
   - [ ] 25.3 host collector producing `inventory:host` (`ObservedRuntime` provenance) and container collector reading the base rootfs and overlay volume from the host, never `tenant/`, never executing in the container
   - [ ] 25.4 Fixture tests for each collector, including an assertion that secret files are never opened
-  - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.7, 6.5_
+  - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.7, 15.8, 6.5_
 - [ ] 26. Topology graph: registry, lxd, identity/grants, FUSE view and volume collectors; assemble `topology:subsidiary:<name>` with the host-inventory dependency closure; write with `replace_system_graph` to main then replica with equal receipts; record revision/digest as a tagged ledger event; lifecycle, release/reseal and periodic refresh triggers with one retry on revision conflict; `baseline:subsidiary:<name>` frozen at provisioning
   - [ ] 26.1 `subsidiary.topology_*` and `refresh_inventory` read/refresh methods over the fixed system-graph queries, scoped per caller
   - [ ] 26.2 Tests: bounds pass, receipts equal, replica mismatch rebuilt from main, lifecycle event → new revision, subsidiary caller limited to its namespace
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 15.5, 15.6, 12.1, 12.7_
 - [ ] 27. Drift: compare `inventory:host` with the active `release:<id>` namespace and the live catalog manifest, and each container inventory with its baseline; write `drift:*` namespaces with `drifts_from` edges and kinds; tagged ledger event with counts and digest; `subsidiary.drift` read method; fixture tests for every drift kind and that nothing is blocked
   - _Requirements: 17.1, 17.2, 17.3, 17.4_
+- [ ] 28. Allowed resources data and validation in `op-cozo-store` + `subsidiary` plugin
+  - [ ] 28.1 `subsidiary_resource_kind` (seeded with agent, persona, workflow, notebook, chat_mode, ui_generator, tool, model, skill bound as in design section 16) and `subsidiary_allowed_resource` relations in the main Cozo, replicated via the task 9 path
+  - [ ] 28.2 Validation: infra set refusal (kind and entry), ceiling check, `excluded_capabilities`, id existence via each kind's `id_source` read
+  - [ ] 28.3 Methods `list_resource_kinds`, `list_allowed_resources`, `propose_allowed_resources`, `add_resource_kind` (protected); every change a tagged ledger event
+  - [ ] 28.4 Grant-delta generation: capability union + merged `ArgsConstraint` `enum` per argument key, add/remove proposal only; `proposed` → `active` when the materialized grants carry it
+  - [ ] 28.5 Tests: seeded kinds, infra/ceiling refusals, golden grant-delta, no grant document written, subsidiary caller sees only its own list
+  - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.7, 18.10_
+- [ ] 29. Enforcement through the existing gate (owner approval required, Open Question 25)
+  - [ ] 29.1 Optional `args` on durable grant entries (door `ArgsConstraint`/`PropertyConstraint` shape, moved to a shared crate or mirrored) evaluated in bridge admission and door `DurableGrants`; absent = unchanged behaviour
+  - [ ] 29.2 Tests: old grant documents admit identically; `args` present refuses out-of-set `workflow_id`/`notebook_id`/`mode`/`model`; no new check outside the gate
+  - _Requirements: 18.6, 18.10_
+- [ ] 30. Allowed resources in topology and drift: `<kind>:<id>` nodes with owner/domain/change authority, `allowed_<kind>` and `requires` edges in `topology:subsidiary:<name>`; `allowlist_grant_mismatch` drift kind; fixture tests
+  - _Requirements: 18.8, 18.9, 14.2, 16.1, 17.2_
+

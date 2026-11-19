@@ -22,6 +22,13 @@ host side it depends on, with every node's owner (unix and principal), the
 grant/capability that authorizes changing it, and its domain
 (`host|container`); drift against the sealed release is detected.
 
+Revision 4 (owner decisions of 2026-11-19): each subsidiary has an allowed
+resources list covering consumables only (agents, workflows, notebooks, chat
+modes, UI generators, tools, models, skills, personas, and further kinds),
+never infrastructure; it is stored as data in Cozo and the topology graph and
+enforced through the existing grant/capability gate. Package inventory
+supports dpkg (antix1 is Debian) and pacman where present.
+
 Source material: a fresh read of `origin/dev` `879e7d7`:
 `crates/op-state-store/src/event_chain.rs` (`ChainEvent`, `EventChain`,
 `EventBatch`, `MerkleProof`), `crates/op-state-store/src/method_receipt.rs`
@@ -332,13 +339,14 @@ subsidiary runs on.
 
 #### Acceptance Criteria
 
-1. THE SYSTEM SHALL inventory, for each subsidiary container and for the host side it depends on: installed packages with versions; binaries with SHA-256; runit services and their log services; sealed plugins and sealed blobs with schema hashes; configuration files with paths, SHA-256 and consuming services.
+1. THE SYSTEM SHALL inventory, for each subsidiary container and for the host side it depends on: installed packages with versions and their package manager; binaries with SHA-256; runit services and their log services; sealed plugins and sealed blobs with schema hashes; configuration files with paths, SHA-256 and consuming services.
 2. THE SYSTEM SHALL record dependencies as edges: package to package, binary to shared library, service to service, service to configuration, service to mount or FUSE view, and deployed binary to crate.
 3. THE SYSTEM SHALL record a secret only as a reference to its path and SHALL never read, hash or store a secret value.
 4. THE SYSTEM SHALL collect container inventory read-only from the container's storage on the host, SHALL never execute anything in the container, and SHALL never read the tenant working directory.
 5. THE SYSTEM SHALL keep the host-side inventory in a namespace `inventory:host` and SHALL copy into each subsidiary's topology graph the part of the host inventory that the subsidiary depends on.
 6. WHEN a refresh runs THEN THE SYSTEM SHALL refresh on every lifecycle event of Requirement 14.4, on every release activation or catalog reseal, and periodically (full every 6 hours, registry/LXD/grants every hour by default).
 7. IF a collector cannot read an item or a bound is reached THEN THE SYSTEM SHALL record it in the snapshot's limitations and SHALL still write the rest.
+8. THE SYSTEM SHALL detect the package manager of each inspected root and SHALL read dpkg (`var/lib/dpkg`) and pacman (`var/lib/pacman/local`) databases where present, recording the manager on each package node and a limitation when neither is found.
 
 ### Requirement 16 — Owner and domain of every inventory node
 
@@ -366,3 +374,23 @@ changes.
 2. THE SYSTEM SHALL report each difference as missing, extra, hash mismatch, version mismatch, owner or mode mismatch, or unsealed plugin, with the expected and observed values.
 3. THE SYSTEM SHALL write drift as a system-graph namespace `drift:host` or `drift:subsidiary:<subsidiary_name>` and record its digest and counts as a ledger event (tagged with the subsidiary for container drift).
 4. THE SYSTEM SHALL treat drift as data only and SHALL NOT block or alter any operation based on it.
+
+### Requirement 18 — Allowed resources per subsidiary (consumables only)
+
+**User Story:** As the owner, I want a typed list of the consumable resources
+each subsidiary may use, such as specific agents, workflows, notebooks or
+chat modes, so that a subsidiary gets exactly the services I chose for it and
+nothing else, while infrastructure stays host-managed.
+
+#### Acceptance Criteria
+
+1. THE SYSTEM SHALL keep, per subsidiary, an allowed resources list whose entries are a resource kind and a resource id.
+2. THE SYSTEM SHALL support at least the kinds `agent`, `persona`, `workflow`, `notebook`, `chat_mode`, `ui_generator`, `tool`, `model` and `skill`, each bound to an existing catalog concept and its capabilities, and SHALL allow new kinds to be added as data with a binding rule.
+3. IF an entry names infrastructure (volumes, devices, mounts, network, host services, storage, containers or any plugin in the design's infrastructure set) THEN THE SYSTEM SHALL refuse the entry.
+4. IF an entry needs a capability outside the subsidiary's capability ceiling (Requirement 5.2) THEN THE SYSTEM SHALL refuse the entry.
+5. WHEN entries are added or removed THEN THE SYSTEM SHALL write a grant-delta proposal for the subsidiary's principal that adds or removes exactly the capabilities and argument constraints the entries need, and SHALL NOT write or materialize a grant document.
+6. THE SYSTEM SHALL enforce the allowed resources only through the existing bridge grant/capability gate, with argument constraints for argument-selected resources (workflow id, notebook id, chat mode, model, UI generator profile), and SHALL add no separate allowlist check.
+7. THE SYSTEM SHALL store the list in the main Cozo, replicate it to the subsidiary's own Cozo DB under Requirement 12, and record every change as a ledger event tagged with the subsidiary.
+8. THE SYSTEM SHALL represent each entry in the subsidiary's topology graph as an `allowed_<kind>` edge from the subsidiary to the resource node, and the resource node's `requires` edges to its capabilities.
+9. WHEN the materialized grants of the subsidiary's principal differ from what its active entries need THEN THE SYSTEM SHALL report the difference as drift, as data only.
+10. WHILE a subsidiary has no active entry of a kind THE SYSTEM SHALL grant it no capability of that kind.
