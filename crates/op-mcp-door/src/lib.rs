@@ -5,6 +5,7 @@
 //! serves a FUSE call behind the mount is not its concern.
 //! Spec: `.kiro/specs/mcp-door-adapter/`.
 
+pub mod app;
 pub mod audit;
 pub mod canonical;
 pub mod catalog;
@@ -14,5 +15,6 @@ pub mod encode;
 pub mod fusecall;
 pub mod grants;
 pub mod identity;
+pub mod mcp;
 pub mod policy;
 pub mod toolsets;

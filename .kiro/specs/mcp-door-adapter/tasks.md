@@ -62,7 +62,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
   - Unit tests with a test signing key.
   - _Requirements: 12.1–12.5, 2.8_
 
-- [ ] 9. MCP endpoints and meta-tools
+- [x] 9. MCP endpoints and meta-tools
   - `mcp`: JSON-RPC handling, sessions, `/mcp/full` and `/mcp/loader`,
     meta-tools, origin and body checks, rate limit for public calls.
   - Integration tests over the axum router: hidden tools, `forbidden_or_unknown`
