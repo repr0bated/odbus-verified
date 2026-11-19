@@ -10,6 +10,8 @@ pub mod agents;
 pub mod dbus_service;
 pub mod dynamic;
 pub mod generator;
+pub mod inference;
+pub mod judgment;
 mod historical_sources;
 pub mod recipes;
 pub mod router;
