@@ -269,6 +269,12 @@ impl LungsIdentity {
                 // configured host identity (Bind's own authority, no session
                 // argument); there is no second, container lookup for it.
                 let session_id = host_peer_session(self.host_root(), |name| std::env::var(name).ok())?;
+                // An Incus proxy device relays a guest through a host-root
+                // forkproxy; that peer is a container, never the host identity.
+                let cmdline = std::fs::read(format!("/proc/{}/cmdline", self.peer.pid))
+                    .context("host peer command line unavailable")?;
+                self.revalidate_peer()?;
+                ensure!(!is_incus_forkproxy(&cmdline), "host process has no container binding");
                 return self.publish_binding(Binding::Host, &session_id).await;
             }
             let mut candidate = self.find_container_binding().await?;
@@ -408,6 +414,14 @@ fn host_peer_session(host_root: bool, lookup: impl Fn(&str) -> Option<String>) -
     Ok(session_id)
 }
 
+/// `incusd forkproxy ...` (or LXD's) relays guest connections as host root.
+fn is_incus_forkproxy(cmdline: &[u8]) -> bool {
+    let mut args = cmdline.split(|byte| *byte == 0).filter(|arg| !arg.is_empty());
+    let daemon = args.next().and_then(|arg| arg.rsplit(|byte| *byte == b'/').next())
+        .is_some_and(|name| matches!(name, b"incusd" | b"incus" | b"lxd"));
+    daemon && args.next() == Some(b"forkproxy".as_slice())
+}
+
 fn instance_uuid(instance: &IncusInstance) -> Result<String> {
     let value = instance.config.as_ref().and_then(|config| config.get("volatile.uuid"))
         .context("native instance UUID unavailable")?;
@@ -458,6 +472,17 @@ mod tests {
             ("IDENTITY_SLED_HOST_SESSION_ID", "b0c777e3-0955-cd8b-3d01-ca12998cae28"),
             ("OP_LOCAL_HUMAN_SESSION_ID", "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e"),
         ])).unwrap(), configured);
+    }
+
+    #[test]
+    fn incus_proxy_relays_are_not_the_host_identity() {
+        assert!(is_incus_forkproxy(b"/usr/libexec/incus/incusd\0forkproxy\0--\0123\0"));
+        assert!(is_incus_forkproxy(b"incusd\0forkproxy\0"));
+        assert!(is_incus_forkproxy(b"/snap/lxd/current/bin/lxd\0forkproxy\0"));
+        assert!(!is_incus_forkproxy(b"/usr/local/libexec/op-dbus/bin/3tched-fs\0mount\0"));
+        assert!(!is_incus_forkproxy(b"/usr/bin/forkproxy\0incusd\0"));
+        assert!(!is_incus_forkproxy(b"incusd\0"));
+        assert!(!is_incus_forkproxy(b""));
     }
 
     #[test]

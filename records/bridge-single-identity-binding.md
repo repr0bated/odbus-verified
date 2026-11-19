@@ -67,20 +67,44 @@ Container peers are unchanged.
 ```
 
 After the change, file references are:
-- `runtime_lungs_identity.rs:261-289`: `bind_current_container`
-- `runtime_lungs_identity.rs:394-410`: `host_peer_session`
-- `runtime_lungs_identity.rs:437-461`: test
+- `runtime_lungs_identity.rs:261-295`: `bind_current_container`
+- `runtime_lungs_identity.rs:400-415`: `host_peer_session`
+- `runtime_lungs_identity.rs:417-423`: `is_incus_forkproxy`
+- `runtime_lungs_identity.rs:451-486`: tests
+
+Follow-up commit: host-namespace peers whose `/proc/<pid>/cmdline` is `incusd|incus|lxd forkproxy …`
+stay refused. An Incus `proxy` device relays a guest through a host-root forkproxy, so that peer
+is a container and must not become the host identity. This also fails closed when the command
+line can't be read.
+
+## Which callers reach this check, and which have no identity
+
+Every lungs connection is pinned at accept by `LungsIdentity::capture` (`runtime_lungs.rs:317`).
+A peer without a pidfd, peer creds or a readable `/proc` entry is dropped before D-Bus starts.
+No call path reaches a plugin without a binding: `LungsPlugin::call_with_operation_id` →
+`caller()` (`runtime_lungs_identity.rs:328-329`, "lungs identity is not bound"). `serve_connection`
+also closes an unbound connection after 10 s (`wait_bound`).
+
+Callers reaching `BindCurrentContainer` from the host pid namespace:
+1. **Host root 3tchedFS daemons** (the views): the target of this fix. They're bound to the configured host identity.
+2. **Non-root host processes:** still refused with "host process has no container binding".
+3. **Incus forkproxy relays** (guest via a `proxy` device): refused by the new guard.
+4. **Host root when the configured host identity isn't committed:** refused by `publish_binding`
+   with "native peer has no committed identity session". **This is the live state on antix1 today.**
+
+Note that a host-root peer could already call `Bind(<session>)` for any session. A guest behind
+a host-root proxy could do the same before this change; the forkproxy guard only covers `BindCurrentContainer`.
 
 ## Security properties kept
 
-- **No identity, no binding.** `publish_binding` (`:303`) still resolves the session through
+- **No identity, no binding.** `publish_binding` (`:309`) still resolves the session through
   `authoritative_identity`. That requires a committed, anchored sled in the private SHM projection
   plus an unrevoked registered principal. If either is missing, the bind is refused.
 - **Non-root host processes stay refused**, with the same error. A shared mapped UID still can't
   claim anything.
 - **Host root gains nothing new.** It could already call `Bind(<any session>)`. Now it gets only the
   one operator-configured session, never a session it chooses.
-- **Every call is still revalidated.** `revalidate_native_binding` (`:330-344`) rechecks `host_root()`
+- **Every call is still revalidated.** `revalidate_native_binding` (`:336-350`) rechecks `host_root()`
   for `Binding::Host`, and `revalidate_binding` re-resolves the identity term on every call.
 - **Container peers are unchanged:** the native Incus UUID, init process and namespace proof all still apply.
 
@@ -92,6 +116,7 @@ After the change, file references are:
   - non-canonical selectors are refused (path, name, uppercase, no dashes);
   - both selectors resolve;
   - `OP_LOCAL_HUMAN_SESSION_ID` takes precedence.
+- **Added** `incus_proxy_relays_are_not_the_host_identity`: matches incusd, incus and lxd `forkproxy`; rejects the 3tched-fs daemon, argument order tricks and an empty command line.
 - **Suggested follow-up for Wonder:** a socket-level test with a committed fixture identity.
   It would show host root `BindCurrentContainer()` binding `Binding::Host`, and an uncommitted
   configured session being refused.
@@ -115,3 +140,10 @@ This error doesn't come from this path. Lungs binding failures surface as D-Bus 
 ("lungs identity binding refused"), not as serde errors. None of the `Deserialize` types on the
 3tchedFS threetched surface (`threetched-surface.rs`) has a `name` field. It needs its own trace
 from the threetched client log.
+
+## Build (not deployed)
+
+This is a host build on antix1, not a golden chroot build. Use it as a test artifact only, not for golden activation.
+- Binary: `/root/ov-bind-20261119.target/release/op-grpc-bridge`
+- SHA-256: `1895666b3ec894b3eda6c6abad93ab8b62e1e75fc24f1e563796f657381a0215`
+- Tests: `cargo test -p op-grpc-bridge --lib -- runtime_lungs identity_binding:: identity_receiver::`, 9 passed, 0 failed.
