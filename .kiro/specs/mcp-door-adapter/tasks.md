@@ -56,7 +56,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
   - Unit tests for redaction and append mode.
   - _Requirements: 11.1–11.3, 1.7_
 
-- [ ] 8. OIA1 identity, principal and mount mapping
+- [x] 8. OIA1 identity, principal and mount mapping
   - `identity`: header parsing, `op-identity` verification, key file,
     principal map, mount map, nonce-to-session binding.
   - Unit tests with a test signing key.

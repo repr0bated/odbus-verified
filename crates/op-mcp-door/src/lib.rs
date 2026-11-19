@@ -13,5 +13,6 @@ pub mod config;
 pub mod encode;
 pub mod fusecall;
 pub mod grants;
+pub mod identity;
 pub mod policy;
 pub mod toolsets;
