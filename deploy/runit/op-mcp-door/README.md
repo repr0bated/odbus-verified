@@ -33,6 +33,11 @@ op-mcp-door toolsets generate --mount /run/mounts/3tchedFS \
   --mode '{"kind":"guest_kernel"}' --out /etc/opdbus/mcp-toolsets.json
 ```
 
+The toolsets file is an **interim** source. Tool grouping is being built
+FUSE-side by Wonder (Muse) as a general mechanism; once it lands, the door
+reads toolsets from it instead and this file and `toolsets generate` retire.
+Do not extend the generator's grouping rules in the meantime.
+
 Grants and tickets (root, with the same `/etc/op-dbus/env` loaded so the
 state directory matches):
 

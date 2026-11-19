@@ -139,6 +139,14 @@ are public; `call_tool` is public to list, and each target is authorized.
 
 ### Toolsets (Req 5, 6)
 
+**Interim source.** Tool grouping is being built FUSE-side by Wonder (Muse)
+as a general, reusable mechanism. This file and `toolsets generate` are an
+interim source only: the door consumes toolsets through `Toolsets`
+(`load_or_generate`/`get`/`core_keys`) and does not grow its own grouping
+logic. When Wonder's mechanism lands, swap the source behind `Toolsets` for
+it and retire the generator; the 50-tool cap, `authorize()` and the meta-tools
+stay unchanged.
+
 File (**Assumed** path `/etc/opdbus/mcp-toolsets.json`, env
 `OP_MCP_TOOLSETS_PATH`), written by `op-mcp-door toolsets generate`:
 
