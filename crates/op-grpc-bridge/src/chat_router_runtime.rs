@@ -5,7 +5,7 @@
 //! does not implement another model provider.
 
 use std::collections::BTreeMap;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 use std::time::Duration;
 use tokio::sync::Mutex;
 
@@ -17,7 +17,7 @@ use op_plugins::state_plugins::chat_router::{
 };
 use op_plugins::state_plugins::common::llm_projection::{ModelRoute, Provider};
 use reqwest::RequestBuilder;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
@@ -36,6 +36,14 @@ const MAX_GATEWAY_QUERY_KEY_BYTES: usize = 64;
 const MAX_GATEWAY_QUERY_VALUE_BYTES: usize = 4096;
 const MAX_GATEWAY_REQUEST_BYTES: usize = MAX_CHAT_REQUEST_BYTES;
 static RUNTIME_SWITCH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static SYSTEM_ONE_HTTP: LazyLock<Result<reqwest::Client, String>> = LazyLock::new(|| {
+    reqwest::Client::builder().timeout(Duration::from_secs(60))
+        .redirect(reqwest::redirect::Policy::none()).https_only(true).build()
+        .map_err(|_| "judgment HTTPS client unavailable".to_owned())
+});
+#[path = "runtime_agent_provider.rs"]
+mod direct_provider;
+pub(crate) use direct_provider::InferenceOutcomeUnknown;
 
 #[derive(Debug, thiserror::Error)]
 #[error("chat_router {operation} returned HTTP {status}")]
@@ -409,6 +417,55 @@ impl ChatRouterRuntimeClient {
                 "cost_usd_micros": done.usage.cost_usd_micros,
             }),
         })
+    }
+
+    /// Exact System One inference on the existing native-selected route.
+    /// No chat prompt conversion, model override, tool loop or retry exists.
+    pub(crate) async fn judge_under_guard(
+        &self,
+        input: op_agents::judgment::SystemOneInput,
+        admission: std::sync::Arc<dyn crate::chat_router_generation::NativeProviderAdmission>,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<op_agents::judgment::SystemOneOutput> {
+        input.validate()?;
+        admission.check().await?;
+        let route = self.direct_route(secrets).await?;
+        admission.check_profile(&route.approval_profile()).await?;
+        anyhow::ensure!(!route.selection.selected_model.trim().is_empty(), "configured JEV route has no model");
+        const ENDPOINT: &str = "https://api.typesafe.ai/v1/systemone";
+        anyhow::ensure!(crate::chat_router_catalog_binding::endpoint_matches(ENDPOINT,&route.uri)?,
+            "approved native judgment route is not the TypeSafe System One HTTP namespace");
+        let (auth,key) = direct_provider::bound_credentials(&route,ENDPOINT).await?;
+        anyhow::ensure!(auth == op_plugins::state_plugins::model_registry::ProviderAuth::Bearer,
+            "System One requires an approved bearer profile");
+        let key = key.context("TypeSafe key file is not configured")?;
+        #[derive(Serialize)]
+        struct SystemOneRequest<'a> {
+            model: &'a str,
+            state: &'a Value,
+            questions: &'a BTreeMap<String, op_agents::judgment::Question>,
+        }
+        let payload = SystemOneRequest { model:&route.selection.selected_model, state:&input.state, questions:&input.questions };
+        let client = SYSTEM_ONE_HTTP.as_ref().map_err(|_| anyhow!("judgment HTTPS client unavailable"))?;
+        admission.check().await?;
+        let response = client.post(ENDPOINT)
+            .bearer_auth(key).json(&payload).send().await
+            .map_err(|_| InferenceOutcomeUnknown)?;
+        if !response.status().is_success(){return Err(direct_provider::rejected_status(response.status()));}
+        let mut bytes = Vec::new();
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|_| InferenceOutcomeUnknown)?;
+            anyhow::ensure!(bytes.len().checked_add(chunk.len()).is_some_and(|n| n <= 256 * 1024),
+                InferenceOutcomeUnknown);
+            bytes.extend_from_slice(&chunk);
+        }
+        let output: op_agents::judgment::SystemOneOutput = serde_json::from_slice(&bytes)
+            .map_err(|_| InferenceOutcomeUnknown)?;
+        output.validate_for(&input).map_err(|_| InferenceOutcomeUnknown)?;
+        admission.check().await.map_err(|_| InferenceOutcomeUnknown)?;
+        anyhow::ensure!(self.direct_route(secrets).await.map_err(|_| InferenceOutcomeUnknown)? == route, InferenceOutcomeUnknown);
+        Ok(output)
     }
 
     fn request(&self, request: RequestBuilder) -> anyhow::Result<RequestBuilder> {

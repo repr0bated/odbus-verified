@@ -62,6 +62,13 @@ pub(crate) trait NativeGenerationAdmission: Send + Sync {
     -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>>;
 }
 
+/// Direct HTTP requires a separate approved-profile boundary; legacy websocket
+/// admissions cannot be reused as direct-provider authority.
+pub(crate) trait NativeProviderAdmission: NativeGenerationAdmission {
+    fn check_profile<'a>(&'a self,profile:&'a op_agents::inference::NativeProviderProfile)
+        -> Pin<Box<dyn Future<Output=Result<(),NativeGenerationError>>+Send+'a>>;
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum NativeGenerationEvent {
     TextDelta { delta: String },

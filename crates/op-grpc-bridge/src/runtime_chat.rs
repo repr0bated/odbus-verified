@@ -264,6 +264,32 @@ impl ChatRuntime {
                 .and_then(|output| Ok(unchanged(ctx, serde_json::to_value(output)?)))
                 .map_err(RuntimeError::from);
         }
+        if method == "judge" {
+            let input: op_agents::judgment::SystemOneInput = decode(args)?;
+            input.validate()?;
+            let _guard = ChatRouterRuntimeClient::selection_guard().await;
+            let checkpoint = ctx.checkpoint.context("judgment requires an approved execution-role checkpoint")?;
+            ensure!(matches!(checkpoint.class, crate::runtime::CallClass::JudgmentInfrastructure { depth:1,.. }),
+                "judgment requires finite native judgment infrastructure");
+            let alias = checkpoint.native_agent_alias.as_deref().context("approved judgment native-agent route is absent")?;
+            let client = native_client(ctx, alias).await?;
+            let result = client.judge_under_guard(input, direct_provider_admission(ctx)?, &config_secrets(ctx.schema)?).await
+                .map_err(provider_error)?;
+            return Ok(unchanged(ctx, serde_json::to_value(result)?));
+        }
+        if method == "complete_text" {
+            let input: op_agents::inference::CompleteTextInput = decode(args)?;
+            input.validate()?;
+            let checkpoint = ctx.checkpoint.context("text completion requires an approved execution-role checkpoint")?;
+            ensure!(matches!(checkpoint.class, crate::runtime::CallClass::Ordinary),
+                "text completion cannot run as judgment or final-response infrastructure");
+            let alias = checkpoint.native_agent_alias.as_deref().context("approved inference native-agent route is absent")?;
+            let _guard = ChatRouterRuntimeClient::selection_guard().await;
+            let client = native_client(ctx,alias).await?;
+            let result = client.complete_text_under_guard(input,direct_provider_admission(ctx)?,&config_secrets(ctx.schema)?).await
+                .map_err(provider_error)?;
+            return Ok(unchanged(ctx,serde_json::to_value(result)?));
+        }
         let guard = Arc::new(ChatRouterRuntimeClient::selection_guard().await);
         match self.router_inner(ctx, method, args).await {
             Ok(mut outcome) => {
@@ -721,7 +747,7 @@ impl ChatRuntime {
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     match plugin {
         "chat_router" => {
-            chat_router::generation::is_method(method)
+            matches!(method,"judge"|"complete_text") || chat_router::generation::is_method(method)
                 || matches!(
                     method,
                     "GetState"
@@ -915,6 +941,47 @@ pub(super) async fn native_client(
     Ok(ChatRouterRuntimeClient::for_agent_alias(alias)
         .with_sealed_identity(Some(original_payload(ctx.caller)?))
         .with_trace_id(&ctx.caller.trace_id))
+}
+
+fn provider_error(error:anyhow::Error)->RuntimeError {
+    if error.is::<crate::chat_router_runtime::InferenceOutcomeUnknown>() { RuntimeError::unknown(error) }
+    else if error.is::<crate::chat_router_generation::NativeGenerationError>() {
+        RuntimeError::denied("provider authority changed before input disclosure")
+    } else { RuntimeError::review("approved direct provider binding or typed input is unavailable") }
+}
+struct DirectProviderAdmission {
+    caller:VerifiedCaller,runtime:Runtime,target:crate::runtime::CheckpointTarget,
+    checkpoint:crate::runtime::CallCheckpoint,
+}
+impl crate::chat_router_generation::NativeGenerationAdmission for DirectProviderAdmission {
+    fn check(&self)->std::pin::Pin<Box<dyn Future<Output=Result<(),crate::chat_router_generation::NativeGenerationError>>+Send+'_>> {
+        Box::pin(async {
+            use crate::chat_router_generation::{NativeGenerationError,NativeErrorCode};
+            self.runtime.authorize_nested(&self.caller,"chat_router",&self.target.method).await
+                .map_err(|_|NativeGenerationError::Terminal(NativeErrorCode::Auth))?;
+            self.checkpoint.owner.revalidate_binding(&self.runtime,&self.caller,&self.target,crate::runtime::CheckpointStage::Preflight).await
+                .map_err(|_|NativeGenerationError::Terminal(NativeErrorCode::Auth))
+        })
+    }
+}
+impl crate::chat_router_generation::NativeProviderAdmission for DirectProviderAdmission {
+    fn check_profile<'a>(&'a self,profile:&'a op_agents::inference::NativeProviderProfile)
+        ->std::pin::Pin<Box<dyn Future<Output=Result<(),crate::chat_router_generation::NativeGenerationError>>+Send+'a>> {
+        Box::pin(async move {
+            self.checkpoint.owner.revalidate_provider_binding(&self.runtime,&self.caller,&self.target,profile).await
+                .map_err(|_|crate::chat_router_generation::NativeGenerationError::Terminal(crate::chat_router_generation::NativeErrorCode::Auth))
+        })
+    }
+}
+fn direct_provider_admission(ctx:&BackendContext<'_>)->Result<Arc<dyn crate::chat_router_generation::NativeProviderAdmission>> {
+    let checkpoint=ctx.checkpoint.context("direct provider operation has no approved role checkpoint")?.clone();
+    let target=ctx.checkpoint_target.clone();
+    ensure!(target.operation_id==ctx.operation_id && target.plugin_id=="chat_router"
+        && target.method==ctx.declaration.name
+        && target.attribution.as_ref()==Some(&checkpoint.attribution),"prepared provider checkpoint binding differs from callback");
+    ensure!(ctx.runtime.catalog().plugin("chat_router").is_some_and(|entry|entry.schema_hash==target.schema_hash),
+        "provider callback schema differs from the current sealed catalog");
+    Ok(Arc::new(DirectProviderAdmission{caller:ctx.caller.for_background(),runtime:ctx.runtime.clone(),target,checkpoint}))
 }
 struct GenerationAdmission {
     caller: VerifiedCaller,
