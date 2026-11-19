@@ -25,3 +25,6 @@ pocketflow_rs = "0.1"
 op-execution-tracker = { path = "../op-execution-tracker" }
 log = { workspace = true }
 serde_json = { workspace = true }
+op-agents = { workspace = true }
+op-state-store = { path = "../op-state-store" }
+jsonschema = { workspace = true }

@@ -14,6 +14,7 @@ pub mod inference;
 pub mod judgment;
 mod historical_sources;
 pub mod recipes;
+pub mod object_graph;
 pub mod router;
 pub mod security;
 pub mod unified;

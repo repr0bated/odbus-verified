@@ -98,7 +98,12 @@ fn bound_simd(value: &Value) -> Result<(), ExactSchemaError> {
     serde_json::to_writer(ByteBudget(MAX_BYTES), value).map_err(|_| error("document_byte_bound"))
 }
 
-fn schema_children<'a>(root: &'a Json, node: &'a Json) -> Result<Vec<&'a Json>, ExactSchemaError> {
+fn schema_children_with_profile<'a>(
+    root: &'a Json,
+    node: &'a Json,
+    method: bool,
+    legacy_items: bool,
+) -> Result<Vec<&'a Json>, ExactSchemaError> {
     if node.is_boolean() {
         return Ok(vec![]);
     }
@@ -115,6 +120,9 @@ fn schema_children<'a>(root: &'a Json, node: &'a Json) -> Result<Vec<&'a Json>, 
     }
     if !std::ptr::eq(root, node) && node.get("$id").is_some() {
         return Err(error("nested_resource_unsupported"));
+    }
+    if method && !std::ptr::eq(root, node) && node.get("$schema").is_some() {
+        return Err(error("nested_dialect_unsupported"));
     }
     let mut children = Vec::new();
     if let Some(reference) = object.get("$ref") {
@@ -167,7 +175,22 @@ fn schema_children<'a>(root: &'a Json, node: &'a Json) -> Result<Vec<&'a Json>, 
         "contentSchema",
     ] {
         if let Some(value) = object.get(key) {
-            children.push(value)
+            if legacy_items && key == "items" && value.is_array() {
+                children.extend(value.as_array().ok_or_else(|| error("schema_sequence_invalid"))?);
+            } else {
+                children.push(value)
+            }
+        }
+    }
+    if legacy_items {
+        if let Some(value) = object.get("additionalItems") {
+            children.push(value);
+        }
+        if let Some(dependencies) = object.get("dependencies") {
+            let dependencies = dependencies
+                .as_object()
+                .ok_or_else(|| error("schema_map_invalid"))?;
+            children.extend(dependencies.values().filter(|value| !value.is_array()));
         }
     }
     for key in ["allOf", "anyOf", "oneOf", "prefixItems"] {
@@ -191,12 +214,40 @@ pub fn validate_exact_schema_document(schema: &Json) -> Result<(), ExactSchemaEr
 }
 
 fn compile_exact_schema(schema: &Json) -> Result<jsonschema::Validator, ExactSchemaError> {
-    bound_json(schema)?;
-    if let Some(dialect) = schema.get("$schema")
-        && dialect.as_str() != Some(crate::DEFAULT_SCHEMA_DIALECT)
-    {
-        return Err(error("dialect_unsupported"));
+    compile_schema_with_profile(schema, false)
+}
+
+/// Method contracts retain their authored dialect. State and recipe callers
+/// continue to use the separate, unchanged strict exact-schema entry point.
+pub fn compile_method_schema(schema: &Json) -> Result<jsonschema::Validator, ExactSchemaError> {
+    compile_schema_with_profile(schema, true)
+}
+
+fn method_dialect(schema: &Json) -> Result<(jsonschema::Draft, bool), ExactSchemaError> {
+    match schema.get("$schema") {
+        None => Ok((jsonschema::Draft::Draft202012, false)),
+        Some(Json::String(dialect)) if dialect == crate::DEFAULT_SCHEMA_DIALECT =>
+            Ok((jsonschema::Draft::Draft202012, false)),
+        Some(Json::String(dialect)) if dialect == "http://json-schema.org/draft-07/schema#" =>
+            Ok((jsonschema::Draft::Draft7, true)),
+        Some(Json::String(dialect)) if dialect == "https://json-schema.org/draft/2019-09/schema" =>
+            Ok((jsonschema::Draft::Draft201909, true)),
+        _ => Err(error("dialect_unsupported")),
     }
+}
+
+fn compile_schema_with_profile(schema: &Json, method: bool) -> Result<jsonschema::Validator, ExactSchemaError> {
+    bound_json(schema)?;
+    let (draft, legacy_items) = if method {
+        method_dialect(schema)?
+    } else {
+        if let Some(dialect) = schema.get("$schema")
+            && dialect.as_str() != Some(crate::DEFAULT_SCHEMA_DIALECT)
+        {
+            return Err(error("dialect_unsupported"));
+        }
+        (jsonschema::Draft::Draft202012, false)
+    };
     enum Step<'a> {
         Enter(&'a Json, usize),
         Exit(&'a Json, Vec<&'a Json>),
@@ -223,7 +274,7 @@ fn compile_exact_schema(schema: &Json) -> Result<jsonschema::Validator, ExactSch
                 if active.len() + heights.len() > MAX_NODES {
                     return Err(error("reference_expansion_bound"));
                 }
-                let children = schema_children(schema, node)?;
+                let children = schema_children_with_profile(schema, node, method, legacy_items)?;
                 stack.push(Step::Exit(node, children.clone()));
                 for child in children.into_iter().rev() {
                     stack.push(Step::Enter(child, depth + 1));
@@ -245,7 +296,7 @@ fn compile_exact_schema(schema: &Json) -> Result<jsonschema::Validator, ExactSch
         }
     }
     jsonschema::options()
-        .with_draft(jsonschema::Draft::Draft202012)
+        .with_draft(draft)
         .with_retriever(NoExternalResources)
         .build(schema)
         .map_err(|_| error("schema_invalid"))
@@ -726,6 +777,71 @@ pub fn self_contained_field_schema(
             .insert(namespace.unwrap_or("$defs").into(), Json::Object(collected));
     }
     validate_exact_schema_document(&output)?;
+    Ok(output)
+}
+
+/// Close one method field over its actual document's reachable definitions,
+/// retaining the source dialect and resource identity without rewriting refs.
+/// References outside definition namespaces, nested resources/dialects, cycles,
+/// and external retrieval remain explicitly unsupported.
+pub fn self_contained_method_field_schema(node: &Json, root: &Json) -> Result<Json, ExactSchemaError> {
+    bound_json(node)?;
+    let (_, legacy_items) = method_dialect(root)?;
+    if !std::ptr::eq(node, root) && (node.get("$id").is_some() || node.get("$schema").is_some()) {
+        return Err(error("nested_resource_unsupported"));
+    }
+    let mut output = node.clone();
+    if let Some(object) = output.as_object_mut() {
+        for key in ["$schema", "$id"] {
+            if let Some(value) = root.get(key) {
+                bound_json(value)?;
+                object.insert(key.into(), value.clone());
+            }
+        }
+    }
+    let mut pending = vec![node];
+    let mut visited = HashSet::new();
+    let mut definitions = HashSet::new();
+    while let Some(value) = pending.pop() {
+        if !visited.insert(value as *const Json as usize) {
+            continue;
+        }
+        if visited.len() + pending.len() > MAX_NODES {
+            return Err(error("field_definition_bound"));
+        }
+        if let Some(reference) = value.get("$ref") {
+            let reference = reference.as_str().ok_or_else(|| error("local_reference_invalid"))?;
+            let (space, tail) = if let Some(tail) = reference.strip_prefix("#/$defs/") {
+                ("$defs", tail)
+            } else if let Some(tail) = reference.strip_prefix("#/definitions/") {
+                ("definitions", tail)
+            } else {
+                return Err(error("field_reference_not_definition"));
+            };
+            let component = tail.split('/').next().ok_or_else(|| error("local_reference_invalid"))?;
+            let decoded = crate::state_schema_shape::decode_component(component)
+                .map_err(|_| error("local_reference_escape_invalid"))?;
+            let (name, target) = root.get(space).and_then(Json::as_object)
+                .and_then(|defs| defs.get_key_value(&decoded))
+                .ok_or_else(|| error("local_reference_unresolved"))?;
+            if definitions.insert((space, name.as_str())) {
+                bound_json(target)?;
+                let namespace = output.as_object_mut().ok_or_else(|| error("schema_node_invalid"))?
+                    .entry(space).or_insert_with(|| Json::Object(serde_json::Map::new()))
+                    .as_object_mut().ok_or_else(|| error("schema_map_invalid"))?;
+                if let Some(existing) = namespace.get(name) {
+                    if existing != target {
+                        return Err(error("field_definition_context_conflict"));
+                    }
+                } else {
+                    namespace.insert(name.clone(), target.clone());
+                }
+                pending.push(target);
+            }
+        }
+        pending.extend(schema_children_with_profile(root, value, true, legacy_items)?);
+    }
+    compile_method_schema(&output)?;
     Ok(output)
 }
 
