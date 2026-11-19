@@ -580,7 +580,7 @@ impl PersistentCore {
         self.commit_with_updates(catalog, owner, commit, Vec::new(), terminal)
     }
 
-    fn snapshot(
+    pub(super) fn snapshot(
         &self,
         catalog: &Catalog,
         scope: &StateScope,

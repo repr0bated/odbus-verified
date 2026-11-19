@@ -26,6 +26,7 @@ pub(super) struct OperationState {
 
 /// Opaque admitted attempt. Constructed only after its Cozo durability barrier.
 /// Dropping this handle does not mark a backend operation failed or replayable.
+#[derive(Clone)]
 pub struct MethodOperation {
     operation_id: String,
     owner: StateScope,
@@ -172,6 +173,34 @@ impl PersistentCore {
             LedgerAction::State { .. } => {}
         }
         Ok(())
+    }
+
+    /// Native projection ownership derived from an actual durable mutation
+    /// attempt. A terminal transition may reconcile this original owner after
+    /// grant revocation; it never admits another effect.
+    pub(super) fn orchestration_attribution(
+        &self, operation: &MethodOperation, domain: &str,
+    ) -> Result<(StateScope, String, String, String)> {
+        self.require_available()?;
+        let state = self.operations.get(&(operation.owner.clone(), operation.operation_id.clone()))
+            .context("orchestration owner has no durable operation")?;
+        ensure!(state.attempt == operation.state.attempt && state.plugin_id == domain
+            && state.schema_hash == operation.state.schema_hash
+            && state.capability_id == operation.state.capability_id,
+            "orchestration admission attribution differs from its durable attempt");
+        Ok((operation.owner.clone(), state.schema_hash.clone(), state.method.clone(), state.capability_id.clone()))
+    }
+
+    pub(super) fn recover_orchestration_operation(
+        &self, scope: &StateScope, id: &str, acceptance: &MethodEventProof,
+    ) -> Result<MethodOperation> {
+        operation_id(id)?;
+        let state = self.operations.get(&(scope.clone(), id.to_owned()))
+            .context("original orchestration operation is unavailable")?;
+        ensure!(state.status == MethodRecoveryStatus::Completed
+            && state.terminal.as_ref() == Some(acceptance),
+            "orchestration writer recovery requires its original completed acceptance proof");
+        Ok(MethodOperation { operation_id: id.to_owned(), owner: scope.clone(), state: state.clone() })
     }
 
     fn require_operation(&self, operation: &MethodOperation) -> Result<&OperationState> {

@@ -122,8 +122,39 @@ pub(crate) struct RuntimeResult {
 /// One admitted root retains the gate until all of its nested native work ends.
 /// The dispatch log prevents an outer refusal from erasing a nested effect.
 struct Execution {
-    _guard: OwnedMutexGuard<()>,
+    _guard: Option<OwnedMutexGuard<()>>,
+    release: Arc<RootReleaseState>,
     dispatched: StdMutex<Vec<Uuid>>,
+}
+
+struct RootReleaseState {
+    released: AtomicBool,
+    changed: tokio::sync::Notify,
+}
+
+/// Correlation with ancestor completion, deliberately not an execution lease.
+#[derive(Clone)]
+pub(crate) struct RootRelease { state: Arc<RootReleaseState> }
+
+impl RootRelease {
+    pub(crate) async fn wait(&self) {
+        loop {
+            let notified = self.state.changed.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            if self.state.released.load(Ordering::Acquire) { return; }
+            notified.await;
+        }
+    }
+}
+
+impl Drop for Execution {
+    fn drop(&mut self) {
+        // The next caller must observe a genuinely released effect gate.
+        drop(self._guard.take());
+        self.release.released.store(true, Ordering::Release);
+        self.release.changed.notify_waiters();
+    }
 }
 
 impl Execution {
@@ -167,8 +198,12 @@ impl ExecutionAdmission {
         let guard = self.gate.clone().lock_owned().await;
         self.require_open()?;
         Ok(Arc::new(Execution {
-            _guard: guard,
+            _guard: Some(guard),
             dispatched: StdMutex::new(Vec::new()),
+            release: Arc::new(RootReleaseState {
+                released: AtomicBool::new(false),
+                changed: tokio::sync::Notify::new(),
+            }),
         }))
     }
 
@@ -444,6 +479,11 @@ impl Runtime {
     }
     pub(crate) fn core(&self) -> &BridgeCore {
         &self.inner.core
+    }
+    pub(crate) fn root_release(&self, caller: &VerifiedCaller) -> Result<RootRelease, RuntimeError> {
+        let execution = caller.execution.as_ref()
+            .ok_or_else(|| RuntimeError::denied("ancestor root execution is absent"))?;
+        Ok(RootRelease { state: execution.release.clone() })
     }
     pub(crate) fn catalog(&self) -> &Catalog {
         self.core().catalog()

@@ -20,6 +20,10 @@ mod operations;
 mod persistence;
 #[path = "core_projection.rs"]
 mod projection;
+#[path = "core_orchestration.rs"]
+mod orchestration;
+pub use orchestration::{OrchestrationCommit, OrchestrationRecord};
+pub(crate) use orchestration::OrchestrationWriter;
 pub use operations::MethodOperation;
 
 // ---------------------------------------------------------------------------
