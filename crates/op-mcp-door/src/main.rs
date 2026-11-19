@@ -2,14 +2,16 @@
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
+use op_mcp_door::audit::AuditLog;
 use op_mcp_door::catalog::Catalog;
 use op_mcp_door::config::Config;
-use op_mcp_door::fusecall::{Mount, MountSpec};
+use op_mcp_door::fusecall::{FsOpener, Mount, MountSpec};
 use op_mcp_door::grants::{
     ArgsConstraint, EphemeralGrant, GrantStore, MAX_TICKET_LIFETIME, Ticket, TicketStore, now_unix,
 };
 use serde_json::{Value, json};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(
@@ -23,6 +25,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Serve /mcp/full and /mcp/loader over TLS (configuration from the environment).
+    Serve,
     /// Toolsets file operations.
     Toolsets {
         #[command(subcommand)]
@@ -109,6 +113,7 @@ fn event(kind: &str, detail: Value) {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::Serve => serve(),
         Command::Toolsets {
             command: ToolsetsCommand::Generate { mount, mode, out },
         } => {
@@ -208,4 +213,39 @@ fn grant(command: GrantCommand) -> Result<()> {
         GrantCommand::Revoke { id } => store.revoke(&id)?,
     }
     Ok(())
+}
+
+fn serve() -> Result<()> {
+    let config = Config::from_env()?;
+    // TLS first: no certificate, no listener (Requirement 1.2).
+    let tls = op_mcp_door::server::load_tls(&config.tls_cert, &config.tls_key)?;
+    let (door, warnings) =
+        op_mcp_door::app::build_door(&config, AuditLog::stdout(), Arc::new(FsOpener))?;
+    for warning in warnings {
+        event("warning", json!(warning));
+    }
+    let tools = door.catalog.tools.len();
+    let app = op_mcp_door::mcp::router(Arc::new(door));
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(async move {
+        let listener = tokio::net::TcpListener::bind(config.listen)
+            .await
+            .with_context(|| format!("bind {}", config.listen))?;
+        event(
+            "listening",
+            json!({"addr": config.listen.to_string(), "tls": true, "tools": tools}),
+        );
+        let shutdown = async {
+            let mut term =
+                tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                    .expect("SIGTERM handler");
+            tokio::select! {
+                _ = term.recv() => {},
+                _ = tokio::signal::ctrl_c() => {},
+            }
+        };
+        op_mcp_door::server::serve(listener, tls, app, shutdown).await
+    })
 }

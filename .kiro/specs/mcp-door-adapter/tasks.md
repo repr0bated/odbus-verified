@@ -70,7 +70,7 @@ Cargo: `-p op-mcp-door` only, one process at a time, private target dir
     writes per denial, audit lines.
   - _Requirements: 2.1–2.8, 6.1–6.7, 7.4, 7.5, 8.1–8.3_
 
-- [ ] 10. TLS-only server
+- [x] 10. TLS-only server
   - `server`: rustls acceptor, key-mode check, `serve` subcommand.
   - Tests: TLS round trip with an rcgen certificate; plaintext HTTP gets no
     HTTP response; startup refuses a missing or group-readable key.
