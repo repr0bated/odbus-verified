@@ -1,0 +1,25 @@
+{
+  "format": "opdbus.threetched.v2",
+  "source": {
+    "mode": "unmodified-upstream",
+    "cargo_lock_sha256": "f23ebd085af889b6e4411c763901086a9ed251cfdfca195106a8dc5f3031692e"
+  },
+  "upstream": {
+    "url": "https://github.com/zeroclaw-labs/zeroclaw.git",
+    "tag": "v0.8.4",
+    "commit": "a56c345d51dd8ab562e9351e0d4ab83f6a741db9",
+    "source_archive_sha256": "0f1a3508b30319542fca0050998fdc45f3682df71f6baa37f65065cf00692697",
+    "vendored_source_gzip_sha256": "5e0f092f4f673422812ab3c370c71286c2dfc51119c004b45996f33b58acfd78"
+  },
+  "artifact": {
+    "name": "threetched",
+    "upstream_binary": "zeroclaw",
+    "sha256": "9b659cc2e6cccae4b3105cb651881370d12d3d35f0bed0105e229ad3be1d8c23",
+    "bytes": 46741304,
+    "rust_target": "x86_64-unknown-linux-gnu"
+  },
+  "toolchain": {
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)"
+  }
+}
