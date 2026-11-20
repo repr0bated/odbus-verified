@@ -482,7 +482,15 @@ impl Runtime {
         if adopted > 0 { tracing::info!(adopted, "indexed identity sled volumes"); }
         crate::runtime_identity::recover_startup(identity_store.clone(), catalog_dir.clone()).await?;
         let core = BridgeCore::open(catalog, database_path)?;
-        let head = core.journal().tip().map(|event| (event.event_hash, event.timestamp.seconds));
+        // Only an explicit initialization reads the durable head (the newest
+        // public journal event); normal starts skip the scan entirely.
+        let head = if std::env::var("OP_LOCAL_HUMAN_INITIALIZE_SESSION").is_ok_and(|v| !v.trim().is_empty()) {
+            let tip = core.at_event_id();
+            if tip == 0 { None } else {
+                core.journal_events(&crate::core::StateScope::Public, tip, tip)?
+                    .into_iter().next().map(|event| (event.event_hash, event.timestamp.seconds))
+            }
+        } else { None };
         let initializing = identity_store.clone();
         let initialize_dir = catalog_dir.clone();
         if tokio::task::spawn_blocking(move || {
