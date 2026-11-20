@@ -295,6 +295,159 @@ pub(crate) fn adopt_issued_identity_at_startup(cozo: &CozoGraphShuttle) -> anyho
     Ok(true)
 }
 
+/// The explicitly selected configured host human, or `None` when no
+/// initialization is requested. `OP_LOCAL_HUMAN_INITIALIZE_SESSION` must name
+/// exactly the configured session, which must derive from the configured key,
+/// as must the configured principal.
+fn local_human_selection(lookup: impl Fn(&str) -> Option<String>) -> anyhow::Result<Option<(String, String)>> {
+    let value = |name: &str| lookup(name).map(|v| v.trim().to_owned()).filter(|v| !v.is_empty());
+    let Some(selected) = value("OP_LOCAL_HUMAN_INITIALIZE_SESSION") else { return Ok(None) };
+    let key = value("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY")
+        .context("initialization requires the configured host human key")?;
+    canonical_key(&key)?;
+    let session = op_identity::session::derive_session_id(&key);
+    ensure!(selected == session
+        && value("OP_LOCAL_HUMAN_SESSION_ID").as_deref() == Some(session.as_str())
+        && value("OP_LOCAL_HUMAN_PRINCIPAL_ID").as_deref()
+            == Some(op_identity::session::derive_principal_id(&key).as_str()),
+        "initialization requires the explicitly selected configured host human");
+    Ok(Some((session, key)))
+}
+
+/// Explicit one-shot startup initialization of the configured host human: the
+/// host analogue of a container sled, with no per-account container
+/// (`identity_session_binding_matches` admits `human` records without one).
+/// Runs only when `OP_LOCAL_HUMAN_INITIALIZE_SESSION` selects the configured
+/// session (`/etc/op-dbus/initialize-local-human`, read by the launcher). Mints
+/// the genesis and SID1 here, anchored to the bridge journal head and the
+/// sealed catalog. Never overwrites a record or a deletion tombstone; an
+/// existing record for the same key is left as is. Returns whether a record
+/// was committed.
+pub(crate) fn initialize_configured_local_human_at_startup(
+    cozo: &CozoGraphShuttle, catalog_dir: &std::path::Path, head: Option<(String, i64)>,
+) -> anyhow::Result<bool> {
+    let Some((session, key)) = local_human_selection(|name| std::env::var(name).ok())? else {
+        return Ok(false)
+    };
+    let catalog = crate::sealed_schema_reader::read_manifest_pinned_catalog(catalog_dir)?;
+    ensure!(catalog.plugins.contains_key("identity_sled"), "identity plugin is not sealed");
+    let registry = crate::human_principal_registry::store().context("human principal store unavailable")?;
+    let alias = std::env::var("OP_LOCAL_HUMAN_DISPLAY_ALIAS").unwrap_or_else(|_| "local-human".into());
+    let nextdns = crate::identity_nextdns::NextDnsBindings::from_env()?.get(&key).cloned();
+    commit_local_human(cozo, &registry, &session, &key, &alias, &catalog.catalog_hash, head, nextdns, now())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn commit_local_human(
+    cozo: &CozoGraphShuttle, registry: &CozoGraphShuttle, session: &str, key: &str, alias: &str,
+    catalog_hash: &str, head: Option<(String, i64)>, nextdns: Option<op_identity::sealed_id::NextDnsContext>,
+    arrival: i64,
+) -> anyhow::Result<bool> {
+    let principal = op_identity::session::derive_principal_id(key);
+    match registry.get_human_principal_by_pubkey(key)? {
+        Some(record) => ensure!(record.revoked_at == 0 && record.principal_id == principal,
+            "configured host human is revoked or rebound"),
+        None => registry.put_human_principal(&op_cozo_store::HumanPrincipalRecord {
+            principal_id: principal.clone(), human_pubkey: key.to_owned(), display_alias: alias.to_owned(),
+            registered_at: arrival, revoked_at: 0 })?,
+    }
+    let expected = cozo.read_identity_revision(session)?;
+    if let Some(record) = &expected.record {
+        ensure!(record.wireguard_pubkey == key, "the configured host session holds a different key");
+        return Ok(false);
+    }
+    ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
+        "fresh initialization cannot overwrite an identity or deletion tombstone");
+    // An empty journal anchors to the all-zero head at arrival.
+    let (chain_head_hex, head_timestamp) = head.unwrap_or_else(|| (hex::encode([0u8; 32]), arrival));
+    let chain_head = hex::decode(&chain_head_hex)?;
+    ensure!(matches!(chain_head.len(), 16 | 32), "invalid arrival chain digest");
+    let catalog_bytes: [u8; 32] = hex::decode(catalog_hash)?.try_into()
+        .map_err(|_| anyhow::anyhow!("invalid identity arrival catalog hash"))?;
+    let genesis = op_identity::session_genesis::mint_genesis(
+        &canonical_key(key)?, &chain_head, head_timestamp, &catalog_bytes, arrival);
+    let claims = op_identity::sealed_id::SealedId {
+        principal_id: principal, principal_kind: "wireguard-principal".into(), session_id: session.into(),
+        wireguard_pubkey: key.into(), session_genesis: hex::encode(genesis),
+        trace_id: hex::encode(uuid::Uuid::new_v4().as_bytes()), schema_version: RECORD_FORMAT,
+        issued_at: arrival, expires_at: 0, arrival_timestamp: arrival,
+        chain_head_at_arrival: chain_head_hex, catalog_hash_at_arrival: catalog_hash.into(),
+        head_timestamp_at_arrival: head_timestamp, transport_scope: "dbus,grpc,mcp,mqtt".into(), nextdns,
+    };
+    let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session, "wireguard_pubkey": key, "principal_kind": "human",
+        "active": true, "expires_at": 0,
+        "session_started_at": arrival, "last_seen_at": arrival,
+        "schema_version": claims.schema_version, "genesis": claims.session_genesis,
+        "trace_id": claims.trace_id, "sealed_id": inline,
+        "arrival_timestamp": arrival,
+        "chain_head_at_arrival": claims.chain_head_at_arrival,
+        "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": head_timestamp
+    }))?;
+    validate_sled(&sled)?;
+    let operation = format!("initialize-local-human-{}", uuid::Uuid::new_v4().simple());
+    cozo.apply_identity_intent(session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+        expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
+    Ok(true)
+}
+
+#[cfg(test)]
+mod local_human_tests {
+    const KEY: &str = "wNhmhGDpdkScmSdcHnzhr/1vmTIL5wxLXcve/jwk9xE=";
+
+    fn env(pairs: Vec<(&'static str, String)>) -> impl Fn(&str) -> Option<String> {
+        move |name| pairs.iter().find(|(key, _)| *key == name).map(|(_, value)| value.clone())
+    }
+    fn configured(selected: &str) -> Vec<(&'static str, String)> {
+        vec![("OP_LOCAL_HUMAN_INITIALIZE_SESSION", selected.into()),
+            ("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", KEY.into()),
+            ("OP_LOCAL_HUMAN_SESSION_ID", op_identity::session::derive_session_id(KEY)),
+            ("OP_LOCAL_HUMAN_PRINCIPAL_ID", op_identity::session::derive_principal_id(KEY))]
+    }
+
+    #[test]
+    fn initialization_requires_the_explicitly_selected_configured_human() {
+        let session = op_identity::session::derive_session_id(KEY);
+        assert!(super::local_human_selection(env(vec![])).unwrap().is_none());
+        assert_eq!(super::local_human_selection(env(configured(&session))).unwrap(),
+            Some((session.clone(), KEY.to_owned())));
+        assert!(super::local_human_selection(env(configured("b0c777e3-0955-cd8b-3d01-ca12998cae28"))).is_err());
+        for drop in ["OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", "OP_LOCAL_HUMAN_SESSION_ID", "OP_LOCAL_HUMAN_PRINCIPAL_ID"] {
+            let pairs = configured(&session).into_iter().filter(|(name, _)| *name != drop).collect();
+            assert!(super::local_human_selection(env(pairs)).is_err(), "{drop}");
+        }
+        let mut rebound = configured(&session);
+        rebound[3].1 = "c9bdf32e-811d-2495-b688-277c9e5c4d36".into();
+        assert!(super::local_human_selection(env(rebound)).is_err());
+    }
+
+    #[test]
+    fn initialization_commits_one_human_record_that_binds_without_a_container() {
+        let cozo = op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap();
+        let registry = op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap();
+        let session = op_identity::session::derive_session_id(KEY);
+        let catalog = "ab".repeat(32);
+        let commit = |head| super::commit_local_human(&cozo, &registry, &session, KEY, "local-human",
+            &catalog, head, None, 1_800_000_000);
+        assert!(commit(Some(("cd".repeat(32), 1_799_999_999))).unwrap());
+        assert!(!commit(None).unwrap(), "an existing record is never replaced");
+        let revision = cozo.read_identity_revision(&session).unwrap();
+        let sled = crate::runtime_identity::record_to_sled(revision.record.as_ref().unwrap(),
+            revision.genesis.as_ref()).unwrap();
+        assert!(sled.instance.is_none() && sled.is_anchored());
+        assert!(crate::identity_binding::identity_session_binding_matches(&sled));
+        let wire = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(
+            sled.sealed_id.as_deref().unwrap().strip_prefix(op_identity::sealed_id::INLINE_PREFIX).unwrap()).unwrap();
+        use base64::Engine as _;
+        let claims = crate::sid1_checks::match_bound_session(&wire, &sled, "dbus", 1_800_000_001).unwrap();
+        assert_eq!(claims.principal_id, op_identity::session::derive_principal_id(KEY));
+        let principal = registry.get_human_principal_by_pubkey(KEY).unwrap().unwrap();
+        assert_eq!(principal.principal_id, claims.principal_id);
+    }
+}
+
 /// The container IS the identity; its sled is the pool volume
 /// `identity-<session>` (provision-container.sh), mounted read-only in the
 /// container at /agent/user and holding the decoy-issued IID1 and its SID1.

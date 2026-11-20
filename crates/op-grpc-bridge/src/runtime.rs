@@ -482,6 +482,19 @@ impl Runtime {
         if adopted > 0 { tracing::info!(adopted, "indexed identity sled volumes"); }
         crate::runtime_identity::recover_startup(identity_store.clone(), catalog_dir.clone()).await?;
         let core = BridgeCore::open(catalog, database_path)?;
+        let head = core.journal().tip().map(|event| (event.event_hash, event.timestamp.seconds));
+        let initializing = identity_store.clone();
+        let initialize_dir = catalog_dir.clone();
+        if tokio::task::spawn_blocking(move || {
+            crate::runtime_identity_owner::initialize_configured_local_human_at_startup(
+                &initializing, &initialize_dir, head)
+        })
+        .await?
+        .context("initialize the configured host human")?
+        {
+            tracing::info!("initialized the configured host human identity");
+            crate::runtime_identity::recover_startup(identity_store.clone(), catalog_dir.clone()).await?;
+        }
         let workspace =
             crate::runtime_workspace::WorkspaceRuntime::open(core.catalog(), &catalog_dir).await?;
         let chat = crate::runtime_chat::ChatRuntime::open().await?;
