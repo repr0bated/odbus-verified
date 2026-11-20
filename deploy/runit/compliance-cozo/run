@@ -1,0 +1,30 @@
+#!/bin/sh
+# op-dbus-release: application
+# Loopback Cozo API for the compliance door.
+# The door (op-grpc-bridge) proxies /compliance/api/* to 127.0.0.1:8787.
+exec 2>&1
+set -eu
+
+root=/srv/git/compliance-datasets-provenance
+state=/var/lib/compliance-cozo
+tsx="$root/node_modules/.bin/tsx"
+run_user=jeremy
+
+[ -x "$tsx" ] || {
+    echo "compliance-cozo: missing $tsx" >&2
+    exit 1
+}
+id "$run_user" >/dev/null
+
+install -d -o "$run_user" -g "$run_user" -m 0750 \
+    "$state" "$state/cozo" "$state/corpus"
+
+export CC_COZO_PATH="${CC_COZO_PATH:-$state/cozo}"
+export CC_CORPUS_PATH="${CC_CORPUS_PATH:-$state/corpus}"
+export CC_PORT="${CC_PORT:-8787}"
+export HOME=/home/jeremy
+export USER="$run_user"
+export PATH="/usr/bin:/bin:$root/node_modules/.bin"
+
+cd "$root"
+exec chpst -u "$run_user" "$tsx" server/src/index.ts

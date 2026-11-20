@@ -71,6 +71,7 @@ pub(crate) mod method_contract_admission;
 pub(crate) mod model_providers_validation;
 #[path = "model_registry_dispatch.rs"]
 pub(crate) mod model_registry_dispatch;
+pub mod compliance_http;
 pub mod mqtt_doorbell_relay;
 #[path = "nlm_cli.rs"]
 pub(crate) mod nlm_cli;

@@ -93,11 +93,22 @@ pub async fn bind_production(
         .into_axum_router()
         .layer(grpc_cors(origins))
         .fallback(|| async { StatusCode::NOT_FOUND });
+    // Compliance SPA + Cozo API proxy on the door (same paths as the former
+    // op-web mount). Matched before the gRPC-Web fallback.
+    let compliance_dir = crate::compliance_http::compliance_static_dir(
+        &std::env::var("OP_WEB_STATIC_DIR")
+            .unwrap_or_else(|_| "/usr/local/share/op-dbus/dashboard-release".to_string()),
+    );
+    let compliance_static = crate::compliance_http::compliance_static_service(&compliance_dir);
+    let compliance_api =
+        axum::Router::new().fallback(crate::compliance_http::compliance_api_proxy);
     let app = axum::Router::new()
         .route(
             "/mqtt",
             axum::routing::get(crate::mqtt_doorbell_relay::upgrade),
         )
+        .nest_service("/compliance/api", compliance_api)
+        .nest_service("/compliance", compliance_static)
         .fallback_service(app);
     let listener = TcpListener::bind(addr).await?;
     let addr = listener.local_addr()?;
