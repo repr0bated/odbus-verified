@@ -703,7 +703,8 @@ async fn mount_pending(
     served: &mut Vec<String>,
     last_error: &mut HashMap<String, String>,
 ) {
-    for spec in specs.iter().filter(|spec| !served.contains(&spec.container)) {
+    for spec in specs {
+        if served.contains(&spec.container) { continue; }
         let mut canonical = Vec::with_capacity(2);
         let mut invalid = false;
         for point in [&spec.mount_3tched, &spec.mount_threetched] {
