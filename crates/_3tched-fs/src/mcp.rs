@@ -726,6 +726,19 @@ impl IdentityMcp {
                     )
                     .await
                 }
+                Lungs::Local(executor) => {
+                    let operation_id = uuid::Uuid::new_v4().to_string();
+                    let result = executor
+                        .call(plugin, method, &decl, arguments, &operation_id)
+                        .await?;
+                    dispatch::receipt_for_local_result(
+                        plugin,
+                        method,
+                        &decl,
+                        result,
+                        &operation_id,
+                    )
+                }
             }
         }
         .await;
