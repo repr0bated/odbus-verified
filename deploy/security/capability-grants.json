@@ -306,6 +306,7 @@
       "$SUPERADMIN"
     ],
     "capabilities": [
+      "adc.read",
       "agent.invoke",
       "agent.read",
       "cap.data.cozo.relations.list@v1",

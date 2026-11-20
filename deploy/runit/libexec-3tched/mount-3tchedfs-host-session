@@ -1,0 +1,139 @@
+#!/bin/sh
+# Foreground runit owner, host-session variant of the opdbus-fuse-bootstrap
+# adapter. Same interface (run|check 3tchedFS|threetched) and checks, but the
+# 3tchedFS view mounts as the recorded host identity: the session and local
+# call owner come from the root-only selectors /etc/op-dbus/human-lungs-session
+# and /etc/op-dbus/human-lungs-call-owner-uid (the same files and rules as
+# deploy/runit/libexec-3tched/mount-3tchedfs). threetched keeps guest_kernel.
+# Both views mirror the same authoritative runtime SHM.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 077
+fail() { printf 'mount-3tchedfs: %s\n' "$*" >&2; exit 1; }
+[ "$(id -u)" = 0 ] || fail 'mount owner must be root'
+[ "$#" = 2 ] || fail 'usage: mount-3tchedfs run|check 3tchedFS|threetched'
+action=$1
+name=$2
+case "$action" in run|check) ;; *) fail 'unknown action' ;; esac
+case "$name" in
+    3tchedFS) selection=--exclude-plugin; surface=3tched ;;
+    threetched) selection=--include-plugin; surface=threetched ;;
+    *) fail 'unknown view' ;;
+esac
+mount_path=/run/mounts/$name
+store=/dev/shm/3tchedfs-$name
+runtime=/run/opdbus/host-fuse/$name
+binary=${OPDBUS_FUSE_BINARY:-/usr/local/libexec/op-dbus/bin/3tched-fs}
+catalog=/dev/shm/opdbus/plugin-blobs
+state=/dev/shm/opdbus/state
+case "$binary" in /*) ;; *) fail 'binary must be absolute' ;; esac
+[ -f "$binary" ] && [ -x "$binary" ] && [ ! -L "$binary" ] || fail 'FUSE binary is unavailable'
+if [ "$binary" != /usr/local/libexec/op-dbus/bin/3tched-fs ]; then
+    pin=${OPDBUS_FUSE_BINARY_SHA256:-}
+    [ "${#pin}" = 64 ] || fail 'bootstrap binary requires its exact SHA256'
+    case "$pin" in *[!0-9a-f]*) fail 'invalid bootstrap binary SHA256' ;; esac
+    [ "$(sha256sum "$binary" | cut -d' ' -f1)" = "$pin" ] || fail 'bootstrap binary changed'
+fi
+[ -f "$catalog/.manifest.json" ] && [ ! -L "$catalog/.manifest.json" ] || fail 'sealed runtime catalog is unavailable'
+identity=guest_kernel
+session=
+owner_uid=
+if [ "$name" = 3tchedFS ]; then
+    protected_file() {
+        [ -f "$1" ] && [ ! -L "$1" ] || return 1
+        case "$(stat -c '%u:%g:%a' "$1")" in 0:0:400|0:0:600) return 0 ;; *) return 1 ;; esac
+    }
+    session_file=/etc/op-dbus/human-lungs-session
+    owner_file=/etc/op-dbus/human-lungs-call-owner-uid
+    protected_file "$session_file" && protected_file "$owner_file" || fail 'unsafe or absent host identity selection'
+    session=$(tr -d '[:space:]' <"$session_file")
+    printf '%s\n' "$session" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' || fail 'invalid session'
+    owner_uid=$(tr -d '[:space:]' <"$owner_file")
+    case "$owner_uid" in ''|*[!0-9]*) fail 'invalid local caller UID' ;; esac
+    [ "$owner_uid" = "$(id -u jeremy)" ] || fail 'local operator UID changed'
+    identity=host_session
+fi
+ready() {
+    [ "$(findmnt -rn -M "$mount_path" -o FSTYPE)" = fuse.3tchedFS ] || return 1
+    [ "$(findmnt -rn -M "$mount_path" -o SOURCE)" = "$name" ] || return 1
+    timeout 5 jq -e --arg surface "$surface" --arg catalog "$catalog" \
+        --arg identity "$identity" --arg session "$session" --arg uid "$owner_uid" \
+        --slurpfile captured "$runtime/capture.json" '
+        .format == "3tchedfs/1" and .mount_identity.kind == $identity and
+        (if $identity == "host_session" then
+            .mount_identity.session == $session and (.local_call_owner_uid | tostring) == $uid
+         else true end) and
+        .workspace_id == null and .surface == $surface and
+        .declared_catalog_dir == $catalog and .view_id == $captured[0].view_id and
+        .source_catalog_hash == $captured[0].source_catalog_hash and
+        .source_catalog_generation == $captured[0].source_catalog_generation
+    ' "$mount_path/.3tchedfs.json" >/dev/null || return 1
+    timeout 5 jq -e --arg name "$name" --slurpfile catalog "$catalog/.manifest.json" '
+        (.source_catalog_hash == $catalog[0].catalog_hash and
+         .source_catalog_generation == $catalog[0].generation) and
+        ((.objects | keys | sort) ==
+         (if $name == "threetched" then ["threetched"]
+          else (($catalog[0].plugins | keys | sort) - ["threetched"]) end))
+    ' "$mount_path/view.json" >/dev/null || return 1
+    # Inspect declarations only; a mounted call node is not authorization.
+    plugins=$(timeout 5 jq -r '
+        def component:
+            if . == ".value.json" then "%2Evalue.json"
+            elif . == "." then "%2E"
+            elif . == ".." then "%2E2E"
+            elif . == "" then "%"
+            else @uri | gsub("~"; "%7E") end;
+        .objects | keys[] | component
+    ' "$mount_path/view.json") || return 1
+    for plugin in $plugins; do
+        methods=$(timeout 5 jq -r '
+            def component:
+                if . == ".value.json" then "%2Evalue.json"
+                elif . == "." then "%2E"
+                elif . == ".." then "%2E2E"
+                elif . == "" then "%"
+                else @uri | gsub("~"; "%7E") end;
+            .methods | keys[] | component
+        ' "$mount_path/plugins/$plugin/schema.json") || return 1
+        for method in $methods; do
+            operation=$mount_path/plugins/$plugin/operations/$method
+            [ -f "$operation/input.schema.json" ] &&
+                [ -f "$operation/metadata.json" ] &&
+                [ -f "$operation/call" ] || return 1
+        done
+    done
+}
+if [ "$action" = check ]; then ready; exit; fi
+ensure_dir() {
+    if [ ! -e "$1" ] && [ ! -L "$1" ]; then mkdir -m "$2" "$1"; fi
+    [ -d "$1" ] && [ ! -L "$1" ] && [ "$(stat -c '%u:%g:%a' "$1")" = "0:0:$2" ] ||
+        fail "unsafe directory preserved: $1"
+}
+ensure_dir /run/opdbus 755
+ensure_dir /run/opdbus/host-fuse 700
+ensure_dir "$runtime" 700
+ensure_dir /run/mounts 755
+ensure_dir "$mount_path" 755
+ensure_dir "$store" 700
+[ -c /dev/fuse ] || fail 'missing /dev/fuse'
+findmnt -rn -o TARGET >/dev/null || fail 'mount table is unavailable'
+[ -z "$(findmnt -rn -M "$mount_path" -o FSTYPE)" ] || fail 'mountpoint is already occupied'
+[ -z "$(find "$mount_path" -mindepth 1 -maxdepth 1 -print -quit)" ] || fail 'mountpoint is not empty'
+# The store pins declarations, not a separate state authority. Reads address
+# live SHM; missing state remains unavailable, never fabricated by capture.
+"$binary" --store "$store" capture --schema-only --catalog "$catalog" \
+    --state "$state" "$selection" threetched >"$runtime/capture.json"
+if [ "$identity" = host_session ]; then
+    # The bridge binds this root host peer to the selected committed session;
+    # no credential is injected and readiness does not wait on the bridge.
+    exec "$binary" --store "$store" mount --fs-name "$name" --surface "$surface" \
+        --catalog "$catalog" --state "$state" --lungs-socket /run/opdbus/lungs/lungs.sock \
+        --lungs-session "$session" --call-owner-uid "$owner_uid" \
+        --allow-other --auto-unmount "$mount_path"
+fi
+# GuestKernel derives the container identity from the actual native peer.
+# No credential/session injection or eager bridge/socket readiness prerequisite.
+exec "$binary" --store "$store" mount --fs-name "$name" --surface "$surface" \
+    --catalog "$catalog" --state "$state" --lungs-socket /run/opdbus/lungs/lungs.sock \
+    --allow-other --auto-unmount "$mount_path"
