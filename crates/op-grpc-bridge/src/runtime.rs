@@ -655,8 +655,13 @@ impl Runtime {
         self.authorize_nested(&result.disclosure_caller, plugin, method)
             .await
             .map_err(|error| RuntimeError::unknown(error.into()).at_operation(operation_id))?;
-        let checkpoint = result.disclosure_caller.checkpoint.as_ref()
-            .ok_or_else(|| RuntimeError::unknown(anyhow::anyhow!("disclosure policy binding unavailable")).at_operation(operation_id))?;
+        let Some(checkpoint) = result.disclosure_caller.checkpoint.as_ref() else {
+            if result.disclosure_caller.requires_checkpoint {
+                return Err(RuntimeError::unknown(anyhow::anyhow!("disclosure policy binding unavailable")).at_operation(operation_id));
+            }
+            // Plain direct call: the current exact grant above is the disclosure gate.
+            return Ok(());
+        };
         let stage = if matches!(&checkpoint.class, CallClass::AgentFinal) {
             CheckpointStage::AgentFinal
         } else { CheckpointStage::Postflight };
@@ -1079,10 +1084,15 @@ impl Runtime {
         // post-commit failure can discard the only original response body.
         let mut completed_target = control_target.clone();
         completed_target.result_digest = Some(BridgeCore::method_value_digest(&result)?);
-        let checkpoint = caller.checkpoint.as_ref()
-            .ok_or_else(|| correlate(RuntimeError::review("completed response owner unavailable")))?;
-        checkpoint.owner.capture_completed(self, &caller, &completed_target, &result, &receipt)
-            .await.map_err(correlate)?;
+        // Only tool calls and chat (requires_checkpoint) carry a capture owner;
+        // a plain direct call's original body is the committed receipt itself.
+        match caller.checkpoint.as_ref() {
+            Some(checkpoint) => checkpoint.owner.capture_completed(self, &caller, &completed_target, &result, &receipt)
+                .await.map_err(correlate)?,
+            None if caller.requires_checkpoint =>
+                return Err(correlate(RuntimeError::review("completed response owner unavailable"))),
+            None => {}
+        }
         crate::runtime_sled_ledger::append_committed(&caller, &plugin, &method, &declaration, &args, &receipt).await;
         let effective_hash = self.core().committed_snapshot(&committed_scope, &plugin, &committed_path)
             .map_err(|error| correlate(RuntimeError::unknown(error)))?
