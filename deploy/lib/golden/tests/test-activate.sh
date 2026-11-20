@@ -27,6 +27,61 @@ setup() {
     for b in op-mcp-door op-chat-responder op-web-server 3tched-fs op-grpc-bridge cozo-ublk; do
         printf 'new %s\n' "$b" > "$rel/$b"; chmod 0755 "$rel/$b"
     done
+    mkdir -p "$h/catalog" "$h/grants"
+    printf '{"plugins":{}}\n' > "$h/catalog/.manifest.json"
+    # A dummy blob so act_catalog_dir accepts this directory if the override is unset.
+    printf 'not-a-real-blob\n' > "$h/catalog/dummy.blob"
+    printf '{"$ROOT":{"capabilities":["held"]},"principal":{"capabilities":[]}}\n' > "$h/grants/capability-grants.json"
+    printf '{"$ROOT":{"capabilities":["held"]},"principal":{"capabilities":[]}}\n' > "$h/grants/shm-capability-grants.json"
+    cat > "$rel/op-grants-materializer" <<'MAT'
+#!/bin/bash
+# Fake live-slot materializer for activate tests.
+set -e
+cmd=${1:-}
+shift || true
+apply=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --apply-to-live) apply=1; shift ;;
+        --catalog) shift; shift || true ;;
+        *) shift ;;
+    esac
+done
+source=${OP_GRANTS_SOURCE:-/etc/opdbus/capability-grants.json}
+case "$cmd" in
+    generate)
+        if [ "${GOLDEN_FAKE_GENERATE_FAIL:-}" = 1 ]; then
+            echo "generate failed (test)" >&2
+            exit 1
+        fi
+        if [ "$apply" = 1 ]; then
+            stamp=$(date +%Y%m%d-%H%M%S)
+            bak=$source.bak-$stamp
+            cp -a -- "$source" "$bak"
+            echo "backup=$bak"
+            echo "Grants generated: added 0 capabilities to \$ROOT (test fake)"
+            echo "applied=$source"
+        else
+            echo "plan: generate would add 0 capabilities to \$ROOT (test fake); no write"
+        fi
+        ;;
+    validate)
+        echo Valid
+        ;;
+    check)
+        if [ "${GOLDEN_FAKE_CHECK_STALE:-}" = 1 ]; then
+            echo Stale
+            exit 1
+        fi
+        echo Fresh
+        ;;
+    *)
+        echo "unknown command $cmd" >&2
+        exit 1
+        ;;
+esac
+MAT
+    chmod 0755 "$rel/op-grants-materializer"
     printf 'old door\n' > "$h/prefix/usr/local/bin/op-mcp-door"
     printf 'old responder\n' > "$h/prefix/usr/local/bin/op-chat-responder"
     printf 'old fuse\n' > "$h/prefix/usr/local/libexec/op-dbus/bin/3tched-fs"
@@ -81,6 +136,10 @@ run_golden() {
     GOLDEN_INSTALL_PREFIX=$h/prefix GOLDEN_ACTIVATE_TABLE=$h/table.tsv GOLDEN_RESTART_WAIT=1 \
     GOLDEN_OS_SUBDIR='' GOLDEN_ALLOW_NONROOT_ACTIVATE=1 GOLDEN_SKIP_SUBVOL_CHECK=1 \
     GOLDEN_PROBE_TIMEOUT=2 \
+    GOLDEN_GRANTS_SOURCE=$h/grants/capability-grants.json \
+    GOLDEN_GRANTS_PATH=$h/grants/shm-capability-grants.json \
+    GOLDEN_CATALOG_DIR=$h/catalog \
+    GOLDEN_GRANTS_FRESH_WAIT=${GOLDEN_GRANTS_FRESH_WAIT:-2} \
         "$GOLDEN" --pool "$TMP" --seed "$TMP/seed" --root "$h/root" "$@"
 }
 
@@ -98,7 +157,11 @@ check "bridge excluded" has "service op-grpc-bridge: excluded" "$out"
 check "enabled cozo-ublk-500g excluded" has "service cozo-ublk-500g: excluded" "$out"
 check "plan shows new versioned path" has "$h/releases/879e7d7f556d-261/bin/op-mcp-door" "$out"
 check "plan says kit ledger untouched" has "is NOT modified" "$out"
+check "plan includes grants generate" has "generate --apply-to-live" "$out"
+check "plan says grants fail-closed" has "leave the old grants" "$out"
+check "dry-run generate is a plan only" has "no write" "$out"
 check "dry-run staged nothing" test ! -e "$h/releases"
+check "dry-run left grants unchanged" test "$(cat "$h/grants/capability-grants.json")" = '{"$ROOT":{"capabilities":["held"]},"principal":{"capabilities":[]}}'
 check "dry-run left door a file" test ! -L "$h/prefix/usr/local/bin/op-mcp-door"
 check "install alias plans too" has "plan: activate" "$(run_golden install 2>&1 || true)"
 
@@ -119,6 +182,7 @@ check "ledger matches state.json commit" test "$(jq -r .active.commit "$h/golden
 check "ledger lists two services" test "$(jq '.active.services|length' "$h/golden-activation.json")" = 2
 check "kit slots.json untouched" test "$(cat "$h/slots.json")" = '{"version":1,"active":null,"previous":null}'
 check "log service dir kept" test -d "$h/sv/op-mcp-door/log"
+check "apply left grants in place when generate added nothing" test "$(cat "$h/grants/capability-grants.json")" = '{"$ROOT":{"capabilities":["held"]},"principal":{"capabilities":[]}}'
 run_golden --apply activate >"$TMP/out2" 2>&1 || bad "re-activate exited non-zero"
 check "re-activate keeps previous pointer" test "$(jq -r .previous.release "$h/golden-activation.json")" = "879e7d7f556d-261"
 
@@ -135,6 +199,18 @@ check "responder rolled back to old content" test "$(cat "$r")" = "old responder
 check "ledger has no active release" test "$(jq -r '.active' "$h/golden-activation.json")" = null
 check "ledger records rolled-back attempt" test "$(jq -r .last_attempt.result "$h/golden-activation.json")" = "rolled-back:op-chat-responder"
 check "door restarted twice (flip + rollback)" test "$(wc -l < "$h/sv/op-mcp-door/.restarts")" = 2
+
+printf 'activate: grants generate failure leaves grants and flips nothing\n'
+setup
+export GOLDEN_FAKE_GENERATE_FAIL=1
+before=$(cat "$h/grants/capability-grants.json")
+if run_golden --apply activate >"$TMP/out4" 2>&1; then bad "generate-fail activation exited zero"; else ok "generate-fail activation exits non-zero"; fi
+unset GOLDEN_FAKE_GENERATE_FAIL
+check "generate failure reported" has "grants generate/validate/Fresh failed" "$(cat "$TMP/out4")"
+check "grants unchanged after generate failure" test "$(cat "$h/grants/capability-grants.json")" = "$before"
+check "door not flipped after generate failure" test ! -L "$h/prefix/usr/local/bin/op-mcp-door"
+check "door content still old after generate failure" test "$(cat "$h/prefix/usr/local/bin/op-mcp-door")" = "old door"
+check "no services restarted after generate failure" test ! -e "$h/sv/op-mcp-door/.restarts"
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" = 0 ]

@@ -33,7 +33,11 @@
 #   sv/<service>/run                enabled application runit definitions
 #   opt/                            immutable broker, provider, python runtimes
 #   MANIFEST                        commit, build time, sha256 per binary, graph pin
-# Host secrets, grants, network/bootstrap services and writable data are excluded.
+# Host secrets, network/bootstrap services and writable data are excluded.
+# Host grants are not packed into the payload. activate runs the live slot's
+# op-grants-materializer generate --apply-to-live against the host grants file
+# after the new live slot is in place and its catalog is what the bridge will
+# load, and before service health checks.
 #
 # Usage:
 #   build-golden.sh                 # prepare and validate golden (default)
