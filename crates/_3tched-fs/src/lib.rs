@@ -13,6 +13,7 @@ mod fused_mount;
 #[cfg(feature = "ipfs")]
 pub mod ipfs;
 pub mod model;
+pub mod mounted;
 pub mod namespace;
 pub mod source;
 pub mod store;

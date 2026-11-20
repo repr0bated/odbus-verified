@@ -153,6 +153,15 @@ FABRIC_BIND="127.0.0.1:8090"
 export OP_GRPC_BRIDGE_LISTEN="$FABRIC_BIND"
 export OP_TUNNEL_DOOR="10.0.0.2:8090"
 export OP_TUNNEL_SOCKET=/run/opdbus/tunnel/tunnel.sock
+# Socketless bridge-hosted FUSE mounts (spec fusefs-socketless-dispatch):
+# container:3tched_mount:threetched_mount:call_owner_uid[:store_root], ';'-separated.
+# Optional override/disable knob only: unset or empty = auto-enumerate every
+# committed identity (active+anchored sled, Running container) under
+# /run/mounts/by-container/<native-name>/{3tchedFS,threetched}; an explicit
+# entry wins over the auto spec for that same container; the value
+# off/none/disabled turns bridge-hosted mounts off entirely. Never point an
+# entry at /run/mounts/3tchedFS or /run/mounts/threetched (standalone-owned).
+export OP_FUSE_LOCAL_MOUNTS="${OP_FUSE_LOCAL_MOUNTS:-}"
 unset OP_DBUS_GRPC_LISTEN THREETCHED_BIND_ADDR GRPC_BIND THREETCHED_UNIX_SOCKET
 export THREETCHED_TLS_CERT_FILE="${THREETCHED_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export THREETCHED_TLS_KEY_FILE="${THREETCHED_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"

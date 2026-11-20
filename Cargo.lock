@@ -6327,6 +6327,7 @@ dependencies = [
  "bytes",
  "chrono",
  "ed25519-dalek",
+ "fuser",
  "futures",
  "google-cloud-auth",
  "grpc",

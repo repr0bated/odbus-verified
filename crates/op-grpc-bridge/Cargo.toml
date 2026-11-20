@@ -69,6 +69,7 @@ op-agents = { path = "../op-agents" }
 op-execution-tracker = { workspace = true }
 op-xray-daemon = { path = "../op-xray-daemon" }
 _3tched-fs = { path = "../_3tched-fs" }
+fuser = { version = "0.16", default-features = false, features = ["abi-7-31"] }
 nix = { version = "0.28", features = ["fs", "signal", "user"] }
 socket2 = "0.6"
 
