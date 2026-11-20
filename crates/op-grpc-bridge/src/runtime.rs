@@ -856,6 +856,10 @@ impl Runtime {
                 let outcome = std::panic::AssertUnwindSafe(owned).catch_unwind().await
                     .unwrap_or_else(|_| Err(RuntimeError::unknown(anyhow::anyhow!("native owner interrupted"))));
                 if let Err(error) = outcome {
+                    // Kind and transport-safe message only; the cause chain may
+                    // carry provider credentials and is never logged.
+                    tracing::warn!(operation_id = %operation_id, plugin = %plugin, method = %method,
+                        kind = ?error.kind, message = %error.message, "native operation did not complete");
                     let recovery = runtime.core().recover_operation(&context.operation_id, &caller.principal_id, &caller.session_id);
                     let proof = recovery.as_ref().ok().and_then(|recovery| recovery.attempt.clone().map(|attempt|
                         ExecutionProof { operation_id: context.operation_id.clone(), attempt, terminal: recovery.terminal.clone() }));
