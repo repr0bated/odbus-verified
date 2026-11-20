@@ -19,7 +19,46 @@ use crate::namespace::{MountIdentity, encode_component};
 const MAX_DOCUMENT: u64 = 16 * 1024 * 1024;
 const MAX_RECEIPT: u64 = 16 * 1024 * 1024;
 
+/// Linux _IOW('3', 0x41, [u8;16]): a descriptor-local opaque host binding,
+/// never operation arguments, identity or a reusable authorization token.
+pub const BIND_CALL_IOCTL: u32 = (1 << 30) | (16 << 16) | ((b'3' as u32) << 8) | 0x41;
+
 type MountProbe = Arc<dyn Fn(&Path, &File) -> Result<String> + Send + Sync>;
+
+/// An expectation about an existing mount, never a source of identity.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, clap::ValueEnum)]
+#[value(rename_all = "snake_case")]
+pub enum IdentityMode {
+    #[default]
+    HostSession,
+    GuestKernel,
+    Credential,
+    ContainerBound,
+}
+
+impl IdentityMode {
+    fn check(self, identity: &MountIdentity, expected_session: Option<&str>, metadata: &Value) -> Result<()> {
+        match (self, identity) {
+            (Self::HostSession, MountIdentity::HostSession { session }) => {
+                ensure!(!session.is_empty() && metadata["session_id"].as_str() == Some(session),
+                    "mounted host session declaration is inconsistent");
+                ensure!(expected_session.is_none_or(|expected| expected == session),
+                    "mounted identity session differs from --expected-session");
+            }
+            (Self::GuestKernel, MountIdentity::GuestKernel)
+            | (Self::Credential, MountIdentity::Credential)
+            | (Self::ContainerBound, MountIdentity::ContainerBound) => {
+                ensure!(expected_session.is_none(),
+                    "--expected-session is only a host_session consistency check");
+                ensure!(metadata["session_id"].is_null(),
+                    "non-session mount has inconsistent session metadata");
+            }
+            (_, MountIdentity::Unbound) => bail!("unbound mount has no operation identity"),
+            _ => bail!("mounted identity mode differs from the explicitly expected mode"),
+        }
+        Ok(())
+    }
+}
 
 /// Preserve the original mounted denial without retrying or rewriting it.
 #[derive(Debug, thiserror::Error)]
@@ -40,12 +79,19 @@ impl MountedNamespace {
         Self::open_with_probe(path, expected_session, Arc::new(probe_mount))
     }
 
+    pub fn open_for_identity_mode(path: &Path, mode: IdentityMode, expected_session: Option<&str>) -> Result<Self> {
+        let namespace = Self::open_with_mode_and_probe(
+            path, expected_session, None, Arc::new(probe_mount), Some(mode),
+        )?;
+        Ok(namespace)
+    }
+
     pub fn open_for_mode(path: &Path, expected: &MountIdentity) -> Result<Self> {
         ensure!(
             !matches!(expected, MountIdentity::Unbound),
             "unbound mount has no operation identity"
         );
-        Self::open_with_mode_and_probe(path, None, Some(expected), Arc::new(probe_mount))
+        Self::open_with_mode_and_probe(path, None, Some(expected), Arc::new(probe_mount), None)
     }
 
     fn open_with_probe(
@@ -53,7 +99,7 @@ impl MountedNamespace {
         expected_session: Option<&str>,
         probe: MountProbe,
     ) -> Result<Self> {
-        Self::open_with_mode_and_probe(path, expected_session, None, probe)
+        Self::open_with_mode_and_probe(path, expected_session, None, probe, None)
     }
 
     fn open_with_mode_and_probe(
@@ -61,6 +107,7 @@ impl MountedNamespace {
         expected_session: Option<&str>,
         expected_mode: Option<&MountIdentity>,
         probe: MountProbe,
+        identity_mode: Option<IdentityMode>,
     ) -> Result<Self> {
         let path = std::fs::canonicalize(path).context("resolve mounted namespace")?;
         let root = OpenOptions::new()
@@ -93,28 +140,13 @@ impl MountedNamespace {
                 "mounted identity mode differs from expected mode"
             );
         }
-        match &mode {
-            MountIdentity::HostSession { session } => {
-                ensure!(
-                    !session.is_empty()
-                        && metadata["session_id"].as_str() == Some(session.as_str()),
-                    "mounted host session declaration is inconsistent"
-                );
-                if let Some(expected) = expected_session {
-                    ensure!(
-                        session == expected,
-                        "mounted identity session differs from --expected-session"
-                    );
-                }
-            }
-            MountIdentity::GuestKernel | MountIdentity::Credential => {
-                ensure!(
-                    expected_mode.is_some() && metadata["session_id"].is_null(),
-                    "mount must declare the expected operation identity mode"
-                );
-            }
-            MountIdentity::Unbound => bail!("unbound mount has no operation identity"),
-        }
+        let expectation = identity_mode.unwrap_or_else(|| match expected_mode {
+            Some(MountIdentity::GuestKernel) => IdentityMode::GuestKernel,
+            Some(MountIdentity::Credential) => IdentityMode::Credential,
+            Some(MountIdentity::ContainerBound) => IdentityMode::ContainerBound,
+            _ => IdentityMode::HostSession,
+        });
+        expectation.check(&mode, expected_session, &metadata)?;
         let view = read_json(open_relative(&root, "view.json", false)?)?;
         for key in [
             "format",
@@ -148,6 +180,11 @@ impl MountedNamespace {
         };
         namespace.verify()?;
         Ok(namespace)
+    }
+
+    pub fn instance_uuid(&self) -> Result<uuid::Uuid> {
+        let value = self.metadata["instance_uuid"].as_str().context("mount instance is absent")?;
+        Ok(uuid::Uuid::parse_str(value)?)
     }
 
     /// Pin the mount instance as well as its declared identity/catalog. Replacing
@@ -346,6 +383,23 @@ impl MountedNamespace {
         )
     }
 
+    /// Bind before ANY write, then execute/read only this actual mounted FD.
+    /// An ioctl/write/fsync/receipt failure is never replaced by private success.
+    pub fn invoke_bound(&self, path: &str, arguments: Value, token: uuid::Uuid,
+        operation_id: uuid::Uuid, expected_instance: uuid::Uuid) -> Result<Value> {
+        ensure!(self.instance_uuid()? == expected_instance, "mounted instance differs from native registration");
+        self.invoke_with(path, arguments, true, |plugin, method, declaration, args| {
+            self.call_with(plugin, method, declaration, args, |file, bytes| {
+                let rc = unsafe { libc::ioctl(file.as_raw_fd(), BIND_CALL_IOCTL as libc::c_ulong, token.as_bytes().as_ptr()) };
+                if rc != 0 { return Err(std::io::Error::last_os_error()).context("bind mounted call descriptor before write"); }
+                let receipt = execute_descriptor(file, bytes, plugin, method, declaration)?;
+                ensure!(receipt["result"]["operation_id"].as_str() == Some(operation_id.to_string().as_str()),
+                    "prepared mounted receipt operation mismatch; preserve original operation");
+                Ok(receipt)
+            })
+        })
+    }
+
     fn invoke_with(
         &self,
         path: &str,
@@ -398,17 +452,8 @@ impl MountedNamespace {
         decl: &MethodDecl,
         arguments: Value,
     ) -> Result<Value> {
-        self.call_with(plugin, method, decl, arguments, |mut file, bytes| {
-            file.write_all(bytes)
-                .context("write mounted operation arguments")?;
-            // fsync executes the complete call; even a denial retains its
-            // exact diagnostic on this same handle. Never retry the write.
-            let synced = file.sync_all();
-            file.seek(SeekFrom::Start(0))
-                .context("seek operation receipt")?;
-            let body = read_bounded(file, MAX_RECEIPT).context("read operation receipt")?;
-            terminal_receipt(&body, synced, plugin, method, decl)
-        })
+        self.call_with(plugin, method, decl, arguments,
+            |file, bytes| execute_descriptor(file, bytes, plugin, method, decl))
     }
 
     fn call_with(
@@ -458,6 +503,14 @@ impl MountedNamespace {
             .context("mount changed during operation; do not retry automatically")?;
         result
     }
+}
+
+fn execute_descriptor(mut file: File, bytes: &[u8], plugin: &str, method: &str, decl: &MethodDecl) -> Result<Value> {
+    file.write_all(bytes).context("write mounted operation arguments")?;
+    let synced = file.sync_all();
+    file.seek(SeekFrom::Start(0)).context("seek operation receipt")?;
+    let body = read_bounded(file, MAX_RECEIPT).context("read operation receipt")?;
+    terminal_receipt(&body, synced, plugin, method, decl)
 }
 
 fn terminal_receipt(
@@ -910,7 +963,8 @@ pub(crate) mod tests {
                     directory.path(),
                     None,
                     Some(&mode),
-                    mount.probe.clone()
+                    mount.probe.clone(),
+                    None,
                 )
                 .is_ok()
             );
@@ -928,7 +982,8 @@ pub(crate) mod tests {
                     directory.path(),
                     None,
                     Some(&other),
-                    mount.probe.clone()
+                    mount.probe.clone(),
+                    None,
                 )
                 .is_err()
             );
@@ -943,7 +998,8 @@ pub(crate) mod tests {
                     directory.path(),
                     None,
                     Some(&mode),
-                    mount.probe.clone()
+                    mount.probe.clone(),
+                    None,
                 )
                 .is_err()
             );

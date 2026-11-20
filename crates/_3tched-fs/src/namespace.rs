@@ -21,6 +21,10 @@ pub enum MountIdentity {
     },
     GuestKernel,
     Credential,
+    /// Bound in-process to one container identity by the hosting executor
+    /// process (the container is the identity; see MountIdentity docs in
+    /// fuse_fs::LocalExecutor). No credential is held by this mount.
+    ContainerBound,
     #[default]
     Unbound,
 }

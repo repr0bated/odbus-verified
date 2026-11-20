@@ -19,7 +19,7 @@ use crate::threetched_surface::ThreetchedSurface;
 use buffers::{Budget, Buffer, Charge, DOCUMENT_LIMIT, HANDLE_LIMIT, INPUT_LIMIT, TOTAL_LIMIT};
 use fuser::{
     FileAttr, FileType, Filesystem, KernelConfig, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty,
-    ReplyEntry, ReplyOpen, ReplyWrite, Request, TimeOrNow,
+    ReplyEntry, ReplyOpen, ReplyWrite, ReplyIoctl, Request, TimeOrNow,
 };
 use libc::{EACCES, EAGAIN, EBADF, EBUSY, EINVAL, EIO, EISDIR, ENOENT, EROFS, ESTALE};
 use parking_lot::Mutex;
@@ -76,6 +76,7 @@ struct OpenFile {
     surface: Option<Arc<ThreetchedSurface>>,
     waiters: Vec<PendingReply>,
     _target_guard: Option<TargetGuard>,
+    bound_call: Option<Box<dyn BoundLocalCall>>,
     _slot: Charge,
 }
 impl OpenFile {
@@ -123,6 +124,51 @@ struct OpenDirectory {
     _slot: Charge,
 }
 
+/// Linux _IOW('3', 0x41, [u8;16]): a descriptor-local opaque host binding,
+/// never operation arguments, identity or a reusable authorization token.
+pub const BIND_CALL_IOCTL: u32 = (1 << 30) | (16 << 16) | ((b'3' as u32) << 8) | 0x41;
+
+/// In-process method executor injected by the process hosting this mount.
+///
+/// The container is the identity: an implementation pins exactly one
+/// container-derived verified caller at mount construction (native instance
+/// binding + committed sled, resolved by the host process), revalidates that
+/// binding on every call, and performs grant authorization itself. It returns
+/// the `MethodExecutionReceipt` JSON the socket transports carry, so receipt
+/// validation in the mount is identical for every transport. Implementations
+/// must be callable from the bounded worker threads, never from a FUSE
+/// callback on the serialized mount loop.
+pub trait LocalExecutor: Send + Sync {
+    /// Consume a host-private token into this exact, still-empty descriptor.
+    /// Non-hosted transports have no prepared-call authority.
+    fn bind_call(&self, _token: uuid::Uuid, _plugin: &str, _method: &str,
+        _schema_hash: &str, _declaration: &crate::model::MethodDecl) -> Result<Box<dyn BoundLocalCall>, LungsError> {
+        Err(LungsError::Refused("prepared descriptor binding is unavailable".into()))
+    }
+    /// Current exact capability preflight. Implementations share their existing
+    /// protected authority owner; no arguments or cached admission token.
+    fn authorize(&self, _plugin: &str, _method: &str, declaration: &crate::model::MethodDecl)
+        -> Result<(), LungsError> {
+        Err(LungsError::Refused(format!("current authorizer missing; required_capability={}",
+            declaration.required_capability.as_deref().unwrap_or("<undeclared>"))))
+    }
+    fn call<'a>(
+        &'a self,
+        plugin_id: &'a str,
+        method_name: &'a str,
+        method: &'a crate::model::MethodDecl,
+        arguments: Value,
+        operation_id: &'a str,
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<Value, LungsError>> + Send + 'a>>;
+}
+
+/// A prepared operation can be moved to one worker, never cloned or rebound.
+pub trait BoundLocalCall: Send {
+    fn operation_id(&self) -> uuid::Uuid;
+    fn call(self: Box<Self>, plugin: String, method: String, declaration: crate::model::MethodDecl,
+        arguments: Value) -> std::pin::Pin<Box<dyn Future<Output = Result<Value, LungsError>> + Send>>;
+}
+
 #[derive(Clone)]
 pub enum Lungs {
     Socket {
@@ -133,6 +179,8 @@ pub enum Lungs {
         bus_address: String,
         credential: PathBuf,
     },
+    /// Dispatch in-process through the hosting executor; no socket is opened.
+    Local(Arc<dyn LocalExecutor>),
 }
 
 pub struct TypedFuse {
@@ -183,6 +231,19 @@ impl TypedFuse {
         let namespace = Namespace::build_lungs_as(&store, target, &state_dir, surface)?;
         Self::from_parts(store, namespace, Some(lungs))
     }
+    /// Mount bound in-process to one container identity through `executor`.
+    /// The hosting process derives and pins that identity (the container is
+    /// the identity); this mount holds no credential and opens no socket.
+    pub fn local(
+        store: ObjectStore,
+        target: ProjectionTarget,
+        state_dir: PathBuf,
+        executor: Arc<dyn LocalExecutor>,
+        surface: crate::namespace::Surface,
+    ) -> anyhow::Result<Self> {
+        let namespace = Namespace::build_lungs_as(&store, target, &state_dir, surface)?;
+        Self::from_parts(store, namespace, Some(Lungs::Local(executor)))
+    }
     pub fn with_state_dir_as(
         store: ObjectStore,
         target: ProjectionTarget,
@@ -213,6 +274,7 @@ impl TypedFuse {
             }
             Some(Lungs::Socket { .. }) => MountIdentity::GuestKernel,
             Some(Lungs::Credential { .. }) => MountIdentity::Credential,
+            Some(Lungs::Local(_)) => MountIdentity::ContainerBound,
             None => MountIdentity::Unbound,
         };
         namespace.declare_mount_mode(identity, Some(&uuid::Uuid::new_v4().to_string()))?;
@@ -234,6 +296,10 @@ impl TypedFuse {
             target_guards: HashMap::new(),
             cancelled: Arc::new(AtomicBool::new(false)),
         })
+    }
+
+    pub fn mount_instance_uuid(&self) -> Option<&str> {
+        self.namespace.instance_uuid.as_deref()
     }
     pub fn set_surface(&mut self, surface: crate::namespace::Surface) {
         self.namespace.surface = surface;
@@ -333,6 +399,10 @@ impl TypedFuse {
         if node_writable(&node) && !self.caller_allowed(uid) {
             return Err(EACCES);
         }
+        if write {
+            authorize_node(&self.store, &self.namespace.target, self.lungs.as_ref(), &node)
+                .map_err(|_| EACCES)?;
+        }
         let slot = self.slots.take(1, HANDLE_LIMIT)?;
         let guard = if write {
             if let Some(target) = &node.write_target {
@@ -398,6 +468,7 @@ impl TypedFuse {
                 access,
                 bytes,
                 dirty,
+                bound_call: None,
                 running: false,
                 completed: None,
                 fallback,
@@ -444,6 +515,14 @@ impl TypedFuse {
             reply.ok();
             return;
         }
+        if let Err(error) = authorize_node(&self.store, &self.namespace.target, self.lungs.as_ref(), &handle.node) {
+            handle.dirty = false;
+            handle.bytes = Buffer::empty(&self.budget);
+            let body = diagnostic(&self.budget, &handle.node, "authorization", &error.to_string(), None);
+            handle.completed = Some(Err((EACCES, body)));
+            reply.error(EACCES);
+            return;
+        }
         let permit = match self.jobs.take(1, JOB_LIMIT) {
             Ok(permit) => permit,
             Err(_) => {
@@ -466,6 +545,7 @@ impl TypedFuse {
         handle.dirty = false;
         handle.waiters.push(reply);
         let threetched = handle.surface.clone();
+        let bound_call = handle.bound_call.take();
         drop(handle);
         let store = self.store.clone();
         let target = self.namespace.target.clone();
@@ -489,6 +569,7 @@ impl TypedFuse {
                         bytes,
                         &budget,
                         &cancelled,
+                        bound_call,
                     )
                 }))
                 .unwrap_or_else(|_| {
@@ -552,7 +633,12 @@ fn execute(
     bytes: Buffer,
     budget: &Arc<Budget>,
     _cancelled: &AtomicBool,
+    bound_call: Option<Box<dyn BoundLocalCall>>,
 ) -> Execution {
+    if let Err(error) = authorize_node(store, target, lungs, node) {
+        return Execution::Call(Err((EACCES,
+            diagnostic(budget, node, "authorization", &error.to_string(), None))));
+    }
     if let NodeKind::CallFile { plugin_id, method } = &node.kind {
         // Binary execution here exists only for isolated lifecycle fixtures.
         // Production always uses the identity-bound sealed backend route below.
@@ -575,7 +661,7 @@ fn execute(
                 },
             );
         }
-        let outcome = run_lungs_call(store, target, lungs, plugin_id, method, &bytes.bytes);
+        let outcome = run_lungs_call(store, target, lungs, plugin_id, method, &bytes.bytes, bound_call);
         drop(bytes);
         return Execution::Call(match outcome {
             Ok(receipt) => Buffer::load(budget, || crate::store::render_document(&receipt))
@@ -791,6 +877,23 @@ impl ThreetchedCallError {
     }
 }
 
+fn authorize_node(store: &ObjectStore, target: &ProjectionTarget, lungs: Option<&Lungs>, node: &Node)
+    -> Result<(), LungsError> {
+    let NodeKind::CallFile { plugin_id, method } = &node.kind else { return Ok(()); };
+    let declaration = dispatch::method_decl(store, target, plugin_id, method)
+        .map_err(|_| LungsError::Refused("pinned method declaration unavailable".into()))?;
+    let capability = declaration.required_capability.as_deref().filter(|value| !value.is_empty())
+        .ok_or_else(|| LungsError::Refused("sealed method has no exact required capability".into()))?;
+    let lungs = lungs.ok_or_else(|| LungsError::Refused(format!("authorizer missing; required_capability={capability}")))?;
+    let outcome = match lungs {
+        Lungs::Local(executor) => executor.authorize(plugin_id, method, &declaration),
+        _ => tokio::runtime::Builder::new_current_thread().enable_all().build()
+            .map_err(|_| LungsError::Refused(format!("authorizer unavailable; required_capability={capability}")))?
+            .block_on(dispatch::authorize_transport(lungs, plugin_id, method, &declaration)),
+    };
+    outcome.map_err(|_| LungsError::Refused(format!("current exact grant refused; required_capability={capability}")))
+}
+
 fn run_lungs_call(
     store: &ObjectStore,
     target: &ProjectionTarget,
@@ -798,6 +901,7 @@ fn run_lungs_call(
     plugin_id: &str,
     method_name: &str,
     bytes: &[u8],
+    bound_call: Option<Box<dyn BoundLocalCall>>,
 ) -> Result<CallReceipt, LungsError> {
     let lungs = lungs.ok_or_else(|| LungsError::Transport("not a lungs mount".into()))?;
     let arguments: Value =
@@ -815,6 +919,21 @@ fn run_lungs_call(
         .map_err(|error| LungsError::Transport(format!("runtime: {error}")))?;
     runtime.block_on(async {
         match (lungs, credential) {
+            (Lungs::Local(executor), _) => {
+                let operation_id = bound_call.as_ref().map(|bound| bound.operation_id())
+                    .unwrap_or_else(uuid::Uuid::new_v4).to_string();
+                let result = match bound_call {
+                    Some(bound) => bound.call(plugin_id.to_owned(), method_name.to_owned(), method.clone(), arguments).await?,
+                    None => executor.call(plugin_id, method_name, &method, arguments, &operation_id).await?,
+                };
+                dispatch::receipt_for_local_result(
+                    plugin_id,
+                    method_name,
+                    &method,
+                    result,
+                    &operation_id,
+                )
+            }
             (Lungs::Credential { bus_address, .. }, Some(credential)) => {
                 dispatch::call_as_identity(
                     bus_address,
@@ -843,6 +962,31 @@ fn run_lungs_call(
 }
 
 impl Filesystem for TypedFuse {
+    fn ioctl(&mut self, request: &Request<'_>, ino: u64, fh: u64, flags: u32, cmd: u32,
+        in_data: &[u8], out_size: u32, reply: ReplyIoctl) {
+        if cmd != BIND_CALL_IOCTL || flags != 0 || out_size != 0 || in_data.len() != 16 {
+            reply.error(libc::ENOTTY); return;
+        }
+        let Some(state) = self.open_files.get(&fh) else { reply.error(EBADF); return; };
+        let mut handle = state.lock();
+        if let Err(error) = handle.check(ino, request.uid(), true) { reply.error(error); return; }
+        if handle.access != libc::O_RDWR || handle.dirty || !handle.bytes.bytes.is_empty() || handle.bound_call.is_some()
+            || handle.completed.is_some() { reply.error(EINVAL); return; }
+        let NodeKind::CallFile { plugin_id, method } = &handle.node.kind else { reply.error(EINVAL); return; };
+        if authorize_node(&self.store, &self.namespace.target, self.lungs.as_ref(), &handle.node).is_err() {
+            reply.error(EACCES); return;
+        }
+        let Some(Lungs::Local(executor)) = &self.lungs else { reply.error(EACCES); return; };
+        let Some(schema_hash) = self.namespace.source_schema_hashes.get(plugin_id) else { reply.error(ESTALE); return; };
+        let Ok(declaration) = dispatch::method_decl(&self.store, &self.namespace.target, plugin_id, method) else {
+            reply.error(ESTALE); return;
+        };
+        let Ok(token) = uuid::Uuid::from_slice(in_data) else { reply.error(EINVAL); return; };
+        match executor.bind_call(token, plugin_id, method, schema_hash, &declaration) {
+            Ok(bound) => { handle.bound_call = Some(bound); reply.ioctl(0, &[]); }
+            Err(error) => reply.error(error.errno()),
+        }
+    }
     fn destroy(&mut self) {
         self.cancelled.store(true, Ordering::Release);
     }
@@ -946,6 +1090,14 @@ impl Filesystem for TypedFuse {
             reply.error(EROFS);
             return;
         }
+        if let Err(error) = authorize_node(&self.store, &self.namespace.target, self.lungs.as_ref(), &handle.node) {
+            handle.dirty = false;
+            handle.bytes = Buffer::empty(&self.budget);
+            let body = diagnostic(&self.budget, &handle.node, "authorization", &error.to_string(), None);
+            handle.completed = Some(Err((EACCES, body)));
+            reply.error(EACCES);
+            return;
+        }
         if let Some(size) = size {
             let size = match usize::try_from(size) {
                 Ok(size) => size,
@@ -1008,6 +1160,19 @@ impl Filesystem for TypedFuse {
             reply.error(error);
             return;
         }
+        if matches!(handle.completed, Some(Ok(_))) {
+            if let Err(error) = authorize_node(&self.store, &self.namespace.target, self.lungs.as_ref(), &handle.node) {
+                drop(handle);
+                let mut handle = state.lock();
+                let body = diagnostic(&self.budget, &handle.node, "disclosure", &error.to_string(), None);
+                handle.completed = Some(Err((EACCES, body)));
+                let bytes = handle.readable_bytes();
+                let start = start.min(bytes.len());
+                let end = start.saturating_add(size as usize).min(bytes.len());
+                reply.data(&bytes[start..end]);
+                return;
+            }
+        }
         let bytes = handle.readable_bytes();
         let start = start.min(bytes.len());
         let end = start.saturating_add(size as usize).min(bytes.len());
@@ -1043,6 +1208,14 @@ impl Filesystem for TypedFuse {
             reply.error(EROFS);
             return;
         }
+        if let Err(error) = authorize_node(&self.store, &self.namespace.target, self.lungs.as_ref(), &handle.node) {
+            handle.dirty = false;
+            handle.bytes = Buffer::empty(&self.budget);
+            let body = diagnostic(&self.budget, &handle.node, "authorization", &error.to_string(), None);
+            handle.completed = Some(Err((EACCES, body)));
+            reply.error(EACCES);
+            return;
+        }
         let Some(end) = start.checked_add(data.len()) else {
             reply.error(libc::EFBIG);
             return;
@@ -1073,6 +1246,13 @@ impl Filesystem for TypedFuse {
         _lock_owner: u64,
         reply: ReplyEmpty,
     ) {
+        if let Some(state) = self.open_files.get(&fh) {
+            let handle = state.lock();
+            if matches!(handle.node.kind, NodeKind::CallFile { .. }) && handle.dirty {
+                reply.ok();
+                return;
+            }
+        }
         self.submit(ino, fh, request.uid(), PendingReply::Fuse(reply), false);
     }
     fn release(
@@ -1085,6 +1265,13 @@ impl Filesystem for TypedFuse {
         _flush: bool,
         reply: ReplyEmpty,
     ) {
+        if let Some(state) = self.open_files.get(&fh) {
+            let mut handle = state.lock();
+            if matches!(handle.node.kind, NodeKind::CallFile { .. }) && !handle.running {
+                handle.dirty = false;
+                handle.bytes = Buffer::empty(&self.budget);
+            }
+        }
         self.submit(ino, fh, request.uid(), PendingReply::Fuse(reply), true);
     }
     fn fsync(
@@ -1376,6 +1563,7 @@ mod tests {
                 bytes,
                 &fs.budget,
                 &fs.cancelled,
+                None,
             ),
         );
         let handle = state.lock();
@@ -1626,7 +1814,7 @@ mod tests {
         );
         fs.open_files.remove(&fh);
         let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
-        for replacement in *b"45" {
+        for replacement in [b'4', b'5'] {
             {
                 let mut handle = fs.open_files[&fh].lock();
                 handle.bytes.resize(1, DOCUMENT_LIMIT).unwrap();
@@ -1850,47 +2038,26 @@ mod tests {
         let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
         listener.set_nonblocking(true).unwrap();
         let server = std::thread::spawn(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+            let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
             runtime.block_on(async move {
                 let listener = tokio::net::UnixListener::from_std(listener).unwrap();
                 let (stream, _) = listener.accept().await.unwrap();
                 let connection = zbus::connection::Builder::unix_stream(stream)
-                    .server(zbus::Guid::generate())
-                    .unwrap()
-                    .p2p()
+                    .server(zbus::Guid::generate()).unwrap().p2p()
                     .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
-                    .serve_at(
-                        "/org/opdbus/v1/lungs",
-                        FixtureLungs {
-                            bound: Arc::new(Mutex::new(None)),
-                            refuse: true,
-                        },
-                    )
-                    .unwrap()
-                    .build()
-                    .await
-                    .unwrap();
+                    .serve_at("/org/opdbus/v1/lungs", FixtureLungs {
+                        bound: Arc::new(Mutex::new(None)), refuse: true,
+                    }).unwrap().build().await.unwrap();
                 connection.closed().await;
             });
         });
-        let (_fixture, mut fs) = lungs_fixture_plugin(
-            Lungs::Socket {
-                path: socket,
-                session: "named-session".into(),
-            },
-            "threetched",
-        );
+        let (_fixture, mut fs) = lungs_fixture_plugin(Lungs::Socket {
+            path: socket, session: "named-session".into(),
+        }, "threetched");
         assert!(fs.namespace.threetched_surface.is_none());
-        let ino = fs
-            .namespace
-            .nodes
-            .values()
+        let ino = fs.namespace.nodes.values()
             .find(|node| node.path == "/plugins/threetched/operations/record_event/call")
-            .unwrap()
-            .ino;
+            .unwrap().ino;
         let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
         {
             let mut handle = fs.open_files[&fh].lock();

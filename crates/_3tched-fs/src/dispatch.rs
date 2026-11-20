@@ -57,6 +57,8 @@ pub enum LungsError {
     Unsupported(String),
     #[error("dispatch failed: {0}")]
     Transport(String),
+    #[error("local executor failed: {0}")]
+    Executor(String),
     #[error("operation outcome is unknown; do not retry automatically: {0}")]
     OutcomeUnknown(String),
     #[error("operation contract unavailable: {0}")]
@@ -89,6 +91,7 @@ impl LungsError {
             Self::Refused(_) => "call",
             Self::Unsupported(_) => "call",
             Self::Transport(_) => "transport",
+            Self::Executor(_) => "executor",
             Self::OutcomeUnknown(_) => "outcome_unknown",
             Self::Contract(_) => "contract",
         }
@@ -99,7 +102,7 @@ impl LungsError {
             Self::Json(_) | Self::Arguments(_) => libc::EINVAL,
             Self::Credential(_) | Self::Registration(_) | Self::Refused(_) => libc::EACCES,
             Self::Unsupported(_) => libc::EOPNOTSUPP,
-            Self::Transport(_) | Self::OutcomeUnknown(_) => libc::EIO,
+            Self::Transport(_) | Self::Executor(_) | Self::OutcomeUnknown(_) => libc::EIO,
             Self::Contract(_) => libc::EPROTO,
         }
     }
@@ -219,52 +222,29 @@ pub async fn call(
 /// call share one connection, so the bridge admits the call as that identity
 /// and runs it through MutationEngine under the identity's own grants.
 pub async fn call_as_identity(
-    bus_address: &str,
-    plugin_id: &str,
-    method_name: &str,
-    method: &MethodDecl,
-    arguments: Value,
-    credential: Vec<u8>,
+    bus_address: &str, plugin_id: &str, method_name: &str, method: &MethodDecl,
+    arguments: Value, credential: Vec<u8>,
 ) -> Result<CallReceipt, LungsError> {
     validate_arguments(method, &arguments)?;
     let operation_id = uuid::Uuid::new_v4().to_string();
-    let connection = connect_bus(bus_address).await?;
-    let bootstrap = tokio::time::timeout(
-        LUNGS_NEGOTIATION_TIMEOUT,
-        Proxy::new(
-            &connection,
-            PLUGIN_BUS_NAME,
-            IDENTITY_OBJECT_PATH,
-            IDENTITY_INTERFACE,
-        ),
-    )
-    .await
-    .map_err(|_| LungsError::Transport("identity bootstrap proxy timed out".into()))?
-    .map_err(|error| LungsError::Transport(format!("identity bootstrap proxy: {error}")))?;
-    let registered: bool = tokio::time::timeout(
-        LUNGS_NEGOTIATION_TIMEOUT,
-        bootstrap.call("RegisterCurrentSender", &(credential,)),
-    )
-    .await
-    .map_err(|_| LungsError::Transport("identity registration timed out".into()))?
-    .map_err(|error| match refusal(&error) {
-        true => LungsError::Registration(error.to_string()),
-        false => LungsError::Transport(format!("register: {error}")),
-    })?;
-    if !registered {
-        return Err(LungsError::Registration(
-            "bridge declined the credential".into(),
-        ));
-    }
-    let result = plugin_call(
-        &connection,
-        plugin_id,
-        method_name,
-        &arguments,
-        &operation_id,
-    )
-    .await?;
+    let connection = bind_credential(bus_address, credential).await?;
+    let result = plugin_call(&connection, plugin_id, method_name, &arguments, &operation_id).await?;
     receipt(plugin_id, method_name, method, result, &operation_id)
+}
+
+async fn bind_credential(bus_address: &str, credential: Vec<u8>) -> Result<zbus::Connection, LungsError> {
+    let connection = connect_bus(bus_address).await?;
+    let bootstrap = tokio::time::timeout(LUNGS_NEGOTIATION_TIMEOUT,
+        Proxy::new(&connection, PLUGIN_BUS_NAME, IDENTITY_OBJECT_PATH, IDENTITY_INTERFACE),
+    ).await.map_err(|_| LungsError::Transport("identity bootstrap timed out".into()))?
+        .map_err(|error| LungsError::Transport(format!("identity bootstrap: {error}")))?;
+    let registered: bool = tokio::time::timeout(LUNGS_NEGOTIATION_TIMEOUT,
+        bootstrap.call("RegisterCurrentSender", &(credential,)),
+    ).await.map_err(|_| LungsError::Transport("identity registration timed out".into()))?
+        .map_err(|error| LungsError::Registration(error.to_string()))?;
+    if !registered { return Err(LungsError::Registration("bridge declined the credential".into())); }
+    drop(bootstrap);
+    Ok(connection)
 }
 
 /// Dispatch over the bridge's shared lungs socket. The connection first binds
@@ -273,71 +253,59 @@ pub async fn call_as_identity(
 /// from its kernel peer and native Incus binding. A named session uses the
 /// host-root-only bootstrap. Both run through the identity's own grants.
 pub async fn call_over_socket(
-    socket: &Path,
-    session: &str,
-    plugin_id: &str,
-    method_name: &str,
-    method: &MethodDecl,
-    arguments: Value,
+    socket: &Path, session: &str, plugin_id: &str, method_name: &str,
+    method: &MethodDecl, arguments: Value,
 ) -> Result<CallReceipt, LungsError> {
     validate_arguments(method, &arguments)?;
     let operation_id = uuid::Uuid::new_v4().to_string();
-    let stream = tokio::time::timeout(
-        LUNGS_NEGOTIATION_TIMEOUT,
-        tokio::net::UnixStream::connect(socket),
-    )
-    .await
-    .map_err(|_| LungsError::Transport("lungs socket connection timed out".into()))?
-    .map_err(|error| LungsError::Transport(format!("connect to {}: {error}", socket.display())))?;
-    let connection = tokio::time::timeout(
-        LUNGS_NEGOTIATION_TIMEOUT,
-        zbus::connection::Builder::unix_stream(stream)
-            .p2p()
-            .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
-            .build(),
-    )
-    .await
-    .map_err(|_| LungsError::Transport("lungs socket negotiation timed out".into()))?
-    .map_err(|error| LungsError::Transport(format!("lungs socket: {error}")))?;
-    let lungs = tokio::time::timeout(
-        LUNGS_NEGOTIATION_TIMEOUT,
-        Proxy::new(
-            &connection,
-            PLUGIN_BUS_NAME,
-            LUNGS_OBJECT_PATH,
-            LUNGS_INTERFACE,
-        ),
-    )
-    .await
-    .map_err(|_| LungsError::Transport("lungs bind proxy timed out".into()))?
-    .map_err(|error| LungsError::Transport(format!("lungs bind proxy: {error}")))?;
-    let binding = tokio::time::timeout(LUNGS_NEGOTIATION_TIMEOUT, async {
-        if session.is_empty() {
-            lungs.call("BindCurrentContainer", &()).await
-        } else {
-            lungs.call("Bind", &(session,)).await
-        }
-    })
-    .await
-    .map_err(|_| LungsError::Transport("lungs identity bind timed out".into()))?;
-    let bound: bool = binding.map_err(|error| match refusal(&error) {
-        true => LungsError::Registration(error.to_string()),
-        false => LungsError::Transport(format!("bind: {error}")),
-    })?;
-    if !bound {
-        return Err(LungsError::Registration(
-            "bridge declined to bind this session".into(),
-        ));
-    }
-    let result = plugin_call(
-        &connection,
-        plugin_id,
-        method_name,
-        &arguments,
-        &operation_id,
-    )
-    .await?;
+    let connection = bind_socket(socket, session).await?;
+    let result = plugin_call(&connection, plugin_id, method_name, &arguments, &operation_id).await?;
     receipt(plugin_id, method_name, method, result, &operation_id)
+}
+
+async fn bind_socket(socket: &Path, session: &str) -> Result<zbus::Connection, LungsError> {
+    let stream = tokio::time::timeout(LUNGS_NEGOTIATION_TIMEOUT, tokio::net::UnixStream::connect(socket))
+        .await.map_err(|_| LungsError::Transport("lungs connection timed out".into()))?
+        .map_err(|error| LungsError::Transport(format!("lungs connection: {error}")))?;
+    let connection = tokio::time::timeout(LUNGS_NEGOTIATION_TIMEOUT,
+        zbus::connection::Builder::unix_stream(stream).p2p()
+            .auth_mechanism(zbus::connection::AuthMechanism::Anonymous).build(),
+    ).await.map_err(|_| LungsError::Transport("lungs negotiation timed out".into()))?
+        .map_err(|error| LungsError::Transport(format!("lungs negotiation: {error}")))?;
+    let lungs = Proxy::new(&connection, PLUGIN_BUS_NAME, LUNGS_OBJECT_PATH, LUNGS_INTERFACE)
+        .await.map_err(|error| LungsError::Transport(format!("lungs bind proxy: {error}")))?;
+    let bound: bool = tokio::time::timeout(LUNGS_NEGOTIATION_TIMEOUT, async {
+        if session.is_empty() { lungs.call("BindCurrentContainer", &()).await }
+        else { lungs.call("Bind", &(session,)).await }
+    }).await.map_err(|_| LungsError::Transport("lungs identity bind timed out".into()))?
+        .map_err(|error| LungsError::Registration(error.to_string()))?;
+    if !bound { return Err(LungsError::Registration("bridge declined the binding".into())); }
+    drop(lungs);
+    Ok(connection)
+}
+
+/// Authority-only maintenance query. It accepts no operation arguments and
+/// cannot dispatch a method; the bridge reuses its protected current evaluator.
+pub async fn authorize_transport(
+    lungs: &crate::fuse_fs::Lungs, plugin: &str, method: &str, declaration: &MethodDecl,
+) -> Result<(), LungsError> {
+    let capability = declaration.required_capability.as_deref().filter(|cap| !cap.is_empty())
+        .ok_or_else(|| LungsError::Refused("sealed method has no exact required capability".into()))?;
+    let connection = match lungs {
+        crate::fuse_fs::Lungs::Socket { path, session } => bind_socket(path, session).await?,
+        crate::fuse_fs::Lungs::Credential { bus_address, credential } =>
+            bind_credential(bus_address, read_credential(credential)?).await?,
+        crate::fuse_fs::Lungs::Local(executor) => return executor.authorize(plugin, method, declaration),
+    };
+    let proxy = Proxy::new(&connection, PLUGIN_BUS_NAME,
+        format!("/org/opdbus/v1/plugins/{plugin}"), PLUGIN_INTERFACE).await
+        .map_err(|_| LungsError::Refused(format!("current authorizer unavailable; required_capability={capability}")))?;
+    let allowed: bool = tokio::time::timeout(LUNGS_NEGOTIATION_TIMEOUT,
+        proxy.call("AuthorizeMethod", &(method, capability)),
+    ).await.map_err(|_| LungsError::Refused(format!("current authorizer timed out; required_capability={capability}")))?
+        .map_err(|_| LungsError::Refused(format!("current exact grant refused; required_capability={capability}")))?;
+    if !allowed { return Err(LungsError::Refused(format!("required_capability={capability}"))); }
+    Ok(())
 }
 
 async fn connect_bus(bus_address: &str) -> Result<zbus::Connection, LungsError> {
@@ -467,6 +435,19 @@ fn receipt(
     })
 }
 
+/// Build the call receipt for an in-process executor result. The executor
+/// returns the same `MethodExecutionReceipt` JSON the socket transports carry;
+/// attribution, operation-id and result-schema validation are identical.
+pub fn receipt_for_local_result(
+    plugin_id: &str,
+    method_name: &str,
+    method: &MethodDecl,
+    result: Value,
+    operation_id: &str,
+) -> Result<CallReceipt, LungsError> {
+    receipt(plugin_id, method_name, method, result, operation_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -475,10 +456,7 @@ mod tests {
     fn unsupported_reply_retains_refusal_and_recovery_without_reclassifying_failures() {
         let operation = "00000000-0000-4000-8000-000000000001";
         let message = format!("method_failed_before_effect; operation_id={operation}; omit --edit");
-        let refused = method_call_error(
-            zbus::fdo::Error::NotSupported(message.clone()).into(),
-            operation,
-        );
+        let refused = method_call_error(zbus::fdo::Error::NotSupported(message.clone()).into(), operation);
         assert!(matches!(&refused, LungsError::Unsupported(_)));
         assert_eq!(refused.errno(), libc::EOPNOTSUPP);
         assert_eq!(refused.stage(), "call");
@@ -488,10 +466,7 @@ mod tests {
         assert!(matches!(&uncertain, LungsError::OutcomeUnknown(_)));
         assert_eq!(uncertain.errno(), libc::EIO);
         assert_eq!(uncertain.operation_id(), Some(operation));
-        let denied = method_call_error(
-            zbus::fdo::Error::AccessDenied("denied".into()).into(),
-            operation,
-        );
+        let denied = method_call_error(zbus::fdo::Error::AccessDenied("denied".into()).into(), operation);
         assert!(matches!(&denied, LungsError::Refused(_)));
         assert_eq!(denied.errno(), libc::EACCES);
     }
