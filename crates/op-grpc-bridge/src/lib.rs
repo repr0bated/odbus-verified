@@ -44,6 +44,8 @@ pub(crate) mod chat_router_config_dispatch;
 pub(crate) mod chat_router_config_secret_policy;
 #[path = "chat_router_generation.rs"]
 pub(crate) mod chat_router_generation;
+#[path = "runtime_fuse.rs"]
+pub(crate) mod runtime_fuse;
 #[path = "chat_router_runtime.rs"]
 pub(crate) mod chat_router_runtime;
 pub mod cockpit;

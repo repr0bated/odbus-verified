@@ -148,6 +148,12 @@ pub async fn run_from_env() -> anyhow::Result<()> {
     .await?;
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut lungs = crate::runtime_lungs::start(runtime.clone()).await?;
+    // Bridge-hosted FUSE mounts (socketless local dispatch): auto-enumerated
+    // from committed sleds after Runtime::open's adopt/recover, plus any
+    // OP_FUSE_LOCAL_MOUNTS overrides. Fault-isolating per identity inside
+    // start_local_mounts, so a bad container never fails bridge startup.
+    // The guard detaches mounts at teardown.
+    let fuse_mounts = crate::runtime_fuse::start_local_mounts(runtime.clone()).await?;
     let (stop, receive) = watch::channel(false);
     let mut workers = JoinSet::new();
     let mut ready = None;
@@ -190,6 +196,7 @@ pub async fn run_from_env() -> anyhow::Result<()> {
             },
         }
     }.await;
+    drop(fuse_mounts);
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(35);
     runtime.begin_shutdown();
     lungs.begin_shutdown();

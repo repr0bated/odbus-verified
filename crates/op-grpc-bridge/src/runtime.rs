@@ -367,7 +367,7 @@ impl RuntimeError {
                 .as_deref()
                 .is_none_or(|id| Uuid::parse_str(id).is_ok_and(|id| id == operation_id))
     }
-    fn at_operation(mut self, operation_id: Uuid) -> Self {
+    pub(crate) fn at_operation(mut self, operation_id: Uuid) -> Self {
         let id = operation_id.to_string();
         if let Some(previous) = self.operation_id.replace(id.clone()) {
             if previous != id && !self.related_operation_ids.contains(&previous) {
@@ -440,6 +440,7 @@ struct RuntimeInner {
     cognitive: crate::runtime_cognitive::CognitiveBackend,
     network: crate::runtime_network::NetworkRuntime,
     elevation: crate::task_elevation::TaskElevation,
+    fuse_calls: Arc<crate::runtime_fuse::FuseCalls>,
 }
 
 #[derive(Clone)]
@@ -526,6 +527,7 @@ impl Runtime {
                 cognitive,
                 network,
                 elevation: crate::task_elevation::TaskElevation::default(),
+                fuse_calls: Arc::new(crate::runtime_fuse::FuseCalls::new()),
             }),
         })
     }
@@ -534,6 +536,59 @@ impl Runtime {
     }
     pub(crate) fn tracker(&self) -> &op_execution_tracker::ExecutionTracker {
         &self.inner.tracker
+    }
+    pub(crate) fn fuse_calls(&self) -> &Arc<crate::runtime_fuse::FuseCalls> { &self.inner.fuse_calls }
+
+    /// New operations cross an actual kernel FUSE descriptor. The callback owns
+    /// mandatory checkpoints; private completion never substitutes for FD success.
+    pub(crate) async fn invoke_fuse_with_checkpoint(&self, caller: &VerifiedCaller, plugin: &str,
+        method: &str, arguments: Value, operation_id: Uuid, checkpoint: CallCheckpoint) -> Result<RuntimeResult, RuntimeError> {
+        if caller.execution.is_some() {
+            return Err(RuntimeError::denied("new FUSE operation requires released ancestor root").at_operation(operation_id));
+        }
+        caller.authority.revalidate().await.map_err(RuntimeError::from)?;
+        let mut caller = caller.for_background();
+        caller.attach_checkpoint(Arc::new(checkpoint))?;
+        let context = self.execution_context(&caller, plugin, method, operation_id)?;
+        let target = match self.checkpoint_target(&caller, plugin, method, &arguments, operation_id) {
+            Ok(target) => target,
+            Err(error) => {
+                if self.pinned_method(plugin, method).is_ok() {
+                    self.tracker().reserve(context.clone()).await?;
+                    self.checkpoint_rejection(&context, plugin, method).await?;
+                }
+                return Err(error.at_operation(operation_id));
+            }
+        };
+        let fallback_arguments = arguments.clone();
+        match crate::runtime_fuse::invoke_bound(self, &caller, target.clone(), arguments).await {
+            Ok(completed) => {
+                self.revalidate_result(&completed, plugin, method).await?;
+                Ok(completed)
+            }
+            Err(failure) => {
+                if !failure.before_dispatch {
+                    // Dispatch may have started: outcome_unknown, never resubmit.
+                    return Err(failure.error);
+                }
+                // Pre-dispatch only (CallState never reached EXECUTING): the
+                // descriptor never entered its callback, so executing the SAME
+                // operation_id in-process cannot double-run the effect.
+                // Grants and checkpoint admission run unchanged in call_owned.
+                match self.call_owned(caller.clone(), plugin.to_owned(), method.to_owned(), fallback_arguments, operation_id).await {
+                    Ok(completed) => {
+                        self.revalidate_result(&completed, plugin, method).await?;
+                        Ok(completed)
+                    }
+                    Err(error) if error.is_denied() => {
+                        self.tracker().reserve(context.clone()).await?;
+                        self.checkpoint_transition(&context, &target, op_execution_tracker::ExecutionStatus::Denied, None).await?;
+                        Err(error)
+                    }
+                    Err(error) => Err(error),
+                }
+            }
+        }
     }
 
     pub(crate) fn root_release(&self, caller: &VerifiedCaller) -> Result<RootRelease, RuntimeError> {
@@ -648,7 +703,7 @@ impl Runtime {
         }
         Ok(())
     }
-    fn pinned_method(
+    pub(crate) fn pinned_method(
         &self,
         plugin: &str,
         method: &str,
