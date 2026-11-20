@@ -49,15 +49,21 @@ wait_dep() {
 # materializes the topology from conf.db and the ovsbr0-* units use plain `ip`.
 # That absence of a back-edge is what keeps this list cycle-free — check it with
 # deploy/runit/check-dep-cycles.py before any reboot.
-wait_dep opdbus-rundirs
+# Optional owners: waited for only when enabled in this host's runsvdir, so a
+# host that does not ship one (e.g. antix1 runs threetched-gateway instead of
+# the threetched daemon) still starts. identity-roots is deprecated.
+wait_dep_if_enabled() {
+    if [ -e "/etc/service/$1" ]; then wait_dep "$1"; else startup_phase "dependency-absent:$1"; fi
+}
 wait_dep opdbus-grants
 wait_dep dbus
-wait_dep unified-execution
-wait_dep op-runit-systemctl
-wait_dep op-session-bus
-wait_dep identity-roots
 wait_dep ovsdb-server
-wait_dep threetched
+wait_dep_if_enabled opdbus-rundirs
+wait_dep_if_enabled unified-execution
+wait_dep_if_enabled op-runit-systemctl
+wait_dep_if_enabled op-session-bus
+wait_dep_if_enabled threetched
+wait_dep_if_enabled threetched-gateway
 # Identity storage restoration is owned independently by identity-roots. The
 # bridge waits for the storage owner's readiness before restoring active
 # service identities. The storage owner never depends on this bridge.
@@ -170,7 +176,12 @@ unset THREETCHED_BROWSER_TLS_BIND_ADDR THREETCHED_BROWSER_TLS_CERT_FILE THREETCH
 # must bind its authenticated private ExHook backend before publishing ready.
 # The retained /mqtt route then relays to EMQX's verified loopback WSS backend.
 startup_phase emqx-prepare
-/usr/local/libexec/op-dbus/helpers/emqx-prepare
+# EMQX is deprecated: run its helper only where it is still installed.
+if [ -x /usr/local/libexec/op-dbus/helpers/emqx-prepare ]; then
+    /usr/local/libexec/op-dbus/helpers/emqx-prepare
+else
+    echo "emqx-prepare skipped: helper not installed (EMQX deprecated)"
+fi
 export OP_EMQX_EXHOOK_ENABLE=1
 export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
 export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${THREETCHED_TLS_CERT_FILE}"
@@ -261,31 +272,8 @@ for command_name in btrfs findmnt numactl taskset; do
     fi
 done
 
-existing_path() {
-    candidate=$1
-    while [ ! -e "$candidate" ]; do
-        parent=${candidate%/*}
-        [ -n "$parent" ] || parent=/
-        [ "$parent" != "$candidate" ] || break
-        candidate=$parent
-    done
-    printf '%s\n' "$candidate"
-}
-
-snowball_mount=$(existing_path "$OPDBUS_SNOWBALL_PATH")
-cache_mount=$(existing_path "$OP_DBUS_CACHE_DIR")
-snowball_fstype=$(findmnt -n -o FSTYPE -T "$snowball_mount")
-cache_fstype=$(findmnt -n -o FSTYPE -T "$cache_mount")
-snowball_device=$(findmnt -n -o MAJ:MIN -T "$snowball_mount")
-cache_device=$(findmnt -n -o MAJ:MIN -T "$cache_mount")
-if [ "$snowball_fstype" != btrfs ] || [ "$cache_fstype" != btrfs ]; then
-    echo "snowball timing and cache require Btrfs storage" >&2
-    exit 78
-fi
-if [ "$snowball_device" != "$cache_device" ]; then
-    echo "snowball timing and cache must use the same Btrfs filesystem" >&2
-    exit 78
-fi
+# Owner 2026-11-19: snowball is sled-backed, not Btrfs, and op-cache uses a
+# plain directory on non-Btrfs storage; no shared-Btrfs storage gate here.
 
 case "$OPDBUS_NUMA_POLICY" in
     localalloc|interleave|default|disabled|none) ;;

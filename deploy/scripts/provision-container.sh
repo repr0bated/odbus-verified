@@ -92,7 +92,7 @@ incus create --empty "$NAME" -s "$POOL" --no-profiles \
 lxc.mount.auto = cgroup2:force"
 incus config device add "$NAME" fuse unix-char source=/dev/fuse path=/dev/fuse mode=0666 >/dev/null
 RUNDIR=/run/opdbus/ct/$NAME
-install -d -m 0755 "$RUNDIR"
+install -d -m 0755 "$RUNDIR" "$RUNDIR/lungs" "$RUNDIR/tunnel"   # nested idmapped mount targets
 incus config device add "$NAME" opdbus-run disk source="$RUNDIR" path=/opt/run-mounts/opdbus shift=true >/dev/null
 incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/opt/run-mounts/opdbus/lungs readonly=true shift=true >/dev/null
 incus config device add "$NAME" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true >/dev/null

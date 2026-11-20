@@ -15,6 +15,10 @@ mkdir -p "$LOGDIR"
 [ -S /run/opdbus/lungs/lungs.sock ] || fail "host lungs socket absent (host op-grpc-bridge must be running)"
 [ -r "$CATALOG/.manifest.json" ] || fail "sealed catalog $CATALOG absent"
 [ -r "$TRUST" ] || fail "decoy trust store $TRUST absent"
+# Unprivileged (isolated idmap) containers must traverse the pool containers
+# dir to mount their credentials; Incus creates it 0711. 0700 makes every start
+# fail with "Permission denied ... .incus-systemd-credentials".
+[ "$(stat -c %a "$POOL_DIR/containers")" = 711 ] || fail "$POOL_DIR/containers is mode $(stat -c %a "$POOL_DIR/containers"), Incus needs 0711"
 
 session_of() { "$BIN_ACCEPT" derive --pubkey "$1" | awk '{print $1}'; }
 dev_has() { incus config device get "$1" "$2" type >/dev/null 2>&1; }
@@ -29,7 +33,10 @@ verify_sled() { # dir session key
   cmp -s "$t" "$1/sealed_id" || { rm -f "$t"; fail "sled sealed_id differs from the decoy-issued identity"; }
   rm -f "$t"; echo "  sled verified (IID1 vs trust store, sealed_id matches)"; }
 wire_devices() { # name
-  n=$1; RUNDIR=/run/opdbus/ct/$n; install -d -m 0755 "$RUNDIR"
+  n=$1; RUNDIR=/run/opdbus/ct/$n
+  # lungs and tunnel are mounted inside the opdbus-run disk; with idmapped
+  # mounts Incus does not create nested targets, so start fails without them.
+  install -d -m 0755 "$RUNDIR" "$RUNDIR/lungs" "$RUNDIR/tunnel"
   dev_add "$n" fuse unix-char source=/dev/fuse path=/dev/fuse mode=0666
   dev_add "$n" opdbus-run disk source="$RUNDIR" path=/opt/run-mounts/opdbus shift=true
   dev_add "$n" lungs disk source=/run/opdbus/lungs path=/opt/run-mounts/opdbus/lungs readonly=true shift=true
