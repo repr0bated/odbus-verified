@@ -399,7 +399,7 @@ fn generate(source: &Path, catalog: Option<PathBuf>, apply: bool) -> Result<()> 
 }
 
 fn parse_generate_args(
-    args: &mut std::env::ArgsOs,
+    args: &mut impl Iterator<Item = std::ffi::OsString>,
 ) -> Result<(bool, Option<PathBuf>)> {
     let mut apply = false;
     let mut catalog = None;
