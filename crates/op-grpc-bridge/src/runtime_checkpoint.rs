@@ -137,10 +137,15 @@ impl Runtime {
             .map_err(|_| RuntimeError::denied("method input contract is unavailable or not satisfied"))?;
         self.authorize_nested(caller, &target.plugin_id, &target.method).await?;
         if caller.requires_checkpoint && caller.checkpoint.is_none() {
-            return Err(RuntimeError::denied("delegated operation has no trusted checkpoint binding"));
+            return Err(RuntimeError::denied(
+                "tool call, chat or delegated operation has no trusted execution-tracker checkpoint binding"));
         }
-        let checkpoint = caller.checkpoint.as_ref()
-            .ok_or_else(|| RuntimeError::denied("operation has no trusted grounding policy owner"))?;
+        // Only operations explicitly marked as tool calls, chat or delegated
+        // execution (`requires_checkpoint`) need a grounding owner. A plain
+        // direct call (gRPC door, lungs, mounted FUSE) is admitted by its exact
+        // sealed grant and input contract above and is still recorded by the
+        // execution tracker in `Runtime::call`.
+        let Some(checkpoint) = caller.checkpoint.as_ref() else { return Ok(()); };
         checkpoint.validate_caller(caller)?;
         checkpoint.owner.revalidate_binding(self, caller, target, CheckpointStage::Preflight).await?;
         if matches!(&checkpoint.policy, CheckpointPolicy::RequireJudgment { .. })
@@ -165,8 +170,14 @@ impl Runtime {
         target.result_digest = Some(BridgeCore::method_value_digest(&completed.result)?);
         self.core().verify_operation_result(&target.operation_id.to_string(),
             &caller.principal_id, &caller.session_id, &completed.result)?;
-        let checkpoint = caller.checkpoint.as_ref()
-            .ok_or_else(|| RuntimeError::unknown(anyhow::anyhow!("response grounding policy owner unavailable")))?;
+        let Some(checkpoint) = caller.checkpoint.as_ref() else {
+            if caller.requires_checkpoint {
+                return Err(RuntimeError::unknown(anyhow::anyhow!("response grounding policy owner unavailable")));
+            }
+            // Plain direct call: no grounding owner; receipt, output contract,
+            // disclosure and the durable result proof were verified above.
+            return Ok(GroundedOutcome::Succeeded);
+        };
         let stage = if matches!(&checkpoint.class, CallClass::AgentFinal) {
             CheckpointStage::AgentFinal
         } else { CheckpointStage::Postflight };

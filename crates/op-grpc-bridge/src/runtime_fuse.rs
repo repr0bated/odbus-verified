@@ -569,10 +569,25 @@ pub(crate) struct LocalMounts {
     threads: Vec<std::thread::JoinHandle<()>>,
     calls: Arc<FuseCalls>,
     keys: Vec<uuid::Uuid>,
+    /// Mounts added after startup by the reconciler, and the reconciler task.
+    /// Dropping the startup guard stops the reconciler first, then detaches
+    /// everything it mounted.
+    late: Option<(tokio::task::JoinHandle<()>, Arc<Mutex<Vec<LocalMounts>>>)>,
+}
+
+impl LocalMounts {
+    fn empty(calls: Arc<FuseCalls>) -> Self {
+        Self { mountpoints: Vec::new(), threads: Vec::new(), calls, keys: Vec::new(), late: None }
+    }
 }
 
 impl Drop for LocalMounts {
     fn drop(&mut self) {
+        if let Some((task, late)) = self.late.take() {
+            task.abort();
+            let late = late.lock().map(|mut late| std::mem::take(&mut *late)).unwrap_or_default();
+            drop(late);
+        }
         for key in self.keys.drain(..) { self.calls.unregister(key); }
         for mountpoint in &self.mountpoints {
             // SAFETY: path is a live FUSE mountpoint owned by this guard.
@@ -601,7 +616,7 @@ async fn start_identity_mounts(
     let catalog_dir = runtime.catalog_dir().to_path_buf();
     let state_dir = op_core::projection_shm::shm_state_dir();
     let (caller, binding) = resolve_container(&catalog_dir, &state_dir, &spec.container).await?;
-    let mut served = LocalMounts { mountpoints: Vec::new(), threads: Vec::new(), calls: runtime.fuse_calls().clone(), keys: Vec::new() };
+    let mut served = LocalMounts::empty(runtime.fuse_calls().clone());
     for (surface, mountpoint) in [
         (Surface::Our, spec.mount_3tched.clone()),
         (Surface::Binary, spec.mount_threetched.clone()),
@@ -677,31 +692,18 @@ async fn start_identity_mounts(
     Ok(served)
 }
 
-/// Start every bridge-hosted mount pair: explicit `OP_FUSE_LOCAL_MOUNTS`
-/// specs plus auto-enumerated specs from committed sleds (explicit specs win
-/// per container). Reconciliation point: bootstrap calls this after
-/// `Runtime::open` has run `adopt_identity_volumes`/`recover_startup`, so the
-/// committed projection is already indexed. Fault-isolating per identity: a
-/// container that fails to resolve/mount is logged and mounts nothing,
-/// without failing bridge startup. Known gap: this runs at startup only;
-/// a container stopped later keeps its (now failing-revalidation) mounts
-/// until bridge restart, and a container started later gets none until then.
-pub(crate) async fn start_local_mounts(runtime: Arc<Runtime>) -> Result<LocalMounts> {
-    let mut guard = LocalMounts { mountpoints: Vec::new(), threads: Vec::new(), calls: runtime.fuse_calls().clone(), keys: Vec::new() };
-    if local_mounts_disabled() {
-        tracing::info!("bridge-hosted FUSE mounts disabled by OP_FUSE_LOCAL_MOUNTS");
-        return Ok(guard);
-    }
-    let mut specs = match specs_from_env() {
-        Ok(specs) => specs,
-        Err(error) => { tracing::warn!(%error, "invalid OP_FUSE_LOCAL_MOUNTS; continuing with auto-enumerated mounts only"); Vec::new() }
-    };
-    for auto in auto_specs(&runtime).await {
-        if !specs.iter().any(|spec| spec.container == auto.container) { specs.push(auto); }
-    }
-    if specs.len() > 64 { tracing::warn!(count = specs.len(), "mounted identity pair capacity exceeded; truncating"); specs.truncate(64); }
-    let mut points = Vec::<PathBuf>::with_capacity(specs.len() * 2);
-    for spec in &specs {
+/// Mount every spec whose container is not yet served. Fault-isolating per
+/// identity: a container that fails to resolve/mount is logged and mounts
+/// nothing. `last_error` keeps a retried failure from logging every pass.
+async fn mount_pending(
+    runtime: &Arc<Runtime>,
+    specs: &[FuseMountSpec],
+    guard: &mut LocalMounts,
+    points: &mut Vec<PathBuf>,
+    served: &mut Vec<String>,
+    last_error: &mut HashMap<String, String>,
+) {
+    for spec in specs.iter().filter(|spec| !served.contains(&spec.container)) {
         let mut canonical = Vec::with_capacity(2);
         let mut invalid = false;
         for point in [&spec.mount_3tched, &spec.mount_threetched] {
@@ -715,17 +717,83 @@ pub(crate) async fn start_local_mounts(runtime: Arc<Runtime>) -> Result<LocalMou
             tracing::warn!(container = %spec.container, "bridge-hosted FUSE mount roots overlap an earlier identity; skipping identity");
             continue;
         }
-        points.extend(canonical);
         match start_identity_mounts(runtime.clone(), spec).await {
             Ok(mut mounted) => {
+                points.extend(canonical);
+                served.push(spec.container.clone());
+                last_error.remove(&spec.container);
                 guard.mountpoints.append(&mut mounted.mountpoints);
                 guard.threads.append(&mut mounted.threads);
                 guard.keys.append(&mut mounted.keys);
                 tracing::info!(container = %spec.container, "bridge-hosted FUSE mounts serving");
             }
-            Err(error) => tracing::warn!(%error, container = %spec.container, "bridge-hosted FUSE mounts not started for identity; continuing"),
+            Err(error) => {
+                let text = format!("{error:#}");
+                if last_error.get(&spec.container) != Some(&text) {
+                    tracing::warn!(error = %text, container = %spec.container, "bridge-hosted FUSE mounts not started for identity; will retry");
+                    last_error.insert(spec.container.clone(), text);
+                }
+            }
         }
     }
+}
+
+async fn current_specs(runtime: &Runtime) -> Vec<FuseMountSpec> {
+    let mut specs = match specs_from_env() {
+        Ok(specs) => specs,
+        Err(error) => { tracing::warn!(%error, "invalid OP_FUSE_LOCAL_MOUNTS; continuing with auto-enumerated mounts only"); Vec::new() }
+    };
+    for auto in auto_specs(runtime).await {
+        if !specs.iter().any(|spec| spec.container == auto.container) { specs.push(auto); }
+    }
+    if specs.len() > 64 { tracing::warn!(count = specs.len(), "mounted identity pair capacity exceeded; truncating"); specs.truncate(64); }
+    specs
+}
+
+/// How often committed identities are rechecked for containers that were not
+/// running (or not yet provisioned) at the previous pass.
+const RECONCILE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(15);
+
+/// Start every bridge-hosted mount pair: explicit `OP_FUSE_LOCAL_MOUNTS`
+/// specs plus auto-enumerated specs from committed sleds (explicit specs win
+/// per container). Bootstrap calls this after `Runtime::open` has run
+/// `adopt_identity_volumes`/`recover_startup`, so the committed projection is
+/// already indexed. A reconciler then rechecks every `RECONCILE_INTERVAL`, so
+/// a container started or provisioned after the bridge gets its mounts
+/// without a bridge restart. Known gap: a container that restarts keeps its
+/// (now failing-revalidation) mounts until bridge restart.
+pub(crate) async fn start_local_mounts(runtime: Arc<Runtime>) -> Result<LocalMounts> {
+    let mut guard = LocalMounts::empty(runtime.fuse_calls().clone());
+    if local_mounts_disabled() {
+        tracing::info!("bridge-hosted FUSE mounts disabled by OP_FUSE_LOCAL_MOUNTS");
+        return Ok(guard);
+    }
+    let mut points = Vec::<PathBuf>::new();
+    let mut served = Vec::<String>::new();
+    let mut last_error = HashMap::<String, String>::new();
+    let specs = current_specs(&runtime).await;
+    mount_pending(&runtime, &specs, &mut guard, &mut points, &mut served, &mut last_error).await;
+    let late = Arc::new(Mutex::new(Vec::<LocalMounts>::new()));
+    let task_late = late.clone();
+    let task_runtime = runtime.clone();
+    let task = tokio::spawn(async move {
+        let mut interval = tokio::time::interval(RECONCILE_INTERVAL);
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        interval.tick().await;
+        loop {
+            interval.tick().await;
+            let specs = current_specs(&task_runtime).await;
+            if specs.iter().all(|spec| served.contains(&spec.container)) { continue; }
+            let mut added = LocalMounts::empty(task_runtime.fuse_calls().clone());
+            mount_pending(&task_runtime, &specs, &mut added, &mut points, &mut served, &mut last_error).await;
+            if added.mountpoints.is_empty() { continue; }
+            match task_late.lock() {
+                Ok(mut late) => late.push(added),
+                Err(_) => { tracing::error!("bridge-hosted FUSE reconciler state poisoned; stopping"); return; }
+            }
+        }
+    });
+    guard.late = Some((task, late));
     Ok(guard)
 }
 

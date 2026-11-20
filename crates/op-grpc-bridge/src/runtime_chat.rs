@@ -746,6 +746,19 @@ impl ChatRuntime {
     }
 }
 
+/// Chat entry points: the operations that carry a user turn to a model.
+/// These, like agent tool calls, always go through the execution tracker with
+/// a trusted checkpoint (`VerifiedCaller::require_execution_checkpoint`).
+/// Configuration, listing and read methods of the same plugins are plain calls.
+pub(crate) fn is_checkpointed_chat_entry(plugin: &str, method: &str) -> bool {
+    match plugin {
+        "chat_router" => method == "Chat" || chat_router::generation::is_method(method),
+        "ctl_plane_chatbot" => method == "Chat",
+        "chat_response" => matches!(method, "start_conversation" | "submit_turn"),
+        _ => false,
+    }
+}
+
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     match plugin {
         "chat_router" => {

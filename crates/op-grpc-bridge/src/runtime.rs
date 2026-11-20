@@ -99,6 +99,11 @@ impl VerifiedCaller {
 
     pub(crate) fn require_delegated_checkpoint(&mut self) { self.requires_checkpoint = true; }
 
+    /// Explicit marker for the paths that must go through the execution
+    /// tracker with a trusted checkpoint: model/agent tool calls and chat.
+    /// Plain direct calls (door, lungs, mounted FUSE) carry no marker.
+    pub(crate) fn require_execution_checkpoint(&mut self) { self.requires_checkpoint = true; }
+
     pub(crate) fn inherit_execution(&mut self, caller: &Self) {
         self.execution = caller.execution.clone();
         self.call_path = caller.call_path.clone();
@@ -782,13 +787,16 @@ impl Runtime {
 
     pub(crate) fn call<'a>(
         &'a self,
-        caller: VerifiedCaller,
+        mut caller: VerifiedCaller,
         plugin: &'a str,
         method: &'a str,
         args: Value,
         operation_id: Uuid,
     ) -> Pin<Box<dyn Future<Output = Result<RuntimeResult, RuntimeError>> + Send + 'a>> {
         Box::pin(async move {
+            if crate::runtime_chat::is_checkpointed_chat_entry(plugin, method) {
+                caller.require_execution_checkpoint();
+            }
             let context = self.execution_context(&caller, plugin, method, operation_id)?;
             self.inner.tracker.reserve(context.clone()).await
                 .map_err(|_| RuntimeError::denied("execution checkpoint capacity or correlation refused"))?;

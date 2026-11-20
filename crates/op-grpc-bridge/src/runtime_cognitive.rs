@@ -771,8 +771,11 @@ async fn nested(
     args: Value,
 ) -> Result<Value, RuntimeError> {
     revalidate(ctx).await?;
+    // Agent tool call: always through the execution tracker with a checkpoint.
+    let mut caller = ctx.caller.clone();
+    caller.require_execution_checkpoint();
     Ok(
-        Box::pin(ctx.runtime.call_nested(ctx.caller, plugin, method, args))
+        Box::pin(ctx.runtime.call_nested(&caller, plugin, method, args))
             .await?
             .result,
     )
