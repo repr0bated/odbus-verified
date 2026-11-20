@@ -29,6 +29,9 @@ set +a
 export OP_WEB_BIND_ADDR="${OP_WEB_BIND_ADDR:-10.0.0.2}"
 export PORT="${PORT:-8080}"
 export OP_WEB_STATIC_DIR=/usr/local/share/op-dbus/dashboard-release
+# The compliance SPA is published under the dashboard root (LANDING=compliance),
+# separate from this release dashboard mount.
+export CC_COMPLIANCE_STATIC_DIR="${CC_COMPLIANCE_STATIC_DIR:-/usr/local/share/op-dbus/dashboard/compliance}"
 export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.2:8090}"
 # The door certificate is generated inside the door-owning container and
 # exported (public part only) to its shared host directory.
