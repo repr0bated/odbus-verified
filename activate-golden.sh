@@ -14,6 +14,10 @@
 #   ./activate-golden.sh status
 #   ./activate-golden.sh cut          # print the cut plan
 #   sudo ./activate-golden.sh cut --apply   # actually rotate slots (requires a work OS)
+#   sudo ./activate-golden.sh activate --apply
+#     After cut, activate stages binaries, then runs the live slot's
+#     op-grants-materializer generate --apply-to-live (backup, validate, wait
+#     for opdbus-grants Fresh, no restart) before service health checks.
 set -eu
 REPO=$(CDPATH='' cd -- "$(dirname -- "$(readlink -f -- "$0")")" && pwd)
 # Default to plan when invoked with no arguments.

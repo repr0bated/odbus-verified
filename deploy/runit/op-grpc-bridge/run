@@ -261,6 +261,10 @@ export COGNITIVE_SEARCH_COLLECTIONS="${COGNITIVE_SEARCH_COLLECTIONS:-$COGNITIVE_
 [ -r /etc/op-dbus/secrets/voyage-api-key ] && export VOYAGE_API_KEY="$(cat /etc/op-dbus/secrets/voyage-api-key)"
 # Phase 2: tool dispatch is in-process ToolRegistry — no HTTP MCP loopback URL.
 
+# Compliance SPA + Cozo proxy on the door Axum stack (/compliance, /compliance/api).
+export CC_COMPLIANCE_STATIC_DIR="${CC_COMPLIANCE_STATIC_DIR:-/usr/local/share/op-dbus/dashboard/compliance}"
+export CC_COZO_UPSTREAM="${CC_COZO_UPSTREAM:-http://127.0.0.1:8787}"
+
 # These are runtime requirements, not merely build-host packages. Fail with a
 # precise error on a received golden image instead of silently dropping the
 # Btrfs/NUMA path when a target is missing a dependency.

@@ -898,6 +898,7 @@ chroot_build() {
     rm -rf -- "$src_host"
     install -d -m 0755 -- "$src_host"
     git -C "$REPO" archive HEAD | tar -x -C "$src_host"
+    chroot_stage_threetched_capture "$os_root"
     if [ -e "$os_root/etc/resolv.conf" ] || [ -L "$os_root/etc/resolv.conf" ]; then
         cp -a -- "$os_root/etc/resolv.conf" "$os_root/etc/resolv.conf.golden-bak" || true
     fi
@@ -921,12 +922,42 @@ chroot_build() {
     chroot "$os_root" env \
         CXXFLAGS="-include cstdint" \
         CARGO_TARGET_DIR=/opt/op-build/target \
+        THREETCHED_CAPTURE_BIN="$GOLDEN_CAPTURE_DIR/threetched" \
+        THREETCHED_CAPTURE_MANIFEST="$GOLDEN_CAPTURE_MANIFEST" \
         PATH="/root/.cargo/bin:/usr/local/cargo/bin:/usr/bin:/bin" \
         HOME=/root \
         sh -c 'cd /opt/op-build.src && exec "$0" build --workspace --release -j"$1"' \
         "$cargo_bin" "$JOBS"
     chroot_cleanup "$os_root"
     trap - EXIT HUP INT TERM
+}
+
+# The op-grpc-bridge build script captures the pinned threetched CLI surface
+# (op_plugins threetched::prepare_schema_capture), so the work OS needs the
+# pinned binary. Stage the host's installed threetched, sha-checked against
+# the committed manifest, into a build-only dir and point the capture pair
+# there. The binary is glibc <= 2.39, so it runs on the seed. The capture
+# writes a scratch config into the runtime config dir (/var/lib/threetched);
+# when the work OS had none, chroot_cleanup removes it again.
+GOLDEN_CAPTURE_DIR=/opt/op-build/threetched-capture
+GOLDEN_CAPTURE_MANIFEST=/opt/op-build.src/crates/op-grpc-bridge/threetched-manifests/threetched.json
+GOLDEN_THREETCHED_BIN=${GOLDEN_THREETCHED_BIN:-/usr/local/libexec/op-dbus/threetched/threetched}
+chroot_stage_threetched_capture() {
+    local os_root=$1 want have
+    [ -x "$GOLDEN_THREETCHED_BIN" ] || die "pinned threetched binary missing on the host: $GOLDEN_THREETCHED_BIN"
+    [ -r "$os_root$GOLDEN_CAPTURE_MANIFEST" ] || die "threetched manifest missing in the exported tree: $GOLDEN_CAPTURE_MANIFEST"
+    command -v jq >/dev/null 2>&1 || die "jq is required to read the threetched manifest"
+    want=$(jq -r '.artifact.sha256 // empty' "$os_root$GOLDEN_CAPTURE_MANIFEST")
+    have=$(sha256sum -- "$GOLDEN_THREETCHED_BIN" | cut -d' ' -f1)
+    [ -n "$want" ] && [ "$want" = "$have" ] \
+        || die "host threetched sha256 $have does not match the manifest ($want)"
+    rm -rf -- "$os_root$GOLDEN_CAPTURE_DIR"
+    install -d -m 0755 -- "$os_root$GOLDEN_CAPTURE_DIR"
+    install -m 0755 -- "$GOLDEN_THREETCHED_BIN" "$os_root$GOLDEN_CAPTURE_DIR/threetched"
+    if [ ! -e "$os_root/var/lib/threetched" ] && [ ! -L "$os_root/var/lib/threetched" ]; then
+        : > "$os_root$GOLDEN_CAPTURE_DIR/.created-config-dir"
+    fi
+    log "staged threetched $have for the build-time schema capture"
 }
 
 # Same packages and rustup install as 20-seed-overlay.sh --toolchain, but only
@@ -946,6 +977,10 @@ chroot_toolchain() {
 
 chroot_cleanup() {
     local root=$1 b
+    if [ -e "$root$GOLDEN_CAPTURE_DIR/.created-config-dir" ]; then
+        rm -rf -- "$root/var/lib/threetched"
+    fi
+    rm -rf -- "$root$GOLDEN_CAPTURE_DIR"
     for b in "dev/pts" dev sys proc; do
         if mountpoint -q "$root/$b"; then
             umount -l "$root/$b" || true

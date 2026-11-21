@@ -1,12 +1,17 @@
 # activate.sh: sourced by golden.sh. Implements `activate` (alias `install`):
 # stage release binaries from the read-only live slot into a versioned
-# install dir, then flip each enabled service's exec path to it one service
-# at a time, health-check, and roll everything in this run back on failure.
-# Dry-run unless --apply. Never starts/enables a service, never touches the
-# hard exclusions, never removes a runit log service, never edits the
-# op-release kit ledger (slots.json): its schema is deny_unknown_fields with
-# active/previous restricted to kit slots a/b, so golden activation is
-# recorded in its own ledger next to it.
+# install dir, then (after that slot is in place and its catalog is what the
+# bridge will load) run the live slot's op-grants-materializer
+# `generate --apply-to-live`, validate, and wait for opdbus-grants to be Fresh
+# without restarting it. Then flip each enabled service's exec path one
+# service at a time, health-check, and roll everything in this run back on
+# failure. Grants generate is fail-closed: on generate/validate/Fresh failure
+# the durable grants are left (or restored) as they were and activate aborts
+# before any service flip. Dry-run unless --apply. Never starts/enables a
+# service, never touches the hard exclusions, never removes a runit log
+# service, never edits the op-release kit ledger (slots.json): its schema is
+# deny_unknown_fields with active/previous restricted to kit slots a/b, so
+# golden activation is recorded in its own ledger next to it.
 
 ACT_SV_DIR=${GOLDEN_SV_DIR:-/etc/sv}
 ACT_ENABLED_DIR=${GOLDEN_ENABLED_DIR:-/etc/runit/runsvdir/default}
@@ -17,6 +22,10 @@ ACT_SV=${GOLDEN_SV:-sv}
 ACT_PREFIX=${GOLDEN_INSTALL_PREFIX:-}
 ACT_TABLE=${GOLDEN_ACTIVATE_TABLE:-}
 ACT_RESTART_WAIT=${GOLDEN_RESTART_WAIT:-30}
+ACT_GRANTS_SOURCE=${GOLDEN_GRANTS_SOURCE:-/etc/opdbus/capability-grants.json}
+ACT_GRANTS_PATH=${GOLDEN_GRANTS_PATH:-/dev/shm/opdbus/capability-grants.json}
+ACT_GRANTS_FRESH_WAIT=${GOLDEN_GRANTS_FRESH_WAIT:-30}
+ACT_CATALOG_DIR=${GOLDEN_CATALOG_DIR:-}
 
 act_table() {
     if [ -n "$ACT_TABLE" ]; then
@@ -138,6 +147,118 @@ act_rows() {
     fi
 }
 
+# Catalog the bridge will load: live-slot copy if present, else SHM, else persisted.
+act_catalog_dir() {
+    local os_root d
+    if [ -n "$ACT_CATALOG_DIR" ]; then
+        printf '%s' "$ACT_CATALOG_DIR"
+        return 0
+    fi
+    os_root=$(act_live_os)
+    for d in "$os_root/usr/share/op-dbus/plugin-blobs" \
+             /dev/shm/opdbus/plugin-blobs \
+             /var/lib/opdbus/plugin-blobs; do
+        if [ -f "$d/.manifest.json" ]; then
+            printf '%s' "$d"
+            return 0
+        fi
+        for blob in "$d"/*.blob; do
+            if [ -f "$blob" ]; then
+                printf '%s' "$d"
+                return 0
+            fi
+        done
+    done
+    return 1
+}
+
+act_live_materializer() {
+    printf '%s/opt/op-build/target/release/op-grants-materializer' "$(act_live_os)"
+}
+
+act_print_grants_plan() {
+    local bin catalog
+    bin=$(act_live_materializer)
+    catalog=$(act_catalog_dir || true)
+    printf '  grants: after this live slot is in place and its catalog is what the bridge will load, before service health checks,\n'
+    printf '          run the live slot op-grants-materializer generate --apply-to-live\n'
+    printf '          materializer: %s\n' "$bin"
+    printf '          catalog: %s\n' "${catalog:-<live-slot usr/share/op-dbus/plugin-blobs if present, else /dev/shm/opdbus/plugin-blobs>}"
+    printf '          backup %s to a timestamped file, validate, wait for opdbus-grants check Fresh (no restart)\n' "$ACT_GRANTS_SOURCE"
+    printf '          fail-closed: if generate, validate or Fresh fails, abort activate and leave the old grants\n'
+    if [ "$APPLY" != 1 ] && [ -x "$bin" ]; then
+        if [ -n "$catalog" ]; then
+            OP_GRANTS_SOURCE=$ACT_GRANTS_SOURCE OP_GRANTS_PATH=$ACT_GRANTS_PATH OP_CATALOG_DIR=$catalog \
+                "$bin" generate --catalog "$catalog" 2>&1 | sed 's/^/          /' || true
+        else
+            OP_GRANTS_SOURCE=$ACT_GRANTS_SOURCE OP_GRANTS_PATH=$ACT_GRANTS_PATH \
+                "$bin" generate 2>&1 | sed 's/^/          /' || true
+        fi
+    fi
+}
+
+# Back up, generate --apply-to-live, validate, wait for Fresh. No service restart.
+# On failure, restore the timestamped backup if one was written and return non-zero.
+act_generate_grants() {
+    local bin catalog out backup rc i
+    bin=$(act_live_materializer)
+    [ -x "$bin" ] || { warn "live slot op-grants-materializer missing: $bin"; return 1; }
+    catalog=$(act_catalog_dir || true)
+    [ -n "$catalog" ] || { warn "no sealed catalog found for grants generate"; return 1; }
+    [ -r "$ACT_GRANTS_SOURCE" ] || { warn "durable grants missing: $ACT_GRANTS_SOURCE"; return 1; }
+    log "grants generate: $bin generate --apply-to-live --catalog $catalog"
+    set +e
+    out=$(OP_GRANTS_SOURCE=$ACT_GRANTS_SOURCE OP_GRANTS_PATH=$ACT_GRANTS_PATH OP_CATALOG_DIR=$catalog \
+        "$bin" generate --apply-to-live --catalog "$catalog" 2>&1)
+    rc=$?
+    set -e
+    printf '%s\n' "$out" | while IFS= read -r line || [ -n "$line" ]; do
+        log "grants generate: $line"
+    done
+    backup=$(printf '%s\n' "$out" | sed -n 's/^backup=//p' | tail -n1)
+    if [ "$rc" -ne 0 ]; then
+        if [ -n "$backup" ] && [ -f "$backup" ]; then
+            cp -a -- "$backup" "$ACT_GRANTS_SOURCE" || warn "failed to restore grants from $backup"
+            log "restored old grants from $backup"
+        fi
+        warn "grants generate failed (old grants left in place)"
+        return 1
+    fi
+    set +e
+    out=$(OP_GRANTS_SOURCE=$ACT_GRANTS_SOURCE OP_GRANTS_PATH=$ACT_GRANTS_PATH \
+        "$bin" validate "$ACT_GRANTS_SOURCE" 2>&1)
+    rc=$?
+    set -e
+    printf '%s\n' "$out" | while IFS= read -r line || [ -n "$line" ]; do
+        log "grants validate: $line"
+    done
+    if [ "$rc" -ne 0 ]; then
+        if [ -n "$backup" ] && [ -f "$backup" ]; then
+            cp -a -- "$backup" "$ACT_GRANTS_SOURCE" || warn "failed to restore grants from $backup"
+            log "restored old grants from $backup"
+        fi
+        warn "grants validate failed (old grants left in place)"
+        return 1
+    fi
+    log "waiting up to ${ACT_GRANTS_FRESH_WAIT}s for opdbus-grants check Fresh (no restart)"
+    i=0
+    while [ "$i" -lt "$ACT_GRANTS_FRESH_WAIT" ]; do
+        if OP_GRANTS_SOURCE=$ACT_GRANTS_SOURCE OP_GRANTS_PATH=$ACT_GRANTS_PATH \
+            "$bin" check >/dev/null 2>&1; then
+            log "opdbus-grants check Fresh"
+            return 0
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+    if [ -n "$backup" ] && [ -f "$backup" ]; then
+        cp -a -- "$backup" "$ACT_GRANTS_SOURCE" || warn "failed to restore grants from $backup"
+        log "restored old grants from $backup after Fresh wait timed out"
+    fi
+    warn "opdbus-grants did not become Fresh within ${ACT_GRANTS_FRESH_WAIT}s (old grants left in place; service was not restarted)"
+    return 1
+}
+
 act_print_plan() {
     local rid src svc bin path health decision detail cur resolved cursha new newsha
     rid=$(act_release_id || true)
@@ -148,6 +269,7 @@ act_print_plan() {
     printf '  versioned install dir: %s/%s/bin  (only the binaries below; no target/, source or toolchain)\n' "$ACT_RELEASES" "${rid:-<no live slot>}"
     printf '  golden ledger: %s (active/previous); kit ledger %s is NOT modified (schema: active/previous are kit slots a/b only)\n' "$ACT_LEDGER" "$ACT_KIT_LEDGER"
     printf '  per service: preserve current binary, atomic symlink flip, %s -w %s restart, health; on failure roll back every service flipped in this run\n' "$ACT_SV" "$ACT_RESTART_WAIT"
+    act_print_grants_plan
     while IFS='|' read -r svc bin path health decision detail; do
         printf '\n  service %s: %s\n' "$svc" "$decision"
         printf '    reason: %s\n' "$detail"
@@ -241,7 +363,13 @@ do_activate() {
         fi
         log "staged $stage/$bin sha256=$(act_sha "$stage/$bin")"
     done < <(act_rows)
-    # 2. flip one service at a time
+    # 2. generate host grants from the live slot catalog, then wait for Fresh
+    #    (no opdbus-grants restart). Fail closed before any service flip.
+    if ! act_generate_grants; then
+        act_write_ledger "$rid" "rolled-back:grants-generate" "$services"
+        die "activation aborted: grants generate/validate/Fresh failed; old grants left in place; no services flipped"
+    fi
+    # 3. flip one service at a time
     while IFS='|' read -r svc bin path health decision detail; do
         [ "$decision" = swap ] || continue
         cur=$ACT_PREFIX$path

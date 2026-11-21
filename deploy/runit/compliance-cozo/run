@@ -1,7 +1,7 @@
 #!/bin/sh
 # op-dbus-release: application
 # Loopback Cozo API for the compliance door.
-# op-web proxies /compliance/api/* to 127.0.0.1:8787.
+# The door (op-grpc-bridge) proxies /compliance/api/* to 127.0.0.1:8787.
 exec 2>&1
 set -eu
 

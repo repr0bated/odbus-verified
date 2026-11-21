@@ -22,6 +22,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("cargo:rerun-if-changed={}", PathBuf::from(path).display());
         }
     }
+    // Schema capture defaults to the committed provenance manifest, not the
+    // host install path. THREETCHED_MANIFEST still overrides when set.
+    let default_manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?)
+        .join("threetched-manifests/threetched.json");
+    if env::var_os("THREETCHED_MANIFEST").is_none() {
+        unsafe { env::set_var("THREETCHED_MANIFEST", &default_manifest) };
+    }
+    println!("cargo:rerun-if-changed={}", default_manifest.display());
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     // Compatibility evidence for the compiled identity reader. Plugin existence
     // and current schema remain determined by the sealed runtime catalog.
