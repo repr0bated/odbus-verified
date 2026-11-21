@@ -1,14 +1,7 @@
 //! Vector readiness for the hot coding and knowledge tools.
 //!
-//! Owner decision 2026-11-19: coding (`code_search`, `code_context`,
-//! `code_index`) and knowledge (`search_own_events`) are always loaded, but
-//! their Qdrant collections were lost and must be re-vectorized unless the
-//! Netcup snapshot is restored. Until every collection a group depends on
-//! exists and holds points, a call to one of its tools is answered by the door
-//! with a `pending_revectorization` status and nothing is written to FUSE.
-//!
-//! The probe only reads (`GET /collections/<name>` on the Qdrant REST API).
-//! It never creates a collection, upserts a point or starts re-vectorization.
+//! The coding tools probe their Qdrant collections. Snowball knowledge uses
+//! the readiness count published by the Cozo footprint index after durable writes.
 
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -91,6 +84,37 @@ pub fn valid_collection(name: &str) -> bool {
 /// Points in a collection: `Ok(None)` when the collection does not exist.
 pub trait VectorProbe: Send + Sync {
     fn points_count(&self, collection: &str) -> Result<Option<u64>, String>;
+}
+
+/// Keep database files private to the footprint indexer. The door consumes
+/// only a count that the indexer atomically publishes after the index commits.
+pub struct FootprintReadiness {
+    qdrant: QdrantRest,
+    cozo_path: PathBuf,
+}
+
+impl FootprintReadiness {
+    pub fn new(qdrant: QdrantRest, cozo_path: PathBuf) -> Self {
+        Self { qdrant, cozo_path }
+    }
+}
+
+impl VectorProbe for FootprintReadiness {
+    fn points_count(&self, collection: &str) -> Result<Option<u64>, String> {
+        if !KNOWLEDGE_COLLECTIONS.contains(&collection) {
+            return self.qdrant.points_count(collection);
+        }
+        let path = self.cozo_path.join(".indexed-count");
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(format!("read Cozo footprint readiness: {error}")),
+        };
+        text.trim()
+            .parse()
+            .map(Some)
+            .map_err(|_| "invalid Cozo footprint count".into())
+    }
 }
 
 /// The state of one gate.
@@ -420,6 +444,16 @@ mod tests {
             Some(vec!["code_a".into(), "code_b".into()]),
             Some(vec!["know".into()]),
         )
+    }
+
+    #[test]
+    fn cozo_footprint_readiness_uses_local_count() {
+        let directory = tempfile::tempdir().unwrap();
+        let qdrant = QdrantRest::new("http://127.0.0.1:1", None).unwrap();
+        let probe = FootprintReadiness::new(qdrant, directory.path().to_path_buf());
+        assert_eq!(probe.points_count("snowball_footprints"), Ok(None));
+        std::fs::write(directory.path().join(".indexed-count"), "12\n").unwrap();
+        assert_eq!(probe.points_count("snowball_footprints"), Ok(Some(12)));
     }
 
     #[test]

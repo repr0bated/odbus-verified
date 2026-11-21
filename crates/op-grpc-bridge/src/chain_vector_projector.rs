@@ -2,7 +2,7 @@
 //!
 //! Every committed chain event is already a Snowball timing block. This
 //! projector turns each block into a vector as soon as it lands — chain first
-//! (`vectors/` subvolume, sidecar with host load and latencies), Qdrant on
+//! (`vectors/` subvolume, sidecar with host load and latencies), Cozo on
 //! the replica after `btrfs receive`, or on the origin only under the
 //! explicit `OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN=1` exception the existing
 //! design reserves for manual use.
@@ -13,10 +13,10 @@
 //! author wrote, `x-secret` and `x-opdbus-private` fields dropped, undeclared
 //! keys ignored. Hashes,
 //! event ids, raw timestamps and identity metadata stay out of the text and
-//! go to the Qdrant payload as allow-listed filters.
+//! go to the Cozo payload as allow-listed filters.
 //!
 //! Failure posture: a mutation is durable before its vector exists, so an
-//! embedder or Qdrant outage delays the index and never the control plane;
+//! embedder or Cozo outage delays the index and never the control plane;
 //! the projector retries loudly and `project_pending` drains the backlog.
 
 use std::collections::HashMap;
@@ -222,7 +222,7 @@ impl ChainVectorProjector {
                         s.failures += 1;
                         s.last_error = Some(error.to_string());
                         drop(s);
-                        index = None; // reopen: Qdrant/embedder may have moved
+                        index = None; // reopen: Cozo/embedder may have moved
                         tokio::time::sleep(RETRY_AFTER).await;
                         continue;
                     }

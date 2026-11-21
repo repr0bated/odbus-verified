@@ -34,9 +34,9 @@ pub struct Config {
     pub qdrant_rest_url: String,
     /// Optional file holding the Qdrant API key (never logged).
     pub qdrant_api_key_file: Option<PathBuf>,
-    /// Collection overrides for the coding and knowledge gates.
+    /// Collection override for the coding gate.
     pub coding_collections: Option<Vec<String>>,
-    pub knowledge_collections: Option<Vec<String>>,
+    pub footprint_cozo_path: PathBuf,
 }
 
 impl Config {
@@ -130,7 +130,9 @@ impl Config {
                 .unwrap_or_else(|| crate::readiness::DEFAULT_QDRANT_REST_URL.to_owned()),
             qdrant_api_key_file: value("OP_MCP_QDRANT_API_KEY_FILE").map(PathBuf::from),
             coding_collections: collections("OP_MCP_CODING_COLLECTIONS")?,
-            knowledge_collections: collections("OP_MCP_KNOWLEDGE_COLLECTIONS")?,
+            footprint_cozo_path: value("OPDBUS_FOOTPRINT_COZO_PATH")
+                .unwrap_or_else(|| "/var/lib/opdbus/snowball-footprint-index".into())
+                .into(),
         })
     }
 
@@ -226,13 +228,15 @@ mod tests {
         assert!(config.coding_collections.is_none());
         let config = Config::from_lookup(lookup(&[
             ("OP_MCP_QDRANT_REST_URL", "http://10.0.0.2:6333"),
-            ("OP_MCP_KNOWLEDGE_COLLECTIONS", "a, b ,"),
+            ("OP_MCP_CODING_COLLECTIONS", "a, b ,"),
+            ("OPDBUS_FOOTPRINT_COZO_PATH", "/test/cozo"),
         ]))
         .unwrap();
         assert_eq!(config.qdrant_rest_url, "http://10.0.0.2:6333");
         assert_eq!(
-            config.knowledge_collections,
+            config.coding_collections,
             Some(vec!["a".to_owned(), "b".to_owned()])
         );
+        assert_eq!(config.footprint_cozo_path, PathBuf::from("/test/cozo"));
     }
 }
