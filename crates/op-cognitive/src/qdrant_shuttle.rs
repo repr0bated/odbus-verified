@@ -1,10 +1,14 @@
-use crate::semantic_index::SemanticIndex;
 use crate::voyage::VoyageClient;
 use anyhow::{Context, Result};
-use op_cozo_store::{SemanticHit, SemanticPoint};
 use op_state_store::{FieldType, PluginSchema};
+use qdrant_client::qdrant::{
+    Condition, DeletePointsBuilder, Filter, PointStruct, QueryPointsBuilder, RetrievedPoint,
+    ScoredPoint, ScrollPointsBuilder, UpsertPointsBuilder,
+};
+use qdrant_client::{Payload, Qdrant};
 use serde::Serialize;
 
+const DEFAULT_QDRANT_URL: &str = "http://127.0.0.1:6334";
 const DEFAULT_COLLECTION_NAME: &str = "ctl_plane_reasoning_episodes";
 const DEFAULT_USER_MEMORY_COLLECTION: &str = "user_memory";
 const DEFAULT_BLOB_VECTORS_COLLECTION: &str = "blob_vectors";
@@ -18,35 +22,73 @@ pub struct SessionTraceContext {
     pub trace_id: String,
 }
 
-pub struct CozoSemanticShuttle {
-    index: SemanticIndex,
+pub struct QdrantSemanticShuttle {
+    client: Qdrant,
     collection_name: String,
     user_memory_collection: String,
     blob_vectors_collection: String,
     voyage_client: VoyageClient,
 }
 
-impl CozoSemanticShuttle {
-    /// Opens the Cozo semantic index used by the Accountability Loop.
+impl QdrantSemanticShuttle {
+    /// Initializes the Qdrant gRPC client used by the Accountability Loop.
     pub async fn new() -> Result<Self> {
-        Ok(Self::with_index(
-            SemanticIndex::from_env(),
-            VoyageClient::new()?,
-        ))
+        let qdrant_url =
+            std::env::var("COGNITIVE_QDRANT_URL").unwrap_or_else(|_| DEFAULT_QDRANT_URL.into());
+        let collection_name = std::env::var("COGNITIVE_QDRANT_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_COLLECTION_NAME.into());
+        let user_memory_collection = std::env::var("COGNITIVE_USER_MEMORY_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_USER_MEMORY_COLLECTION.into());
+        let blob_vectors_collection = std::env::var("COGNITIVE_BLOB_VECTORS_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_BLOB_VECTORS_COLLECTION.into());
+        let voyage_client = VoyageClient::new()?;
+
+        Self::new_with_clients(
+            &qdrant_url,
+            collection_name,
+            user_memory_collection,
+            blob_vectors_collection,
+            voyage_client,
+        )
+        .await
     }
 
-    pub fn with_index(index: SemanticIndex, voyage_client: VoyageClient) -> Self {
-        Self {
-            index,
-            collection_name: std::env::var("COGNITIVE_SEMANTIC_COLLECTION")
-                .or_else(|_| std::env::var("COGNITIVE_QDRANT_COLLECTION"))
-                .unwrap_or_else(|_| DEFAULT_COLLECTION_NAME.into()),
-            user_memory_collection: std::env::var("COGNITIVE_USER_MEMORY_COLLECTION")
-                .unwrap_or_else(|_| DEFAULT_USER_MEMORY_COLLECTION.into()),
-            blob_vectors_collection: std::env::var("COGNITIVE_BLOB_VECTORS_COLLECTION")
-                .unwrap_or_else(|_| DEFAULT_BLOB_VECTORS_COLLECTION.into()),
+    async fn new_with_clients(
+        qdrant_url: &str,
+        collection_name: impl Into<String>,
+        user_memory_collection: impl Into<String>,
+        blob_vectors_collection: impl Into<String>,
+        voyage_client: VoyageClient,
+    ) -> Result<Self> {
+        let collection_name = collection_name.into();
+        let user_memory_collection = user_memory_collection.into();
+        let blob_vectors_collection = blob_vectors_collection.into();
+        let client = Qdrant::from_url(qdrant_url)
+            .build()
+            .with_context(|| format!("failed to build Qdrant client for {qdrant_url}"))?;
+
+        tokio::time::timeout(std::time::Duration::from_secs(5), client.health_check())
+            .await
+            .with_context(|| format!("Qdrant health check timed out after 5s at {qdrant_url}"))?
+            .with_context(|| {
+                format!("failed to reach Qdrant gRPC health endpoint at {qdrant_url}")
+            })?;
+
+        tracing::info!(
+            qdrant_url,
+            collection = %collection_name,
+            user_memory_collection = %user_memory_collection,
+            blob_vectors_collection = %blob_vectors_collection,
+            "Qdrant Semantic Shuttle linked to the gRPC interface"
+        );
+
+        Ok(Self {
+            client,
+            collection_name,
+            user_memory_collection,
+            blob_vectors_collection,
             voyage_client,
-        }
+        })
     }
 
     /// Reads the explicitly selected identity session.
@@ -74,23 +116,44 @@ impl CozoSemanticShuttle {
     }
 
     /// Fetches the exact session episodes currently associated with the active trace.
-    pub async fn stream_semantic_trace(&self) -> Result<Vec<SemanticPoint>> {
+    pub async fn stream_semantic_trace(&self) -> Result<Vec<RetrievedPoint>> {
         self.fetch_trace_episodes(DEFAULT_TRACE_LIMIT).await
     }
 
-    pub async fn fetch_trace_episodes(&self, limit: u32) -> Result<Vec<SemanticPoint>> {
+    pub async fn fetch_trace_episodes(&self, limit: u32) -> Result<Vec<RetrievedPoint>> {
         let trace = self.current_trace_context()?;
-        self.index
-            .list(
-                &self.collection_name,
-                limit,
-                vec![("trace_id".into(), trace.trace_id)],
+        let response = self
+            .client
+            .scroll(
+                ScrollPointsBuilder::new(self.collection_name.clone())
+                    .filter(Filter::must([Condition::matches(
+                        "trace_id",
+                        trace.trace_id.clone(),
+                    )]))
+                    .limit(limit)
+                    .with_payload(true)
+                    .with_vectors(true),
             )
             .await
+            .with_context(|| {
+                format!(
+                    "failed to query Qdrant collection {} for trace {}",
+                    self.collection_name, trace.trace_id
+                )
+            })?;
+
+        tracing::info!(
+            trace_id = %trace.trace_id,
+            mutation_index = trace.mutation_index,
+            matches = response.result.len(),
+            "Accountability Loop fetched semantic trace episodes"
+        );
+
+        Ok(response.result)
     }
 
     /// Performs semantic retrieval within the active trace using a schema-derived Voyage query.
-    pub async fn search_semantic_trace(&self, limit: u64) -> Result<Vec<SemanticHit>> {
+    pub async fn search_semantic_trace(&self, limit: u64) -> Result<Vec<ScoredPoint>> {
         let (trace, schema_query_text) = self.active_schema_query_text()?;
         let limit = if limit == 0 {
             u64::from(DEFAULT_TRACE_LIMIT)
@@ -104,14 +167,36 @@ impl CozoSemanticShuttle {
             .await
             .context("failed to embed active shared-memory schema with Voyage")?;
 
-        self.index
-            .search(
-                &self.collection_name,
-                embedding,
-                limit,
-                vec![("trace_id".into(), trace.trace_id)],
+        let response = self
+            .client
+            .query(
+                QueryPointsBuilder::new(self.collection_name.clone())
+                    .query(embedding)
+                    .filter(Filter::must([Condition::matches(
+                        "trace_id",
+                        trace.trace_id.clone(),
+                    )]))
+                    .limit(limit)
+                    .with_payload(true),
             )
             .await
+            .with_context(|| {
+                format!(
+                    "failed semantic query against Qdrant collection {} for trace {}",
+                    self.collection_name, trace.trace_id
+                )
+            })?;
+
+        tracing::info!(
+            trace_id = %trace.trace_id,
+            mutation_index = trace.mutation_index,
+            schema_name = %extract_schema_title(&schema_query_text),
+            matches = response.result.len(),
+            model = %self.voyage_client.model(),
+            "Accountability Loop fetched semantic matches from the shared-memory schema projection"
+        );
+
+        Ok(response.result)
     }
 
     // ── User Memory Methods ──────────────────────────────────────────────
@@ -121,7 +206,7 @@ impl CozoSemanticShuttle {
         self.voyage_client.embed(text, Some("query")).await
     }
 
-    /// Embed text as a document vector (for storage in Cozo)
+    /// Embed text as a document vector (for storage in Qdrant)
     pub async fn embed_document(&self, text: &str) -> Result<Vec<f32>> {
         self.voyage_client.embed(text, Some("document")).await
     }
@@ -137,35 +222,53 @@ impl CozoSemanticShuttle {
         entry_key: &str,
         content: &str,
     ) -> Result<()> {
-        let payload = serde_json::json!({
+        let payload: Payload = serde_json::json!({
             "container_id": container_id,
             "entry_key": entry_key,
             "content": content,
-        });
-        self.index
-            .put(
-                &self.user_memory_collection,
-                vec![SemanticPoint {
-                    id: point_id.into(),
-                    vector,
-                    payload,
-                }],
+        })
+        .try_into()
+        .context("failed to build user_memory payload")?;
+
+        let point = PointStruct::new(point_id.into(), vector, payload);
+
+        self.client
+            .upsert_points(
+                UpsertPointsBuilder::new(self.user_memory_collection.clone(), vec![point])
+                    .wait(true),
             )
             .await
+            .with_context(|| {
+                format!(
+                    "failed to upsert user_memory point into collection {}",
+                    self.user_memory_collection
+                )
+            })?;
+
+        tracing::info!(
+            collection = %self.user_memory_collection,
+            container_id = %container_id,
+            entry_key = %entry_key,
+            "User memory upserted to Qdrant"
+        );
+
+        Ok(())
     }
 
     /// Semantic search over user_memory scoped to a container_id
     pub async fn delete_user_memory(&self, container_id: &str, entry_key: &str) -> Result<()> {
-        self.index
-            .delete(
-                &self.user_memory_collection,
-                vec![
-                    ("container_id".into(), container_id.into()),
-                    ("entry_key".into(), entry_key.into()),
-                ],
+        self.client
+            .delete_points(
+                DeletePointsBuilder::new(self.user_memory_collection.clone())
+                    .points(Filter::must([
+                        Condition::matches("container_id", container_id.to_string()),
+                        Condition::matches("entry_key", entry_key.to_string()),
+                    ]))
+                    .wait(true),
             )
             .await
-            .context("failed to remove scoped semantic memory; authoritative entry retained")
+            .context("failed to remove scoped semantic memory; Cozo entry retained")?;
+        Ok(())
     }
 
     /// Semantic search over user_memory scoped to a container_id
@@ -174,15 +277,35 @@ impl CozoSemanticShuttle {
         query_embedding: Vec<f32>,
         container_id: &str,
         limit: u64,
-    ) -> Result<Vec<SemanticHit>> {
-        self.index
-            .search(
-                &self.user_memory_collection,
-                query_embedding,
-                limit,
-                vec![("container_id".into(), container_id.into())],
+    ) -> Result<Vec<ScoredPoint>> {
+        let response = self
+            .client
+            .query(
+                QueryPointsBuilder::new(self.user_memory_collection.clone())
+                    .query(query_embedding)
+                    .filter(Filter::must([Condition::matches(
+                        "container_id",
+                        container_id.to_string(),
+                    )]))
+                    .limit(limit)
+                    .with_payload(true),
             )
             .await
+            .with_context(|| {
+                format!(
+                    "failed semantic query against user_memory collection {} for container {}",
+                    self.user_memory_collection, container_id
+                )
+            })?;
+
+        tracing::info!(
+            collection = %self.user_memory_collection,
+            container_id = %container_id,
+            matches = response.result.len(),
+            "User memory semantic search completed"
+        );
+
+        Ok(response.result)
     }
 
     // ── Blob Vectors ──────────────────────────────────────────────────────
@@ -202,17 +325,39 @@ impl CozoSemanticShuttle {
                 .await
                 .with_context(|| format!("failed to embed schema text for plugin '{plugin_id}'"))?;
 
-            let payload = serde_json::json!({ "plugin_id": plugin_id, "text": text });
-            points.push(SemanticPoint {
-                id: plugin_id_to_uuid(plugin_id).to_string(),
+            let payload: Payload = serde_json::json!({
+                "plugin_id": plugin_id,
+                "text": text,
+            })
+            .try_into()
+            .context("failed to build blob_vectors payload")?;
+
+            points.push(PointStruct::new(
+                plugin_id_to_uuid(plugin_id).to_string(),
                 vector,
                 payload,
-            });
+            ));
         }
+
         let embedded = points.len();
-        self.index
-            .put(&self.blob_vectors_collection, points)
-            .await?;
+        self.client
+            .upsert_points(UpsertPointsBuilder::new(
+                self.blob_vectors_collection.clone(),
+                points,
+            ))
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to upsert {embedded} points into collection '{}'",
+                    self.blob_vectors_collection
+                )
+            })?;
+
+        tracing::info!(
+            collection = %self.blob_vectors_collection,
+            embedded,
+            "blob_vectors collection refreshed"
+        );
 
         Ok(RefreshBlobVectorsSummary {
             embedded,
@@ -222,15 +367,35 @@ impl CozoSemanticShuttle {
 
     /// Semantic search over the `blob_vectors` collection. No scoping filter —
     /// unlike user_memory, this is public catalog data, not per-container.
-    pub async fn search_blob_vectors(&self, query: &str, limit: u64) -> Result<Vec<SemanticHit>> {
+    pub async fn search_blob_vectors(&self, query: &str, limit: u64) -> Result<Vec<ScoredPoint>> {
         let embedding = self
             .embed_query_text(query)
             .await
             .context("failed to embed query for blob_vectors search")?;
 
-        self.index
-            .search(&self.blob_vectors_collection, embedding, limit, Vec::new())
+        let response = self
+            .client
+            .query(
+                QueryPointsBuilder::new(self.blob_vectors_collection.clone())
+                    .query(embedding)
+                    .limit(limit)
+                    .with_payload(true),
+            )
             .await
+            .with_context(|| {
+                format!(
+                    "failed semantic query against collection '{}'",
+                    self.blob_vectors_collection
+                )
+            })?;
+
+        tracing::info!(
+            collection = %self.blob_vectors_collection,
+            matches = response.result.len(),
+            "blob_vectors search completed"
+        );
+
+        Ok(response.result)
     }
 
     fn active_schema_query_text(&self) -> Result<(SessionTraceContext, String)> {
@@ -389,6 +554,13 @@ fn render_constraint(constraint: &op_state_store::Constraint) -> String {
         op_state_store::Constraint::RequiresField { field } => format!("requires_field={field}"),
         op_state_store::Constraint::Custom { validator } => format!("custom={validator}"),
     }
+}
+
+fn extract_schema_title(schema_query_text: &str) -> &str {
+    schema_query_text
+        .lines()
+        .find_map(|line| line.strip_prefix("schema_name: "))
+        .unwrap_or("unknown")
 }
 
 #[cfg(test)]

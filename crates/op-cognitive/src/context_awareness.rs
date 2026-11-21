@@ -378,7 +378,7 @@ pub struct ContextAwarenessConfig {
     pub idle_threshold_secs: u64,
     /// Maximum pushes per session per hour
     pub max_pushes_per_hour: u32,
-    /// Cozo index used for code/repomix RAG retrieval
+    /// Qdrant collection used for code/repomix RAG retrieval
     pub rag_collection: String,
 }
 

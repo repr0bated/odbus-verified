@@ -1,13 +1,5 @@
 # Implementation Plan
 
-> **Storage decision (2026-11-20).** The Qdrant tasks below are superseded.
-> Provision the HNSW relation in each subsidiary's private Cozo DB for
-> `<subsidiary>::mainchain`. Route only
-> records with verified subsidiary attribution to that DB. Commit the vector and
-> its local edges atomically, keep indexing progress per database, and test
-> isolated receive replay, failed writes, and caller-scoped search. Registry,
-> event attribution, and admission are prerequisites.
-
 Spec only. Not approved for implementation; waits for the owner's go-ahead
 and answers to the design's Open Questions (at least 1, 2, 3, 4, 9, 11, 12,
 14, 15, 17, 18, 19). Tasks that change `op-grpc-bridge` or the `_3tched-fs` receipt

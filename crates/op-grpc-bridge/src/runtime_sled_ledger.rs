@@ -5,7 +5,7 @@
 //! The host bridge alone writes `ledger/` there: one line per committed call
 //! of that session, already filtered by the sealed schema that created it (no
 //! secret or private fields). `finalize_session` vectorizes the ledger once,
-//! links each vector in Cozo (actor, session, event hash, footprint point id),
+//! links each vector in Cozo (actor, session, event hash, Qdrant point id),
 //! then clears the ledger. Fixed identity data on the sled is never touched.
 //!
 //! The journal stays the authority; the ledger is the session's copy for
@@ -159,7 +159,7 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, args: &Value) -> Result<B
     let (model, collection, ids) = op_cognitive::chain_vectors::upsert_session_ledger(&points).await
         .map_err(RuntimeError::unknown)?;
 
-    // Cozo is the index: each footprint point linked to its actor, session and event.
+    // Cozo is the index: each Qdrant point linked to its actor, session and event.
     let cozo = ctx.runtime.identity_store().clone();
     let links = entries.iter().zip(&ids).map(|(entry, id)| {
         let mut link = vec![("source".to_owned(), "sled_ledger".to_owned()),

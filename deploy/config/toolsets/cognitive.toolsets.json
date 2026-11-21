@@ -53,9 +53,10 @@
       "group": "coding",
       "tools": [
         "cognitive.code_search",
-        "cognitive.code_context"
+        "cognitive.code_context",
+        "cognitive.code_index"
       ],
-      "vector_store": "cozo",
+      "vector_store": "qdrant",
       "collections": [
         "repos_lsp_c_cpp_voyage_4_lite",
         "repos_lsp_go_voyage_4_large",
@@ -65,15 +66,15 @@
         "repos_lsp_typescript_voyage_4_lite",
         "repos_specs_docs_voyage_4_lite"
       ],
-      "ready_when": "every coding index publishes a positive committed count",
+      "ready_when": "every collection exists and points_count > 0",
       "pending_status": "pending_revectorization"
     },
     {
       "group": "knowledge",
       "tools": ["snowball.search_own_events"],
-      "vector_store": "cozo",
+      "vector_store": "qdrant",
       "collections": ["snowball_footprints"],
-      "ready_when": "the footprint index publishes a positive committed count",
+      "ready_when": "every collection exists and points_count > 0",
       "pending_status": "pending_revectorization"
     }
   ]

@@ -1,12 +1,41 @@
-//! Snowball footprint projection and replica search.
+//! Snowball vector projection: chain block -> Voyage embedding -> chain
+//! vector subvolume, with Qdrant filled on the replica after `btrfs receive`.
 //!
-//! The origin attaches embeddings to durable chain blocks. The Btrfs receive
-//! hook builds a disposable Cozo index from the replicated vectors and timing records.
+//! **Strict automatic invariant:** the streaming / default `project` path must
+//! **not** upsert Qdrant on the origin. Vectors land in the chain first
+//! ([`StreamingSnowball::attach_vector`] / `vectors/vec-*.bin`); the automatic
+//! pipeline fills `snowball_footprints` only via **`btrfs receive` →
+//! [`ChainVectorIndex::ingest_received`]** (replica hook). Orthogonal paths
+//! (`blob_vectors`, user_memory, RAG shuttle) are unrelated and untouched.
+//!
+//! Split by role:
+//!
+//! - **Origin, automatic** ([`ChainVectorIndex::project_pending`] with
+//!   `upsert_qdrant = false`): embed pending blocks with Voyage, write raw LE
+//!   f32 into the `vectors` subvolume, stop. No Qdrant write, no index
+//!   watermark bump. Snapshots carry the vectors to the replica.
+//!
+//! - **Replica, automatic** ([`ChainVectorIndex::ingest_received`]): after
+//!   incremental `btrfs receive`, upsert only vectors that arrived (watermark +
+//!   gap check). No Voyage key, no re-embedding.
+//!
+//! - **Manual exception** (`project_pending(..., upsert_qdrant = true)` /
+//!   CLI `--upsert-qdrant`, or [`ChainVectorIndex::reindex_from_chain`]):
+//!   explicit direct Qdrant write that **bypasses send/receive**. Not the
+//!   default streaming path.
+//!
+//! Qdrant remains a disposable index: rebuild from any chain (or received
+//! snapshot) that already holds the vectors.
 
 use anyhow::{Context, Result};
-use op_cozo_store::{CozoGraphShuttle, FootprintMatch, FootprintVector};
+use op_cozo_store::CozoGraphShuttle;
 use op_snowball::btrfs_delta;
 use op_snowball::{ChainBlockRef, StreamingSnowball};
+use qdrant_client::qdrant::{
+    Condition, CreateCollectionBuilder, Distance, Filter, GetPointsBuilder, PointId, PointStruct,
+    QueryPointsBuilder, ScoredPoint, UpsertPointsBuilder, VectorParamsBuilder,
+};
+use qdrant_client::{Payload, Qdrant, QdrantError};
 use serde::Serialize;
 use std::collections::HashSet;
 use std::io::Write;
@@ -19,19 +48,19 @@ const DEFAULT_CHAIN_PATH: &str = "/var/lib/opdbus/snowball";
 const DEFAULT_COLLECTION: &str = "snowball_footprints";
 const DEFAULT_DIMS: u64 = 1024;
 
-/// Namespace for deriving deterministic footprint point IDs from block numbers.
+/// Namespace for deriving deterministic Qdrant point ids from block hashes.
 /// Fixed forever: changing it orphans every previously indexed point instead of
 /// overwriting it.
 const BLOCK_POINT_NAMESPACE: uuid::Uuid =
     uuid::Uuid::from_u128(0x6d1f_28c7_4b93_4f0a_9e57_31c8_ab4d_7e62);
 
 /// File holding the highest block number whose vector has been indexed.
-const INDEXED_BLOCK_FILE: &str = ".cozo-vector-index-block";
+const INDEXED_BLOCK_FILE: &str = ".vector-index-block";
 
 /// Publish a durable complete watermark without exposing a truncated destination.
 /// Keep blocking writes, synchronization and rename in one task so cancellation
 /// cannot split publication; readers only open the final checkpoint path.
-pub(crate) async fn publish_checkpoint(path: PathBuf, content: Vec<u8>) -> Result<()> {
+async fn publish_checkpoint(path: PathBuf, content: Vec<u8>) -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
         let parent = path
             .parent()
@@ -154,6 +183,7 @@ pub struct VectorMeta {
 pub struct ChainVectorIndex {
     chain: StreamingSnowball,
     chain_path: PathBuf,
+    qdrant: Qdrant,
     collection: String,
     dims: u64,
     /// `None` on a replica: ingesting received vectors needs no embedder.
@@ -161,71 +191,15 @@ pub struct ChainVectorIndex {
     policy: std::sync::Arc<dyn ProjectionPolicy>,
 }
 
-fn dimensions() -> u64 {
-    std::env::var("OPDBUS_SNOWBALL_VECTOR_DIM")
-        .or_else(|_| std::env::var("OPDBUS_QDRANT_SNOWBALL_DIM"))
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(DEFAULT_DIMS)
-}
-
-fn footprint_index_path() -> PathBuf {
-    std::env::var_os("OPDBUS_FOOTPRINT_COZO_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/var/lib/opdbus/snowball-footprint-index"))
-}
-
-async fn publish_footprint_readiness() {
-    let result = async {
-        let count = with_footprint_index(|store| store.footprint_count()).await?;
-        publish_checkpoint(
-            footprint_index_path().join(".indexed-count"),
-            format!("{count}\n").into_bytes(),
-        )
-        .await
-    }
-    .await;
-    if let Err(error) = result {
-        tracing::warn!(%error, "could not publish Snowball footprint readiness");
-    }
-}
-
-async fn with_footprint_index<T: Send + 'static>(
-    operation: impl FnOnce(&CozoGraphShuttle) -> Result<T> + Send + 'static,
-) -> Result<T> {
-    static ACCESS: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    tokio::task::spawn_blocking(move || {
-        let _access = ACCESS.lock().unwrap_or_else(|error| error.into_inner());
-        let store = CozoGraphShuttle::new_persistent_private(footprint_index_path())
-            .map_err(anyhow::Error::new)?;
-        store.prepare_footprint_index(dimensions())?;
-        operation(&store)
-    })
-    .await?
-}
-
-/// Find similar footprints using an already indexed block as the query.
-pub async fn search_similar_block(block_num: u64, limit: u64) -> Result<Vec<FootprintMatch>> {
-    let id = point_id(block_num).to_string();
-    with_footprint_index(move |store| {
-        let embedding = store.footprint_embedding(&id)?;
-        let hits = store.search_footprint_vectors(embedding, limit.saturating_add(1), None)?;
-        Ok(hits
-            .into_iter()
-            .filter(|hit| hit.payload["block_num"].as_u64() != Some(block_num))
-            .take(usize::try_from(limit)?)
-            .collect())
-    })
-    .await
-}
-
-/// Caller scope must come from admission.
+/// Query-only access to the existing index. Unlike opening a projector, this
+/// never creates a collection, opens a chain writer, or changes a watermark.
+/// Caller scope must come from admission, never from user-supplied arguments.
 pub async fn search_session_events(
     query: &str,
     actor_id: &str,
     session_id: &str,
     limit: u32,
-) -> Result<(String, Vec<FootprintMatch>)> {
+) -> Result<(String, Vec<ScoredPoint>)> {
     anyhow::ensure!(
         !actor_id.is_empty() && !session_id.is_empty(),
         "verified event search scope is required"
@@ -240,13 +214,23 @@ pub async fn search_session_events(
     );
     let voyage = VoyageClient::new()?;
     let embedding = voyage.embed(query, Some("query")).await?;
-    let embedding = fit_dims(embedding, dimensions(), 0)?;
-    let (actor, session) = (actor_id.to_owned(), session_id.to_owned());
-    let hits = with_footprint_index(move |store| {
-        store.search_footprint_vectors(embedding, u64::from(limit), Some((&actor, &session)))
-    })
-    .await?;
-    Ok((voyage.model().to_owned(), hits))
+    let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
+    let client = Qdrant::from_url(&qdrant_url()).build()?;
+    let response = client
+        .query(
+            QueryPointsBuilder::new(collection)
+                .query(embedding)
+                .filter(Filter::must([
+                    Condition::matches("actor_id", actor_id.to_owned()),
+                    Condition::matches("session_id", session_id.to_owned()),
+                ]))
+                .limit(u64::from(limit))
+                .with_payload(true),
+        )
+        .await
+        .context("canonical event index search failed")?;
+    Ok((voyage.model().to_owned(), response.result))
 }
 
 /// One entry of an identity's sled ledger, ready to embed. `text` is already
@@ -264,65 +248,45 @@ const LEDGER_POINT_NAMESPACE: uuid::Uuid =
     uuid::Uuid::from_u128(0x3c0b_91e4_5a27_4d6f_8b12_e6f4_09d3_a751);
 
 pub fn ledger_point_id(event_hash: &str) -> uuid::Uuid {
-    uuid::Uuid::new_v5(
-        &LEDGER_POINT_NAMESPACE,
-        format!("ledger:{event_hash}").as_bytes(),
-    )
+    uuid::Uuid::new_v5(&LEDGER_POINT_NAMESPACE, format!("ledger:{event_hash}").as_bytes())
 }
 
 /// End-of-session vectorization of a sled ledger (owner 2026-11-02: the
 /// snowball is a session ledger vectorized once at the end). Points go to the
 /// snowball collection with the payload `search_session_events` filters on.
 /// Returns the embedding model, the collection and each point id in order.
-pub async fn upsert_session_ledger(
-    points: &[LedgerPoint],
-) -> Result<(String, String, Vec<String>)> {
-    let collection = DEFAULT_COLLECTION.to_owned();
+pub async fn upsert_session_ledger(points: &[LedgerPoint]) -> Result<(String, String, Vec<String>)> {
+    let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
     if points.is_empty() {
         return Ok((String::new(), collection, Vec::new()));
     }
     let voyage = VoyageClient::new()?;
-    let dims = dimensions();
+    let client = Qdrant::from_url(&qdrant_url()).build()?;
+    if !client.collection_exists(&collection).await.context("probe snowball collection")? {
+        match client.create_collection(CreateCollectionBuilder::new(&collection)
+            .vectors_config(VectorParamsBuilder::new(DEFAULT_DIMS, Distance::Cosine))).await {
+            Ok(_) => {}
+            Err(error) if is_already_exists(&error) => {}
+            Err(error) => return Err(anyhow::Error::from(error).context("create snowball collection")),
+        }
+    }
     let mut ids = Vec::with_capacity(points.len());
-    let mut vectors = Vec::with_capacity(points.len());
+    let mut structs = Vec::with_capacity(points.len());
     for point in points {
-        let vector = fit_dims(voyage.embed(&point.text, Some("document")).await?, dims, 0)?;
+        let vector = voyage.embed(&point.text, Some("document")).await?;
         let mut payload = point.payload.clone();
         payload.insert("event_hash".into(), point.event_hash.clone().into());
         payload.insert("text".into(), point.text.clone().into());
         payload.insert("source".into(), "sled_ledger".into());
-        payload.insert("embedding_model".into(), voyage.model().into());
-        let links = [
-            "source",
-            "embedding_model",
-            "actor_id",
-            "session_id",
-            "event_hash",
-            "plugin_id",
-            "method",
-            "operation_id",
-            "subid",
-        ]
-        .into_iter()
-        .filter_map(|key| {
-            payload
-                .get(key)
-                .and_then(|value| value.as_str())
-                .filter(|value| !value.is_empty())
-                .map(|value| (key.to_owned(), value.to_owned()))
-        })
-        .collect();
+        let payload: Payload = serde_json::Value::Object(payload).try_into()
+            .context("build ledger vector payload")?;
         let id = ledger_point_id(&point.event_hash).to_string();
-        ids.push(id.clone());
-        vectors.push(FootprintVector {
-            id,
-            vector,
-            metadata: payload.into(),
-            links,
-        });
+        structs.push(PointStruct::new(id.clone(), vector, payload));
+        ids.push(id);
     }
-    with_footprint_index(move |store| store.put_footprint_vectors(vectors)).await?;
-    publish_footprint_readiness().await;
+    client.upsert_points(UpsertPointsBuilder::new(&collection, structs).wait(true)).await
+        .with_context(|| format!("upsert session ledger into '{collection}'"))?;
     Ok((voyage.model().to_owned(), collection, ids))
 }
 
@@ -330,21 +294,21 @@ pub async fn upsert_session_ledger(
 pub struct ProjectionSummary {
     pub embedded: usize,
     pub already_present: usize,
-    /// Points written directly to Cozo on this pass.
+    /// Points written directly to Qdrant on this pass.
     ///
     /// Always `0` for the automatic project path. Non-zero only when the
-    /// explicit manual `--upsert-cozo` / `upsert_cozo: true` exception is set
+    /// explicit manual `--upsert-qdrant` / `upsert_qdrant: true` exception is set
     /// (bypasses send/receive).
-    pub upserted_to_cozo: usize,
+    pub upserted_to_qdrant: usize,
     pub collection: String,
 }
 
-/// Whether an origin `project` call may write Cozo directly.
+/// Whether an origin `project` call may write Qdrant directly.
 ///
 /// Automatic pipeline always returns `false`. Only the explicit manual
-/// exception (`--upsert-cozo`) returns `true`.
-pub fn project_writes_cozo(upsert_cozo: bool) -> bool {
-    upsert_cozo
+/// exception (`--upsert-qdrant`) returns `true`.
+pub fn project_writes_qdrant(upsert_qdrant: bool) -> bool {
+    upsert_qdrant
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -361,7 +325,7 @@ pub struct IngestSummary {
 }
 
 impl ChainVectorIndex {
-    /// Origin side: embeds into the chain (and optionally Cozo when the
+    /// Origin side: embeds into the chain (and optionally Qdrant when the
     /// caller passes the manual upsert flag). Requires a Voyage key.
     pub async fn open() -> Result<Self> {
         let voyage = VoyageClient::new().context(
@@ -402,14 +366,33 @@ impl ChainVectorIndex {
         chain: StreamingSnowball,
         voyage: Option<VoyageClient>,
     ) -> Result<Self> {
-        Ok(Self {
+        let url = qdrant_url();
+        let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
+            .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
+        let dims = std::env::var("OPDBUS_QDRANT_SNOWBALL_DIM")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(DEFAULT_DIMS);
+
+        let qdrant = Qdrant::from_url(&url)
+            .build()
+            .with_context(|| format!("failed to build Qdrant client for {url}"))?;
+        qdrant
+            .health_check()
+            .await
+            .with_context(|| format!("Qdrant unreachable at {url}"))?;
+
+        let index = Self {
             chain,
             chain_path,
-            collection: DEFAULT_COLLECTION.to_owned(),
-            dims: dimensions(),
+            qdrant,
+            collection,
+            dims,
             voyage,
             policy: std::sync::Arc::new(FlattenAll),
-        })
+        };
+        index.ensure_collection().await?;
+        Ok(index)
     }
 
     /// Install the noise filter (the bridge's schema-described policy).
@@ -422,14 +405,48 @@ impl ChainVectorIndex {
         self.policy.as_ref()
     }
 
+    /// Create the collection on first use. Idempotent, and tolerant of a
+    /// concurrent creator.
+    async fn ensure_collection(&self) -> Result<()> {
+        if self
+            .qdrant
+            .collection_exists(&self.collection)
+            .await
+            .with_context(|| format!("failed to probe collection '{}'", self.collection))?
+        {
+            return Ok(());
+        }
+
+        match self
+            .qdrant
+            .create_collection(
+                CreateCollectionBuilder::new(&self.collection)
+                    .vectors_config(VectorParamsBuilder::new(self.dims, Distance::Cosine)),
+            )
+            .await
+        {
+            Ok(_) => {
+                tracing::info!(
+                    collection = %self.collection,
+                    dims = self.dims,
+                    "created Qdrant collection for snowball vectors"
+                );
+                Ok(())
+            }
+            Err(err) if is_already_exists(&err) => Ok(()),
+            Err(err) => Err(anyhow::Error::from(err)
+                .context(format!("failed to create collection '{}'", self.collection))),
+        }
+    }
+
     /// Embed every block that has no vector yet and write it into the chain.
     ///
-    /// **Automatic default** (`upsert_cozo = false`): Voyage + `attach_vector`
-    /// only. Does **not** upsert Cozo and does **not** advance the Cozo
+    /// **Automatic default** (`upsert_qdrant = false`): Voyage + `attach_vector`
+    /// only. Does **not** upsert Qdrant and does **not** advance the Qdrant
     /// watermark — the replica's `ingest_received` owns that after `btrfs
     /// receive`.
     ///
-    /// **Manual exception** (`upsert_cozo = true`): also upserts Cozo on
+    /// **Manual exception** (`upsert_qdrant = true`): also upserts Qdrant on
     /// this host and advances the watermark. That bypasses send/receive; use
     /// only via an explicit CLI flag / CallMethod, never as the streaming
     /// default.
@@ -439,13 +456,13 @@ impl ChainVectorIndex {
     pub async fn project_pending(
         &self,
         limit: Option<usize>,
-        upsert_cozo: bool,
+        upsert_qdrant: bool,
     ) -> Result<ProjectionSummary> {
         let voyage = self
             .voyage
             .as_ref()
             .context("project_pending requires an embedder; this index was opened as a replica")?;
-        let write_cozo = project_writes_cozo(upsert_cozo);
+        let write_qdrant = project_writes_qdrant(upsert_qdrant);
 
         let (pending, already_present) = self
             .chain
@@ -453,7 +470,7 @@ impl ChainVectorIndex {
             .await?;
 
         let mut embedded = 0usize;
-        let mut upserted_to_cozo = 0usize;
+        let mut upserted_to_qdrant = 0usize;
         for block in &pending {
             let lines = self.policy.embedding_lines(block);
             let text = match &lines {
@@ -468,7 +485,7 @@ impl ChainVectorIndex {
             let embed_ms = started.elapsed().as_millis() as u64;
             let vector = self.fit_dims(vector, block.block_num)?;
 
-            // Chain first: the vector is durable state; automatic Cozo is
+            // Chain first: the vector is durable state; automatic Qdrant is
             // derived only after receive → ingest on the replica.
             self.chain.attach_vector(block.block_num, &vector).await?;
             let now_ms = std::time::SystemTime::now()
@@ -490,34 +507,33 @@ impl ChainVectorIndex {
             {
                 tracing::warn!(%error, block = block.block_num, "vector sidecar not written");
             }
-            if write_cozo {
+            if write_qdrant {
                 self.upsert_block(block, vector).await?;
-                upserted_to_cozo += 1;
+                upserted_to_qdrant += 1;
             }
             embedded += 1;
         }
 
-        // Watermark tracks Cozo coverage, not chain vector coverage. Bump it
+        // Watermark tracks Qdrant coverage, not chain vector coverage. Bump it
         // only when this pass actually wrote the index (manual exception).
-        if write_cozo && let Some(highest) = pending.iter().map(|block| block.block_num).max() {
+        if write_qdrant && let Some(highest) = pending.iter().map(|block| block.block_num).max() {
             let watermark = self.read_indexed_block().await?.max(highest);
             self.write_indexed_block(watermark).await?;
-            publish_footprint_readiness().await;
         }
 
         tracing::info!(
             collection = %self.collection,
             embedded,
             already_present,
-            upserted_to_cozo,
-            write_cozo,
+            upserted_to_qdrant,
+            write_qdrant,
             "snowball vector projection pass complete"
         );
 
         Ok(ProjectionSummary {
             embedded,
             already_present,
-            upserted_to_cozo,
+            upserted_to_qdrant,
             collection: self.collection.clone(),
         })
     }
@@ -531,9 +547,23 @@ impl ChainVectorIndex {
     /// No Voyage key and no re-embedding spend.
     pub async fn reindex_from_chain(&self) -> Result<IngestSummary> {
         let blocks = self.chain.blocks().await?;
-        let candidates: Vec<_> = blocks.iter().filter(|block| block.has_vector).collect();
-        let (upserted, unreadable) = self.index_blocks(&candidates).await?;
-        let skipped = blocks.len() - candidates.len() + unreadable;
+        let mut upserted = 0usize;
+        let mut skipped = 0usize;
+
+        for block in &blocks {
+            if !block.has_vector {
+                skipped += 1;
+                continue;
+            }
+            match self.chain.read_vector(block.block_num).await? {
+                Some(vector) => {
+                    let vector = self.fit_dims(vector, block.block_num)?;
+                    self.upsert_block(block, vector).await?;
+                    upserted += 1;
+                }
+                None => skipped += 1,
+            }
+        }
 
         let checkpoint = blocks
             .iter()
@@ -542,7 +572,6 @@ impl ChainVectorIndex {
             .max()
             .unwrap_or(0);
         self.write_indexed_block(checkpoint).await?;
-        publish_footprint_readiness().await;
 
         let generation = btrfs_delta::generation(self.chain.vector_subvolume_path())
             .await
@@ -583,6 +612,12 @@ impl ChainVectorIndex {
     /// Pass `None` to resume from the persisted watermark (`0` on first run,
     /// which indexes everything present).
     pub async fn ingest_received(&self, from_block: Option<u64>) -> Result<IngestSummary> {
+        let cozo_path = std::env::var("COGNITIVE_COZO_DB_PATH")
+            .context("COGNITIVE_COZO_DB_PATH is required to persist chain vector links")?;
+        let cozo = CozoGraphShuttle::new_persistent(std::path::PathBuf::from(cozo_path))
+            .map_err(|error| anyhow::anyhow!(error))
+            .context("open Cozo for chain vector links")?;
+
         let watermark = match from_block {
             Some(block) => block,
             None => self.read_indexed_block().await?,
@@ -592,18 +627,52 @@ impl ChainVectorIndex {
         let with_vectors: Vec<&ChainBlockRef> =
             blocks.iter().filter(|block| block.has_vector).collect();
 
-        let old_blocks: Vec<_> = with_vectors
+        let mut pending: Vec<u64> = with_vectors
             .iter()
-            .copied()
-            .filter(|block| block.block_num <= watermark)
+            .filter(|block| block.block_num > watermark)
+            .map(|block| block.block_num)
             .collect();
-        let missing = self.missing_from_index(&old_blocks).await?;
-        let pending: Vec<_> = with_vectors
-            .iter()
-            .copied()
-            .filter(|block| block.block_num > watermark || missing.contains(&block.block_num))
-            .collect();
-        let (upserted, skipped) = self.index_blocks(&pending).await?;
+
+        if pending.len() < with_vectors.len() {
+            pending.extend(self.missing_from_index(&with_vectors).await?);
+            pending.sort_unstable();
+            pending.dedup();
+        }
+
+        let mut upserted = 0usize;
+        let mut skipped = 0usize;
+        for block_num in &pending {
+            let Some(vector) = self.chain.read_vector(*block_num).await? else {
+                skipped += 1;
+                continue;
+            };
+            let vector = self.fit_dims(vector, *block_num)?;
+
+            match blocks.iter().find(|block| block.block_num == *block_num) {
+                Some(block) => {
+                    let links = chain_links(block);
+                    let link_refs: Vec<(&str, &str)> = links
+                        .iter()
+                        .map(|(kind, value)| (kind.as_str(), value.as_str()))
+                        .collect();
+                    cozo.replace_chain_vector_links(
+                        &point_id(block.block_num).to_string(),
+                        &link_refs,
+                    )
+                    .map_err(anyhow::Error::new)
+                    .with_context(|| {
+                        format!("failed to write chain links for block {}", block.block_num)
+                    })?;
+                    // A visible point suppresses gap retries: commit its links first.
+                    self.upsert_block(block, vector).await?;
+                }
+                // Vector present without its timing record (partial or
+                // out-of-order receive). Index it by block number so a later
+                // pass can enrich it rather than dropping it.
+                None => self.upsert_orphan_vector(*block_num, vector).await?,
+            }
+            upserted += 1;
+        }
 
         let checkpoint = with_vectors
             .iter()
@@ -612,7 +681,6 @@ impl ChainVectorIndex {
             .unwrap_or(watermark)
             .max(watermark);
         self.write_indexed_block(checkpoint).await?;
-        publish_footprint_readiness().await;
 
         let generation = btrfs_delta::generation(self.chain.vector_subvolume_path())
             .await
@@ -640,55 +708,52 @@ impl ChainVectorIndex {
 
     /// Block numbers whose point is absent from the index, asked in one batched
     /// retrieve per chunk rather than by scrolling the whole collection.
-    async fn index_blocks(&self, blocks: &[&ChainBlockRef]) -> Result<(usize, usize)> {
-        let mut upserted = 0;
-        let mut skipped = 0;
-        for chunk in blocks.chunks(128) {
-            let mut points = Vec::with_capacity(chunk.len());
-            for block in chunk {
-                let Some(vector) = self.chain.read_vector(block.block_num).await? else {
-                    skipped += 1;
-                    continue;
-                };
-                let vector = self.fit_dims(vector, block.block_num)?;
-                points.push(self.footprint_vector(block, vector).await);
-            }
-            upserted += points.len();
-            if !points.is_empty() {
-                with_footprint_index(move |store| store.put_footprint_vectors(points)).await?;
-            }
-        }
-        Ok((upserted, skipped))
-    }
+    async fn missing_from_index(&self, blocks: &[&ChainBlockRef]) -> Result<Vec<u64>> {
+        const CHUNK: usize = 256;
+        let mut missing = Vec::new();
 
-    async fn missing_from_index(&self, blocks: &[&ChainBlockRef]) -> Result<HashSet<u64>> {
-        if blocks.is_empty() {
-            return Ok(HashSet::new());
-        }
-        let candidates: Vec<_> = blocks
-            .iter()
-            .map(|block| (block.block_num, point_id(block.block_num).to_string()))
-            .collect();
-        with_footprint_index(move |store| {
-            let mut missing = HashSet::new();
-            for chunk in candidates.chunks(256) {
-                let ids: Vec<_> = chunk.iter().map(|(_, id)| id.clone()).collect();
-                let present: HashSet<_> = store.indexed_footprint_ids(&ids)?.into_iter().collect();
-                missing.extend(
-                    chunk
-                        .iter()
-                        .filter(|(_, id)| !present.contains(id))
-                        .map(|(number, _)| *number),
-                );
+        for chunk in blocks.chunks(CHUNK) {
+            let ids: Vec<PointId> = chunk
+                .iter()
+                .map(|block| point_id(block.block_num).to_string().into())
+                .collect();
+            let found = self
+                .qdrant
+                .get_points(
+                    GetPointsBuilder::new(&self.collection, ids)
+                        .with_payload(false)
+                        .with_vectors(false),
+                )
+                .await
+                .with_context(|| format!("failed to probe '{}' for gaps", self.collection))?;
+
+            let present: HashSet<String> = found
+                .result
+                .into_iter()
+                .filter_map(|point| {
+                    point.id.and_then(|id| match id.point_id_options {
+                        Some(qdrant_client::qdrant::point_id::PointIdOptions::Uuid(u)) => Some(u),
+                        Some(qdrant_client::qdrant::point_id::PointIdOptions::Num(n)) => {
+                            Some(n.to_string())
+                        }
+                        None => None,
+                    })
+                })
+                .collect();
+            for block in chunk {
+                let id_str = point_id(block.block_num).to_string();
+                if !present.contains(&id_str) {
+                    missing.push(block.block_num);
+                }
             }
-            Ok(missing)
-        })
-        .await
+        }
+
+        Ok(missing)
     }
 
     /// Semantic search over indexed blocks. Origin-side only (needs a query
     /// embedding).
-    pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<FootprintMatch>> {
+    pub async fn search(&self, query: &str, limit: u64) -> Result<Vec<ScoredPoint>> {
         let voyage = self
             .voyage
             .as_ref()
@@ -697,18 +762,19 @@ impl ChainVectorIndex {
             .embed(query, Some("query"))
             .await
             .context("failed to embed search query")?;
-        self.search_vector(embedding, limit).await
-    }
-
-    /// Search with an existing compatible vector without calling Voyage.
-    pub async fn search_vector(
-        &self,
-        embedding: Vec<f32>,
-        limit: u64,
-    ) -> Result<Vec<FootprintMatch>> {
         let embedding = self.fit_dims(embedding, 0)?;
-        with_footprint_index(move |store| store.search_footprint_vectors(embedding, limit, None))
+
+        let response = self
+            .qdrant
+            .query(
+                QueryPointsBuilder::new(&self.collection)
+                    .query(embedding)
+                    .limit(limit)
+                    .with_payload(true),
+            )
             .await
+            .with_context(|| format!("query against '{}' failed", self.collection))?;
+        Ok(response.result)
     }
 
     /// Whether this chain arrived through `btrfs receive` (i.e. we are the
@@ -730,11 +796,6 @@ impl ChainVectorIndex {
     }
 
     async fn upsert_block(&self, block: &ChainBlockRef, vector: Vec<f32>) -> Result<()> {
-        let point = self.footprint_vector(block, vector).await;
-        with_footprint_index(move |store| store.put_footprint_vectors(vec![point])).await
-    }
-
-    async fn footprint_vector(&self, block: &ChainBlockRef, vector: Vec<f32>) -> FootprintVector {
         // Allow-listed provenance only: identity digests and hashes for
         // filtering, never raw arguments and never the session genesis.
         let mut payload_map = serde_json::Map::new();
@@ -774,16 +835,55 @@ impl ChainVectorIndex {
                 simd_json::serde::from_owned_value(meta).unwrap_or(serde_json::Value::Null);
             payload_map.insert("vector_meta".into(), meta);
         }
-        FootprintVector {
-            id: point_id(block.block_num).to_string(),
-            vector,
-            metadata: payload_map.into(),
-            links: chain_links(block),
-        }
+        let payload: Payload = serde_json::Value::Object(payload_map)
+            .try_into()
+            .context("failed to build snowball vector payload")?;
+
+        let point = PointStruct::new(point_id(block.block_num).to_string(), vector, payload);
+        self.qdrant
+            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to upsert block {} into '{}'",
+                    block.block_num, self.collection
+                )
+            })?;
+        Ok(())
     }
 
-    fn fit_dims(&self, vector: Vec<f32>, block_num: u64) -> Result<Vec<f32>> {
-        fit_dims(vector, self.dims, block_num)
+    async fn upsert_orphan_vector(&self, block_num: u64, vector: Vec<f32>) -> Result<()> {
+        let payload: Payload = serde_json::json!({
+            "block_num": block_num,
+            "timing_record_missing": true,
+        })
+        .try_into()
+        .context("failed to build orphan vector payload")?;
+
+        let point = PointStruct::new(point_id(block_num).to_string(), vector, payload);
+        self.qdrant
+            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
+            .await
+            .with_context(|| format!("failed to upsert orphan vector for block {block_num}"))?;
+        Ok(())
+    }
+
+    /// Match the collection width. Voyage's voyage-4 family is Matryoshka, so a
+    /// longer vector truncates into the same space; Qdrant's Cosine distance
+    /// normalizes, so no renormalization is needed after truncation. A *short*
+    /// vector is a real mismatch and is refused rather than zero-padded.
+    fn fit_dims(&self, mut vector: Vec<f32>, block_num: u64) -> Result<Vec<f32>> {
+        let want = self.dims as usize;
+        if vector.len() > want {
+            vector.truncate(want);
+        }
+        anyhow::ensure!(
+            vector.len() == want,
+            "embedding for block {block_num} has {} dims, collection '{}' expects {want}",
+            vector.len(),
+            self.collection
+        );
+        Ok(vector)
     }
 
     fn indexed_block_path(&self) -> PathBuf {
@@ -867,15 +967,14 @@ fn flattened_suffix<'a>(block: &'a ChainBlockRef, leaf: &str) -> Option<&'a str>
         .map(|(_, value)| value.as_str())
 }
 
-fn fit_dims(mut vector: Vec<f32>, dims: u64, block_num: u64) -> Result<Vec<f32>> {
-    let want = usize::try_from(dims)?;
-    vector.truncate(want);
-    anyhow::ensure!(
-        vector.len() == want && vector.iter().all(|value| value.is_finite()),
-        "embedding for block {block_num} must contain {want} finite components (got {})",
-        vector.len()
-    );
-    Ok(vector)
+fn qdrant_url() -> String {
+    std::env::var("OPDBUS_QDRANT_URL")
+        .or_else(|_| std::env::var("COGNITIVE_QDRANT_URL"))
+        .unwrap_or_else(|_| "http://127.0.0.1:6334".to_string())
+}
+
+fn is_already_exists(err: &QdrantError) -> bool {
+    err.to_string().to_lowercase().contains("already exists")
 }
 
 #[cfg(test)]
@@ -890,12 +989,25 @@ mod tests {
         assert_ne!(a, b);
     }
 
+    /// `QdrantError::ResponseError` holds qdrant-client's tonic `Status`, which
+    /// is a different type from the `tonic::Status` this crate's own services
+    /// use. The alias is what makes the two nameable in one file.
     #[test]
-    fn automatic_project_path_does_not_write_cozo() {
-        // Strict automatic: default project must not upsert Cozo on origin.
-        assert!(!project_writes_cozo(false));
-        // Manual exception only: explicit --upsert-cozo / CallMethod flag.
-        assert!(project_writes_cozo(true));
+    fn already_exists_detection_matches_qdrant_wording() {
+        assert!(super::is_already_exists(&QdrantError::ResponseError {
+            status: tonic::Status::already_exists("Collection `x` already exists!"),
+        }));
+        assert!(!super::is_already_exists(&QdrantError::ResponseError {
+            status: tonic::Status::internal("some other failure"),
+        }));
+    }
+
+    #[test]
+    fn automatic_project_path_does_not_write_qdrant() {
+        // Strict automatic: default project must not upsert Qdrant on origin.
+        assert!(!project_writes_qdrant(false));
+        // Manual exception only: explicit --upsert-qdrant / CallMethod flag.
+        assert!(project_writes_qdrant(true));
     }
 
     #[test]
@@ -903,12 +1015,12 @@ mod tests {
         let summary = ProjectionSummary {
             embedded: 3,
             already_present: 40,
-            upserted_to_cozo: 0,
+            upserted_to_qdrant: 0,
             collection: DEFAULT_COLLECTION.to_string(),
         };
-        assert_eq!(summary.upserted_to_cozo, 0);
+        assert_eq!(summary.upserted_to_qdrant, 0);
         let json = serde_json::to_value(&summary).unwrap();
-        assert_eq!(json["upserted_to_cozo"], 0);
+        assert_eq!(json["upserted_to_qdrant"], 0);
     }
 
     /// Same JSON shape as on-disk timing records (`ChainBlockRef::from_timing_bytes`).

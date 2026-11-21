@@ -19,6 +19,7 @@ serde_json = { workspace = true }
 simd-json = { workspace = true }
 tokio = { version = "1.0", features = ["full"] }
 anyhow = { workspace = true }
+qdrant-client = "1.20" # 1.20 uses tonic 0.14 (1.18 pulled in a second tonic 0.12)
 reqwest = { workspace = true }
 tracing = "0.1"
 tracing-subscriber = "0.3"

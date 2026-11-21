@@ -26,7 +26,7 @@ struct EmbeddingRequest<'a> {
     model: &'a str,
     input_type: Option<&'a str>,
     /// Pinned to the shared-space dimension so callers always land in the same
-    /// Cozo vector space regardless of which compatible model is active —
+    /// Qdrant collection regardless of which model in the trio is active —
     /// without this, Voyage returns each model's native (differing) dimension.
     truncation: bool,
     output_dimension: u32,

@@ -1,15 +1,5 @@
 # Requirements Document — `subsidiary-activity-grouping`: all subsidiary activity grouped per subsidiary container
 
-> **Storage decision (2026-11-20).** Each subsidiary's host-owned Cozo/RocksDB
-> database also holds the native footprint vectors and HNSW index for
-> `<subsidiary>::mainchain`. This replaces
-> the per-subsidiary Qdrant collections described below. The off-site receiver
-> indexes the existing Btrfs vector and timing records, without re-embedding.
-> It selects the database from the verified subsidiary binding. Subsidiary
-> vectors never enter the shared footprint index. Commit the vector and its
-> local chain edges together, and resume against that subsidiary's own coverage.
-> The main ledger continues to hold the authoritative events and edge projection.
-
 Status: SPEC ONLY, NOT APPROVED FOR IMPLEMENTATION. Owner request of
 2026-11-19: prepare 3tched to group all subsidiary activity per subsidiary
 container. Nothing in this spec is implemented, deployed or provisioned until

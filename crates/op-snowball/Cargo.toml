@@ -19,6 +19,7 @@ chrono = { workspace = true }
 uuid = { workspace = true, features = ["v5"] }
 sha2 = { workspace = true }
 gethostname = { workspace = true }
+qdrant-client = { workspace = true }
 tonic = { workspace = true }
 btrfs-uapi = "0.13.0"
 nix = { version = "0.31", features = ["fs"] }

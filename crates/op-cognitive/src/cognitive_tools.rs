@@ -7,7 +7,7 @@ use crate::agent_tools::register_agent_tools;
 use crate::blob_catalog_tool::register_blob_catalog_tool;
 use crate::blob_vectors_tool::register_blob_vectors_tools;
 use crate::memory_store::{CognitiveMemoryStore, EntryQuery, NamespaceKind};
-use crate::semantic_shuttle::CozoSemanticShuttle;
+use crate::qdrant_shuttle::QdrantSemanticShuttle;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
@@ -41,10 +41,10 @@ impl CognitiveToolRegistry {
     pub async fn register_all(
         registry: &ToolRegistry,
         store: Arc<CognitiveMemoryStore>,
-        semantic: Option<Arc<CozoSemanticShuttle>>,
+        qdrant: Option<Arc<QdrantSemanticShuttle>>,
     ) -> Result<()> {
         registry
-            .register(Arc::new(MemoryTool::new(store.clone(), semantic.clone())) as BoxedTool)
+            .register(Arc::new(MemoryTool::new(store.clone(), qdrant.clone())) as BoxedTool)
             .await?;
         registry
             .register(Arc::new(GeminiQueryTool {
@@ -56,7 +56,7 @@ impl CognitiveToolRegistry {
         // supervised loopback services. They must never delay construction of
         // the in-process HOT memory/workflow runtime.
         register_blob_catalog_tool(registry).await?;
-        register_blob_vectors_tools(registry, semantic).await?;
+        register_blob_vectors_tools(registry, qdrant).await?;
         Ok(())
     }
 }
@@ -152,15 +152,15 @@ impl Tool for GeminiQueryTool {
 
 pub struct MemoryTool {
     store: Arc<CognitiveMemoryStore>,
-    semantic: Option<Arc<CozoSemanticShuttle>>,
+    qdrant: Option<Arc<QdrantSemanticShuttle>>,
 }
 
 impl MemoryTool {
     pub fn new(
         store: Arc<CognitiveMemoryStore>,
-        semantic: Option<Arc<CozoSemanticShuttle>>,
+        qdrant: Option<Arc<QdrantSemanticShuttle>>,
     ) -> Self {
-        Self { store, semantic }
+        Self { store, qdrant }
     }
 }
 
@@ -234,7 +234,7 @@ impl Tool for MemoryTool {
                 },
                 "semantic": {
                     "type": "boolean",
-                    "description": "Mirror text content into Cozo index user_memory when available"
+                    "description": "Mirror text content into Qdrant user_memory when available"
                 },
                 "tags": {
                     "type": "array",
@@ -416,8 +416,8 @@ impl MemoryTool {
         // Clear every prior mirror, including legacy random UUIDs, before
         // replacing authoritative content, even for nonsemantic/empty writes.
         // Failure leaves the old Cozo row available for a retry.
-        if let Some(semantic) = &self.semantic {
-            semantic.delete_user_memory(&namespace, key).await?;
+        if let Some(qdrant) = &self.qdrant {
+            qdrant.delete_user_memory(&namespace, key).await?;
         }
         let entry = self
             .store
@@ -494,9 +494,9 @@ impl MemoryTool {
     }
 
     async fn op_semantic_query(&self, input: &Value) -> Result<Value> {
-        let semantic = self.semantic.as_ref().ok_or_else(|| {
+        let qdrant = self.qdrant.as_ref().ok_or_else(|| {
             anyhow::anyhow!(
-                "semantic memory unavailable: Cozo semantic index is not configured"
+                "semantic memory unavailable: Qdrant Semantic Shuttle is not configured"
             )
         })?;
         let container_id = field(input, "container_id")
@@ -508,8 +508,8 @@ impl MemoryTool {
             .ok_or_else(|| anyhow::anyhow!("missing query"))?;
         let limit = field(input, "limit").as_i64().unwrap_or(10).max(1) as u64;
 
-        let embedding = semantic.embed_query_text(query).await?;
-        let results = semantic
+        let embedding = qdrant.embed_query_text(query).await?;
+        let results = qdrant
             .search_user_memory(embedding, container_id, limit)
             .await?;
         let mut items = Vec::new();
@@ -525,7 +525,12 @@ impl MemoryTool {
             let Some(entry) = self.store.retrieve_entry(container_id, key).await? else {
                 continue;
             };
-            let point_uuid = Some(point.id.as_str());
+            let point_uuid = point.id.as_ref().and_then(|id| match &id.point_id_options {
+                Some(qdrant_client::qdrant::point_id::PointIdOptions::Uuid(id)) => {
+                    Some(id.as_str())
+                }
+                _ => None,
+            });
             // Cozo is authoritative. Current legacy random-ID mirrors remain
             // readable; collapse duplicates within this bounded result batch.
             if !semantic_matches_entry(point_uuid, &payload, container_id, &entry) {
@@ -555,12 +560,12 @@ impl MemoryTool {
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("missing key"))?;
 
-        if let Some(semantic) = &self.semantic {
+        if let Some(qdrant) = &self.qdrant {
             // Also clean orphaned mirrors when Cozo has no matching row.
-            semantic.delete_user_memory(&namespace, key).await?;
+            qdrant.delete_user_memory(&namespace, key).await?;
         } else {
             tracing::warn!(
-                "Cozo index unconfigured: deleting Cozo memory only; remote cleanup unverified"
+                "Qdrant unconfigured: deleting Cozo memory only; remote cleanup unverified"
             );
         }
         let deleted = self.store.delete_entry(&namespace, key).await.context(
@@ -619,11 +624,11 @@ impl MemoryTool {
             return Ok(false);
         }
 
-        let Some(semantic) = &self.semantic else {
+        let Some(qdrant) = &self.qdrant else {
             tracing::warn!(
                 namespace = namespace,
                 key = key,
-                "semantic memory requested but Cozo semantic index is unavailable"
+                "semantic memory requested but Qdrant Semantic Shuttle is unavailable"
             );
             return Ok(false);
         };
@@ -642,8 +647,8 @@ impl MemoryTool {
             return Ok(false);
         }
 
-        let vector = semantic.embed_document(&content).await?;
-        semantic
+        let vector = qdrant.embed_document(&content).await?;
+        qdrant
             .upsert_user_memory(entry_id.to_string(), vector, container_id, key, &content)
             .await?;
         Ok(true)
@@ -791,6 +796,26 @@ mod semantic_lifecycle_tests {
         let schema = tool.input_schema();
         assert!(field(&schema, "properties").get("query").is_some());
         assert_eq!(tool.required_capability(), Some("cognitive.invoke"));
+    }
+
+    #[test]
+    fn qdrant_payload_serializes_as_native_values() {
+        let payload: qdrant_client::Payload = serde_json::json!({
+            "container_id":"session/a/personal", "entry_key":"k", "content":"current"
+        })
+        .try_into()
+        .unwrap();
+        let point = qdrant_client::qdrant::PointStruct::new(
+            uuid::Uuid::new_v4().to_string(),
+            vec![1.0],
+            payload,
+        );
+        assert_eq!(
+            serde_json::to_value(&point.payload).unwrap(),
+            serde_json::json!({
+                "container_id":"session/a/personal", "entry_key":"k", "content":"current"
+            })
+        );
     }
 
     #[tokio::test]

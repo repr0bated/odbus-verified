@@ -1,24 +1,24 @@
 //! Operator CLI for the snowball vector pipeline (`snowball_footprints` only).
 //!
-//! Strict automatic Cozo policy applies **only** to this collection — not to
+//! Strict automatic Qdrant policy applies **only** to this collection — not to
 //! `blob_vectors`, user_memory, or RAG shuttle traffic.
 //!
 //! Origin host (has a Voyage key):
 //! ```sh
 //! op-chain-vectors status
-//! op-chain-vectors project --limit 50              # embed → btrfs vectors only (no Cozo)
-//! op-chain-vectors project --limit 50 --upsert-cozo  # manual: also write Cozo directly
+//! op-chain-vectors project --limit 50              # embed → btrfs vectors only (no Qdrant)
+//! op-chain-vectors project --limit 50 --upsert-qdrant  # manual: also write Qdrant directly
 //! op-chain-vectors replicate --snapshot /prepared/golden-ro --host offsite.example --remote-path /prepared/receive
 //! ```
 //!
 //! Replica host (no Voyage key needed):
 //! ```sh
-//! op-chain-vectors ingest                  # Cozo upsert after btrfs receive (automatic path)
+//! op-chain-vectors ingest                  # Qdrant upsert after btrfs receive (automatic path)
 //! ```
 //!
 //! Configuration is env-driven and shared with the rest of the workspace:
-//! `OPDBUS_SNOWBALL_PATH`, `OPDBUS_FOOTPRINT_COZO_PATH`, and
-//! `OPDBUS_SNOWBALL_VECTOR_DIM`.
+//! `OPDBUS_SNOWBALL_PATH`, `OPDBUS_QDRANT_URL` (or `COGNITIVE_QDRANT_URL`),
+//! `OPDBUS_QDRANT_SNOWBALL_COLLECTION`, `OPDBUS_QDRANT_SNOWBALL_DIM`.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -30,7 +30,7 @@ use std::{path::PathBuf, time::Duration};
 #[derive(Parser)]
 #[command(
     name = "op-chain-vectors",
-    about = "Embed Snowball block vectors, index them in Cozo, and transfer prepared filesystem snapshots"
+    about = "Embed Snowball block vectors, index them in Qdrant, and transfer prepared filesystem snapshots"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -43,17 +43,17 @@ enum Cmd {
     Status,
     /// Origin: embed pending blocks into the chain `vectors` data directory.
     ///
-    /// Default does **not** write Cozo (`snowball_footprints` is filled by
-    /// replica `ingest` after `btrfs receive`). Pass `--upsert-cozo` for a
+    /// Default does **not** write Qdrant (`snowball_footprints` is filled by
+    /// replica `ingest` after `btrfs receive`). Pass `--upsert-qdrant` for a
     /// manual direct index write that bypasses send/receive.
     Project {
         /// Cap this pass (default: all pending blocks).
         #[arg(long)]
         limit: Option<usize>,
         /// Manual exception: also upsert `snowball_footprints` on this host.
-        /// Does not affect other Cozo collections.
-        #[arg(long, alias = "upsert-qdrant", default_value_t = false)]
-        upsert_cozo: bool,
+        /// Does not affect other Qdrant collections.
+        #[arg(long, default_value_t = false)]
+        upsert_qdrant: bool,
     },
     /// Manual: rebuild `snowball_footprints` from chain vectors (no Voyage, no receive).
     Reindex,
@@ -89,13 +89,9 @@ enum Cmd {
         #[arg(long, default_value_t = 3600)]
         timeout_secs: u64,
     },
-    /// Semantic search over indexed blocks using text or an already indexed block.
+    /// Origin: semantic search over indexed blocks.
     Search {
-        #[arg(required_unless_present = "block", conflicts_with = "block")]
-        query: Option<String>,
-        /// Reuse this indexed block's vector without a Voyage key.
-        #[arg(long)]
-        block: Option<u64>,
+        query: String,
         #[arg(long, default_value_t = 5)]
         limit: u64,
     },
@@ -114,9 +110,12 @@ async fn main() -> Result<()> {
 
     match cli.cmd {
         Cmd::Status => status().await,
-        Cmd::Project { limit, upsert_cozo } => {
+        Cmd::Project {
+            limit,
+            upsert_qdrant,
+        } => {
             let index = ChainVectorIndex::open().await?;
-            let summary = index.project_pending(limit, upsert_cozo).await?;
+            let summary = index.project_pending(limit, upsert_qdrant).await?;
             println!("{}", serde_json::to_string_pretty(&summary)?);
             Ok(())
         }
@@ -160,23 +159,9 @@ async fn main() -> Result<()> {
             }
             Ok(())
         }
-        Cmd::Search {
-            query,
-            block,
-            limit,
-        } => {
-            let hits = match block {
-                Some(block) => {
-                    op_cognitive::chain_vectors::search_similar_block(block, limit).await?
-                }
-                None => {
-                    ChainVectorIndex::open()
-                        .await?
-                        .search(&query.context("provide query text or --block")?, limit)
-                        .await?
-                }
-            };
-            for point in hits {
+        Cmd::Search { query, limit } => {
+            let index = ChainVectorIndex::open().await?;
+            for point in index.search(&query, limit).await? {
                 let block = point
                     .payload
                     .get("block_num")
@@ -186,11 +171,13 @@ async fn main() -> Result<()> {
                     .payload
                     .get("plugin_id")
                     .and_then(|v| v.as_str())
+                    .cloned()
                     .unwrap_or_default();
                 let action = point
                     .payload
                     .get("action")
                     .and_then(|v| v.as_str())
+                    .cloned()
                     .unwrap_or_default();
                 println!("{:.4}  block {block}  {plugin}/{action}", point.score);
             }
@@ -235,7 +222,7 @@ async fn status() -> Result<()> {
         );
     }
 
-    // Index state needs Cozo; report the chain half regardless of whether it
+    // Index state needs Qdrant; report the chain half regardless of whether it
     // is reachable, so `status` stays useful during an outage.
     match ChainVectorIndex::open_replica().await {
         Ok(index) => {

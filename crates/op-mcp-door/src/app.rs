@@ -8,7 +8,7 @@ use crate::grants::{DurableGrants, GrantStore, TicketStore};
 use crate::identity::{MountMap, Verifier};
 use crate::mcp::{Door, RateLimiter};
 use crate::policy::Policy;
-use crate::readiness::{CozoReadiness, Readiness, default_gates};
+use crate::readiness::{QdrantRest, Readiness, default_gates};
 use crate::toolsets::Toolsets;
 use anyhow::{Context, Result};
 use std::sync::Arc;
@@ -19,12 +19,14 @@ pub const READINESS_TTL: Duration = Duration::from_secs(30);
 
 /// The coding/knowledge vector gates from configuration.
 pub fn build_readiness(config: &Config) -> Result<Readiness> {
+    let probe = QdrantRest::new(&config.qdrant_rest_url, config.qdrant_api_key_file.clone())
+        .map_err(|e| anyhow::anyhow!("OP_MCP_QDRANT_REST_URL: {e}"))?;
     Ok(Readiness::new(
-        Arc::new(CozoReadiness::new(
-            config.footprint_cozo_path.clone(),
-            config.semantic_cozo_path.clone(),
-        )),
-        default_gates(config.coding_collections.clone(), None),
+        Arc::new(probe),
+        default_gates(
+            config.coding_collections.clone(),
+            config.knowledge_collections.clone(),
+        ),
         READINESS_TTL,
     ))
 }

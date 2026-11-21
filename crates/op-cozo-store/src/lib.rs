@@ -12,11 +12,6 @@ type Params = BTreeMap<String, DataValue>;
 mod external_mcp_sessions;
 pub use external_mcp_sessions::ExternalMcpSessionRecord;
 
-mod footprint_vectors;
-mod semantic_vectors;
-pub use semantic_vectors::{SemanticHit, SemanticPoint};
-pub use footprint_vectors::{FootprintMatch, FootprintVector};
-
 mod system_graph;
 pub use system_graph::*;
 

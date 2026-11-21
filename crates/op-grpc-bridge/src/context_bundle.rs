@@ -8,7 +8,7 @@
 //!
 //! 1. recent reasoning episodes of this principal/session (Cozo),
 //! 2. namespace memory entries that match the query (Cozo),
-//! 3. semantic recall through the cognitive memory tool when the Cozo index
+//! 3. semantic recall through the cognitive memory tool when the Qdrant
 //!    shuttle is configured (best-effort, bounded),
 //! 4. session activity signals from the context engine,
 //! 5. pending knowledge pushes for this session (drained on read),
@@ -229,7 +229,7 @@ async fn semantic_recall(
     namespace: &str,
     query: &str,
 ) -> Vec<String> {
-    if runtime.semantic_shuttle().is_none() {
+    if runtime.qdrant_shuttle().is_none() {
         return Vec::new();
     }
     let input = simd_json::json!({

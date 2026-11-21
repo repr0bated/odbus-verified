@@ -1,7 +1,25 @@
-//! Opt-in Voyage integration using an isolated Cozo index.
+//! End-to-end: Voyage vectorization -> Qdrant upsert -> Qdrant semantic query.
+//!
+//! Exercises the real [`QdrantSemanticShuttle`] path (no mocks): live Voyage
+//! embeddings, live Qdrant writes, live similarity search, plus a wholesale
+//! `blob_vectors` refresh over the SHM sealed-blob catalog.
+//!
+//! Skipped (not failed) unless both a Voyage API key and a reachable Qdrant
+//! gRPC endpoint are present, so it is safe in `cargo test --workspace`.
+//!
+//! Run explicitly:
+//! ```sh
+//! OP_E2E_QDRANT_URL=http://127.0.0.1:6334 \
+//!   cargo test -p op-cognitive --test e2e_voyage_qdrant -- --nocapture
+//! ```
+//!
+//! All writes land in per-run `e2e_voyage_*` collections that are deleted on
+//! the way out; live collections are never touched.
 
 use anyhow::{Context, Result};
-use op_cognitive::{CozoSemanticShuttle, semantic_index::SemanticIndex, voyage::VoyageClient};
+use op_cognitive::QdrantSemanticShuttle;
+use qdrant_client::Qdrant;
+use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 
 /// Voyage shared-space dimension (voyage-4-large / voyage-4 / voyage-4-lite).
 const PROBE_DIMS: u64 = 1024;
@@ -18,14 +36,79 @@ fn voyage_key_present() -> bool {
         .any(|var| std::env::var(var).is_ok_and(|value| !value.trim().is_empty()))
 }
 
+fn qdrant_url() -> String {
+    std::env::var("OP_E2E_QDRANT_URL")
+        .or_else(|_| std::env::var("COGNITIVE_QDRANT_URL"))
+        .unwrap_or_else(|_| "http://127.0.0.1:6334".to_string())
+}
+
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "uses live Voyage credits"]
-async fn voyage_vectorization_lands_in_cozo_and_is_retrievable() -> Result<()> {
+async fn voyage_vectorization_lands_in_qdrant_and_is_retrievable() -> Result<()> {
     if !voyage_key_present() {
+        eprintln!("SKIP: no Voyage API key in env ({})", KEY_VARS.join(" / "));
         return Ok(());
     }
-    let shuttle =
-        CozoSemanticShuttle::with_index(SemanticIndex::in_memory()?, VoyageClient::new()?);
+
+    let url = qdrant_url();
+    let admin = Qdrant::from_url(&url)
+        .build()
+        .with_context(|| format!("building probe Qdrant client for {url}"))?;
+    if admin.health_check().await.is_err() {
+        eprintln!("SKIP: no Qdrant gRPC endpoint reachable at {url}");
+        return Ok(());
+    }
+
+    let run_id = uuid::Uuid::new_v4().simple().to_string();
+    let memory_collection = format!("e2e_voyage_user_memory_{run_id}");
+    let blob_collection = format!("e2e_voyage_blob_vectors_{run_id}");
+    let episodes_collection = format!("e2e_voyage_episodes_{run_id}");
+
+    for collection in [&memory_collection, &blob_collection, &episodes_collection] {
+        admin
+            .create_collection(
+                CreateCollectionBuilder::new(collection)
+                    .vectors_config(VectorParamsBuilder::new(PROBE_DIMS, Distance::Cosine)),
+            )
+            .await
+            .with_context(|| format!("creating probe collection {collection}"))?;
+    }
+
+    let outcome = run_probe(
+        &url,
+        &memory_collection,
+        &blob_collection,
+        &episodes_collection,
+    )
+    .await;
+
+    for collection in [&memory_collection, &blob_collection, &episodes_collection] {
+        if let Err(err) = admin.delete_collection(collection).await {
+            eprintln!("WARN: probe collection {collection} not deleted: {err:#}");
+        }
+    }
+
+    outcome
+}
+
+async fn run_probe(
+    url: &str,
+    memory_collection: &str,
+    blob_collection: &str,
+    episodes_collection: &str,
+) -> Result<()> {
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_QDRANT_URL", url) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_USER_MEMORY_COLLECTION", memory_collection) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_BLOB_VECTORS_COLLECTION", blob_collection) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_QDRANT_COLLECTION", episodes_collection) };
+
+    let shuttle = QdrantSemanticShuttle::new()
+        .await
+        .context("QdrantSemanticShuttle::new() failed")?;
+
     // ── 1. Voyage vectorization ──────────────────────────────────────────
     let ovs_doc = "The rovs plugin drives Open vSwitch natively over OVSDB JSON-RPC: \
                    it creates bridges, attaches ports, and installs OpenFlow rules.";
@@ -55,7 +138,7 @@ async fn voyage_vectorization_lands_in_cozo_and_is_retrievable() -> Result<()> {
     );
     println!("embed: 2 documents vectorized, {PROBE_DIMS} dims, L2 norm {norm:.4}");
 
-    // ── 2. Cozo upsert ─────────────────────────────────────────────────
+    // ── 2. Qdrant upsert ─────────────────────────────────────────────────
     let container_id = format!("e2e-container-{}", uuid::Uuid::new_v4().simple());
     let ovs_point = uuid::Uuid::new_v4().to_string();
     let mail_point = uuid::Uuid::new_v4().to_string();
@@ -74,7 +157,7 @@ async fn voyage_vectorization_lands_in_cozo_and_is_retrievable() -> Result<()> {
         )
         .await
         .context("upsert_user_memory failed for the mail vector")?;
-    println!("upsert: 2 points written to the Cozo memory index");
+    println!("upsert: 2 points written to {memory_collection}");
 
     // ── 3. Query-side embedding + scoped semantic search ─────────────────
     let query_vector = shuttle
@@ -97,6 +180,7 @@ async fn voyage_vectorization_lands_in_cozo_and_is_retrievable() -> Result<()> {
         .payload
         .get("entry_key")
         .and_then(|v| v.as_str())
+        .cloned()
         .unwrap_or_default();
     println!(
         "search: {} hits, top entry_key={top_key} score={:.4}",
@@ -140,6 +224,7 @@ async fn voyage_vectorization_lands_in_cozo_and_is_retrievable() -> Result<()> {
                 summary.collection,
                 started.elapsed().as_secs_f64()
             );
+            assert_eq!(summary.collection, blob_collection);
             assert!(
                 summary.embedded > 0,
                 "SHM catalog listed {} plugins but nothing was embedded",
@@ -160,6 +245,7 @@ async fn voyage_vectorization_lands_in_cozo_and_is_retrievable() -> Result<()> {
                     .payload
                     .get("plugin_id")
                     .and_then(|v| v.as_str())
+                    .cloned()
                     .unwrap_or_default();
                 assert!(
                     !plugin_id.is_empty(),

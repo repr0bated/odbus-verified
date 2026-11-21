@@ -1,15 +1,5 @@
 # Design — `subsidiary-activity-grouping`: all subsidiary activity grouped per subsidiary container
 
-> **Storage decision (2026-11-20).** The host-owned `cozo/` on each subsidiary
-> volume holds a typed footprint vector relation and an HNSW index. This
-> supersedes the Qdrant collection design below. Use the registry's verified
-> chain identity `<subsidiary>::mainchain` and its verified storage binding
-> for routing. On receive, persist the
-> vector, its local edges, and its indexing progress in the subsidiary database.
-> Store main-ledger lineage separately. Retained Btrfs vectors and timing
-> records are the source for rebuilding a lost index. Scoped searches open only
-> the database selected by admission.
-
 ## Overview
 
 A subsidiary is one child identity in one LXD container
