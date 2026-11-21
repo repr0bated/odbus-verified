@@ -10,7 +10,7 @@ use crate::cognitive_tools::CognitiveToolRegistry;
 use crate::context_awareness::{ContextAwarenessConfig, ContextAwarenessEngine};
 use crate::cozo_shuttle::CozoGraphShuttle;
 use crate::memory_store::CognitiveMemoryStore;
-use crate::qdrant_shuttle::QdrantSemanticShuttle;
+use crate::semantic_shuttle::CozoSemanticShuttle;
 use crate::quota::QuotaManager;
 use crate::rag_pipeline::{RagPipeline, default_collection_from_env};
 use crate::session::SessionManager;
@@ -22,11 +22,11 @@ use std::sync::Arc;
 pub struct CognitiveServer {
     memory_store: Arc<CognitiveMemoryStore>,
     cozo_shuttle: Arc<CozoGraphShuttle>,
-    qdrant_shuttle: Option<Arc<QdrantSemanticShuttle>>,
+    semantic_shuttle: Option<Arc<CozoSemanticShuttle>>,
     tool_registry: Arc<ToolRegistry>,
     session_manager: Arc<SessionManager>,
     quota_manager: Arc<QuotaManager>,
-    /// Code-RAG pipeline (Voyage + Qdrant). `None` when no Voyage key is found.
+    /// Code-RAG pipeline (Voyage + Cozo). `None` when no Voyage key is found.
     rag_pipeline: Option<Arc<RagPipeline>>,
     /// Proactive coding-context awareness engine.
     context_engine: Arc<ContextAwarenessEngine>,
@@ -89,12 +89,12 @@ impl CognitiveServer {
 
         let tool_registry = Arc::new(ToolRegistry::new());
 
-        let qdrant_shuttle = match QdrantSemanticShuttle::new().await {
+        let semantic_shuttle = match CozoSemanticShuttle::new().await {
             Ok(shuttle) => Some(Arc::new(shuttle)),
             Err(e) => {
                 tracing::warn!(
                     error = %e,
-                    "Qdrant Semantic Shuttle unavailable; cognitive will continue without vector retrieval"
+                    "Cozo semantic index unavailable; cognitive will continue without vector retrieval"
                 );
                 None
             }
@@ -102,9 +102,9 @@ impl CognitiveServer {
         // Fail before starting any task that retains the native store. A
         // failed durable open must not leave a monitoring task holding its
         // RocksDB lock and make the next invocation permanently unavailable.
-        if require_semantic && qdrant_shuttle.is_none() {
+        if require_semantic && semantic_shuttle.is_none() {
             return Err(
-                "durable CognitiveServer requires the Qdrant semantic shuttle (COGNITIVE_QDRANT_URL reachable and a Voyage key); refusing to serve memory without vectors"
+                "durable CognitiveServer requires the Cozo semantic index with a Voyage key; refusing to serve memory without vectors"
                     .into(),
             );
         }
@@ -115,7 +115,7 @@ impl CognitiveServer {
         CognitiveToolRegistry::register_all(
             &tool_registry,
             memory_store.clone(),
-            qdrant_shuttle.clone(),
+            semantic_shuttle.clone(),
         )
         .await?;
 
@@ -127,7 +127,7 @@ impl CognitiveServer {
         )
         .await?;
 
-        // Code-RAG pipeline: optional, like qdrant_shuttle. Without a Voyage key
+        // Code-RAG pipeline: optional, like semantic_shuttle. Without a Voyage key
         // (env or ~/.ssh/mongo-voyage) the cognitive runtime still serves memory tools.
         let rag_pipeline = match RagPipeline::from_env() {
             Ok(p) => Some(Arc::new(p)),
@@ -166,7 +166,7 @@ impl CognitiveServer {
         Ok(Self {
             memory_store,
             cozo_shuttle,
-            qdrant_shuttle,
+            semantic_shuttle,
             tool_registry,
             session_manager,
             quota_manager,
@@ -187,8 +187,8 @@ impl CognitiveServer {
         self.tool_registry.clone()
     }
 
-    pub fn qdrant_shuttle(&self) -> Option<Arc<QdrantSemanticShuttle>> {
-        self.qdrant_shuttle.clone()
+    pub fn semantic_shuttle(&self) -> Option<Arc<CozoSemanticShuttle>> {
+        self.semantic_shuttle.clone()
     }
 
     pub fn session_manager(&self) -> Arc<SessionManager> {

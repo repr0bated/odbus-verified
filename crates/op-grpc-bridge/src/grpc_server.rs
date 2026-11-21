@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 
 use async_stream::stream;
 use chrono::{DateTime, Utc};
-use op_cognitive::QdrantSemanticShuttle;
+use op_cognitive::CozoSemanticShuttle;
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, SerializeOptions};
 use prost_types::{Struct as ProstStruct, Timestamp as ProstTimestamp, Value as ProstValue};
@@ -826,7 +826,7 @@ use crate::plugin_grpc_gen::PerMethodGrpcServices;
 pub struct OperationGrpcServer {
     mutation_engine: Arc<MutationEngine>,
     plugin_provider: Arc<dyn PluginSchemaProvider>,
-    semantic_shuttle: Option<Arc<QdrantSemanticShuttle>>,
+    semantic_shuttle: Option<Arc<CozoSemanticShuttle>>,
     /// Component registry state (shared across clones)
     registry: Arc<RwLock<RegistryInner>>,
     /// Per-method gRPC services (frozen at D-Bus object creation)
@@ -871,7 +871,7 @@ impl OperationGrpcServer {
         }
     }
 
-    pub fn with_semantic_shuttle(mut self, semantic_shuttle: Arc<QdrantSemanticShuttle>) -> Self {
+    pub fn with_semantic_shuttle(mut self, semantic_shuttle: Arc<CozoSemanticShuttle>) -> Self {
         self.semantic_shuttle = Some(semantic_shuttle);
         self
     }
@@ -1457,7 +1457,7 @@ pub async fn run_grpc_server(
     // The sealed SHM blob catalog IS the plugin set: hydrate reflection from
     // it so a restart advertises every sealed plugin immediately.
     server.hydrate_reflection_from_shm().await;
-    let server = match QdrantSemanticShuttle::new().await {
+    let server = match CozoSemanticShuttle::new().await {
         Ok(shuttle) => server.with_semantic_shuttle(Arc::new(shuttle)),
         Err(error) => {
             warn!(%error, "semantic shuttle unavailable; SearchSemanticTrace will return failed_precondition");

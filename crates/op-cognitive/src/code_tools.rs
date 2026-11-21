@@ -1,7 +1,7 @@
 //! Code-Context MCP Tools
 //!
 //! Coding-aware retrieval and indexing surfaces backed by the [`RagPipeline`]
-//! (Voyage embeddings + Qdrant) and the [`ContextAwarenessEngine`]. These are
+//! (Voyage embeddings + Cozo) and the [`ContextAwarenessEngine`]. These are
 //! the tools an external coding client (Droid, Cursor, Codex) calls to pull
 //! repository context.
 //!
@@ -427,7 +427,6 @@ mod tests {
     use crate::memory_store::CognitiveMemoryStore;
     use crate::voyage::VoyageClient;
     use op_plugins::state_plugins::cognitive::CodeContextOutput;
-    use qdrant_client::Qdrant;
     struct RestoreEnvironment(Vec<(&'static str, Option<std::ffi::OsString>)>);
 
     impl Drop for RestoreEnvironment {
@@ -479,13 +478,8 @@ mod tests {
             }
             sockets
         });
-        let qdrant_url = format!("http://127.0.0.1:{port}");
-        let qdrant = Qdrant::from_url(&qdrant_url)
-            .skip_compatibility_check()
-            .build()
-            .unwrap();
         let rag = RagPipeline::for_test(
-            qdrant,
+            crate::semantic_index::SemanticIndex::in_memory().unwrap(),
             VoyageClient::from_params(
                 format!("https://127.0.0.1:{port}/v1/embeddings"),
                 "fixture-key".into(),

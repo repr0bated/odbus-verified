@@ -51,7 +51,7 @@ enum Command {
 
 #[derive(Subcommand)]
 enum VectorsCommand {
-    /// Probe the configured Qdrant collections (read-only GETs; never
+    /// Read the configured Cozo index readiness counts (never
     /// creates, writes or re-vectorizes anything). Exit 0 when every gate
     /// is ready, 3 while any is pending re-vectorization.
     Status,

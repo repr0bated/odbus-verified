@@ -1,4 +1,4 @@
-//! MCP tools for the blob-vector Qdrant collection.
+//! MCP tools for the blob-vector Cozo index collection.
 //!
 //! `refresh_blob_vectors` — user-triggered wholesale rebuild of the
 //!   `blob_vectors` collection (one embedding per active plugin schema).
@@ -15,19 +15,19 @@ use simd_json::prelude::ValueAsScalar;
 use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 
-use crate::qdrant_shuttle::QdrantSemanticShuttle;
+use crate::semantic_shuttle::CozoSemanticShuttle;
 
 pub async fn register_blob_vectors_tools(
     registry: &ToolRegistry,
-    qdrant: Option<Arc<QdrantSemanticShuttle>>,
+    semantic: Option<Arc<CozoSemanticShuttle>>,
 ) -> Result<()> {
     registry
         .register(Arc::new(RefreshBlobVectorsTool {
-            shuttle: qdrant.clone(),
+            shuttle: semantic.clone(),
         }) as BoxedTool)
         .await?;
     registry
-        .register(Arc::new(SearchBlobVectorsTool { shuttle: qdrant }) as BoxedTool)
+        .register(Arc::new(SearchBlobVectorsTool { shuttle: semantic }) as BoxedTool)
         .await?;
     Ok(())
 }
@@ -35,7 +35,7 @@ pub async fn register_blob_vectors_tools(
 // ── refresh_blob_vectors ─────────────────────────────────────────────────────
 
 struct RefreshBlobVectorsTool {
-    shuttle: Option<Arc<QdrantSemanticShuttle>>,
+    shuttle: Option<Arc<CozoSemanticShuttle>>,
 }
 
 #[async_trait]
@@ -45,7 +45,7 @@ impl Tool for RefreshBlobVectorsTool {
     }
 
     fn description(&self) -> &str {
-        "Rebuild the blob_vectors Qdrant collection from scratch: embeds every \
+        "Rebuild the blob_vectors Cozo index collection from scratch: embeds every \
          active plugin's schema text via Voyage and upserts all points. \
          User-triggered only — never runs automatically."
     }
@@ -74,7 +74,7 @@ impl Tool for RefreshBlobVectorsTool {
     async fn execute(&self, _input: Value) -> Result<Value> {
         let shuttle = self.shuttle.as_ref().ok_or_else(|| {
             anyhow::anyhow!(
-                "refresh_blob_vectors unavailable: Qdrant Semantic Shuttle is not configured"
+                "refresh_blob_vectors unavailable: Cozo semantic index is not configured"
             )
         })?;
         let summary = shuttle
@@ -92,7 +92,7 @@ impl Tool for RefreshBlobVectorsTool {
 // ── search_blob_vectors ──────────────────────────────────────────────────────
 
 struct SearchBlobVectorsTool {
-    shuttle: Option<Arc<QdrantSemanticShuttle>>,
+    shuttle: Option<Arc<CozoSemanticShuttle>>,
 }
 
 #[async_trait]
@@ -147,7 +147,7 @@ impl Tool for SearchBlobVectorsTool {
     async fn execute(&self, input: Value) -> Result<Value> {
         let shuttle = self.shuttle.as_ref().ok_or_else(|| {
             anyhow::anyhow!(
-                "search_blob_vectors unavailable: Qdrant Semantic Shuttle is not configured"
+                "search_blob_vectors unavailable: Cozo semantic index is not configured"
             )
         })?;
         let query = field(&input, "query")
@@ -167,13 +167,11 @@ impl Tool for SearchBlobVectorsTool {
                     .payload
                     .get("plugin_id")
                     .and_then(|v| v.as_str())
-                    .cloned()
                     .unwrap_or_default();
                 let text = pt
                     .payload
                     .get("text")
                     .and_then(|v| v.as_str())
-                    .cloned()
                     .unwrap_or_default();
                 json!({
                     "plugin_id": plugin_id,

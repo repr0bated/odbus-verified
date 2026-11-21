@@ -25,7 +25,8 @@ pub mod doctor;
 pub mod gemini_fallback;
 pub mod grpc_service;
 pub mod memory_store;
-pub mod qdrant_shuttle;
+pub mod semantic_shuttle;
+pub mod semantic_index;
 pub mod quota;
 pub mod rag_pipeline;
 pub mod semantic_search;
@@ -50,7 +51,7 @@ pub use context_awareness::{
 pub use cozo_shuttle::{CozoGraphShuttle, PolicyVerdict};
 pub use grpc_service::CognitiveGrpcService;
 pub use memory_store::CognitiveMemoryStore;
-pub use qdrant_shuttle::{QdrantSemanticShuttle, SessionTraceContext};
+pub use semantic_shuttle::{CozoSemanticShuttle, SessionTraceContext};
 pub use quota::{QuotaManager, QuotaTier};
 pub use rag_pipeline::{CodeFilter, RagPipeline, RagResult};
 pub use server::CognitiveServer;

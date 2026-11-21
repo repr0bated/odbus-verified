@@ -53,10 +53,9 @@
       "group": "coding",
       "tools": [
         "cognitive.code_search",
-        "cognitive.code_context",
-        "cognitive.code_index"
+        "cognitive.code_context"
       ],
-      "vector_store": "qdrant",
+      "vector_store": "cozo",
       "collections": [
         "repos_lsp_c_cpp_voyage_4_lite",
         "repos_lsp_go_voyage_4_large",
@@ -66,7 +65,7 @@
         "repos_lsp_typescript_voyage_4_lite",
         "repos_specs_docs_voyage_4_lite"
       ],
-      "ready_when": "every collection exists and points_count > 0",
+      "ready_when": "every coding index publishes a positive committed count",
       "pending_status": "pending_revectorization"
     },
     {

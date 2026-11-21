@@ -1,24 +1,18 @@
 //! RAG ingestion pipeline for source content (live workspace files).
 //!
-//! Pipeline: source text → enrich → chunk → Voyage embed → Qdrant upsert
+//! Pipeline: source text → enrich → chunk → Voyage embed → Cozo upsert
 //!
 //! Repomix zip ingestion is retired (2026-09-19): the knowledge loop indexes
 //! live source through `code_index` mode=source only.
 //!
-//! Each Qdrant point payload carries rich metadata for hover display:
+//! Each Cozo point payload carries rich metadata for hover display:
 //!   repo, file_path, language, symbols, doc_comments, imports, tags,
 //!   is_test, line_start, line_end, chunk_index, total_chunks, content_hash
 
+use crate::semantic_index::SemanticIndex;
 use crate::voyage::VoyageClient;
 use anyhow::{Context, Result};
-use qdrant_client::{
-    Payload, Qdrant, QdrantError,
-    qdrant::{
-        Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, ScoredPoint,
-        SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder, VectorsConfig,
-        vectors_config::Config as VectorsConfigEnum,
-    },
-};
+use op_cozo_store::{SemanticHit, SemanticPoint};
 use regex::Regex;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -41,7 +35,6 @@ pub const DEFAULT_VOYAGE4_COLLECTIONS: &[&str] = &[
     "repos_lsp_typescript_voyage_4_lite",
     "repos_specs_docs_voyage_4_lite",
 ];
-const VECTOR_DIM: u64 = 1024; // voyage-4 default
 const CHUNK_LINES: usize = 80; // ~2 kB of code per chunk
 const OVERLAP_LINES: usize = 12;
 const VOYAGE_BATCH: usize = 32; // points per upsert batch
@@ -136,7 +129,7 @@ pub struct RagResult {
 
 /// Structured filters for code-aware semantic retrieval.
 ///
-/// `repo`/`language`/`file_type` are pushed into Qdrant as server-side `must`
+/// `repo`/`language`/`file_type` are pushed into Cozo as server-side `must`
 /// conditions. `path_contains`/`symbol_contains`/`exclude_tests` are applied
 /// client-side after scoring, because they are substring/boolean predicates
 /// over payload fields rather than exact keyword matches.
@@ -223,22 +216,15 @@ impl RetrievalProfile {
 }
 
 impl CodeFilter {
-    fn qdrant_filter(&self) -> Option<Filter> {
-        let mut conds: Vec<Condition> = Vec::new();
-        if let Some(repo) = &self.repo {
-            conds.push(Condition::matches("repo", repo.clone()));
-        }
-        if let Some(lang) = &self.language {
-            conds.push(Condition::matches("language", lang.clone()));
-        }
-        if let Some(ft) = &self.file_type {
-            conds.push(Condition::matches("file_type", ft.clone()));
-        }
-        if conds.is_empty() {
-            None
-        } else {
-            Some(Filter::must(conds))
-        }
+    fn semantic_filters(&self) -> Vec<(String, String)> {
+        [
+            ("repo", &self.repo),
+            ("language", &self.language),
+            ("file_type", &self.file_type),
+        ]
+        .into_iter()
+        .filter_map(|(key, value)| value.as_ref().map(|value| (key.to_owned(), value.clone())))
+        .collect()
     }
 
     fn post_matches(&self, r: &RagResult) -> bool {
@@ -266,14 +252,14 @@ impl CodeFilter {
 }
 
 pub struct RagPipeline {
-    qdrant: Qdrant,
+    index: SemanticIndex,
     voyage: VoyageClient,
 }
 
 impl RagPipeline {
     #[cfg(test)]
-    pub(crate) fn for_test(qdrant: Qdrant, voyage: VoyageClient) -> Self {
-        Self { qdrant, voyage }
+    pub(crate) fn for_test(index: SemanticIndex, voyage: VoyageClient) -> Self {
+        Self { index, voyage }
     }
 
     pub fn from_env() -> Result<Self> {
@@ -281,12 +267,20 @@ impl RagPipeline {
         // plugin's projection, falling back to its own env-var reads — see
         // op_plugins::state_plugins::embedding_model::voyage_embed_params.
         let voyage = VoyageClient::new()?;
-        let qdrant = qdrant_client_from_env()?;
+        let index = SemanticIndex::from_env();
 
-        Ok(Self { qdrant, voyage })
+        Ok(Self { index, voyage })
     }
 
-    /// Semantic search over a Qdrant collection.
+    pub(crate) async fn indexed_count(&self, collection: &str) -> Result<u64> {
+        self.index.count(collection).await
+    }
+
+    pub(crate) fn embedding_model(&self) -> &str {
+        self.voyage.model()
+    }
+
+    /// Semantic search over a Cozo collection.
     #[tracing::instrument(skip(self), fields(collection, query_text, limit))]
     pub async fn query(
         &self,
@@ -295,25 +289,22 @@ impl RagPipeline {
         limit: u64,
         repo_filter: Option<&str>,
     ) -> Result<Vec<RagResult>> {
-        self.ensure_collection(collection).await?;
-
         let vector = self.embed_query(query_text).await?;
 
-        let mut builder = SearchPointsBuilder::new(collection, vector, limit).with_payload(true);
-
-        if let Some(repo) = repo_filter {
-            builder = builder.filter(Filter::must([Condition::matches("repo", repo.to_string())]));
-        }
-
-        let response = self.qdrant.search_points(builder).await?;
-
-        Ok(response.result.into_iter().map(point_to_result).collect())
+        let filters = repo_filter
+            .map(|repo| vec![("repo".to_owned(), repo.to_owned())])
+            .unwrap_or_default();
+        let hits = self
+            .index
+            .search(collection, vector, limit, filters)
+            .await?;
+        Ok(hits.into_iter().map(point_to_result).collect())
     }
 
     /// Code-aware semantic search with structured filters.
     ///
     /// Server-side filters (`repo`, `language`, `file_type`) are pushed into
-    /// Qdrant; path/symbol/test filters are applied client-side after scoring.
+    /// Cozo; path/symbol/test filters are applied client-side after scoring.
     /// subid: `obs.service.code-rag.search@v1`
     #[tracing::instrument(skip(self, filter), fields(collection, query_text, limit))]
     pub async fn query_filtered(
@@ -323,19 +314,14 @@ impl RagPipeline {
         limit: u64,
         filter: &CodeFilter,
     ) -> Result<Vec<RagResult>> {
-        self.ensure_collection(collection).await?;
-
         let vector = self.embed_query(query_text).await?;
         let fetch = limit.saturating_mul(3).max(limit);
 
-        let mut builder = SearchPointsBuilder::new(collection, vector, fetch).with_payload(true);
-        if let Some(f) = filter.qdrant_filter() {
-            builder = builder.filter(f);
-        }
-
-        let response = self.qdrant.search_points(builder).await?;
-        let mut results: Vec<RagResult> = response
-            .result
+        let hits = self
+            .index
+            .search(collection, vector, fetch, filter.semantic_filters())
+            .await?;
+        let mut results: Vec<RagResult> = hits
             .into_iter()
             .map(point_to_result)
             .filter(|r| filter.post_matches(r))
@@ -359,8 +345,6 @@ impl RagPipeline {
         limit: u64,
         filter: &CodeFilter,
     ) -> Result<Vec<RagResult>> {
-        self.ensure_collection(collection).await?;
-
         let vector = self.embed_query(query_text).await?;
         self.query_fused_with_vector(
             collection,
@@ -454,16 +438,17 @@ impl RagPipeline {
         filter: &CodeFilter,
         vector: &[f32],
     ) -> Result<Vec<RagResult>> {
-        self.ensure_collection(collection).await?;
         let fetch = fetch_limit.clamp(limit, 100);
 
-        let mut builder =
-            SearchPointsBuilder::new(collection, vector.to_vec(), fetch).with_payload(true);
-        if let Some(f) = filter.qdrant_filter() {
-            builder = builder.filter(f);
-        }
-
-        let response = self.qdrant.search_points(builder).await?;
+        let hits = self
+            .index
+            .search(
+                collection,
+                vector.to_vec(),
+                fetch,
+                filter.semantic_filters(),
+            )
+            .await?;
 
         let terms: Vec<String> = query_text
             .to_lowercase()
@@ -473,7 +458,7 @@ impl RagPipeline {
             .collect();
 
         let mut best: HashMap<String, RagResult> = HashMap::new();
-        for pt in response.result {
+        for pt in hits {
             let mut r = point_to_result(pt);
             r.retrieval_collection = collection.to_string();
             if !filter.post_matches(&r) {
@@ -527,8 +512,6 @@ impl RagPipeline {
         content: &str,
         collection: &str,
     ) -> Result<IngestStats> {
-        self.ensure_collection(collection).await?;
-
         let lines: Vec<String> = content.lines().map(str::to_string).collect();
         let meta = enrich(file_path, &lines);
         let chunks = build_chunks(repo, file_path, meta, lines);
@@ -537,7 +520,7 @@ impl RagPipeline {
             files_parsed: 1,
             ..Default::default()
         };
-        let mut batch: Vec<PointStruct> = Vec::new();
+        let mut batch: Vec<SemanticPoint> = Vec::new();
 
         for chunk in chunks {
             stats.chunks_created += 1;
@@ -551,7 +534,7 @@ impl RagPipeline {
                 }
             };
 
-            let payload: Payload = serde_json::json!({
+            let payload = serde_json::json!({
                 "repo":          chunk.repo,
                 "file_path":     chunk.file_path,
                 "language":      chunk.meta.language,
@@ -567,15 +550,12 @@ impl RagPipeline {
                 "total_chunks":  chunk.total_chunks,
                 "content":       chunk.content,
                 "content_hash":  chunk.content_hash,
-            })
-            .try_into()
-            .context("Failed to build payload")?;
-
-            batch.push(PointStruct::new(
-                stable_uuid(&chunk.content_hash),
+            });
+            batch.push(SemanticPoint {
+                id: stable_uuid(&chunk.content_hash),
                 vector,
                 payload,
-            ));
+            });
 
             if batch.len() >= VOYAGE_BATCH {
                 self.flush_batch(collection, &mut batch, &mut stats).await;
@@ -585,6 +565,12 @@ impl RagPipeline {
 
         if !batch.is_empty() {
             self.flush_batch(collection, &mut batch, &mut stats).await;
+        }
+
+        if stats.chunks_upserted > 0
+            && let Err(error) = self.index.publish_readiness(collection).await
+        {
+            warn!(%error, collection, "could not publish code index readiness");
         }
 
         info!(
@@ -600,68 +586,19 @@ impl RagPipeline {
 
     // ─── private ─────────────────────────────────────────────────────────────
 
-    async fn ensure_collection(&self, name: &str) -> Result<()> {
-        if !self.qdrant.collection_exists(name).await? {
-            match self
-                .qdrant
-                .create_collection(CreateCollectionBuilder::new(name).vectors_config(
-                    VectorsConfig {
-                        config: Some(VectorsConfigEnum::Params(
-                            VectorParamsBuilder::new(VECTOR_DIM, Distance::Cosine).build(),
-                        )),
-                    },
-                ))
-                .await
-            {
-                Ok(_) => info!(collection = %name, "Created Qdrant collection"),
-                Err(err) if is_already_exists(&err) => {
-                    tracing::debug!(
-                        collection = %name,
-                        "Qdrant collection was created concurrently"
-                    );
-                }
-                Err(err) => return Err(err.into()),
-            }
-        }
-        Ok(())
-    }
-
     async fn flush_batch(
         &self,
         collection: &str,
-        batch: &mut Vec<PointStruct>,
+        batch: &mut Vec<SemanticPoint>,
         stats: &mut IngestStats,
     ) {
-        if batch.is_empty() {
-            return;
-        }
         let count = batch.len();
-        let points = std::mem::take(batch);
-
-        // Attempt upsert with 1 retry on transient error
-        let mut last_err = None;
-        for attempt in 0..2 {
-            if attempt > 0 {
-                tokio::time::sleep(Duration::from_millis(200)).await;
+        match self.index.put(collection, std::mem::take(batch)).await {
+            Ok(()) => stats.chunks_upserted += count,
+            Err(error) => {
+                warn!(%error, count, "Cozo vector batch write failed");
+                stats.errors += 1;
             }
-            match self
-                .qdrant
-                .upsert_points(UpsertPointsBuilder::new(collection, points.clone()))
-                .await
-            {
-                Ok(_) => {
-                    stats.chunks_upserted += count;
-                    return;
-                }
-                Err(e) => {
-                    last_err = Some(e);
-                }
-            }
-        }
-
-        if let Some(e) = last_err {
-            warn!(error = %e, count, "Qdrant upsert failed after retry");
-            stats.errors += 1;
         }
     }
 
@@ -790,16 +727,6 @@ fn dedupe_results_by_file(results: &mut Vec<RagResult>) {
         );
         seen.insert(key)
     });
-}
-
-fn is_already_exists(err: &QdrantError) -> bool {
-    match err {
-        QdrantError::ResponseError { status }
-        | QdrantError::ResourceExhaustedError { status, .. } => {
-            status.code() == tonic::Code::AlreadyExists
-        }
-        _ => false,
-    }
 }
 
 // ─── source enrichment ─────────────────────────────────────────────────────────
@@ -1217,28 +1144,9 @@ fn stable_uuid(hash: &str) -> String {
     }
 }
 
-// ─── Qdrant connection ────────────────────────────────────────────────────────
-
-/// Build a Qdrant client from environment.
-///
-/// Connection is always TCP to localhost. When the qdrant container socket is
-/// declared via `UNIX_SOCKET_ENDPOINTS` (e.g. `qdrant:/run/qdrant.sock:6334`),
-/// xray transparently proxies `127.0.0.1:6334` → container unix socket using
-/// its native domain-socket (`"network": "ds"`) outbound — no custom tonic
-/// connector needed here.
-///
-/// Override the URL with `COGNITIVE_QDRANT_URL`.
-pub fn qdrant_client_from_env() -> Result<Qdrant> {
-    let url =
-        std::env::var("COGNITIVE_QDRANT_URL").unwrap_or_else(|_| "http://127.0.0.1:6334".into());
-    Qdrant::from_url(&url)
-        .build()
-        .context("Failed to build Qdrant client")
-}
-
-/// Map a scored Qdrant point + payload into a `RagResult`.
-fn point_to_result(pt: ScoredPoint) -> RagResult {
-    let p = serde_json::to_value(&pt.payload).unwrap_or_default();
+/// Map a scored Cozo point and its metadata into a retrieval result.
+fn point_to_result(pt: SemanticHit) -> RagResult {
+    let p = pt.payload;
     RagResult {
         retrieval_collection: str_field(&p, "retrieval_collection"),
         score: pt.score,

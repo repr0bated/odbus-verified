@@ -31,7 +31,7 @@ const INDEXED_BLOCK_FILE: &str = ".cozo-vector-index-block";
 /// Publish a durable complete watermark without exposing a truncated destination.
 /// Keep blocking writes, synchronization and rename in one task so cancellation
 /// cannot split publication; readers only open the final checkpoint path.
-async fn publish_checkpoint(path: PathBuf, content: Vec<u8>) -> Result<()> {
+pub(crate) async fn publish_checkpoint(path: PathBuf, content: Vec<u8>) -> Result<()> {
     tokio::task::spawn_blocking(move || -> Result<()> {
         let parent = path
             .parent()

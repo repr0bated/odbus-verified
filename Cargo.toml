@@ -117,7 +117,6 @@ tower-http = { version = "0.5", features = ["cors", "fs", "trace", "compression-
 reqwest = { version = "0.11", features = ["json", "stream"] }
 
 # Vector DB
-qdrant-client = "1.20" # 1.20 uses tonic 0.14 (1.18 pulled in a second tonic 0.12)
 
 # Graph DB — Datalog relational-graph-vector DB
 # Cozo is the durable registry; RocksDB is its embedded persistence engine.

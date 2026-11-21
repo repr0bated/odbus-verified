@@ -97,7 +97,6 @@ chrono = { workspace = true }
 futures = "0.3"
 async-stream = "0.3"
 base64 = "0.21"
-qdrant-client = "1.20" # 1.20 uses tonic 0.14 (1.18 pulled in a second tonic 0.12)
 rcgen = "0.13"
 op-llm = { path = "../op-llm" }
 

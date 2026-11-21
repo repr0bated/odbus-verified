@@ -5,7 +5,7 @@
 //! 2. Chatbot soul — the singleton control-plane chatbot's memory identity
 //! 3. Container memory — user gets container at registration, soul + domain namespace
 //!
-//! Post-turn: detect memorable info, write to CozoDB (durable) + Qdrant (semantic)
+//! Post-turn: detect memorable info, write to CozoDB (durable) + Cozo index (semantic)
 //! MEMORY_INDEX: one key per namespace, slug-per-line orientation
 
 /// Existing soul-record key for the control-plane chatbot, not a container ID.
@@ -14,7 +14,7 @@ pub const CHATBOT_SOUL_ID: &str = "assistant";
 use anyhow::{Context, Result};
 use chrono::Utc;
 use op_cognitive::memory_store::{CognitiveMemoryStore, EntryQuery, MemoryEntry};
-use op_cognitive::qdrant_shuttle::QdrantSemanticShuttle;
+use op_cognitive::semantic_shuttle::CozoSemanticShuttle;
 use op_llm::provider::ChatMessage;
 use regex::Regex;
 use serde_json::{Value, json};
@@ -71,10 +71,10 @@ impl SessionMemory {
     }
 }
 
-/// Memory loop — owns CozoDB + Qdrant for chatbot memory
+/// Memory loop — owns CozoDB + Cozo index for chatbot memory
 pub struct MemoryLoop {
     cozo: Arc<CognitiveMemoryStore>,
-    qdrant: Option<Arc<QdrantSemanticShuttle>>,
+    semantic: Option<Arc<CozoSemanticShuttle>>,
     /// Regex for detecting memorable phrases in conversation
     memorable_regex: Regex,
 }
@@ -83,15 +83,15 @@ impl MemoryLoop {
     pub fn new(cozo: Arc<CognitiveMemoryStore>) -> Self {
         Self {
             cozo,
-            qdrant: None,
+            semantic: None,
             memorable_regex: Regex::new(
                 r"(?i)\b(always|never|prefer|my\s+(?:name|email|project)|our\s+project|decided\s+to|goal\s+is|important|remember\s+that|don't\s+forget)\b"
             ).expect("hardcoded regex pattern is valid"),
         }
     }
 
-    pub fn with_qdrant(mut self, qdrant: Arc<QdrantSemanticShuttle>) -> Self {
-        self.qdrant = Some(qdrant);
+    pub fn with_semantic_index(mut self, semantic: Arc<CozoSemanticShuttle>) -> Self {
+        self.semantic = Some(semantic);
         self
     }
 
@@ -190,9 +190,9 @@ impl MemoryLoop {
         // Filter out MEMORY_INDEX and format
         let domain_block = Self::format_entries(&entries);
 
-        // If Qdrant available and query text provided, do semantic boost
-        if let (Some(qdrant), Some(query)) = (&self.qdrant, query_text) {
-            match Self::semantic_boost(qdrant, namespace, query, &entries).await {
+        // If Cozo index available and query text provided, do semantic boost
+        if let (Some(semantic), Some(query)) = (&self.semantic, query_text) {
+            match Self::semantic_boost(semantic, namespace, query, &entries).await {
                 Ok(boosted) => return Ok((index_block, boosted)),
                 Err(e) => warn!("semantic boost failed, using full entries: {}", e),
             }
@@ -201,9 +201,9 @@ impl MemoryLoop {
         Ok((index_block, domain_block))
     }
 
-    /// Semantic boost: embed query, search Qdrant, return matched entries in priority order
+    /// Semantic boost: embed query, search Cozo index, return matched entries in priority order
     async fn semantic_boost(
-        qdrant: &Arc<QdrantSemanticShuttle>,
+        semantic: &Arc<CozoSemanticShuttle>,
         namespace: &str,
         query: &str,
         entries: &[MemoryEntry],
@@ -213,16 +213,16 @@ impl MemoryLoop {
         }
 
         let container_id = namespace.strip_prefix("container:").unwrap_or(namespace);
-        let embedding = qdrant
+        let embedding = semantic
             .embed_query_text(query)
             .await
             .context("failed to vectorize the session memory query")?;
-        let hits = qdrant
+        let hits = semantic
             .search_user_memory(embedding, container_id, entries.len() as u64)
             .await
             .context("failed to search vectorized session memory")?;
 
-        // Qdrant determines priority, while CozoDB remains the source of truth
+        // The semantic index ranks entries, while CozoDB remains the source of truth
         // for the value and tags injected into the prompt. Ignore stale vector
         // hits, de-duplicate entry keys, then append unmatched Cozo entries so
         // semantic retrieval boosts relevant memory without hiding the rest.
@@ -237,13 +237,13 @@ impl MemoryLoop {
             };
             if prioritized
                 .iter()
-                .any(|entry: &&MemoryEntry| entry.key.as_str() == entry_key.as_str())
+                .any(|entry: &&MemoryEntry| entry.key.as_str() == entry_key)
             {
                 continue;
             }
             if let Some(entry) = entries
                 .iter()
-                .find(|entry| entry.key.as_str() == entry_key.as_str())
+                .find(|entry| entry.key.as_str() == entry_key)
             {
                 prioritized.push(entry);
             }
@@ -288,13 +288,13 @@ impl MemoryLoop {
         tool_calls: Vec<(String, Value)>,
     ) -> JoinHandle<Result<()>> {
         let cozo = Arc::clone(&self.cozo);
-        let qdrant = self.qdrant.as_ref().map(Arc::clone);
+        let semantic = self.semantic.as_ref().map(Arc::clone);
         let regex = self.memorable_regex.clone();
 
         tokio::spawn(async move {
             let result = Self::post_turn_memory(
                 &cozo,
-                qdrant.as_ref(),
+                semantic.as_ref(),
                 &regex,
                 &container_id,
                 &user_message,
@@ -311,7 +311,7 @@ impl MemoryLoop {
 
     async fn post_turn_memory(
         cozo: &Arc<CognitiveMemoryStore>,
-        qdrant: Option<&Arc<QdrantSemanticShuttle>>,
+        semantic: Option<&Arc<CozoSemanticShuttle>>,
         regex: &Regex,
         container_id: &str,
         user_message: &str,
@@ -351,7 +351,7 @@ impl MemoryLoop {
         let mut stored_memories = Vec::with_capacity(detected_memories);
 
         // Write to CozoDB (durable). The returned entry id is also the stable
-        // Qdrant point id, keeping repeated writes aligned across both stores.
+        // Cozo index point id, keeping repeated writes aligned across both stores.
         for (key, cat, value) in &new_memories {
             match cozo
                 .store_entry(
@@ -380,10 +380,10 @@ impl MemoryLoop {
             Self::update_memory_index(cozo, &ns, &index_entries).await?;
         }
 
-        // Mirror successfully persisted memories into Qdrant. Semantic storage
-        // is best-effort: a Voyage/Qdrant outage must not roll back durable Cozo
+        // Mirror successfully persisted memories into Cozo index. Semantic storage
+        // is best-effort: a Voyage/Cozo index outage must not roll back durable Cozo
         // memory or prevent the remaining memories from being attempted.
-        if let Some(qdrant) = qdrant {
+        if let Some(semantic) = semantic {
             for (key, _, value, point_id) in &stored_memories {
                 let content = Self::memory_content(value);
                 if content.trim().is_empty() {
@@ -391,11 +391,11 @@ impl MemoryLoop {
                 }
 
                 let result: Result<()> = async {
-                    let vector = qdrant
+                    let vector = semantic
                         .embed_document(&content)
                         .await
                         .with_context(|| format!("failed to vectorize memory '{key}'"))?;
-                    qdrant
+                    semantic
                         .upsert_user_memory(point_id.clone(), vector, container_id, key, &content)
                         .await
                         .with_context(|| format!("failed to upsert vectorized memory '{key}'"))

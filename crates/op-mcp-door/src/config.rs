@@ -30,13 +30,10 @@ pub struct Config {
     pub allowed_origins: Vec<String>,
     pub public_rate_per_minute: u32,
     pub max_body_bytes: usize,
-    /// Read-only Qdrant REST endpoint probed for vector readiness.
-    pub qdrant_rest_url: String,
-    /// Optional file holding the Qdrant API key (never logged).
-    pub qdrant_api_key_file: Option<PathBuf>,
     /// Collection override for the coding gate.
     pub coding_collections: Option<Vec<String>>,
     pub footprint_cozo_path: PathBuf,
+    pub semantic_cozo_path: PathBuf,
 }
 
 impl Config {
@@ -126,10 +123,10 @@ impl Config {
             allowed_origins,
             public_rate_per_minute,
             max_body_bytes,
-            qdrant_rest_url: value("OP_MCP_QDRANT_REST_URL")
-                .unwrap_or_else(|| crate::readiness::DEFAULT_QDRANT_REST_URL.to_owned()),
-            qdrant_api_key_file: value("OP_MCP_QDRANT_API_KEY_FILE").map(PathBuf::from),
             coding_collections: collections("OP_MCP_CODING_COLLECTIONS")?,
+            semantic_cozo_path: value("OPDBUS_SEMANTIC_COZO_PATH")
+                .unwrap_or_else(|| "/var/lib/opdbus/semantic-index".into())
+                .into(),
             footprint_cozo_path: value("OPDBUS_FOOTPRINT_COZO_PATH")
                 .unwrap_or_else(|| "/var/lib/opdbus/snowball-footprint-index".into())
                 .into(),
@@ -223,16 +220,12 @@ mod tests {
     #[test]
     fn vector_readiness_defaults_and_overrides() {
         let config = Config::from_lookup(lookup(&[])).unwrap();
-        assert_eq!(config.qdrant_rest_url, "http://127.0.0.1:6333");
-        assert!(config.qdrant_api_key_file.is_none());
         assert!(config.coding_collections.is_none());
         let config = Config::from_lookup(lookup(&[
-            ("OP_MCP_QDRANT_REST_URL", "http://10.0.0.2:6333"),
             ("OP_MCP_CODING_COLLECTIONS", "a, b ,"),
             ("OPDBUS_FOOTPRINT_COZO_PATH", "/test/cozo"),
         ]))
         .unwrap();
-        assert_eq!(config.qdrant_rest_url, "http://10.0.0.2:6333");
         assert_eq!(
             config.coding_collections,
             Some(vec!["a".to_owned(), "b".to_owned()])

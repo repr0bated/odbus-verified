@@ -17,8 +17,8 @@
 //! ```
 //!
 //! Configuration is env-driven and shared with the rest of the workspace:
-//! `OPDBUS_SNOWBALL_PATH`, `OPDBUS_QDRANT_URL` (or `COGNITIVE_QDRANT_URL`),
-//! `OPDBUS_QDRANT_SNOWBALL_COLLECTION`, `OPDBUS_QDRANT_SNOWBALL_DIM`.
+//! `OPDBUS_SNOWBALL_PATH`, `OPDBUS_FOOTPRINT_COZO_PATH`, and
+//! `OPDBUS_SNOWBALL_VECTOR_DIM`.
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
