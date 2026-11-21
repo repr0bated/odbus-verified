@@ -1,0 +1,12 @@
+#!/bin/sh
+exec 2>&1
+logdir=/var/log/op-dbus/op-runit-systemctl
+# svlog exists on provisioned seeds; hosts without it (antix1) use _runit-log.
+u=svlog
+id -u "$u" >/dev/null 2>&1 || u=_runit-log
+g=$(id -gn "$u")
+install -d -m 755 -o "$u" -g "$g" "$logdir"
+rm -f "$logdir/lock"
+printf '%s\n' 's4000000' 'n10' 't86400' >"$logdir/config"
+chown -R "$u:$g" "$logdir" 2>/dev/null || true
+exec chpst -u "$u" svlogd -tt "$logdir"

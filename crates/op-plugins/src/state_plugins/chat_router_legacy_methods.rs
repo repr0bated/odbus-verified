@@ -1,8 +1,8 @@
-//! Native-observation and durable role-assignment methods 
+//! Native-observation and durable role-assignment methods
 //! chat_router surface. This module owns no provider/config/schema authority.
 
-use super::runtime_documents::{RuntimeDocument, RuntimeDocuments};
 use super::chat_router::{ObservedChatRouterState, ResolveRouteInput};
+use super::runtime_documents::{RuntimeDocument, RuntimeDocuments};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};

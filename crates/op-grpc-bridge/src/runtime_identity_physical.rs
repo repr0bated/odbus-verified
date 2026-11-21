@@ -233,16 +233,21 @@ impl PhysicalRootPlan {
     }
 }
 
-async fn admission(engine: &NativeOwner, actor: &VerifiedIdentityActor<'_>, method: &str,
-    contract: Option<&IdentityContract>) -> Result<IdentityContract> {
+async fn admission(
+    engine: &NativeOwner,
+    actor: &VerifiedIdentityActor<'_>,
+    method: &str,
+    contract: Option<&IdentityContract>,
+) -> Result<IdentityContract> {
     engine.require_actor(actor.actor_id)?;
     ensure!(engine.method == method, "physical migration method changed");
     engine.revalidate().await?;
     let current = strict_identity_contract()?;
-    if let Some(original) = contract { same_identity_contract(original)?; }
+    if let Some(original) = contract {
+        same_identity_contract(original)?;
+    }
     Ok(current)
 }
-
 
 async fn read_receipt(
     store: &IdentitySledStore,
@@ -307,7 +312,13 @@ pub(super) async fn preflight(
 ) -> Result<JsonValue> {
     let method = "inspect_own_physical_root_migration_preflight";
     let contract = admission(engine, &actor, method, None).await?;
-    engine.retain(store.lifecycle_lock(actor.session_id).await.lock_owned().await);
+    engine.retain(
+        store
+            .lifecycle_lock(actor.session_id)
+            .await
+            .lock_owned()
+            .await,
+    );
     let revision = load_revision(store, actor.session_id).await?;
     let sled = revision_sled(&revision)?.context("physical migration identity absent")?;
     verify_owner(engine, &actor, &sled).await?;
@@ -452,7 +463,13 @@ pub(super) async fn migrate(
         "physical migration requires verified own-session metadata"
     );
     let contract = admission(engine, &actor, METHOD, None).await?;
-    engine.retain(store.lifecycle_lock(actor.session_id).await.lock_owned().await);
+    engine.retain(
+        store
+            .lifecycle_lock(actor.session_id)
+            .await
+            .lock_owned()
+            .await,
+    );
     engine.revalidate().await?;
     let expected = load_revision(store, actor.session_id).await?;
     let mut sled = revision_sled(&expected)?.context("physical migration identity absent")?;
@@ -595,4 +612,3 @@ pub(super) async fn observe_power(
     engine.observe_incus(&snapshot).await?;
     Ok(Some(instance))
 }
-

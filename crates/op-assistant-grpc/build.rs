@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "proto/assistant/memory.proto",
     ];
 
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_server(true)
         .build_client(true)
         .file_descriptor_set_path(out_dir.join("assistant_descriptor.bin"))

@@ -4,7 +4,7 @@ umask 022
 
 ROOT=${OP_EXECUTION_PYTHON_ROOT:?set OP_EXECUTION_PYTHON_ROOT}
 ROOT=$(realpath -m -- "$ROOT")
-REPO=${OP_EXECUTION_PYTHON_REPO:-$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)}
+REPO=${OP_EXECUTION_PYTHON_REPO:-$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)}
 LOCK=${OP_EXECUTION_PYTHON_LOCK:-$REPO/deploy/config/execution-python-requirements.lock}
 PYTHON=${OP_EXECUTION_PYTHON_BIN:-/usr/bin/python3}
 # A standalone runtime can travel with the release instead of depending on a

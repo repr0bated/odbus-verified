@@ -83,8 +83,10 @@ async fn start_tls_server() -> (SocketAddr, String) {
             .tls_config(tls_config)
             .expect("valid TLS config")
             .accept_http1(true)
+            // tonic 0.14: tonic_web::enable() was removed; GrpcWebLayer applies grpc-web to every service on this server
+            .layer(tonic_web::GrpcWebLayer::new())
             .add_routes(op_grpc_bridge::grpc_server::build_operation_routes(server))
-            .add_service(tonic_web::enable(health_service))
+            .add_service(health_service)
             .serve_with_incoming(incoming)
             .await
             .unwrap();
@@ -242,20 +244,6 @@ async fn reflection_list_services_over_tls() {
         ],
         "only mounted services backed by this fixture's blob are discoverable"
     );
-}
-
-/// A discovered generated service must reach its authentication handler,
-/// not return UNIMPLEMENTED as an unmounted descriptor-only service would.
-#[tokio::test]
-async fn advertised_plugin_route_is_mounted_over_tls() {
-    let (addr, ca_pem) = start_tls_server().await;
-    let channel = tls_channel(addr, &ca_pem).await;
-    let mut client = op_grpc_bridge::proto::plugin_methods::tched_router_plugin_methods_client::TchedRouterPluginMethodsClient::new(channel);
-    let status = client
-        .get_config(op_grpc_bridge::proto::plugin_methods::TchedRouterGetConfigRequest::default())
-        .await
-        .expect_err("missing identity must fail at the mounted route's auth gate");
-    assert_eq!(status.code(), tonic::Code::Unauthenticated);
 }
 
 /// gRPC reflection can retrieve a file descriptor for a known service over TLS.

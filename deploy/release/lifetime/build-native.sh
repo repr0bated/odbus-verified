@@ -5,7 +5,7 @@ set -euo pipefail
 umask 077
 [[ $# -ge 3 && $# -le 4 ]] || { printf '%s\n' 'usage: build-native.sh KERNEL_GIT NEW_WORK_DIRECTORY JOBS [native|debug]' >&2; exit 2; }
 [[ $EUID -ne 0 ]] || { printf '%s\n' 'Build as an unprivileged user; no host installation is supported.' >&2; exit 2; }
-assets=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+assets=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 repository=$(realpath -- "$1")
 work=$(realpath -m -- "$2")
 jobs=$3

@@ -8,8 +8,8 @@ use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use op_web::routes;
 use op_web::AppState;
+use op_web::routes;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -54,8 +54,7 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or(8080);
     // Tonic address on rtly-lungs. Never bind 0.0.0.0. The old page address
     // 10.0.0.4 is not an address on this interface.
-    let bind_hosts =
-        std::env::var("OP_WEB_BIND_ADDR").unwrap_or_else(|_| "10.0.0.2".to_string());
+    let bind_hosts = std::env::var("OP_WEB_BIND_ADDR").unwrap_or_else(|_| "10.0.0.2".to_string());
     let mut listeners = Vec::new();
     for bind_host in bind_hosts
         .split(',')

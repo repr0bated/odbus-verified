@@ -159,9 +159,8 @@ struct FlowRequest {
 
 /// An authenticated owner callback, executed after queue wait and CAS readback,
 /// immediately before the first modifying OpenFlow frame.
-pub type FlowAdmission = Arc<
-    dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync,
->;
+pub type FlowAdmission =
+    Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync>;
 
 const FLOW_QUEUE_LIMIT: usize = 128;
 
@@ -172,21 +171,36 @@ mod attributed_admission_tests {
 
     fn request(admission: FlowAdmission) -> (FlowRequest, oneshot::Receiver<Result<String>>) {
         let (reply, receiver) = oneshot::channel();
-        (FlowRequest {
-            flow_json: serde_json::json!({"table":7,"priority":123,
+        (
+            FlowRequest {
+                flow_json: serde_json::json!({"table":7,"priority":123,
                 "match_fields":{"ip":""},"actions":[{"type":"normal"}],
-                "idle_timeout":0,"hard_timeout":0}).to_string(),
-            delete: false, compare: true, verify_only: false, expected: None,
-            bridge: Some("fixture0".into()), admission: Some(admission), reply,
-        }, receiver)
+                "idle_timeout":0,"hard_timeout":0})
+                .to_string(),
+                delete: false,
+                compare: true,
+                verify_only: false,
+                expected: None,
+                bridge: Some("fixture0".into()),
+                admission: Some(admission),
+                reply,
+            },
+            receiver,
+        )
     }
 
     #[tokio::test]
     async fn stalled_partial_write_returns_fatal_transport_timeout() {
         let (mut controller, mut switch) = tokio::io::duplex(2);
         let bytes = build_echo_request(7);
-        let error = send_msg_with_timeout(&mut controller, &bytes, Duration::from_millis(10)).await.unwrap_err();
-        assert!(error.downcast_ref::<tokio::time::error::Elapsed>().is_some());
+        let error = send_msg_with_timeout(&mut controller, &bytes, Duration::from_millis(10))
+            .await
+            .unwrap_err();
+        assert!(
+            error
+                .downcast_ref::<tokio::time::error::Elapsed>()
+                .is_some()
+        );
         // The failed write already delivered a frame prefix: the connection
         // owner must close, not resend or interpret timeout as no submission.
         drop(controller);
@@ -197,50 +211,75 @@ mod attributed_admission_tests {
 
     #[tokio::test]
     async fn final_denial_or_cancellation_after_cas_readback_emits_no_flow_mod() {
-      for cancelled in [false, true] {
-        let calls = Arc::new(AtomicUsize::new(0));
-        let counted = calls.clone();
-        let admission: FlowAdmission = Arc::new(move || {
-            counted.fetch_add(1, Ordering::SeqCst);
-            Box::pin(async { anyhow::bail!("policy revoked while queued") })
-        });
-        let (request, receiver) = request(admission);
-        let receiver = if cancelled { drop(receiver); None } else { Some(receiver) };
-        let (mut controller, mut switch) = tokio::io::duplex(4096);
-        let peer = async move {
-            let query = recv_msg(&mut switch).await.unwrap();
-            assert_eq!(query.msg_type, 18);
-            send_msg(&mut switch, &build_raw_msg(MessageType::MultipartReply,
-                query.xid, &[0, 1, 0, 0, 0, 0, 0, 0])).await.unwrap();
-            // The controller closes after admission denial. Any additional
-            // complete frame here would be an unauthorized effect.
-            assert!(tokio::time::timeout(Duration::from_secs(1), recv_msg(&mut switch))
-                .await.unwrap().is_err());
-        };
-        let operation = async move {
-            let result = compare_exchange_flow(&mut controller, &request,
-                &HashMap::from([("fixture0".into(), 0xffff_fffe)]),
-                &HashMap::new(), &mut 1).await;
-            assert!(result.is_err());
-            assert_eq!(calls.load(Ordering::SeqCst), if cancelled { 0 } else { 1 });
-            drop(controller);
-        };
-        tokio::join!(peer, operation);
-        drop(receiver);
-      }
+        for cancelled in [false, true] {
+            let calls = Arc::new(AtomicUsize::new(0));
+            let counted = calls.clone();
+            let admission: FlowAdmission = Arc::new(move || {
+                counted.fetch_add(1, Ordering::SeqCst);
+                Box::pin(async { anyhow::bail!("policy revoked while queued") })
+            });
+            let (request, receiver) = request(admission);
+            let receiver = if cancelled {
+                drop(receiver);
+                None
+            } else {
+                Some(receiver)
+            };
+            let (mut controller, mut switch) = tokio::io::duplex(4096);
+            let peer = async move {
+                let query = recv_msg(&mut switch).await.unwrap();
+                assert_eq!(query.msg_type, 18);
+                send_msg(
+                    &mut switch,
+                    &build_raw_msg(
+                        MessageType::MultipartReply,
+                        query.xid,
+                        &[0, 1, 0, 0, 0, 0, 0, 0],
+                    ),
+                )
+                .await
+                .unwrap();
+                // The controller closes after admission denial. Any additional
+                // complete frame here would be an unauthorized effect.
+                assert!(
+                    tokio::time::timeout(Duration::from_secs(1), recv_msg(&mut switch))
+                        .await
+                        .unwrap()
+                        .is_err()
+                );
+            };
+            let operation = async move {
+                let result = compare_exchange_flow(
+                    &mut controller,
+                    &request,
+                    &HashMap::from([("fixture0".into(), 0xffff_fffe)]),
+                    &HashMap::new(),
+                    &mut 1,
+                )
+                .await;
+                assert!(result.is_err());
+                assert_eq!(calls.load(Ordering::SeqCst), if cancelled { 0 } else { 1 });
+                drop(controller);
+            };
+            tokio::join!(peer, operation);
+            drop(receiver);
+        }
     }
 
     #[tokio::test]
     async fn full_queue_fails_before_admission() {
         let (sender, mut receiver) = mpsc::channel(1);
-        let admission: FlowAdmission = Arc::new(|| Box::pin(async { anyhow::bail!("must not run") }));
+        let admission: FlowAdmission =
+            Arc::new(|| Box::pin(async { anyhow::bail!("must not run") }));
         let (queued, _reply) = request(admission);
         assert!(sender.try_send(queued).is_ok());
         let handle = OpenFlowControllerHandle {
             active_conn: Arc::new(Mutex::new(Some(sender))),
             installed_flows: Arc::new(Mutex::new(Vec::new())),
         };
-        let result = handle.compare_exchange_flow("fixture0".into(), "{}".into(), None, false).await;
+        let result = handle
+            .compare_exchange_flow("fixture0".into(), "{}".into(), None, false)
+            .await;
         assert!(result.unwrap_err().to_string().contains("queue"));
         assert!(receiver.try_recv().is_ok());
     }
@@ -436,11 +475,16 @@ async fn send_msg(stream: &mut impl OfIo, bytes: &[u8]) -> Result<()> {
     send_msg_with_timeout(stream, bytes, Duration::from_secs(10)).await
 }
 
-async fn send_msg_with_timeout(stream: &mut impl OfIo, bytes: &[u8], timeout: Duration) -> Result<()> {
+async fn send_msg_with_timeout(
+    stream: &mut impl OfIo,
+    bytes: &[u8],
+    timeout: Duration,
+) -> Result<()> {
     // A timeout can interrupt a partially written frame. Return the transport
     // error to the connection owner: reconnect, never retry the FlowMod or
     // continue using this stream. The peer may already have observed an effect.
-    tokio::time::timeout(timeout, stream.write_all(bytes)).await
+    tokio::time::timeout(timeout, stream.write_all(bytes))
+        .await
         .context("OpenFlow write timed out; reconnect required; outcome may be uncertain")?
         .context("sending OF message")
 }
@@ -862,11 +906,19 @@ async fn compare_exchange_flow(
     }
     let entries = flow_verify::query(stream, &desired, xid).await?;
     flow_verify::verify(&entries, expected.as_ref(), &desired)?;
-    anyhow::ensure!(!request.reply.is_closed(), "OpenFlow operation was cancelled before effect");
+    anyhow::ensure!(
+        !request.reply.is_closed(),
+        "OpenFlow operation was cancelled before effect"
+    );
     if let Some(admission) = &request.admission {
-        admission().await.context("OpenFlow final admission denied before effect")?;
+        admission()
+            .await
+            .context("OpenFlow final admission denied before effect")?;
     }
-    anyhow::ensure!(!request.reply.is_closed(), "OpenFlow operation was cancelled before effect");
+    anyhow::ensure!(
+        !request.reply.is_closed(),
+        "OpenFlow operation was cancelled before effect"
+    );
     if request.delete {
         push_flow_delete(stream, &request.flow_json, ports, macs, xid).await?;
     } else {
@@ -1137,7 +1189,8 @@ impl OpenFlowControllerHandle {
         expected: Option<String>,
         delete: bool,
     ) -> Result<String> {
-        self.compare_exchange_flow_inner(bridge, flow_json, expected, delete, None).await
+        self.compare_exchange_flow_inner(bridge, flow_json, expected, delete, None)
+            .await
     }
 
     /// Authenticated bridge admission is rechecked inside the serialized sink.
@@ -1149,7 +1202,8 @@ impl OpenFlowControllerHandle {
         delete: bool,
         admission: FlowAdmission,
     ) -> Result<String> {
-        self.compare_exchange_flow_inner(bridge, flow_json, expected, delete, Some(admission)).await
+        self.compare_exchange_flow_inner(bridge, flow_json, expected, delete, Some(admission))
+            .await
     }
 
     async fn compare_exchange_flow_inner(
@@ -1160,8 +1214,14 @@ impl OpenFlowControllerHandle {
         delete: bool,
         admission: Option<FlowAdmission>,
     ) -> Result<String> {
-        anyhow::ensure!(bridge.len().saturating_add(flow_json.len()).saturating_add(expected.as_ref().map_or(0, String::len)) <= 65_536,
-            "OpenFlow CAS transcript exceeds its byte bound");
+        anyhow::ensure!(
+            bridge
+                .len()
+                .saturating_add(flow_json.len())
+                .saturating_add(expected.as_ref().map_or(0, String::len))
+                <= 65_536,
+            "OpenFlow CAS transcript exceeds its byte bound"
+        );
         anyhow::ensure!(
             !delete || expected.as_ref() == Some(&flow_json),
             "delete requires the exact expected flow"
@@ -1195,8 +1255,10 @@ impl OpenFlowControllerHandle {
         flow_json: String,
         absent: bool,
     ) -> Result<bool> {
-        anyhow::ensure!(bridge.len().saturating_add(flow_json.len()) <= 65_536,
-            "OpenFlow verification transcript exceeds its byte bound");
+        anyhow::ensure!(
+            bridge.len().saturating_add(flow_json.len()) <= 65_536,
+            "OpenFlow verification transcript exceeds its byte bound"
+        );
         let (tx, rx) = oneshot::channel();
         self.active_conn
             .lock()

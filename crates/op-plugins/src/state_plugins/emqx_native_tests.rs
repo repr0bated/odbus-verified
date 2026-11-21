@@ -1,8 +1,8 @@
 use super::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{
-    atomic::{AtomicU8, Ordering},
     Arc, Mutex,
+    atomic::{AtomicU8, Ordering},
 };
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -434,10 +434,12 @@ async fn retained_read_methods_use_authenticated_native_readback() {
     );
     assert!(requests.iter().all(|request| request.authorized));
     assert!(requests.iter().all(|request| request.method == "GET"));
-    assert!(fixture
-        .runit_calls()
-        .iter()
-        .all(|call| call == "Status:emqx"));
+    assert!(
+        fixture
+            .runit_calls()
+            .iter()
+            .all(|call| call == "Status:emqx")
+    );
 }
 
 #[tokio::test]
@@ -583,23 +585,29 @@ async fn native_auth_and_lifecycle_rejections_fail_without_false_success() {
         .expect_err("D-Bus lifecycle rejection must surface");
     assert!(error.to_string().contains("rejected EMQX Start"));
     assert!(rejected.http.requests().is_empty());
-    assert!(rejected
-        .runit_calls()
-        .iter()
-        .any(|call| call == "Start:emqx"));
+    assert!(
+        rejected
+            .runit_calls()
+            .iter()
+            .any(|call| call == "Start:emqx")
+    );
 
     let unreadable = NativeFixture::spawn(false, false, ApiMode::Unauthorized).await;
     let error = unreadable
         .call("start", json!({}))
         .await
         .expect_err("accepted lifecycle without authenticated health readback must fail");
-    assert!(error
-        .to_string()
-        .contains("accepted but broker health readback failed"));
-    assert!(unreadable
-        .runit_calls()
-        .iter()
-        .any(|call| call == "Start:emqx"));
+    assert!(
+        error
+            .to_string()
+            .contains("accepted but broker health readback failed")
+    );
+    assert!(
+        unreadable
+            .runit_calls()
+            .iter()
+            .any(|call| call == "Start:emqx")
+    );
 }
 
 #[tokio::test]
@@ -616,7 +624,9 @@ async fn native_inventory_policy_violations_fail_closed() {
         .call("list_hooks", json!({}))
         .await
         .expect_err("unauthenticated ExHook must violate transport policy");
-    assert!(hook_error
-        .to_string()
-        .contains("unauthenticated or non-local"));
+    assert!(
+        hook_error
+            .to_string()
+            .contains("unauthenticated or non-local")
+    );
 }

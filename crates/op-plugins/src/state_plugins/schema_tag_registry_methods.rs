@@ -792,7 +792,7 @@ pub fn apply_tag_registration(
 
 /// Pure expected-revision update helper for the plugin's owner-scoped store.
 pub fn apply_policy_update(
-    records: &mut Vec<PolicyRecord>,
+    records: &mut [PolicyRecord],
     owner_id: &str,
     input: UpdatePolicyInput,
     resolved_mappings: Vec<CanonicalMappingRef>,

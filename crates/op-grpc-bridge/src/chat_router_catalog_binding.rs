@@ -1,4 +1,4 @@
-//! Prior name: tched_catalog_binding.
+//! Prior name: _3tched_catalog_binding.
 //! Narrow ordinary-profile binding selection. The owner catalog supplies the
 //! independent endpoint trust; native observations never manufacture that trust.
 
@@ -80,7 +80,7 @@ fn endpoint(value: &str) -> Result<reqwest::Url> {
     Ok(url)
 }
 
-fn endpoint_matches(uri: &str, prefix: &str) -> Result<bool> {
+pub(crate) fn endpoint_matches(uri: &str, prefix: &str) -> Result<bool> {
     let actual = endpoint(uri)?;
     let trusted = endpoint(prefix)?;
     let path = trusted.path().trim_end_matches('/');

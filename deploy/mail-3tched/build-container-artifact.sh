@@ -10,8 +10,8 @@ die() {
     exit 1
 }
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)
 RELEASE_DIR=${OP_MAIL_RELEASE_DIR:-"$PROJECT_ROOT/target/release"}
 OUTPUT_DIR=${OP_MAIL_ARTIFACT_DIR:-"$PROJECT_ROOT/target/container-artifacts"}
 BINARY="$RELEASE_DIR/op-mail-admin"
@@ -104,7 +104,7 @@ commit=$(git -C "$PROJECT_ROOT" rev-parse HEAD 2>/dev/null || printf unknown)
     readelf -d "$BINARY" |
         sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort
     printf '\n[sha256]\n'
-    (CDPATH= cd -- "$stage" && find apply-rootfs.sh rootfs -type f -print | sort | while IFS= read -r file; do
+    (CDPATH='' cd -- "$stage" && find apply-rootfs.sh rootfs -type f -print | sort | while IFS= read -r file; do
         printf '%s  %s\n' "$(sha256sum "$file" | cut -d' ' -f1)" "$file"
     done)
 } > "$stage/MANIFEST"

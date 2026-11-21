@@ -13,6 +13,7 @@ members = [
     "crates/op-state",
     "crates/op-state-store",
     "crates/op-blob",
+    "crates/op-oscal-subid",
     "crates/op-jsonrpc",
     "crates/op-llm",
     "crates/op-network",
@@ -39,7 +40,11 @@ members = [
     "crates/op-xray-daemon",
     "crates/op-dbus-cli",
     "crates/op-chat-responder",
-    "crates/threetched-fs",
+    "crates/_3tched-fs",
+    "crates/cozo-ublk",
+    "crates/op-container",
+    "crates/op-tunnel-mux",
+    "crates/op-mcp-door",
 ]
 exclude = ["crates/op-uds-relay", "hackathon"]
 
@@ -52,7 +57,7 @@ license = "Apache-2.0"
 [workspace.dependencies]
 # Internal Crates
 # ZeroClaw base runtime — imported for its REAL types (config, tools, providers).
-# The sealed tched_router blob is projected from these, not from hand-written structs.
+# The sealed threetched blob is projected from these, not from hand-written structs.
 # default-features = false: skip nostr/prometheus/skill-creation extras.
 # In-repo stand-in so this workspace loads without the live-host checkout.
 op-core = { path = "crates/op-core" }
@@ -69,6 +74,8 @@ op-dbus-model = { path = "crates/op-dbus-model" }
 op-execution-tracker = { path = "crates/op-execution-tracker" }
 op-state-store = { path = "crates/op-state-store" }
 op-blob = { path = "crates/op-blob" }
+# OSCAL subid registry taxonomy: single source of truth for subid categories.
+op-oscal-subid = { path = "crates/op-oscal-subid" }
 op-plugins = { path = "crates/op-plugins" }
 op-workflows = { path = "crates/op-workflows" }
 op-snowball = { path = "crates/op-snowball" }
@@ -110,11 +117,11 @@ tower-http = { version = "0.5", features = ["cors", "fs", "trace", "compression-
 reqwest = { version = "0.11", features = ["json", "stream"] }
 
 # Vector DB
-qdrant-client = "1.7"
+qdrant-client = "1.20" # 1.20 uses tonic 0.14 (1.18 pulled in a second tonic 0.12)
 
 # Graph DB — Datalog relational-graph-vector DB
 # Cozo is the durable registry; RocksDB is its embedded persistence engine.
-cozo = { version = "0.7.6", default-features = false, features = ["rayon", "storage-rocksdb"] }
+cozo = { version = "=0.7.6", default-features = false, features = ["rayon", "storage-rocksdb"] }
 
 # Error handling
 anyhow = "1"
@@ -142,14 +149,20 @@ glob = "0.3"
 mime_guess = "2.0"
 
 # gRPC
-tonic = { version = "0.12", features = ["tls", "tls-roots", "tls-webpki-roots"] }
-prost = "0.13"
-prost-types = "0.13"
-tonic-build = "0.12"
-tonic-reflection = "0.12"
-prost-reflect = { version = "0.14", features = ["serde"] }
-tonic-health = "0.12"
-tonic-web = "0.12"
+tonic = { version = "0.14", features = ["tls-ring", "tls-native-roots", "tls-webpki-roots"] }
+# tonic 0.14 moved prost codegen/codec out of tonic-build/tonic into these two crates
+tonic-prost = "0.14"
+tonic-prost-build = "0.14"
+# Official grpc-rust crate (preview, client-only public API). Used behind
+# op-grpc-bridge feature `grpc-preview`; see docs/grpc-migration-plan.md
+grpc = "0.9"
+prost = "0.14"
+prost-types = "0.14"
+tonic-build = "0.14"
+tonic-reflection = "0.14"
+prost-reflect = { version = "0.16", features = ["serde"] }
+tonic-health = "0.14"
+tonic-web = "0.14"
 
 # Databases
 rusqlite = { version = "0.37", features = ["bundled"] }
@@ -174,6 +187,8 @@ argon2 = "0.5"
 rand = "0.8"
 md5 = "0.7"
 blake3 = "1.5"
+crc32c = "0.6"
+zstd = "0.13"
 opentelemetry = { version = "0.22", features = ["metrics", "trace"] }
 prometheus = { version = "0.13", features = ["process"] }
 rustls = "0.23"

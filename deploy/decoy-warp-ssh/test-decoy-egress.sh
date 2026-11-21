@@ -1,7 +1,7 @@
 #!/bin/bash
 # Disposable native fixture; no official client or production namespace access.
 set -euo pipefail
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 if [ "$#" = 0 ]; then exec unshare --user --map-root-user --net "$0" --inside; fi
 [ "$1" = --inside ] || exit 1
 fixture=$(mktemp -d /tmp/decoy-egress-fixture.XXXXXX)

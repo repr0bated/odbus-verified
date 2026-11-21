@@ -394,7 +394,7 @@ impl JournalCursor {
                     None => "method_reservation_unknown",
                 };
                 anyhow::bail!(
-                    "{code}; operation_id={operation_id}; use tched_fs.get_receipt; do not retry automatically"
+                    "{code}; operation_id={operation_id}; use _3tched_fs.get_receipt; do not retry automatically"
                 );
             }
         };

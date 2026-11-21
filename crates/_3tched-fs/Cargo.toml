@@ -1,0 +1,50 @@
+[package]
+name = "_3tched-fs"
+version = "0.1.0"
+edition.workspace = true
+description = "Schema-driven FUSE projection over authoritative typed OP-DBUS blobs"
+license = "MIT"
+
+[lib]
+name = "_3tched_fs"
+
+[[bin]]
+name = "3tched-fs"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+blake3 = "1"
+clap = { version = "4", features = ["derive"] }
+fuser = { version = "0.16", default-features = false, features = ["abi-7-31"] }
+fs2 = "0.4"
+jsonschema = { version = "0.29", default-features = false }
+libc = "0.2"
+parking_lot = "0.12"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "time"] }
+rmcp = { version = "3.5", features = ["server", "transport-io"] }
+uuid = { version = "1", features = ["v4"] }
+zbus = { version = "5", features = ["p2p", "tokio"] }
+# The sealed schema's authority: it decodes every blob this crate projects.
+op-state-store = { workspace = true }
+op-core = { workspace = true }
+# Optional host-side IPFS publish/fetch of content-addressed views (feature "ipfs").
+# Minimal transport set: private (pnet) TCP + noise only; no upnp, quic,
+# websocket, gateway, delegated routing or DNS.
+rust-ipfs = { version = "0.16", optional = true, default-features = false, features = ["tcp", "noise", "ed25519", "pnet"] }
+connexa = { version = "0.5", optional = true, default-features = false, features = ["pnet"] }
+ipld-core = { version = "0.4", optional = true }
+# rust-ipfs verifies blocks through this table; 3tchedFS hashes are BLAKE3.
+multihash-codetable = { version = "0.2", optional = true, features = ["blake3"] }
+
+[features]
+ipfs = ["dep:rust-ipfs", "dep:connexa", "dep:ipld-core", "dep:multihash-codetable", "tokio/signal"]
+
+[dev-dependencies]
+tempfile = "3"
+rmcp = { version = "3.5", features = ["client", "server", "transport-io"] }

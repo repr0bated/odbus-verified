@@ -160,9 +160,7 @@ impl GeminiFallback {
         if config.is_some() {
             info!("Gemini fallback client initialized");
         } else {
-            info!(
-                "Gemini fallback unavailable (set GEMINI_API_KEY or COGNITIVE_GEMINI_API_KEY)"
-            );
+            info!("Gemini fallback unavailable (set GEMINI_API_KEY or COGNITIVE_GEMINI_API_KEY)");
         }
         Self {
             client: reqwest::Client::new(),

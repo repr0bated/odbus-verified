@@ -49,15 +49,21 @@ wait_dep() {
 # materializes the topology from conf.db and the ovsbr0-* units use plain `ip`.
 # That absence of a back-edge is what keeps this list cycle-free — check it with
 # deploy/runit/check-dep-cycles.py before any reboot.
-wait_dep opdbus-rundirs
+# Optional owners: waited for only when enabled in this host's runsvdir, so a
+# host that does not ship one (e.g. antix1 runs threetched-gateway instead of
+# the threetched daemon) still starts. identity-roots is deprecated.
+wait_dep_if_enabled() {
+    if [ -e "/etc/service/$1" ]; then wait_dep "$1"; else startup_phase "dependency-absent:$1"; fi
+}
 wait_dep opdbus-grants
 wait_dep dbus
-wait_dep unified-execution
-wait_dep op-runit-systemctl
-wait_dep op-session-bus
-wait_dep identity-roots
 wait_dep ovsdb-server
-wait_dep tched-router
+wait_dep_if_enabled opdbus-rundirs
+wait_dep_if_enabled unified-execution
+wait_dep_if_enabled op-runit-systemctl
+wait_dep_if_enabled op-session-bus
+wait_dep_if_enabled threetched
+wait_dep_if_enabled threetched-gateway
 # Identity storage restoration is owned independently by identity-roots. The
 # bridge waits for the storage owner's readiness before restoring active
 # service identities. The storage owner never depends on this bridge.
@@ -79,34 +85,34 @@ export OPDBUS_LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock
 # The native router's provider-only generation protocol requires a real paired
 # subject. Consume the operator-provisioned token from a root-only file; never
 # accept the secret itself from the broad environment file.
-export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
-export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
+export THREETCHED_RUNTIME_ENDPOINT="${THREETCHED_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
+export THREETCHED_RUNTIME_AGENT="${THREETCHED_RUNTIME_AGENT:-dashboard}"
 # Door selection is not limited to OpenCode profiles.
-export TCHED_ROUTER_REQUIRE_OPENCODE=0
+export THREETCHED_REQUIRE_OPENCODE=0
 startup_phase runtime-token
-TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
-unset TCHED_ROUTER_RUNTIME_TOKEN
-if [ ! -f "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ] || [ -L "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ]; then
-    echo "protected tched_router runtime token file is missing or not a regular file" >&2
+THREETCHED_RUNTIME_TOKEN_FILE=${THREETCHED_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/threetched-runtime-token}
+unset THREETCHED_RUNTIME_TOKEN
+if [ ! -f "$THREETCHED_RUNTIME_TOKEN_FILE" ] || [ -L "$THREETCHED_RUNTIME_TOKEN_FILE" ]; then
+    echo "protected threetched runtime token file is missing or not a regular file" >&2
     exit 78
 fi
-set -- $(stat -Lc '%u %a' "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
+set -- $(stat -Lc '%u %a' "$THREETCHED_RUNTIME_TOKEN_FILE")
 [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
-    echo "tched_router runtime token file must be root-owned with mode 0400 or 0600" >&2
+    echo "threetched runtime token file must be root-owned with mode 0400 or 0600" >&2
     exit 78
 }
-TCHED_ROUTER_RUNTIME_TOKEN=$(cat "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
-case "$TCHED_ROUTER_RUNTIME_TOKEN" in
+THREETCHED_RUNTIME_TOKEN=$(cat "$THREETCHED_RUNTIME_TOKEN_FILE")
+case "$THREETCHED_RUNTIME_TOKEN" in
     ''|*[!A-Za-z0-9._~-]*)
-        echo "tched_router runtime token file has an invalid token" >&2
+        echo "threetched runtime token file has an invalid token" >&2
         exit 78
         ;;
 esac
-[ "${#TCHED_ROUTER_RUNTIME_TOKEN}" -le 8192 ] || {
-    echo "tched_router runtime token exceeds its transport bound" >&2
+[ "${#THREETCHED_RUNTIME_TOKEN}" -le 8192 ] || {
+    echo "threetched runtime token exceeds its transport bound" >&2
     exit 78
 }
-export TCHED_ROUTER_RUNTIME_TOKEN
+export THREETCHED_RUNTIME_TOKEN
 export OPDBUS_READY_PATH="${OPDBUS_READY_PATH:-$DEFAULT_READY_PATH}"
 rm -f -- "$OPDBUS_READY_PATH"
 
@@ -144,23 +150,42 @@ until has_local_ipv4 10.0.0.2; do
 done
 startup_phase private-door-address-ready
 
-# The fresh runtime's only ingress is TLS at the existing private door.
-# Local filesystem callers use OPDBUS_LUNGS_SOCKET, not a second gRPC listener.
-FABRIC_BIND="10.0.0.2:8090"
+# The door belongs to the door-owning container (the control-plane chatbot):
+# its own tonic door ends TLS. This bridge owns the door tunnel (sealed plugin
+# `tunnel`): 10.0.0.2:8090 is spliced over /run/opdbus/tunnel/tunnel.sock into
+# that container. The host bridge's own tonic listens on loopback only, for
+# host-local callers. Filesystem callers use OPDBUS_LUNGS_SOCKET.
+FABRIC_BIND="127.0.0.1:8090"
 export OP_GRPC_BRIDGE_LISTEN="$FABRIC_BIND"
-unset OP_DBUS_GRPC_LISTEN TCHED_ROUTER_BIND_ADDR GRPC_BIND TCHED_ROUTER_UNIX_SOCKET
-export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
-export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
-unset TCHED_ROUTER_BROWSER_TLS_BIND_ADDR TCHED_ROUTER_BROWSER_TLS_CERT_FILE TCHED_ROUTER_BROWSER_TLS_KEY_FILE
+export OP_TUNNEL_DOOR="10.0.0.2:8090"
+export OP_TUNNEL_SOCKET=/run/opdbus/tunnel/tunnel.sock
+# Socketless bridge-hosted FUSE mounts (spec fusefs-socketless-dispatch):
+# container:3tched_mount:threetched_mount:call_owner_uid[:store_root], ';'-separated.
+# Optional override/disable knob only: unset or empty = auto-enumerate every
+# committed identity (active+anchored sled, Running container) under
+# /run/mounts/by-container/<native-name>/{3tchedFS,threetched}; an explicit
+# entry wins over the auto spec for that same container; the value
+# off/none/disabled turns bridge-hosted mounts off entirely. Never point an
+# entry at /run/mounts/3tchedFS or /run/mounts/threetched (standalone-owned).
+export OP_FUSE_LOCAL_MOUNTS="${OP_FUSE_LOCAL_MOUNTS:-}"
+unset OP_DBUS_GRPC_LISTEN THREETCHED_BIND_ADDR GRPC_BIND THREETCHED_UNIX_SOCKET
+export THREETCHED_TLS_CERT_FILE="${THREETCHED_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
+export THREETCHED_TLS_KEY_FILE="${THREETCHED_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
+unset THREETCHED_BROWSER_TLS_BIND_ADDR THREETCHED_BROWSER_TLS_CERT_FILE THREETCHED_BROWSER_TLS_KEY_FILE
 # EMQX starts after this bridge: do not wait for the broker here. The bridge
 # must bind its authenticated private ExHook backend before publishing ready.
 # The retained /mqtt route then relays to EMQX's verified loopback WSS backend.
 startup_phase emqx-prepare
-/usr/local/libexec/op-dbus/helpers/emqx-prepare
+# EMQX is deprecated: run its helper only where it is still installed.
+if [ -x /usr/local/libexec/op-dbus/helpers/emqx-prepare ]; then
+    /usr/local/libexec/op-dbus/helpers/emqx-prepare
+else
+    echo "emqx-prepare skipped: helper not installed (EMQX deprecated)"
+fi
 export OP_EMQX_EXHOOK_ENABLE=1
 export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
-export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE}"
-export OP_EMQX_EXHOOK_SERVER_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE}"
+export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${THREETCHED_TLS_CERT_FILE}"
+export OP_EMQX_EXHOOK_SERVER_KEY_FILE="${THREETCHED_TLS_KEY_FILE}"
 export OP_EMQX_EXHOOK_CLIENT_CA_FILE=/etc/emqx/certs/opdbus-ca.crt
 export OP_EMQX_EXHOOK_CLIENT_CERT_FILE=/etc/emqx/certs/emqx-exhook-client.crt
 # The bridge opens this append-only journal with mode 0600 and syncs every
@@ -172,6 +197,9 @@ export OP_AUTH_REPLAY_DB_PATH="${OP_AUTH_REPLAY_DB_PATH:-/var/lib/op-dbus/auth-r
 export OP_DECOY_NATIVE_CA_FILE="${OP_DECOY_NATIVE_CA_FILE:-/etc/op-dbus/decoy-native/ca.pem}"
 export OP_DECOY_NATIVE_CERT_FILE="${OP_DECOY_NATIVE_CERT_FILE:-/etc/op-dbus/decoy-native/bridge.pem}"
 export OP_DECOY_NATIVE_KEY_FILE="${OP_DECOY_NATIVE_KEY_FILE:-/etc/op-dbus/decoy-native/bridge-key.pem}"
+# Owner 2026-11-11: the identity Cozo store root is the Incus pool containers
+# directory; each container directory under it holds that identity's data.
+export IDENTITY_SLED_COZO_DB_PATH="${IDENTITY_SLED_COZO_DB_PATH:-/var/lib/incus/storage-pools/3tched-pool/containers}"
 export OPDBUS_SNOWBALL_PATH="${OPDBUS_SNOWBALL_PATH:-/var/lib/opdbus/snowball}"
 export OP_DBUS_CACHE_DIR="${OP_DBUS_CACHE_DIR:-/var/lib/opdbus/cache}"
 export OPDBUS_CACHE_PLACEMENT="${OPDBUS_CACHE_PLACEMENT:-local}"
@@ -190,11 +218,15 @@ if [ -x "$OP_NLM_BIN" ]; then
 else
     rm -f -- "$NLM_READY_DIR/notebooklm-mcp"
 fi
-# The singleton control-plane chatbot's service identity. These are public
-# selectors, not credentials; this identity belongs only to that chatbot.
-export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=}"
-export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}"
-export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
+# The singleton control-plane chatbot's service identity: its key is the decoy
+# WireGuard server key, kept once in the variable store. Session and
+# principal ids are derived from the key, never configured separately.
+. /etc/profile.d/op-dbus-env.sh
+: "${OP_CHATBOT_WIREGUARD_PUBKEY:?set /etc/op-dbus/env/op-chatbot-wireguard-pubkey}"
+export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="$OP_CHATBOT_WIREGUARD_PUBKEY"
+set -- $(/usr/local/bin/op-identity-accept derive --pubkey "$OP_CHATBOT_WIREGUARD_PUBKEY")
+export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="$1" OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="$2"
+set --
 # Provider credential-slot maintenance writes this host-owned configuration.
 # It must not point into the read-only release target.
 export OP_MODEL_PROVIDERS_PATH="${OP_MODEL_PROVIDERS_PATH:-/etc/op-dbus/model-providers.toml}"
@@ -229,6 +261,10 @@ export COGNITIVE_SEARCH_COLLECTIONS="${COGNITIVE_SEARCH_COLLECTIONS:-$COGNITIVE_
 [ -r /etc/op-dbus/secrets/voyage-api-key ] && export VOYAGE_API_KEY="$(cat /etc/op-dbus/secrets/voyage-api-key)"
 # Phase 2: tool dispatch is in-process ToolRegistry — no HTTP MCP loopback URL.
 
+# Compliance SPA + Cozo proxy on the door Axum stack (/compliance, /compliance/api).
+export CC_COMPLIANCE_STATIC_DIR="${CC_COMPLIANCE_STATIC_DIR:-/usr/local/share/op-dbus/dashboard/compliance}"
+export CC_COZO_UPSTREAM="${CC_COZO_UPSTREAM:-http://127.0.0.1:8787}"
+
 # These are runtime requirements, not merely build-host packages. Fail with a
 # precise error on a received golden image instead of silently dropping the
 # Btrfs/NUMA path when a target is missing a dependency.
@@ -240,31 +276,8 @@ for command_name in btrfs findmnt numactl taskset; do
     fi
 done
 
-existing_path() {
-    candidate=$1
-    while [ ! -e "$candidate" ]; do
-        parent=${candidate%/*}
-        [ -n "$parent" ] || parent=/
-        [ "$parent" != "$candidate" ] || break
-        candidate=$parent
-    done
-    printf '%s\n' "$candidate"
-}
-
-snowball_mount=$(existing_path "$OPDBUS_SNOWBALL_PATH")
-cache_mount=$(existing_path "$OP_DBUS_CACHE_DIR")
-snowball_fstype=$(findmnt -n -o FSTYPE -T "$snowball_mount")
-cache_fstype=$(findmnt -n -o FSTYPE -T "$cache_mount")
-snowball_device=$(findmnt -n -o MAJ:MIN -T "$snowball_mount")
-cache_device=$(findmnt -n -o MAJ:MIN -T "$cache_mount")
-if [ "$snowball_fstype" != btrfs ] || [ "$cache_fstype" != btrfs ]; then
-    echo "snowball timing and cache require Btrfs storage" >&2
-    exit 78
-fi
-if [ "$snowball_device" != "$cache_device" ]; then
-    echo "snowball timing and cache must use the same Btrfs filesystem" >&2
-    exit 78
-fi
+# Owner 2026-11-19: snowball is sled-backed, not Btrfs, and op-cache uses a
+# plain directory on non-Btrfs storage; no shared-Btrfs storage gate here.
 
 case "$OPDBUS_NUMA_POLICY" in
     localalloc|interleave|default|disabled|none) ;;

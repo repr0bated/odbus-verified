@@ -90,7 +90,7 @@ cat > "$T/bin/physical-helper" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'helper:%s\n' "$1" >> "$EVENT_LOG"
-[[ $THREETCHED_FS == "$FIX/bin/fs" && $OP_IDENTITY_SEED_CATALOG == "$FIX/catalog" ]] || exit 99
+[[ $_3TCHED_FS == "$FIX/bin/fs" && $OP_IDENTITY_SEED_CATALOG == "$FIX/catalog" ]] || exit 99
 [[ ${HELPER_FAIL:-} != "$1" ]] || exit 21
 case "$1" in
 seed-create)
@@ -216,7 +216,7 @@ jq -cn --arg sid "$SID" --arg name "$NATIVE_NAME" --arg status "${PIN_STATUS:-St
 STUB
 chmod 755 "$T/bin/"*
 
-export OP_IDENTITY_ROOT_HELPER="$T/bin/physical-helper" THREETCHED_FS="$T/bin/fs"
+export OP_IDENTITY_ROOT_HELPER="$T/bin/physical-helper" _3TCHED_FS="$T/bin/fs"
 export OP_IDENTITY_HOST_FOLDERS_HELPER="$T/bin/host-folders-helper"
 export OP_IDENTITY_SEED_CATALOG="$T/catalog"
 : > "$T/seed"

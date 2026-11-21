@@ -93,15 +93,14 @@ pub mod prelude {
     pub use super::dynamic_loading::DynamicLoadingPlugin;
     pub use super::state_plugins::{
         AdcPlugin, AgentConfigPlugin, AntigravityChatPlugin, AntigravityPlugin, BtrfsPlugin,
-        CognitivePlugin, ConfigPlugin, CronPlugin, CtlPlaneChatbotPlugin, DnsResolverPlugin,
-        EndpointPlugin, Fail2banPlugin, FreeDesktopPlugin, FullSystemPlugin,
+        ChatRouterPlugin, CognitivePlugin, ConfigPlugin, CronPlugin, CtlPlaneChatbotPlugin,
+        DnsResolverPlugin, EndpointPlugin, Fail2banPlugin, FreeDesktopPlugin, FullSystemPlugin,
         GcloudAdcPlugin, HardwarePlugin, IncusPlugin, KeypairPlugin, KeyringPlugin, Login1Plugin,
-        MailServerPlugin, MemoryPlugin, NetStatePlugin, OpenFlowObfuscationPlugin,
-        OpenFlowPlugin, OvsBridgePlugin, PackageKitPlugin, PciDeclPlugin, ProcfsPlugin,
-        ProxyServerPlugin, RovsCommandsPlugin, RtnetlinkPlugin, SchemaRendererPlugin,
-        ServicePlugin, SessDeclPlugin, SoftwarePlugin, ChatRouterPlugin,
-        UnixSocketPlugin, UsersPlugin, WebUiPlugin, WgOpdbusPlugin, WireGuardPlugin,
-        WorkflowsPlugin,
+        MailServerPlugin, MemoryPlugin, NetStatePlugin, OpenFlowObfuscationPlugin, OpenFlowPlugin,
+        OvsBridgePlugin, PackageKitPlugin, PciDeclPlugin, ProcfsPlugin, ProxyServerPlugin,
+        RovsCommandsPlugin, RtnetlinkPlugin, SchemaRendererPlugin, ServicePlugin, SessDeclPlugin,
+        SoftwarePlugin, UnixSocketPlugin, UsersPlugin, WebUiPlugin, WgOpdbusPlugin,
+        WireGuardPlugin, WorkflowsPlugin,
     };
 }
 pub mod state_publisher;

@@ -50,7 +50,10 @@ fn checked_producers_report_method_and_schema_side_for_alias_errors() {
             assert!(error.contains("alias_fixture"), "{error}");
             assert!(error.contains("Inspect"), "{error}");
             assert!(error.contains(side), "{error}");
-            assert!(error.contains("foo_bar") && error.contains("fooBar"), "{error}");
+            assert!(
+                error.contains("foo_bar") && error.contains("fooBar"),
+                "{error}"
+            );
         }
     }
 }
@@ -66,10 +69,12 @@ fn checked_producer_propagates_alias_errors_through_references_arrays_and_maps()
             "properties": {"records": nested},
             "$defs": {"Record": ambiguous_object()}
         });
-        let error = op_blob::try_blobify(&schema(args, json!({"type": "object"})))
-            .unwrap_err();
+        let error = op_blob::try_blobify(&schema(args, json!({"type": "object"}))).unwrap_err();
         assert!(error.contains("args"), "{error}");
-        assert!(error.contains("foo_bar") && error.contains("fooBar"), "{error}");
+        assert!(
+            error.contains("foo_bar") && error.contains("fooBar"),
+            "{error}"
+        );
     }
 }
 

@@ -1,4 +1,4 @@
-//! Prior name: tched_config_engine.
+//! Prior name: _3tched_config_engine.
 //! Exact sealed-contract adapter for the native chat_router configuration surface.
 
 use std::collections::{BTreeMap, BTreeSet};

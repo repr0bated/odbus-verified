@@ -112,8 +112,8 @@ async fn canonical_tool_group_dispatch_commits_file_live_owner_and_member_projec
     let _environment = Environment(
         [
             "OP_GRANTS_PATH",
-            "TCHED_ROUTER_RUNTIME_ENDPOINT",
-            "TCHED_ROUTER_RUNTIME_TOKEN",
+            "THREETCHED_RUNTIME_ENDPOINT",
+            "THREETCHED_RUNTIME_TOKEN",
         ]
         .into_iter()
         .map(|name| (name, std::env::var_os(name)))
@@ -124,12 +124,12 @@ async fn canonical_tool_group_dispatch_commits_file_live_owner_and_member_projec
     // FIXME: Audit that the environment access only happens in single-threaded code.
     unsafe {
         std::env::set_var(
-            "TCHED_ROUTER_RUNTIME_ENDPOINT",
+            "THREETCHED_RUNTIME_ENDPOINT",
             format!("http://{}", listener.local_addr().unwrap()),
         )
     };
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN") };
+    unsafe { std::env::remove_var("THREETCHED_RUNTIME_TOKEN") };
     write_grants(&grants, &actor, true);
     let owner = McpPolicyOwner::for_durable_fixture(
         McpProjectionPolicy {
@@ -297,8 +297,8 @@ async fn queued_mcp_configuration_rechecks_both_original_grants_and_facade_seal(
     let _environment = Environment(
         [
             "OP_GRANTS_PATH",
-            "TCHED_ROUTER_RUNTIME_ENDPOINT",
-            "TCHED_ROUTER_RUNTIME_TOKEN",
+            "THREETCHED_RUNTIME_ENDPOINT",
+            "THREETCHED_RUNTIME_TOKEN",
         ]
         .into_iter()
         .map(|key| (key, std::env::var_os(key)))
@@ -307,14 +307,14 @@ async fn queued_mcp_configuration_rechecks_both_original_grants_and_facade_seal(
     // FIXME: Audit that the environment access only happens in single-threaded code.
     unsafe { std::env::set_var("OP_GRANTS_PATH", &grants) };
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN") };
+    unsafe { std::env::remove_var("THREETCHED_RUNTIME_TOKEN") };
     let effects = Arc::new(AtomicUsize::new(0));
     let observed = effects.clone();
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     // FIXME: Audit that the environment access only happens in single-threaded code.
     unsafe {
         std::env::set_var(
-            "TCHED_ROUTER_RUNTIME_ENDPOINT",
+            "THREETCHED_RUNTIME_ENDPOINT",
             format!("http://{}", listener.local_addr().unwrap()),
         )
     };

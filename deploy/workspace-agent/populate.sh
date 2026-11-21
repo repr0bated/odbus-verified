@@ -46,7 +46,7 @@ ln -s memory/MEMORY.md "$base/@/agent/MEMORY.md"
 ln -s /run/mount/3tchedfs/plugins/cognitive "$base/@agent_shared/cognitive"
 ln -s /run/mount/3tchedfs/plugins/agent_config "$base/@agent_shared/agent-config"
 ln -s /run/mount/threetched/plugins/threetched "$base/@agent_shared/threetched-plugins"
-ln -s /run/mount/threetched/plugins/tched_router "$base/@agent_skills/runtime"
+ln -s /run/mount/threetched/plugins/threetched "$base/@agent_skills/runtime"
 ln -s /run/mount/threetched/plugins/threetched "$base/@agent_skills/skills"
 install -d -m 0755 "$base/@/etc/3tched"
 for member in skills rules user shared soul memory; do

@@ -1,0 +1,23 @@
+[package]
+name = "op-oscal-subid"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "OSCAL subid registry taxonomy: the single source of truth for subid categories, component types and subid validation"
+
+[features]
+default = []
+# serde + schemars derives on `OscalSubidCategory`, for the registry plugin's
+# schema. Off by default so small consumers (op-blob, op-plugin-lint) stay lean.
+schema = ["dep:serde", "dep:schemars"]
+
+[dependencies]
+serde = { workspace = true, optional = true }
+# Same spec as op-plugins/op-blob: plain "1", so this crate never turns on
+# extra schemars features (e.g. preserve_order) that could change schema JSON.
+schemars = { version = "1", optional = true }
+
+[dev-dependencies]
+# Only used to prove the structural validator and `subid_regex()` agree.
+regex = { workspace = true }

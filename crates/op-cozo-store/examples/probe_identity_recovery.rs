@@ -22,7 +22,11 @@ fn main() {
                     record.is_some(),
                     revision.genesis.is_some(),
                     record
-                        .map(|r| if r.instance_json.is_empty() { "absent" } else { "present" })
+                        .map(|r| if r.instance_json.is_empty() {
+                            "absent"
+                        } else {
+                            "present"
+                        })
                         .unwrap_or("absent"),
                     record
                         .and_then(|r| r.principal_kind.as_deref())
@@ -30,8 +34,8 @@ fn main() {
                 );
             }
             for revision in &snapshot.identities {
-                if let Some(record) = &revision.record {
-                    if !record.instance_json.is_empty() {
+                if let Some(record) = &revision.record
+                    && !record.instance_json.is_empty() {
                         let instance: serde_json::Value =
                             serde_json::from_str(&record.instance_json).unwrap_or_default();
                         let config = instance.get("config");
@@ -58,10 +62,10 @@ fn main() {
                             record.session_id,
                             !record.sealed_id.is_empty(),
                             record.schema_version,
-                            record.expires_at, record.wireguard_pubkey,
+                            record.expires_at,
+                            record.wireguard_pubkey,
                         );
                     }
-                }
             }
             println!("events: {}", snapshot.events.len());
         }

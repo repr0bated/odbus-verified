@@ -5,6 +5,7 @@
 
 pub mod gcloud_auth;
 pub mod identity_vault;
+pub mod issued_identity;
 pub mod oracle_assertion;
 pub mod recovery;
 pub mod registration;

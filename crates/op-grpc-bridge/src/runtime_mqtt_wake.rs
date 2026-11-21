@@ -7,8 +7,8 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail, ensure};
 use tokio::sync::broadcast;
 
-use crate::core::{BridgeCore, StateNotice, StateScope};
 use super::auth::{Session, Sessions};
+use crate::core::{BridgeCore, StateNotice, StateScope};
 
 /// Uses the same transient authenticated connection evidence as ExHook.
 /// It owns neither state nor a second identity/grant registry.
@@ -18,13 +18,16 @@ pub struct WakePublisher {
 }
 
 impl WakePublisher {
-    pub(super) fn new(sessions: Arc<Sessions>) -> Self { Self { sessions } }
+    pub(super) fn new(sessions: Arc<Sessions>) -> Self {
+        Self { sessions }
+    }
 
     /// Supervise alongside the listener. No broker availability check precedes
     /// binding or readiness. Native publication is attempted once per committed
     /// notice; a broker failure is reported without replaying any effect.
     pub async fn run<F>(self, core: BridgeCore, shutdown: F) -> Result<()>
-    where F: Future<Output = ()> + Send,
+    where
+        F: Future<Output = ()> + Send,
     {
         let mut notices = core.subscribe_commits();
         tokio::pin!(shutdown);
@@ -41,8 +44,13 @@ impl WakePublisher {
                     }
                 },
             };
-            if !notice.state_committed { continue; }
-            ensure!(notice.event_id != 0, "committed wake has no durable event ID");
+            if !notice.state_committed {
+                continue;
+            }
+            ensure!(
+                notice.event_id != 0,
+                "committed wake has no durable event ID"
+            );
             tokio::select! {
                 () = &mut shutdown => return Ok(()),
                 result = self.publish_notice(&notice) => result?,
@@ -60,17 +68,25 @@ impl WakePublisher {
                 }
                 continue;
             }
-            if !session.subscribed() || !scope_matches(&notice.scope, &session) { continue; }
-            let readable = self.sessions.runtime.can_read_plugin(&session.caller, &notice.plugin_id).await;
+            if !session.subscribed() || !scope_matches(&notice.scope, &session) {
+                continue;
+            }
+            let readable = self
+                .sessions
+                .runtime
+                .can_read_plugin(&session.caller, &notice.plugin_id)
+                .await;
             match readable {
-                Ok(true) => {},
+                Ok(true) => {}
                 Ok(false) => continue,
                 Err(error) => {
                     tracing::warn!(%error, "committed MQTT wake refused by shared read admission");
                     continue;
                 }
             }
-            if !self.sessions.is_current(&session).await { continue; }
+            if !self.sessions.is_current(&session).await {
+                continue;
+            }
             // Nothing from the notice becomes state. The only broker payload
             // is the durable sequence; authorized consumers reread committed
             // SHM through the existing authenticated plugin door.
@@ -82,18 +98,24 @@ impl WakePublisher {
             }
             let mut effect = PublicationAttempt { in_flight: true };
             let result = op_plugins::state_plugins::emqx::dispatch_emqx_method(
-                "publish_wake", &serde_json::json!({
+                "publish_wake",
+                &serde_json::json!({
                     "owner_key": session.owner_key,
                     "seq": notice.event_id,
                 }),
-            ).await.context("authenticated native EMQX wake publication failed");
+            )
+            .await
+            .context("authenticated native EMQX wake publication failed");
             effect.in_flight = false;
             match result {
                 Ok(response) => {
                     let response: op_plugins::state_plugins::emqx::PublishWakeOutput =
-                        serde_json::from_value(response).context("invalid native wake acknowledgement")?;
-                    ensure!(response.published && response.topic == session.topic,
-                        "native wake acknowledgement did not match the admitted topic");
+                        serde_json::from_value(response)
+                            .context("invalid native wake acknowledgement")?;
+                    ensure!(
+                        response.published && response.topic == session.topic,
+                        "native wake acknowledgement did not match the admitted topic"
+                    );
                 }
                 Err(error) => {
                     // The broker may have accepted the request before a lost
@@ -109,12 +131,18 @@ impl WakePublisher {
 fn scope_matches(scope: &StateScope, session: &Session) -> bool {
     match scope {
         StateScope::Public => true,
-        StateScope::Private { principal_id, session_id } =>
-            principal_id == &session.caller.principal_id && session_id == &session.caller.session_id,
+        StateScope::Private {
+            principal_id,
+            session_id,
+        } => {
+            principal_id == &session.caller.principal_id && session_id == &session.caller.session_id
+        }
     }
 }
 
-struct PublicationAttempt { in_flight: bool }
+struct PublicationAttempt {
+    in_flight: bool,
+}
 
 impl Drop for PublicationAttempt {
     fn drop(&mut self) {

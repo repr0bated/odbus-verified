@@ -667,6 +667,19 @@ fn sealed_sealed_id(
     .map_err(|error| anyhow::anyhow!("seal session sealed ID: {error}"))
 }
 
+#[cfg(test)]
+mod issued_identity_contract {
+    #[test]
+    fn decoy_issued_sid1_uses_the_sled_record_format_and_scope() {
+        assert_eq!(
+            op_identity::issued_identity::SCHEMA_VERSION,
+            op_plugins::state_plugins::identity_sled::RECORD_FORMAT
+        );
+        assert_eq!(op_identity::issued_identity::TRANSPORT_SCOPE, "dbus,grpc,mcp,mqtt");
+        assert_eq!(op_identity::issued_identity::PRINCIPAL_KIND, "wireguard-principal");
+    }
+}
+
 impl MutationEngine {
     pub(crate) fn install_mcp_policy_owner(
         &self,
@@ -4342,7 +4355,7 @@ impl MutationEngine {
                 let args = serde_json::to_value(&parsed_value)?;
                 op_plugins::state_plugins::software::dispatch_software_method(method, &args).await?
             }
-            "tched_fs" => {
+            "_3tched_fs" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 let output = if method == "get_receipt" {
                     let request: op_state_store::method_receipt::GetMethodReceiptInput =
@@ -4352,11 +4365,11 @@ impl MutationEngine {
                             .await?,
                     )?
                 } else {
-                    op_plugins::state_plugins::chat_fs::dispatch(method, &args)?
+                    op_plugins::state_plugins::_3tched_fs::dispatch(method, &args)?
                 };
                 self.publish_plugin_projection_state(
                     plugin_id,
-                    op_plugins::state_plugins::chat_fs::protocol_value()?,
+                    op_plugins::state_plugins::_3tched_fs::protocol_value()?,
                     ChangeType::PropertySet,
                     true,
                 )
@@ -5703,7 +5716,7 @@ impl MutationEngine {
                     )
                     .await;
             }
-            // Selected model on tched-router (:8084). Tools are compact MCP on
+            // Selected model on threetched (:8084). Tools are compact MCP on
             // that agent; the bridge does not own a second provider state.
             let output = if route.mode == op_plugins::state_plugins::project::ChatMode::ControlPlane
             {

@@ -1,0 +1,81 @@
+{
+  "format": "opdbus/toolset-manifest@1",
+  "decision": "owner 2026-11-19: memory is its own always-loaded per-identity set and is never grouped; 10 hot tools always loaded (coding and knowledge mandatory); everything else in cognitive is ONE toolset lazy-loaded through FUSE",
+  "contract_status": "interim data file: Wonder's FUSE toolset-projection contract is not on origin/dev yet; see README.md in this directory for what the projection must read",
+  "tiers": {
+    "memory": {
+      "always_loaded": true,
+      "per_identity": true,
+      "never_grouped": true,
+      "tools": [
+        "cognitive.memory_store",
+        "cognitive.memory_recall",
+        "cognitive.memory_retrieve",
+        "cognitive.memory_query",
+        "cognitive.memory_delete",
+        "cognitive.memory_list_namespaces",
+        "cognitive.memory_semantic_query"
+      ]
+    },
+    "hot": {
+      "always_loaded": true,
+      "tools": [
+        "cognitive.code_search",
+        "cognitive.code_context",
+        "cognitive.code_index",
+        "snowball.search_own_events",
+        "cognitive.sequential_thinking",
+        "cognitive.context_manager",
+        "cognitive.specialist",
+        "cognitive.schema_read",
+        "notebooklm.notebook_query",
+        "cognitive.workflow_query"
+      ]
+    }
+  },
+  "toolsets": [
+    {
+      "id": "cognitive",
+      "title": "Cognitive (everything but memory and the hot tools)",
+      "load": "lazy",
+      "projection": "toolsets/cognitive/",
+      "projected_when": "requested by the identity",
+      "grant_gated": true,
+      "members": {
+        "plugin": "cognitive",
+        "all_operations": true,
+        "exclude_tiers": ["memory", "hot"]
+      }
+    }
+  ],
+  "readiness": [
+    {
+      "group": "coding",
+      "tools": [
+        "cognitive.code_search",
+        "cognitive.code_context",
+        "cognitive.code_index"
+      ],
+      "vector_store": "qdrant",
+      "collections": [
+        "repos_lsp_c_cpp_voyage_4_lite",
+        "repos_lsp_go_voyage_4_large",
+        "repos_lsp_java_voyage_4_lite",
+        "repos_lsp_python_voyage_4_large",
+        "repos_lsp_rust_voyage_4_large",
+        "repos_lsp_typescript_voyage_4_lite",
+        "repos_specs_docs_voyage_4_lite"
+      ],
+      "ready_when": "every collection exists and points_count > 0",
+      "pending_status": "pending_revectorization"
+    },
+    {
+      "group": "knowledge",
+      "tools": ["snowball.search_own_events"],
+      "vector_store": "qdrant",
+      "collections": ["snowball_footprints"],
+      "ready_when": "every collection exists and points_count > 0",
+      "pending_status": "pending_revectorization"
+    }
+  ]
+}

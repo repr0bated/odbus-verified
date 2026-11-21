@@ -95,7 +95,7 @@ impl DoorProxy {
             .map(Uri::from)
             .unwrap_or_default();
         parts.version = Version::HTTP_2;
-        let upstream = axum::http::Request::from_parts(parts, tonic::body::boxed(body));
+        let upstream = axum::http::Request::from_parts(parts, tonic::body::Body::new(body));
         match self.channel.clone().oneshot(upstream).await {
             Ok(response) => {
                 let (mut parts, body) = response.into_parts();

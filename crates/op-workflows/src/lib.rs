@@ -12,6 +12,7 @@ pub mod engine;
 pub mod flow;
 pub mod history;
 pub mod node;
+pub mod object_graph;
 pub mod orchestrator;
 pub mod workflows;
 

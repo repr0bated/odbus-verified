@@ -28,6 +28,7 @@ use crate::{core::{BackendProjection, BackendStateUpdate, StateScope},
 
 const MAX_EVENTS_IN_STATE: usize = 256;
 const MAX_HISTORY_LIMIT: usize = 4096;
+const OWN_IDENTITY_READ_CAPABILITY: &str = "cap.identity.sled.self.read@v1";
 
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     match plugin {
@@ -98,12 +99,7 @@ impl NativeOwner {
     }
     async fn verify_own(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
         self.revalidate().await?;
-        ensure!(sled.is_anchored() && sled.session_id == self.caller.session_id
-            && sled.genesis.as_deref() == Some(self.caller.session_genesis.as_str())
-            && sled.wireguard_pubkey == self.caller.claims().wireguard_pubkey
-            && op_identity::session::derive_principal_id(&sled.wireguard_pubkey) == self.caller.principal_id
-            && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id,
-            "verified caller does not own identity");
+        verify_own_binding(&self.caller, sled)?;
         let wire = self.runtime.identity_wire(&self.caller).await?;
         crate::sid1_checks::match_bound_session(&wire, sled, "grpc", now()).map_err(anyhow::Error::msg)?;
         ensure!(self.caller.sealed_identity.as_deref() == sled.sealed_id.as_deref(),
@@ -172,6 +168,16 @@ impl NativeOwner {
         let key = canonical_key(public_key)?;
         ensure!(op_identity::session::derive_session_id(public_key) == session_id && expires_at >= 0,
             "invalid provision identity anchor");
+        // The decoy terminates WireGuard and may issue the identity (IID1).
+        // When one is present this owner verifies and adopts it instead of
+        // minting locally; it never falls back to a local mint after a
+        // present blob fails verification.
+        if let Some(claims) = issued_identity_claims(session_id, public_key, expires_at)? {
+            return Ok(GenesisStamp {
+                sealed_id: claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?,
+                claims,
+            });
+        }
         let events = self.runtime.core().journal_events(&self.caller.private_scope(), self.request_event_id, self.request_event_id)?;
         let event = events.into_iter().next().context("durable provision attempt is absent")?;
         ensure!(event.event_id == self.request_event_id && event.event_hash == self.request_event_hash,
@@ -200,6 +206,385 @@ impl NativeOwner {
     }
 }
 struct GenesisStamp { sealed_id: String, claims: op_identity::sealed_id::SealedId }
+
+const DEFAULT_ISSUED_IDENTITY_PATH: &str = "/agent/user/issued_identity.iid1";
+
+/// Verify a decoy-issued identity (standard-base64 IID1) for exactly this
+/// session, key and term against the decoy trust store.
+fn verify_issued_claims(issued: &str, trust_store: &[u8], session_id: &str, public_key: &str,
+    expires_at: i64) -> anyhow::Result<op_identity::sealed_id::SealedId> {
+    use op_identity::issued_identity::{IssuedIdentity, parse_trust_store};
+    let wire = base64::engine::general_purpose::STANDARD.decode(issued.trim())
+        .context("issued identity is not standard base64")?;
+    let issued = IssuedIdentity::verify(&wire, &parse_trust_store(trust_store)?, public_key)?;
+    ensure!(issued.sealed.session_id == session_id, "issued identity is for a different session");
+    ensure!(issued.sealed.schema_version == RECORD_FORMAT && issued.sealed.expires_at == expires_at,
+        "issued identity has a different record format or term");
+    Ok(issued.sealed)
+}
+
+/// The decoy-issued claims at `OP_ISSUED_IDENTITY_PATH`, if a blob is present.
+fn issued_identity_claims(session_id: &str, public_key: &str, expires_at: i64)
+    -> anyhow::Result<Option<op_identity::sealed_id::SealedId>> {
+    let path = std::env::var("OP_ISSUED_IDENTITY_PATH").unwrap_or_else(|_| DEFAULT_ISSUED_IDENTITY_PATH.into());
+    let issued = match std::fs::read_to_string(&path) {
+        Ok(value) => value,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error).with_context(|| format!("reading {path}")),
+    };
+    let trust_path = std::env::var("OP_DECOY_TRUST_STORE")
+        .unwrap_or_else(|_| crate::oracle_assertion::DEFAULT_DECOY_TRUST_STORE.into());
+    let trust = std::fs::read(&trust_path).with_context(|| format!("reading {trust_path}"))?;
+    verify_issued_claims(&issued, &trust, session_id, public_key, expires_at).map(Some)
+}
+
+/// Startup adoption of this container's own decoy-issued identity.
+///
+/// The sled is not durable; `sealed_id` is its persistence. When the sled has
+/// no record for the container's own key, verify the decoy-issued IID1 (and the
+/// installed `sealed_id`, if any) and commit it as a fresh `service` record.
+/// The key also gets its human-principal registration (the registry the door
+/// verifies against). Never overwrites a record or a deletion tombstone; an
+/// existing record must carry the same SID1. Returns whether a record was
+/// committed. The own key is `OP_IDENTITY_OWN_WIREGUARD_PUBKEY`, else the
+/// configured control-plane chatbot key.
+pub(crate) fn adopt_issued_identity_at_startup(cozo: &CozoGraphShuttle) -> anyhow::Result<bool> {
+    let Some(key) = ["OP_IDENTITY_OWN_WIREGUARD_PUBKEY", "OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY"]
+        .iter().find_map(|name| std::env::var(name).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty()))
+    else { return Ok(false) };
+    canonical_key(&key)?;
+    let session = op_identity::session::derive_session_id(&key);
+    let Some(claims) = issued_identity_claims(&session, &key, 0)? else { return Ok(false) };
+    let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let installed_path = std::env::var("OP_ISSUED_SEALED_ID_PATH").unwrap_or_else(|_| "/agent/user/sealed_id".into());
+    match std::fs::read_to_string(&installed_path) {
+        Ok(installed) => ensure!(installed.trim() == inline, "installed sealed_id differs from the decoy-issued identity"),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error).with_context(|| format!("reading {installed_path}")),
+    }
+    let registry = crate::human_principal_registry::store().context("human principal store unavailable")?;
+    match registry.get_human_principal_by_pubkey(&key)? {
+        Some(record) => ensure!(record.revoked_at == 0
+            && record.principal_id == op_identity::session::derive_principal_id(&key), "own principal is revoked or rebound"),
+        None => registry.put_human_principal(&op_cozo_store::HumanPrincipalRecord {
+            principal_id: op_identity::session::derive_principal_id(&key), human_pubkey: key.clone(),
+            display_alias: std::env::var("OP_IDENTITY_OWN_DISPLAY_ALIAS").unwrap_or_else(|_| "control-plane-chatbot".into()),
+            registered_at: now(), revoked_at: 0 })?,
+    }
+    let expected = cozo.read_identity_revision(&session)?;
+    if let Some(record) = &expected.record {
+        ensure!(record.sealed_id == inline, "the sled holds a different identity than the decoy issued");
+        return Ok(false);
+    }
+    ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
+        "issued identity cannot overwrite a deletion tombstone");
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session, "wireguard_pubkey": key, "principal_kind": "service",
+        "active": true, "expires_at": 0,
+        "session_started_at": claims.arrival_timestamp, "last_seen_at": claims.arrival_timestamp,
+        "schema_version": claims.schema_version, "genesis": claims.session_genesis,
+        "trace_id": claims.trace_id, "sealed_id": inline,
+        "arrival_timestamp": claims.arrival_timestamp,
+        "chain_head_at_arrival": claims.chain_head_at_arrival,
+        "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": claims.head_timestamp_at_arrival
+    }))?;
+    let operation = format!("adopt-issued-{}", uuid::Uuid::new_v4().simple());
+    cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+        expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
+    Ok(true)
+}
+
+/// The explicitly selected configured host human, or `None` when no
+/// initialization is requested. `OP_LOCAL_HUMAN_INITIALIZE_SESSION` must name
+/// exactly the configured session, which must derive from the configured key,
+/// as must the configured principal.
+fn local_human_selection(lookup: impl Fn(&str) -> Option<String>) -> anyhow::Result<Option<(String, String)>> {
+    let value = |name: &str| lookup(name).map(|v| v.trim().to_owned()).filter(|v| !v.is_empty());
+    let Some(selected) = value("OP_LOCAL_HUMAN_INITIALIZE_SESSION") else { return Ok(None) };
+    let key = value("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY")
+        .context("initialization requires the configured host human key")?;
+    canonical_key(&key)?;
+    let session = op_identity::session::derive_session_id(&key);
+    ensure!(selected == session
+        && value("OP_LOCAL_HUMAN_SESSION_ID").as_deref() == Some(session.as_str())
+        && value("OP_LOCAL_HUMAN_PRINCIPAL_ID").as_deref()
+            == Some(op_identity::session::derive_principal_id(&key).as_str()),
+        "initialization requires the explicitly selected configured host human");
+    Ok(Some((session, key)))
+}
+
+/// Explicit one-shot startup initialization of the configured host human: the
+/// host analogue of a container sled, with no per-account container
+/// (`identity_session_binding_matches` admits `human` records without one).
+/// Runs only when `OP_LOCAL_HUMAN_INITIALIZE_SESSION` selects the configured
+/// session (`/etc/op-dbus/initialize-local-human`, read by the launcher). Mints
+/// the genesis and SID1 here, anchored to the bridge journal head and the
+/// sealed catalog. Never overwrites a record or a deletion tombstone; an
+/// existing record for the same key is left as is. Returns whether a record
+/// was committed.
+pub(crate) fn initialize_configured_local_human_at_startup(
+    cozo: &CozoGraphShuttle, catalog_dir: &std::path::Path, head: Option<(String, i64)>,
+) -> anyhow::Result<bool> {
+    let Some((session, key)) = local_human_selection(|name| std::env::var(name).ok())? else {
+        return Ok(false)
+    };
+    let catalog = crate::sealed_schema_reader::read_manifest_pinned_catalog(catalog_dir)?;
+    ensure!(catalog.plugins.contains_key("identity_sled"), "identity plugin is not sealed");
+    let registry = crate::human_principal_registry::store().context("human principal store unavailable")?;
+    let alias = std::env::var("OP_LOCAL_HUMAN_DISPLAY_ALIAS").unwrap_or_else(|_| "local-human".into());
+    let nextdns = crate::identity_nextdns::NextDnsBindings::from_env()?.get(&key).cloned();
+    commit_local_human(cozo, &registry, &session, &key, &alias, &catalog.catalog_hash, head, nextdns, now())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn commit_local_human(
+    cozo: &CozoGraphShuttle, registry: &CozoGraphShuttle, session: &str, key: &str, alias: &str,
+    catalog_hash: &str, head: Option<(String, i64)>, nextdns: Option<op_identity::sealed_id::NextDnsContext>,
+    arrival: i64,
+) -> anyhow::Result<bool> {
+    let principal = op_identity::session::derive_principal_id(key);
+    match registry.get_human_principal_by_pubkey(key)? {
+        Some(record) => ensure!(record.revoked_at == 0 && record.principal_id == principal,
+            "configured host human is revoked or rebound"),
+        None => registry.put_human_principal(&op_cozo_store::HumanPrincipalRecord {
+            principal_id: principal.clone(), human_pubkey: key.to_owned(), display_alias: alias.to_owned(),
+            registered_at: arrival, revoked_at: 0 })?,
+    }
+    let expected = cozo.read_identity_revision(session)?;
+    if let Some(record) = &expected.record {
+        ensure!(record.wireguard_pubkey == key, "the configured host session holds a different key");
+        return Ok(false);
+    }
+    ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
+        "fresh initialization cannot overwrite an identity or deletion tombstone");
+    // An empty journal anchors to the all-zero head at arrival.
+    let (chain_head_hex, head_timestamp) = head.unwrap_or_else(|| (hex::encode([0u8; 32]), arrival));
+    let chain_head = hex::decode(&chain_head_hex)?;
+    ensure!(matches!(chain_head.len(), 16 | 32), "invalid arrival chain digest");
+    let catalog_bytes: [u8; 32] = hex::decode(catalog_hash)?.try_into()
+        .map_err(|_| anyhow::anyhow!("invalid identity arrival catalog hash"))?;
+    let genesis = op_identity::session_genesis::mint_genesis(
+        &canonical_key(key)?, &chain_head, head_timestamp, &catalog_bytes, arrival);
+    let claims = op_identity::sealed_id::SealedId {
+        principal_id: principal, principal_kind: "wireguard-principal".into(), session_id: session.into(),
+        wireguard_pubkey: key.into(), session_genesis: hex::encode(genesis),
+        trace_id: hex::encode(uuid::Uuid::new_v4().as_bytes()), schema_version: RECORD_FORMAT,
+        issued_at: arrival, expires_at: 0, arrival_timestamp: arrival,
+        chain_head_at_arrival: chain_head_hex, catalog_hash_at_arrival: catalog_hash.into(),
+        head_timestamp_at_arrival: head_timestamp, transport_scope: "dbus,grpc,mcp,mqtt".into(), nextdns,
+    };
+    let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session, "wireguard_pubkey": key, "principal_kind": "human",
+        "active": true, "expires_at": 0,
+        "session_started_at": arrival, "last_seen_at": arrival,
+        "schema_version": claims.schema_version, "genesis": claims.session_genesis,
+        "trace_id": claims.trace_id, "sealed_id": inline,
+        "arrival_timestamp": arrival,
+        "chain_head_at_arrival": claims.chain_head_at_arrival,
+        "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": head_timestamp
+    }))?;
+    validate_sled(&sled)?;
+    let operation = format!("initialize-local-human-{}", uuid::Uuid::new_v4().simple());
+    cozo.apply_identity_intent(session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+        expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
+    Ok(true)
+}
+
+#[cfg(test)]
+mod local_human_tests {
+    const KEY: &str = "wNhmhGDpdkScmSdcHnzhr/1vmTIL5wxLXcve/jwk9xE=";
+
+    fn env(pairs: Vec<(&'static str, String)>) -> impl Fn(&str) -> Option<String> {
+        move |name| pairs.iter().find(|(key, _)| *key == name).map(|(_, value)| value.clone())
+    }
+    fn configured(selected: &str) -> Vec<(&'static str, String)> {
+        vec![("OP_LOCAL_HUMAN_INITIALIZE_SESSION", selected.into()),
+            ("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", KEY.into()),
+            ("OP_LOCAL_HUMAN_SESSION_ID", op_identity::session::derive_session_id(KEY)),
+            ("OP_LOCAL_HUMAN_PRINCIPAL_ID", op_identity::session::derive_principal_id(KEY))]
+    }
+
+    #[test]
+    fn initialization_requires_the_explicitly_selected_configured_human() {
+        let session = op_identity::session::derive_session_id(KEY);
+        assert!(super::local_human_selection(env(vec![])).unwrap().is_none());
+        assert_eq!(super::local_human_selection(env(configured(&session))).unwrap(),
+            Some((session.clone(), KEY.to_owned())));
+        assert!(super::local_human_selection(env(configured("b0c777e3-0955-cd8b-3d01-ca12998cae28"))).is_err());
+        for drop in ["OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", "OP_LOCAL_HUMAN_SESSION_ID", "OP_LOCAL_HUMAN_PRINCIPAL_ID"] {
+            let pairs = configured(&session).into_iter().filter(|(name, _)| *name != drop).collect();
+            assert!(super::local_human_selection(env(pairs)).is_err(), "{drop}");
+        }
+        let mut rebound = configured(&session);
+        rebound[3].1 = "c9bdf32e-811d-2495-b688-277c9e5c4d36".into();
+        assert!(super::local_human_selection(env(rebound)).is_err());
+    }
+
+    #[test]
+    fn initialization_commits_one_human_record_that_binds_without_a_container() {
+        let cozo = op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap();
+        let registry = op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap();
+        let session = op_identity::session::derive_session_id(KEY);
+        let catalog = "ab".repeat(32);
+        let commit = |head| super::commit_local_human(&cozo, &registry, &session, KEY, "local-human",
+            &catalog, head, None, 1_800_000_000);
+        assert!(commit(Some(("cd".repeat(32), 1_799_999_999))).unwrap());
+        assert!(!commit(None).unwrap(), "an existing record is never replaced");
+        let revision = cozo.read_identity_revision(&session).unwrap();
+        let sled = crate::runtime_identity::record_to_sled(revision.record.as_ref().unwrap(),
+            revision.genesis.as_ref()).unwrap();
+        assert!(sled.instance.is_none() && sled.is_anchored());
+        assert!(crate::identity_binding::identity_session_binding_matches(&sled));
+        let wire = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(
+            sled.sealed_id.as_deref().unwrap().strip_prefix(op_identity::sealed_id::INLINE_PREFIX).unwrap()).unwrap();
+        use base64::Engine as _;
+        let claims = crate::sid1_checks::match_bound_session(&wire, &sled, "dbus", 1_800_000_001).unwrap();
+        assert_eq!(claims.principal_id, op_identity::session::derive_principal_id(KEY));
+        let principal = registry.get_human_principal_by_pubkey(KEY).unwrap().unwrap();
+        assert_eq!(principal.principal_id, claims.principal_id);
+    }
+}
+
+/// The container IS the identity; its sled is the pool volume
+/// `identity-<session>` (provision-container.sh), mounted read-only in the
+/// container at /agent/user and holding the decoy-issued IID1 and its SID1.
+/// The volume is the source. This verifies each volume against the decoy
+/// trust store and the container that carries its session and key, then
+/// commits the Cozo identity record lungs binds by, or refreshes its
+/// container binding. Cozo stays an index. Returns how many records changed.
+pub(crate) async fn adopt_identity_volumes(cozo: Arc<CozoGraphShuttle>) -> anyhow::Result<usize> {
+    let pool = std::env::var("OP_CONTAINER_POOL").unwrap_or_else(|_| "3tched-pool".into());
+    let root = PathBuf::from(format!("/var/lib/incus/storage-pools/{pool}/custom"));
+    let entries = match std::fs::read_dir(&root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(error) => return Err(error).with_context(|| format!("reading {}", root.display())),
+    };
+    let trust_path = std::env::var("OP_DECOY_TRUST_STORE")
+        .unwrap_or_else(|_| crate::oracle_assertion::DEFAULT_DECOY_TRUST_STORE.into());
+    let trust = std::fs::read(&trust_path).with_context(|| format!("reading {trust_path}"))?;
+    let native = op_plugins::state_plugins::incus::IncusRootRepairBackend::local();
+    let mut changed = 0;
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Some(session) = name.strip_prefix("default_identity-") else { continue };
+        match adopt_identity_volume(&cozo, &native, &entry.path(), session, &trust).await {
+            Ok(true) => changed += 1,
+            Ok(false) => {}
+            Err(error) => tracing::warn!(%error, session, "identity volume not adopted"),
+        }
+    }
+    Ok(changed)
+}
+
+async fn adopt_identity_volume(
+    cozo: &Arc<CozoGraphShuttle>, native: &op_plugins::state_plugins::incus::IncusRootRepairBackend,
+    dir: &std::path::Path, session: &str, trust: &[u8],
+) -> anyhow::Result<bool> {
+    let stored = std::fs::read_to_string(dir.join("session_id")).context("sled has no session_id")?;
+    ensure!(stored.trim() == session, "sled session_id differs from its volume name");
+    let names = native.instances_with_session(session).await?;
+    let [name] = names.as_slice() else {
+        anyhow::bail!("session {session} has {} containers, expected one", names.len())
+    };
+    let (metadata, _) = native.instance(name).await?;
+    let instance = op_plugins::state_plugins::incus::IncusPlugin::instance_from_native_metadata(metadata)?;
+    ensure!(instance.instance_type == "container", "identity instance is not a container");
+    let key = instance.config.as_ref()
+        .and_then(|config| config.get("user.opdbus.wireguard_public_key")).cloned()
+        .context("identity container carries no key")?;
+    canonical_key(&key)?;
+    ensure!(op_identity::session::derive_session_id(&key) == session, "identity key does not derive the session");
+    let issued = std::fs::read_to_string(dir.join("issued_identity.iid1")).context("sled has no issued identity")?;
+    let claims = verify_issued_claims(&issued, trust, session, &key, 0)?;
+    let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
+    let installed = std::fs::read_to_string(dir.join("sealed_id")).context("sled has no sealed_id")?;
+    ensure!(installed.trim() == inline, "sled sealed_id differs from the decoy-issued identity");
+    let cozo = cozo.clone();
+    tokio::task::spawn_blocking(move || commit_volume_identity(&cozo, &key, &claims, &inline, instance)).await?
+}
+
+fn commit_volume_identity(
+    cozo: &CozoGraphShuttle, key: &str, claims: &op_identity::sealed_id::SealedId, inline: &str,
+    instance: op_plugins::state_plugins::incus::IncusInstance,
+) -> anyhow::Result<bool> {
+    let session = claims.session_id.clone();
+    let kind = if crate::identity_binding::configured_chatbot_key().as_deref() == Some(key) { "service" } else { "human" };
+    let registry = crate::human_principal_registry::store().context("human principal store unavailable")?;
+    let principal = op_identity::session::derive_principal_id(key);
+    match registry.get_human_principal_by_pubkey(key)? {
+        Some(record) => ensure!(record.revoked_at == 0 && record.principal_id == principal,
+            "identity principal is revoked or rebound"),
+        None => registry.put_human_principal(&op_cozo_store::HumanPrincipalRecord {
+            principal_id: principal, human_pubkey: key.to_owned(), display_alias: instance.name.clone(),
+            registered_at: now(), revoked_at: 0 })?,
+    }
+    let expected = cozo.read_identity_revision(&session)?;
+    let uuid_of = |instance: &op_plugins::state_plugins::incus::IncusInstance| {
+        instance.config.as_ref().and_then(|config| config.get("volatile.uuid")).cloned()
+    };
+    if let Some(record) = &expected.record {
+        ensure!(record.sealed_id == inline, "the Cozo index holds a different identity than the sled");
+        let mut sled = crate::runtime_identity::record_to_sled(record, expected.genesis.as_ref())?;
+        let bound = sled.active && sled.instance.as_ref()
+            .is_some_and(|stored| stored.name == instance.name && uuid_of(stored) == uuid_of(&instance));
+        if bound { return Ok(false) }
+        sled.instance = Some(instance);
+        sled.active = true;
+        let operation = format!("sled-rebind-{}", uuid::Uuid::new_v4().simple());
+        let genesis = expected.genesis.clone();
+        cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+            expected, record: Some(sled_to_record(&sled)?), genesis })))?;
+        return Ok(true);
+    }
+    ensure!(expected.revision == 0 && expected.operation_id.is_empty() && expected.genesis.is_none(),
+        "an identity sled cannot overwrite a deletion tombstone");
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session, "wireguard_pubkey": key, "principal_kind": kind,
+        "active": true, "expires_at": 0, "instance": instance,
+        "session_started_at": claims.arrival_timestamp, "last_seen_at": claims.arrival_timestamp,
+        "schema_version": claims.schema_version, "genesis": claims.session_genesis,
+        "trace_id": claims.trace_id, "sealed_id": inline,
+        "arrival_timestamp": claims.arrival_timestamp,
+        "chain_head_at_arrival": claims.chain_head_at_arrival,
+        "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": claims.head_timestamp_at_arrival
+    }))?;
+    let operation = format!("sled-adopt-{}", uuid::Uuid::new_v4().simple());
+    cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+        expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
+    Ok(true)
+}
+
+#[cfg(test)]
+mod issued_identity_tests {
+    use base64::Engine as _;
+    use ed25519_dalek::SigningKey;
+    use op_identity::issued_identity::{IssueRequest, IssuedIdentity};
+    const KEY: &str = "wNhmhGDpdkScmSdcHnzhr/1vmTIL5wxLXcve/jwk9xE=";
+
+    #[test]
+    fn adopts_only_a_signed_identity_for_this_session_key_and_term() {
+        let signer = SigningKey::from_bytes(&[5u8; 32]);
+        let wire = IssuedIdentity::issue(&signer, "decoy-t", IssueRequest {
+            wireguard_pubkey: KEY, catalog_hash_hex: &"ab".repeat(32), nextdns: op_identity::sealed_id::NextDnsContext { profile_id: "689ec7".into(), device_name: "test".into() },
+            schema_version: super::RECORD_FORMAT, now: 1_800_000_000 }).unwrap().to_wire().unwrap();
+        let issued = base64::engine::general_purpose::STANDARD.encode(wire);
+        let trust = |key: &SigningKey| format!(r#"{{"decoy_keys":{{"decoy-t":"{}"}}}}"#,
+            base64::engine::general_purpose::STANDARD.encode(key.verifying_key().to_bytes())).into_bytes();
+        let session = op_identity::session::derive_session_id(KEY);
+        let claims = super::verify_issued_claims(&issued, &trust(&signer), &session, KEY, 0).unwrap();
+        assert_eq!(claims.session_id, session);
+        assert!(super::verify_issued_claims(&issued, &trust(&signer), "other", KEY, 0).is_err());
+        assert!(super::verify_issued_claims(&issued, &trust(&signer), &session, KEY, 60).is_err());
+        let other = SigningKey::from_bytes(&[6u8; 32]);
+        assert!(super::verify_issued_claims(&issued, &trust(&other), &session, KEY, 0).is_err());
+    }
+}
 fn apply_genesis_stamp(sled: &mut ContainerIdentitySled, stamp: &GenesisStamp) -> anyhow::Result<()> {
     ensure!(!sled.is_anchored() && sled.session_id == stamp.claims.session_id
         && sled.wireguard_pubkey == stamp.claims.wireguard_pubkey, "provision anchor cannot overwrite existing identity");
@@ -526,6 +911,16 @@ async fn commit_sled_update<T: Send + 'static>(
     )
     .await
 }
+fn verify_own_binding(caller: &VerifiedCaller, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+    ensure!(sled.is_anchored() && sled.session_id == caller.session_id
+        && sled.genesis.as_deref() == Some(caller.session_genesis.as_str())
+        && sled.wireguard_pubkey == caller.claims().wireguard_pubkey
+        && op_identity::session::derive_principal_id(&sled.wireguard_pubkey) == caller.principal_id
+        && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id,
+        "verified caller does not own identity");
+    Ok(())
+}
+
 fn redact_own_identity(identity: ContainerIdentitySled) -> anyhow::Result<JsonValue> {
     // Arbitrary Incus config, descriptions and device payloads may contain
     // credentials. Keep only the typed instance lifecycle/storage metadata.
@@ -559,6 +954,23 @@ fn redact_own_identity(identity: ContainerIdentitySled) -> anyhow::Result<JsonVa
         "head_timestamp_at_arrival": identity.head_timestamp_at_arrival
     }}))
 }
+
+async fn own_identity_output(
+    caller: &VerifiedCaller,
+    sled: ContainerIdentitySled,
+    grants: HashSet<String>,
+) -> anyhow::Result<JsonValue> {
+    ensure!(grants.contains(OWN_IDENTITY_READ_CAPABILITY),
+        "own identity requires the exact self-read capability in the current snapshot");
+    let mut held_capabilities: Vec<_> = grants.into_iter().map(JsonValue::String).collect();
+    held_capabilities.sort_unstable_by(|left, right| left.as_str().cmp(&right.as_str()));
+    let mut output = redact_own_identity(sled)?;
+    output["principal_id"] = JsonValue::String(caller.principal_id.clone());
+    output["held_capabilities"] = JsonValue::Array(held_capabilities);
+    caller.authority.revalidate().await?;
+    Ok(output)
+}
+
 pub(crate) struct IdentityRootStartGuard {
     should_start: bool,
     _legacy: Option<root_repair::RootStartGuard>,
@@ -694,18 +1106,27 @@ async fn identity_method(engine: &NativeOwner, store: &IdentitySledStore, method
     match method {
         "prepare_container" => prepare_container(engine, store, actor, args).await,
         "rename_container" => rename::rename(engine, store, serde_json::from_value(args.clone())?).await,
-        "get_identity" | "get_own_identity" => {
-            let target = if method == "get_own_identity" { engine.caller.session_id.clone() }
-                else if arg_str(args, "session_id").is_empty() {
-                    std::env::var("IDENTITY_SLED_HOST_SESSION_ID").ok().filter(|s| !s.trim().is_empty())
-                        .context("host identity session is not configured")?.trim().to_owned()
-                } else { arg_str(args, "session_id").into() };
+        "get_own_identity" => {
+            ensure!(args.as_object().is_some_and(|args| args.is_empty()),
+                "get_own_identity accepts no arguments");
+            let sled = stored_session(&engine.caller.session_id).await?
+                .context("identity session not found")?;
+            engine.verify_own(&sled).await?;
+            let grants = engine.runtime.current_grants(&engine.caller).await?;
+            let output = own_identity_output(&engine.caller, sled, grants).await?;
+            // Recheck the sealed method and current exact self-read grant after
+            // the snapshot and serialization, not only the caller's credential.
+            engine.revalidate().await?;
+            Ok(output)
+        }
+        "get_identity" => {
+            let target = if arg_str(args, "session_id").is_empty() {
+                std::env::var("IDENTITY_SLED_HOST_SESSION_ID").ok().filter(|s| !s.trim().is_empty())
+                    .context("host identity session is not configured")?.trim().to_owned()
+            } else { arg_str(args, "session_id").into() };
             let sled = stored_session(&target).await?.context("identity session not found")?;
             engine.revalidate().await?;
-            if method == "get_own_identity" {
-                engine.verify_own(&sled).await?;
-                redact_own_identity(sled)
-            } else { disclosed_identity(sled, &engine.caller) }
+            disclosed_identity(sled, &engine.caller)
         }
         "inspect_own_root_repair_preflight" => root_repair::inspect_own_root_repair_preflight(
             engine, store, actor.actor_id, actor.session_id, actor.genesis).await,
@@ -925,4 +1346,226 @@ async fn prepare_container(engine: &NativeOwner, store: &IdentitySledStore,
     engine.observe_incus(&snapshot).await?;
     Ok(serde_json::json!({"session_id":session,"name":record.name,"native_uuid":record.native_uuid,
         "operation_id":record.request.operation_id,"phase":record.phase,"replayed":replayed}))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::runtime::CallerAuthority;
+    use std::sync::atomic::AtomicI64;
+
+    struct ProjectionAuthority {
+        catalog: PathBuf,
+        state: PathBuf,
+        wire: Vec<u8>,
+        principal: op_cozo_store::HumanPrincipalRecord,
+        registered: AtomicBool,
+        now: AtomicI64,
+    }
+
+    impl ProjectionAuthority {
+        fn verify(&self) -> anyhow::Result<crate::identity_receiver::VerifiedSid1> {
+            let bound = crate::identity_receiver::verify_in(
+                &self.catalog, self.state.to_str().unwrap(), &self.wire, "grpc",
+                self.now.load(Ordering::Acquire),
+            )?;
+            crate::identity_receiver::verify_registered_for_test(
+                bound, self.registered.load(Ordering::Acquire).then(|| self.principal.clone()),
+            )
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl CallerAuthority for ProjectionAuthority {
+        async fn revalidate(&self) -> anyhow::Result<()> { self.verify().map(|_| ()) }
+    }
+
+    struct OwnIdentityFixture {
+        _directory: tempfile::TempDir,
+        caller: VerifiedCaller,
+        sled: ContainerIdentitySled,
+        authority: Arc<ProjectionAuthority>,
+    }
+
+    fn own_identity_fixture() -> OwnIdentityFixture {
+        let directory = tempfile::tempdir().unwrap();
+        let catalog = directory.path().join("catalog");
+        let state = directory.path().join("state");
+        let key = base64::engine::general_purpose::STANDARD.encode([7u8; 32]);
+        let claims = op_identity::sealed_id::SealedId {
+            principal_id: op_identity::session::derive_principal_id(&key),
+            principal_kind: "wireguard-principal".into(),
+            session_id: op_identity::session::derive_session_id(&key),
+            wireguard_pubkey: key, session_genesis: "genesis".into(), trace_id: "trace".into(),
+            schema_version: RECORD_FORMAT, issued_at: 100, expires_at: 200,
+            arrival_timestamp: 100, chain_head_at_arrival: "chain".into(),
+            catalog_hash_at_arrival: "catalog".into(), head_timestamp_at_arrival: 99,
+            transport_scope: "dbus,grpc,mcp,mqtt".into(), nextdns: None,
+        };
+        let inline = claims.to_inline_ref().unwrap();
+        let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+            "session_id": claims.session_id, "wireguard_pubkey": claims.wireguard_pubkey,
+            "principal_kind": "human", "genesis": claims.session_genesis,
+            "trace_id": claims.trace_id, "schema_version": claims.schema_version,
+            "expires_at": claims.expires_at, "arrival_timestamp": claims.arrival_timestamp,
+            "chain_head_at_arrival": claims.chain_head_at_arrival,
+            "catalog_hash_at_arrival": claims.catalog_hash_at_arrival,
+            "head_timestamp_at_arrival": claims.head_timestamp_at_arrival,
+            "sealed_id": inline
+        })).unwrap();
+        let schema = op_state::StatePlugin::schema(
+            &op_plugins::state_plugins::identity_sled::IdentitySledPlugin::new(),
+        ).unwrap();
+        op_blob::BlobStore::open(&catalog).unwrap()
+            .write(&op_blob::blobify_plugin_schema("identity_sled", schema)).unwrap();
+        let private = serde_json::json!({"sleds": [&sled], "events": []});
+        projection_shm::update_projection_with_credentials_in(
+            state.to_str().unwrap(), "identity_sled", nix::unistd::getgid().as_raw(), |_| {
+                Ok(Some((br#"{"sleds":[],"events":[]}"#.to_vec(), serde_json::to_vec(&private)?)))
+            },
+        ).unwrap();
+        let authority = Arc::new(ProjectionAuthority {
+            catalog, state, wire: claims.seal().unwrap(),
+            principal: op_cozo_store::HumanPrincipalRecord {
+                principal_id: claims.principal_id, human_pubkey: claims.wireguard_pubkey,
+                display_alias: String::new(), registered_at: 1, revoked_at: 0,
+            },
+            registered: AtomicBool::new(true), now: AtomicI64::new(150),
+        });
+        let mut caller = VerifiedCaller::new(&authority.verify().unwrap(), authority.clone());
+        caller.sealed_identity = Some(inline);
+        OwnIdentityFixture { _directory: directory, caller, sled, authority }
+    }
+
+    fn own_grants() -> HashSet<String> {
+        HashSet::from(["cap.identity.sled.self.read@v1".to_owned()])
+    }
+
+    #[tokio::test]
+    async fn get_own_identity_binds_principal_and_sorted_exact_current_grants() {
+        let fixture = own_identity_fixture();
+        let document = serde_json::json!({
+            "$GUEST": {"capabilities": ["cap.identity.sled.self.read@v1", "alpha.read"]},
+            (fixture.caller.principal_id.clone()): {
+                "capabilities": ["zeta.read", "alpha.read"], "groups": ["$GUEST"]
+            },
+            "foreign-principal": {"capabilities": ["identity_sled.write"]}
+        });
+        let grants = crate::grant_document::capabilities_for_principal(
+            &document, &fixture.caller.principal_id,
+        );
+        verify_own_binding(&fixture.caller, &fixture.sled).unwrap();
+        let redacted = redact_own_identity(fixture.sled.clone()).unwrap();
+        let result = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap();
+        assert_eq!(result, serde_json::json!({
+            "identity": redacted["identity"],
+            "principal_id": fixture.caller.principal_id,
+            "held_capabilities": ["alpha.read", "cap.identity.sled.self.read@v1", "zeta.read"]
+        }));
+        assert_ne!(result["principal_id"], result["identity"]["genesis"]);
+        assert!(result["identity"].get("sealed_id").is_none());
+        let schema = op_state::StatePlugin::schema(
+            &op_plugins::state_plugins::identity_sled::IdentitySledPlugin::new(),
+        ).unwrap();
+        let output = serde_json::to_value(
+            schema.methods["get_own_identity"].returns.as_ref().unwrap(),
+        ).unwrap();
+        jsonschema::Validator::new(&output).unwrap().validate(&result).unwrap();
+    }
+
+    #[tokio::test]
+    async fn get_own_identity_requires_the_exact_self_read_grant_in_the_snapshot() {
+        let fixture = own_identity_fixture();
+        for grants in [
+            HashSet::new(),
+            HashSet::from(["identity_sled.read".to_owned()]),
+            HashSet::from(["cap.identity.sled.*".to_owned()]),
+        ] {
+            let error = own_identity_output(&fixture.caller, fixture.sled.clone(), grants)
+                .await.unwrap_err();
+            assert!(error.to_string().contains("exact self-read capability"));
+        }
+    }
+
+    #[tokio::test]
+    async fn get_own_identity_rejects_expired_authority_after_a_grant_snapshot() {
+        let fixture = own_identity_fixture();
+        let grants = own_grants();
+        fixture.authority.now.store(200, Ordering::Release);
+        let error = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap_err();
+        assert!(error.to_string().contains("expired"));
+    }
+
+    #[tokio::test]
+    async fn get_own_identity_rejects_absent_principal_authority_after_a_grant_snapshot() {
+        let fixture = own_identity_fixture();
+        let grants = own_grants();
+        fixture.authority.registered.store(false, Ordering::Release);
+        let error = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap_err();
+        assert!(error.to_string().contains("no registered principal"));
+    }
+
+    #[tokio::test]
+    async fn get_own_identity_rejects_removed_committed_identity_after_a_grant_snapshot() {
+        let fixture = own_identity_fixture();
+        let grants = own_grants();
+        projection_shm::update_projection_with_credentials_in(
+            fixture.authority.state.to_str().unwrap(), "identity_sled",
+            nix::unistd::getgid().as_raw(), |_| {
+                let empty = br#"{"sleds":[],"events":[]}"#.to_vec();
+                Ok(Some((empty.clone(), empty)))
+            },
+        ).unwrap();
+        let error = own_identity_output(&fixture.caller, fixture.sled, grants).await.unwrap_err();
+        assert!(error.to_string().contains("session was not found"));
+    }
+
+    #[test]
+    fn get_own_identity_binding_rejects_arbitrary_targets_and_principal_substitution() {
+        let fixture = own_identity_fixture();
+        for field in ["session_id", "genesis", "wireguard_pubkey"] {
+            let mut foreign = serde_json::to_value(&fixture.sled).unwrap();
+            foreign[field] = serde_json::json!("foreign");
+            let foreign = serde_json::from_value(foreign).unwrap();
+            assert!(verify_own_binding(&fixture.caller, &foreign).is_err(), "{field} accepted");
+        }
+        let mut caller = fixture.caller.clone();
+        caller.principal_id = "foreign-principal".into();
+        assert!(verify_own_binding(&caller, &fixture.sled).is_err());
+    }
+
+    #[test]
+    fn own_redaction_withholds_credentials_and_admin_output_keeps_its_existing_shape() {
+        let fixture = own_identity_fixture();
+        let mut sled = fixture.sled;
+        sled.interface = "PRIVATE_INTERFACE_SENTINEL".into();
+        sled.peer_ip = Some("PRIVATE_PEER_SENTINEL".into());
+        sled.vector_id = "PRIVATE_VECTOR_SENTINEL".into();
+        sled.instance = Some(IncusInstance {
+            name: sled.session_id.clone(), status: "Stopped".into(),
+            instance_type: "container".into(), status_code: Some(102),
+            storage_pool: Some("identity-pool".into()),
+            description: Some("PRIVATE_DESCRIPTION_SENTINEL".into()),
+            image: Some("PRIVATE_IMAGE_SENTINEL".into()),
+            profiles: vec!["PRIVATE_PROFILE_SENTINEL".into()],
+            config: Some(HashMap::from([("user.secret".into(), "PRIVATE_CONFIG_SENTINEL".into())])),
+            expanded_config: Some(HashMap::from([
+                ("user.secret".into(), "PRIVATE_EXPANDED_CONFIG_SENTINEL".into()),
+            ])),
+            ..IncusInstance::default()
+        });
+        let output = redact_own_identity(sled.clone()).unwrap();
+        assert_eq!(output["identity"]["instance"]["name"], sled.session_id);
+        assert_eq!(output["identity"]["instance"]["status"], "Stopped");
+        assert_eq!(output["identity"]["instance"]["storage_pool"], "identity-pool");
+        assert!(output["identity"].get("sealed_id").is_none());
+        let encoded = serde_json::to_string(&output).unwrap();
+        assert!(!encoded.contains("PRIVATE_"));
+        assert!(!encoded.contains(sled.sealed_id.as_deref().unwrap()));
+        let admin = disclosed_identity(sled.clone(), &fixture.caller).unwrap();
+        assert_eq!(admin, serde_json::json!({"identity": sled}));
+        let mut foreign = fixture.caller;
+        foreign.session_id = "foreign".into();
+        assert_eq!(disclosed_identity(sled, &foreign).unwrap(), output);
+    }
 }

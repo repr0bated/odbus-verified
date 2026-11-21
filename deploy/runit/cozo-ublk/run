@@ -1,0 +1,30 @@
+#!/bin/sh
+# Cozo-backed persistence for Incus pool 3tched-pool.
+# The pool is a btrfs seed (3tched-pool.img, read-only, holds images/@seed)
+# sprouted onto /dev/ublkb1, whose bytes live in the Cozo store
+# /var/lib/op-dbus/ublk-cozo (device pool-default-persist, 64 KiB chunks).
+# All container writes land on ublkb1. /dev/ublkb1 exists only while
+# cozo-ublk runs; the pool must be unmounted before it stops.
+exec 2>&1
+IMG=/var/lib/incus/disks/3tched-pool.img
+MNT=/var/lib/incus/storage-pools/3tched-pool
+DEV=/dev/ublkb1
+OPTS=noatime,discard=async,user_subvol_rm_allowed
+modprobe ublk_drv
+LOOP=$(losetup -j "$IMG" -O NAME -n | head -n1)
+[ -n "$LOOP" ] || LOOP=$(losetup -f --show -r "$IMG") || { echo "losetup failed"; exit 1; }
+UBLK_DEV_ID=1 unshare --mount /opt/cozo-ublk/cozo-ublk &
+kid=$!
+trap 'umount "$MNT" 2>/dev/null; kill "$kid" 2>/dev/null; wait "$kid"' TERM INT
+i=0
+while [ ! -b "$DEV" ] && [ "$i" -lt 80 ]; do sleep 0.25; i=$((i + 1)); done
+[ -b "$DEV" ] || { echo "$DEV did not appear"; kill "$kid"; exit 1; }
+btrfs device scan "$LOOP" "$DEV" >/dev/null
+install -d -m 0711 "$MNT"
+# A seed-only mount (e.g. Incus loop-mounting the image) is read-only: replace it.
+if mountpoint -q "$MNT" && findmnt -n -o OPTIONS "$MNT" | grep -q '^ro'; then
+  umount "$MNT"
+fi
+mountpoint -q "$MNT" || mount -t btrfs -o "$OPTS" "$DEV" "$MNT" || { echo "mount failed"; kill "$kid"; exit 1; }
+echo "mounted $MNT from $DEV (seed $LOOP)"
+wait "$kid"

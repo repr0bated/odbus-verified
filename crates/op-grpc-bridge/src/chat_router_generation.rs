@@ -1,4 +1,3 @@
-//! Prior name: tched_router_generation_native.
 //! Bounded adapter for the pinned binary's stateless generation WebSocket.
 //!
 //! The native endpoint has no task identifier: MutationEngine owns the job identity,
@@ -61,6 +60,13 @@ pub(crate) trait NativeGenerationAdmission: Send + Sync {
 
     fn check(&self)
     -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>>;
+}
+
+/// Direct HTTP requires a separate approved-profile boundary; legacy websocket
+/// admissions cannot be reused as direct-provider authority.
+pub(crate) trait NativeProviderAdmission: NativeGenerationAdmission {
+    fn check_profile<'a>(&'a self,profile:&'a op_agents::inference::NativeProviderProfile)
+        -> Pin<Box<dyn Future<Output=Result<(),NativeGenerationError>>+Send+'a>>;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -227,8 +233,12 @@ async fn run_native(
             .insert("x-opdbus-sealed-id-bin", header);
     }
     if let Some(trace_id) = request.before_prompt.trace_id() {
-        let header = trace_id.parse().map_err(|_| NativeGenerationError::InvalidRequest("invalid trace metadata"))?;
-        handshake.headers_mut().insert("x-ghostbridge-trace-id", header);
+        let header = trace_id
+            .parse()
+            .map_err(|_| NativeGenerationError::InvalidRequest("invalid trace metadata"))?;
+        handshake
+            .headers_mut()
+            .insert("x-ghostbridge-trace-id", header);
     }
     let config = WebSocketConfig {
         max_message_size: Some(MAX_FRAME_BYTES),
@@ -280,6 +290,20 @@ async fn run_native(
     if connected.get("type").and_then(Value::as_str) != Some("connected") {
         let _ = close_socket(&mut socket).await;
         return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
+    }
+    // Stateless ACK must authenticate a forwarded SID1 and retain the
+    // selection the bridge admitted before prompt release.
+    if !identity_ack_is_authenticated(request.sealed_identity.is_some(), &connected) {
+        let _ = close_socket(&mut socket).await;
+        return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
+    }
+    if let Err(error) = verify_selection(
+        &request,
+        connected.get("provider").and_then(Value::as_str),
+        connected.get("model").and_then(Value::as_str),
+    ) {
+        let _ = close_socket(&mut socket).await;
+        return Err(error);
     }
     // Upstream does not re-verify SID1; identity stays enforced by bridge
     // admission before this loopback, bearer-authenticated connection.

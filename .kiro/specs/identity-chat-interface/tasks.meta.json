@@ -1,0 +1,481 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Write the Baseline_Record entries for every pinned interface the Chat_Interface uses": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184704783
+      }
+    ],
+    "1.2 Write the Runtime_Record entries for Branches and Deployment_Target surfaces": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184732905
+      }
+    ],
+    "1.3 Record the Bound_Identity and Execution_Record operations per mounted Branch (BLOCKED: B-02, B-01)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184755271
+      }
+    ],
+    "1.4 Build the Legacy_Chat_Inventory with Jev triage (read-only)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184775757
+      }
+    ],
+    "1.5 Record the threetched naming defects": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184796409
+      }
+    ],
+    "2.1 Create the `apps/identity-chat/` scaffold without installing anything (PARTIAL: D-01, D-34)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184817375
+      }
+    ],
+    "2.2 Define shared types, typed errors and configuration files": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184838106
+      }
+    ],
+    "3.1 Implement `guard/credential-registry.ts` and `guard/secret-guard.ts` `checkItem` (PARTIAL: D-18 envelope grammar OPEN)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184858994
+      }
+    ],
+    "3.3 Implement `guard/stream-guard.ts` with chunk hold-back": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184879309
+      }
+    ],
+    "3.5 Implement fail-closed output gating and the record writers": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184899449
+      }
+    ],
+    "3.7 Implement request-intake checking": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184924364
+      }
+    ],
+    "4.1 Write `config/identity-profile.schema.json` and `profile/profile-loader.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184945671
+      }
+    ],
+    "5.1 Implement `validate/schema-validator.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184965369
+      }
+    ],
+    "6.1 Implement `registry/capability-source.ts` with the interim result (PARTIAL: D-11, B-11)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794184986506
+      }
+    ],
+    "6.2 Implement `registry/tool-registry.ts` `derive` and `aiSdkTools`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185007741
+      }
+    ],
+    "7.1 Implement `status/tool-call-status.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185028431
+      }
+    ],
+    "7.3 Implement `state/partitioned-store.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185049383
+      }
+    ],
+    "8.1 Implement `gate/confirmation-gate.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185069618
+      }
+    ],
+    "9. Checkpoint: core components": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185090907
+      }
+    ],
+    "10.1 Implement `exec/3tched-fs-runner.ts` (PARTIAL: B-09 for `--guest-kernel`; D-09 binary path is host configuration)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185115802
+      }
+    ],
+    "10.3 Implement the fake two-view Operation_File adapter as a Synthetic_Fixture": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185137535
+      }
+    ],
+    "10.4 Implement `identity/identity-binder.ts` and `identity/public-fields.ts` (PARTIAL: D-25 principal id OPEN, D-24 PROPOSED-DEFAULT)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185159103
+      }
+    ],
+    "10.6 Implement `exec/tool-executor.ts` `execute`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185180948
+      }
+    ],
+    "10.7 Implement `exec/unknown-outcome.ts` (PARTIAL: D-10, B-13)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185201642
+      }
+    ],
+    "10.8 Implement `exec/read-back.ts` (PARTIAL: D-14)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185222277
+      }
+    ],
+    "11.1 Implement `chain/chain-verifier.ts` `verify` (continuity only, D-30)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185243100
+      }
+    ],
+    "11.4 Implement segment reading and receipt linking with interim results (PARTIAL: D-12, D-13, B-12)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185263929
+      }
+    ],
+    "12.1 Implement `context/system-prompt.ts` and `context/model-context-builder.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185285399
+      }
+    ],
+    "13. Checkpoint: executor, chain and context": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185309974
+      }
+    ],
+    "14.1 Define the host adapter boundary in `route/hosts/host-adapter.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185330499
+      }
+    ],
+    "14.2 Implement session start and end in `route/chat-route.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185351456
+      }
+    ],
+    "14.3 Implement `route/turn-loop.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185372156
+      }
+    ],
+    "14.4 Implement decisions, re-verification and request rejection in `route/chat-route.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185392703
+      }
+    ],
+    "14.5 Implement `route/chat-sdk-intake.ts` (PARTIAL: D-02 sub-check B-15; needs task 19.1 to read installed sources)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185414253
+      }
+    ],
+    "14.6 Implement `route/hosts/in-process.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185435667
+      }
+    ],
+    "15.1 Implement the json-render Catalog and Component_Registry": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185456159
+      }
+    ],
+    "15.2 Implement the client status store, decisions and transport (PARTIAL: D-06, B-04, B-05)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185476524
+      }
+    ],
+    "16.1 Implement `scripts/check-forbidden-imports.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185500440
+      }
+    ],
+    "16.2 Implement `scripts/check-branch-literals.ts` (PARTIAL: D-18 envelope rule interim; runtime-value row needs task 1.2)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185520656
+      }
+    ],
+    "16.4 Implement `scripts/check-pins.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185540454
+      }
+    ],
+    "16.6 Implement `scripts/check-catalog.ts`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185560894
+      }
+    ],
+    "16.7 Wire the checks and credential scan into `package.json` scripts": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185581346
+      }
+    ],
+    "17. Checkpoint: route, UI and checks": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185601950
+      }
+    ],
+    "18.1 Add the Chat_Interface entries to `PROVENANCE.md` and the Status_Report": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185622113
+      }
+    ],
+    "19.1 Create the lockfile and confirm package facts (BLOCKED: D-01 confirmation, D-34, explicit owner request)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185642358
+      }
+    ],
+    "19.2 Implement the real Held_Capability_Set reader (BLOCKED: D-11, B-11, B-02)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185663010
+      }
+    ],
+    "19.3 Implement the Execution_Record read and Receipt linking (BLOCKED: D-12, D-13, B-12, B-02)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185686833
+      }
+    ],
+    "19.4 Populate `config/read-back.json` (BLOCKED: D-14, B-02)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185706895
+      }
+    ],
+    "19.5 Implement mutation Unknown_Outcome reconciliation (BLOCKED: D-10, B-13)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185726836
+      }
+    ],
+    "19.6 Add the excluded plugin names (BLOCKED: D-32, B-14)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185747654
+      }
+    ],
+    "19.7 Implement the real SID1 and OIA1 envelope grammar (BLOCKED: D-18 part, B-02 for discovery if the grammar is runtime-only)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185768274
+      }
+    ],
+    "19.8 Fix the principal id mapping (BLOCKED: D-25 under D-23, B-02)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185788620
+      }
+    ],
+    "19.9 Implement `provider/model-provider.ts` (BLOCKED: D-04, D-05, D-07, B-06, B-07, B-08)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185809607
+      }
+    ],
+    "19.10 Implement Deployment_Target host adapters and Chat_UI transports (BLOCKED: D-06, B-04, B-05)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185830039
+      }
+    ],
+    "19.11 Enable the Identity_Container executor path (BLOCKED: B-09, B-10, B-02)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185850760
+      }
+    ],
+    "19.12 Route 3tchedW3 calls through the Chatbot_Glue (BLOCKED: B-03, B-02)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185874956
+      }
+    ],
+    "19.13 Enable host 3tchedFS views (BLOCKED: B-01)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185896429
+      }
+    ],
+    "19.14 Run the Chat_Interface under a Branch (BLOCKED: Owner_Authorization naming the Branch, plus 19.9, 19.10 and B-01 or B-02)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185915982
+      }
+    ],
+    "20.1 Claim and trace the coupling (read-only first)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185936491
+      }
+    ],
+    "20.2 Replace the coupled types, limits and plugin id with ones owned by `ctl_plane_chatbot`": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185957624
+      }
+    ],
+    "20.3 Verify the cut (BLOCKED for the live part: B-01 or B-02, Owner_Authorization)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185977013
+      }
+    ],
+    "21.1 Remove one confirmed chat-code item completely": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794185997594
+      }
+    ],
+    "21.2 Verify each removal (BLOCKED for the live part: B-01 or B-02, Owner_Authorization)": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794186020963
+      }
+    ],
+    "21.3 Restore and record on failure": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794186043796
+      }
+    ],
+    "22.1 Bind the control-plane identity as an ordinary Branch": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794186070119
+      }
+    ],
+    "22.2 Verify the cutover": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794186092417
+      }
+    ],
+    "22.3 Record an unreachable cutover": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794186113476
+      }
+    ],
+    "23. Final checkpoint": [
+      {
+        "executionId": "ab6a5cbf-656d-410f-b291-1d2ace4ddfb1",
+        "chatSessionId": "sess_245805e4-9ade-4fa0-b57a-d16340c7afa7",
+        "timestamp": 1794186134927
+      }
+    ]
+  }
+}

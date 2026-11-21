@@ -387,7 +387,6 @@ mod tests {
         );
     }
 
-
     #[tokio::test]
     async fn test_auto_load_config_does_not_control_registration() {
         let store = Arc::new(MemoryStore::new());

@@ -1,261 +1,269 @@
-//! Out-of-band chat responder wake relay for OP-DBUS.
+//! Authenticated MQTT wake relay for the existing responder identity container.
 //!
-//! This service monitors for pending chat turns via the responder's MQTT wake
-//! topic (`opdbus/responder-wake/<sha256(principal_id)>`) and forwards them
-//! to the control-plane chatbot via D-Bus. The actual response generation
-//! happens in the chatbot; this service only ensures the chatbot is notified
-//! of pending work.
-//!
-//! MQTT wake delivery is required. There is no pending-turn scan or timer retry.
-//! A transport failure terminates the relay explicitly; a missing publication
-//! cannot be inferred from an idle subscription and requires producer-side evidence.
+//! Wakes carry metadata only. Every accepted turn is queued once, then processed
+//! sequentially inside the verified existing container. No scan, polling,
+//! reconnect loop, automatic effect replay, D-Bus shim, or host chat fallback.
 
-use anyhow::{Context, Result};
+mod identity;
+mod launcher;
+
+use std::collections::HashSet;
+use std::net::IpAddr;
+use std::time::Duration;
+
+use anyhow::{Context, Result, ensure};
 use clap::Parser;
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::path::PathBuf;
-use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tokio::sync::mpsc;
+use tracing::{info, warn};
+use uuid::Uuid;
 
-/// Out-of-band chat responder wake relay for OP-DBUS chatbot.
+use identity::ResponderIdentity;
+use launcher::ContainerLauncher;
+
+const QUEUE_CAPACITY: usize = 16;
+const MAX_SEEN_TURNS: usize = 4096;
+const MAX_WAKE_BYTES: usize = 8 * 1024;
+
 #[derive(Parser, Debug)]
 #[command(name = "op-chat-responder")]
-#[command(about = "Relays responder wake notifications to the control-plane chatbot")]
+#[command(about = "Processes authenticated turn wakes inside the bound responder container")]
 struct Args {
-    /// Principal ID of this responder (chatbot container identity).
     #[arg(long, env = "RESPONDER_PRINCIPAL_ID")]
     principal_id: String,
 
-    /// Path to the 3tchedFS lungs mount.
-    #[arg(long, env = "LUNGS_MOUNT", default_value = "/opt/run-mounts/3tched")]
-    lungs_mount: PathBuf,
+    #[arg(long, env = "OP_CONTROL_PLANE_CHATBOT_SESSION_ID")]
+    session_id: String,
 
-    /// MQTT broker host.
+    #[arg(long, env = "OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")]
+    wireguard_pubkey: String,
+
+    /// Existing private-loopback EMQX listener, never a remote credential sink.
     #[arg(long, env = "MQTT_HOST", default_value = "127.0.0.1")]
     mqtt_host: String,
 
-    /// MQTT broker port.
     #[arg(long, env = "MQTT_PORT", default_value = "1883")]
     mqtt_port: u16,
-
-    /// D-Bus destination for the chatbot notification.
-    #[arg(
-        long,
-        env = "DBUS_CHATBOT_DEST",
-        default_value = "org.opdbus.v1.plugins.ctl_plane_chatbot"
-    )]
-    dbus_dest: String,
-
-    /// D-Bus object path for the chatbot.
-    #[arg(
-        long,
-        env = "DBUS_CHATBOT_PATH",
-        default_value = "/org/opdbus/v1/plugins/ctl_plane_chatbot"
-    )]
-    dbus_path: String,
 }
 
-/// The responder wake message published by the bridge.
+/// The bridge binds this metadata to a designated responder. The turn ID is
+/// still only a hint: container FUSE admission independently checks assignment.
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ResponderWake {
     request_id: String,
     owner_key: String,
     owner_principal_id: String,
     conversation_id: Option<String>,
-    preview: Option<String>,
 }
 
-fn responder_owner_key(principal_id: &str) -> String {
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CommittedWake {
+    seq: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum Wake {
+    Pending(ResponderWake),
+    Committed(CommittedWake),
+}
+
+fn request_owner_key(principal_id: &str) -> String {
     format!("{:x}", Sha256::digest(principal_id.as_bytes()))
 }
 
-fn responder_wake_topic(principal_id: &str) -> String {
-    let key = responder_owner_key(principal_id);
-    format!("opdbus/responder-wake/{key}")
+fn validate_wake(wake: &ResponderWake) -> Result<Uuid> {
+    let turn_id = Uuid::parse_str(&wake.request_id)?;
+    ensure!(turn_id.to_string() == wake.request_id,
+        "responder wake turn ID is not canonical");
+    ensure!(!wake.owner_principal_id.is_empty()
+        && wake.owner_principal_id.len() <= 1024
+        && !wake.owner_principal_id.chars().any(char::is_control)
+        && wake.owner_key == request_owner_key(&wake.owner_principal_id),
+        "responder wake owner binding does not match");
+    if let Some(conversation) = &wake.conversation_id {
+        ensure!(Uuid::parse_str(conversation)?.to_string() == *conversation,
+            "responder wake conversation ID is not canonical");
+    }
+    Ok(turn_id)
 }
 
-struct WakeRelay {
-    args: Args,
+fn admit_turn(seen: &mut HashSet<Uuid>, turn: Uuid) -> Result<bool> {
+    if seen.contains(&turn) {
+        return Ok(false);
+    }
+    // Never evict an unresolved or completed ID merely to allow its replay.
+    ensure!(seen.len() < MAX_SEEN_TURNS, "responder deduplication capacity exhausted; no retry");
+    seen.insert(turn);
+    Ok(true)
 }
 
-impl WakeRelay {
-    fn new(args: Args) -> Self {
-        Self { args }
+fn validate_broker(host: &str, port: u16) -> Result<()> {
+    ensure!(port != 0 && (host == "localhost"
+        || host.parse::<IpAddr>().is_ok_and(|address| address.is_loopback())),
+        "responder MQTT credentials may only reach the existing loopback broker");
+    Ok(())
+}
+
+async fn process_turns(launcher: ContainerLauncher, mut turns: mpsc::Receiver<Uuid>) -> Result<()> {
+    while let Some(turn_id) = turns.recv().await {
+        // A failure can follow an accepted provider/tool effect. Never requeue it.
+        launcher.process(turn_id).await?;
+        info!(%turn_id, "container response receipt and readback confirmed");
     }
+    anyhow::bail!("responder work queue closed");
+}
 
-    /// Notify the control-plane chatbot of a pending turn via D-Bus.
-    async fn notify_chatbot(&self, turn_id: &str, conversation_id: Option<&str>) -> Result<()> {
-        use zbus::Connection;
+async fn run(args: Args) -> Result<()> {
+    validate_broker(&args.mqtt_host, args.mqtt_port)?;
+    let (identity, authentication) = ResponderIdentity::load(
+        args.principal_id, args.session_id, args.wireguard_pubkey,
+    )?;
+    let launcher = ContainerLauncher::connect(identity).await?;
+    let topic = format!("opdbus/wake/{}", authentication.owner_key);
+    let mut options = MqttOptions::new(
+        authentication.owner_key.clone(), args.mqtt_host, args.mqtt_port,
+    );
+    options.set_credentials(authentication.owner_key, authentication.password);
+    options.set_clean_session(true);
+    options.set_keep_alive(Duration::from_secs(30));
+    options.set_max_packet_size(MAX_WAKE_BYTES + 512, 32 * 1024);
+    let (client, mut eventloop) = AsyncClient::new(options, 10);
+    let (sender, receiver) = mpsc::channel(QUEUE_CAPACITY);
+    let worker = process_turns(launcher, receiver);
+    tokio::pin!(worker);
+    let mut seen = HashSet::new();
 
-        let connection = Connection::session()
-            .await
-            .context("failed to connect to session D-Bus")?;
-
-        // Call the chatbot's ProcessPendingTurn method
-        let reply: Result<(), zbus::Error> = connection
-            .call_method(
-                Some(self.args.dbus_dest.as_str()),
-                self.args.dbus_path.as_str(),
-                Some("org.opdbus.v1.ChatResponder"),
-                "ProcessPendingTurn",
-                &(turn_id, conversation_id.unwrap_or("")),
-            )
-            .await
-            .map(|_| ());
-
-        match reply {
-            Ok(()) => {
-                info!(turn_id, conversation_id, "notified chatbot of pending turn");
-                Ok(())
-            }
-            Err(zbus::Error::MethodError(name, detail, _)) => {
-                // Method errors are expected if the chatbot is busy or the turn
-                // was already claimed. Log and continue.
-                debug!(
-                    turn_id,
-                    error_name = %name,
-                    ?detail,
-                    "chatbot notification returned error (may be expected)"
-                );
-                Ok(())
-            }
-            Err(error) => {
-                warn!(turn_id, %error, "failed to notify chatbot");
-                Err(error.into())
-            }
-        }
-    }
-
-    /// Process a wake notification by forwarding to the chatbot.
-    async fn handle_wake(&self, wake: ResponderWake) {
-        info!(
-            request_id = %wake.request_id,
-            owner_key = %wake.owner_key,
-            owner_principal_id = %wake.owner_principal_id,
-            conversation_id = ?wake.conversation_id,
-            preview = ?wake.preview,
-            "received responder wake"
-        );
-
-        if let Err(error) = self
-            .notify_chatbot(&wake.request_id, wake.conversation_id.as_deref())
-            .await
-        {
-            error!(
-                request_id = %wake.request_id,
-                %error,
-                "failed to forward wake to chatbot"
-            );
-        }
-    }
-
-    /// Run the relay loop with MQTT subscription.
-    async fn run_mqtt(&self) -> Result<()> {
-        let topic = responder_wake_topic(&self.args.principal_id);
-        let client_id = format!(
-            "op-chat-responder-{}",
-            &responder_owner_key(&self.args.principal_id)[..8]
-        );
-
-        info!(
-            principal_id = %self.args.principal_id,
-            topic = %topic,
-            "starting MQTT wake relay"
-        );
-
-        let mut mqtt_options =
-            MqttOptions::new(&client_id, &self.args.mqtt_host, self.args.mqtt_port);
-        mqtt_options.set_keep_alive(Duration::from_secs(30));
-
-        let (client, mut eventloop) = AsyncClient::new(mqtt_options, 10);
-        client.subscribe(&topic, QoS::AtLeastOnce).await?;
-
-        loop {
-            match eventloop.poll().await {
-                Ok(Event::Incoming(Packet::Publish(publish))) => {
-                    if publish.topic == topic {
-                        match serde_json::from_slice::<ResponderWake>(&publish.payload) {
-                            Ok(wake) => self.handle_wake(wake).await,
-                            Err(error) => {
-                                warn!(%error, "failed to parse responder wake payload");
-                            }
+    loop {
+        // Keep MQTT keepalives and acknowledgements live throughout generation.
+        let event = tokio::select! {
+            result = &mut worker => return result.context("container response processing stopped; no replay"),
+            event = eventloop.poll() => event,
+        }.context("required authenticated MQTT wake channel unavailable")?;
+        match event {
+            Event::Incoming(Packet::Publish(publish)) if publish.topic == topic => {
+                if publish.retain || publish.payload.len() > MAX_WAKE_BYTES {
+                    warn!("rejected retained or oversized responder wake");
+                    continue;
+                }
+                match serde_json::from_slice::<Wake>(&publish.payload) {
+                    Ok(Wake::Pending(wake)) => {
+                        let Ok(turn_id) = validate_wake(&wake) else {
+                            warn!("rejected invalid responder wake");
+                            continue;
+                        };
+                        if admit_turn(&mut seen, turn_id)? {
+                            sender.try_send(turn_id)
+                                .context("responder work queue unavailable or full; no retry")?;
                         }
                     }
-                }
-                Ok(Event::Incoming(Packet::ConnAck(_))) => {
-                    info!("MQTT connected, subscribing to required wake channel");
-                    client
-                        .subscribe(&topic, QoS::AtLeastOnce)
-                        .await
-                        .context("required MQTT wake subscription could not be queued")?;
-                }
-                Ok(Event::Incoming(Packet::SubAck(ack))) => {
-                    anyhow::ensure!(
-                        ack.return_codes.len() == 1
-                            && matches!(
-                                ack.return_codes[0],
-                                rumqttc::SubscribeReasonCode::Success(_)
-                            ),
-                        "required MQTT wake subscription rejected; pending turns cannot be discovered"
-                    );
-                    info!("required MQTT wake subscription accepted");
-                }
-                Ok(_) => {}
-                Err(error) => {
-                    error!(%error, "required MQTT wake channel failed; pending turns cannot be discovered");
-                    return Err(error).context("required MQTT wake channel unavailable");
+                    // Ordinary committed-state hints share this exact identity
+                    // topic. They never trigger a pending-turn scan.
+                    Ok(Wake::Committed(wake)) if wake.seq != 0 => {}
+                    _ => warn!("rejected malformed responder wake metadata"),
                 }
             }
+            Event::Incoming(Packet::ConnAck(_)) => {
+                client.subscribe(&topic, QoS::AtLeastOnce).await
+                    .context("required authenticated MQTT subscription could not be queued")?;
+            }
+            Event::Incoming(Packet::SubAck(ack)) => {
+                ensure!(ack.return_codes.len() == 1
+                    && matches!(ack.return_codes[0], rumqttc::SubscribeReasonCode::Success(_)),
+                    "required authenticated MQTT subscription rejected");
+                info!("authenticated responder wake subscription accepted");
+            }
+            _ => {}
         }
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,rumqttc=warn".into()),
-        )
-        .init();
-
-    let args = Args::parse();
-    let relay = WakeRelay::new(args);
-    relay.run_mqtt().await
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "info".into())
+        .add_directive("rumqttc=warn".parse()?);
+    tracing_subscriber::fmt().with_env_filter(filter).with_writer(std::io::stderr).init();
+    run(Args::parse()).await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn service_arguments_use_mqtt_only() {
-        let args = Args::try_parse_from([
-            "op-chat-responder",
-            "--principal-id",
-            "fixture",
-            "--lungs-mount",
-            "/tmp/fixture-lungs",
-            "--mqtt-host",
-            "localhost",
-            "--mqtt-port",
-            "1883",
-        ])
-        .unwrap();
-        assert_eq!(args.principal_id, "fixture");
-        assert_eq!(args.mqtt_host, "localhost");
-        assert_eq!(args.mqtt_port, 1883);
+    fn args(extra: &[&str]) -> Result<Args, clap::Error> {
+        Args::try_parse_from(["op-chat-responder", "--principal-id", "fixture",
+            "--session-id", "fixture-session", "--wireguard-pubkey", "fixture-key"]
+            .into_iter().chain(extra.iter().copied()))
+    }
+
+    fn wake() -> ResponderWake {
+        ResponderWake {
+            request_id: "00000000-0000-4000-8000-00000000000a".into(),
+            owner_key: request_owner_key("fixture-owner"),
+            owner_principal_id: "fixture-owner".into(),
+            conversation_id: None,
+        }
     }
 
     #[test]
-    fn retired_polling_arguments_are_rejected() {
-        for retired in ["--poll-interval", "--polling-mode"] {
-            let error =
-                Args::try_parse_from(["op-chat-responder", "--principal-id", "fixture", retired])
-                    .unwrap_err();
-            assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
+    fn service_arguments_use_authenticated_mqtt_only() {
+        let parsed = args(&["--mqtt-host", "localhost", "--mqtt-port", "1883"]).unwrap();
+        assert_eq!(parsed.principal_id, "fixture");
+        assert_eq!(parsed.mqtt_host, "localhost");
+        assert_eq!(parsed.mqtt_port, 1883);
+        for retired in ["--poll-interval", "--polling-mode", "--dbus-dest", "--dbus-path", "--lungs-mount"] {
+            assert_eq!(args(&[retired]).unwrap_err().kind(), clap::error::ErrorKind::UnknownArgument);
         }
+    }
+
+    #[test]
+    fn wakes_require_canonical_turn_and_matching_owner() {
+        let mut wake = wake();
+        assert!(validate_wake(&wake).is_ok());
+        wake.owner_key = request_owner_key("another-owner");
+        assert!(validate_wake(&wake).is_err());
+        wake.owner_key = request_owner_key(&wake.owner_principal_id);
+        wake.request_id = wake.request_id.to_uppercase();
+        assert!(validate_wake(&wake).is_err());
+        wake.request_id = "not-a-turn".into();
+        assert!(validate_wake(&wake).is_err());
+    }
+
+    #[test]
+    fn wake_conversation_is_optional_but_cannot_be_malformed() {
+        let mut wake = wake();
+        wake.conversation_id = Some("00000000-0000-4000-8000-000000000002".into());
+        assert!(validate_wake(&wake).is_ok());
+        wake.conversation_id = Some("../../another-turn".into());
+        assert!(validate_wake(&wake).is_err());
+    }
+
+    #[test]
+    fn duplicates_never_consume_queue_capacity_or_evict_prior_turns() {
+        let turn = validate_wake(&wake()).unwrap();
+        let mut seen = HashSet::new();
+        assert!(admit_turn(&mut seen, turn).unwrap());
+        assert!(!admit_turn(&mut seen, turn).unwrap());
+        for id in 1..MAX_SEEN_TURNS {
+            seen.insert(Uuid::from_u128(id as u128));
+        }
+        assert_eq!(seen.len(), MAX_SEEN_TURNS);
+        assert!(!admit_turn(&mut seen, turn).unwrap());
+        assert!(admit_turn(&mut seen, Uuid::from_u128(u128::MAX)).is_err());
+    }
+
+    #[test]
+    fn ordinary_wakes_do_not_become_pending_turns_and_broker_stays_loopback() {
+        assert!(matches!(serde_json::from_str::<Wake>(r#"{"seq":1}"#).unwrap(), Wake::Committed(_)));
+        assert!(serde_json::from_str::<Wake>(r#"{"seq":1,"request_id":"forged"}"#).is_err());
+        assert!(validate_broker("127.0.0.1", 1883).is_ok());
+        assert!(validate_broker("::1", 1883).is_ok());
+        assert!(validate_broker("198.51.100.1", 1883).is_err());
+        assert!(validate_broker("localhost", 0).is_err());
     }
 }

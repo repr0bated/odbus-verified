@@ -1,10 +1,10 @@
-//! Prior name: tched_own_agent_route.
+//! Prior name: _3tched_own_agent_route.
 //! Whitelist projection of the caller-selected dedicated route from committed
 //! native configuration. MutationEngine owns identity, mode, seal and grant
 //! admission and authoritative observation publication around this helper.
 
 use anyhow::{Context, Result, ensure};
-use op_plugins::state_plugins::{project::ChatMode, chat_router::GetOwnAgentRouteOutput};
+use op_plugins::state_plugins::{chat_router::GetOwnAgentRouteOutput, project::ChatMode};
 use serde_json::Value;
 
 fn component(value: &str) -> bool {

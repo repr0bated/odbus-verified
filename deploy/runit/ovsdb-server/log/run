@@ -1,8 +1,5 @@
 #!/bin/sh
-exec 2>&1
-logdir=/var/log/op-dbus/ovsdb-server
-install -d -m 755 -o svlog -g svlog "$logdir"
-rm -f "$logdir/lock"
-printf '%s\n' 's4000000' 'n10' 't86400' >"$logdir/config"
-chown -R svlog:svlog "$logdir" 2>/dev/null || true
-exec chpst -u svlog svlogd -tt "$logdir"
+set -e
+LOG=/var/log/runit/ovsdb-server
+install -d -o _runit-log -g adm -m 0750 "$LOG"
+exec chpst -u _runit-log svlogd -tt "$LOG"

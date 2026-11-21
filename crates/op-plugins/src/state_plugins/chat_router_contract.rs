@@ -86,6 +86,8 @@ mod tests {
 
     #[test]
     fn every_plugin_section_is_self_contained_and_validates_without_external_files() {
+        super::super::threetched::prepare_schema_capture()
+            .expect("threetched schema capture must succeed before section validation");
         let contract = document();
         jsonschema::validator_for(contract).expect("full contract compiles");
         for key in contract["properties"].as_object().unwrap().keys() {

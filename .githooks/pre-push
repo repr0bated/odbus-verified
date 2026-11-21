@@ -1,0 +1,11 @@
+#!/bin/sh
+# Only main and dev may receive new commits or be created/updated.
+# Deleting an off-policy ref is allowed (cleanup); creating or updating one is refused.
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac   # all-zero local sha = deletion
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/dev) ;;
+    *) echo "push refused: '$remote_ref' is not allowed (only main and dev)." >&2; exit 1 ;;
+  esac
+done
+exit 0

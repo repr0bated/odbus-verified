@@ -14,12 +14,17 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::broadcast;
 
+#[path = "core_operations.rs"]
+mod operations;
 #[path = "core_persistence.rs"]
 mod persistence;
 #[path = "core_projection.rs"]
 mod projection;
-#[path = "core_operations.rs"]
-mod operations;
+#[path = "core_orchestration.rs"]
+mod orchestration;
+pub use orchestration::{OrchestrationCommit, OrchestrationRecord};
+pub(crate) use orchestration::{OrchestrationWriter, OwnerDefinition, DefinitionApprovalState};
+use orchestration::OrchestrationDelta;
 pub use operations::MethodOperation;
 
 // ---------------------------------------------------------------------------
@@ -82,9 +87,7 @@ pub fn json_to_proto_value(value: &serde_json::Value) -> ProtoValue {
 }
 
 /// JSON object -> protobuf `Struct`.
-pub fn json_map_to_proto_struct(
-    map: &serde_json::Map<String, serde_json::Value>,
-) -> ProtoStruct {
+pub fn json_map_to_proto_struct(map: &serde_json::Map<String, serde_json::Value>) -> ProtoStruct {
     ProtoStruct {
         fields: map
             .iter()
@@ -434,7 +437,10 @@ impl Journal {
         }
         let mut errors = Vec::new();
         let mut verified = 0u64;
-        for event in events.iter().filter(|e| e.event_id >= lo && e.event_id <= hi) {
+        for event in events
+            .iter()
+            .filter(|e| e.event_id >= lo && e.event_id <= hi)
+        {
             let draft = JournalDraft {
                 actor_id: event.actor_id.clone(),
                 capability_id: event.capability_id.clone(),
@@ -548,11 +554,16 @@ pub struct MutationOutcome {
 }
 
 /// Selected only by the admitted runtime, never from a caller's JSON body.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum StateScope {
     Public,
-    Private { principal_id: String, session_id: String },
+    Private {
+        principal_id: String,
+        session_id: String,
+    },
 }
 
 /// An authoritative backend observation at the mutation's canonical object path.
@@ -664,11 +675,17 @@ impl BridgeCore {
     }
 
     fn fixture(&self) -> &FixtureCore {
-        self.inner.fixture.as_ref().expect("fixture-only API; production uses admitted durable state APIs")
+        self.inner
+            .fixture
+            .as_ref()
+            .expect("fixture-only API; production uses admitted durable state APIs")
     }
 
     fn notices(&self) -> &broadcast::Sender<StateNotice> {
-        self.inner.notice_tx.as_ref().expect("durable production notifier required")
+        self.inner
+            .notice_tx
+            .as_ref()
+            .expect("durable production notifier required")
     }
 
     /// The route source of truth.
@@ -703,20 +720,29 @@ impl BridgeCore {
 
     /// Fixture event-buffer subscription. Production uses `subscribe_commits`.
     pub fn subscribe_state(&self) -> broadcast::Receiver<StateChange> {
-        assert!(self.inner.persistent.is_none(), "production subscriptions must reread committed SHM");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production subscriptions must reread committed SHM"
+        );
         self.fixture().state_tx.subscribe()
     }
 
     /// Fixture audit-buffer subscription. Production uses scoped `journal_events`.
     pub fn subscribe_events(&self) -> broadcast::Receiver<ChainEvent> {
-        assert!(self.inner.persistent.is_none(), "production audit subscriptions require scoped durable reads");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production audit subscriptions require scoped durable reads"
+        );
         self.fixture().event_tx.subscribe()
     }
 
     /// Latest journaled event id, or 0 when the journal is empty.
     pub fn at_event_id(&self) -> u64 {
         if let Some(persistent) = &self.inner.persistent {
-            return persistent.lock().expect("persistent core lock poisoned").at_event_id();
+            return persistent
+                .lock()
+                .expect("persistent core lock poisoned")
+                .at_event_id();
         }
         self.journal().tip().map(|t| t.event_id).unwrap_or(0)
     }
@@ -727,7 +753,10 @@ impl BridgeCore {
         plugin_id: &str,
         object_path: &str,
     ) -> Option<(serde_json::Map<String, serde_json::Value>, String)> {
-        assert!(self.inner.persistent.is_none(), "production reads use fallible committed_snapshot with admitted scope");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production reads use fallible committed_snapshot with admitted scope"
+        );
         let _commit = self.inner.commit.lock().expect("commit lock poisoned");
         self.store().get_object(plugin_id, object_path)
     }
@@ -738,10 +767,17 @@ impl BridgeCore {
         plugin_id: &str,
         object_path: &str,
     ) -> Option<(serde_json::Map<String, serde_json::Value>, String, u64)> {
-        assert!(self.inner.persistent.is_none(), "production reads use fallible committed_snapshot with admitted scope");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production reads use fallible committed_snapshot with admitted scope"
+        );
         let _commit = self.inner.commit.lock().expect("commit lock poisoned");
         let (state, hash) = self.store().get_object(plugin_id, object_path)?;
-        let event_id = self.journal().tip().map(|event| event.event_id).unwrap_or(0);
+        let event_id = self
+            .journal()
+            .tip()
+            .map(|event| event.event_id)
+            .unwrap_or(0);
         Some((state, hash, event_id))
     }
 
@@ -752,7 +788,10 @@ impl BridgeCore {
         object_path: &str,
         member: &str,
     ) -> Option<serde_json::Value> {
-        assert!(self.inner.persistent.is_none(), "production property reads require admitted committed_snapshot");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production property reads require admitted committed_snapshot"
+        );
         let _commit = self.inner.commit.lock().expect("commit lock poisoned");
         self.store().get_member(plugin_id, object_path, member)
     }
@@ -767,7 +806,10 @@ impl BridgeCore {
         Vec<StateChange>,
         broadcast::Receiver<StateChange>,
     ) {
-        assert!(self.inner.persistent.is_none(), "production subscriptions use fallible committed_subscription");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production subscriptions use fallible committed_subscription"
+        );
         let _commit = self.inner.commit.lock().expect("commit lock poisoned");
         let live = self.subscribe_state();
         let initial = if include_state {
@@ -788,7 +830,10 @@ impl BridgeCore {
         &self,
         from: u64,
     ) -> (Vec<JournalEvent>, broadcast::Receiver<ChainEvent>) {
-        assert!(self.inner.persistent.is_none(), "production audit reads require scoped durable journal_events");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production audit reads require scoped durable journal_events"
+        );
         let _commit = self.inner.commit.lock().expect("commit lock poisoned");
         let live = self.subscribe_events();
         let history = if from == 0 {
@@ -840,10 +885,7 @@ impl BridgeCore {
                     ));
                 }
                 if !plugin.methods.is_empty()
-                    && !self
-                        .inner
-                        .catalog
-                        .declares(&op.plugin_id, &op.member_name)
+                    && !self.inner.catalog.declares(&op.plugin_id, &op.member_name)
                 {
                     return Err(reject(
                         ErrorCode::ValidationFailed,
@@ -870,8 +912,10 @@ impl BridgeCore {
     /// Validate, apply, journal and publish one mutation.
     pub fn mutate(&self, op: CoreMutation) -> Result<MutationOutcome, CoreRejection> {
         if self.inner.persistent.is_some() {
-            return Err(reject(ErrorCode::PermissionDenied,
-                "production writes require admitted backend execution and authoritative state readback"));
+            return Err(reject(
+                ErrorCode::PermissionDenied,
+                "production writes require admitted backend execution and authoritative state readback",
+            ));
         }
         self.validate(&op)?;
 
@@ -885,7 +929,8 @@ impl BridgeCore {
                     serde_json::Value::Null => Vec::new(),
                     single => vec![single.clone()],
                 };
-                let value = self.router()
+                let value = self
+                    .router()
                     .call(&op.plugin_id, &op.member_name, &args)
                     .map_err(|err| match err {
                         RouterError::UnknownPlugin(_) | RouterError::UnknownMethod { .. } => {
@@ -901,7 +946,10 @@ impl BridgeCore {
                 (ChangeType::PropertySet, None)
             }
             CoreOperation::Unknown => {
-                return Err(reject(ErrorCode::ValidationFailed, "unknown operation type"));
+                return Err(reject(
+                    ErrorCode::ValidationFailed,
+                    "unknown operation type",
+                ));
             }
         };
 
@@ -944,7 +992,9 @@ impl BridgeCore {
             }
             CoreOperation::CallMethod => {
                 // Calls don't write state; stamp the current object hash.
-                let hash = self.store().effective_hash(&op.plugin_id, &op.object_path)
+                let hash = self
+                    .store()
+                    .effective_hash(&op.plugin_id, &op.object_path)
                     .unwrap_or_else(|| blake3::hash(b"{}").to_hex().to_string());
                 (None, hash)
             }
@@ -953,7 +1003,9 @@ impl BridgeCore {
             }
         };
 
-        let input_patch_hash = blake3::hash(&canonical_json(&op.value)).to_hex().to_string();
+        let input_patch_hash = blake3::hash(&canonical_json(&op.value))
+            .to_hex()
+            .to_string();
         let event = self.journal().append(JournalDraft {
             actor_id: op.actor_id.clone(),
             capability_id: op.capability_id.clone(),
@@ -1001,8 +1053,15 @@ impl BridgeCore {
         if self.inner.persistent.is_some() {
             let failed_index = if ops.is_empty() { None } else { Some(0) };
             return BatchOutcome {
-                results: ops.into_iter().map(|_| Err(reject(ErrorCode::PermissionDenied,
-                    "production batches require admitted transactional backend execution"))).collect(),
+                results: ops
+                    .into_iter()
+                    .map(|_| {
+                        Err(reject(
+                            ErrorCode::PermissionDenied,
+                            "production batches require admitted transactional backend execution",
+                        ))
+                    })
+                    .collect(),
                 failed_index,
             };
         }
@@ -1073,7 +1132,10 @@ impl BridgeCore {
     /// One `INITIAL_STATE` frame per stored object, for subscribers that
     /// asked for the present state. Not journaled (`event_id` 0).
     pub fn initial_frames(&self) -> Vec<StateChange> {
-        assert!(self.inner.persistent.is_none(), "production hydration uses fallible committed_subscription");
+        assert!(
+            self.inner.persistent.is_none(),
+            "production hydration uses fallible committed_subscription"
+        );
         let _commit = self.inner.commit.lock().expect("commit lock poisoned");
         self.initial_frames_locked()
     }
@@ -1081,7 +1143,8 @@ impl BridgeCore {
     fn initial_frames_locked(&self) -> Vec<StateChange> {
         let catalog_hash = self.inner.catalog.hash().to_string();
         let generation = self.store().generation();
-        self.store().snapshot()
+        self.store()
+            .snapshot()
             .into_iter()
             .map(|(plugin_id, object_path, map)| {
                 let plugin = self.inner.catalog.plugin(&plugin_id);

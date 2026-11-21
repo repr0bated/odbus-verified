@@ -2,12 +2,12 @@
 //!
 //! `EventChainService` proof/snapshot RPCs are honestly `UNIMPLEMENTED`;
 //! everything else is real. `OvsdbMirror`, `RuntimeMirror` and
-//! `DbusPassthrough` are generated from the same file but not served: the
-//! fresh bridge owns state, plugins and audit only.
+//! `DbusPassthrough` are generated from the same file but not served here.
+//! Authenticated ChatLink shares the production door via its separate module.
 
 use crate::core::{
-    json_map_to_proto_struct, json_to_proto_value, proto_value_to_json, BridgeCore, CoreMutation,
-    CoreOperation, CoreRejection, JournalEvent, MutationOutcome,
+    BridgeCore, CoreMutation, CoreOperation, CoreRejection, JournalEvent, MutationOutcome,
+    json_map_to_proto_struct, json_to_proto_value, proto_value_to_json,
 };
 use crate::proto::event_chain_service_server::EventChainService;
 use crate::proto::plugin_service_server::PluginService;
@@ -24,11 +24,11 @@ use crate::proto::{
     SubscribeEventsRequest, SubscribeRequest, SubscribeSignalsRequest, VerifyChainRequest,
     VerifyChainResponse,
 };
+use crate::runtime::{CallerAuthority, Runtime, RuntimeError, VerifiedCaller};
+use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
-use std::sync::Arc;
-use crate::runtime::{CallerAuthority, Runtime, RuntimeError, VerifiedCaller};
 
 #[path = "service_runtime.rs"]
 mod production;
@@ -45,11 +45,17 @@ impl CallerAuthority for Sid1Authority {
         anyhow::ensure!(current.claims() == &self.expected, "identity term changed");
         Ok(())
     }
-    async fn refreshed(self: Arc<Self>, refresh: &crate::runtime_identity::CredentialRefresh)
-        -> anyhow::Result<Arc<dyn CallerAuthority>> {
-        anyhow::ensure!(refresh.previous() == &self.expected, "refresh original SID1 authority differs");
+    async fn refreshed(
+        self: Arc<Self>,
+        refresh: &crate::runtime_identity::CredentialRefresh,
+    ) -> anyhow::Result<Arc<dyn CallerAuthority>> {
+        anyhow::ensure!(
+            refresh.previous() == &self.expected,
+            "refresh original SID1 authority differs"
+        );
         let authority = Arc::new(Self {
-            wire: refresh.wire().to_vec(), expected: refresh.identity().claims().clone(),
+            wire: refresh.wire().to_vec(),
+            expected: refresh.identity().claims().clone(),
         });
         authority.revalidate().await?;
         Ok(authority)
@@ -59,18 +65,27 @@ impl CallerAuthority for Sid1Authority {
 struct OracleAuthority(Arc<crate::oracle_receiver::VerifiedOracle>);
 #[async_trait::async_trait]
 impl CallerAuthority for OracleAuthority {
-    async fn revalidate(&self) -> anyhow::Result<()> { self.0.revalidate().await }
-    async fn refreshed(self: Arc<Self>, refresh: &crate::runtime_identity::CredentialRefresh)
-        -> anyhow::Result<Arc<dyn CallerAuthority>> {
+    async fn revalidate(&self) -> anyhow::Result<()> {
+        self.0.revalidate().await
+    }
+    async fn refreshed(
+        self: Arc<Self>,
+        refresh: &crate::runtime_identity::CredentialRefresh,
+    ) -> anyhow::Result<Arc<dyn CallerAuthority>> {
         Ok(Arc::new(Self(Arc::new(self.0.refreshed(refresh).await?))))
     }
 }
 
 fn runtime_status(error: RuntimeError) -> Status {
-    if error.is_denied() { Status::permission_denied(error.to_string()) }
-    else if error.is_unsupported() || error.failed_before_effect() { Status::failed_precondition(error.to_string()) }
-    else if error.outcome_unknown() { Status::aborted(error.to_string()) }
-    else { Status::internal(error.to_string()) }
+    if error.is_denied() {
+        Status::permission_denied(error.to_string())
+    } else if error.is_unsupported() || error.failed_before_effect() {
+        Status::failed_precondition(error.to_string())
+    } else if error.outcome_unknown() {
+        Status::aborted(error.to_string())
+    } else {
+        Status::internal(error.to_string())
+    }
 }
 
 /// The three core services, backed by one [`BridgeCore`].
@@ -98,41 +113,92 @@ impl BridgeService {
         runtime: Arc<Runtime>,
         oracle: Arc<crate::oracle_assertion::AssertionValidator>,
     ) -> Self {
-        Self { core: runtime.core().clone(), runtime: Some(runtime), oracle }
+        Self {
+            core: runtime.core().clone(),
+            runtime: Some(runtime),
+            oracle,
+        }
     }
 
-    async fn authenticate<T: Sync>(&self, request: &Request<T>) -> Result<VerifiedCaller, Status> {
-        let sid_headers = request.metadata().get_all_bin(op_identity::sealed_id::HTTP_HEADER_NAME);
+    pub(crate) async fn authenticate<T: Sync>(
+        &self,
+        request: &Request<T>,
+    ) -> Result<VerifiedCaller, Status> {
+        let sid_headers = request
+            .metadata()
+            .get_all_bin(op_identity::sealed_id::HTTP_HEADER_NAME);
         let mut sid_headers = sid_headers.iter();
-        let sid1 = sid_headers.next().map(|value| value.to_bytes()).transpose()
+        let sid1 = sid_headers
+            .next()
+            .map(|value| value.to_bytes())
+            .transpose()
             .map_err(|_| Status::unauthenticated("invalid sealed identity"))?;
-        if sid_headers.next().is_some() { return Err(Status::unauthenticated("multiple sealed identities")); }
-        let oracle_headers = request.metadata().get_all_bin("x-oracle-identity-assertion-bin");
+        if sid_headers.next().is_some() {
+            return Err(Status::unauthenticated("multiple sealed identities"));
+        }
+        let oracle_headers = request
+            .metadata()
+            .get_all_bin("x-oracle-identity-assertion-bin");
         let mut oracle_headers = oracle_headers.iter();
-        let oracle = oracle_headers.next().map(|value| value.to_bytes()).transpose()
+        let oracle = oracle_headers
+            .next()
+            .map(|value| value.to_bytes())
+            .transpose()
             .map_err(|_| Status::unauthenticated("invalid oracle assertion"))?;
         if oracle_headers.next().is_some() || sid1.is_some() == oracle.is_some() {
             return Err(Status::unauthenticated("exactly one identity is required"));
         }
         if let Some(wire) = sid1 {
-            let identity = crate::identity_receiver::verify_sid1(&wire, "grpc").await
+            let identity = crate::identity_receiver::verify_sid1(&wire, "grpc")
+                .await
                 .map_err(|_| Status::unauthenticated("sealed identity is not current"))?;
-            let authority = Arc::new(Sid1Authority { wire: wire.to_vec(), expected: identity.claims().clone() });
+            let authority = Arc::new(Sid1Authority {
+                wire: wire.to_vec(),
+                expected: identity.claims().clone(),
+            });
             Ok(VerifiedCaller::new(&identity, authority))
         } else {
-            let verified = Arc::new(crate::oracle_receiver::verify_assertion(
-                self.oracle.clone(), oracle.as_ref().expect("exactly one identity"), request.remote_addr(),
-            ).await.map_err(|_| Status::unauthenticated("oracle assertion is not current"))?);
-            Ok(VerifiedCaller::new(verified.identity(), Arc::new(OracleAuthority(verified.clone()))))
+            let verified = Arc::new(
+                crate::oracle_receiver::verify_assertion(
+                    self.oracle.clone(),
+                    oracle.as_ref().expect("exactly one identity"),
+                    request.remote_addr(),
+                )
+                .await
+                .map_err(|_| Status::unauthenticated("oracle assertion is not current"))?,
+            );
+            Ok(VerifiedCaller::new(
+                verified.identity(),
+                Arc::new(OracleAuthority(verified.clone())),
+            ))
         }
+    }
+
+    /// ChatLink has no fixture bypass and no independent capability vocabulary.
+    /// Reuse the sealed self-read method at admission and before each disclosure.
+    pub(crate) async fn authorize_chat(&self, caller: &VerifiedCaller) -> Result<(), Status> {
+        let runtime = self
+            .runtime
+            .as_ref()
+            .ok_or_else(|| Status::unavailable("authenticated chat runtime is unavailable"))?;
+        runtime
+            .authorize_nested(caller, "identity_sled", "get_own_identity")
+            .await
+            .map_err(|_| Status::permission_denied("current self-read authority is required"))
     }
 
     fn requested_capability<T>(&self, request: &Request<T>) -> Result<String, Status> {
         let headers = request.metadata().get_all("x-opdbus-capability");
         let mut headers = headers.iter();
-        let capability = headers.next().ok_or_else(|| Status::permission_denied("missing capability"))?
-            .to_str().map_err(|_| Status::permission_denied("invalid capability"))?.to_owned();
-        if headers.next().is_some() { return Err(Status::permission_denied("multiple capabilities")); }
+        let capability = headers
+            .next()
+            .ok_or_else(|| Status::permission_denied("missing capability"))?
+            .to_str()
+            .map_err(|_| Status::permission_denied("invalid capability"))?
+            .to_owned();
+        if headers.next().is_some() {
+            return Err(Status::permission_denied("multiple capabilities"));
+        }
         Ok(capability)
     }
 
@@ -141,26 +207,56 @@ impl BridgeService {
         let mut headers = headers.iter();
         let id = match headers.next() {
             Some(value) => {
-                let value = value.to_str().map_err(|_| Status::invalid_argument("invalid operation id"))?;
-                let id = uuid::Uuid::parse_str(value).map_err(|_| Status::invalid_argument("invalid operation id"))?;
-                if id.to_string() != value { return Err(Status::invalid_argument("noncanonical operation id")); }
+                let value = value
+                    .to_str()
+                    .map_err(|_| Status::invalid_argument("invalid operation id"))?;
+                let id = uuid::Uuid::parse_str(value)
+                    .map_err(|_| Status::invalid_argument("invalid operation id"))?;
+                if id.to_string() != value {
+                    return Err(Status::invalid_argument("noncanonical operation id"));
+                }
                 id
             }
             None => uuid::Uuid::new_v4(),
         };
-        if headers.next().is_some() { return Err(Status::invalid_argument("multiple operation ids")); }
+        if headers.next().is_some() {
+            return Err(Status::invalid_argument("multiple operation ids"));
+        }
         Ok(id)
     }
 
-    fn check_method_target(&self, plugin: &str, method: &str, path: &str, capability: &str) -> Result<(), Status> {
-        let entry = self.core.catalog().plugin(plugin).ok_or_else(|| Status::not_found("plugin is absent"))?;
-        if !path.is_empty() && path != entry.dbus_path { return Err(Status::invalid_argument("method target is not the canonical plugin object")); }
-        let schema: op_state_store::PluginSchema = serde_json::from_value(entry.schema.clone()
-            .ok_or_else(|| Status::failed_precondition("sealed method contract absent"))?)
-            .map_err(|_| Status::failed_precondition("invalid sealed method contract"))?;
-        let declaration = schema.methods.get(method).ok_or_else(|| Status::not_found("method is absent"))?;
+    fn check_method_target(
+        &self,
+        plugin: &str,
+        method: &str,
+        path: &str,
+        capability: &str,
+    ) -> Result<(), Status> {
+        let entry = self
+            .core
+            .catalog()
+            .plugin(plugin)
+            .ok_or_else(|| Status::not_found("plugin is absent"))?;
+        if !path.is_empty() && path != entry.dbus_path {
+            return Err(Status::invalid_argument(
+                "method target is not the canonical plugin object",
+            ));
+        }
+        let schema: op_state_store::PluginSchema = serde_json::from_value(
+            entry
+                .schema
+                .clone()
+                .ok_or_else(|| Status::failed_precondition("sealed method contract absent"))?,
+        )
+        .map_err(|_| Status::failed_precondition("invalid sealed method contract"))?;
+        let declaration = schema
+            .methods
+            .get(method)
+            .ok_or_else(|| Status::not_found("method is absent"))?;
         if declaration.required_capability.as_deref() != Some(capability) {
-            return Err(Status::permission_denied("capability does not match sealed method"));
+            return Err(Status::permission_denied(
+                "capability does not match sealed method",
+            ));
         }
         Ok(())
     }
@@ -250,20 +346,12 @@ fn state_matches(req: &SubscribeRequest, frame: &StateChange) -> bool {
                 .path_patterns
                 .iter()
                 .any(|pattern| glob_match(pattern, &frame.object_path)))
-        && (req.tags.is_empty()
-            || frame
-                .tags_touched
-                .iter()
-                .any(|tag| req.tags.contains(tag)))
+        && (req.tags.is_empty() || frame.tags_touched.iter().any(|tag| req.tags.contains(tag)))
 }
 
 fn chain_matches(req: &SubscribeEventsRequest, event: &ChainEvent) -> bool {
     (req.plugin_id.is_empty() || event.plugin_id == req.plugin_id)
-        && (req.tags.is_empty()
-            || event
-                .tags_touched
-                .iter()
-                .any(|tag| req.tags.contains(tag)))
+        && (req.tags.is_empty() || event.tags_touched.iter().any(|tag| req.tags.contains(tag)))
 }
 
 /// Event summary carried in each trace-match payload.
@@ -302,10 +390,9 @@ impl StateSync for BridgeService {
         let req = request.into_inner();
         // Register before returning the RPC, and snapshot under the same
         // commit boundary. No updates can fall between hydration and live.
-        let (initial, schemas, mut sub) = self.core.state_subscription(
-            req.include_initial_state,
-            req.include_schema,
-        );
+        let (initial, schemas, mut sub) = self
+            .core
+            .state_subscription(req.include_initial_state, req.include_schema);
         let (tx, rx) = mpsc::channel(128);
         tokio::spawn(async move {
             for frame in initial {
@@ -366,7 +453,10 @@ impl StateSync for BridgeService {
             return self.production_get_state(runtime, request).await;
         }
         let req = request.into_inner();
-        match self.core.get_object_snapshot(&req.plugin_id, &req.object_path) {
+        match self
+            .core
+            .get_object_snapshot(&req.plugin_id, &req.object_path)
+        {
             Some((map, hash, event_id)) => {
                 let value = serde_json::Value::Object(map.clone());
                 Ok(Response::new(GetStateResponse {
@@ -439,9 +529,11 @@ impl PluginService for BridgeService {
         request: Request<GetSchemaRequest>,
     ) -> Result<Response<GetSchemaResponse>, Status> {
         let req = request.into_inner();
-        let plugin = self.core.catalog().plugin(&req.plugin_id).ok_or_else(|| {
-            Status::not_found(format!("unknown plugin '{}'", req.plugin_id))
-        })?;
+        let plugin = self
+            .core
+            .catalog()
+            .plugin(&req.plugin_id)
+            .ok_or_else(|| Status::not_found(format!("unknown plugin '{}'", req.plugin_id)))?;
         let schema_json = match &plugin.schema {
             Some(value) => serde_json::to_string(value).unwrap_or_default(),
             None => String::new(),
@@ -467,26 +559,46 @@ impl PluginService for BridgeService {
             let capability = self.requested_capability(&request)?;
             let operation_id = self.operation_id(&request)?;
             let req = request.into_inner();
-            self.check_method_target(&req.plugin_id, &req.method_name, &req.object_path, &capability)?;
+            self.check_method_target(
+                &req.plugin_id,
+                &req.method_name,
+                &req.object_path,
+                &capability,
+            )?;
             if !req.capability_id.is_empty() && req.capability_id != capability {
                 return Err(Status::permission_denied("conflicting capability metadata"));
             }
             let args = match req.arguments.as_slice() {
                 [] => serde_json::json!({}),
                 [argument] => proto_value_to_json(argument),
-                _ => return Err(Status::invalid_argument("sealed methods require one named argument object")),
+                _ => {
+                    return Err(Status::invalid_argument(
+                        "sealed methods require one named argument object",
+                    ));
+                }
             };
-            let outcome = runtime.call(caller, &req.plugin_id, &req.method_name, args, operation_id)
-                .await.map_err(runtime_status)?;
-            runtime.revalidate_result(&outcome, &req.plugin_id, &req.method_name)
-                .await.map_err(runtime_status)?;
+            let outcome = runtime
+                .call(caller, &req.plugin_id, &req.method_name, args, operation_id)
+                .await
+                .map_err(runtime_status)?;
+            runtime
+                .revalidate_result(&outcome, &req.plugin_id, &req.method_name)
+                .await
+                .map_err(runtime_status)?;
             let mut response = Response::new(CallMethodResponse {
-                success: true, result: Some(json_to_proto_value(&outcome.result)),
+                success: true,
+                result: Some(json_to_proto_value(&outcome.result)),
                 event_id: outcome.receipt.terminal_event_id,
-                event_hash: outcome.receipt.terminal_event_hash, error: None,
+                event_hash: outcome.receipt.terminal_event_hash,
+                error: None,
             });
-            response.metadata_mut().insert("x-opdbus-operation-id", operation_id.to_string().parse()
-                .map_err(|_| Status::internal("operation receipt metadata invalid"))?);
+            response.metadata_mut().insert(
+                "x-opdbus-operation-id",
+                operation_id
+                    .to_string()
+                    .parse()
+                    .map_err(|_| Status::internal("operation receipt metadata invalid"))?,
+            );
             return Ok(response);
         }
         let peer = request.remote_addr();
@@ -503,7 +615,10 @@ impl PluginService for BridgeService {
         }
         let oracle_headers = metadata.get_all_bin("x-oracle-identity-assertion-bin");
         let mut assertions = oracle_headers.iter();
-        let oracle = assertions.next().map(|v| v.to_bytes()).transpose()
+        let oracle = assertions
+            .next()
+            .map(|v| v.to_bytes())
+            .transpose()
             .map_err(|_| Status::unauthenticated("invalid oracle assertion"))?;
         if assertions.next().is_some() || sid1.is_some() == oracle.is_some() {
             return Err(Status::unauthenticated("exactly one identity is required"));
@@ -522,35 +637,62 @@ impl PluginService for BridgeService {
         let req = request.into_inner();
         let (principal, sealed_hash) = if let Some(sid1) = sid1 {
             let (identity, _, hash) = crate::admission::check_sid1_method_grant(
-                &sid1, &req.plugin_id, &req.method_name, Some(&capability),
-            ).await.map_err(|_| Status::permission_denied("method admission failed"))?;
+                &sid1,
+                &req.plugin_id,
+                &req.method_name,
+                Some(&capability),
+            )
+            .await
+            .map_err(|_| Status::permission_denied("method admission failed"))?;
             (identity.claims().principal_id.clone(), hash)
         } else {
             let identity = crate::oracle_receiver::verify_assertion(
-                self.oracle.clone(), oracle.as_ref().expect("checked identity"), peer,
-            ).await.map_err(|_| Status::unauthenticated("oracle admission failed"))?;
+                self.oracle.clone(),
+                oracle.as_ref().expect("checked identity"),
+                peer,
+            )
+            .await
+            .map_err(|_| Status::unauthenticated("oracle admission failed"))?;
             let catalog = std::env::var_os("OP_BLOB_CATALOG_DIR")
                 .map(std::path::PathBuf::from)
                 .unwrap_or_else(|| std::path::PathBuf::from(op_blob::catalog::DEFAULT_SHM_DIR));
             let grants = std::env::var_os("OP_GRANTS_PATH")
                 .map(std::path::PathBuf::from)
-                .unwrap_or_else(|| std::path::PathBuf::from("/dev/shm/opdbus/capability-grants.json"));
+                .unwrap_or_else(|| {
+                    std::path::PathBuf::from("/dev/shm/opdbus/capability-grants.json")
+                });
             let document: serde_json::Value = serde_json::from_slice(
-                &tokio::fs::read(grants).await.map_err(|_| Status::permission_denied("grant projection unavailable"))?
-            ).map_err(|_| Status::permission_denied("invalid grant projection"))?;
+                &tokio::fs::read(grants)
+                    .await
+                    .map_err(|_| Status::permission_denied("grant projection unavailable"))?,
+            )
+            .map_err(|_| Status::permission_denied("invalid grant projection"))?;
             let (_, hash) = crate::admission::require_method_grant(
-                identity.identity(), &catalog, &req.plugin_id, &req.method_name,
-                Some(&capability), &document,
-            ).map_err(|_| Status::permission_denied("method admission failed"))?;
-            identity.revalidate().await.map_err(|_| Status::unauthenticated("oracle identity expired"))?;
+                identity.identity(),
+                &catalog,
+                &req.plugin_id,
+                &req.method_name,
+                Some(&capability),
+                &document,
+            )
+            .map_err(|_| Status::permission_denied("method admission failed"))?;
+            identity
+                .revalidate()
+                .await
+                .map_err(|_| Status::unauthenticated("oracle identity expired"))?;
             (identity.identity().claims().principal_id.clone(), hash)
         };
-        if self.core.catalog().plugin(&req.plugin_id).map(|p| p.schema_hash.as_str()) != Some(sealed_hash.as_str()) {
+        if self
+            .core
+            .catalog()
+            .plugin(&req.plugin_id)
+            .map(|p| p.schema_hash.as_str())
+            != Some(sealed_hash.as_str())
+        {
             return Err(Status::failed_precondition("sealed plugin changed"));
         }
         // Routes key on (plugin, method); interface_name is informational.
-        let args: Vec<serde_json::Value> =
-            req.arguments.iter().map(proto_value_to_json).collect();
+        let args: Vec<serde_json::Value> = req.arguments.iter().map(proto_value_to_json).collect();
         let op = CoreMutation {
             plugin_id: req.plugin_id.clone(),
             object_path: req.object_path.clone(),
@@ -593,11 +735,10 @@ impl PluginService for BridgeService {
                 req.plugin_id
             )));
         }
-        match self.core.get_property(
-            &req.plugin_id,
-            &req.object_path,
-            &req.property_name,
-        ) {
+        match self
+            .core
+            .get_property(&req.plugin_id, &req.object_path, &req.property_name)
+        {
             Some(value) => Ok(Response::new(GetPropertyResponse {
                 value: Some(json_to_proto_value(&value)),
                 read_only: false,
@@ -655,10 +796,18 @@ impl PluginService for BridgeService {
     ) -> Result<Response<Self::SubscribeSignalsStream>, Status> {
         if let Some(runtime) = &self.runtime {
             let caller = self.authenticate(&request).await?;
-            if !runtime.can_read_plugin(&caller, &request.get_ref().plugin_id).await.map_err(runtime_status)? {
-                return Err(Status::permission_denied("current sealed read capability is required"));
+            if !runtime
+                .can_read_plugin(&caller, &request.get_ref().plugin_id)
+                .await
+                .map_err(runtime_status)?
+            {
+                return Err(Status::permission_denied(
+                    "current sealed read capability is required",
+                ));
             }
-            return Err(Status::failed_precondition("this runtime exposes committed state changes through StateSync.Subscribe, not an independent signal authority"));
+            return Err(Status::failed_precondition(
+                "this runtime exposes committed state changes through StateSync.Subscribe, not an independent signal authority",
+            ));
         }
         // The fresh core has no signal producers yet, so this forwards
         // SIGNAL-kind frames (none today) over real plumbing. The stream
@@ -754,7 +903,9 @@ impl EventChainService for BridgeService {
         request: Request<SubscribeEventsRequest>,
     ) -> Result<Response<Self::SubscribeEventsStream>, Status> {
         if let Some(runtime) = &self.runtime {
-            return self.production_subscribe_events(runtime.clone(), request).await;
+            return self
+                .production_subscribe_events(runtime.clone(), request)
+                .await;
         }
         let req = request.into_inner();
         let (history, mut sub) = self.core.event_subscription(req.from_event_id);
@@ -856,7 +1007,9 @@ impl EventChainService for BridgeService {
     ) -> Result<Response<SearchSemanticTraceResponse>, Status> {
         if self.runtime.is_some() {
             self.authenticate(&request).await?;
-            return Err(Status::failed_precondition("semantic trace lookup requires a query-bearing sealed cognitive method; a limit-only request cannot express a semantic query"));
+            return Err(Status::failed_precondition(
+                "semantic trace lookup requires a query-bearing sealed cognitive method; a limit-only request cannot express a semantic query",
+            ));
         }
         // The request carries no query, only a limit: return the most recent
         // journal events as matches. Scores are recency ranks; the fresh

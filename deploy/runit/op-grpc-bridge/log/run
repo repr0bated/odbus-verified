@@ -1,21 +1,25 @@
 #!/bin/sh
 # Use the existing log account and a fresh directory; retain the historical logs.
+# svlog exists on provisioned seeds; hosts without it (antix1) use _runit-log.
 set -eu
-exec chpst -u svlog sh -eu -c '
-umask 077
+exec 2>&1
 logdir=/var/log/op-dbus/op-grpc-bridge-release
+u=svlog
+id -u "$u" >/dev/null 2>&1 || u=_runit-log
+uid=$(id -u "$u")
 fail() { printf "op-grpc-bridge logger: %s\n" "$1" >&2; exit 78; }
 [ ! -L "$logdir" ] || fail "log directory is a symlink"
-mkdir -p -- "$logdir"
-[ "$(stat -c %u:%a "$logdir")" = "$(id -u):700" ] ||
-    fail "log directory must belong to svlog with mode 0700"
+install -d -m 0755 /var/log/op-dbus
+[ -d "$logdir" ] || install -d -m 0700 -o "$u" -g "$(id -gn "$u")" "$logdir"
+[ "$(stat -c %u:%a "$logdir")" = "$uid:700" ] ||
+    fail "log directory must belong to $u with mode 0700"
 [ ! -L "$logdir/config" ] || fail "log configuration is a symlink"
 if [ ! -e "$logdir/config" ]; then
-    (set -C; printf "s4000000\nn10\nt86400\n" > "$logdir/config")
+    (umask 077; set -C; printf "s4000000\nn10\nt86400\n" > "$logdir/config")
+    chown "$u" "$logdir/config"
 fi
 [ -f "$logdir/config" ] && [ "$(stat -c %s "$logdir/config")" -le 64 ] ||
     fail "log configuration is not a bounded regular file"
 [ "$(cat "$logdir/config")" = "$(printf "s4000000\nn10\nt86400\n")" ] ||
     fail "existing retention configuration differs; preserve it for owner review"
-exec svlogd -tt "$logdir"
-'
+exec chpst -u "$u" svlogd -tt "$logdir"

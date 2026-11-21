@@ -15,13 +15,12 @@
 //! - markdown agent definitions read through [`crate::generator::md_parser`];
 //! - memory entries (namespace `agent_pieces`) merged at runtime by the bridge.
 //!
-//! The assembler is deterministic and offline: scoring is lexical over domain
-//! tags and titles so it works with no vector store. When the caller already
-//! has semantic context (RAG snippets, memory hits), it passes them in
-//! [`TaskContext::snippets`] and they are rendered into the persona prompt.
+//! The assembler accepts pinned, already authorized pieces. Semantic matching is
+//! owned by the controller's typed judgment policy; lexical tags never choose an
+//! executor or grant authority. Every rendered section shares one byte budget.
 
 pub mod assemble;
 pub mod pieces;
 
-pub use assemble::{AssembledPersona, TaskContext, assemble};
+pub use assemble::{AssembledPersona, ContextBudget, TaskContext, assemble};
 pub use pieces::{AgentPiece, PieceKind, PieceLibrary, PieceSource};

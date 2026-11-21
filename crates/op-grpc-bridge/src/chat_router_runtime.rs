@@ -1,4 +1,3 @@
-//! Prior name: tched_router_runtime.
 //! Loopback adapter for the real chat_router daemon.
 //!
 //! The upstream binary owns provider/model discovery, selection, persistence and
@@ -6,20 +5,19 @@
 //! does not implement another model provider.
 
 use std::collections::BTreeMap;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 use std::time::Duration;
 use tokio::sync::Mutex;
 
 use anyhow::{Context, anyhow};
 use futures::StreamExt;
-use op_plugins::state_plugins::common::llm_projection::{ModelRoute, Provider};
 use op_plugins::state_plugins::chat_router::{
-    ChatInput, ChatOutput, ConfigInitInput, ConfigMigrateInput, ConfigPatchInput,
+    ChatInput, ChatOutput, ChatRouterState, ConfigInitInput, ConfigMigrateInput, ConfigPatchInput,
     ConfigPatchOperation, ConfigSetInput, MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES,
-    ChatRouterState,
 };
+use op_plugins::state_plugins::common::llm_projection::{ModelRoute, Provider};
 use reqwest::RequestBuilder;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
@@ -38,6 +36,14 @@ const MAX_GATEWAY_QUERY_KEY_BYTES: usize = 64;
 const MAX_GATEWAY_QUERY_VALUE_BYTES: usize = 4096;
 const MAX_GATEWAY_REQUEST_BYTES: usize = MAX_CHAT_REQUEST_BYTES;
 static RUNTIME_SWITCH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static SYSTEM_ONE_HTTP: LazyLock<Result<reqwest::Client, String>> = LazyLock::new(|| {
+    reqwest::Client::builder().timeout(Duration::from_secs(60))
+        .redirect(reqwest::redirect::Policy::none()).https_only(true).build()
+        .map_err(|_| "judgment HTTPS client unavailable".to_owned())
+});
+#[path = "runtime_agent_provider.rs"]
+mod direct_provider;
+pub(crate) use direct_provider::InferenceOutcomeUnknown;
 
 #[derive(Debug, thiserror::Error)]
 #[error("chat_router {operation} returned HTTP {status}")]
@@ -216,11 +222,11 @@ impl ChatRouterRuntimeClient {
     }
 
     pub(crate) fn from_env() -> Self {
-        let endpoint = std::env::var("TCHED_ROUTER_RUNTIME_ENDPOINT")
+        let endpoint = std::env::var("THREETCHED_RUNTIME_ENDPOINT")
             .unwrap_or_else(|_| DEFAULT_ENDPOINT.to_string());
-        let agent_alias = std::env::var("TCHED_ROUTER_RUNTIME_AGENT")
+        let agent_alias = std::env::var("THREETCHED_RUNTIME_AGENT")
             .unwrap_or_else(|_| DEFAULT_AGENT_ALIAS.to_string());
-        let token = std::env::var("TCHED_ROUTER_RUNTIME_TOKEN")
+        let token = std::env::var("THREETCHED_RUNTIME_TOKEN")
             .ok()
             .filter(|value| !value.trim().is_empty());
         Self::new(endpoint, agent_alias, token)
@@ -294,9 +300,7 @@ impl ChatRouterRuntimeClient {
         &self,
         input: op_plugins::state_plugins::chat_router::generation::StartGenerationInput,
         native_session_id: String,
-        before_prompt: std::sync::Arc<
-            dyn crate::chat_router_generation::NativeGenerationAdmission,
-        >,
+        before_prompt: std::sync::Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>,
     ) -> anyhow::Result<crate::chat_router_generation::NativeGenerationTask> {
         self.spawn_stateless_generation_with_expectations(
             input,
@@ -311,9 +315,7 @@ impl ChatRouterRuntimeClient {
         &self,
         input: op_plugins::state_plugins::chat_router::generation::StartGenerationInput,
         native_session_id: String,
-        before_prompt: std::sync::Arc<
-            dyn crate::chat_router_generation::NativeGenerationAdmission,
-        >,
+        before_prompt: std::sync::Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>,
         expected_provider: Option<String>,
         expected_model: Option<String>,
     ) -> anyhow::Result<crate::chat_router_generation::NativeGenerationTask> {
@@ -347,9 +349,7 @@ impl ChatRouterRuntimeClient {
     pub(crate) async fn complete_under_guard(
         &self,
         input: ChatInput,
-        before_prompt: std::sync::Arc<
-            dyn crate::chat_router_generation::NativeGenerationAdmission,
-        >,
+        before_prompt: std::sync::Arc<dyn crate::chat_router_generation::NativeGenerationAdmission>,
     ) -> anyhow::Result<ChatOutput> {
         let client = self
             .clone()
@@ -377,11 +377,10 @@ impl ChatRouterRuntimeClient {
         // public Chat contract may carry only the provider family.
         let expected_provider = Some(observed.reference.clone());
         let expected_model = Some(observed.selected_model.clone());
-        let task_input =
-            op_plugins::state_plugins::chat_router::generation::StartGenerationInput {
-                agent_alias: self.agent_alias.clone(),
-                prompt,
-            };
+        let task_input = op_plugins::state_plugins::chat_router::generation::StartGenerationInput {
+            agent_alias: self.agent_alias.clone(),
+            prompt,
+        };
         let mut task = client.spawn_stateless_generation_with_expectations(
             task_input,
             uuid::Uuid::new_v4().to_string(),
@@ -418,6 +417,55 @@ impl ChatRouterRuntimeClient {
                 "cost_usd_micros": done.usage.cost_usd_micros,
             }),
         })
+    }
+
+    /// Exact System One inference on the existing native-selected route.
+    /// No chat prompt conversion, model override, tool loop or retry exists.
+    pub(crate) async fn judge_under_guard(
+        &self,
+        input: op_agents::judgment::SystemOneInput,
+        admission: std::sync::Arc<dyn crate::chat_router_generation::NativeProviderAdmission>,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<op_agents::judgment::SystemOneOutput> {
+        input.validate()?;
+        admission.check().await?;
+        let route = self.direct_route(secrets).await?;
+        admission.check_profile(&route.approval_profile()).await?;
+        anyhow::ensure!(!route.selection.selected_model.trim().is_empty(), "configured JEV route has no model");
+        const ENDPOINT: &str = "https://api.typesafe.ai/v1/systemone";
+        anyhow::ensure!(crate::chat_router_catalog_binding::endpoint_matches(ENDPOINT,&route.uri)?,
+            "approved native judgment route is not the TypeSafe System One HTTP namespace");
+        let (auth,key) = direct_provider::bound_credentials(&route,ENDPOINT).await?;
+        anyhow::ensure!(auth == op_plugins::state_plugins::model_registry::ProviderAuth::Bearer,
+            "System One requires an approved bearer profile");
+        let key = key.context("TypeSafe key file is not configured")?;
+        #[derive(Serialize)]
+        struct SystemOneRequest<'a> {
+            model: &'a str,
+            state: &'a Value,
+            questions: &'a BTreeMap<String, op_agents::judgment::Question>,
+        }
+        let payload = SystemOneRequest { model:&route.selection.selected_model, state:&input.state, questions:&input.questions };
+        let client = SYSTEM_ONE_HTTP.as_ref().map_err(|_| anyhow!("judgment HTTPS client unavailable"))?;
+        admission.check().await?;
+        let response = client.post(ENDPOINT)
+            .bearer_auth(key).json(&payload).send().await
+            .map_err(|_| InferenceOutcomeUnknown)?;
+        if !response.status().is_success(){return Err(direct_provider::rejected_status(response.status()));}
+        let mut bytes = Vec::new();
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|_| InferenceOutcomeUnknown)?;
+            anyhow::ensure!(bytes.len().checked_add(chunk.len()).is_some_and(|n| n <= 256 * 1024),
+                InferenceOutcomeUnknown);
+            bytes.extend_from_slice(&chunk);
+        }
+        let output: op_agents::judgment::SystemOneOutput = serde_json::from_slice(&bytes)
+            .map_err(|_| InferenceOutcomeUnknown)?;
+        output.validate_for(&input).map_err(|_| InferenceOutcomeUnknown)?;
+        admission.check().await.map_err(|_| InferenceOutcomeUnknown)?;
+        anyhow::ensure!(self.direct_route(secrets).await.map_err(|_| InferenceOutcomeUnknown)? == route, InferenceOutcomeUnknown);
+        Ok(output)
     }
 
     fn request(&self, request: RequestBuilder) -> anyhow::Result<RequestBuilder> {
@@ -1356,7 +1404,7 @@ impl ChatRouterRuntimeClient {
     }
 
     fn opencode_only(&self) -> bool {
-        std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1")
+        std::env::var("THREETCHED_REQUIRE_OPENCODE").as_deref() == Ok("1")
             && self.agent_alias != "control_plane"
     }
 
@@ -1431,6 +1479,12 @@ impl ChatRouterRuntimeClient {
         Ok(provider)
     }
 
+    pub(crate) async fn current_exact_selection(&self) -> anyhow::Result<RuntimeSelection> {
+        self.health().await?;
+        let observed = self.current_provider().await?;
+        Ok(RuntimeSelection { provider: observed.reference, model: observed.selected_model })
+    }
+
     /// Read the authoritative current selection without consulting the SHM
     /// projection. Callers that pair this with a mutation hold
     /// [`Self::selection_guard`] across this read, the upstream write, and the
@@ -1455,9 +1509,7 @@ impl ChatRouterRuntimeClient {
         let selected = configured
             .iter()
             .find(|provider| provider.reference == selected_ref)
-            .context(
-                "chat_router selected provider is absent from the configured provider list",
-            )?;
+            .context("chat_router selected provider is absent from the configured provider list")?;
         anyhow::ensure!(
             selected.selected_model == selected_model,
             "chat_router selected provider model changed during observation"
@@ -2906,10 +2958,7 @@ mod tests {
         ) -> std::pin::Pin<
             Box<
                 dyn std::future::Future<
-                        Output = Result<
-                            (),
-                            crate::chat_router_generation::NativeGenerationError,
-                        >,
+                        Output = Result<(), crate::chat_router_generation::NativeGenerationError>,
                     > + Send
                     + '_,
             >,
@@ -3686,7 +3735,9 @@ mod tests {
 
     #[test]
     fn paired_native_config_and_selection_commit_preserves_sibling_children() {
-        use crate::state_tree_fold::{StateTreeFold, merge_plugin_object_fields};
+        // Fresh bridge no longer compiles state_tree_fold into the crate root.
+        // Keep the sibling-preservation contract with a shallow object merge of
+        // the paired fields onto the previous projection document.
         let directory = tempfile::tempdir().unwrap();
         let state_dir = directory.path().to_str().unwrap();
         op_core::projection_shm::prepare_projection_directory_in(state_dir).unwrap();
@@ -3708,19 +3759,14 @@ mod tests {
         let (_, fields) = paired.into_state_and_fields().unwrap();
         let commit =
             op_core::projection_shm::update_projection_in(state_dir, "chat_router", |previous| {
-                let previous: serde_json::Value = serde_json::from_slice(previous.unwrap())?;
-                let previous = simd_json::serde::to_owned_value(previous)?;
-                let fields = simd_json::serde::to_owned_value(fields)?;
-                let folded = merge_plugin_object_fields(
-                    Some(&previous),
-                    "chat_router",
-                    "/org/opdbus/v1/plugins/chat_router",
-                    &fields,
-                )?;
-                let StateTreeFold::Present(state) = folded else {
-                    panic!("paired field update missing")
-                };
-                Ok(Some(simd_json::to_vec(&state)?))
+                let mut previous: serde_json::Value = serde_json::from_slice(previous.unwrap())?;
+                let fields: serde_json::Value = serde_json::from_value(fields.clone())?;
+                if let (Some(dst), Some(src)) = (previous.as_object_mut(), fields.as_object()) {
+                    for (key, value) in src {
+                        dst.insert(key.clone(), value.clone());
+                    }
+                }
+                Ok(Some(serde_json::to_vec(&previous)?))
             })
             .unwrap();
         let snapshot = op_core::projection_shm::read_projection_snapshot_in(

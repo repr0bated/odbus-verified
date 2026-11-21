@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 base64 = { workspace = true }
 blake3 = { workspace = true }
+crc32c = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
 nix = { version = "0.28", features = ["fs", "user"] }
@@ -18,7 +19,8 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 schemars = { workspace = true }
 sha2 = { workspace = true }
-uuid = { workspace = true }
+uuid = { workspace = true, features = ["v5"] }
+zstd = { workspace = true }
 op-identity = { path = "../op-identity" }
 
 [[bin]]
@@ -30,16 +32,12 @@ name = "list-genesis"
 path = "src/bin/list-genesis.rs"
 
 [[bin]]
-name = "update-chatbot-fsid"
-path = "src/bin/update-chatbot-fsid.rs"
+name = "sled-row"
+path = "src/bin/sled-row.rs"
 
 [[bin]]
-name = "migrate-chatbot-root"
-path = "src/bin/migrate-chatbot-root.rs"
-
-[[bin]]
-name = "validate-chatbot-state"
-path = "src/bin/validate-chatbot-state.rs"
+name = "ublk-block-store"
+path = "src/bin/ublk-block-store.rs"
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -7,9 +7,10 @@ opdbus-grants
 op-session-bus
 op-grpc-bridge
 op-web
+compliance-cozo
 op-runit-systemctl
 emqx
-tched-router
+threetched
 unified-execution
 
 # Local conversation capture; remote corpus writes require its own opt-in and
@@ -32,7 +33,6 @@ op-warp-endpoint
 # Unix socket, relayed by socat into the container's own /run; the guest's
 # socat listens on loopback. Installed by deploy/runit/ct-egress-relay/install.sh.
 ct-egress-proxy
-ct-egress-relay-3tchedCtlChatbot
 
 # Host Qdrant (2026-10-16). Serves the verified 2026-10-14 restore from
 # /var/lib/qdrant/storage, a copy; /mnt/qdrant-recovered/storage stays the

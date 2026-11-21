@@ -1,0 +1,223 @@
+#!/bin/sh
+# Launch an Incus container on the sealed 3tched seed image.
+#
+#   3tched-seed-launch start [NAME]   (default NAME=3tchedCockpitBot)
+#   3tched-seed-launch stop  [NAME]
+#   3tched-seed-launch sled  [NAME]   host-only: mount the sled at HOST_SLED
+#                                      without starting the container
+#
+# Layout:
+#   SEED_IMG p1  sealed btrfs (btrfstune -S1), OS in default subvolume @
+#   SEED_IMG p2  unused (formerly a shared RocksDB partition)
+#   ROCKSDB      per-container sparse ext4 image (+C, set while empty) for this
+#                identity's RocksDB, mounted at COZO
+#   PERSIST      per-container sparse copy of TEMPLATE in the container's cozo
+#                pool dir; `btrfs device add` sprouts it onto the shared sealed
+#                seed and holds this container's persistence.
+#   SLED         identity sled: a subvolume on the persistence btrfs (created
+#                after the device add), rw in the container as part of its root
+#                and shared rw to the host at HOST_SLED (snowball ledger, sled
+#                data). At provisioning the fixed identity columns of the
+#                container's Cozo sled row (session = user.opdbus.session_id) are
+#                sealed in as identity.json (+ .sha256) and sealed_id, mode 0400
+#                and chattr +i;
+#                an unprivileged container lacks CAP_LINUX_IMMUTABLE.
+#   NEXTDNS      /etc/nextdns.conf in the container's persistence, written at
+#                every start from the identity: the NextDNS context sealed in its
+#                SID1, else the bridge's OP_IDENTITY_NEXTDNS_BINDINGS entry for its
+#                WireGuard key. Without either, NextDNS is left unconfigured.
+#   PROFILE      cockpitbot-seed: lungs socket and Xray egress proxy devices.
+#
+# Storage is assembled host-side before `incus start`: a container has no exec
+# before its root exists.
+set -eu
+
+NAME=${2:-3tchedCockpitBot}
+SEED_IMG=/var/lib/incus/storage-pools/3tched/3tched-seed.img
+TEMPLATE=/var/lib/incus/disks/btrfs-persist.img
+CDIR=/var/lib/incus/storage-pools/cozo/containers/$NAME
+PERSIST=$CDIR/btrfs-persist.img
+ROCKSDB=$CDIR/rocksdb.img
+ROCKSDB_SIZE=10G
+ROOTFS=$CDIR/rootfs
+SLED=var/lib/identity-sled
+HOST_SLED=/run/identity-sled/$NAME
+COZO=var/lib/op-dbus/identity-cozo
+PROFILE=cockpitbot-seed
+IDENTITY_DB=/var/lib/op-dbus/identity-cozo
+SLED_ROW=/usr/local/sbin/sled-row
+BRIDGE_ENV=/etc/op-dbus/environment
+
+die() { echo "3tched-seed-launch: $*" >&2; exit 1; }
+
+loop_of() { losetup -j "$1" -O NAME -n | head -n1; }
+
+attach() {
+	l=$(loop_of "$1")
+	[ -n "$l" ] || l=$(losetup -fP --show "$1")
+	udevadm settle 2>/dev/null || true
+	echo "$l"
+}
+
+provision() {
+	[ -d "$CDIR" ] || die "no cozo pool dir $CDIR"
+	incus config show "$NAME" | grep -qE "^ *- $PROFILE\$" || incus profile add "$NAME" "$PROFILE"
+	# The sled lives on the persistence btrfs; a sled device would cover it.
+	if incus config device get "$NAME" identity-sled source >/dev/null 2>&1; then
+		incus config device remove "$NAME" identity-sled
+	fi
+	# Btrfs persistence stays copy-on-write (no +C); keep the copy sparse.
+	if [ ! -e "$PERSIST" ]; then
+		cp --sparse=always "$TEMPLATE" "$PERSIST"
+		chmod 600 "$PERSIST"
+	fi
+	if [ ! -e "$ROCKSDB" ]; then
+		# +C only takes effect on an empty file; lazy init keeps it sparse.
+		touch "$ROCKSDB"
+		chattr +C "$ROCKSDB"
+		truncate -s "$ROCKSDB_SIZE" "$ROCKSDB"
+		chmod 600 "$ROCKSDB"
+		mkfs.ext4 -q -F -L rocksdb -E lazy_itable_init=1,lazy_journal_init=1 "$ROCKSDB"
+	fi
+}
+
+start() {
+	[ "$(incus list "^${NAME}\$" -c s -f csv)" = STOPPED ] || die "$NAME is not stopped"
+	mountpoint -q "$ROOTFS" && die "$ROOTFS already mounted"
+	provision
+	mkdir -p "$ROOTFS"
+	SEED=$(attach "$SEED_IMG")
+	PERS=$(attach "$PERSIST")
+	btrfs device scan "${SEED}p1" "$PERS" >/dev/null 2>&1 || true
+
+	if blkid -p -s TYPE -o value "$PERS" 2>/dev/null | grep -qx btrfs; then
+		# Already sprouted: mount seed + persist as one filesystem, rw.
+		mount -t btrfs -o "device=${SEED}p1,device=$PERS" "$PERS" "$ROOTFS"
+	else
+		# First boot: seed mounts read-only, sprout onto persist, then go rw.
+		mount -t btrfs -o ro "${SEED}p1" "$ROOTFS"
+		btrfs device add -f "$PERS" "$ROOTFS"
+		mount -o remount,rw "$ROOTFS"
+	fi
+
+	# This identity's RocksDB on its own sparse ext4 image.
+	RDB=$(attach "$ROCKSDB")
+	mkdir -p "$ROOTFS/$COZO"
+	mountpoint -q "$ROOTFS/$COZO" ||
+		mount -t ext4 -o noatime,nodiratime "$RDB" "$ROOTFS/$COZO"
+
+	agent
+	sled
+	nextdns
+	incus start "$NAME"
+}
+
+# Write this identity's NextDNS forwarder into its persistence.
+nextdns() {
+	conf=$ROOTFS/etc/nextdns.conf
+	ctx=$(python3 -I - "$ROOTFS/$SLED/identity.json" "$BRIDGE_ENV" <<'PY'
+import json, re, shlex, sys
+identity = json.load(open(sys.argv[1]))
+ctx = identity.get("nextdns")
+if not ctx:
+    try:
+        text = open(sys.argv[2]).read()
+    except OSError:
+        text = ""
+    match = re.search(r"^OP_IDENTITY_NEXTDNS_BINDINGS=(.*)$", text, re.M)
+    bindings = json.loads(shlex.split(match.group(1))[0]) if match else []
+    ctx = next((b for b in bindings if b.get("wireguard_pubkey") == identity["wireguard_pubkey"]), None)
+if ctx:
+    profile, device = ctx["profile_id"], ctx["device_name"]
+    if re.fullmatch(r"[0-9a-f]{6}", profile) and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", device):
+        print(f"{profile} {device}")
+PY
+)
+	if [ -z "$ctx" ]; then
+		echo "3tched-seed-launch: no NextDNS context for $NAME; DNS left unconfigured" >&2
+		rm -f "$conf"
+		return 0
+	fi
+	set -- $ctx
+	sed "s|@FORWARDER@|https://dns.nextdns.io/$1/$2#127.0.0.1|" \
+		"$ROOTFS/etc/nextdns.conf.template" >"$conf.new"
+	mv "$conf.new" "$conf"
+}
+
+sled() {
+	p=$ROOTFS/$SLED
+	# Subvolume on the sprouted rootfs (lands on PERSIST). An empty plain dir
+	# (e.g. an old mountpoint) is replaced; a plain dir is kept if create is denied.
+	if [ ! -d "$p" ] || [ "$(stat -c %i "$p")" != 256 ]; then
+		[ -d "$p" ] && rmdir "$p" 2>/dev/null || true
+		[ -d "$p" ] || btrfs subvolume create "$p" || mkdir -p "$p"
+	fi
+	[ -e "$p/identity.json" ] || seal_identity "$p"
+	mkdir -p "$HOST_SLED"
+	mountpoint -q "$HOST_SLED" || mount --bind "$p" "$HOST_SLED"
+}
+
+# Seal the fixed identity columns once. The bridge holds the Cozo DB, so read a
+# private copy of it (stopgap until the bridge serves sled reads itself).
+seal_identity() {
+	dir=$1
+	sid=$(incus config get "$NAME" user.opdbus.session_id)
+	[ -n "$sid" ] || die "$NAME has no user.opdbus.session_id"
+	tmp=$(mktemp -d /var/tmp/sled-row.XXXXXX)
+	rsync -a --exclude devices "$IDENTITY_DB"/ "$tmp"/
+	rm -f "$tmp/data/LOCK"
+	if ! "$SLED_ROW" "$tmp" "$sid" >"$dir/identity.json.new"; then
+		rm -rf "$tmp" "$dir/identity.json.new"
+		die "cannot read identity sled row $sid"
+	fi
+	rm -rf "$tmp"
+	mv "$dir/identity.json.new" "$dir/identity.json"
+	python3 -I -c 'import json,sys; sys.stdout.write(json.load(open(sys.argv[1]))["sealed_id"])' \
+		"$dir/identity.json" >"$dir/sealed_id"
+	(cd "$dir" && sha256sum identity.json >identity.json.sha256)
+	for f in identity.json identity.json.sha256 sealed_id; do
+		chmod 0400 "$dir/$f"
+		chattr +i "$dir/$f"
+	done
+}
+
+agent() {
+	for d in soul rules shared; do mkdir -p "$ROOTFS/agent/$d"; done
+	for d in user memory skills; do
+		p=$ROOTFS/agent/$d
+		# Inode 256 is a subvolume root; an empty plain dir from the seed is replaced.
+		[ -d "$p" ] && [ "$(stat -c %i "$p")" = 256 ] && continue
+		[ -d "$p" ] && { rmdir "$p" 2>/dev/null || continue; }
+		btrfs subvolume create "$p" || mkdir -p "$p"
+	done
+}
+
+# The sled is a subvolume of seed + persistence; mount just that, rw, for the host.
+sled_only() {
+	[ "$(incus list "^${NAME}\$" -c s -f csv)" = STOPPED ] || die "$NAME is running; use $HOST_SLED"
+	mountpoint -q "$HOST_SLED" && return 0
+	[ -e "$PERSIST" ] || die "$NAME has no persistence yet"
+	SEED=$(attach "$SEED_IMG")
+	PERS=$(attach "$PERSIST")
+	mkdir -p "$HOST_SLED"
+	mount -t btrfs -o "device=${SEED}p1,device=$PERS,subvol=@/$SLED" "$PERS" "$HOST_SLED"
+}
+
+stop() {
+	incus stop "$NAME" 2>/dev/null || true
+	mountpoint -q "$HOST_SLED" && umount "$HOST_SLED"
+	mountpoint -q "$ROOTFS/$COZO" && umount "$ROOTFS/$COZO"
+	mountpoint -q "$ROOTFS" && umount "$ROOTFS"
+	for img in "$ROCKSDB" "$PERSIST" "$SEED_IMG"; do
+		l=$(loop_of "$img")
+		[ -z "$l" ] || losetup -d "$l"
+	done
+}
+
+[ "$(id -u)" = 0 ] || die "run as root"
+case "${1:-}" in
+start) start ;;
+sled) sled_only ;;
+stop) stop ;;
+*) die "usage: $0 start|stop|sled [NAME]" ;;
+esac

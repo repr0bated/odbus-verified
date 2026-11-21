@@ -11,17 +11,21 @@
 
 use crate::voyage::VoyageClient;
 use anyhow::{Context, Result};
+use op_cozo_store::{
+    CozoGraphShuttle, PointIndexEntry, VOYAGE_POINT_DIM, VOYAGE_POINT_FAMILY, vector_point_id,
+};
 use qdrant_client::{
     Payload, Qdrant, QdrantError,
     qdrant::{
-        Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, ScoredPoint,
-        SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder, VectorsConfig,
+        Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, QueryPointsBuilder,
+        ScoredPoint, UpsertPointsBuilder, VectorParamsBuilder, VectorsConfig,
         vectors_config::Config as VectorsConfigEnum,
     },
 };
 use regex::Regex;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::sync::Arc;
 use std::{collections::HashMap, future::Future, sync::OnceLock, time::Duration};
 use tracing::{info, warn};
 
@@ -41,7 +45,7 @@ pub const DEFAULT_VOYAGE4_COLLECTIONS: &[&str] = &[
     "repos_lsp_typescript_voyage_4_lite",
     "repos_specs_docs_voyage_4_lite",
 ];
-const VECTOR_DIM: u64 = 1024; // voyage-4 default
+const VECTOR_DIM: u64 = VOYAGE_POINT_DIM as u64; // voyage-4 default
 const CHUNK_LINES: usize = 80; // ~2 kB of code per chunk
 const OVERLAP_LINES: usize = 12;
 const VOYAGE_BATCH: usize = 32; // points per upsert batch
@@ -201,8 +205,7 @@ impl RetrievalProfile {
             RetrievalMode::Deep => env_u64("COGNITIVE_DEEP_FETCH_K", 50).clamp(limit, 100),
         };
 
-        let rerank_mode =
-            std::env::var("COGNITIVE_RERANK_MODE").unwrap_or_else(|_| "auto".into());
+        let rerank_mode = std::env::var("COGNITIVE_RERANK_MODE").unwrap_or_else(|_| "auto".into());
         let rerank_enabled = match mode {
             RetrievalMode::Completion => rerank_mode == "always",
             RetrievalMode::Search => rerank_mode == "always",
@@ -268,23 +271,32 @@ impl CodeFilter {
 
 pub struct RagPipeline {
     qdrant: Qdrant,
+    registry: Arc<CozoGraphShuttle>,
     voyage: VoyageClient,
 }
 
 impl RagPipeline {
     #[cfg(test)]
     pub(crate) fn for_test(qdrant: Qdrant, voyage: VoyageClient) -> Self {
-        Self { qdrant, voyage }
+        Self {
+            qdrant,
+            registry: Arc::new(CozoGraphShuttle::new_in_memory().unwrap()),
+            voyage,
+        }
     }
 
-    pub fn from_env() -> Result<Self> {
+    pub fn from_env(registry: Arc<CozoGraphShuttle>) -> Result<Self> {
         // Config (endpoint/model/key) resolves through the embedding_model
         // plugin's projection, falling back to its own env-var reads — see
         // op_plugins::state_plugins::embedding_model::voyage_embed_params.
         let voyage = VoyageClient::new()?;
         let qdrant = qdrant_client_from_env()?;
 
-        Ok(Self { qdrant, voyage })
+        Ok(Self {
+            qdrant,
+            registry,
+            voyage,
+        })
     }
 
     /// Semantic search over a Qdrant collection.
@@ -300,13 +312,16 @@ impl RagPipeline {
 
         let vector = self.embed_query(query_text).await?;
 
-        let mut builder = SearchPointsBuilder::new(collection, vector, limit).with_payload(true);
+        let mut builder = QueryPointsBuilder::new(collection)
+            .query(vector)
+            .limit(limit)
+            .with_payload(true);
 
         if let Some(repo) = repo_filter {
             builder = builder.filter(Filter::must([Condition::matches("repo", repo.to_string())]));
         }
 
-        let response = self.qdrant.search_points(builder).await?;
+        let response = self.qdrant.query(builder).await?;
 
         Ok(response.result.into_iter().map(point_to_result).collect())
     }
@@ -329,12 +344,15 @@ impl RagPipeline {
         let vector = self.embed_query(query_text).await?;
         let fetch = limit.saturating_mul(3).max(limit);
 
-        let mut builder = SearchPointsBuilder::new(collection, vector, fetch).with_payload(true);
+        let mut builder = QueryPointsBuilder::new(collection)
+            .query(vector)
+            .limit(fetch)
+            .with_payload(true);
         if let Some(f) = filter.qdrant_filter() {
             builder = builder.filter(f);
         }
 
-        let response = self.qdrant.search_points(builder).await?;
+        let response = self.qdrant.query(builder).await?;
         let mut results: Vec<RagResult> = response
             .result
             .into_iter()
@@ -458,13 +476,15 @@ impl RagPipeline {
         self.ensure_collection(collection).await?;
         let fetch = fetch_limit.clamp(limit, 100);
 
-        let mut builder =
-            SearchPointsBuilder::new(collection, vector.to_vec(), fetch).with_payload(true);
+        let mut builder = QueryPointsBuilder::new(collection)
+            .query(vector.to_vec())
+            .limit(fetch)
+            .with_payload(true);
         if let Some(f) = filter.qdrant_filter() {
             builder = builder.filter(f);
         }
 
-        let response = self.qdrant.search_points(builder).await?;
+        let response = self.qdrant.query(builder).await?;
 
         let terms: Vec<String> = query_text
             .to_lowercase()
@@ -552,6 +572,35 @@ impl RagPipeline {
                 }
             };
 
+            if vector.len() != VOYAGE_POINT_DIM
+                || !vector.iter().all(|value| value.is_finite())
+                || !vector.iter().any(|value| *value != 0.0)
+            {
+                warn!(file = %chunk.file_path, "invalid Voyage-4 code embedding");
+                stats.errors += 1;
+                continue;
+            }
+            let chunker_ver = "code-window-v1";
+            let id =
+                vector_point_id(&chunk.content_hash, VOYAGE_POINT_FAMILY, chunker_ver).to_string();
+            self.registry.register_vector_point(
+                &PointIndexEntry {
+                    entity: format!(
+                        "code:{}:{}:{}",
+                        chunk.repo, chunk.file_path, chunk.chunk_index
+                    ),
+                    point_id: id.clone(),
+                    collection: collection.to_owned(),
+                    model_family: VOYAGE_POINT_FAMILY.into(),
+                    dim: vector.len(),
+                    chunker_ver: chunker_ver.into(),
+                },
+                &[
+                    ("repo".into(), chunk.repo.clone()),
+                    ("file_path".into(), chunk.file_path.clone()),
+                ],
+            )?;
+
             let payload: Payload = serde_json::json!({
                 "repo":          chunk.repo,
                 "file_path":     chunk.file_path,
@@ -568,15 +617,14 @@ impl RagPipeline {
                 "total_chunks":  chunk.total_chunks,
                 "content":       chunk.content,
                 "content_hash":  chunk.content_hash,
+                "model_family": VOYAGE_POINT_FAMILY,
+                "dim": vector.len(),
+                "chunker_ver": chunker_ver,
             })
             .try_into()
             .context("Failed to build payload")?;
 
-            batch.push(PointStruct::new(
-                stable_uuid(&chunk.content_hash),
-                vector,
-                payload,
-            ));
+            batch.push(PointStruct::new(id, vector, payload));
 
             if batch.len() >= VOYAGE_BATCH {
                 self.flush_batch(collection, &mut batch, &mut stats).await;
@@ -647,7 +695,7 @@ impl RagPipeline {
             }
             match self
                 .qdrant
-                .upsert_points(UpsertPointsBuilder::new(collection, points.clone()))
+                .upsert_points(UpsertPointsBuilder::new(collection, points.clone()).wait(true))
                 .await
             {
                 Ok(_) => {
@@ -1202,22 +1250,6 @@ fn hex_hash(data: &[u8]) -> String {
     hex::encode(h.finalize())
 }
 
-fn stable_uuid(hash: &str) -> String {
-    // Use first 32 hex chars of hash to form a UUID-like stable ID
-    if hash.len() >= 32 {
-        format!(
-            "{}-{}-{}-{}-{}",
-            &hash[0..8],
-            &hash[8..12],
-            &hash[12..16],
-            &hash[16..20],
-            &hash[20..32]
-        )
-    } else {
-        uuid::Uuid::new_v4().to_string()
-    }
-}
-
 // ─── Qdrant connection ────────────────────────────────────────────────────────
 
 /// Build a Qdrant client from environment.
@@ -1230,8 +1262,8 @@ fn stable_uuid(hash: &str) -> String {
 ///
 /// Override the URL with `COGNITIVE_QDRANT_URL`.
 pub fn qdrant_client_from_env() -> Result<Qdrant> {
-    let url = std::env::var("COGNITIVE_QDRANT_URL")
-        .unwrap_or_else(|_| "http://127.0.0.1:6334".into());
+    let url =
+        std::env::var("COGNITIVE_QDRANT_URL").unwrap_or_else(|_| "http://127.0.0.1:6334".into());
     Qdrant::from_url(&url)
         .build()
         .context("Failed to build Qdrant client")

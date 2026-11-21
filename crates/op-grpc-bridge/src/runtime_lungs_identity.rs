@@ -158,6 +158,8 @@ pub(super) struct LungsIdentity {
     host: Arc<ProcessIdentity>,
     catalog_dir: PathBuf,
     state_dir: String,
+    /// The Cozo index derived from identity sled volumes.
+    identity_store: Arc<op_cozo_store::CozoGraphShuttle>,
     binding: OnceLock<PinnedBinding>,
     bootstrap: tokio::sync::Mutex<()>,
     bound: tokio::sync::Notify,
@@ -169,6 +171,7 @@ impl LungsIdentity {
         host: Arc<ProcessIdentity>,
         catalog_dir: PathBuf,
         state_dir: String,
+        identity_store: Arc<op_cozo_store::CozoGraphShuttle>,
     ) -> Result<Arc<Self>> {
         // Capture the kernel's original-peer lifetime before any /proc lookup.
         let peer_lifetime = PeerLifetime::from_socket(stream)?;
@@ -177,7 +180,7 @@ impl LungsIdentity {
             .context("socket peer PID unavailable")?;
         let peer = peer_lifetime.read_process(pid)?;
         Ok(Arc::new(Self {
-            peer_uid: credentials.uid(), peer, peer_lifetime, host, catalog_dir, state_dir,
+            peer_uid: credentials.uid(), peer, peer_lifetime, host, catalog_dir, state_dir, identity_store,
             binding: OnceLock::new(), bootstrap: tokio::sync::Mutex::new(()),
             bound: tokio::sync::Notify::new(),
         }))
@@ -260,20 +263,47 @@ impl LungsIdentity {
             let _bootstrap = self.bootstrap.lock().await;
             self.revalidate_peer()?;
             ensure!(self.binding.get().is_none(), "lungs connection is already bound");
-            ensure!(self.peer.pid_namespace != self.host.pid_namespace,
-                "host process has no container binding");
-            let sessions = self.sessions().await?;
-            let mut candidate = None;
-            for sled in sessions.iter().filter(|sled| sled.active && sled.is_anchored()) {
-                if let Ok(binding) = self.container_binding(sled).await {
-                    ensure!(candidate.is_none(), "peer has no unique identity container");
-                    candidate = Some(binding);
+            if self.peer.pid_namespace == self.host.pid_namespace {
+                // The kernel peer proof captured at accept already identifies a
+                // host caller. Accept that one binding: host root maps to the
+                // configured host identity (Bind's own authority, no session
+                // argument); there is no second, container lookup for it.
+                let session_id = host_peer_session(self.host_root(), |name| std::env::var(name).ok())?;
+                // An Incus proxy device relays a guest through a host-root
+                // forkproxy; that peer is a container, never the host identity.
+                let cmdline = std::fs::read(format!("/proc/{}/cmdline", self.peer.pid))
+                    .context("host peer command line unavailable")?;
+                self.revalidate_peer()?;
+                ensure!(!is_incus_forkproxy(&cmdline), "host process has no container binding");
+                return self.publish_binding(Binding::Host, &session_id).await;
+            }
+            let mut candidate = self.find_container_binding().await?;
+            if candidate.is_none() {
+                // The container IS the identity and its sled volume is the
+                // source: index any not yet adopted, republish, look again.
+                let adopted = crate::runtime_identity_owner::adopt_identity_volumes(self.identity_store.clone()).await?;
+                if adopted > 0 {
+                    crate::runtime_identity::recover_startup(self.identity_store.clone(), self.catalog_dir.clone()).await?;
+                    self.revalidate_peer()?;
+                    candidate = self.find_container_binding().await?;
                 }
             }
             let binding = candidate.context("peer has no committed live identity container")?;
             let session_id = binding.session_id.clone();
             self.publish_binding(Binding::Container(binding), &session_id).await
         }).await.context("container binding timed out")?
+    }
+
+    async fn find_container_binding(&self) -> Result<Option<ContainerBinding>> {
+        let sessions = self.sessions().await?;
+        let mut candidate = None;
+        for sled in sessions.iter().filter(|sled| sled.active && sled.is_anchored()) {
+            if let Ok(binding) = self.container_binding(sled).await {
+                ensure!(candidate.is_none(), "peer has no unique identity container");
+                candidate = Some(binding);
+            }
+        }
+        Ok(candidate)
     }
 
     async fn publish_binding(&self, target: Binding, session_id: &str) -> Result<()> {
@@ -367,6 +397,31 @@ impl CallerAuthority for LungsAuthority {
     }
 }
 
+/// Host identity selectors already configured for this bridge, in order.
+const HOST_SESSION_SELECTORS: [&str; 2] = ["OP_LOCAL_HUMAN_SESSION_ID", "IDENTITY_SLED_HOST_SESSION_ID"];
+
+/// A host-namespace peer calling `BindCurrentContainer` is bound by the
+/// kernel proof it already has: only host root, and only to the configured
+/// host identity. Anyone else in the host namespaces stays refused, and the
+/// selected session must still resolve to a committed, registered identity.
+fn host_peer_session(host_root: bool, lookup: impl Fn(&str) -> Option<String>) -> Result<String> {
+    ensure!(host_root, "host process has no container binding");
+    let session_id = HOST_SESSION_SELECTORS.iter()
+        .find_map(|name| lookup(name).map(|value| value.trim().to_owned()).filter(|value| !value.is_empty()))
+        .context("host root has no configured host identity")?;
+    ensure!(uuid::Uuid::parse_str(&session_id).is_ok_and(|uuid| uuid.to_string() == session_id),
+        "configured host identity is not canonical");
+    Ok(session_id)
+}
+
+/// `incusd forkproxy ...` (or LXD's) relays guest connections as host root.
+fn is_incus_forkproxy(cmdline: &[u8]) -> bool {
+    let mut args = cmdline.split(|byte| *byte == 0).filter(|arg| !arg.is_empty());
+    let daemon = args.next().and_then(|arg| arg.rsplit(|byte| *byte == b'/').next())
+        .is_some_and(|name| matches!(name, b"incusd" | b"incus" | b"lxd"));
+    daemon && args.next() == Some(b"forkproxy".as_slice())
+}
+
 fn instance_uuid(instance: &IncusInstance) -> Result<String> {
     let value = instance.config.as_ref().and_then(|config| config.get("volatile.uuid"))
         .context("native instance UUID unavailable")?;
@@ -391,6 +446,43 @@ mod tests {
         assert_eq!(parse_start_ticks(&format!("123 (a ) process) {fields} 987 23")), Some(987));
         assert_eq!(parse_start_ticks("123 (short) 1 2"), None);
         assert_eq!(parse_start_ticks("invalid"), None);
+    }
+
+    #[test]
+    fn host_peers_reuse_their_kernel_binding_and_never_gain_an_identity() {
+        let configured = "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e";
+        let env = |pairs: &'static [(&'static str, &'static str)]| {
+            move |name: &str| pairs.iter().find(|(key, _)| *key == name).map(|(_, value)| value.to_string())
+        };
+        // Non-root host processes keep the original refusal.
+        assert!(host_peer_session(false, env(&[("OP_LOCAL_HUMAN_SESSION_ID", "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e")]))
+            .unwrap_err().to_string().contains("host process has no container binding"));
+        // Host root without a configured host identity has nothing to bind.
+        assert!(host_peer_session(true, env(&[])).is_err());
+        assert!(host_peer_session(true, env(&[("OP_LOCAL_HUMAN_SESSION_ID", "  ")])).is_err());
+        // Selectors must be canonical sessions, never paths or names.
+        for bad in ["../escape", "human", "414FBC56-03FB-20AB-758A-BCC7A7CBDC0E", "414fbc5603fb20ab758abcc7a7cbdc0e"] {
+            let lookup = move |name: &str| (name == "OP_LOCAL_HUMAN_SESSION_ID").then(|| bad.to_owned());
+            assert!(host_peer_session(true, lookup).is_err(), "{bad}");
+        }
+        assert_eq!(host_peer_session(true, env(&[("OP_LOCAL_HUMAN_SESSION_ID", "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e")])).unwrap(), configured);
+        assert_eq!(host_peer_session(true, env(&[("IDENTITY_SLED_HOST_SESSION_ID", " 414fbc56-03fb-20ab-758a-bcc7a7cbdc0e\n")])).unwrap(), configured);
+        // The local human selector wins over the legacy sled selector.
+        assert_eq!(host_peer_session(true, env(&[
+            ("IDENTITY_SLED_HOST_SESSION_ID", "b0c777e3-0955-cd8b-3d01-ca12998cae28"),
+            ("OP_LOCAL_HUMAN_SESSION_ID", "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e"),
+        ])).unwrap(), configured);
+    }
+
+    #[test]
+    fn incus_proxy_relays_are_not_the_host_identity() {
+        assert!(is_incus_forkproxy(b"/usr/libexec/incus/incusd\0forkproxy\0--\0123\0"));
+        assert!(is_incus_forkproxy(b"incusd\0forkproxy\0"));
+        assert!(is_incus_forkproxy(b"/snap/lxd/current/bin/lxd\0forkproxy\0"));
+        assert!(!is_incus_forkproxy(b"/usr/local/libexec/op-dbus/bin/3tched-fs\0mount\0"));
+        assert!(!is_incus_forkproxy(b"/usr/bin/forkproxy\0incusd\0"));
+        assert!(!is_incus_forkproxy(b"incusd\0"));
+        assert!(!is_incus_forkproxy(b""));
     }
 
     #[test]

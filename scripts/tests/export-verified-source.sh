@@ -21,7 +21,7 @@ printf 'fn main() {}\n' > "$src/crates/sample/src/main.rs"
 printf 'instructions\n' > "$src/AGENTS.md"
 cat > "$src/.gitignore" <<'EOF'
 *.tar.gz
-!vendor/tched-router/source.tar.gz
+!vendor/threetched/source.tar.gz
 !vendor/3tched-json-render-ui/source.tar.gz
 EOF
 for skill in grpc-expert grpc-protocol-expert json-render ovs-db-analysis kernel-fuse-diagnosis fuse btrfs rust-memory-optimization memory-safety-patterns; do
@@ -33,8 +33,8 @@ printf 'token source\n' > "$src/crates/sample/src/token.rs"
 printf 'repomix source\n' > "$src/crates/sample/src/repomix.rs"
 mkdir -p "$src/scripts/fixtures"
 printf 'API_KEY=${API_KEY}\n' > "$src/scripts/fixtures/provider-config.sh"
-mkdir -p "$src/vendor/tched-router" "$src/vendor/3tched-json-render-ui"
-printf 'pinned native source artifact\n' > "$src/vendor/tched-router/source.tar.gz"
+mkdir -p "$src/vendor/threetched" "$src/vendor/3tched-json-render-ui"
+printf 'pinned native source artifact\n' > "$src/vendor/threetched/source.tar.gz"
 printf 'pinned UI source artifact\n' > "$src/vendor/3tched-json-render-ui/source.tar.gz"
 printf 'API_KEY=sk-test-this-historical-file-must-not-export\n' > "$src/scripts/antigravity-full-setup.md"
 ln -s state.rs "$src/crates/sample/src/internal-link.rs"
@@ -61,13 +61,13 @@ test -f "$success/.agents/skills/fuse/SKILL.md"
 test -f "$success/.agents/skills/btrfs/SKILL.md"
 test -f "$success/.agents/skills/rust-memory-optimization/SKILL.md"
 test -f "$success/.agents/skills/memory-safety-patterns/SKILL.md"
-test -f "$success/vendor/tched-router/source.tar.gz"
+test -f "$success/vendor/threetched/source.tar.gz"
 test -f "$success/vendor/3tched-json-render-ui/source.tar.gz"
 (
     cd "$success"
     git init -q
     git add .
-    git ls-files --error-unmatch vendor/tched-router/source.tar.gz >/dev/null
+    git ls-files --error-unmatch vendor/threetched/source.tar.gz >/dev/null
     git ls-files --error-unmatch vendor/3tched-json-render-ui/source.tar.gz >/dev/null
 )
 

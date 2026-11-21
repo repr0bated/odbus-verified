@@ -666,7 +666,7 @@ mod tests {
             side_effect: op_state_store::SideEffect::Mutation,
             idempotent: false,
             required_capability: Some("register".to_string()),
-            subid: "exp.service.3tched-router.register-agent@v1".to_string(),
+            subid: "exp.service.threetched.register-agent@v1".to_string(),
         };
 
         let proto = generate_method_proto("chat_router", "RegisterAgent", &method_decl);
@@ -678,7 +678,7 @@ mod tests {
         assert!(proto.contains("string agent_id = 1;"));
         assert!(proto.contains("int64 priority = 2;"));
         assert!(proto.contains("bool success = 1;"));
-        assert!(proto.contains("subid: exp.service.3tched-router.register-agent@v1"));
+        assert!(proto.contains("subid: exp.service.threetched.register-agent@v1"));
         assert!(proto.contains("capability: register"));
 
         let descriptor =

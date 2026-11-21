@@ -8,7 +8,7 @@ description = "MCP protocol, tool-registry, and transport library for bridge-own
 default = []
 op-chat = []
 code_search = []
-grpc = ["tonic", "prost", "tonic-build", "tonic-reflection", "tonic-health", "tonic-web"]
+grpc = ["tonic", "tonic-prost", "prost", "tonic-prost-build", "tonic-reflection", "tonic-health", "tonic-web"]
 
 [dependencies]
 # Core
@@ -43,6 +43,7 @@ clap = { version = "4.0", features = ["derive", "env"] }
 
 # gRPC (optional)
 tonic = { workspace = true, optional = true }
+tonic-prost = { workspace = true, optional = true }
 prost = { workspace = true, optional = true }
 tonic-reflection = { workspace = true, optional = true }
 tonic-health = { workspace = true, optional = true }
@@ -55,4 +56,4 @@ op-tools = { path = "../op-tools" }
 op-introspection = { path = "../op-introspection" }
 
 [build-dependencies]
-tonic-build = { workspace = true, optional = true }
+tonic-prost-build = { workspace = true, optional = true }

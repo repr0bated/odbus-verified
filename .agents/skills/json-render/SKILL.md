@@ -267,9 +267,9 @@ From `FACTORY-HANDOFF.md` and `CLAUDE.md` in `/srv/git/odbus`:
 - No JSON string payloads — use `google.protobuf.Struct`.
 - Compliance mappings belong in metadata arrays, not inside the `subid` string.
 
-tched_router context:
+threetched context:
 
-- `tched_router` is the OP-DBUS scaffolding for the autonomous `zeroclaw` binary.
+- `threetched` is the OP-DBUS scaffolding for the autonomous `zeroclaw` binary.
 - `op-grpc-bridge`, not that binary, owns the `:8090` TLS fabric. Cognitive MCP
   is in-process; do not start a standalone cognitive MCP runit service.
 - The factory examples above are historical; verify current methods, input
@@ -280,7 +280,7 @@ tched_router context:
 ## 7. Gallery → Catalog Promotion Pipeline
 
 ```
-tched_router reads plugin PluginSchema blob
+threetched reads plugin PluginSchema blob
   ↓ (sealed blob at /dev/shm/opdbus/plugin-blobs/<plugin>.<hash>.blob)
 gemma_brain / op-gallery-gen generates Spec
   ↓
@@ -371,7 +371,7 @@ Use when rendering raw gRPC response data without a custom component.
 | gRPC client | `src/grpc/client.ts` |
 | json_render plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/json_render.rs` |
 | schema_renderer plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/schema_renderer.rs` |
-| tched_router plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/tched_router.rs` |
+| threetched plugin | `/srv/git/odbus/crates/op-plugins/src/state_plugins/threetched.rs` |
 | Gallery/catalog routes | `/srv/git/odbus/crates/op-web/src/handlers/ui_model.rs` |
 | json-render library | `/srv/git/json-render/packages/core/src/` |
 | json-render.dev docs | https://json-render.dev/docs |

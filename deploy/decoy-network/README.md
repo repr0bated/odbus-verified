@@ -30,8 +30,16 @@ before listening.
 
 The bridge authenticates and exact-matches the identity-owner-authored SID1
 against its private identity sled, then forwards those exact bytes inside the
-typed D-Bus `DecoyCallMetadata` structure. The decoy never mints identity.
-Mutual TLS plus the bridge leaf pin authenticates that metadata's sender.
+typed D-Bus `DecoyCallMetadata` structure. Mutual TLS plus the bridge leaf pin
+authenticates that metadata's sender.
+
+The decoy may issue identity. WireGuard terminates here, so the decoy is the
+one place that observes which key a peer arrived with. It may mint the
+genesis and SID1 for that key (session and principal derived from the key,
+NextDNS context sealed in) and deliver the result signed with its trusted
+signing key. The receiving identity container verifies the signature and the
+key, commits the SID1 as its `sealed_id`, and is the identity owner from then
+on. Identity issued this way carries no hardware binding.
 
 Build the archive only after the normal release build has been deliberately
 sealed and persisted:

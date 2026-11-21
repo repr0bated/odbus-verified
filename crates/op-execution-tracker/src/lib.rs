@@ -1,10 +1,8 @@
-//! OP Execution Tracker - Lightweight Execution Monitoring Layer
+//! Scoped execution-control records and receipt-proof materialization.
 //!
-//! Complements existing state management by providing:
-//! - Execution acknowledgment protocol
-//! - Real-time execution tracking
-//! - Integration with existing workflow/orchestration states
-//! - Observability without duplicating state management
+//! One operation context/status model, redacted wakeups and bounded active/
+//! unresolved retention. BridgeCore owns durable proofs and cumulative aggregate
+//! snapshots; this crate neither executes tools nor establishes semantic approval.
 
 pub mod execution_context;
 
@@ -16,7 +14,7 @@ pub mod telemetry;
 
 pub mod record;
 
-pub use execution_context::{ExecutionContext, ExecutionResult};
+pub use execution_context::{DelegationAttribution, ExecutionContext, ExecutionResult};
 
 pub use execution_tracker::{ExecutionEvent, ExecutionStats, ExecutionTracker};
 
@@ -24,5 +22,4 @@ pub use metrics::ExecutionMetrics;
 
 pub use telemetry::ExecutionTelemetry;
 
-pub use record::ExecutionStatus as RecordExecutionStatus;
-pub use record::{ExecutionRecord, ExecutionRecordBuilder, ExecutionTiming, hash_execution};
+pub use record::{ExecutionProof, ExecutionRecord, ExecutionStatus};

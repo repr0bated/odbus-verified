@@ -5,7 +5,7 @@
 # the pinned Cargo Git source is part of the provisioning contract.
 set -eu
 
-REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+REPO_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 CONTRACT="$REPO_ROOT/deploy/config/container-socket-contracts.json"
 GIT_URL=https://github.com/sparesparrow/rust-network-mgr
 GIT_REV=117087cb1bf99cb55ba3e8e40b9e27752cd08f46

@@ -14,7 +14,7 @@ use std::time::Instant;
 use tokio::sync::RwLock;
 
 use op_core::error::{Error, Result};
-use op_execution_tracker::ExecutionTracker;
+use op_execution_tracker::{ExecutionTracker, ExecutionContext, ExecutionStatus};
 use op_plugins::PluginCatalog;
 use op_tools::registry::ToolRegistry;
 
@@ -283,31 +283,17 @@ impl Orchestrator {
             .await
             .ok_or_else(|| anyhow::anyhow!("Tool not found: {}", tool_name))?;
 
-        // Start tracking
-        let exec_record = self
-            .execution_tracker
-            .start_execution(tool_name, Some(input.clone()), session_id)
-            .await;
+        // Legacy correlation only: this facade has no admitted core operation.
+        let exec_record = self.execution_tracker.reserve(ExecutionContext::new(tool_name)).await?;
 
         // Execute
         let result = tool.execute(input.clone()).await;
 
-        // Record result
-        match &result {
-            Ok(output) => {
-                self.execution_tracker
-                    .complete_execution(
-                        &exec_record.id,
-                        Some(simd_json::to_string(output).unwrap_or_default()),
-                    )
-                    .await;
-            }
-            Err(e) => {
-                self.execution_tracker
-                    .fail_execution(&exec_record.id, e.to_string())
-                    .await;
-            }
-        }
+        // No native core proof is available on this blocked legacy facade.
+        // A raw executor return cannot establish admitted success or failure.
+        self.execution_tracker.finish(
+            &exec_record.context.operation_id, ExecutionStatus::OutcomeUnknown, None,
+        ).await?;
 
         let output = result?;
         let latency_ms = start_time.elapsed().as_millis() as u64;
@@ -462,19 +448,20 @@ impl Orchestrator {
     }
 
     /// Get orchestrator statistics
-    pub async fn stats(&self) -> OrchestratorStats {
-        let exec_stats = self.execution_tracker.get_stats().await;
+    pub async fn stats(&self) -> Option<OrchestratorStats> {
+        let (_, exec_stats) = self.execution_tracker
+            .get_stats(&ExecutionContext::new("legacy.statistics")).await?;
         let cache_stats = self.cache.stats().await;
         let promotion_candidates = self.pattern_tracker.get_promotion_candidates().await;
 
-        OrchestratorStats {
+        Some(OrchestratorStats {
             total_executions: exec_stats.total_executions,
             successful_executions: exec_stats.successful_executions,
             failed_executions: exec_stats.failed_executions,
             avg_latency_ms: exec_stats.average_duration_ms(),
             cache_entries: cache_stats.total_entries,
             promotion_candidates: promotion_candidates.len(),
-        }
+        })
     }
 
     fn hash_input(input: &simd_json::OwnedValue) -> String {
@@ -528,7 +515,7 @@ mod admission_tests {
             assert!(matches!(error, Error::PermissionDenied(_)));
         }
 
-        assert_eq!(orchestrator.stats().await.total_executions, 0);
+        assert!(orchestrator.stats().await.is_none(), "unadmitted legacy facade has no durable scoped counters");
     }
 }
 

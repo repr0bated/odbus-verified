@@ -12,21 +12,32 @@ type Params = BTreeMap<String, DataValue>;
 mod external_mcp_sessions;
 pub use external_mcp_sessions::ExternalMcpSessionRecord;
 
+mod point_index;
+pub use point_index::{PointIndexEntry, VOYAGE_POINT_DIM, VOYAGE_POINT_FAMILY, vector_point_id};
+
 mod system_graph;
 pub use system_graph::*;
 
+mod block_store;
+pub use block_store::{
+    BlockDevice, BlockStoreCounts, CozoBlockStore, DEFAULT_UBLK_COZO_DB_PATH,
+    POOL_DEFAULT_PERSIST_BYTES, POOL_DEFAULT_PERSIST_DEVICE, POOL_PERSIST_ROLE, UBLK_CHUNK_BYTES,
+    UBLK_COZO_DB_PATH_ENV, UBLK_LOGICAL_BLOCK_BYTES, ublk_cozo_db_path,
+};
+pub mod cblk;
 mod identity_inventory;
 mod identity_transactions;
 pub use identity_inventory::{
     IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
 };
 pub use identity_transactions::{
-    ContainerRenameJournal, ContainerRenameRequest, CONTROL_PLANE_NATIVE_NAME, container_rename_native_matches,
-    NativeCreationRequest, NativeCreationRecord, is_numbered_native_name,
-    CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
-    IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
-    IdentityRecoverySnapshot, IdentityRevision, PhysicalRootMigrationReceipt, RootRepairJournal,
-    SeedProvisionJournal, physical_root_instance_binding_matches,
+    CONTROL_PLANE_NATIVE_NAME, CleanProvisionReceipt, ContainerRenameJournal,
+    ContainerRenameRequest, IdentityCleanProvision, IdentityCommit, IdentityCompareExchange,
+    IdentityIntent, IdentityPhysicalRootMigration, IdentityRecoverySnapshot, IdentityRevision,
+    NativeCreationRecord, NativeCreationRequest, PhysicalRootMigrationReceipt, RootRepairJournal,
+    SeedProvisionJournal, clean_provision_instance_binding_matches,
+    container_rename_native_matches, is_numbered_native_name,
+    physical_root_instance_binding_matches,
 };
 mod runtime_document_transactions;
 pub use runtime_document_transactions::{
@@ -49,12 +60,12 @@ pub use chat_response_conversations::{
 };
 mod ctl_plane_chatbot_episodes;
 mod workflow_executions;
-pub use workflow_executions::WorkflowExecutionRecord;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,
     MAX_CHATBOT_EPISODE_BYTES, MAX_CHATBOT_SNAPSHOT_BYTES, ScopedEpisodeRecord,
     ScopedKnowledgeRecord,
 };
+pub use workflow_executions::WorkflowExecutionRecord;
 
 /// Strongly-typed error for CozoDB graph operations.
 ///
@@ -592,6 +603,7 @@ impl CozoGraphShuttle {
                 registered_at: Int default 0,
                 revoked_at: Int default 0
             }"#,
+            r#":create point_index { collection: String, point_id: String => entity: String, model_family: String, dim: Int, chunker_ver: String }"#,
             r#":create chain_vector_link {
                 point_id: String,
                 kind: String
@@ -1037,10 +1049,7 @@ impl CozoGraphShuttle {
     }
 
     /// Remove all rows from a set of relations. Used to clean up on deny/delete.
-    pub fn clear_relations(
-        &self,
-        names: &[String],
-    ) -> std::result::Result<(), CozoError> {
+    pub fn clear_relations(&self, names: &[String]) -> std::result::Result<(), CozoError> {
         if names.is_empty() {
             return Ok(());
         }

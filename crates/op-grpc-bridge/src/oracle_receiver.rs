@@ -69,12 +69,17 @@ impl VerifiedOracle {
 
     /// Retain the already-consumed assertion and its original expiry. Only the
     /// exact native-owned same-identity refresh may replace its bound SID1.
-    pub(crate) async fn refreshed(&self, refresh: &crate::runtime_identity::CredentialRefresh)
-        -> anyhow::Result<Self> {
-        anyhow::ensure!(self.identity.claims() == refresh.previous(),
-            "refresh original oracle authority differs");
+    pub(crate) async fn refreshed(
+        &self,
+        refresh: &crate::runtime_identity::CredentialRefresh,
+    ) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            self.identity.claims() == refresh.previous(),
+            "refresh original oracle authority differs"
+        );
         let refreshed = Self {
-            identity: refresh.identity().clone(), assertion_expires_at: self.assertion_expires_at,
+            identity: refresh.identity().clone(),
+            assertion_expires_at: self.assertion_expires_at,
         };
         refreshed.revalidate().await?;
         Ok(refreshed)
@@ -96,17 +101,58 @@ async fn verify_in(
     now: i64,
 ) -> anyhow::Result<VerifiedOracle> {
     let assertion_wire = wire.to_vec();
+    let assertion_wire_for_strict = assertion_wire.clone();
     let validator_for_check = validator.clone();
-    let pending = tokio::task::spawn_blocking(move || {
+    // Admit through the bootstrap-capable pending path so a configured browser
+    // binding is visible, then refuse it below. The strict MCP-transport
+    // validator (MCP itself retired) is required when no browser binding is set.
+    let mut pending = tokio::task::spawn_blocking(move || {
         validator_for_check.validate_pending_with_bootstrap(&assertion_wire, source, now, false)
     })
     .await??;
-    anyhow::ensure!(
-        pending.bound_oracle().is_none(),
-        "assigned browser oracle is not supported by this receiver"
+    let origin = pending.verified_origin();
+    tracing::debug!(
+        peer_key = %origin.peer_key(),
+        principal_id = %origin.principal_id(),
+        issuer_key_id = %origin.issuer_key_id(),
+        signed_inner_ip = %origin.signed_inner_ip(),
+        assertion_digest = %origin.assertion_digest(),
+        expires_at = origin.expires_at(),
+        origin = %origin.origin(),
+        "oracle assertion origin verified"
     );
-    let assertion = pending.identity().clone();
-    let key = assertion.human_pubkey.clone();
+    if let Some(mut proof) = pending.bound_oracle().cloned() {
+        anyhow::ensure!(
+            proof.is_current(now),
+            "assigned browser oracle expired during verification"
+        );
+        // Bind a provisional digest for audit, then refuse the assignment.
+        // MCP is retired; this receiver still rejects a browser-bound oracle.
+        let digest = blake3::hash(proof.binding().session_id.as_bytes())
+            .to_hex()
+            .to_string();
+        proof.bind_credential(digest.clone());
+        anyhow::ensure!(
+            proof.credential_matches(&digest),
+            "assigned browser oracle credential binding failed"
+        );
+        tracing::warn!(
+            audit = %proof.audit_value(),
+            peer_key = %proof.peer_key(),
+            binding_session = %proof.binding().session_id,
+            "assigned browser oracle is not supported by this receiver"
+        );
+        anyhow::bail!("assigned browser oracle is not supported by this receiver");
+    }
+    // MCP is retired; the strict WireGuard-principal validator remains the
+    // correct non-browser gate and must admit the same assertion.
+    let validator_for_strict = validator.clone();
+    let _strict = tokio::task::spawn_blocking(move || {
+        validator_for_strict.validate_pending_for_mcp(&assertion_wire_for_strict, source, now)
+    })
+    .await??;
+    let assertion_expires_at = pending.identity().expires_at;
+    let key = pending.identity().human_pubkey.clone();
     let catalog_dir = catalog_dir.to_owned();
     let state_dir = state_dir.to_owned();
     let bound = tokio::task::spawn_blocking(move || {
@@ -114,25 +160,32 @@ async fn verify_in(
     })
     .await??;
     anyhow::ensure!(
-        bound.claims().principal_id == assertion.principal_id
-            && bound.claims().wireguard_pubkey == assertion.human_pubkey,
+        bound.claims().principal_id == pending.identity().principal_id
+            && bound.claims().wireguard_pubkey == pending.identity().human_pubkey,
         "assertion does not match the committed identity"
     );
     let identity = crate::identity_receiver::verify_bound_registry(bound).await?;
     let completed_at = chrono::Utc::now().timestamp();
     anyhow::ensure!(
-        assertion.expires_at > completed_at,
+        assertion_expires_at > completed_at,
         "assertion expired during verification"
     );
     anyhow::ensure!(
         identity.claims().expires_at == 0 || identity.claims().expires_at > completed_at,
         "identity expired during verification"
     );
+    // Stamp the anchored session onto the pending identity before consume so
+    // the replay-admitted principal carries the live session terms.
+    {
+        let pending_identity = pending.identity_mut();
+        pending_identity.session_id = identity.claims().session_id.clone();
+        pending_identity.session_genesis = identity.claims().session_genesis.clone();
+    }
     let validator_for_consume = validator.clone();
     tokio::task::spawn_blocking(move || validator_for_consume.consume_pending(pending)).await??;
     Ok(VerifiedOracle {
         identity,
-        assertion_expires_at: assertion.expires_at,
+        assertion_expires_at,
     })
 }
 

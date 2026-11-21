@@ -31,6 +31,8 @@ const MAX_ENTRIES: usize = 45_000;
 const MAX_BYTES: u64 = 64 * 1024 * 1024 * 1024;
 const MAX_TEXT: u64 = 1024 * 1024;
 const MAX_JSON: usize = 64 * 1024 * 1024;
+const MAX_SCAN_TEXT: usize = 64 * 1024 * 1024;
+const MAX_SCAN_PASSES: usize = 256;
 const GRAPH_DIR: &str = "usr/share/op-dbus/graphs";
 const SERVICE_MANIFEST_DIR: &str = "usr/share/op-dbus/etc/opdbus";
 const CATALOG_DIR: &str = "usr/share/op-dbus/plugin-blobs";
@@ -38,7 +40,11 @@ const CATALOG_DIR: &str = "usr/share/op-dbus/plugin-blobs";
 // These are directory ownership boundaries, not another service inventory.
 const RELEASE_ROOTS: &[(&str, &str, bool)] = &[
     ("/usr/share/op-dbus", "usr/share/op-dbus", false),
-    ("/usr/local/libexec/op-dbus/helpers", "libexec/3tched", false),
+    (
+        "/usr/local/libexec/op-dbus/helpers",
+        "libexec/3tched",
+        false,
+    ),
     ("/usr/local/libexec/op-dbus/bin", "bin", false),
     ("/usr/local/libexec/op-dbus/threetched", "usr/bin", false),
     ("/usr/local/libexec/op-dbus/sv", "sv", false),
@@ -48,11 +54,18 @@ const RELEASE_ROOTS: &[(&str, &str, bool)] = &[
         true,
     ),
     ("/opt/opdbus", "opt/opdbus", false),
-    ("/opt/op-dbus/execution-python", "opt/op-dbus/execution-python", false),
+    (
+        "/opt/op-dbus/execution-python",
+        "opt/op-dbus/execution-python",
+        false,
+    ),
 ];
 
 fn beneath(path: &str, parent: &str) -> bool {
-    path == parent || path.strip_prefix(parent).is_some_and(|rest| rest.starts_with('/'))
+    path == parent
+        || path
+            .strip_prefix(parent)
+            .is_some_and(|rest| rest.starts_with('/'))
 }
 
 fn valid_service(name: &str) -> bool {
@@ -60,7 +73,9 @@ fn valid_service(name: &str) -> bool {
         && name.len() <= 128
         && !name.starts_with('.')
         && !name.ends_with('.')
-        && name.bytes().all(|c| c.is_ascii_alphanumeric() || b"-_.".contains(&c))
+        && name
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"-_.".contains(&c))
 }
 
 pub fn run(args: Vec<String>) -> Result<()> {
@@ -204,6 +219,7 @@ fn category(path: &str) -> &'static str {
     }
 }
 
+#[derive(Clone)]
 struct Builder {
     nodes: BTreeMap<String, GraphNode>,
     edges: Vec<GraphEdge>,
@@ -345,10 +361,15 @@ impl Builder {
             .filter(|(_, source, _)| self.paths.contains(*source))
             .map(|(path, source, noexec)| ((*path).into(), (*source).into(), *noexec))
             .collect();
-        let emqx: Vec<_> = self.paths.iter().filter(|path| {
-            path.starts_with("opt/emqx-") && path.split('/').count() == 2
-                && self.nodes[&format!("file:{path}")].attributes["file_type"] == "directory"
-        }).collect();
+        let emqx: Vec<_> = self
+            .paths
+            .iter()
+            .filter(|path| {
+                path.starts_with("opt/emqx-")
+                    && path.split('/').count() == 2
+                    && self.nodes[&format!("file:{path}")].attributes["file_type"] == "directory"
+            })
+            .collect();
         ensure!(emqx.len() <= 1, "multiple prepared EMQX installation roots");
         if let Some(source) = emqx.first() {
             for (name, target) in [
@@ -356,10 +377,13 @@ impl Builder {
                 ("data", "/var/lib/emqx"),
                 ("log", "/var/log/emqx"),
             ] {
-                let node = self.nodes.get(&format!("file:{source}/{name}"))
+                let node = self
+                    .nodes
+                    .get(&format!("file:{source}/{name}"))
                     .with_context(|| format!("EMQX {name} separation missing in {source}"))?;
                 ensure!(
-                    node.attributes["file_type"] == "symlink" && node.attributes["target"] == target,
+                    node.attributes["file_type"] == "symlink"
+                        && node.attributes["target"] == target,
                     "EMQX {source}/{name} must be a literal symlink to {target}"
                 );
             }
@@ -372,7 +396,9 @@ impl Builder {
             );
             if source == "usr/bin" {
                 ensure!(
-                    self.paths.iter().filter(|p| beneath(p, &source) && *p != &source)
+                    self.paths
+                        .iter()
+                        .filter(|p| beneath(p, &source) && *p != &source)
                         .all(|p| p == "usr/bin/threetched"),
                     "threetched target contains unrelated usr/bin entries"
                 );
@@ -380,33 +406,51 @@ impl Builder {
             let noexec = !self.nodes.values().any(|node| {
                 node.kind == "prepared_path"
                     && node.attributes["file_type"] == "regular"
-                    && node.attributes["mode"].as_u64().is_some_and(|mode| mode & 0o111 != 0)
-                    && node.attributes["path"].as_str().is_some_and(|path| beneath(path, &source))
+                    && node.attributes["mode"]
+                        .as_u64()
+                        .is_some_and(|mode| mode & 0o111 != 0)
+                    && node.attributes["path"]
+                        .as_str()
+                        .is_some_and(|path| beneath(path, &source))
             });
-            ensure!(!require_noexec || noexec, "non-executable release target contains executable files: {source}");
+            ensure!(
+                !require_noexec || noexec,
+                "non-executable release target contains executable files: {source}"
+            );
             self.node(
-                format!("target:{target}"), "release_target", target.clone(),
+                format!("target:{target}"),
+                "release_target",
+                target.clone(),
                 json!({"path":target,"source":source,"noexec":noexec}),
             )?;
             self.release_roots.insert(target, source);
         }
         for path in &self.paths {
-            let target = self.release_roots.iter()
-                .find(|(_, source)| beneath(path, source)).map(|(target, _)| target);
-            self.nodes.get_mut(&format!("file:{path}")).expect("prepared path")
-                .attributes.insert("release_target".into(), json!(target));
+            let target = self
+                .release_roots
+                .iter()
+                .find(|(_, source)| beneath(path, source))
+                .map(|(target, _)| target);
+            self.nodes
+                .get_mut(&format!("file:{path}"))
+                .expect("prepared path")
+                .attributes
+                .insert("release_target".into(), json!(target));
         }
         Ok(())
     }
 
     fn staged_path(&self, target: &str) -> Option<String> {
-        self.release_roots.iter().find_map(|(host, source)| {
-            if beneath(target, host) {
-                Some(format!("{source}{}", &target[host.len()..]))
-            } else {
-                None
-            }
-        }).or_else(|| map_host_path(target))
+        self.release_roots
+            .iter()
+            .find_map(|(host, source)| {
+                if beneath(target, host) {
+                    Some(format!("{source}{}", &target[host.len()..]))
+                } else {
+                    None
+                }
+            })
+            .or_else(|| map_host_path(target))
     }
 
     fn host_path(&self, source: &str) -> Option<String> {
@@ -417,21 +461,42 @@ impl Builder {
 
     fn blocker(&mut self, source: &str, line: usize, reason: &str) {
         // Store locations and classifications only, never shell text or values.
-        self.blockers.entry(format!("file:{source}")).or_default()
+        self.blockers
+            .entry(format!("file:{source}"))
+            .or_default()
             .insert(format!("{source}:L{line}: {reason}"));
     }
 
-    fn dependency(&mut self, src: &str, name: &str, starts: bool, source: &str, line: usize) -> Result<()> {
+    fn dependency(
+        &mut self,
+        src: &str,
+        name: &str,
+        starts: bool,
+        source: &str,
+        line: usize,
+    ) -> Result<()> {
         let id = format!("service:{name}");
         if !self.nodes.contains_key(&id) {
             self.node(id.clone(), "runit_service", name.into(),
                 json!({"authority":"prepared_reference","release_owned":false,"definition_staged":false,"declarations":[],"deps":[],"starts":[]}))?;
         }
-        self.edges.push(edge(src, "depends_on", &id, source, format!("L{line}"),
-            json!({"conditional_or_scripted":true})));
+        self.edges.push(edge(
+            src,
+            "depends_on",
+            &id,
+            source,
+            format!("L{line}"),
+            json!({"conditional_or_scripted":true}),
+        ));
         if starts {
-            self.edges.push(edge(src, "starts", id, source, format!("L{line}"),
-                json!({"conditional_or_scripted":true})));
+            self.edges.push(edge(
+                src,
+                "starts",
+                id,
+                source,
+                format!("L{line}"),
+                json!({"conditional_or_scripted":true}),
+            ));
         }
         Ok(())
     }
@@ -446,10 +511,15 @@ impl Builder {
     ) -> Result<()> {
         let staged = self.staged_path(target);
         let resolved = staged.filter(|p| self.paths.contains(p));
-        if resolved.is_none() && self.release_roots.keys().any(|root| beneath(target, root))
+        if resolved.is_none()
+            && self.release_roots.keys().any(|root| beneath(target, root))
             && !beneath(target, "/usr/share/op-dbus/graphs")
         {
-            self.blocker(source, line, "referenced release path is absent from prepared content");
+            self.blocker(
+                source,
+                line,
+                "referenced release path is absent from prepared content",
+            );
         }
         let dst = if let Some(path) = &resolved {
             format!("file:{path}")
@@ -461,11 +531,19 @@ impl Builder {
             id
         };
         self.edges.push(edge(src,relation,dst,source,format!("L{line}"),json!({"resolution":if resolved.is_some(){"staged_path"}else{"unresolved"},"interpretation":status})));
-        if let Some((_, bundle)) = self.release_roots.iter().find(|(host, _)| {
-            host.starts_with("/opt/") && beneath(target, host)
-        }) {
-            self.edges.push(edge(src, "references_path", format!("file:{bundle}"),
-                source, format!("L{line}"), json!({"interpretation":"complete_immutable_runtime_bundle"})));
+        if let Some((_, bundle)) = self
+            .release_roots
+            .iter()
+            .find(|(host, _)| host.starts_with("/opt/") && beneath(target, host))
+        {
+            self.edges.push(edge(
+                src,
+                "references_path",
+                format!("file:{bundle}"),
+                source,
+                format!("L{line}"),
+                json!({"interpretation":"complete_immutable_runtime_bundle"}),
+            ));
         }
         Ok(())
     }
@@ -602,7 +680,10 @@ fn shell_word(word: &str) -> &str {
 // This is a bounded dependency lexer, not a shell interpreter or syntax checker.
 fn shell_commands(line: &str) -> Result<Vec<Vec<&str>>> {
     fn group_end(bytes: &[u8], mut i: usize, close: u8, depth: usize) -> Result<usize> {
-        ensure!(depth <= 32, "shell substitution nesting exceeds inventory bound");
+        ensure!(
+            depth <= 32,
+            "shell substitution nesting exceeds inventory bound"
+        );
         let mut quote = 0;
         while i < bytes.len() {
             let ch = bytes[i];
@@ -612,7 +693,8 @@ fn shell_commands(line: &str) -> Result<Vec<Vec<&str>>> {
             }
             if ch == quote {
                 quote = 0;
-            } else if quote != b'\'' && ch == b'$' && matches!(bytes.get(i + 1), Some(b'(' | b'{')) {
+            } else if quote != b'\'' && ch == b'$' && matches!(bytes.get(i + 1), Some(b'(' | b'{'))
+            {
                 let end = if bytes[i + 1] == b'(' { b')' } else { b'}' };
                 i = group_end(bytes, i + 2, end, depth + 1)?;
             } else if quote == 0 {
@@ -632,7 +714,10 @@ fn shell_commands(line: &str) -> Result<Vec<Vec<&str>>> {
         Ok(bytes.len())
     }
     fn lex<'a>(line: &'a str, depth: usize, commands: &mut Vec<Vec<&'a str>>) -> Result<()> {
-        ensure!(depth <= 32, "shell substitution nesting exceeds inventory bound");
+        ensure!(
+            depth <= 32,
+            "shell substitution nesting exceeds inventory bound"
+        );
         let bytes = line.as_bytes();
         let mut words = Vec::new();
         let mut start = None;
@@ -647,7 +732,8 @@ fn shell_commands(line: &str) -> Result<Vec<Vec<&str>>> {
             }
             if ch == quote {
                 quote = 0;
-            } else if quote != b'\'' && ch == b'$' && matches!(bytes.get(i + 1), Some(b'(' | b'{')) {
+            } else if quote != b'\'' && ch == b'$' && matches!(bytes.get(i + 1), Some(b'(' | b'{'))
+            {
                 start.get_or_insert(i);
                 let close = if bytes[i + 1] == b'(' { b')' } else { b'}' };
                 let end = group_end(bytes, i + 2, close, depth + 1)?;
@@ -672,11 +758,10 @@ fn shell_commands(line: &str) -> Result<Vec<Vec<&str>>> {
             start.get_or_insert(i.min(bytes.len()));
             i += 1;
         }
-        if let Some(begin) = start {
-            if begin < bytes.len() {
+        if let Some(begin) = start
+            && begin < bytes.len() {
                 words.push(&line[begin..]);
             }
-        }
         if !words.is_empty() {
             commands.push(words);
         }
@@ -706,7 +791,9 @@ fn shell_lines(text: &str) -> Vec<(usize, std::borrow::Cow<'_, str>)> {
                 double = !double;
             } else if ch == '\'' && !double {
                 single = !single;
-            } else if ch == '#' && !single && !double
+            } else if ch == '#'
+                && !single
+                && !double
                 && (offset == 0 || raw.as_bytes()[offset - 1].is_ascii_whitespace())
             {
                 break;
@@ -774,10 +861,15 @@ fn shell_code<'a>(line: &'a str, single: &mut bool) -> &'a str {
                     start = index + 1;
                 }
             }
-            '#' if !*single && !double
+            '#' if !*single
+                && !double
                 && (index == 0 || line.as_bytes()[index - 1].is_ascii_whitespace()) =>
             {
-                return if start < index { &line[start..index] } else { "" };
+                return if start < index {
+                    &line[start..index]
+                } else {
+                    ""
+                };
             }
             _ => {}
         }
@@ -790,32 +882,62 @@ fn shell_code<'a>(line: &'a str, single: &mut bool) -> &'a str {
 fn declared_paths(word: &str, bindings: &BTreeMap<String, BTreeSet<String>>) -> BTreeSet<String> {
     let word = shell_word(word);
     let mut result = BTreeSet::new();
-    if let Some(command) = word.strip_prefix("$(").and_then(|word| word.strip_suffix(')')) {
-        if let Some(arg) = command.strip_prefix("dirname -- ").or_else(|| command.strip_prefix("dirname ")) {
-            let Ok(commands) = shell_commands(command) else { return result };
+    if let Some(command) = word
+        .strip_prefix("$(")
+        .and_then(|word| word.strip_suffix(')'))
+    {
+        if let Some(arg) = command
+            .strip_prefix("dirname -- ")
+            .or_else(|| command.strip_prefix("dirname "))
+        {
+            let Ok(commands) = shell_commands(command) else {
+                return result;
+            };
             if commands.last().and_then(|words| words.last()).copied() != Some(arg.trim()) {
                 return result;
             }
-            return declared_paths(arg, bindings).into_iter().filter_map(|path| {
-                Path::new(&path).parent().and_then(Path::to_str).map(String::from)
-            }).collect();
+            return declared_paths(arg, bindings)
+                .into_iter()
+                .filter_map(|path| {
+                    Path::new(&path)
+                        .parent()
+                        .and_then(Path::to_str)
+                        .map(String::from)
+                })
+                .collect();
         }
-        if let Some(arg) = command.strip_prefix("readlink -f -- ").filter(|arg| shell_word(arg) == "$0") {
+        if let Some(arg) = command
+            .strip_prefix("readlink -f -- ")
+            .filter(|arg| shell_word(arg) == "$0")
+        {
             return declared_paths(arg, bindings);
         }
-        if let Some(arg) = command.strip_prefix("CDPATH= cd -- ").and_then(|word| word.strip_suffix(" && pwd -P")) {
+        if let Some(arg) = command
+            .strip_prefix("CDPATH= cd -- ")
+            .and_then(|word| word.strip_suffix(" && pwd -P"))
+        {
             return declared_paths(arg, bindings);
         }
         if command.starts_with("mktemp ") {
-            let Ok(commands) = shell_commands(command) else { return result };
-            let Some(words) = commands.first().filter(|_| commands.len() == 1) else { return result };
+            let Ok(commands) = shell_commands(command) else {
+                return result;
+            };
+            let Some(words) = commands.first().filter(|_| commands.len() == 1) else {
+                return result;
+            };
             let template = match words.as_slice() {
                 ["mktemp", template] | ["mktemp", "-d", template] => *template,
                 _ => return result,
             };
-            return declared_paths(template, bindings).into_iter().filter_map(|path| {
-                Path::new(&path).parent().and_then(Path::to_str).map(String::from)
-            }).collect();
+            return declared_paths(template, bindings)
+                .into_iter()
+                .filter_map(|path| {
+                    Path::new(&path)
+                        .parent()
+                        .and_then(Path::to_str)
+                        .map(String::from)
+                })
+                .collect();
         }
         return result;
     }
@@ -824,22 +946,27 @@ fn declared_paths(word: &str, bindings: &BTreeMap<String, BTreeSet<String>>) -> 
             return result;
         }
         if let Some(at) = word.find(['$', '`', '*', '?']) {
-            if let Some(end) = word[..at].rfind('/') {
-                if end > 0 {
+            if let Some(end) = word[..at].rfind('/')
+                && end > 0 {
                     result.insert(word[..end].into());
                 }
-            }
-        } else if !word.contains("/../") && !word.ends_with("/..") {
-            if let Some(path) = normalize_absolute(Path::new(word)) {
+        } else if !word.contains("/../") && !word.ends_with("/..")
+            && let Some(path) = normalize_absolute(Path::new(word)) {
                 result.insert(path);
             }
-        }
         return result;
     }
-    let Some(rest) = word.strip_prefix('$') else { return result };
+    let Some(rest) = word.strip_prefix('$') else {
+        return result;
+    };
     let (name, suffix, default) = if let Some(braced) = rest.strip_prefix('{') {
-        let Some((inner, suffix)) = braced.split_once('}') else { return result };
-        if let Some(paths) = bindings.get(inner).filter(|_| inner.ends_with("#unix:path=") && suffix.is_empty()) {
+        let Some((inner, suffix)) = braced.split_once('}') else {
+            return result;
+        };
+        if let Some(paths) = bindings
+            .get(inner)
+            .filter(|_| inner.ends_with("#unix:path=") && suffix.is_empty())
+        {
             return paths.clone();
         }
         if let Some((name, default)) = inner.split_once(":-").or_else(|| inner.split_once('-')) {
@@ -848,7 +975,9 @@ fn declared_paths(word: &str, bindings: &BTreeMap<String, BTreeSet<String>>) -> 
             (inner, suffix, None)
         }
     } else {
-        let end = rest.find(|c: char| !c.is_ascii_alphanumeric() && c != '_').unwrap_or(rest.len());
+        let end = rest
+            .find(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .unwrap_or(rest.len());
         (&rest[..end], &rest[end..], None)
     };
     if !variable_name(name) {
@@ -862,9 +991,10 @@ fn declared_paths(word: &str, bindings: &BTreeMap<String, BTreeSet<String>>) -> 
     }
     let suffix = suffix.trim_matches(['\'', '"']);
     if !suffix.is_empty() {
-        result = result.into_iter().flat_map(|path| {
-            declared_paths(&format!("{path}{suffix}"), bindings)
-        }).collect();
+        result = result
+            .into_iter()
+            .flat_map(|path| declared_paths(&format!("{path}{suffix}"), bindings))
+            .collect();
     }
     result
 }
@@ -873,93 +1003,185 @@ fn declared_paths(word: &str, bindings: &BTreeMap<String, BTreeSet<String>>) -> 
 // location. Citation source_path fields belong to the upstream repository;
 // they are not local runtime includes. Unknown/mixed schemas stay configuration.
 fn source_provenance(text: &str) -> bool {
-    let Ok(Value::Object(document)) = serde_json::from_str::<Value>(text) else { return false };
-    let relative = |value: &Value| value.as_str().is_some_and(|path| {
-        !path.is_empty() && Path::new(path).components().all(|part| matches!(part, Component::Normal(_)))
-    });
-    let hash = |value: &Value, length| value.as_str().is_some_and(|hash| {
-        hash.len() == length && hash.bytes().all(|byte| byte.is_ascii_hexdigit())
-    });
+    let Ok(Value::Object(document)) = serde_json::from_str::<Value>(text) else {
+        return false;
+    };
+    let relative = |value: &Value| {
+        value.as_str().is_some_and(|path| {
+            !path.is_empty()
+                && Path::new(path)
+                    .components()
+                    .all(|part| matches!(part, Component::Normal(_)))
+        })
+    };
+    let hash = |value: &Value, length| {
+        value.as_str().is_some_and(|hash| {
+            hash.len() == length && hash.bytes().all(|byte| byte.is_ascii_hexdigit())
+        })
+    };
     let origin = |entry: &serde_json::Map<String, Value>| {
-        entry.get("repository").and_then(Value::as_str).is_some_and(|url| url.starts_with("https://"))
+        entry
+            .get("repository")
+            .and_then(Value::as_str)
+            .is_some_and(|url| url.starts_with("https://"))
             && entry.get("commit").is_some_and(|value| hash(value, 40))
     };
     let captured_file = |entry: &serde_json::Map<String, Value>| {
         entry.get("source_path").is_some_and(relative)
             && entry.get("sha256").is_some_and(|value| hash(value, 64))
-            && entry.get("upstream_sha256").is_none_or(|value| hash(value, 64))
+            && entry
+                .get("upstream_sha256")
+                .is_none_or(|value| hash(value, 64))
             && entry.get("adaptation").is_none_or(Value::is_string)
     };
     match document.get("format").and_then(Value::as_str) {
         Some("3tched-ui-authoring-sources/1") => {
-            return document.keys().all(|key| matches!(key.as_str(), "format" | "captured_at" | "files"))
+            return document
+                .keys()
+                .all(|key| matches!(key.as_str(), "format" | "captured_at" | "files"))
                 && document.get("captured_at").is_some_and(Value::is_string)
-                && document.get("files").and_then(Value::as_array).is_some_and(|files| {
-                    !files.is_empty() && files.iter().all(|file| file.as_object().is_some_and(|entry| {
-                        entry.keys().all(|key| matches!(key.as_str(),
-                            "source" | "repository" | "ref" | "commit" | "source_path" | "path"
-                            | "sha256" | "upstream_sha256" | "adaptation"))
-                            && origin(entry) && captured_file(entry)
-                            && entry.get("source").is_some_and(Value::is_string)
-                            && entry.get("ref").is_some_and(Value::is_string)
-                            && entry.get("path").is_some_and(relative)
-                    }))
-                });
-        }
-        Some("3tched-skill-packaging-changes/1") => {
-            return document.keys().all(|key| matches!(key.as_str(), "format" | "skill" | "changes"))
-                && document.get("skill").is_some_and(Value::is_string)
-                && document.get("changes").and_then(Value::as_array).is_some_and(|changes| {
-                    !changes.is_empty() && changes.iter().all(|change| change.as_object().is_some_and(|entry| {
-                        entry.keys().all(|key| matches!(key.as_str(),
-                            "repository" | "commit" | "source_path" | "packaged_path" | "upstream_sha256"
-                            | "sha256" | "adaptation" | "replacements"))
-                            && origin(entry) && captured_file(entry)
-                            && entry.get("packaged_path").is_some_and(relative)
-                            && entry.get("upstream_sha256").is_some_and(|value| hash(value, 64))
-                            && entry.get("adaptation").is_some_and(Value::is_string)
-                            && entry.get("replacements").and_then(Value::as_array).is_some_and(|replacements| {
-                                !replacements.is_empty() && replacements.iter().all(|replacement| {
-                                    replacement.as_object().is_some_and(|fields| {
-                                        fields.keys().all(|key| matches!(key.as_str(), "from" | "to" | "occurrences"))
-                                            && fields.get("from").is_some_and(Value::is_string)
-                                            && fields.get("to").is_some_and(Value::is_string)
-                                            && fields.get("occurrences").and_then(Value::as_u64).is_some_and(|count| count > 0)
-                                    })
+                && document
+                    .get("files")
+                    .and_then(Value::as_array)
+                    .is_some_and(|files| {
+                        !files.is_empty()
+                            && files.iter().all(|file| {
+                                file.as_object().is_some_and(|entry| {
+                                    entry.keys().all(|key| {
+                                        matches!(
+                                            key.as_str(),
+                                            "source"
+                                                | "repository"
+                                                | "ref"
+                                                | "commit"
+                                                | "source_path"
+                                                | "path"
+                                                | "sha256"
+                                                | "upstream_sha256"
+                                                | "adaptation"
+                                        )
+                                    }) && origin(entry)
+                                        && captured_file(entry)
+                                        && entry.get("source").is_some_and(Value::is_string)
+                                        && entry.get("ref").is_some_and(Value::is_string)
+                                        && entry.get("path").is_some_and(relative)
                                 })
                             })
-                    }))
-                });
+                    });
+        }
+        Some("3tched-skill-packaging-changes/1") => {
+            return document
+                .keys()
+                .all(|key| matches!(key.as_str(), "format" | "skill" | "changes"))
+                && document.get("skill").is_some_and(Value::is_string)
+                && document
+                    .get("changes")
+                    .and_then(Value::as_array)
+                    .is_some_and(|changes| {
+                        !changes.is_empty()
+                            && changes.iter().all(|change| {
+                                change.as_object().is_some_and(|entry| {
+                                    entry.keys().all(|key| {
+                                        matches!(
+                                            key.as_str(),
+                                            "repository"
+                                                | "commit"
+                                                | "source_path"
+                                                | "packaged_path"
+                                                | "upstream_sha256"
+                                                | "sha256"
+                                                | "adaptation"
+                                                | "replacements"
+                                        )
+                                    }) && origin(entry)
+                                        && captured_file(entry)
+                                        && entry.get("packaged_path").is_some_and(relative)
+                                        && entry
+                                            .get("upstream_sha256")
+                                            .is_some_and(|value| hash(value, 64))
+                                        && entry.get("adaptation").is_some_and(Value::is_string)
+                                        && entry
+                                            .get("replacements")
+                                            .and_then(Value::as_array)
+                                            .is_some_and(|replacements| {
+                                                !replacements.is_empty()
+                                                    && replacements.iter().all(|replacement| {
+                                                        replacement.as_object().is_some_and(
+                                                            |fields| {
+                                                                fields.keys().all(|key| {
+                                                                    matches!(
+                                                                        key.as_str(),
+                                                                        "from"
+                                                                            | "to"
+                                                                            | "occurrences"
+                                                                    )
+                                                                }) && fields
+                                                                    .get("from")
+                                                                    .is_some_and(Value::is_string)
+                                                                    && fields.get("to").is_some_and(
+                                                                        Value::is_string,
+                                                                    )
+                                                                    && fields
+                                                                        .get("occurrences")
+                                                                        .and_then(Value::as_u64)
+                                                                        .is_some_and(|count| {
+                                                                            count > 0
+                                                                        })
+                                                            },
+                                                        )
+                                                    })
+                                            })
+                                })
+                            })
+                    });
         }
         Some(_) => return false,
         None => {}
     }
-    if !document.keys().all(|key| matches!(key.as_str(), "repository" | "commit" | "source_path" | "license_status" | "files"))
-        || !document.get("repository").and_then(Value::as_str).is_some_and(|url| url.starts_with("https://"))
+    if !document.keys().all(|key| {
+        matches!(
+            key.as_str(),
+            "repository" | "commit" | "source_path" | "license_status" | "files"
+        )
+    }) || !document
+        .get("repository")
+        .and_then(Value::as_str)
+        .is_some_and(|url| url.starts_with("https://"))
         || !document.get("commit").is_some_and(|value| hash(value, 40))
         || !document.get("source_path").is_some_and(relative)
         || !document.get("license_status").is_none_or(Value::is_string)
     {
         return false;
     }
-    document.get("files").and_then(Value::as_array).is_some_and(|files| {
-        !files.is_empty() && files.iter().all(|file| {
-            file.as_object().is_some_and(|entry| {
-                entry.keys().all(|key| matches!(key.as_str(), "path" | "source_path" | "sha256" | "upstream_sha256" | "adaptation"))
-                    && entry.get("path").is_some_and(relative)
-                    && entry.get("source_path").is_some_and(relative)
-                    && entry.get("sha256").is_some_and(|value| hash(value, 64))
-                    && entry.get("upstream_sha256").is_none_or(|value| hash(value, 64))
-                    && entry.get("adaptation").is_none_or(Value::is_string)
-            })
+    document
+        .get("files")
+        .and_then(Value::as_array)
+        .is_some_and(|files| {
+            !files.is_empty()
+                && files.iter().all(|file| {
+                    file.as_object().is_some_and(|entry| {
+                        entry.keys().all(|key| {
+                            matches!(
+                                key.as_str(),
+                                "path"
+                                    | "source_path"
+                                    | "sha256"
+                                    | "upstream_sha256"
+                                    | "adaptation"
+                            )
+                        }) && entry.get("path").is_some_and(relative)
+                            && entry.get("source_path").is_some_and(relative)
+                            && entry.get("sha256").is_some_and(|value| hash(value, 64))
+                            && entry
+                                .get("upstream_sha256")
+                                .is_none_or(|value| hash(value, 64))
+                            && entry.get("adaptation").is_none_or(Value::is_string)
+                    })
+                })
         })
-    })
 }
 
-fn bind_shell_command(
-    words: &[&str],
-    bindings: &mut BTreeMap<String, BTreeSet<String>>,
-) {
+fn bind_shell_command(words: &[&str], bindings: &mut BTreeMap<String, BTreeSet<String>>) {
     if words.first() == Some(&"unset") {
         for name in words.iter().skip(1) {
             bindings.remove(shell_word(name));
@@ -973,14 +1195,20 @@ fn bind_shell_command(
     }
     let assignment_words = if matches!(words.first(), Some(&"export") | Some(&"local")) {
         &words[1..]
-    } else if words.iter().all(|word| word.split_once('=').is_some_and(|(name, _)| variable_name(name))) {
+    } else if words.iter().all(|word| {
+        word.split_once('=')
+            .is_some_and(|(name, _)| variable_name(name))
+    }) {
         words
     } else {
         // Prefix assignments belong only to that command's environment.
         &[]
     };
     for word in assignment_words {
-        let Some((name, value)) = word.split_once('=').filter(|(name, _)| variable_name(name)) else { break };
+        let Some((name, value)) = word.split_once('=').filter(|(name, _)| variable_name(name))
+        else {
+            break;
+        };
         let paths = declared_paths(value, bindings);
         if paths.is_empty() {
             // An unknown overwrite cannot borrow an earlier known pathname.
@@ -998,13 +1226,17 @@ fn bind_shell_command(
     }
     if words.first() == Some(&":") {
         for word in &words[1..] {
-            if let Some((name, path)) = shell_word(word).strip_prefix("${")
+            if let Some((name, path)) = shell_word(word)
+                .strip_prefix("${")
                 .and_then(|word| word.strip_suffix('}'))
                 .and_then(|word| word.split_once(":=unix:path="))
                 .filter(|(name, _)| variable_name(name))
             {
                 let paths = declared_paths(path, bindings);
-                bindings.entry(format!("{name}#unix:path=")).or_default().extend(paths);
+                bindings
+                    .entry(format!("{name}#unix:path="))
+                    .or_default()
+                    .extend(paths);
             }
         }
     }
@@ -1021,7 +1253,10 @@ fn service_argument(word: &str) -> Option<&str> {
 
 fn sv_call<'a>(words: &'a [&'a str]) -> Option<(&'a str, &'a [&'a str])> {
     let start = words.iter().position(|word| {
-        !matches!(*word, "until" | "while" | "if" | "then" | "do" | "!" | "exec")
+        !matches!(
+            *word,
+            "until" | "while" | "if" | "then" | "do" | "!" | "exec"
+        )
     })?;
     if !matches!(words[start], "sv" | "/usr/bin/sv" | "/bin/sv") {
         return None;
@@ -1034,13 +1269,27 @@ fn sv_call<'a>(words: &'a [&'a str]) -> Option<(&'a str, &'a [&'a str])> {
 }
 
 fn sv_starts(command: &str) -> bool {
-    matches!(command, "start" | "up" | "u" | "once" | "o" | "restart" | "force-restart" | "try-restart" | "force-start")
+    matches!(
+        command,
+        "start"
+            | "up"
+            | "u"
+            | "once"
+            | "o"
+            | "restart"
+            | "force-restart"
+            | "try-restart"
+            | "force-start"
+    )
 }
 
 fn executable_position(words: &[&str]) -> Option<usize> {
     let mut position = 0;
     while words.get(position).is_some_and(|word| {
-        matches!(*word, "exec" | "if" | "then" | "until" | "while" | "!" | "do")
+        matches!(
+            *word,
+            "exec" | "if" | "then" | "until" | "while" | "!" | "do"
+        )
     }) {
         position += 1;
     }
@@ -1057,19 +1306,32 @@ fn executable_position(words: &[&str]) -> Option<usize> {
         match shell_word(words.get(position)?) {
             "env" | "/usr/bin/env" => {
                 position += 1;
-                while words.get(position).is_some_and(|word| word.starts_with('-') || word.contains('=')) {
+                while words
+                    .get(position)
+                    .is_some_and(|word| word.starts_with('-') || word.contains('='))
+                {
                     position += if words[position] == "-u" { 2 } else { 1 };
                 }
             }
             "chpst" | "/usr/bin/chpst" => {
                 position += 1;
-                while words.get(position).is_some_and(|word| word.starts_with('-')) {
-                    position += if matches!(words[position], "-u" | "-U" | "-e" | "-m" | "-n") { 2 } else { 1 };
+                while words
+                    .get(position)
+                    .is_some_and(|word| word.starts_with('-'))
+                {
+                    position += if matches!(words[position], "-u" | "-U" | "-e" | "-m" | "-n") {
+                        2
+                    } else {
+                        1
+                    };
                 }
             }
             "numactl" | "/usr/bin/numactl" => {
                 position += 1;
-                while words.get(position).is_some_and(|word| word.starts_with("--")) {
+                while words
+                    .get(position)
+                    .is_some_and(|word| word.starts_with("--"))
+                {
                     position += 1;
                 }
             }
@@ -1080,22 +1342,38 @@ fn executable_position(words: &[&str]) -> Option<usize> {
 
 fn config_paths(b: &mut Builder, source: &str, line_number: usize, line: &str) -> BTreeSet<String> {
     let mut paths = BTreeSet::new();
-    let Some((key, value)) = line.split_once('=').or_else(|| line.split_once(':'))
-        .or_else(|| line.split_once(char::is_whitespace)) else {
+    let Some((key, value)) = line
+        .split_once('=')
+        .or_else(|| line.split_once(':'))
+        .or_else(|| line.split_once(char::is_whitespace))
+    else {
         return paths;
     };
     let key = key.trim().trim_matches(['\'', '"']);
-    if !(matches!(key, "include" | "include_dir" | "path" | "root" | "directory" | "file")
-        || key.ends_with("_path") || key.ends_with("_file") || key.ends_with("_dir"))
+    if !(matches!(
+        key,
+        "include" | "include_dir" | "path" | "root" | "directory" | "file"
+    ) || key.ends_with("_path")
+        || key.ends_with("_file")
+        || key.ends_with("_dir"))
     {
         return paths;
     }
-    let Some(host) = b.host_path(source) else { return paths };
+    let Some(host) = b.host_path(source) else {
+        return paths;
+    };
     let roots = b.template_roots.get(source).cloned().unwrap_or_else(|| {
-        Path::new(&host).parent().and_then(Path::to_str)
-            .map(String::from).into_iter().collect()
+        Path::new(&host)
+            .parent()
+            .and_then(Path::to_str)
+            .map(String::from)
+            .into_iter()
+            .collect()
     });
-    for word in value.split(|c: char| c.is_whitespace() || "\"'[],;".contains(c)).filter(|word| !word.is_empty()) {
+    for word in value
+        .split(|c: char| c.is_whitespace() || "\"'[],;".contains(c))
+        .filter(|word| !word.is_empty())
+    {
         if word.starts_with('#') {
             break;
         }
@@ -1105,7 +1383,11 @@ fn config_paths(b: &mut Builder, source: &str, line_number: usize, line: &str) -
         if word.contains(['$', '`', '*', '?']) {
             let bounded = declared_paths(word, &BTreeMap::new());
             if bounded.is_empty() {
-                b.blocker(source, line_number, "unresolved dynamic configuration reference");
+                b.blocker(
+                    source,
+                    line_number,
+                    "unresolved dynamic configuration reference",
+                );
             } else {
                 paths.extend(bounded);
                 b.conservative.insert(format!("{source}:L{line_number}: dynamic configuration reference consumes its complete literal directory prefix."));
@@ -1139,11 +1421,10 @@ fn function_arguments(
     let mut incomplete = BTreeMap::<String, (usize, BTreeSet<usize>)>::new();
     let mut quoted = false;
     for (_, raw) in lines {
-        if let Some(name) = shell_function(shell_code(raw, &mut quoted).trim()) {
-            if name != "wait_dep" {
+        if let Some(name) = shell_function(shell_code(raw, &mut quoted).trim())
+            && name != "wait_dep" {
                 functions.insert(name.to_owned(), BTreeMap::new());
             }
-        }
     }
     quoted = false;
     let mut bindings = b.argument_paths.get(source).cloned().unwrap_or_default();
@@ -1156,23 +1437,28 @@ fn function_arguments(
         if shell_function(line).is_some() {
             outer = Some(bindings.clone());
             bindings.retain(|name, _| !name.bytes().all(|c| c.is_ascii_digit()));
-        } else if line == "}" {
-            if let Some(saved) = outer.take() {
+        } else if line == "}"
+            && let Some(saved) = outer.take() {
                 bindings = saved;
             }
-        }
         if line.starts_with('#') || shell_function(line).is_some() {
             continue;
         }
         for words in shell_commands(line)? {
             bind_shell_command(&words, &mut bindings);
             if matches!(words.first(), Some(&".") | Some(&"source")) {
-                bindings.retain(|_, paths| !paths.iter().any(|path| {
-                    b.release_roots.keys().any(|root| beneath(path, root))
-                }));
+                bindings.retain(|_, paths| {
+                    !paths
+                        .iter()
+                        .any(|path| b.release_roots.keys().any(|root| beneath(path, root)))
+                });
             }
-            let Some(position) = executable_position(&words) else { continue };
-            let Some(arguments) = functions.get_mut(shell_word(words[position])) else { continue };
+            let Some(position) = executable_position(&words) else {
+                continue;
+            };
+            let Some(arguments) = functions.get_mut(shell_word(words[position])) else {
+                continue;
+            };
             let (minimum_arity, unbounded) = incomplete
                 .entry(shell_word(words[position]).to_owned())
                 .or_insert_with(|| (usize::MAX, BTreeSet::new()));
@@ -1182,7 +1468,10 @@ fn function_arguments(
                 if paths.is_empty() {
                     unbounded.insert(index_arg + 1);
                 }
-                arguments.entry((index_arg + 1).to_string()).or_insert_with(BTreeSet::new).extend(paths);
+                arguments
+                    .entry((index_arg + 1).to_string())
+                    .or_insert_with(BTreeSet::new)
+                    .extend(paths);
             }
         }
     }
@@ -1190,8 +1479,13 @@ fn function_arguments(
         if let Some((minimum_arity, unbounded)) = incomplete.get(name) {
             for (position, paths) in arguments {
                 let position = position.parse::<usize>().expect("positional binding");
-                if !paths.is_empty() && (position > *minimum_arity || unbounded.contains(&position)) {
-                    b.blocker(source, 0, "function path argument is not bounded at every invocation");
+                if !paths.is_empty() && (position > *minimum_arity || unbounded.contains(&position))
+                {
+                    b.blocker(
+                        source,
+                        0,
+                        "function path argument is not bounded at every invocation",
+                    );
                 }
             }
         }
@@ -1200,8 +1494,14 @@ fn function_arguments(
 }
 
 fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<()> {
-    let src = if source.starts_with("sv/") && source.ends_with("/run") && source.split('/').count() == 3 {
-        format!("service:{}", source.split('/').nth(1).expect("service path"))
+    let src = if source.starts_with("sv/")
+        && source.ends_with("/run")
+        && source.split('/').count() == 3
+    {
+        format!(
+            "service:{}",
+            source.split('/').nth(1).expect("service path")
+        )
     } else {
         format!("file:{source}")
     };
@@ -1213,9 +1513,16 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
     let lines = if shell {
         shell_lines(text)
     } else {
-        text.lines().enumerate().map(|(index, line)| (index + 1, std::borrow::Cow::Borrowed(line))).collect()
+        text.lines()
+            .enumerate()
+            .map(|(index, line)| (index + 1, std::borrow::Cow::Borrowed(line)))
+            .collect()
     };
-    let functions = if shell { function_arguments(b, source, &lines)? } else { BTreeMap::new() };
+    let functions = if shell {
+        function_arguments(b, source, &lines)?
+    } else {
+        BTreeMap::new()
+    };
     let mut outer_bindings = None;
     let mut wait_function = false;
     let mut wait_starts = false;
@@ -1223,38 +1530,57 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
     let mut single_quote = false;
     for (line_number, raw) in &lines {
         let line_number = *line_number;
-        let line = if shell && (single_quote || !raw.trim_start().starts_with("# op-dbus-consumes: ")) {
-            shell_code(raw, &mut single_quote)
-        } else {
-            raw.as_ref()
-        }.trim();
+        let line =
+            if shell && (single_quote || !raw.trim_start().starts_with("# op-dbus-consumes: ")) {
+                shell_code(raw, &mut single_quote)
+            } else {
+                raw.as_ref()
+            }
+            .trim();
         if shell {
             if let Some(target) = line.strip_prefix("# op-dbus-consumes: ") {
-                ensure!(src.starts_with("service:"), "data dependency declaration must belong to a service run script: {source}");
-                ensure!(target.starts_with('/') && !target.contains(char::is_whitespace)
-                    && !target.contains(['$', '`', '*', '?'])
-                    && normalize_absolute(Path::new(target)).as_deref() == Some(target),
-                    "invalid explicit data dependency at {source}:L{line_number}");
-                ensure!(b.staged_path(target).is_some_and(|path| b.paths.contains(&path)),
-                    "explicit data dependency is absent at {source}:L{line_number}");
-                b.reference(&src, target, "references_path", source, line_number,
-                    "explicit_published_data_dependency")?;
+                ensure!(
+                    src.starts_with("service:"),
+                    "data dependency declaration must belong to a service run script: {source}"
+                );
+                ensure!(
+                    target.starts_with('/')
+                        && !target.contains(char::is_whitespace)
+                        && !target.contains(['$', '`', '*', '?'])
+                        && normalize_absolute(Path::new(target)).as_deref() == Some(target),
+                    "invalid explicit data dependency at {source}:L{line_number}"
+                );
+                ensure!(
+                    b.staged_path(target)
+                        .is_some_and(|path| b.paths.contains(&path)),
+                    "explicit data dependency is absent at {source}:L{line_number}"
+                );
+                b.reference(
+                    &src,
+                    target,
+                    "references_path",
+                    source,
+                    line_number,
+                    "explicit_published_data_dependency",
+                )?;
                 continue;
             }
             if let Some(arguments) = shell_function(line).and_then(|name| functions.get(name)) {
-                ensure!(outer_bindings.is_none(), "nested shell function at {source}:L{line_number}");
+                ensure!(
+                    outer_bindings.is_none(),
+                    "nested shell function at {source}:L{line_number}"
+                );
                 let mut scoped = bindings.clone();
                 scoped.retain(|name, _| !name.bytes().all(|c| c.is_ascii_digit()));
                 scoped.extend(arguments.clone());
                 outer_bindings = Some(std::mem::replace(&mut bindings, scoped));
                 continue;
             }
-            if line == "}" {
-                if let Some(outer) = outer_bindings.take() {
+            if line == "}"
+                && let Some(outer) = outer_bindings.take() {
                     bindings = outer;
                     continue;
                 }
-            }
         }
         if line.starts_with('#') || line.is_empty() {
             continue;
@@ -1263,45 +1589,59 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
             wait_function = true;
             continue;
         }
-        let commands = if shell { shell_commands(line)? } else { Vec::new() };
+        let commands = if shell {
+            shell_commands(line)?
+        } else {
+            Vec::new()
+        };
         if wait_function {
             if line == "}" {
                 wait_function = false;
                 continue;
             }
-            if let Some((name, value)) = line.split_once('=') {
-                if variable_name(name) && shell_word(value) == "$1" {
+            if let Some((name, value)) = line.split_once('=')
+                && variable_name(name) && shell_word(value) == "$1" {
                     wait_alias = name;
                 }
-            }
             for words in &commands {
-                if let Some((action, args)) = sv_call(&words) {
-                    if let Some(arg) = args.first() {
+                if let Some((action, args)) = sv_call(words)
+                    && let Some(arg) = args.first() {
                         let arg = shell_word(arg);
                         if arg == "$1" || arg.strip_prefix('$') == Some(wait_alias) {
                             wait_starts |= sv_starts(action);
                         } else {
-                            b.blocker(source, line_number, "unresolved wait_dep function service argument");
+                            b.blocker(
+                                source,
+                                line_number,
+                                "unresolved wait_dep function service argument",
+                            );
                         }
                     }
-                }
             }
             continue;
         }
         if shell {
             for words in &commands {
                 bind_shell_command(words, &mut bindings);
-                let assignment_words = if matches!(words.first(), Some(&"export") | Some(&"local")) {
+                let assignment_words = if matches!(words.first(), Some(&"export") | Some(&"local"))
+                {
                     &words[1..]
                 } else {
                     words.as_slice()
                 };
                 for word in assignment_words {
-                    let Some((name, value)) = word.split_once('=').filter(|(name, _)| variable_name(name)) else { break };
+                    let Some((name, value)) =
+                        word.split_once('=').filter(|(name, _)| variable_name(name))
+                    else {
+                        break;
+                    };
                     let suffix = name.rsplit('_').next().unwrap_or(name);
-                    if value.contains(['$', '`']) && declared_paths(value, &bindings).is_empty() && name != "PATH"
+                    if value.contains(['$', '`'])
+                        && declared_paths(value, &bindings).is_empty()
+                        && name != "PATH"
                         && ["path", "dir", "root", "config", "bin", "manifest"]
-                            .iter().any(|kind| suffix.eq_ignore_ascii_case(kind))
+                            .iter()
+                            .any(|kind| suffix.eq_ignore_ascii_case(kind))
                     {
                         b.blocker(source, line_number, "unresolved dynamic path assignment");
                     }
@@ -1309,33 +1649,45 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                 if matches!(words.first(), Some(&".") | Some(&"source")) {
                     // An unread host environment can replace earlier bindings.
                     // Immutable path assignments must be pinned again afterward.
-                    bindings.retain(|_, paths| !paths.iter().any(|path| {
-                        b.release_roots.keys().any(|root| beneath(path, root))
-                    }));
+                    bindings.retain(|_, paths| {
+                        !paths
+                            .iter()
+                            .any(|path| b.release_roots.keys().any(|root| beneath(path, root)))
+                    });
                 }
                 if words.first() == Some(&"wait_dep") {
                     match words.get(1).and_then(|arg| service_argument(arg)) {
                         Some(name) => b.dependency(&src, name, wait_starts, source, line_number)?,
-                        None => b.blocker(source, line_number, "unresolved wait_dep service argument"),
+                        None => {
+                            b.blocker(source, line_number, "unresolved wait_dep service argument")
+                        }
                     }
-                } else if let Some((action, args)) = sv_call(&words) {
-                    if sv_starts(action) || matches!(action, "check" | "status") {
+                } else if let Some((action, args)) = sv_call(words)
+                    && (sv_starts(action) || matches!(action, "check" | "status")) {
                         let mut found = false;
                         for arg in args {
-                            if arg.starts_with(['>', '<']) || arg.contains('>') || arg.contains('<') {
+                            if arg.starts_with(['>', '<']) || arg.contains('>') || arg.contains('<')
+                            {
                                 break;
                             }
                             found = true;
                             match service_argument(arg) {
-                                Some(name) => b.dependency(&src, name, sv_starts(action), source, line_number)?,
-                                None => b.blocker(source, line_number, "unresolved sv service argument"),
+                                Some(name) => b.dependency(
+                                    &src,
+                                    name,
+                                    sv_starts(action),
+                                    source,
+                                    line_number,
+                                )?,
+                                None => {
+                                    b.blocker(source, line_number, "unresolved sv service argument")
+                                }
                             }
                         }
                         if !found {
                             b.blocker(source, line_number, "missing sv service argument");
                         }
                     }
-                }
             }
         }
         let mut paths = literal_paths(line);
@@ -1344,18 +1696,25 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                 // A copied bootstrap template is interpreted at its literal runtime
                 // destination, not relative to the immutable source directory.
                 if matches!(words.first(), Some(&"install") | Some(&"/usr/bin/install"))
-                    && !words.contains(&"-d") && words.len() >= 3
+                    && !words.contains(&"-d")
+                    && words.len() >= 3
                 {
                     let from = declared_paths(words[words.len() - 2], &bindings);
                     let to = declared_paths(words[words.len() - 1], &bindings);
                     for host in from {
                         if let Some(staged) = b.staged_path(&host).filter(|path| {
-                            b.nodes.get(&format!("file:{path}"))
+                            b.nodes
+                                .get(&format!("file:{path}"))
                                 .is_some_and(|node| node.attributes["file_type"] == "regular")
                         }) {
                             for destination in &to {
-                                if let Some(parent) = Path::new(destination).parent().and_then(Path::to_str) {
-                                    b.template_roots.entry(staged.clone()).or_default().insert(parent.into());
+                                if let Some(parent) =
+                                    Path::new(destination).parent().and_then(Path::to_str)
+                                {
+                                    b.template_roots
+                                        .entry(staged.clone())
+                                        .or_default()
+                                        .insert(parent.into());
                                 }
                             }
                         }
@@ -1365,40 +1724,69 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
                 // No function invocation, eval, command substitution or word splitting
                 // is executed to obtain these arguments.
                 let program_position = executable_position(words).unwrap_or(words.len());
-                if let Some(program) = words.get(program_position) {
-                    if let Some(staged) = b.staged_path(shell_word(program)).filter(|path| b.paths.contains(path)) {
+                if let Some(program) = words.get(program_position)
+                    && let Some(staged) = b
+                        .staged_path(shell_word(program))
+                        .filter(|path| b.paths.contains(path))
+                    {
                         for (index, arg) in words.iter().skip(program_position + 1).enumerate() {
                             let values = declared_paths(arg, &bindings);
                             if !values.is_empty() {
-                                b.argument_paths.entry(staged.clone()).or_default()
-                                    .entry((index + 1).to_string()).or_default().extend(values);
+                                b.argument_paths
+                                    .entry(staged.clone())
+                                    .or_default()
+                                    .entry((index + 1).to_string())
+                                    .or_default()
+                                    .extend(values);
                             }
                         }
                     }
-                }
                 for (position, raw_word) in words.iter().enumerate() {
                     // Attached, unquoted redirection operators are shell syntax,
                     // not part of the path operand (e.g. wc -c <"$file").
                     let redirected = raw_word.trim_start_matches(|c: char| c.is_ascii_digit());
-                    let raw_word = if position != program_position && redirected.starts_with(['<', '>']) {
-                        redirected.trim_start_matches(['<', '>'])
-                    } else { raw_word };
+                    let raw_word =
+                        if position != program_position && redirected.starts_with(['<', '>']) {
+                            redirected.trim_start_matches(['<', '>'])
+                        } else {
+                            raw_word
+                        };
                     let raw_word = shell_word(raw_word);
-                    let path_option = |option| matches!(option,
-                        "--config" | "--config-file" | "--config-dir" | "--manifest" | "--root" | "--directory" | "-c" | "." | "source");
-                    let inline_config = raw_word.split_once('=').filter(|(option, _)| path_option(*option));
+                    let path_option = |option| {
+                        matches!(
+                            option,
+                            "--config"
+                                | "--config-file"
+                                | "--config-dir"
+                                | "--manifest"
+                                | "--root"
+                                | "--directory"
+                                | "-c"
+                                | "."
+                                | "source"
+                        )
+                    };
+                    let inline_config = raw_word
+                        .split_once('=')
+                        .filter(|(option, _)| path_option(*option));
                     let word = shell_word(inline_config.map_or(raw_word, |(_, value)| value));
                     let command_position = position == program_position;
                     let config_argument = inline_config.is_some()
                         || (position > 0 && path_option(shell_word(words[position - 1])));
                     let declared = declared_paths(word, &bindings);
-                    if word.contains(['$', '`']) && declared.is_empty()
+                    if word.contains(['$', '`'])
+                        && declared.is_empty()
                         && (command_position || config_argument)
                         && !matches!(word, "$@" | "$0")
                     {
-                        b.blocker(source, line_number, "unresolved dynamic executable/config path");
+                        b.blocker(
+                            source,
+                            line_number,
+                            "unresolved dynamic executable/config path",
+                        );
                     }
-                    if word.contains(['$', '`', '*', '?']) && !declared.is_empty()
+                    if word.contains(['$', '`', '*', '?'])
+                        && !declared.is_empty()
                         && (word.contains('/') || word.contains(":-"))
                     {
                         b.conservative.insert(format!("{source}:L{line_number}: dynamic path consumes every entry under its declared bounded path alternatives."));
@@ -1413,24 +1801,100 @@ fn scan_text(b: &mut Builder, source: &str, text: &str, shell: bool) -> Result<(
             paths.extend(config_paths(b, source, line_number, line));
         }
         for target in paths {
-            if target.len() > 450 || target.contains(['$', '`'])
-                || !["/etc/", "/usr/", "/opt/", "/var/", "/run/", "/dev/", "/bin/", "/sbin/"]
-                    .iter().any(|prefix| target.starts_with(prefix))
+            if target.len() > 450
+                || target.contains(['$', '`'])
+                || ![
+                    "/etc/", "/usr/", "/opt/", "/var/", "/run/", "/dev/", "/bin/", "/sbin/",
+                ]
+                .iter()
+                .any(|prefix| target.starts_with(prefix))
             {
                 continue;
             }
             let runs = shell && literal_exec_program(line) == Some(target.as_str());
-            b.reference(&src, &target, if runs { "runs" } else { "references_path" },
-                source, line_number, if runs { "literal_exec_candidate" } else { "static_path_reference" })?;
+            b.reference(
+                &src,
+                &target,
+                if runs { "runs" } else { "references_path" },
+                source,
+                line_number,
+                if runs {
+                    "literal_exec_candidate"
+                } else {
+                    "static_path_reference"
+                },
+            )?;
         }
     }
     if outer_bindings.is_some() {
-        b.blocker(source, text.lines().count(), "unterminated supported shell function");
+        b.blocker(
+            source,
+            text.lines().count(),
+            "unterminated supported shell function",
+        );
     }
     if wait_function {
-        b.blocker(source, text.lines().count(), "unterminated supported wait_dep function");
+        b.blocker(
+            source,
+            text.lines().count(),
+            "unterminated supported wait_dep function",
+        );
     }
     Ok(())
+}
+
+#[derive(Default)]
+struct ScanInputs {
+    texts: Vec<(String, String, bool)>,
+    bytes: usize,
+}
+
+impl ScanInputs {
+    fn push(&mut self, source: &str, text: String, shell: bool) -> Result<()> {
+        self.bytes = self
+            .bytes
+            .checked_add(text.len())
+            .context("scan text byte overflow")?;
+        ensure!(
+            self.bytes <= MAX_SCAN_TEXT,
+            "prepared scan text byte bound exceeded"
+        );
+        self.texts.push((source.into(), text, shell));
+        Ok(())
+    }
+}
+
+fn scan_to_fixed_point(base: Builder, inputs: &ScanInputs, max_passes: usize) -> Result<Builder> {
+    let mut arguments = base.argument_paths.clone();
+    let mut roots = base.template_roots.clone();
+    for _ in 0..max_passes {
+        // Only bindings survive an incomplete pass. Rebuild edges, derived
+        // nodes and diagnostics so unresolved early helper arguments cannot
+        // remain blockers after a later helper supplies their declarations.
+        let mut pass = base.clone();
+        pass.argument_paths = arguments.clone();
+        pass.template_roots = roots.clone();
+        for (source, text, shell) in &inputs.texts {
+            scan_text(&mut pass, source, text, *shell)?;
+            let bindings: usize = pass
+                .argument_paths
+                .values()
+                .flat_map(|positions| positions.values())
+                .map(BTreeSet::len)
+                .sum();
+            let destinations: usize = pass.template_roots.values().map(BTreeSet::len).sum();
+            ensure!(
+                bindings <= MAX_ENTRIES && destinations <= MAX_ENTRIES,
+                "prepared scan binding bound exceeded"
+            );
+        }
+        if pass.argument_paths == arguments && pass.template_roots == roots {
+            return Ok(pass);
+        }
+        arguments = pass.argument_paths;
+        roots = pass.template_roots;
+    }
+    bail!("prepared scan bindings did not converge within {max_passes} passes")
 }
 
 fn collect_consumers(b: &mut Builder) -> Result<()> {
@@ -1445,11 +1909,13 @@ fn collect_consumers(b: &mut Builder) -> Result<()> {
         node.kind == "runit_service" && node.attributes.get("release_owned") == Some(&json!(true))
     }) {
         let mut seen = BTreeSet::new();
-        let mut pending = vec![service.id.as_str()];
+        // A dependency's files affect this service, but its lifecycle commands
+        // must not become direct start intent for this service.
+        let mut pending = vec![(service.id.as_str(), true)];
         let mut deps = BTreeSet::new();
         let mut starts = BTreeSet::new();
-        while let Some(id) = pending.pop() {
-            if !seen.insert(id) {
+        while let Some((id, own_lifecycle)) = pending.pop() {
+            if !seen.insert((id, own_lifecycle)) {
                 continue;
             }
             if let Some(errors) = b.blockers.get(id) {
@@ -1458,28 +1924,46 @@ fn collect_consumers(b: &mut Builder) -> Result<()> {
                 }
             }
             if let Some(path) = id.strip_prefix("file:") {
-                consumers.entry(path.into()).or_default().insert(service.label.clone());
+                consumers
+                    .entry(path.into())
+                    .or_default()
+                    .insert(service.label.clone());
                 // Ancestor metadata affects lookup; do not expand siblings from here.
                 let mut parent = Path::new(path).parent();
                 while let Some(path) = parent.filter(|p| !p.as_os_str().is_empty()) {
-                    consumers.entry(path.to_str().context("non-UTF8 ancestor")?.into())
-                        .or_default().insert(service.label.clone());
+                    consumers
+                        .entry(path.to_str().context("non-UTF8 ancestor")?.into())
+                        .or_default()
+                        .insert(service.label.clone());
                     parent = path.parent();
                 }
             }
             for edge in adjacency.get(id).into_iter().flatten() {
                 match edge.relation.as_str() {
                     "depends_on" | "starts" => {
-                        let name = edge.dst.strip_prefix("service:").context("invalid service reference")?;
-                        if name != service.label {
+                        let name = edge
+                            .dst
+                            .strip_prefix("service:")
+                            .context("invalid service reference")?;
+                        if own_lifecycle && name != service.label {
                             deps.insert(name.to_owned());
                             if edge.relation == "starts" {
                                 starts.insert(name.to_owned());
                             }
                         }
+                        if b.nodes.get(&edge.dst).is_some_and(|node| {
+                            node.kind == "runit_service"
+                                && node.attributes.get("release_owned") == Some(&json!(true))
+                        }) {
+                            pending.push((&edge.dst, false));
+                        }
                     }
-                    "configured_by" | "contains" | "runs" | "references_path" | "provenance_document" => {
-                        pending.push(&edge.dst);
+                    "configured_by"
+                    | "contains"
+                    | "runs"
+                    | "references_path"
+                    | "provenance_document" => {
+                        pending.push((&edge.dst, own_lifecycle));
                     }
                     _ => {}
                 }
@@ -1487,7 +1971,11 @@ fn collect_consumers(b: &mut Builder) -> Result<()> {
         }
         service_properties.push((service.id.clone(), deps, starts));
     }
-    ensure!(blockers.is_empty(), "restart inventory is incomplete:\n{}", blockers.into_iter().collect::<Vec<_>>().join("\n"));
+    ensure!(
+        blockers.is_empty(),
+        "restart inventory is incomplete:\n{}",
+        blockers.into_iter().collect::<Vec<_>>().join("\n")
+    );
     drop(adjacency);
     for (path, names) in consumers {
         if let Some(node) = b.nodes.get_mut(&format!("file:{path}")) {
@@ -1564,18 +2052,28 @@ fn prepared(
         "Shell analysis unions literal paths, simple path assignments and supported wait_dep/sv declarations across branches; it never executes shell or reads host environment overrides.".into(),
         "Quoted words and backslash continuations are preserved; nested substitution operands are dependencies, not executed values. Path-producing substitutions are limited to lexical readlink -f/dirname/CDPATH+pwd and mktemp templates; other dynamic executable/config/include paths block completeness.".into(),
         "Standalone function path arguments must be bounded at every call; non-path arguments do not become dependencies. unix:path= defaults and exact prefix removal declare external socket paths, not runtime address validation.".into(),
+        "Helper arguments and copied-template roots are resolved to a fixed point before completeness diagnostics; analysis fails closed above 256 passes, 45000 bindings or 64 MiB of captured text.".into(),
         "Captured-source JSON with repository/commit/source_path/files provenance structure is hashed metadata, not runtime configuration; unrecognized or mixed JSON retains configuration parsing.".into(),
         "Secrets and credential/environment files are never read; source line content is never retained.".into(),
         "Archives are inventoried as artifacts; their internal container filesystem is not unpacked.".into(),
         "The graph output subtree and MANIFEST file digest are excluded to prevent self-reference.".into(),
     ];
     let manifests = [
-        (format!("{SERVICE_MANIFEST_DIR}/enabled-services"), "enabled"),
-        (format!("{SERVICE_MANIFEST_DIR}/retired-services"), "retired"),
+        (
+            format!("{SERVICE_MANIFEST_DIR}/enabled-services"),
+            "enabled",
+        ),
+        (
+            format!("{SERVICE_MANIFEST_DIR}/retired-services"),
+            "retired",
+        ),
     ];
     let mut memberships: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for (path, state) in manifests {
-        ensure!(b.paths.contains(&path), "missing required service declarations: {path}");
+        ensure!(
+            b.paths.contains(&path),
+            "missing required service declarations: {path}"
+        );
         for (i, line) in read_text(&root, &path)?.lines().enumerate() {
             let name = line.split('#').next().unwrap_or("").trim();
             if name.is_empty() {
@@ -1611,23 +2109,36 @@ fn prepared(
         .filter(|p| p.starts_with("sv/") && p.ends_with("/run") && p.split('/').count() == 3)
         .cloned()
         .collect();
+    let mut scan_inputs = ScanInputs::default();
     for path in &runs {
         let name = path.split('/').nth(1).expect("service path");
         ensure!(valid_service(name), "invalid staged service name");
         let text = read_text(&root, path)?;
-        let declared = memberships.get(name).context("staged service has no lifecycle declaration")?;
+        let declared = memberships
+            .get(name)
+            .context("staged service has no lifecycle declaration")?;
         ensure!(
-            declared.contains("enabled") && !declared.contains("retired")
-                && text.lines().any(|line| line.trim() == "# op-dbus-release: application"),
+            declared.contains("enabled")
+                && !declared.contains("retired")
+                && text
+                    .lines()
+                    .any(|line| line.trim() == "# op-dbus-release: application"),
             "staged service {name} is not an enabled release-owned application"
         );
         let service = format!("service:{name}");
         let node = b.nodes.get_mut(&service).expect("declared service");
         node.attributes.insert("release_owned".into(), json!(true));
-        node.attributes.insert("definition_staged".into(), json!(true));
-        b.edges.push(edge(&service, "configured_by", format!("file:sv/{name}"),
-            path, "service_directory", json!({})));
-        scan_text(&mut b, path, &text, true)?;
+        node.attributes
+            .insert("definition_staged".into(), json!(true));
+        b.edges.push(edge(
+            &service,
+            "configured_by",
+            format!("file:sv/{name}"),
+            path,
+            "service_directory",
+            json!({}),
+        ));
+        scan_inputs.push(path, text, true)?;
     }
     let paths: Vec<_> = b.paths.iter().cloned().collect();
     for path in paths {
@@ -1636,16 +2147,26 @@ fn prepared(
         }
         let node = &b.nodes[&format!("file:{path}")];
         if node.attributes["file_type"] == "symlink" {
-            let raw = node.attributes["target"].as_str().context("invalid symlink declaration")?;
+            let raw = node.attributes["target"]
+                .as_str()
+                .context("invalid symlink declaration")?;
             let host = b.host_path(&path);
             let target = if raw.starts_with('/') {
                 Some(PathBuf::from(raw))
             } else {
-                host.as_deref().and_then(|host| Path::new(host).parent()).map(|parent| parent.join(raw))
+                host.as_deref()
+                    .and_then(|host| Path::new(host).parent())
+                    .map(|parent| parent.join(raw))
             };
             if let Some(target) = target.and_then(|path| normalize_absolute(&path)) {
-                b.reference(&format!("file:{path}"), &target, "references_path",
-                    &path, 0, "lexical_symlink_declaration_not_followed")?;
+                b.reference(
+                    &format!("file:{path}"),
+                    &target,
+                    "references_path",
+                    &path,
+                    0,
+                    "lexical_symlink_declaration_not_followed",
+                )?;
             }
             continue;
         }
@@ -1654,22 +2175,40 @@ fn prepared(
         }
         // Vendor runtimes are consumed as complete immutable bundles. Analyze
         // our launchers, not arbitrary bundled third-party shell programs.
-        let script_candidate = path.starts_with("sv/") || path.starts_with("bin/")
+        let script_candidate = path.starts_with("sv/")
+            || path.starts_with("bin/")
             || path.starts_with("libexec/3tched/")
             || path.starts_with("usr/share/op-dbus/notebook-sync/scripts/");
-        let config = category(&path) == "configuration" && !path.starts_with("opt/")
-            && Path::new(&path).extension().and_then(|extension| extension.to_str())
-                .is_some_and(|extension| matches!(extension, "conf" | "toml" | "hocon" | "json" | "ini" | "cf" | "yaml" | "yml"));
+        let config = category(&path) == "configuration"
+            && !path.starts_with("opt/")
+            && Path::new(&path)
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| {
+                    matches!(
+                        extension,
+                        "conf" | "toml" | "hocon" | "json" | "ini" | "cf" | "yaml" | "yml"
+                    )
+                });
         if !script_candidate && !config {
             continue;
         }
         let shell = if script_candidate {
-            let mut file = OpenOptions::new().read(true)
-                .custom_flags(nix::libc::O_NOFOLLOW).open(root.join(&path))?;
+            let mut file = OpenOptions::new()
+                .read(true)
+                .custom_flags(nix::libc::O_NOFOLLOW)
+                .open(root.join(&path))?;
             let mut prefix = [0u8; 128];
             let count = file.read(&mut prefix)?;
-            let first = prefix[..count].split(|byte| *byte == b'\n').next().unwrap_or(&[]);
-            first.starts_with(b"#!") && (first.ends_with(b"/sh") || first.ends_with(b"/bash") || first.ends_with(b" sh") || first.ends_with(b" bash"))
+            let first = prefix[..count]
+                .split(|byte| *byte == b'\n')
+                .next()
+                .unwrap_or(&[]);
+            first.starts_with(b"#!")
+                && (first.ends_with(b"/sh")
+                    || first.ends_with(b"/bash")
+                    || first.ends_with(b" sh")
+                    || first.ends_with(b" bash"))
         } else {
             false
         };
@@ -1682,18 +2221,26 @@ fn prepared(
         }
         match read_text(&root, &path) {
             Ok(text) if config && !shell && path.ends_with(".json") && source_provenance(&text) => {
-                b.nodes.get_mut(&format!("file:{path}")).expect("prepared file")
-                    .attributes.insert("category".into(), json!("provenance"));
+                b.nodes
+                    .get_mut(&format!("file:{path}"))
+                    .expect("prepared file")
+                    .attributes
+                    .insert("category".into(), json!("provenance"));
             }
-            Ok(text) => scan_text(&mut b, &path, &text, shell)?,
-            Err(_) => b.blocker(&path, 0, "referenced configuration is not readable bounded UTF-8"),
+            Ok(text) => scan_inputs.push(&path, text, shell)?,
+            Err(_) => b.blocker(
+                &path,
+                0,
+                "referenced configuration is not readable bounded UTF-8",
+            ),
         }
     }
+    b = scan_to_fixed_point(b, &scan_inputs, MAX_SCAN_PASSES)?;
     // Provenance documents are linked by category rather than copying arbitrary
     // JSON contents (which could contain future private fields).
     for (document, prefix) in [
         (
-            "usr/share/op-dbus/threetched-manifests/tched-router.json",
+            "usr/share/op-dbus/threetched-manifests/threetched.json",
             "usr/bin/threetched",
         ),
         (

@@ -211,10 +211,7 @@ fn current_incus_public_policy_yields_aggregate_counts_without_private_names() {
     let public = crate::state_reader::public_plugin_value("incus", &public);
     let mut input = fixture("incus", Some(serde_json::to_value(public).unwrap()));
     input.schema = schema;
-    let graph = project_system_graph(
-        &BTreeMap::from([("incus".to_owned(), input)]),
-        provenance(),
-    );
+    let graph = project_system_graph(&BTreeMap::from([("incus".to_owned(), input)]), provenance());
     let summary = &node(&graph, "plugin", "incus").attributes["instance_summary"];
     assert_eq!(summary["total"], 3);
     assert_eq!(

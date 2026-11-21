@@ -493,7 +493,10 @@ pub(crate) async fn dispatch_handler_method(
 /// Socket selection is backing configuration, never a caller-controlled method
 /// argument. Fixtures inject an isolated UDS through this private helper.
 async fn dispatch_admitted_at(
-    socket: &str, timeout: Duration, method: &str, args: &Value,
+    socket: &str,
+    timeout: Duration,
+    method: &str,
+    args: &Value,
     admission: crate::openflow_permit::FinalAdmission,
 ) -> Result<Value> {
     let execute = async {
@@ -572,7 +575,14 @@ async fn dispatch_admitted_at(
 
 #[cfg(test)]
 async fn dispatch_at(socket: &str, timeout: Duration, method: &str, args: &Value) -> Result<Value> {
-    dispatch_admitted_at(socket, timeout, method, args, Arc::new(|| Box::pin(async { Ok(()) }))).await
+    dispatch_admitted_at(
+        socket,
+        timeout,
+        method,
+        args,
+        Arc::new(|| Box::pin(async { Ok(()) })),
+    )
+    .await
 }
 
 #[cfg(test)]

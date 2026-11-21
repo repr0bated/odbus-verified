@@ -1,0 +1,19 @@
+[Unit]
+Description=threetched sealed plugin view
+After=local-fs.target systemd-tmpfiles-setup.service dbus.service
+Before=network-pre.target op-grpc-bridge.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+RuntimeDirectory=3tchedfs-threetched
+RuntimeDirectoryMode=0700
+ExecStartPre=/usr/bin/install -d -m 0755 /run/mounts/threetched
+ExecStartPre=/usr/local/libexec/op-dbus/bin/3tched-fs capture --store /run/3tchedfs-threetched --schema-only --catalog /dev/shm/opdbus/plugin-blobs --state /dev/shm/opdbus/state --include-plugin threetched
+ExecStart=/usr/local/libexec/op-dbus/bin/3tched-fs mount --store /run/3tchedfs-threetched --fs-name threetched --surface threetched --catalog /dev/shm/opdbus/plugin-blobs --state /dev/shm/opdbus/state --allow-other --auto-unmount --lungs-socket /run/opdbus/lungs/lungs.sock /run/mounts/threetched
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=20s
+
+[Install]
+WantedBy=multi-user.target

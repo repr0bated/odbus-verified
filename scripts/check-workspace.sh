@@ -21,7 +21,7 @@ case "$mode" in
     *) usage >&2; exit 2 ;;
 esac
 
-repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_dir"
 
 missing=0

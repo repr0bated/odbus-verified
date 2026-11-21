@@ -2,8 +2,8 @@
 exec 2>&1
 set -eu
 
-# Out-of-band chat responder: subscribes to responder wake topic and
-# answers pending chat turns via the 3tchedFS lungs mount.
+# Authenticated MQTT wakes trigger chat-route only inside the already bound
+# responder container. The relay never runs chat-route on the host.
 
 wait_dep() {
     sv start "$1" >/dev/null 2>&1 || true
@@ -15,44 +15,30 @@ wait_dep() {
     done
 }
 
-# Dependencies: the gRPC bridge must be running (owns the turn registry),
-# EMQX must be running (for MQTT wake subscription), and the chatbot's
-# identity roots must be mounted (for 3tchedFS access).
+# These owners must already have their existing identity/container and broker
+# state ready. This service does not create storage, identities or grants.
 wait_dep op-grpc-bridge
 wait_dep emqx
-wait_dep identity-roots
+wait_dep chatbot-identity
 
-set -a
-[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
-set +a
+# Match the bridge's singleton identity derivation. Settings come from the
+# existing per-setting store; no hard-coded principal or ambient human identity.
+. /etc/profile.d/op-dbus-env.sh
+: "${OP_CHATBOT_WIREGUARD_PUBKEY:?set /etc/op-dbus/env/op-chatbot-wireguard-pubkey}"
+set -- $(/usr/local/bin/op-identity-accept derive --pubkey "$OP_CHATBOT_WIREGUARD_PUBKEY")
+[ "$#" -eq 2 ] || { echo "unable to derive configured responder identity" >&2; exit 1; }
+OP_CONTROL_PLANE_CHATBOT_SESSION_ID=$1
+RESPONDER_PRINCIPAL_ID=$2
+OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY=$OP_CHATBOT_WIREGUARD_PUBKEY
+export OP_CONTROL_PLANE_CHATBOT_SESSION_ID RESPONDER_PRINCIPAL_ID
+export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY
+set --
 
-# The control-plane chatbot's service identity. This responder answers
-# turns designated to this principal.
-RESPONDER_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
-
-# The 3tchedFS lungs mount for this chatbot identity.
-LUNGS_MOUNT="${OP_CHAT_RESPONDER_LUNGS_MOUNT:-/opt/run-mounts/3tched}"
-
-# MQTT broker (private loopback backend).
+# The Rust relay refuses remote credential destinations and reads the exact
+# existing authored SID1 itself; no credential enters argv or shell output.
 MQTT_HOST="${OP_CHAT_RESPONDER_MQTT_HOST:-127.0.0.1}"
 MQTT_PORT="${OP_CHAT_RESPONDER_MQTT_PORT:-1883}"
+export MQTT_HOST MQTT_PORT
+export RUST_LOG="${OP_CHAT_RESPONDER_LOG:-info}"
 
-export RUST_LOG="${OP_CHAT_RESPONDER_LOG:-info,rumqttc=warn}"
-
-# Wait for the lungs mount to be available.
-i=0
-while [ ! -d "$LUNGS_MOUNT/chat_response" ]; do
-    i=$((i+1))
-    if [ "$i" -ge 60 ]; then
-        echo "3tchedFS lungs mount not available at $LUNGS_MOUNT after 60s" >&2
-        exit 1
-    fi
-    sleep 1
-done
-
-args="--principal-id $RESPONDER_PRINCIPAL_ID"
-args="$args --lungs-mount $LUNGS_MOUNT"
-args="$args --mqtt-host $MQTT_HOST"
-args="$args --mqtt-port $MQTT_PORT"
-
-exec /usr/local/bin/op-chat-responder $args
+exec /usr/local/bin/op-chat-responder

@@ -126,13 +126,9 @@ impl OptimizedSnowball {
 
         // Initialize snowball with the pinned writer
         let snowball = Arc::new(
-            StreamingSnowball::new_with_placement(
-                snowball_path,
-                snapshot_interval,
-                placement,
-            )
-            .await
-            .context("Failed to initialize streaming snowball")?,
+            StreamingSnowball::new_with_placement(snowball_path, snapshot_interval, placement)
+                .await
+                .context("Failed to initialize streaming snowball")?,
         );
 
         // Initialize BTRFS cache
@@ -474,13 +470,10 @@ mod tests {
         let snowball_path = fixture.0.path().join("snowball");
         let cache_path = fixture.0.path().join("cache");
 
-        let opt_bc = OptimizedSnowball::new(
-            snowball_path,
-            cache_path,
-            SnapshotInterval::from_env(),
-        )
-        .await
-        .expect("create OptimizedSnowball on Btrfs fixture");
+        let opt_bc =
+            OptimizedSnowball::new(snowball_path, cache_path, SnapshotInterval::from_env())
+                .await
+                .expect("create OptimizedSnowball on Btrfs fixture");
 
         let footprint = PluginFootprint::new(
             "systemd",

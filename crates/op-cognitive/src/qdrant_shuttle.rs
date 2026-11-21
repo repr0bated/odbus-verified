@@ -2,7 +2,8 @@ use crate::voyage::VoyageClient;
 use anyhow::{Context, Result};
 use op_state_store::{FieldType, PluginSchema};
 use qdrant_client::qdrant::{
-    Condition, DeletePointsBuilder, Filter, PointStruct, QueryPointsBuilder, RetrievedPoint,
+    Condition, CreateFieldIndexCollectionBuilder, DeletePointsBuilder, FieldType as IndexField,
+    Filter, KeywordIndexParamsBuilder, PointStruct, QueryPointsBuilder, RetrievedPoint,
     ScoredPoint, ScrollPointsBuilder, UpsertPointsBuilder,
 };
 use qdrant_client::{Payload, Qdrant};
@@ -73,6 +74,23 @@ impl QdrantSemanticShuttle {
             .with_context(|| {
                 format!("failed to reach Qdrant gRPC health endpoint at {qdrant_url}")
             })?;
+
+        if client.collection_exists(&user_memory_collection).await? {
+            for field in ["identity_id", "container_id"] {
+                client
+                    .create_field_index(
+                        CreateFieldIndexCollectionBuilder::new(
+                            &user_memory_collection,
+                            field,
+                            IndexField::Keyword,
+                        )
+                        .field_index_params(KeywordIndexParamsBuilder::default().is_tenant(true))
+                        .wait(true),
+                    )
+                    .await
+                    .with_context(|| format!("configure tenant field {field} in user memory"))?;
+            }
+        }
 
         tracing::info!(
             qdrant_url,
@@ -222,8 +240,20 @@ impl QdrantSemanticShuttle {
         entry_key: &str,
         content: &str,
     ) -> Result<()> {
+        anyhow::ensure!(
+            !container_id.trim().is_empty(),
+            "verified memory container scope is required"
+        );
+        anyhow::ensure!(
+            vector.len() == op_cozo_store::VOYAGE_POINT_DIM
+                && vector.iter().all(|value| value.is_finite())
+                && vector.iter().any(|value| *value != 0.0),
+            "invalid Voyage-4 memory embedding"
+        );
         let payload: Payload = serde_json::json!({
             "container_id": container_id,
+            "model_family": op_cozo_store::VOYAGE_POINT_FAMILY,
+            "dim": vector.len(),
             "entry_key": entry_key,
             "content": content,
         })
@@ -257,6 +287,10 @@ impl QdrantSemanticShuttle {
 
     /// Semantic search over user_memory scoped to a container_id
     pub async fn delete_user_memory(&self, container_id: &str, entry_key: &str) -> Result<()> {
+        anyhow::ensure!(
+            !container_id.trim().is_empty(),
+            "verified memory container scope is required"
+        );
         self.client
             .delete_points(
                 DeletePointsBuilder::new(self.user_memory_collection.clone())
@@ -278,6 +312,10 @@ impl QdrantSemanticShuttle {
         container_id: &str,
         limit: u64,
     ) -> Result<Vec<ScoredPoint>> {
+        anyhow::ensure!(
+            !container_id.trim().is_empty(),
+            "verified memory container scope is required"
+        );
         let response = self
             .client
             .query(

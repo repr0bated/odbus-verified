@@ -1,4 +1,4 @@
-// Prior names: tched_router, ZeroClawRouterService.
+// Prior name: ZeroClawRouterService.
 // chat_router gRPC schema host contract.
 // This proto only defines the service envelope. The actual PluginSchema payload
 // is serialized JSON from `chat_router_schema()` in `op-plugins` — never hand-edited

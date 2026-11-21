@@ -45,7 +45,7 @@
 #   POOL=identity-roots                    Incus dir pool for identity roots
 #   LUNGS_RUN=/run/opdbus-lungs
 #   LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock    the bridge's shared lungs socket
-#   THREETCHED_FS=/usr/local/libexec/op-dbus/bin/3tched-fs    the host release binary
+#   _3TCHED_FS=/usr/local/libexec/op-dbus/bin/3tched-fs    the host release binary
 #   OP_IDENTITY_IMAGE_HELPER=<selected helper sibling>/op-identity-image
 set -u
 
@@ -61,7 +61,7 @@ LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
 # Backing socket inside the dedicated Incus directory bind. Guest tmpfiles
 # exposes it at /run/3tched-lungs.socket; never bind the host's entire /run.
 GUEST_LUNGS_SOCKET=${GUEST_LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
-THREETCHED_FS=${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}
+_3TCHED_FS=${_3TCHED_FS:-/usr/local/libexec/op-dbus/bin/3tched-fs}
 STATE=/dev/shm/opdbus/state
 CATALOG=/dev/shm/opdbus/plugin-blobs
 
@@ -996,7 +996,7 @@ seed_lungs() {
     [ "$(printf '%s\n' "$native" | jq -r '.status')" = Stopped ] || seed_fail "lungs spawn requires stopped instance"
     [ ! -e "$lungs_private/mount.json" ] && [ ! -L "$lungs_private/mount.json" ] || seed_fail "stale lungs receipt; inspect before retry"
     [ -z "$(find "$lungs_target" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "guest lungs directory is not empty"
-    lungs_binary=$(readlink -f -- "$THREETCHED_FS")
+    lungs_binary=$(readlink -f -- "$_3TCHED_FS")
     seed_secure_path "$lungs_binary"
     [ -f "$lungs_binary" ] && [ -x "$lungs_binary" ] || seed_fail "missing host 3tchedFS executable"
     lungs_catalog=${OP_IDENTITY_SEED_CATALOG:-/var/lib/opdbus/plugin-blobs}

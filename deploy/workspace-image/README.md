@@ -58,7 +58,7 @@ threetched /run/mounts/threetched fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,no
 after local filesystems and tmpfiles. `/usr/sbin/mount.fuse.3tchedFS` runs the
 existing preflight and foreground client under service supervision. Manual
 mounts also stay in the foreground. Unsupported mount options are rejected
-rather than silently ignored. The main view excludes `threetched,tched_router`;
+rather than silently ignored. The main view excludes `threetched,threetched`;
 the upstream view includes them, matching the host adapter. Both retain the
 same sealed catalog pin and use `/run/3tched-lungs.socket` for canonical writes.
 The stores contain immutable declarations, not separate authoritative state.
@@ -178,12 +178,12 @@ retain its completed, attributed operation receipt. No SID1 file or host
 incus --force-local --project default exec "$INSTANCE" -- \
   /usr/local/bin/3tched-fs describe --mount /run/mounts/3tchedFS --guest-kernel
 incus --force-local --project default exec "$INSTANCE" -- \
-  /usr/local/bin/3tched-fs call tched_fs get_protocol \
+  /usr/local/bin/3tched-fs call _3tched_fs get_protocol \
   --mount /run/mounts/3tchedFS --guest-kernel --args '{}'
 incus --force-local --project default exec "$INSTANCE" -- \
   /usr/local/bin/3tched-fs describe --mount /run/mounts/threetched --guest-kernel
 incus --force-local --project default exec "$INSTANCE" -- \
-  /usr/local/bin/3tched-fs call tched_router GetState \
+  /usr/local/bin/3tched-fs call threetched GetState \
   --mount /run/mounts/threetched --guest-kernel --args '{}'
 ```
 

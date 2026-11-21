@@ -37,8 +37,8 @@ use crate::proto::chat::{
     chat_service_server::ChatService,
 };
 
-const ROUTER_PLUGIN_ID: &str = "tched_router";
-const ROUTER_CHAT_CAPABILITY: &str = "cap.software.3tched-router.chat@v1";
+const CHAT_PLUGIN_ID: &str = "chat_router";
+const ROUTER_CHAT_CAPABILITY: &str = "cap.software.threetched.chat@v1";
 
 // Conversation/tool ids are client-controlled correlation labels, never an
 // authorization boundary. Include both stable principal and verified session.
@@ -62,7 +62,7 @@ fn chat_identity<T>(request: &Request<T>) -> Result<GhostbridgeIdentity, Status>
     let identity = bridge_capability_identity(request.extensions())
         .ok_or_else(|| Status::unauthenticated("verified chat identity is required"))?;
     crate::grpc_server::authorize_schema_method(
-        ROUTER_PLUGIN_ID,
+        CHAT_PLUGIN_ID,
         "Chat",
         Some(ROUTER_CHAT_CAPABILITY),
         Some(&identity),
@@ -129,7 +129,7 @@ async fn dispatch_chat_method(
 ) -> anyhow::Result<ChatOutput> {
     let result = engine
         .dispatch_method_call_with_identity(
-            ROUTER_PLUGIN_ID,
+            CHAT_PLUGIN_ID,
             "Chat",
             chat_args,
             Some(ROUTER_CHAT_CAPABILITY),
@@ -626,7 +626,7 @@ mod tests {
         let schema = op_plugins::state_plugins::chat_router::chat_router_plugin_schema();
         let chat = schema.methods.get("Chat").expect("Chat method");
 
-        assert_eq!(schema.name, ROUTER_PLUGIN_ID);
+        assert_eq!(schema.name, CHAT_PLUGIN_ID);
         assert_eq!(
             chat.required_capability.as_deref(),
             Some(ROUTER_CHAT_CAPABILITY)
@@ -770,8 +770,8 @@ mod tests {
         }
         let _restore = Restore(
             [
-                "TCHED_ROUTER_RUNTIME_ENDPOINT",
-                "TCHED_ROUTER_RUNTIME_TOKEN",
+                "THREETCHED_RUNTIME_ENDPOINT",
+                "THREETCHED_RUNTIME_TOKEN",
                 "OP_GRANTS_PATH",
             ]
             .into_iter()
@@ -788,9 +788,9 @@ mod tests {
         );
         let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
         // FIXME: Audit that the environment access only happens in single-threaded code.
-        unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", endpoint) };
+        unsafe { std::env::set_var("THREETCHED_RUNTIME_ENDPOINT", endpoint) };
         // FIXME: Audit that the environment access only happens in single-threaded code.
-        unsafe { std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN") };
+        unsafe { std::env::remove_var("THREETCHED_RUNTIME_TOKEN") };
         let event_chain = Arc::new(tokio::sync::RwLock::new(op_state_store::EventChain::new(
             op_state_store::ChainConfig::default(),
         )));

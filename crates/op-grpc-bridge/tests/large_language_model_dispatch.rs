@@ -10,7 +10,7 @@ struct Environment(Vec<(&'static str, Option<std::ffi::OsString>)>);
 impl Environment {
     fn new() -> Self {
         Self(
-            ["OP_GRANTS_PATH", "TCHED_ROUTER_RUNTIME_ENDPOINT"]
+            ["OP_GRANTS_PATH", "THREETCHED_RUNTIME_ENDPOINT"]
                 .into_iter()
                 .map(|key| (key, std::env::var_os(key)))
                 .collect(),
@@ -76,7 +76,7 @@ fn endpoint_without_server() -> TcpListener {
     // FIXME: Audit that the environment access only happens in single-threaded code.
     unsafe {
         std::env::set_var(
-            "TCHED_ROUTER_RUNTIME_ENDPOINT",
+            "THREETCHED_RUNTIME_ENDPOINT",
             format!("http://{}", listener.local_addr().unwrap()),
         )
     };

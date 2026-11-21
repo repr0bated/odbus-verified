@@ -189,33 +189,35 @@ pub async fn run_orchestration_server(
         .expect("failed to build reflection service");
 
     tonic::transport::Server::builder()
-        .layer(tonic::service::interceptor(require_canonical_admission))
+        .layer(tonic::service::InterceptorLayer::new(require_canonical_admission))
         .accept_http1(true)
-        .add_service(tonic_web::enable(AgentLifecycleServer::from_arc(
+        // tonic 0.14: tonic_web::enable() was removed; GrpcWebLayer applies grpc-web to every service on this server
+        .layer(tonic_web::GrpcWebLayer::new())
+        .add_service(AgentLifecycleServer::from_arc(
             server.clone(),
-        )))
-        .add_service(tonic_web::enable(AgentExecutionServer::from_arc(
-            server.clone(),
-        )))
-        .add_service(tonic_web::enable(MemoryServiceServer::from_arc(
-            server.clone(),
-        )))
-        .add_service(tonic_web::enable(
-            SequentialThinkingServiceServer::from_arc(server.clone()),
         ))
-        .add_service(tonic_web::enable(ContextManagerServiceServer::from_arc(
+        .add_service(AgentExecutionServer::from_arc(
             server.clone(),
-        )))
-        .add_service(tonic_web::enable(RustProServiceServer::from_arc(
+        ))
+        .add_service(MemoryServiceServer::from_arc(
             server.clone(),
-        )))
-        .add_service(tonic_web::enable(BackendArchitectServiceServer::from_arc(
+        ))
+        .add_service(
+            SequentialThinkingServiceServer::from_arc(server.clone()),
+        )
+        .add_service(ContextManagerServiceServer::from_arc(
             server.clone(),
-        )))
-        .add_service(tonic_web::enable(WorkstackServiceServer::from_arc(
+        ))
+        .add_service(RustProServiceServer::from_arc(
             server.clone(),
-        )))
-        .add_service(tonic_web::enable(reflection))
+        ))
+        .add_service(BackendArchitectServiceServer::from_arc(
+            server.clone(),
+        ))
+        .add_service(WorkstackServiceServer::from_arc(
+            server.clone(),
+        ))
+        .add_service(reflection)
         .serve(addr)
         .await
 }
@@ -279,7 +281,7 @@ mod admission_tests {
             let request = http::Request::builder()
                 .uri(format!("/op.chat.orchestration.v1.RustProService/{method}"))
                 .header("content-type", "application/grpc")
-                .body(tonic::body::empty_body())
+                .body(tonic::body::Body::empty())
                 .unwrap();
             let response = rust_pro.call(request).await.unwrap();
             assert_eq!(response.headers().get("grpc-status").unwrap(), "14");
@@ -292,7 +294,7 @@ mod admission_tests {
         let request = http::Request::builder()
             .uri("/op.chat.orchestration.v1.AgentExecution/Execute")
             .header("content-type", "application/grpc")
-            .body(tonic::body::empty_body())
+            .body(tonic::body::Body::empty())
             .unwrap();
         let response = agent.call(request).await.unwrap();
         assert_eq!(response.headers().get("grpc-status").unwrap(), "14");
