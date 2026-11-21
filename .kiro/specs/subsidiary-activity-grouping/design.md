@@ -1,5 +1,13 @@
 # Design — `subsidiary-activity-grouping`: all subsidiary activity grouped per subsidiary container
 
+> **Hybrid storage decision (2026-11-20).** Keep each subsidiary's private
+> Cozo database for its graph, IDs, and provenance. Store its derived vectors
+> in a shared Qdrant collection with an `is_tenant` keyword index on the
+> immutable subsidiary ID. Resolve that ID from verified admission for
+> search and from verified chain metadata for replica ingest. Keep tenant
+> filters mandatory for search, replacement, rebuild, and retirement. The
+> retained Snowball Btrfs vectors and timing records support replay.
+
 ## Overview
 
 A subsidiary is one child identity in one LXD container

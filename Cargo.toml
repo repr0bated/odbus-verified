@@ -121,7 +121,7 @@ qdrant-client = "1.20" # 1.20 uses tonic 0.14 (1.18 pulled in a second tonic 0.1
 
 # Graph DB — Datalog relational-graph-vector DB
 # Cozo is the durable registry; RocksDB is its embedded persistence engine.
-cozo = { version = "0.7.6", default-features = false, features = ["rayon", "storage-rocksdb"] }
+cozo = { version = "=0.7.6", default-features = false, features = ["rayon", "storage-rocksdb"] }
 
 # Error handling
 anyhow = "1"

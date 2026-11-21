@@ -156,26 +156,13 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, args: &Value) -> Result<B
         }
         op_cognitive::chain_vectors::LedgerPoint { event_hash: field("event_hash"), text: field("text"), payload }
     }).collect::<Vec<_>>();
-    let (model, collection, ids) = op_cognitive::chain_vectors::upsert_session_ledger(&points).await
-        .map_err(RuntimeError::unknown)?;
+    let (model, collection, ids) = op_cognitive::chain_vectors::upsert_session_ledger(
+        ctx.runtime.identity_store().as_ref(),
+        &points,
+    ).await.map_err(RuntimeError::unknown)?;
 
-    // Cozo is the index: each Qdrant point linked to its actor, session and event.
-    let cozo = ctx.runtime.identity_store().clone();
-    let links = entries.iter().zip(&ids).map(|(entry, id)| {
-        let mut link = vec![("source".to_owned(), "sled_ledger".to_owned()),
-            ("collection".to_owned(), collection.clone()), ("embedding_model".to_owned(), model.clone())];
-        for name in ["session_id", "actor_id", "event_hash", "plugin_id", "method", "operation_id"] {
-            link.push((name.to_owned(), entry[name].as_str().unwrap_or_default().to_owned()));
-        }
-        (id.clone(), link)
-    }).collect::<Vec<_>>();
     let cleared = segments.clone();
     tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-        for (id, link) in &links {
-            let pairs = link.iter().filter(|(_, value)| !value.is_empty())
-                .map(|(kind, value)| (kind.as_str(), value.as_str())).collect::<Vec<_>>();
-            cozo.replace_chain_vector_links(id, &pairs)?;
-        }
         // Vectorized and linked: clear the ledger.
         for segment in &cleared { std::fs::remove_file(segment)?; }
         if let Some(parent) = cleared.first().and_then(|segment| segment.parent()) {

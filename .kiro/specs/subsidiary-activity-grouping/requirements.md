@@ -1,5 +1,12 @@
 # Requirements Document — `subsidiary-activity-grouping`: all subsidiary activity grouped per subsidiary container
 
+> **Hybrid storage decision (2026-11-20).** A subsidiary keeps its own
+> private Cozo database and the chain ID `<subsidiary>::mainchain`. Subsidiary
+> vectors share a Qdrant collection using the immutable, verified subsidiary ID
+> as the tenant key. This supersedes per-subsidiary collection requirements
+> below. Reads and writes use a tenant scope from admission or verified
+> chain attribution. Caller arguments do not select tenant scopes.
+
 Status: SPEC ONLY, NOT APPROVED FOR IMPLEMENTATION. Owner request of
 2026-11-19: prepare 3tched to group all subsidiary activity per subsidiary
 container. Nothing in this spec is implemented, deployed or provisioned until

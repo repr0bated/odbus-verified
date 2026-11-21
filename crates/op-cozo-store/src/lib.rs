@@ -12,6 +12,9 @@ type Params = BTreeMap<String, DataValue>;
 mod external_mcp_sessions;
 pub use external_mcp_sessions::ExternalMcpSessionRecord;
 
+mod point_index;
+pub use point_index::{PointIndexEntry, VOYAGE_POINT_DIM, VOYAGE_POINT_FAMILY, vector_point_id};
+
 mod system_graph;
 pub use system_graph::*;
 
@@ -600,6 +603,7 @@ impl CozoGraphShuttle {
                 registered_at: Int default 0,
                 revoked_at: Int default 0
             }"#,
+            r#":create point_index { collection: String, point_id: String => entity: String, model_family: String, dim: Int, chunker_ver: String }"#,
             r#":create chain_vector_link {
                 point_id: String,
                 kind: String

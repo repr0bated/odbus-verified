@@ -28,7 +28,7 @@
 //! snapshot) that already holds the vectors.
 
 use anyhow::{Context, Result};
-use op_cozo_store::CozoGraphShuttle;
+use op_cozo_store::{CozoGraphShuttle, PointIndexEntry, VOYAGE_POINT_DIM, VOYAGE_POINT_FAMILY};
 use op_snowball::btrfs_delta;
 use op_snowball::{ChainBlockRef, StreamingSnowball};
 use qdrant_client::qdrant::{
@@ -178,6 +178,10 @@ pub struct VectorMeta {
     pub host_load: HostLoad,
     /// Which policy rendered the text (`schema` or `flatten`).
     pub policy: String,
+    #[serde(default)]
+    pub model_family: Option<String>,
+    #[serde(default)]
+    pub dimensions: Option<usize>,
 }
 
 pub struct ChainVectorIndex {
@@ -248,14 +252,20 @@ const LEDGER_POINT_NAMESPACE: uuid::Uuid =
     uuid::Uuid::from_u128(0x3c0b_91e4_5a27_4d6f_8b12_e6f4_09d3_a751);
 
 pub fn ledger_point_id(event_hash: &str) -> uuid::Uuid {
-    uuid::Uuid::new_v5(&LEDGER_POINT_NAMESPACE, format!("ledger:{event_hash}").as_bytes())
+    uuid::Uuid::new_v5(
+        &LEDGER_POINT_NAMESPACE,
+        format!("ledger:{event_hash}").as_bytes(),
+    )
 }
 
 /// End-of-session vectorization of a sled ledger (owner 2026-11-02: the
 /// snowball is a session ledger vectorized once at the end). Points go to the
 /// snowball collection with the payload `search_session_events` filters on.
 /// Returns the embedding model, the collection and each point id in order.
-pub async fn upsert_session_ledger(points: &[LedgerPoint]) -> Result<(String, String, Vec<String>)> {
+pub async fn upsert_session_ledger(
+    registry: &CozoGraphShuttle,
+    points: &[LedgerPoint],
+) -> Result<(String, String, Vec<String>)> {
     let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
         .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
     if points.is_empty() {
@@ -263,29 +273,88 @@ pub async fn upsert_session_ledger(points: &[LedgerPoint]) -> Result<(String, St
     }
     let voyage = VoyageClient::new()?;
     let client = Qdrant::from_url(&qdrant_url()).build()?;
-    if !client.collection_exists(&collection).await.context("probe snowball collection")? {
-        match client.create_collection(CreateCollectionBuilder::new(&collection)
-            .vectors_config(VectorParamsBuilder::new(DEFAULT_DIMS, Distance::Cosine))).await {
+    if !client
+        .collection_exists(&collection)
+        .await
+        .context("probe snowball collection")?
+    {
+        match client
+            .create_collection(
+                CreateCollectionBuilder::new(&collection)
+                    .vectors_config(VectorParamsBuilder::new(DEFAULT_DIMS, Distance::Cosine)),
+            )
+            .await
+        {
             Ok(_) => {}
             Err(error) if is_already_exists(&error) => {}
-            Err(error) => return Err(anyhow::Error::from(error).context("create snowball collection")),
+            Err(error) => {
+                return Err(anyhow::Error::from(error).context("create snowball collection"));
+            }
         }
     }
     let mut ids = Vec::with_capacity(points.len());
     let mut structs = Vec::with_capacity(points.len());
     for point in points {
         let vector = voyage.embed(&point.text, Some("document")).await?;
+        anyhow::ensure!(
+            vector.len() == VOYAGE_POINT_DIM
+                && vector.iter().all(|value| value.is_finite())
+                && vector.iter().any(|value| *value != 0.0),
+            "invalid Voyage-4 ledger embedding"
+        );
+        anyhow::ensure!(
+            !point.event_hash.is_empty(),
+            "ledger point requires the authoritative event hash"
+        );
         let mut payload = point.payload.clone();
         payload.insert("event_hash".into(), point.event_hash.clone().into());
         payload.insert("text".into(), point.text.clone().into());
         payload.insert("source".into(), "sled_ledger".into());
-        let payload: Payload = serde_json::Value::Object(payload).try_into()
-            .context("build ledger vector payload")?;
+        payload.insert("model_family".into(), VOYAGE_POINT_FAMILY.into());
+        payload.insert("dim".into(), vector.len().into());
+        let mut links = vec![
+            ("collection".into(), collection.clone()),
+            ("embedding_model".into(), voyage.model().to_owned()),
+        ];
+        for key in [
+            "source",
+            "session_id",
+            "actor_id",
+            "event_hash",
+            "plugin_id",
+            "method",
+            "operation_id",
+            "subid",
+        ] {
+            if let Some(value) = payload
+                .get(key)
+                .and_then(|v| v.as_str())
+                .filter(|v| !v.is_empty())
+            {
+                links.push((key.to_owned(), value.to_owned()));
+            }
+        }
         let id = ledger_point_id(&point.event_hash).to_string();
+        registry.register_vector_point(
+            &PointIndexEntry {
+                entity: format!("sled:event:{}", point.event_hash),
+                point_id: id.clone(),
+                collection: collection.clone(),
+                model_family: VOYAGE_POINT_FAMILY.into(),
+                dim: vector.len(),
+                chunker_ver: "sled-ledger-v1".into(),
+            },
+            &links,
+        )?;
+        let payload: Payload = serde_json::Value::Object(payload)
+            .try_into()
+            .context("build ledger vector payload")?;
         structs.push(PointStruct::new(id.clone(), vector, payload));
         ids.push(id);
     }
-    client.upsert_points(UpsertPointsBuilder::new(&collection, structs).wait(true)).await
+    client
+        .upsert_points(UpsertPointsBuilder::new(&collection, structs).wait(true))
+        .await
         .with_context(|| format!("upsert session ledger into '{collection}'"))?;
     Ok((voyage.model().to_owned(), collection, ids))
 }
@@ -471,6 +540,11 @@ impl ChainVectorIndex {
 
         let mut embedded = 0usize;
         let mut upserted_to_qdrant = 0usize;
+        let cozo = if write_qdrant {
+            Some(open_point_registry()?)
+        } else {
+            None
+        };
         for block in &pending {
             let lines = self.policy.embedding_lines(block);
             let text = match &lines {
@@ -498,6 +572,8 @@ impl ChainVectorIndex {
                 embed_ms,
                 host_load: HostLoad::sample(),
                 policy: if lines.is_some() { "schema" } else { "flatten" }.into(),
+                model_family: Some(VOYAGE_POINT_FAMILY.into()),
+                dimensions: Some(vector.len()),
             };
             if let Ok(meta_value) = simd_json::serde::to_owned_value(&meta)
                 && let Err(error) = self
@@ -507,8 +583,8 @@ impl ChainVectorIndex {
             {
                 tracing::warn!(%error, block = block.block_num, "vector sidecar not written");
             }
-            if write_qdrant {
-                self.upsert_block(block, vector).await?;
+            if let Some(cozo) = &cozo {
+                self.upsert_block(cozo, block, vector).await?;
                 upserted_to_qdrant += 1;
             }
             embedded += 1;
@@ -546,6 +622,7 @@ impl ChainVectorIndex {
     /// prefer `ingest_received` after receive when filling the replica index.
     /// No Voyage key and no re-embedding spend.
     pub async fn reindex_from_chain(&self) -> Result<IngestSummary> {
+        let cozo = open_point_registry()?;
         let blocks = self.chain.blocks().await?;
         let mut upserted = 0usize;
         let mut skipped = 0usize;
@@ -558,7 +635,7 @@ impl ChainVectorIndex {
             match self.chain.read_vector(block.block_num).await? {
                 Some(vector) => {
                     let vector = self.fit_dims(vector, block.block_num)?;
-                    self.upsert_block(block, vector).await?;
+                    self.upsert_block(&cozo, block, vector).await?;
                     upserted += 1;
                 }
                 None => skipped += 1,
@@ -612,11 +689,7 @@ impl ChainVectorIndex {
     /// Pass `None` to resume from the persisted watermark (`0` on first run,
     /// which indexes everything present).
     pub async fn ingest_received(&self, from_block: Option<u64>) -> Result<IngestSummary> {
-        let cozo_path = std::env::var("COGNITIVE_COZO_DB_PATH")
-            .context("COGNITIVE_COZO_DB_PATH is required to persist chain vector links")?;
-        let cozo = CozoGraphShuttle::new_persistent(std::path::PathBuf::from(cozo_path))
-            .map_err(|error| anyhow::anyhow!(error))
-            .context("open Cozo for chain vector links")?;
+        let cozo = open_point_registry()?;
 
         let watermark = match from_block {
             Some(block) => block,
@@ -648,29 +721,12 @@ impl ChainVectorIndex {
             };
             let vector = self.fit_dims(vector, *block_num)?;
 
-            match blocks.iter().find(|block| block.block_num == *block_num) {
-                Some(block) => {
-                    let links = chain_links(block);
-                    let link_refs: Vec<(&str, &str)> = links
-                        .iter()
-                        .map(|(kind, value)| (kind.as_str(), value.as_str()))
-                        .collect();
-                    cozo.replace_chain_vector_links(
-                        &point_id(block.block_num).to_string(),
-                        &link_refs,
-                    )
-                    .map_err(anyhow::Error::new)
-                    .with_context(|| {
-                        format!("failed to write chain links for block {}", block.block_num)
-                    })?;
-                    // A visible point suppresses gap retries: commit its links first.
-                    self.upsert_block(block, vector).await?;
-                }
-                // Vector present without its timing record (partial or
-                // out-of-order receive). Index it by block number so a later
-                // pass can enrich it rather than dropping it.
-                None => self.upsert_orphan_vector(*block_num, vector).await?,
-            }
+            let block = blocks
+                .binary_search_by_key(block_num, |block| block.block_num)
+                .ok()
+                .and_then(|index| blocks.get(index))
+                .context("received vector lacks a timing record")?;
+            self.upsert_block(&cozo, block, vector).await?;
             upserted += 1;
         }
 
@@ -795,11 +851,18 @@ impl ChainVectorIndex {
         &self.chain_path
     }
 
-    async fn upsert_block(&self, block: &ChainBlockRef, vector: Vec<f32>) -> Result<()> {
+    async fn upsert_block(
+        &self,
+        cozo: &CozoGraphShuttle,
+        block: &ChainBlockRef,
+        vector: Vec<f32>,
+    ) -> Result<()> {
         // Allow-listed provenance only: identity digests and hashes for
         // filtering, never raw arguments and never the session genesis.
         let mut payload_map = serde_json::Map::new();
         payload_map.insert("block_num".into(), block.block_num.into());
+        payload_map.insert("model_family".into(), VOYAGE_POINT_FAMILY.into());
+        payload_map.insert("dim".into(), vector.len().into());
         // Snowball carries the authoritative ChainEvent hash verbatim.
         // The compatibility input digest is provenance copied from the
         // payload; neither value is re-hashed by the vector projection.
@@ -833,13 +896,37 @@ impl ChainVectorIndex {
         if let Ok(Some(meta)) = self.chain.read_vector_meta(block.block_num).await {
             let meta: serde_json::Value =
                 simd_json::serde::from_owned_value(meta).unwrap_or(serde_json::Value::Null);
+            if let Some(family) = meta["model_family"].as_str() {
+                anyhow::ensure!(
+                    family == VOYAGE_POINT_FAMILY,
+                    "incompatible footprint embedding model family"
+                );
+            }
+            if let Some(dimensions) = meta["dimensions"].as_u64() {
+                anyhow::ensure!(
+                    dimensions == vector.len() as u64,
+                    "footprint dimensions disagree with sidecar"
+                );
+            }
             payload_map.insert("vector_meta".into(), meta);
         }
         let payload: Payload = serde_json::Value::Object(payload_map)
             .try_into()
             .context("failed to build snowball vector payload")?;
 
-        let point = PointStruct::new(point_id(block.block_num).to_string(), vector, payload);
+        let id = point_id(block.block_num).to_string();
+        cozo.register_vector_point(
+            &PointIndexEntry {
+                entity: format!("snowball:block:{}", block.block_num),
+                point_id: id.clone(),
+                collection: self.collection.clone(),
+                model_family: VOYAGE_POINT_FAMILY.into(),
+                dim: vector.len(),
+                chunker_ver: "snowball-block-v1".into(),
+            },
+            &chain_links(block),
+        )?;
+        let point = PointStruct::new(id, vector, payload);
         self.qdrant
             .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
             .await
@@ -852,42 +939,25 @@ impl ChainVectorIndex {
         Ok(())
     }
 
-    async fn upsert_orphan_vector(&self, block_num: u64, vector: Vec<f32>) -> Result<()> {
-        let payload: Payload = serde_json::json!({
-            "block_num": block_num,
-            "timing_record_missing": true,
-        })
-        .try_into()
-        .context("failed to build orphan vector payload")?;
-
-        let point = PointStruct::new(point_id(block_num).to_string(), vector, payload);
-        self.qdrant
-            .upsert_points(UpsertPointsBuilder::new(&self.collection, vec![point]).wait(true))
-            .await
-            .with_context(|| format!("failed to upsert orphan vector for block {block_num}"))?;
-        Ok(())
-    }
-
-    /// Match the collection width. Voyage's voyage-4 family is Matryoshka, so a
-    /// longer vector truncates into the same space; Qdrant's Cosine distance
-    /// normalizes, so no renormalization is needed after truncation. A *short*
-    /// vector is a real mismatch and is refused rather than zero-padded.
-    fn fit_dims(&self, mut vector: Vec<f32>, block_num: u64) -> Result<Vec<f32>> {
-        let want = self.dims as usize;
-        if vector.len() > want {
-            vector.truncate(want);
-        }
+    fn fit_dims(&self, vector: Vec<f32>, block_num: u64) -> Result<Vec<f32>> {
         anyhow::ensure!(
-            vector.len() == want,
-            "embedding for block {block_num} has {} dims, collection '{}' expects {want}",
-            vector.len(),
-            self.collection
+            self.dims == VOYAGE_POINT_DIM as u64
+                && vector.len() == VOYAGE_POINT_DIM
+                && vector.iter().all(|value| value.is_finite())
+                && vector.iter().any(|value| *value != 0.0),
+            "embedding for block {block_num} must contain {VOYAGE_POINT_DIM} finite components and a nonzero norm"
         );
         Ok(vector)
     }
 
     fn indexed_block_path(&self) -> PathBuf {
-        self.chain_path.join(INDEXED_BLOCK_FILE)
+        if self.collection == DEFAULT_COLLECTION {
+            return self.chain_path.join(INDEXED_BLOCK_FILE);
+        }
+        use sha2::{Digest, Sha256};
+        let suffix = Sha256::digest(self.collection.as_bytes());
+        self.chain_path
+            .join(format!("{INDEXED_BLOCK_FILE}-{suffix:x}"))
     }
 
     /// Highest block number whose vector is in the index.
@@ -907,6 +977,14 @@ impl ChainVectorIndex {
         .await
         .context("failed to persist index watermark")
     }
+}
+
+fn open_point_registry() -> Result<CozoGraphShuttle> {
+    let path = std::env::var_os("COGNITIVE_COZO_DB_PATH")
+        .context("COGNITIVE_COZO_DB_PATH is required to persist chain vector links")?;
+    CozoGraphShuttle::new_persistent(PathBuf::from(path))
+        .map_err(anyhow::Error::new)
+        .context("open Cozo point registry for Snowball")
 }
 
 /// Deterministic point id for a block.

@@ -1,5 +1,10 @@
 # Implementation Plan
 
+> **Hybrid storage decision (2026-11-20).** Replace the per-subsidiary Qdrant
+> collection tasks below with one shared Qdrant vector index and tenant-scoped
+> operations. Verify registry binding, tenant attribution on replay, and
+> cross-tenant refusal before enabling subsidiary ingest or search.
+
 Spec only. Not approved for implementation; waits for the owner's go-ahead
 and answers to the design's Open Questions (at least 1, 2, 3, 4, 9, 11, 12,
 14, 15, 17, 18, 19). Tasks that change `op-grpc-bridge` or the `_3tched-fs` receipt
