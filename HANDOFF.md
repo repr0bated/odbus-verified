@@ -1,5 +1,42 @@
 # Agent handoff
 
+## 2026-11-21 — OMP container-chat — source handoff (not deployed)
+
+Human `chat_response.submit_turn` captures the asking session's UI-selected
+mode/project/context and exact native model/config pin, commits the human turn,
+issues a distinct service-responder assignment and publishes a content-free
+authenticated wake. The container Rust `chat-route` owns the bounded turn/tool
+loop through its GuestKernel FUSE mount; the old synthetic standalone ChatService
+is removed from the container crate. Single-turn claims and unknown-outcome
+fences prevent duplicate-wake replay.
+
+Exact mutation approvals originate only in the original human browser's active
+catalog control. Backend and container compare held arguments/digest, consume
+once, re-admit the current grant/context, then execute one same-FD tool call.
+Generation/tool receipts are verified against durable core request/result pins;
+final response content must equal the latest completed generation and reference
+exactly this turn's recorded operations. Exit success additionally requires the
+committed response's own read-back. Model prose cannot set tool status; these
+checks do not prove general factual truth. Optional required Jev review uses
+the configured native judgment role and typed TypeSafe contract, failing closed
+when unavailable/uncertain. No successful live Jev review is claimed.
+
+Browser assets are staged with the actual responder ELF by
+`3tched.com/deploy/container/stage-chat-payload.sh` into an offline snapshot.
+Existing container TLS door serves assets only when configured with a verified
+GuestKernel mount. `fuse.get_catalog` reads authorized schema through those
+actual container mounts, checks the runtime seals, intersects human disclosure
+grants and never delegates the container identity. Missing binary/schema mount
+or canonical `cap.storage.fuse.contract.read@v1` grant fails explicitly.
+
+Manual prerequisites: review/commit backend, pin the container Git dependency to
+that published commit and resolve its standalone lock, explicitly build the
+scoped artifacts when authorized, seal matching catalog, stage the container
+payload, and release through the supported snapshot procedure. Existing
+container binding, authored MQTT credential, human identity issuer and grants
+must already admit the workflow. No identity/grant/network changes are implied.
+No builds, tests, formatting, reseal, deployment or live service actions ran.
+
 ## 2026-11-20 — Grok — compliance door task 8 (publish + Cozo service)
 
 Cozo service is live. op-web rebuild did not start.
@@ -950,6 +987,7 @@ Read `AGENTS.md` and its nine mandatory skills first. This is the shared handoff
 The owner is starting a new session. **Finish the release and identity migration; stop expanding investigation or repeating passed checks.** Owner requires the golden procedure and explicitly rejected selective manual staging. All Cargo commands go through **Luna**. Keep the current WireGuard keys, identity credentials and grants. Task board: `WISHLIST.md` OD-98/OD-99. Earlier full history is preserved in [the archived handoff](reports/identity-replacement/20260930/handoff-history-through-2237.md).
 
 ## Active work
+| OMP container-chat — SOURCE REVIEW | `container-chat-handoff-20261120` | Owns Rust responder/container browser handoff, pending conversation/generation/approval contracts and narrow canonical FUSE catalog delivery. chat-evidence owns authenticated MQTT relay and verified container launcher. Unrelated runtime_bootstrap/provisioning/deployment/grants work preserved. | 2026-11-21 | Source implemented; parent review before selective backend commit/push, then pin container FUSE dependency and resolve standalone lock. No builds/tests/reseal/install/deploy/live grant changes. |
 | Grok — BLOCKED ON OP-WEB BINARY: COMPLIANCE PUBLISH + COZO SERVICE | `compliance-door-cozo-task8` | Task 8. Owns `deploy/runit/compliance-cozo/**`, the enabled-services line, and the `CC_COMPLIANCE_STATIC_DIR` line in `deploy/runit/op-web/run` on `dev`. Publish script is in compliance-datasets-provenance `feat/compliance-door-cozo`. No grant, identity, or door-admission change. | 2026-11-20 | Cozo is up: `sv check compliance-cozo` ok, `GET 127.0.0.1:8787/api/health` 200. SPA published at `/usr/local/share/op-dbus/dashboard/compliance`. op-web is not running: no `/usr/local/libexec/op-dbus/bin/op-web-server`, service not enabled, `10.0.0.2:8080` refused. Did not start Cargo: root `golden.sh` workspace release (pid 29472) holds the slot and its source has no `compliance_proxy.rs`. Next: after that Cargo exits, `CXXFLAGS="-include cstdint" cargo build -p op-web --release --target x86_64-unknown-linux-gnu` with a scratch `THREETCHED_CONFIG_DIR`, install the binary, enable `/etc/sv/op-web`, then curl `http://10.0.0.2:8080/compliance/api/health`. |
 | Grok — DONE: OP-WEB /compliance STATIC + API PROXY | `compliance-door-cozo-task7` | Task 7 on `feat/compliance-door-cozo`. Owns `crates/op-web/src/compliance_proxy.rs`, the `lib.rs` module export, and the `/compliance` mount in `routes/mod.rs` before the dashboard fallback. Proxy forwards method, body, and content-type. No grant or door-admission change. | 2026-11-20 | Done. Commit `fb4260a`. `cargo test -p op-web compliance`: 5 passed, 0 failed (needs `THREETCHED_CONFIG_DIR` scratch or the bridge capture build fails on `/var/lib/threetched/data`). |
 | Grok — SPEC ONLY: COGNITIVE MEMORY ON PER-IDENTITY ROCKSDB | `cognitive-memory-rocksdb-20261119` | Owner, 2026-11-19: map soul and namespace memories to the RocksDB in the identity container. Spec `.kiro/specs/cognitive-memory-rocksdb/` (8da14f6). SPEC ONLY, not implementing; waiting until after the build. Claims no files. | 2026-11-19 | Spec on `dev`; all tasks unchecked; no code. |

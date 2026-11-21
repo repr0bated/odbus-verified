@@ -476,8 +476,6 @@ pub struct KickClientOutput {
     pub was_connected: bool,
 }
 
-/// MQTT topic prefix for responder wakes (chatbot/agent turn notifications).
-pub const RESPONDER_WAKE_TOPIC_PREFIX: &str = "opdbus/responder-wake/";
 
 /// MQTT topic prefix for tool-use acknowledgement receipts.
 pub const TOOL_ACK_PREFIX: &str = "opdbus/ack/";
@@ -501,8 +499,8 @@ pub fn parse_tool_use_ack(payload: &str) -> Option<(String, String)> {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PublishResponderWakeInput {
-    /// Responder principal ID (the topic is derived from sha256 of this).
-    pub responder_principal_id: String,
+    /// Exact verified responder principal/session/genesis owner key.
+    pub responder_owner_key: String,
     /// The request/turn ID the responder should claim.
     pub request_id: String,
     /// Owner key of the requester (sha256 of their principal).
@@ -512,9 +510,6 @@ pub struct PublishResponderWakeInput {
     /// Conversation ID (for chat turns).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conversation_id: Option<String>,
-    /// Brief preview of the request content.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub preview: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -524,12 +519,6 @@ pub struct PublishResponderWakeOutput {
     pub message_id: Option<String>,
 }
 
-/// `opdbus/responder-wake/<sha256(responder_principal_id)>` for a responder.
-pub fn responder_wake_topic(responder_principal_id: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let key = format!("{:x}", Sha256::digest(responder_principal_id.as_bytes()));
-    format!("{RESPONDER_WAKE_TOPIC_PREFIX}{key}")
-}
 
 #[derive(Debug, Clone, Default, Deserialize)]
 struct RunitStatus {
@@ -795,13 +784,12 @@ async fn publish_responder_wake(
     transport: &EmqxNativeTransport,
     input: PublishResponderWakeInput,
 ) -> Result<PublishResponderWakeOutput> {
-    let topic = responder_wake_topic(&input.responder_principal_id);
+    let topic = wake_topic(&input.responder_owner_key)?;
     let payload = serde_json::json!({
         "request_id": input.request_id,
         "owner_key": input.owner_key,
         "owner_principal_id": input.owner_principal_id,
         "conversation_id": input.conversation_id,
-        "preview": input.preview,
     });
     let response = emqx_api(
         transport,

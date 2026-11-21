@@ -110,6 +110,7 @@ pub async fn bind_production(
         .nest_service("/compliance/api", compliance_api)
         .nest_service("/compliance", compliance_static)
         .fallback_service(app);
+    let app = crate::container_ui::mount(app)?;
     let listener = TcpListener::bind(addr).await?;
     let addr = listener.local_addr()?;
     Ok(ProductionServer {

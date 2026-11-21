@@ -444,7 +444,7 @@ impl StatePlugin for ChatResponsePlugin {
 
 /// Every method with its subid, side effect and capability. The schema, the
 /// bridge dispatch and the tests all read this one table.
-pub const METHODS: [(&str, &str, bool); 9] = [
+pub const METHODS: [(&str, &str, bool); 18] = [
     // (method, subid, is_mutation)
     (
         "start_conversation",
@@ -491,6 +491,15 @@ pub const METHODS: [(&str, &str, bool); 9] = [
         "mut.service.chat-response.turn.submit@v1",
         true,
     ),
+    ("get_pending_turn", "obs.service.chat-response.pending-turn.get@v1", false),
+    ("generate_pending_turn", "mut.service.chat-response.pending-turn.generate@v1", true),
+    ("propose_pending_tool", "mut.service.chat-response.pending-tool.propose@v1", true),
+    ("get_pending_tool", "obs.service.chat-response.pending-tool.get@v1", false),
+    ("approve_pending_tool", "mut.service.chat-response.pending-tool.approve@v1", true),
+    ("consume_pending_tool", "mut.service.chat-response.pending-tool.consume@v1", true),
+    ("claim_pending_turn", "mut.service.chat-response.pending-turn.claim@v1", true),
+    ("get_response_commit", "obs.service.chat-response.response-commit.get@v1", false),
+    ("record_pending_tool", "mut.service.chat-response.pending-tool.record@v1", true),
 ];
 
 pub const RESPONSE_COMMITTED_SUBID: &str = "evt.service.chat-response.response.committed@v1";
@@ -500,11 +509,13 @@ pub const RESPONSE_COMMITTED_SUBID: &str = "evt.service.chat-response.response.c
 /// `list_pending_turns` requires `chat_response.respond` (responders only).
 pub fn required_capability(method: &str) -> Option<&'static str> {
     match method {
-        "respond_to_user" | "request_clarification" | "cannot_perform" | "list_pending_turns" => {
+        "respond_to_user" | "request_clarification" | "cannot_perform" | "list_pending_turns"
+        | "get_pending_turn" | "generate_pending_turn" | "propose_pending_tool" | "consume_pending_tool"
+        | "claim_pending_turn" | "get_response_commit" | "record_pending_tool" => {
             Some(RESPOND_CAPABILITY)
         }
-        "submit_turn" => Some(SUBMIT_CAPABILITY),
-        "start_conversation" | "get_turn_response" | "list_conversations" | "get_conversation" => {
+        "submit_turn" | "approve_pending_tool" => Some(SUBMIT_CAPABILITY),
+        "get_pending_tool" | "start_conversation" | "get_turn_response" | "list_conversations" | "get_conversation" => {
             Some(READ_CAPABILITY)
         }
         _ => None,
@@ -608,6 +619,34 @@ pub(crate) fn chat_response_schema() -> PluginSchema {
             "list_pending_turns" => {
                 declare::<ListPendingTurnsInput, ListPendingTurnsOutput>(name, subid, mutation)
             }
+            "get_pending_turn" => declare::<
+                super::chat_response_methods::GetPendingTurnInput,
+                super::chat_response_methods::PendingTurnRequest,
+            >(name, subid, mutation),
+            "generate_pending_turn" => declare::<
+                super::chat_response_methods::GeneratePendingTurnInput,
+                super::chat_router::ChatOutput,
+            >(name, subid, mutation),
+            "propose_pending_tool" => declare::<
+                super::chat_response_methods::ProposePendingToolInput,
+                super::chat_response_methods::PendingToolProposal,
+            >(name, subid, mutation),
+            "get_pending_tool" | "consume_pending_tool" | "claim_pending_turn" => declare::<
+                super::chat_response_methods::GetPendingTurnInput,
+                super::chat_response_methods::PendingToolOutput,
+            >(name, subid, mutation),
+            "get_response_commit" => declare::<
+                super::chat_response_methods::GetPendingTurnInput,
+                super::chat_response_methods::GetTurnResponseOutput,
+            >(name, subid, mutation),
+            "record_pending_tool" => declare::<
+                super::chat_response_methods::RecordPendingToolInput,
+                super::chat_response_methods::PendingToolOutput,
+            >(name, subid, mutation),
+            "approve_pending_tool" => declare::<
+                super::chat_response_methods::ApprovePendingToolInput,
+                super::chat_response_methods::PendingToolOutput,
+            >(name, subid, mutation),
             other => unreachable!("undeclared chat_response method {other}"),
         };
         schema.methods.insert(name.to_string(), declaration);

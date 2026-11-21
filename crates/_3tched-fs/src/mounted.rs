@@ -243,6 +243,22 @@ impl MountedNamespace {
         Ok(schema)
     }
 
+    /// Read the caller's live projected state, not the sealed object's example.
+    /// Schema/catalog and mount pins are checked on both sides of the read.
+    pub fn state(&self, plugin: &str) -> Result<Value> {
+        self.schema(plugin)?;
+        let value = read_json(open_relative(&self.root,
+            &format!("plugins/{}/value.json", encode_component(plugin)), false)?)?;
+        self.verify()?;
+        Ok(value)
+    }
+
+    /// Catalog provenance only; no live state or credentials are returned.
+    pub fn catalog_view(&self) -> Result<&Value> {
+        self.verify()?;
+        Ok(&self.view)
+    }
+
     pub fn object(&self, plugin: &str) -> Result<TypedObjectBlob> {
         self.verify()?;
         let hash = self.view["objects"]

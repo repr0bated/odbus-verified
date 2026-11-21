@@ -6015,8 +6015,8 @@ name = "op-chat-responder"
 version = "1.0.0"
 dependencies = [
  "anyhow",
- "chrono",
  "clap",
+ "op-identity",
  "rumqttc",
  "serde",
  "serde_json",
@@ -6024,7 +6024,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "zbus 4.4.0",
+ "uuid",
 ]
 
 [[package]]

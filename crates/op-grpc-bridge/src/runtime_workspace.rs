@@ -42,7 +42,7 @@ mod antigravity;
 #[path = "runtime_workspace_gallery.rs"]
 mod gallery;
 #[path = "runtime_workspace_project.rs"]
-mod project;
+pub(crate) mod project;
 #[path = "runtime_workspace_routing.rs"]
 mod routing;
 #[path = "runtime_workspace_workflows.rs"]

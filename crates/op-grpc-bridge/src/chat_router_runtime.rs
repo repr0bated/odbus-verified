@@ -1479,6 +1479,12 @@ impl ChatRouterRuntimeClient {
         Ok(provider)
     }
 
+    pub(crate) async fn current_exact_selection(&self) -> anyhow::Result<RuntimeSelection> {
+        self.health().await?;
+        let observed = self.current_provider().await?;
+        Ok(RuntimeSelection { provider: observed.reference, model: observed.selected_model })
+    }
+
     /// Read the authoritative current selection without consulting the SHM
     /// projection. Callers that pair this with a mutation hold
     /// [`Self::selection_guard`] across this read, the upstream write, and the

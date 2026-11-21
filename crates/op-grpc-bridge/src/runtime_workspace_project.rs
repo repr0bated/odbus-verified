@@ -511,6 +511,19 @@ async fn stored_selection(ctx: &BackendContext<'_>) -> Result<ChatContextSelecti
     }
 }
 
+/// Internal snapshot of the asking session. Authorization and ACL resolution
+/// are identical to get_context; this read does not start a nested effect root.
+pub(crate) async fn current_chat_context(ctx: &BackendContext<'_>) -> Result<ResolvedChatContext> {
+    ctx.runtime.authorize_nested(ctx.caller, "project", "get_context").await?;
+    let grants = ctx.runtime.current_grants(ctx.caller).await?.into_iter().collect();
+    let selection = stored_selection(ctx).await?;
+    resolve(ctx, &grants, ResolveContextInput {
+        mode: selection.mode,
+        project_id: selection.project_id,
+        personal_namespace: selection.personal_namespace,
+    }).await
+}
+
 async fn resolve(
     ctx: &BackendContext<'_>,
     grants: &BTreeSet<String>,

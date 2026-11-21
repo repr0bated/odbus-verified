@@ -454,7 +454,7 @@ impl ChatRuntime {
                 let prior_context = if method == "apply_catalog_model_binding" {
                     let context = ctx
                         .runtime
-                        .call_nested(ctx.caller, "project", "get_chat_context", json!({}))
+                        .call_nested(ctx.caller, "project", "get_context", json!({}))
                         .await?
                         .result;
                     let mode = context.get("context").unwrap_or(&context)["mode"]
@@ -496,7 +496,7 @@ impl ChatRuntime {
                         .await?;
                     let current = ctx
                         .runtime
-                        .call_nested(ctx.caller, "project", "get_chat_context", json!({}))
+                        .call_nested(ctx.caller, "project", "get_context", json!({}))
                         .await?
                         .result;
                     ensure!(
@@ -560,7 +560,7 @@ impl ChatRuntime {
             "get_own_agent_route" => {
                 let context = ctx
                     .runtime
-                    .call_nested(ctx.caller, "project", "get_chat_context", json!({}))
+                    .call_nested(ctx.caller, "project", "get_context", json!({}))
                     .await?;
                 let mode = serde_json::from_value(
                     context.result.get("context").unwrap_or(&context.result)["mode"].clone(),
@@ -630,7 +630,7 @@ impl ChatRuntime {
         // Persisted mode, not request-supplied role names, selects dedicated routes.
         let context = ctx
             .runtime
-            .call_nested(ctx.caller, "project", "get_chat_context", json!({}))
+            .call_nested(ctx.caller, "project", "get_context", json!({}))
             .await?;
         let context = context.result.get("context").unwrap_or(&context.result);
         let mode: op_plugins::state_plugins::project::ChatMode =
@@ -641,11 +641,6 @@ impl ChatRuntime {
             op_plugins::state_plugins::project::ChatMode::Accountability => "accountability",
             _ => "dashboard",
         };
-        let mut input = input;
-        if alias != "dashboard" {
-            input.provider.clear();
-            input.model.clear();
-        }
         let client = native_client(ctx, alias).await?;
         let admission = generation_admission(ctx).await?;
         let _guard = ChatRouterRuntimeClient::selection_guard().await;
@@ -746,15 +741,17 @@ impl ChatRuntime {
     }
 }
 
-/// Chat entry points: the operations that carry a user turn to a model.
-/// These, like agent tool calls, always go through the execution tracker with
-/// a trusted checkpoint (`VerifiedCaller::require_execution_checkpoint`).
-/// Configuration, listing and read methods of the same plugins are plain calls.
+/// Legacy direct model/tool entries require an explicit trusted checkpoint.
+/// Pending-turn generation instead has its narrow assignment/context admission;
+/// ordinary Runtime::call still reserves, receipts and grounds that invocation.
 pub(crate) fn is_checkpointed_chat_entry(plugin: &str, method: &str) -> bool {
     match plugin {
         "chat_router" => method == "Chat" || chat_router::generation::is_method(method),
         "ctl_plane_chatbot" => method == "Chat",
-        "chat_response" => matches!(method, "start_conversation" | "submit_turn"),
+        // Conversation creation/submission only capture input and issue a
+        // designated-responder assignment. Pending generation has its own
+        // narrow owner/context admission and ordinary tracked method receipt.
+        "chat_response" => false,
         _ => false,
     }
 }
@@ -808,6 +805,15 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
                 | "list_conversations"
                 | "get_conversation"
                 | "list_pending_turns"
+                | "get_pending_turn"
+                | "generate_pending_turn"
+                | "propose_pending_tool"
+                | "get_pending_tool"
+                | "approve_pending_tool"
+                | "consume_pending_tool"
+                | "claim_pending_turn"
+                | "get_response_commit"
+                | "record_pending_tool"
         ),
         "ctl_plane_chatbot" => matches!(
             method,
@@ -1048,6 +1054,31 @@ fn original_payload(caller: &VerifiedCaller) -> Result<&str> {
         .as_deref()
         .and_then(|identity| identity.strip_prefix(op_identity::sealed_id::INLINE_PREFIX))
         .context("original authored SID1 transport payload is absent")
+}
+
+pub(super) async fn offered_pending_operations(ctx: &BackendContext<'_>, responder: &VerifiedCaller,
+    context: &op_plugins::state_plugins::project::ResolvedChatContext) -> Result<Vec<String>>
+{
+    let owner_grants = ctx.runtime.current_grants(ctx.caller).await?;
+    if context.mode == op_plugins::state_plugins::project::ChatMode::UiRender {
+        return Ok(Vec::new());
+    }
+    let responder_grants = ctx.runtime.current_grants(responder).await?;
+    let mut paths = Vec::new();
+    for plugin in ctx.runtime.catalog().plugins() {
+        if plugin.id == "chat_response" { continue; }
+        let schema = sealed_schema(ctx, &plugin.id)?;
+        for (name, method) in &schema.methods {
+            if context.read_only && method.side_effect != op_state_store::SideEffect::Read { continue; }
+            if method.required_capability.as_ref().is_none_or(|capability|
+                owner_grants.contains(capability) && responder_grants.contains(capability)) {
+                paths.push(format!("plugins/{}/operations/{}/call",
+                    _3tched_fs::namespace::encode_component(&plugin.id),
+                    _3tched_fs::namespace::encode_component(name)));
+            }
+        }
+    }
+    Ok(paths)
 }
 
 async fn visible_tools(

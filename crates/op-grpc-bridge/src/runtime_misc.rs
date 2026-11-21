@@ -25,6 +25,7 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
             "GetManagedObjects" | "Get" | "GetAll" | "Set" | "Introspect" | "Ping" | "GetMachineId"
         ),
         "_3tched_fs" => matches!(method, "get_protocol" | "get_contract" | "get_receipt"),
+        "fuse" => method == "get_catalog",
         "ghostbridge" => matches!(
             method,
             "GetState" | "GetIdentity" | "ListEndpoints" | "GetGhostrunner"
@@ -50,6 +51,8 @@ pub(crate) async fn dispatch(
         "cozo" => cozo::dispatch(ctx, method, args).await,
         "freedesktop" => freedesktop::dispatch(ctx, method, args).await,
         "_3tched_fs" => filesystem(ctx, method, args).await,
+        "fuse" => Ok(private_result(ctx, crate::runtime_catalog::get_catalog(ctx, args).await?,
+            BackendStateUpdate::Unchanged)),
         "ghostbridge" => ghostbridge(ctx, method).await,
         "snowball" => snowball::dispatch(ctx, method, args).await,
         _ => unreachable!("supported plugin checked above"),

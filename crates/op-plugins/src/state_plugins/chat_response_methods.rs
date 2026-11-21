@@ -256,6 +256,86 @@ pub struct ListPendingTurnsOutput {
     pub pending_count: u64,
 }
 
+/// A responder may retrieve only a live assignment issued to its own identity.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetPendingTurnInput {
+    pub turn_id: String,
+}
+
+/// Server-captured UI choices and committed history, never responder defaults.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PendingTurnRequest {
+    pub turn_id: String,
+    pub conversation_id: String,
+    pub response_mode: String,
+    pub context: super::project::ResolvedChatContext,
+    pub provider: String,
+    pub model: String,
+    pub native_agent_alias: String,
+    pub native_config_digest: String,
+    #[schemars(extend("x-opdbus-private" = true))]
+    pub messages: Vec<super::chat_router::ChatMessage>,
+    pub pending_tool: Option<PendingToolProposal>,
+    pub offered_operations: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GeneratePendingTurnInput {
+    pub turn_id: String,
+    #[schemars(extend("x-opdbus-private" = true))]
+    pub messages: Vec<super::chat_router::ChatMessage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PendingToolProposal {
+    pub turn_id: String,
+    pub tool_call_id: String,
+    pub plugin_id: String,
+    pub method: String,
+    #[schemars(extend("x-opdbus-private" = true))]
+    pub arguments: serde_json::Value,
+    pub required_capability: String,
+    pub digest: String,
+    pub expires_at: String,
+    pub decision: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ProposePendingToolInput {
+    pub turn_id: String,
+    pub plugin_id: String,
+    pub method: String,
+    pub arguments: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ApprovePendingToolInput {
+    pub turn_id: String,
+    pub tool_call_id: String,
+    pub digest: String,
+    pub approved: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PendingToolOutput {
+    pub proposal: Option<PendingToolProposal>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RecordPendingToolInput {
+    pub turn_id: String,
+    pub arguments: serde_json::Value,
+    pub receipt: serde_json::Value,
+}
+
+
 // ── Canonical hashing ────────────────────────────────────────────────────────
 
 /// JSON with every object's keys sorted, independent of map ordering features.

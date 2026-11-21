@@ -9605,6 +9605,30 @@ const READ_PROTOCOL: &str = "cap.storage.fuse.protocol.read@v1";
 const READ_CONTRACT: &str = "cap.storage.fuse.contract.read@v1";
 const READ_RECEIPT: &str = "cap.storage.fuse.receipt.read@v1";
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetCatalogInput { pub plugin: Option<String> }
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogOperation {
+    pub method: String, pub call_path: String, pub metadata_path: String, pub currently_granted: bool,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogPlugin {
+    pub plugin_id: String, pub object_hash: String, pub schema_hash: String,
+    pub schema: serde_json::Value, pub operations: Vec<CatalogOperation>, pub state: String,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogView {
+    pub view_id: String, pub source_catalog_hash: String,
+    pub source_catalog_generation: u64, pub plugins: Vec<CatalogPlugin>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetCatalogOutput { pub views: Vec<CatalogView> }
+
 /// Public discovery metadata for the immutable filesystem contract document.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -9780,6 +9804,10 @@ fn register_fs_projection_methods(schema: &mut PluginSchema) {
         true,
         READ_CONTRACT,
         "obs.storage.fuse.contract.get@v1",
+    );
+    add_method::<GetCatalogInput, GetCatalogOutput>(
+        schema, "get_catalog", SideEffect::Read, true, READ_CONTRACT,
+        "obs.storage.fuse.catalog.get@v1",
     );
     add_method::<
         op_state_store::method_receipt::GetMethodReceiptInput,

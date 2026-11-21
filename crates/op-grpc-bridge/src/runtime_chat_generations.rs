@@ -60,7 +60,7 @@ impl GenerationBackend {
             input.validate()?;
             let context = ctx
                 .runtime
-                .call_nested(ctx.caller, "project", "get_chat_context", json!({}))
+                .call_nested(ctx.caller, "project", "get_context", json!({}))
                 .await?;
             let mode: op_plugins::state_plugins::project::ChatMode = serde_json::from_value(
                 context.result.get("context").unwrap_or(&context.result)["mode"].clone(),
