@@ -1020,6 +1020,12 @@ implement the stated interim behaviour now; the remainder is gated.
   - [ ] 25.2 Run every tool call as exactly one Operation_File call in the
     Rust Chat_Route (this is task 10.1/10.6 in `3tched.com:crates/op-chat-interface`).
     Container repo; not started here.
+  - Verified 2026-11-22: every live bridge entry (door PluginService
+    `service.rs` CallMethod, FUSE `runtime_fuse.rs`, lungs `runtime_lungs.rs`,
+    nested `Runtime::call_nested`, exchange point) is `Runtime::call`, which
+    reserves and commits the tracker record. ChatLink (`chat_link.rs`) forwards
+    a turn to the external worker; that turn is tracked only once the worker
+    starts it through a sealed method (25.3).
   - [ ] 25.3 Start each chat turn's generation through a sealed method
     (`chat_router.start_generation` or `threetched.agent`) so the turn itself is a tracked
     operation (with 19.9). Container repo.
@@ -1051,11 +1057,45 @@ implement the stated interim behaviour now; the remainder is gated.
   - _Requirements: 7, 12, 30; owner model-selection exception (plan step 3)_
 
 - [ ] 27. Exchange point and chat-mode storage routing (owner, 2026-11-22; Requirement 34)
-  - [ ] 27.1 Subsidiary callers: no Personal mode in admission or exchange point (design, change 1)
-  - [ ] 27.2 Sled ledger skips personal-mode calls, personal memory and soul; unit test (change 2)
-  - [ ] 27.3 Per-container ext4 RocksDB personal store in provisioning; route personal memory and soul (change 3)
-  - [ ] 27.4 Chat turn path commits `ctl_plane_chatbot` episodes for the chatbot (change 4)
-  - [ ] 27.5 Exchange point endpoint on the door: set variables, receive schema, zero logic (change 5)
+  - [x] 27.1 Subsidiary callers: no Personal mode. One rule in
+    `op-grpc-bridge/src/chat_mode_policy.rs` (`admissible`, `allowed_modes`,
+    `default_mode`, `session_identity`), used by the live resolver
+    `runtime_workspace_project.rs` (`resolve` admission, `selection_or_default`)
+    and the exchange point. Default: subsidiary -> ControlPlane with
+    `chat.control_plane`, else Accountability; configured chatbot ->
+    ControlPlane with the grant; identity -> Personal (documented default).
+    `project_dispatch.rs` is not compiled (not declared in `lib.rs`); unchanged.
+  - [x] 27.2 Sled ledger skips personal-mode calls, personal namespaces and soul
+    writes, at the tracker -> sled boundary (`runtime_sled_ledger.rs`
+    `append_from_tracker`, `chat_mode_policy::excluded_from_sled`); unit tests
+    in both modules.
+  - [x] 27.3 Per-container ext4 RocksDB store: `deploy/provisioning/identity-rocksdb.sh`,
+    `30-provision-container.sh new` device `identity-rocksdb` ->
+    `/var/lib/op-dbus/identity-cozo`, host boot mount `sv/opdbus-identity-rocksdb`;
+    guest `COGNITIVE_DB_PATH=/var/lib/op-dbus/identity-cozo/personal-cognitive`
+    (runit run + systemd unit). New containers only; existing containers need a
+    data migration (not done).
+  - [x] 27.4 ControlPlane chat turns of the chatbot and of subsidiaries commit
+    `ctl_plane_chatbot` episodes in the asking session's scope
+    (`runtime_chat_conversations.rs` `commit_control_plane_episode`, after the
+    answer commits); subsidiary conversation ids are
+    `<name>::ctrlplane-chat::<conversation>` checked by `owns_conversation`.
+  - [x] 27.5 Exchange point on the door: `GET|POST /exchange/v1`
+    (`op-grpc-bridge/src/exchange_point.rs`, mounted in `server.rs`); SID1 via
+    `BridgeService::authenticate`, sets forwarded to `project.select_context` and
+    `chat_router.SetSelection` through `Runtime::call`, schema = grant-gated
+    sealed methods with catalog versioning. No new subid, method or reseal.
+  - [x] 27.7 Ingress/egress rule (owner, 2026-11-22, all tool calls, any
+    origin or caller): door = sole ingress (`Runtime::call`); execution
+    tracker = sole gate before real egress (core operation and
+    `BackendContext` only in `call_owned`, after the `Running` commit); the
+    `ReceiptCompleted` commit and the sled append are ONE action
+    (`checkpoint_receipt_completed` -> `checkpoint_record` ->
+    `append_from_tracker`, sole writer, personal filter inline). The entry is
+    built in `call_owned` (`entry_for`, private `SledEntry`) and carried on
+    `RuntimeResult`; no staging map. The FUSE pre-dispatch fallback now commits
+    `ReceiptCompleted` through the tracker too (the one bypass found).
+    Enforced by `tracker_hub_tests.rs` (source checks that fail on a bypass).
   - [x] 27.6 Control-plane chatbot re-adoption under a new native UUID (commit aba5937); permanence verification pending the golden build
   - Open: D4 (ChatMode onto ChatMode)
 

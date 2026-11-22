@@ -430,3 +430,22 @@ worktree (`git -C <worktree> switch --detach`, which keeps its files and uncommi
 delete the branch; `scripts/branch-policy.sh --apply` does this. Never remove the worktree itself.
 Deleting a remote branch still needs an explicit owner approval. The `.githooks` directory refuses
 commits and pushes to other branches; `git config core.hooksPath .githooks` must be set in the clone.
+
+## Ingress, tracker and egress (owner, 2026-11-22)
+
+- The door is the sole ingress. Every tool/method call, whatever its origin or
+  caller (door CallMethod/Mutate/SetProperty, FUSE, lungs, agents, workflows,
+  workstacks, nested calls, the exchange point), enters `Runtime::call`
+  (`crates/op-grpc-bridge/src/runtime.rs`).
+- The execution tracker is the sole gate before real egress: core operations
+  and `BackendContext`s exist only in `Runtime::call_owned`, after the tracker
+  commits `Running`; backend dispatch (D-Bus, FUSE, network, provider/LLM,
+  tunnel effects) happens only there.
+- The tracker's `ReceiptCompleted` commit and the sled ledger append are one
+  action (`runtime_checkpoint.rs` `checkpoint_record` ->
+  `runtime_sled_ledger::append_from_tracker`, the sole writer). Personal-mode
+  calls, personal namespaces and soul writes are filtered inline and never
+  reach the sled or its vectors.
+- Enforced by `crates/op-grpc-bridge/src/tracker_hub_tests.rs`; do not add a
+  second path. Spec: `.kiro/specs/identity-chat-interface` Requirement 34,
+  tasks 27.7.

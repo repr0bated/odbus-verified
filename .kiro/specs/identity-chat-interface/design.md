@@ -3257,3 +3257,55 @@ Results and source boundaries are recorded in `records/jev-log.jsonl`; earlier
 harness judgments that lacked model metadata remain explicitly unnamed.
 Historical `tasks.meta.json` execution records are preserved as history, not
 treated as evidence that the replacement or deployment has completed.
+
+
+### Implementation record (2026-11-22, tasks 27.1-27.5, 27.7)
+
+**Execution tracker as hub.** The `op-execution-tracker` crate is a record
+store, not an executor (`crates/op-execution-tracker/src/lib.rs:1-5`: "this
+crate neither executes tools nor establishes semantic approval"). The hub is
+`Runtime::call` (`op-grpc-bridge/src/runtime.rs`, the `call` fn): it reserves
+the tracker record before admission and moves it through `Checking ->
+ReadyForAdmission -> (call_owned: Running) -> ReceiptCompleted -> Completed`,
+each transition committed by `Runtime::checkpoint_record`
+(`runtime_checkpoint.rs`). Every live entry reaches it (door CallMethod,
+FUSE, lungs, nested calls, exchange point). Docs and code agree.
+
+**Ingress and egress (owner, 2026-11-22, all tool calls).** The door is the
+sole ingress and the execution tracker the sole egress gate. Every call, any
+origin or caller, enters `Runtime::call`; a plugin effect needs a core
+operation (`begin_operation_attributed`) and a `BackendContext`, which exist
+only in `Runtime::call_owned` after the tracker commits `Running`, so backend
+dispatch (D-Bus, FUSE, network, provider/LLM, tunnel effects) is always behind
+a tracker commit. The sled is written in the same action as the tracker's
+`ReceiptCompleted` commit: `call_owned` builds the ledger line
+(`runtime_sled_ledger::entry_for`, private `SledEntry`) and returns it on
+`RuntimeResult`; `checkpoint_receipt_completed` -> `checkpoint_record` appends
+it right after `apply_committed` (`append_from_tracker`, the sole writer,
+checking the record's terminal proof and session). Audit 2026-11-22: door
+CallMethod/Mutate/BatchMutate/SetProperty (`service_runtime.rs`
+`execute_mutation`), FUSE (`runtime_fuse.rs`), lungs (`runtime_lungs.rs`),
+workspace/workflow/agent/cognitive/chat nested calls (`call_nested`) and the
+exchange point all enter `Runtime::call`; the only bypass found was the FUSE
+pre-dispatch fallback (`call_owned` without a `ReceiptCompleted` commit), now
+fixed. `tracker_hub_tests.rs` fails if a core operation, `BackendContext`,
+`call_owned` call or sled write appears outside this path.
+
+**Personal routing.** Excluded from the sled (and so from end-of-session
+vectors): calls while the session's effective mode is Personal (stored
+selection, else the kind's default), writes naming
+`session/<sid>/personal[/...]`, and soul writes (key/tag `soul`, namespace
+`assistant:soul`, soul methods). Personal memory and soul live in the guest's
+cognitive store at `/var/lib/op-dbus/identity-cozo/personal-cognitive`, on the
+per-container ext4 RocksDB mount for containers provisioned with it.
+
+**Modes.** One rule (`chat_mode_policy.rs`) for admission, defaults and the
+exchange point's allowed list. Subsidiary = native config
+`user.opdbus.parent_principal_id`; chatbot = configured chatbot key.
+
+**Not live / not changed.** `mutation_engine.rs`, `project_dispatch.rs`,
+`mcp_frontend.rs`, `chat_service.rs`, `memory_binding.rs`,
+`chatbot_episode_state.rs`, `chatbot_episode_stream.rs` are not declared in
+`op-grpc-bridge/src/lib.rs` and are not compiled; the production door serves no
+`/mcp` route (`server.rs` `bind_production`). The exchange point therefore sits
+on the live door, not on `/mcp`.
