@@ -17,8 +17,25 @@ possible, never deletes a seed or a container, and starts nothing unless `START=
   the session; `issued_identity.iid1` verifies against the decoy trust store; `sealed_id`
   equals the SID1. Then it commits the Cozo identity record (`commit_volume_identity`, `:358-408`).
 * It runs at bridge startup (`runtime.rs:413`) **and** whenever a container connects to the
-  host `lungs.sock` and asks to bind (`runtime_lungs_identity.rs:268-277`) — so a newly
-  provisioned container is adopted on first contact; the host bridge does not need a restart.
+  host `lungs.sock` and asks to bind (`runtime_lungs_identity.rs:268-277`) — so a container
+  provisioned for a session with no identity record yet is adopted on first contact; the
+  host bridge does not need a restart.
+* **Re-provisioning an existing identity is not adopted.** Once the Cozo record holds an
+  instance, adoption requires the same instance name and the same `volatile.uuid`
+  (`runtime_identity_owner.rs:496-499`, `startup import cannot replace an existing native
+  identity UUID`). Deleting a container and running `30-provision-container.sh new` with the
+  same keys creates a new UUID, so the host bridge refuses it. The reprovision route for the
+  chatbot is the sealed `identity_sled` replacement, `creation_mode: "replace_chatbot"`
+  (`runtime_identity_owner.rs:1106-1120` → `runtime_identity_clean.rs:573-613`):
+  1. `inspect_provision_preflight {wireguard_pubkey, creation_mode: "replace_chatbot"}` returns
+     the expected revision and the previous native instance;
+  2. `provision_container {wireguard_pubkey, creation_mode: "replace_chatbot", plan_sha256}`
+     retires that instance and creates the replacement through the durable owner.
+  The key must be the configured chatbot key (`clean.rs:588-592`). The caller must be a
+  verified session holding `mut.service.identity-sled.container.provision@v2` that has its own
+  committed identity sled (`runtime_identity_seed.rs:84-111`). The replacement is created from
+  the seed the host bridge pins in `OP_IDENTITY_GOLDEN_SEED_NAME` /
+  `OP_IDENTITY_GOLDEN_SUBVOLUME_UUID` (`runtime_creation.rs:109-110`), not from `@seed` by name.
 * Reference script for the whole flow: `deploy/scripts/provision-container.sh` (systemd
   Ubuntu seed, names the chatbot `3tchedChatbot`, which on antix1 collides with the old
   stopped container — hence the `NAME` parameter here).
