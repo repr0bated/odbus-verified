@@ -7,5 +7,8 @@ while read local_ref local_sha remote_ref remote_sha; do
     refs/heads/main|refs/heads/dev) ;;
     *) echo "push refused: '$remote_ref' is not allowed (only main and dev)." >&2; exit 1 ;;
   esac
+  # No secret may be pushed (owner rule 2026-11-22): scan exactly the pushed range.
+  case "$remote_sha" in *[!0]*) base=$remote_sha ;; *) base=$(git merge-base origin/dev "$local_sha") ;; esac
+  "$(git rev-parse --show-toplevel)/scripts/secret-guard.sh" --range "$base..$local_sha" || exit 1
 done
 exit 0

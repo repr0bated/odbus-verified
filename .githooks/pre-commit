@@ -2,6 +2,8 @@
 # Only main and dev may receive commits.
 b=$(git symbolic-ref --short HEAD 2>/dev/null)
 case "$b" in
-  main|dev) exit 0 ;;
+  main|dev) ;;
   *) echo "commit refused: branch '$b' is not allowed (only main and dev)." >&2; exit 1 ;;
 esac
+# No secret may be committed (owner rule 2026-11-22).
+exec "$(git rev-parse --show-toplevel)/scripts/secret-guard.sh" --staged

@@ -125,3 +125,21 @@ blob.bin
 
 # Private hackathon conversation and tool-use archive. Transcripts stay local.
 /hackathon2026/
+
+# Worker scratch and side build dirs (never source)
+.superpowers/
+.tmp-threetched-config/
+target-*/
+
+# Keys, tokens and store secrets never go in git (scripts/secret-guard.sh enforces)
+*.key
+*.pem
+*.p12
+*.pfx
+*.age
+*.token
+id_rsa*
+id_ed25519*
+**/secrets/
+**/etc/op-dbus/env
+mcp_token
