@@ -1,0 +1,6 @@
+#!/bin/sh
+# Read-only org.freedesktop.systemd1 responder so huntress-agent's service
+# health checks (go-systemd D-Bus) see the runit state of huntress-* services.
+exec 2>&1
+sv check dbus >/dev/null 2>&1 || { echo "waiting for dbus"; sleep 2; exit 1; }
+exec /usr/local/libexec/huntress-runit/huntress-systemd1-shim

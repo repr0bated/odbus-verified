@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+"""Read-only org.freedesktop.systemd1 responder for Huntress units on a runit host.
+
+huntress-agent/huntress-updater check their sibling services through
+coreos/go-systemd (Properties.Get on /org/freedesktop/systemd1/unit/<unit>,
+interface org.freedesktop.systemd1.Unit). On runit there is no systemd, so the
+agent reports "updater stopped"/"rio stopped" to the portal. This answers those
+property reads from runit state. Only the huntress-* unit objects exist; it
+implements no Manager methods and changes nothing.
+"""
+import os
+import subprocess
+
+import dbus
+import dbus.service
+from dbus.mainloop.glib import DBusGMainLoop
+from gi.repository import GLib
+
+BUS_NAME = "org.freedesktop.systemd1"
+UNIT_IFACE = "org.freedesktop.systemd1.Unit"
+SERVICE_IFACE = "org.freedesktop.systemd1.Service"
+PROPS_IFACE = "org.freedesktop.DBus.Properties"
+UNITS = ("huntress-agent", "huntress-updater", "huntress-rio")
+
+
+def bus_escape(s):
+    return "".join(c if c.isalnum() else "_%02x" % ord(c) for c in s)
+
+
+def pid_alive(pidfile):
+    try:
+        with open(pidfile) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return pid
+    except (OSError, ValueError):
+        return 0
+
+
+def runit_state(name):
+    """Return (load, active, sub, pid) for a huntress service."""
+    svdir = "/etc/service/" + name
+    if os.path.isdir(svdir):
+        try:
+            out = subprocess.run(["sv", "status", svdir], capture_output=True,
+                                 text=True, timeout=5).stdout
+        except (OSError, subprocess.SubprocessError):
+            out = ""
+        if out.startswith("run:"):
+            try:
+                pid = int(out.split("(pid ", 1)[1].split(")", 1)[0])
+            except (IndexError, ValueError):
+                pid = 0
+            return "loaded", "active", "running", pid
+        if out.startswith("finish:"):
+            return "loaded", "deactivating", "stop-post", 0
+        return "loaded", "inactive", "dead", 0
+    # Not under runit (e.g. installed later via the stock SysV script).
+    pid = pid_alive("/var/run/%s.pid" % name)
+    if pid:
+        return "loaded", "active", "running", pid
+    if os.path.exists("/etc/init.d/" + name):
+        return "loaded", "inactive", "dead", 0
+    return "not-found", "inactive", "dead", 0
+
+
+class Unit(dbus.service.Object):
+    def __init__(self, bus, name):
+        self.svc = name
+        self.unit = name + ".service"
+        super().__init__(bus, "/org/freedesktop/systemd1/unit/" + bus_escape(self.unit))
+
+    def _props(self, iface):
+        load, active, sub, pid = runit_state(self.svc)
+        if iface == SERVICE_IFACE:
+            return {"MainPID": dbus.UInt32(pid), "Type": "simple", "Restart": "always"}
+        return {
+            "Id": self.unit,
+            "Names": dbus.Array([self.unit], signature="s"),
+            "LoadState": load,
+            "ActiveState": active,
+            "SubState": sub,
+            "UnitFileState": "enabled" if load == "loaded" else "",
+            "Description": self.unit + " (runit)",
+        }
+
+    @dbus.service.method(PROPS_IFACE, in_signature="ss", out_signature="v")
+    def Get(self, iface, prop):
+        props = self._props(iface)
+        if prop not in props:
+            raise dbus.exceptions.DBusException(
+                "Unknown property " + prop,
+                name="org.freedesktop.DBus.Error.UnknownProperty")
+        return props[prop]
+
+    @dbus.service.method(PROPS_IFACE, in_signature="s", out_signature="a{sv}")
+    def GetAll(self, iface):
+        return dbus.Dictionary(self._props(iface), signature="sv")
+
+
+def main():
+    DBusGMainLoop(set_as_default=True)
+    bus = dbus.SystemBus()
+    name = dbus.service.BusName(BUS_NAME, bus, do_not_queue=True)
+    units = [Unit(bus, n) for n in UNITS]
+    print("serving read-only %s for %s" % (BUS_NAME, ", ".join(UNITS)), flush=True)
+    GLib.MainLoop().run()
+    del name, units
+
+
+if __name__ == "__main__":
+    main()

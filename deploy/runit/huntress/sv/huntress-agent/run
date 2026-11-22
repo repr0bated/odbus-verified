@@ -1,0 +1,26 @@
+#!/bin/sh
+# runit translation of the huntress-agent.service unit that `huntress-agent install` would write
+# (Type=simple, User=root, WorkingDirectory=-/run/huntress, Restart=always).
+# On non-systemd hosts Huntress's service library (kardianos/service) falls back
+# to SysV and controls the service via `service huntress-agent start|stop|status`, so this
+# script keeps /etc/init.d/huntress-agent pointed at the sv-backed wrapper.
+exec 2>&1
+BIN=/usr/share/huntress/huntress-agent
+SV=/etc/sv/huntress-agent
+# ConditionFileIsExecutable: idle instead of spinning when uninstalled.
+if [ ! -x "$BIN" ]; then echo "$BIN missing; idle"; sleep 300; exit 0; fi
+cmp -s "$SV/initd" /etc/init.d/huntress-agent 2>/dev/null || install -m 0755 "$SV/initd" /etc/init.d/huntress-agent
+# An update may have reinstalled the stock SysV script and started an
+# unsupervised copy; stop it so only the supervised one runs.
+P=/var/run/huntress-agent.pid
+if [ -f "$P" ]; then
+	pid=$(cat "$P" 2>/dev/null)
+	case "$(readlink "/proc/$pid/exe" 2>/dev/null)" in
+	"$BIN"*) echo "stopping unsupervised huntress-agent pid $pid"; kill "$pid"
+		i=0; while [ -d "/proc/$pid" ] && [ "$i" -lt 15 ]; do sleep 1; i=$((i + 1)); done ;;
+	esac
+	rm -f "$P"
+fi
+install -d -m 0755 /run/huntress
+cd /run/huntress || cd /
+exec "$BIN"
