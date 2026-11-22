@@ -1,7 +1,7 @@
 [Unit]
 Description=Identity owner door (op-grpc-bridge) on 10.0.0.2:8090
-After=3tchedfs.service threetchedfs.service door-tls-init.service
-Requires=3tchedfs.service threetchedfs.service door-tls-init.service
+After=opdbus-lo.service 3tchedfs.service threetchedfs.service door-tls-init.service
+Requires=opdbus-lo.service 3tchedfs.service threetchedfs.service door-tls-init.service
 
 [Service]
 Type=simple
