@@ -1,0 +1,28 @@
+#!/bin/sh
+# golden-mount: the golden live slot ($GOLDEN_ROOT/slots/live, deploy/lib/golden/README.md:15-16)
+# bound read-only at /srv/golden, after the 3tched-pool (on cozo-ublk) is mounted.
+# Owner request 2026-11-21: "permanently somewhere accessible". Not an fstab line:
+# the pool is on cozo-ublk, which comes up under runit after fstab.
+exec 2>&1
+set -eu
+POOL=${GOLDEN_POOL_ROOT:-/var/lib/incus/storage-pools/3tched-pool}
+SRC=${GOLDEN_MOUNT_SOURCE:-$POOL/golden-os/slots/live}
+DST=${GOLDEN_MOUNT_TARGET:-/srv/golden}
+if ! mountpoint -q "$POOL" || [ ! -d "$SRC/opt" ]; then
+    echo "golden-mount: waiting for $SRC (pool not mounted yet)"; sleep 5; exit 1
+fi
+install -d -m 0755 "$DST"
+if mountpoint -q "$DST"; then
+    echo "golden-mount: $DST already mounted"
+else
+    mount --bind "$SRC" "$DST"
+    mount -o remount,bind,ro "$DST"
+    echo "golden-mount: $SRC bound read-only at $DST"
+fi
+stop() { umount "$DST" 2>/dev/null || umount -l "$DST" 2>/dev/null || :; exit 0; }
+trap stop TERM INT
+# Stay up while the pool stays mounted; if it goes away, drop the bind and retry.
+while mountpoint -q "$POOL" && [ -d "$SRC/opt" ]; do sleep 30 & wait $! || :; done
+echo "golden-mount: pool or source gone, unmounting $DST"
+umount -l "$DST" 2>/dev/null || :
+exit 1

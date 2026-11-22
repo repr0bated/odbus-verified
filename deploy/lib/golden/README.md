@@ -26,6 +26,14 @@ This is separate from op-cache `BtrfsCache` (one subvolume per category:
 embeddings, blocks, queries, diffs, kv) and does not use or delete those
 paths.
 
+### Host mount of the live slot
+
+The live slot is also bound read-only at `/srv/golden` by the runit service
+`deploy/runit/golden-mount` (installed as `/etc/sv/golden-mount`). It waits for
+the 3tched-pool mount (on cozo-ublk), so it is a runit service, not an fstab line.
+Built binaries are at `/srv/golden/opt/op-build/target/release`. After a
+`cut`/`rollback`, `sv restart golden-mount` rebinds the new live slot.
+
 ## Configuration
 
 | Setting | Flag | Env | Default |
