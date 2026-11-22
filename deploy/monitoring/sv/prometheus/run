@@ -1,0 +1,10 @@
+#!/bin/sh
+exec 2>&1
+install -d -m 0750 -o prometheus -g prometheus /var/lib/prometheus
+/usr/local/bin/promtool check config /etc/prometheus/prometheus.yml >/dev/null || { echo "prometheus.yml invalid"; sleep 30; exit 1; }
+exec chpst -u prometheus:prometheus /usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus \
+  --storage.tsdb.retention.time=30d \
+  --web.listen-address=127.0.0.1:9090 \
+  --web.enable-lifecycle
