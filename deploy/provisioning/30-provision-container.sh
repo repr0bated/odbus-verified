@@ -33,13 +33,19 @@ verify_sled() { # dir session key
   cmp -s "$t" "$1/sealed_id" || { rm -f "$t"; fail "sled sealed_id differs from the decoy-issued identity"; }
   rm -f "$t"; echo "  sled verified (IID1 vs trust store, sealed_id matches)"; }
 wire_devices() { # name
-  n=$1; RUNDIR=/run/opdbus/ct/$n
+  n=$1; RUNDIR=/run/opdbus/ct/$n; SHM=/run/opdbus/shm/$n
   # lungs and tunnel are mounted inside the opdbus-run disk; with idmapped
   # mounts Incus does not create nested targets, so start fails without them.
   install -d -m 0755 "$RUNDIR" "$RUNDIR/lungs" "$RUNDIR/tunnel"
+  # /dev/shm is its own disk, mounted before the catalog under it (Incus orders
+  # disks by path), so systemd finds /dev/shm already mounted and does not cover
+  # the catalog with its own tmpfs. The catalog target is pre-created inside it.
+  install -d -m 0755 /run/opdbus/shm; install -d -m 1777 "$SHM"; chmod 1777 "$SHM"
+  install -d -m 0755 "$SHM/opdbus" "$SHM/opdbus/plugin-blobs"
   dev_add "$n" fuse unix-char source=/dev/fuse path=/dev/fuse mode=0666
   dev_add "$n" opdbus-run disk source="$RUNDIR" path=/opt/run-mounts/opdbus shift=true
   dev_add "$n" lungs disk source=/run/opdbus/lungs path=/opt/run-mounts/opdbus/lungs readonly=true shift=true
+  dev_add "$n" shm disk source="$SHM" path=/dev/shm shift=true
   dev_add "$n" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true
   dev_add "$n" decoy-trust disk source="$TRUST" path=/etc/op-dbus/decoy-trust.json readonly=true shift=true
   if [ "$(incus config get "$n" user.opdbus.wireguard_public_key)" = "$CHATBOT_KEY" ] && [ -n "$CHATBOT_KEY" ]; then

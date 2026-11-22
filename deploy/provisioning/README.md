@@ -81,10 +81,19 @@ The Ubuntu/systemd `@seed` already carries the systemd versions of these units
 | `fuse` | `/dev/fuse` | `/dev/fuse` |
 | `opdbus-run` | `/run/opdbus/ct/<name>` | `/opt/run-mounts/opdbus` (shift) |
 | `lungs` | `/run/opdbus/lungs` | `/opt/run-mounts/opdbus/lungs` (ro, shift) |
+| `shm` | `/run/opdbus/shm/<name>` (1777, `opdbus/plugin-blobs` pre-created) | `/dev/shm` (shift) |
 | `catalog` | `/var/lib/opdbus/plugin-blobs` (sealed catalog) | `/dev/shm/opdbus/plugin-blobs` (ro, shift) |
 | `decoy-trust` | `/etc/op-dbus/decoy-trust.json` | same path (ro, shift) |
 | `sled` | pool volume `identity-<session>` | `/agent/user` (ro) |
 | `tunnel` | `/run/opdbus/tunnel` | `/opt/run-mounts/opdbus/tunnel` (chatbot key only) |
+
+Mount layering: no mount covers another. Each parent is mounted before anything under it:
+`opdbus-run` before `lungs`/`tunnel`, and `shm` before `catalog` (Incus orders disks by path).
+Without the `shm` disk, systemd (systemd seed) mounts its own tmpfs on `/dev/shm` at boot,
+covering the catalog, and both 3tchedFS units fail their manifest check. A tmpfs from
+`raw.lxc` does not work: Incus writes raw.lxc after its disks and LXC attaches idmapped
+disks later, so the catalog target is missing. Host dirs are recreated at boot by
+`deploy/runit/boot-run/S96-run-mounts.stage1.sh`.
 
 Config: `user.opdbus.session_id`, `user.opdbus.wireguard_public_key`, `security.idmap.isolated=true`,
 unprivileged, no nesting, `boot.autostart=false`, `raw.lxc`: `lxc.uts.name = <session>` (**hostname**),
