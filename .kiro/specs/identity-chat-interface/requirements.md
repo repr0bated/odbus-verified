@@ -204,10 +204,12 @@ mounted namespace of the Bound_Identity.
 - **Identity_Profile**: Per-Branch, non-secret configuration data (for example
   display name, mount paths and allowed Deployment_Targets), supplied as data
   in the format and schema recorded in `design.md`, never as code.
-- **Session_Mode**: The mode of a Chat_Session: standard, control_plane or
-  ui_build. The Chat_Route takes it only from the Identity_Profile loaded at
-  Chat_Session start, never from the Chat_UI, the model or a tool result. A
-  Session_Mode sets limits only; it grants no capability and bypasses no
+- **ChatMode**: The mode of a Chat_Session: personal, project, control_plane, accountability,
+  notebook_lm or ui_render (`ChatMode`, `op-plugins/src/state_plugins/project.rs:17-27`; owner D4,
+  2026-11-22: "frontend and backend should use same modes"). The UI sets it through the Exchange_Point
+  (`project.select_context`); the Chat_Route uses only the mode persisted and re-read server-side at
+  execution, never a value from the Chat_UI request, the model or a tool result. A
+  ChatMode sets limits only; it grants no capability and bypasses no
   validation or confirmation.
 - **View_Kind**: The kind of mounted 3tchedFS view that exposes an
   operation, decided by what runs it (steering
@@ -677,9 +679,9 @@ data, so that injected text cannot steer the chat into unapproved actions.
 4. THE Chat_Route and THE Tool_Executor SHALL derive no identity, session, principal, Branch, mount path, Deployment_Target or credential selection from tool-result content, and SHALL keep the Bound_Identity of the Chat_Session unchanged regardless of any identity, session or Branch named in a tool result, as required by Requirements 4.2 and 4.3.
 5. THE Chat_Route SHALL dispatch a Tool_Call only from a structured AI SDK tool-call part of a Model_Provider response, and SHALL treat tool names, arguments and tool-call-shaped data that appear in tool results or model text as text that dispatches no Tool_Call.
 6. THE Model_Context_Builder SHALL compose the system prompt of every Model_Context only from Implementer-authored text recorded in `design.md` and Public_Identity_Fields of the Bound_Identity_Record, identical for every Model_Context of the Chat_Session.
-7. WHEN the number of Tool_Calls dispatched in response to one operator message reaches the tool-call limit of the Chat_Session's Session_Mode, THE Chat_Route SHALL dispatch no further Tool_Call and request no further Model_Provider response for that operator message, and THE Chat_UI SHALL display that the limit was reached. The tool-call limit SHALL be 5000 for the control_plane and ui_build Session_Modes (owner decision, 2026-11-08) and, for the standard Session_Mode, the value recorded in `design.md`, between 1 and 10 inclusive.
-8. IF the Identity_Profile names no Session_Mode or a value other than standard, control_plane or ui_build, THEN THE Chat_Route SHALL apply the standard Session_Mode, and THE Chat_Route SHALL ignore any Session_Mode or tool-call limit supplied by the Chat_UI, the model or a tool result.
-9. WHILE a Chat_Session runs in the control_plane or ui_build Session_Mode, THE Chat_Route SHALL apply the capability, validation and confirmation rules of Requirements 6, 8 and 9 to every Tool_Call unchanged, so that the raised limit changes only how many Tool_Calls one operator message may dispatch.
+7. WHEN the number of Tool_Calls dispatched in response to one operator message reaches the tool-call limit of the Chat_Session's ChatMode, THE Chat_Route SHALL dispatch no further Tool_Call and request no further Model_Provider response for that operator message, and THE Chat_UI SHALL display that the limit was reached. The tool-call limit SHALL be 5000 for the control_plane and ui_render ChatModes (owner decision, 2026-11-08) and, for the persisted ChatMode, the value recorded in `design.md`, between 1 and 10 inclusive.
+8. IF the Identity_Profile names no ChatMode or a value other than personal, project, control_plane, accountability, notebook_lm or ui_render, THEN THE Chat_Route SHALL apply the persisted ChatMode, and THE Chat_Route SHALL ignore any ChatMode or tool-call limit supplied by the Chat_UI, the model or a tool result.
+9. WHILE a Chat_Session runs in the control_plane or ui_render ChatMode, THE Chat_Route SHALL apply the capability, validation and confirmation rules of Requirements 6, 8 and 9 to every Tool_Call unchanged, so that the raised limit changes only how many Tool_Calls one operator message may dispatch.
 
 ### Requirement 15: Error states
 
@@ -1004,11 +1006,11 @@ chat runs only through the new code.
 3. WHEN the Chat_UI shell has loaded, THE Chat_UI SHALL render the rest of the interface from Render_Specs streamed by the Chat_Route over the Chat_Link through the json-render Svelte renderer.
 4. THE Chat_UI SHALL render each Fixed_Element only from its Implementer-authored Component_Registry entry, in a display region that no Generated_Element occupies, so that no Generated_Element replaces, imitates or overlays a Fixed_Element.
 5. THE Chat_Interface SHALL stage a Generated_Element only by calling `json_render_gallery.save_candidate`, and SHALL register it in the Catalog only by calling `json_render_gallery.promote_candidate`, each as an Operation_File call in the Bound_Identity's `3tched` mounted view under Requirement 30 and each held by the Confirmation_Gate as a Mutation_Method under Requirement 9.
-6. WHERE `design.md` records no other Session_Mode for Generated_Element registration, THE Chat_Route SHALL accept a Generated_Element registration only in a Chat_Session whose Session_Mode is ui_build.
+6. WHERE `design.md` records no other ChatMode for Generated_Element registration, THE Chat_Route SHALL accept a Generated_Element registration only in a Chat_Session whose ChatMode is ui_render.
 7. THE static checks SHALL reject compiled output that opens network access, uses eval, the Function constructor, string timers or dynamic import, imports any module other than Catalog primitives, reads any input other than its own props, accesses the document, window, global object, storage, cookies or any DOM node outside its own element root, declares a Fixed_Element type name, renders approve or reject controls, or uses fixed, sticky or overlay positioning.
 8. THE Chat_Route SHALL run the Secret_Guard check and the static checks of criterion 7 itself on the compiled output, and SHALL accept no check result supplied by the Chat_UI, the model or a tool result.
 9. THE Chat_Route SHALL compile every Generated_Element with the Svelte compiler (`svelte/compiler`) in the Chat_Route process (owner, 2026-11-08), and THE Implementer SHALL record in `design.md` the compiler package entry in the Pinned_Package_Set, the static check rules and the Operation_File method of criterion 5, and SHALL leave every Generated_Element task in proposed status while any of these is absent.
-10. IF compilation fails, the Secret_Guard blocks, a static check rejects, the registration request arrives in a Session_Mode that criterion 6 does not allow, or the Confirmation_Gate discards the registration, THEN THE Chat_Route SHALL register nothing, SHALL return a typed error of kind validation naming the failing check, and THE Chat_UI SHALL refuse every Render_Spec that uses that element type under Requirement 2.6.
+10. IF compilation fails, the Secret_Guard blocks, a static check rejects, the registration request arrives in a ChatMode that criterion 6 does not allow, or the Confirmation_Gate discards the registration, THEN THE Chat_Route SHALL register nothing, SHALL return a typed error of kind validation naming the failing check, and THE Chat_UI SHALL refuse every Render_Spec that uses that element type under Requirement 2.6.
 11. IF the Bound_Identity does not hold the Required_Capability of `save_candidate` or `promote_candidate`, or either call returns a Denial, THEN THE Chat_Interface SHALL stage or register nothing and SHALL create a Blocker_Record as Requirement 7 specifies.
 12. THE Chat_Interface SHALL key each registered Generated_Element by the Bound_Identity principal id under Requirement 20.1 and SHALL render it only in Chat_Sessions of that Bound_Identity.
 13. FOR ALL event sequences, every Generated_Element present in the Catalog SHALL have passed criterion 1 and SHALL have an accepted Confirmation_Event under criterion 2 (invariant).
@@ -1071,4 +1073,4 @@ one"; "subsidiary will be different, it won't have personal mode".
 - D2 (answered): non-personal modes go into snowball (the sled ledger), vectorized on the identity
   sled at end of session.
 - D3 (answered): the existing `ctl_plane_chatbot` plugin.
-- D4 (open): converge `Session_Mode` (this spec) onto `ChatMode` (`project.rs:17-27`).
+- D4 (open): converge `ChatMode` (this spec) onto `ChatMode` (`project.rs:17-27`).

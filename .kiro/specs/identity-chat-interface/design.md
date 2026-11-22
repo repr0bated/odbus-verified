@@ -440,10 +440,10 @@ sequenceDiagram
   end
 ```
 
-### Turn loop and Session_Mode limit
+### Turn loop and ChatMode limit
 
 One operator message starts one turn. The turn loop runs model steps until
-the model stops calling tools, the Session_Mode tool-call limit is reached,
+the model stops calling tools, the ChatMode tool-call limit is reached,
 or an error ends the turn. Each structured tool-call part increments the
 turn counter before any check runs; when the counter would exceed the
 limit, the loop dispatches nothing more, requests no further model
@@ -454,9 +454,9 @@ the loop resumes on the same stream. If the client closes the turn stream,
 the gate discards that turn's pending calls (stricter than Requirement 9.9,
 which only covers restart and session end).
 
-The Session_Mode comes only from the Identity_Profile loaded at session
-start: 5000 for `control_plane` and `ui_build`, 5 for `standard` (D-20).
-Any missing or unrecognized value is `standard`. The mode changes only the
+The ChatMode comes only from the Identity_Profile loaded at session
+start: 5000 for `control_plane` and `ui_render`, 5 for every other ChatMode (D-20).
+Any missing or unrecognized value is every other ChatMode. The mode changes only the
 limit; the registry, validator and gate code paths take no mode argument.
 
 ## Components and Interfaces
@@ -644,8 +644,8 @@ decode; `JSON.parse` with a reviver that rejects duplicate keys; Ajv
 validation against `config/identity-profile.schema.json` with
 `additionalProperties: false` at every level; a Secret_Guard pass over every
 string value; then construction of an immutable `IdentityProfile`. Unknown
-`session_mode` strings map to `standard` after validation; a non-string
-`session_mode` is a type error (19.11). `format` writes keys in schema order
+`chat_mode` strings map to every other ChatMode after validation; a non-string
+`chat_mode` is a type error (19.11). `format` writes keys in schema order
 with no whitespace, and list order is preserved, which makes
 `parse(format(p))` equal to `p` (19.7).
 
@@ -1045,7 +1045,7 @@ interface ChatSession {
   deploymentTarget: DeploymentTargetKind;
   mountPaths: { "3tched": string; threetched: string };   // D-35
   profile: IdentityProfile;            // frozen copy (19.2)
-  sessionMode: "standard" | "control_plane" | "ui_build";
+  chatMode: "personal" | "project" | "control_plane" | "accountability" | "notebook_lm" | "ui_render";
   toolCallLimit: number;               // 5 | 5000 (D-20)
   identity: BoundIdentityRecord;
   catalogPins: { "3tched": CatalogPin | null; threetched: CatalogPin | null };  // null = view absent
@@ -1121,7 +1121,7 @@ interface IdentityProfile {            // D-22
   principal_id: string;
   display_name: string;
   expected_session_id?: string;
-  session_mode?: string;               // standard | control_plane | ui_build; other strings -> standard
+  chat_mode?: string;               // ChatMode value; other strings are rejected
   deployment_targets: { kind: "identity_container" | "host_dashboard";
     mount_paths: { "3tched": string; threetched: string } }[];   // D-35
 }
@@ -1577,10 +1577,10 @@ symbol whose name contains `MCP` (Requirement 3.5).
 | denial | "This identity is not allowed to run this operation. The denial is recorded; ask the owner if access is expected." |
 | validation | "The arguments did not match the sealed schema. The model was told which fields failed." |
 
-### D-20 Session_Mode tool-call limits
+### D-20 ChatMode tool-call limits
 
-- **DECIDED by owner (2026-11-08):** `control_plane` and `ui_build`: 5000.
-- **PROPOSED-DEFAULT:** `standard`: 5. Within the 1 to 10 range of 14.7; high
+- **DECIDED by owner (2026-11-08):** `control_plane` and `ui_render`: 5000.
+- **PROPOSED-DEFAULT:** every other ChatMode: 5. Within the 1 to 10 range of 14.7; high
   enough for read-then-act sequences, low enough that a runaway loop stops
   quickly.
 
@@ -1610,7 +1610,7 @@ PROPOSED-DEFAULT, awaiting owner confirmation:
 | `principal_id` | string | yes | 128 chars | compared with the Bound_Identity_Record (19.12) |
 | `display_name` | string | yes | 64 chars | no control characters |
 | `expected_session_id` | string | no | 128 chars | compared (4.4); passed as `--expected-session` on host mounts |
-| `session_mode` | string | no | 32 chars | `standard`, `control_plane`, `ui_build`; any other string means `standard` (14.8) |
+| `chat_mode` | string | no | 32 chars | a `ChatMode` value; any other string is rejected (14.8) |
 | `deployment_targets` | array of objects | yes | 1 to 4 elements | |
 | `deployment_targets[].kind` | string enum `identity_container`, `host_dashboard` | yes | | |
 | `deployment_targets[].mount_paths` | object with exactly the keys `3tched` and `threetched` | yes | 2 keys | D-35 |
@@ -2156,7 +2156,7 @@ Read from `crates/_3tched-fs/src/mounted.rs` at `/srv/git/odbus-verified` HEAD `
 ### D-46 Generated elements
 
 - Compile with `svelte/compiler` from `svelte` 5.57.3 inside the Chat_Route (D-01).
-- Stage with `json_render_gallery.save_candidate` and register with `promote_candidate`, both as Operation_File calls on the `3tched` mount, both behind the Confirmation_Gate. Session_Mode must be `ui_build`.
+- Stage with `json_render_gallery.save_candidate` and register with `promote_candidate`, both as Operation_File calls on the `3tched` mount, both behind the Confirmation_Gate. ChatMode must be `ui_render`.
 - Static checks reject compiled output that opens network access, uses `eval`, the Function constructor, string timers, or dynamic import, imports anything other than Catalog primitives, reads input other than its props, touches `document`, `window`, the global object, storage, cookies, or a DOM node outside its root, declares a Fixed_Element name, renders approve or reject controls, or uses fixed, sticky, or overlay positioning (Requirement 33.7).
 - `json_render_gallery` is kept UI code. Its `MODES` list is recorded for review and not changed: `personal`, `project`, `control_plane`, `accountability`, `notebook_lm`, `ui_render` (`json_render_gallery.rs` lines 32-39 at `a2773e1`).
 
@@ -2386,11 +2386,11 @@ Blocker_Record names each mismatched field without any Credential_Material.
 ### Property 9: Untrusted values select nothing
 
 *For any* session and *any* values for identity, session id, principal id,
-Branch, mount path, Deployment_Target, Session_Mode, tool-call limit, tool
+Branch, mount path, Deployment_Target, ChatMode, tool-call limit, tool
 definitions, Required_Capability values, offered or unavailable markings,
 Tool_Calls, Execution_Records, hashes or verification results that appear in
 Chat_UI request bodies, model text, tool results or display cache entries,
-the session's Bound_Identity_Record, mount path, Session_Mode, tool-call
+the session's Bound_Identity_Record, mount path, ChatMode, tool-call
 limit, Tool_Registry snapshot, Chain_Verifier input and fake adapter log are
 equal to those of the same session run with those values absent.
 
@@ -2669,15 +2669,15 @@ Catalog error names an element type that is missing.
 
 **Validates: Requirements 2.5, 2.6**
 
-### Session_Mode
+### ChatMode
 
-### Property 33: Session_Mode resolution
+### Property 33: ChatMode resolution
 
-*For any* Identity_Profile `session_mode` value (absent, any string, any
+*For any* Identity_Profile `chat_mode` value (absent, any string, any
 case variant), the resolved mode is that value when it is exactly
-`standard`, `control_plane` or `ui_build`, and `standard` otherwise; the
-resolved limit is 5000 for `control_plane` and `ui_build` and the D-20
-standard value (5, within 1 to 10) for `standard`; and no Session_Mode or
+every other ChatMode, `control_plane` or `ui_render`, and every other ChatMode otherwise; the
+resolved limit is 5000 for `control_plane` and `ui_render` and the D-20
+standard value (5, within 1 to 10) for every other ChatMode; and no ChatMode or
 limit supplied by the Chat_UI, the model or a tool result changes either
 value (see also Property 9).
 
@@ -2685,7 +2685,7 @@ value (see also Property 9).
 
 ### Property 34: Tool-call limit per operator message
 
-*For any* resolved Session_Mode with limit `L` and *any* number `N` of
+*For any* resolved ChatMode with limit `L` and *any* number `N` of
 structured tool-call parts the mock model emits across the steps of one
 operator message, the number of Tool_Calls dispatched is `min(N, L)`; when
 `N > L`, no model request follows the `L`-th dispatch for that message and
@@ -2698,8 +2698,8 @@ counter with cheap synthetic parts against the fake adapter.
 ### Property 35: Raised modes change only the limit
 
 *For any* event sequence whose tool-call count per operator message is at
-most the standard limit, running it under `control_plane`, `ui_build` and
-`standard` produces identical Tool_Registry snapshots, Schema_Validator
+most the other-mode limit, running it under `control_plane`, `ui_render` and
+every other ChatMode produces identical Tool_Registry snapshots, Schema_Validator
 results, Confirmation_Gate decisions, fake adapter logs and status
 sequences.
 
@@ -3110,7 +3110,7 @@ item below. Each threat is handled by decisions already recorded above.
   Bound_Identity's mount (D-11) and has no code path to the grant file or
   `op-grants-materializer` (7.1, enforced by `check-forbidden-imports.ts`).
   A Denial is a permission boundary: it is recorded, made sticky and never
-  bypassed (D-16, Property 16). Session_Mode raises only the tool-call
+  bypassed (D-16, Property 16). ChatMode raises only the tool-call
   limit (D-20, Property 35).
 - **New network doors.** No Chat_Route location that adds a listener is
   accepted (D-06, B-04, B-05); the only adapter in scope opens no socket.
@@ -3191,7 +3191,7 @@ content hash, plugin `version`, manifest `catalog_hash`/`generation` (73 on anti
 | B-28 | Door_8090 versus Lungs_Socket endpoints | Chat_Link routing through the Lungs_Socket |
 | D-06 | where the TypeScript Chat_Route process runs, per Deployment_Target | Deployment_Target process tasks (13.5) |
 
-PROPOSED-DEFAULT decisions that may still change code: D-01, D-16, D-19, D-20 (`standard` = 5), D-21, D-22, D-24, D-26, D-28, D-29, D-33, D-34. DECIDED: D-02 (retain both SDKs; integration sub-check remains open), D-03 (custom gRPC-Web transport), D-42 (gallery schema authorization), D-43 (feed path, except unchosen bounds), D-44 (file I/O sequence), D-45 (preserve Tonic's backend role; actual hosting contract remains open), D-46 (generated elements). D-37 remains the historical EMQX authorization and is not the chat path. D-38 to D-41 do not govern implementation where they conflict with D-43.
+PROPOSED-DEFAULT decisions that may still change code: D-01, D-16, D-19, D-20 (every other ChatMode = 5), D-21, D-22, D-24, D-26, D-28, D-29, D-33, D-34. DECIDED: D-02 (retain both SDKs; integration sub-check remains open), D-03 (custom gRPC-Web transport), D-42 (gallery schema authorization), D-43 (feed path, except unchosen bounds), D-44 (file I/O sequence), D-45 (preserve Tonic's backend role; actual hosting contract remains open), D-46 (generated elements). D-37 remains the historical EMQX authorization and is not the chat path. D-38 to D-41 do not govern implementation where they conflict with D-43.
 
 ### Open blockers
 

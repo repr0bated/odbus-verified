@@ -220,11 +220,11 @@ implement the stated interim behaviour now; the remainder is gated.
     - **Property 4: Credential-bearing requests are refused at intake**
     - **Validates: Requirements 5.8**
 
-- [ ] 4. Profile_Loader and Session_Mode resolution
+- [ ] 4. Profile_Loader and ChatMode resolution
   - [~] 4.1 Write `config/identity-profile.schema.json` and `profile/profile-loader.ts`
     - Schema per D-22 (PROPOSED-DEFAULT): JSON Schema 2020-12,
       `additionalProperties: false` everywhere, `format`, `principal_id`,
-      `display_name`, optional `expected_session_id` and `session_mode`,
+      `display_name`, optional `expected_session_id` and `chat_mode`,
       `deployment_targets[]` with `kind` and `mount_paths` holding exactly the
       `3tched` and `threetched` keys (absolute paths, no `..`).
     - `parse`: size check (<= 65 536 bytes) before decoding, strict UTF-8,
@@ -232,10 +232,10 @@ implement the stated interim behaviour now; the remainder is gated.
       on every string, immutable result; errors name field path and rule,
       never the value.
     - `format`: canonical JSON in schema key order, list order preserved.
-    - Session_Mode resolution: exactly `standard`, `control_plane` or
-      `ui_build`, otherwise `standard`; limit 5000 for `control_plane` and
-      `ui_build`, 5 for `standard` (D-20; the standard value must stay in
-      1..10). A non-string `session_mode` is a type error.
+    - ChatMode resolution: exactly `personal`, `project`, `control_plane`,
+      `accountability`, `notebook_lm` or `ui_render`, otherwise every other ChatMode; limit 5000 for `control_plane` and
+      `ui_render`, 5 for every other ChatMode (D-20; the other-mode value must stay in
+      1..10). A non-string `chat_mode` is a type error.
     - _Requirements: 19.3, 19.4, 19.5, 19.6, 19.7, 19.11, 14.7, 14.8_
   - [ ]* 4.2 Write property test for profile round trip
     - **Property 36: Profile round trip**
@@ -243,8 +243,8 @@ implement the stated interim behaviour now; the remainder is gated.
   - [ ]* 4.3 Write property test for profile rejection
     - **Property 37: Profile rejection**
     - **Validates: Requirements 19.5, 19.11**
-  - [ ]* 4.4 Write property test for Session_Mode resolution
-    - **Property 33: Session_Mode resolution**
+  - [ ]* 4.4 Write property test for ChatMode resolution
+    - **Property 33: ChatMode resolution**
     - **Validates: Requirements 14.7, 14.8**
 
 - [ ] 5. Schema_Validator
@@ -573,7 +573,7 @@ implement the stated interim behaviour now; the remainder is gated.
     - One operator message starts one turn; AI SDK `streamText` with offered
       tools and no `execute`.
     - Per structured tool-call part: increment the turn counter first; stop
-      dispatching and requesting model responses past the Session_Mode limit
+      dispatching and requesting model responses past the ChatMode limit
       and stream one `data-limit` part.
     - Check order: offered (registry entry by tool name), Schema_Validator,
       Confirmation_Gate for mutations, Tool_Executor. Tool names or
@@ -589,7 +589,7 @@ implement the stated interim behaviour now; the remainder is gated.
       open up to 300 s; closing the stream discards the turn's pending calls.
     - Provider error or no response in 60 s: `provider` typed error, no
       dispatch from the partial response, existing calls unchanged.
-    - Session_Mode changes only the limit; no other component takes a mode
+    - ChatMode changes only the limit; no other component takes a mode
       argument.
     - _Requirements: 6.5, 6.10, 7.2, 7.4, 7.5, 7.6, 7.7, 7.9, 8.2, 8.3, 8.4, 8.10, 11.1, 11.2, 11.4, 11.5, 14.3, 14.5, 14.7, 14.9, 15.3, 15.6_
   - [~] 14.4 Implement decisions, re-verification and request rejection in `route/chat-route.ts`
@@ -598,7 +598,7 @@ implement the stated interim behaviour now; the remainder is gated.
       server-side `SessionKey`, and refuses decisions for denied tools.
     - Reject any request field the route does not expect, including client
       tool definitions, capability claims, offered markings, Tool_Calls,
-      Session_Mode or limit values, identity or mount values.
+      ChatMode or limit values, identity or mount values.
     - `reverify` re-reads the segment through task 11.4 and streams
       `data-chain` with the read time.
     - Items tagged with a principal other than the addressed session are
@@ -1057,7 +1057,7 @@ implement the stated interim behaviour now; the remainder is gated.
   - [ ] 27.4 Chat turn path commits `ctl_plane_chatbot` episodes for the chatbot (change 4)
   - [ ] 27.5 Exchange point endpoint on the door: set variables, receive schema, zero logic (change 5)
   - [x] 27.6 Control-plane chatbot re-adoption under a new native UUID (commit aba5937); permanence verification pending the golden build
-  - Open: D4 (Session_Mode onto ChatMode)
+  - Open: D4 (ChatMode onto ChatMode)
 
 ## Notes
 

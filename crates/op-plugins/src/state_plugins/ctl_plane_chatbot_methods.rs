@@ -569,6 +569,38 @@ fn validate_config(config: &CtlPlaneChatbotConfig) -> Result<()> {
     Ok(())
 }
 
+/// Conversation prefix for a subsidiary's history in this plugin (owner,
+/// 2026-11-22: "<subsidiary name>::ctrlplane-chat"). The prefix lives in the
+/// free-text `conversation_id`, never inside a subid: a subid is a pure taxonomy
+/// key (docs/subid-taxonomy.md:15-26,84-89). Grouping stays on the sealed method
+/// subids (for example `mut.service.ctl-plane-chatbot.chat@v1`).
+pub const SUBSIDIARY_CHAT_SUFFIX: &str = "::ctrlplane-chat";
+
+pub fn subsidiary_conversation_prefix(subsidiary: &str) -> Result<String> {
+    ensure!(
+        !subsidiary.is_empty()
+            && subsidiary.len() <= 63
+            && subsidiary.as_bytes()[0].is_ascii_alphanumeric()
+            && subsidiary.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_')),
+        "subsidiary name must be a valid native instance name"
+    );
+    Ok(format!("{subsidiary}{SUBSIDIARY_CHAT_SUFFIX}"))
+}
+
+/// Whether `conversation_id` belongs to the caller: a subsidiary owns exactly
+/// its own prefix; the control-plane chatbot (None) owns no subsidiary prefix.
+pub fn owns_conversation(subsidiary: Option<&str>, conversation_id: &str) -> bool {
+    match subsidiary {
+        Some(name) => subsidiary_conversation_prefix(name).is_ok_and(|prefix| {
+            conversation_id == prefix
+                || conversation_id
+                    .strip_prefix(prefix.as_str())
+                    .is_some_and(|rest| rest.starts_with("::"))
+        }),
+        None => !conversation_id.contains(SUBSIDIARY_CHAT_SUFFIX),
+    }
+}
+
 pub fn validate_episode(episode: &ReasoningEpisode) -> Result<()> {
     let bytes = serde_json::to_vec(episode)?;
     ensure!(
@@ -753,6 +785,20 @@ pub fn knowledge_content_hash(push: &KnowledgePush) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn subsidiary_history_stays_under_its_own_prefix() {
+        assert_eq!(subsidiary_conversation_prefix("kiroween-subsidiary").unwrap(), "kiroween-subsidiary::ctrlplane-chat");
+        assert!(subsidiary_conversation_prefix("").is_err());
+        assert!(subsidiary_conversation_prefix("a::b").is_err());
+        assert!(owns_conversation(Some("kiroween-subsidiary"), "kiroween-subsidiary::ctrlplane-chat"));
+        assert!(owns_conversation(Some("kiroween-subsidiary"), "kiroween-subsidiary::ctrlplane-chat::t1"));
+        assert!(!owns_conversation(Some("kiroween-subsidiary"), "kiroween-subsidiary::ctrlplane-chatx"));
+        assert!(!owns_conversation(Some("kiroween-subsidiary"), "other::ctrlplane-chat"));
+        assert!(!owns_conversation(Some("kiroween-subsidiary"), "trigger:1"));
+        assert!(owns_conversation(None, "trigger:1"));
+        assert!(!owns_conversation(None, "kiroween-subsidiary::ctrlplane-chat"));
+    }
     use op_cozo_store::CozoGraphShuttle;
 
     fn service() -> CtlPlaneChatbotMethods {
