@@ -1,6 +1,9 @@
 #!/bin/sh
-# threetched view (surface threetched). Needs the 3tched-fs build with the
-# /plugins/threetched duplicate-path fix (host: 3tched-fs-dupfix-b37bffa2).
+# threetched catalog view via 3tched-fs.
+# `mount --surface threetched` grafts the optional standalone CLI binary at
+# /usr/local/libexec/op-dbus/threetched/threetched. Guests that do not ship
+# that binary project the sealed threetched plugin with --surface 3tched after
+# an --include-plugin threetched capture.
 exec 2>&1
 B=/usr/local/libexec/op-dbus/bin/3tched-fs
 CAT=/dev/shm/opdbus/plugin-blobs; ST=/dev/shm/opdbus/state; MP=/run/mounts/threetched
@@ -9,5 +12,5 @@ CAT=/dev/shm/opdbus/plugin-blobs; ST=/dev/shm/opdbus/state; MP=/run/mounts/three
 install -d -m 0700 /run/3tchedfs-threetched; install -d -m 0755 "$MP"
 mountpoint -q "$MP" && fusermount3 -u "$MP" 2>/dev/null || true
 "$B" capture --store /run/3tchedfs-threetched --schema-only --catalog "$CAT" --state "$ST" --include-plugin threetched || { sleep 5; exit 1; }
-exec "$B" mount --store /run/3tchedfs-threetched --fs-name threetched --surface threetched --catalog "$CAT" --state "$ST" \
+exec "$B" mount --store /run/3tchedfs-threetched --fs-name threetched --surface 3tched --catalog "$CAT" --state "$ST" \
   --allow-other --auto-unmount --lungs-socket /run/opdbus/lungs/lungs.sock "$MP"
