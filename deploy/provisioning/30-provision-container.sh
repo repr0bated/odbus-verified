@@ -112,6 +112,9 @@ lxc.mount.auto = cgroup2:force$INIT"
   install -m 0600 "$ISSUED" "$DIR/issued_identity.iid1"
   "$BIN_ACCEPT" --issued "$ISSUED" --pubkey "$KEY" --trust-store "$TRUST" --out "$DIR/sealed_id" >/dev/null
   install -d -m 0700 "$DIR/ledger"
+  # Personal memory + soul store (memory/cozo), opened only by the host bridge
+  # (cognitive-memory-rocksdb); nocow before any file exists.
+  install -d -m 0700 "$DIR/memory"; chattr +C "$DIR/memory" 2>/dev/null || true
   incus config device add "$NAME" sled disk pool="$POOL" source="$SLED" path=/agent/user readonly=true >/dev/null
   wire_devices "$NAME"
   ;;

@@ -186,6 +186,7 @@ unprivileged, no nesting, `boot.autostart=false`, `raw.lxc`: `lxc.uts.name = <se
 
 `session_id`, `issued_identity.iid1` (decoy-minted, delivered over WARP), `sealed_id`
 (SID1 installed by `op-identity-accept`), `ledger/` (written by the host bridge),
+`memory/cozo` (personal memory + soul; opened only by the host bridge, never by the container),
 `wireguard_pubkey` (public key; written by step 3 `new`). Nothing is minted on antix1:
 a new container needs its IID1 from the decoy (`op-decoy-issuer`, which seals the NextDNS
 profile and device in; device defaults to the session id).

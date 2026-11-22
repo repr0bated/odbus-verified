@@ -2,11 +2,22 @@
 //!
 //! The historical tool-registry crate is an internal implementation library,
 //! never a transport. Every delegated operation returns through Runtime admission.
-use std::{collections::BTreeSet, sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeSet, HashMap},
+    os::unix::fs::DirBuilderExt,
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::{Context, anyhow, bail, ensure};
 use op_agents::dynamic::{TaskContext, ContextBudget, assemble};
-use op_cognitive::{CognitiveServer, memory_store::EntryQuery};
+use op_cognitive::{
+    CognitiveServer,
+    cognitive_tools::MemoryTool,
+    memory_store::{CognitiveMemoryStore, EntryQuery},
+};
+use op_mcp::tool_registry::Tool as _;
 use op_cozo_store::CozoGraphShuttle;
 use op_plugins::state_plugins::{
     cognitive::{SpecialistInput, SpecialistOutput, SpecialistPersona},
@@ -136,6 +147,54 @@ pub(crate) struct CognitiveBackend {
     cognitive: OnceCell<Arc<CognitiveServer>>,
     identity_store: Arc<CozoGraphShuttle>,
     queries: crate::notebooklm_queries::NotebookQueries,
+    /// Personal memory per identity session, in that identity's own pool
+    /// volume (`identity-<session>/memory/cozo`, cognitive-memory-rocksdb).
+    personal: tokio::sync::Mutex<HashMap<String, Arc<PersonalMemory>>>,
+}
+
+/// One identity's personal memory store. Never paired with Qdrant: personal
+/// memory reaches no shared store or vector index (owner rule 2026-11-22).
+struct PersonalMemory {
+    shuttle: Arc<CozoGraphShuttle>,
+    store: Arc<CognitiveMemoryStore>,
+    tool: MemoryTool,
+}
+
+/// `<pool>/custom/default_identity-<session>/memory/cozo`: the existing
+/// identity volume (attached to the container read-only at /agent/user and
+/// written only by the host bridge), same contract as the sled ledger.
+fn personal_store_path(session: &str) -> anyhow::Result<PathBuf> {
+    let parsed = uuid::Uuid::parse_str(session).context("session id is not a UUID")?;
+    ensure!(parsed.to_string() == session, "session id is not canonical");
+    let pool = std::env::var("OP_CONTAINER_POOL").unwrap_or_else(|_| "3tched-pool".into());
+    let volume = PathBuf::from(format!(
+        "/var/lib/incus/storage-pools/{pool}/custom/default_identity-{session}"
+    ));
+    let stored = std::fs::read_to_string(volume.join("session_id")).with_context(|| {
+        format!("identity volume identity-{session} is absent; personal memory has no store")
+    })?;
+    ensure!(
+        stored.trim() == session,
+        "identity volume session_id differs from its name"
+    );
+    let memory = volume.join("memory");
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .recursive(true)
+        .create(&memory)?;
+    Ok(memory.join("cozo"))
+}
+
+fn memory_operation(method: &str) -> &'static str {
+    match method {
+        "memory_store" => "store",
+        "memory_delete" => "delete",
+        "memory_retrieve" => "retrieve",
+        "memory_recall" | "memory_query" => "query",
+        "memory_semantic_query" => "semantic_query",
+        "memory_list_namespaces" => "list_namespaces",
+        _ => unreachable!(),
+    }
 }
 
 impl CognitiveBackend {
@@ -151,6 +210,7 @@ impl CognitiveBackend {
             cognitive: OnceCell::new(),
             identity_store,
             queries: Default::default(),
+            personal: Default::default(),
         }
     }
 
@@ -172,6 +232,9 @@ impl CognitiveBackend {
                 })?;
                 self.identity_store
                     .ensure_distinct_from(&server.cozo_shuttle())?;
+                for personal in self.personal.lock().await.values() {
+                    personal.shuttle.ensure_distinct_from(&server.cozo_shuttle())?;
+                }
                 Ok(Arc::new(server))
             })
             .await
@@ -307,6 +370,17 @@ impl CognitiveBackend {
             }
             _ => {}
         }
+        // Personal-mode memory goes to the identity's own volume store and
+        // never opens the shared cognitive store.
+        let memory_context = if is_memory_method(method) {
+            let context = selected_context(ctx).await?;
+            if matches!(context.mode, ChatMode::Personal) {
+                return self.personal_memory_call(ctx, method, args, &context).await;
+            }
+            Some(context)
+        } else {
+            None
+        };
         let runtime = self.cognitive().await?;
         revalidate(ctx).await?;
         if method == "get_health" {
@@ -341,8 +415,9 @@ impl CognitiveBackend {
             ));
         }
         let mut bound = args.clone();
-        let context = if is_memory_method(method) || matches!(method, "code_context" | "code_index")
-        {
+        let context = if let Some(context) = memory_context {
+            Some(context)
+        } else if matches!(method, "code_context" | "code_index") {
             Some(selected_context(ctx).await?)
         } else {
             None
@@ -373,15 +448,7 @@ impl CognitiveBackend {
             }
         }
         let tool = if is_memory_method(method) {
-            let operation = match method {
-                "memory_store" => "store",
-                "memory_delete" => "delete",
-                "memory_retrieve" => "retrieve",
-                "memory_recall" | "memory_query" => "query",
-                "memory_semantic_query" => "semantic_query",
-                "memory_list_namespaces" => "list_namespaces",
-                _ => unreachable!(),
-            };
+            let operation = memory_operation(method);
             bound
                 .as_object_mut()
                 .context("memory arguments must be an object")?
@@ -440,6 +507,106 @@ impl CognitiveBackend {
         }
         // The sealed cognitive root exposes runtime health, not private memory
         // entries or code corpus contents. Their authority remains Cozo/Qdrant.
+        Ok(private_result(ctx, result, BackendStateUpdate::Unchanged))
+    }
+
+    async fn personal_memory(&self, session: &str) -> Result<Arc<PersonalMemory>, RuntimeError> {
+        let mut open = self.personal.lock().await;
+        if let Some(memory) = open.get(session) {
+            return Ok(memory.clone());
+        }
+        let path = personal_store_path(session).map_err(RuntimeError::before_effect)?;
+        let shuttle = tokio::task::spawn_blocking(move || {
+            CozoGraphShuttle::new_persistent_private(path)
+        })
+        .await
+        .map_err(|error| RuntimeError::backend(error.into()))?
+        .map_err(|error| {
+            RuntimeError::backend(anyhow!("personal memory store unavailable: {error}"))
+        })?;
+        let shuttle = Arc::new(shuttle);
+        self.identity_store.ensure_distinct_from(&shuttle)?;
+        if let Some(shared) = self.cognitive.get() {
+            shared.cozo_shuttle().ensure_distinct_from(&shuttle)?;
+        }
+        for other in open.values() {
+            other.shuttle.ensure_distinct_from(&shuttle)?;
+        }
+        let store = Arc::new(
+            CognitiveMemoryStore::new(shuttle.clone())
+                .await
+                .map_err(RuntimeError::backend)?,
+        );
+        let memory = Arc::new(PersonalMemory {
+            tool: MemoryTool::new(store.clone(), None),
+            store,
+            shuttle,
+        });
+        open.insert(session.to_owned(), memory.clone());
+        Ok(memory)
+    }
+
+    async fn personal_memory_call(
+        &self,
+        ctx: &BackendContext<'_>,
+        method: &str,
+        args: &Value,
+        context: &ResolvedChatContext,
+    ) -> Result<BackendOutcome, RuntimeError> {
+        if method == "memory_semantic_query" {
+            return Err(RuntimeError::unsupported(
+                "personal memory has no vector index; use memory_query",
+            ));
+        }
+        let mut bound = args.clone();
+        bind_memory(method, context, &mut bound)
+            .map_err(|error| RuntimeError::denied(error.to_string()))?;
+        bound
+            .as_object_mut()
+            .context("memory arguments must be an object")?
+            .insert("operation".into(), memory_operation(method).into());
+        let memory = self.personal_memory(&context.session_id).await?;
+        revalidate(ctx).await?;
+        let input = simd_json::serde::to_owned_value(&bound)?;
+        let output = tokio::time::timeout(Duration::from_secs(120), memory.tool.execute(input))
+            .await
+            .map_err(|_| {
+                RuntimeError::unknown(anyhow!(
+                    "personal memory operation timed out; do not retry effects"
+                ))
+            })?
+            .map_err(|error| after_effect(ctx, error))?;
+        let mut result = serde_json::to_value(output)?;
+        if method == "memory_list_namespaces" {
+            filter_namespaces(context, &mut result);
+        }
+        if matches!(method, "memory_store" | "memory_delete") {
+            let shuttle = memory.shuttle.clone();
+            tokio::task::spawn_blocking(move || shuttle.sync_runtime_document_store())
+                .await
+                .map_err(|error| RuntimeError::unknown(error.into()))?
+                .map_err(|error| RuntimeError::unknown(error.into()))?;
+            let namespace = required_str(&bound, "namespace")?;
+            let key = required_str(&bound, "key")?;
+            let entry = memory
+                .store
+                .retrieve_entry(namespace, key)
+                .await
+                .map_err(RuntimeError::unknown)?;
+            let matches = if method == "memory_store" {
+                entry.as_ref().is_some_and(|entry| {
+                    Some(entry.id.as_str()) == result.get("id").and_then(Value::as_str)
+                        && Some(&entry.value) == bound.get("value")
+                })
+            } else {
+                entry.is_none()
+            };
+            if !matches {
+                return Err(RuntimeError::unknown(anyhow!(
+                    "personal memory readback differs from native result"
+                )));
+            }
+        }
         Ok(private_result(ctx, result, BackendStateUpdate::Unchanged))
     }
 
@@ -1245,4 +1412,23 @@ fn validate_workflow_step(allowed: &BTreeSet<String>, step: &Value) -> anyhow::R
     let arguments = normalized_step_arguments(target, step)?;
     jsonschema::validate(&serde_json::to_value(&target.declaration.args)?, &arguments)
         .map_err(|error| anyhow!("workflow child arguments violate schema: {error}"))
+}
+
+#[cfg(test)]
+mod personal_memory_tests {
+    use super::personal_store_path;
+
+    #[test]
+    fn personal_store_needs_a_canonical_session_and_its_identity_volume() {
+        assert!(personal_store_path("not-a-uuid").is_err());
+        assert!(personal_store_path("2A2D9AA8-5468-309C-2DB4-342221450DE8").is_err());
+        // A canonical session without an identity volume has no personal store.
+        assert!(personal_store_path("00000000-0000-4000-8000-000000000001").is_err());
+    }
+
+    #[test]
+    fn personal_memory_is_never_paired_with_qdrant() {
+        let source = include_str!("runtime_cognitive.rs");
+        assert!(source.contains("tool: MemoryTool::new(store.clone(), None),"));
+    }
 }

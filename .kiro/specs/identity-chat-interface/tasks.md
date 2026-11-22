@@ -1069,12 +1069,18 @@ implement the stated interim behaviour now; the remainder is gated.
     writes, at the tracker -> sled boundary (`runtime_sled_ledger.rs`
     `append_from_tracker`, `chat_mode_policy::excluded_from_sled`); unit tests
     in both modules.
-  - [x] 27.3 Per-container ext4 RocksDB store: `deploy/provisioning/identity-rocksdb.sh`,
-    `30-provision-container.sh new` device `identity-rocksdb` ->
-    `/var/lib/op-dbus/identity-cozo`, host boot mount `sv/opdbus-identity-rocksdb`;
-    guest `COGNITIVE_DB_PATH=/var/lib/op-dbus/identity-cozo/personal-cognitive`
-    (runit run + systemd unit). New containers only; existing containers need a
-    data migration (not done).
+  - [x] 27.3 Personal store = the existing identity pool volume (owner
+    correction 2026-11-22: "it is not new ... a dir mount from a volume in
+    pool"). `identity-<session>` on `3tched-pool`, attached as device `sled`
+    at `/agent/user` (read-only in the container; written only by the host
+    bridge), per `.kiro/specs/cognitive-memory-rocksdb` design: personal-mode
+    memory routes to `<volume>/memory/cozo` (`runtime_cognitive.rs`
+    `personal_memory_call`, no Qdrant). `30-provision-container.sh new` creates
+    `memory/` (0700, nocow). The ext4-image attempt (dede291) is reverted.
+    Today: 3tchedChatbot has `identity-2a2d9aa8-...`, Jeremy has
+    `identity-fb86888e-...`, kiroween-subsidiary has no identity volume.
+    Soul is not yet reachable through any bridge method (no live caller of
+    `SoulMemoryStore`/`ensure_soul`); when wired it uses the same store.
   - [x] 27.4 ControlPlane chat turns of the chatbot and of subsidiaries commit
     `ctl_plane_chatbot` episodes in the asking session's scope
     (`runtime_chat_conversations.rs` `commit_control_plane_episode`, after the

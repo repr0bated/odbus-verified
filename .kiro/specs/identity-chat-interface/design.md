@@ -3152,8 +3152,9 @@ content hash, plugin `version`, manifest `catalog_hash`/`generation` (73 on anti
    default mode for them a non-personal one. Exchange-point allowed modes come from the same function.
 2. Ledger: `append_committed` skips calls whose persisted mode at execution time is Personal, and
    personal-namespace memory and soul writes. Unit test.
-3. Personal store: provisioning creates and mounts the per-container ext4 RocksDB image (device added to
-   the documented device table), and personal memory and soul route to it.
+3. Personal store: the existing identity pool volume `identity-<session>` (device `sled`,
+   `/agent/user`); personal memory and soul route to `<volume>/memory/cozo` opened by the host bridge
+   (cognitive-memory-rocksdb design). Owner correction 2026-11-22; no ext4 image.
 4. Chatbot history: the chat turn path commits one `ctl_plane_chatbot` episode per completed chat for
    the chatbot principal.
 5. Exchange Point endpoint on the door.
@@ -3319,9 +3320,10 @@ fixed. `tracker_hub_tests.rs` fails if a core operation, `BackendContext`,
 vectors): calls while the session's effective mode is Personal (stored
 selection, else the kind's default), writes naming
 `session/<sid>/personal[/...]`, and soul writes (key/tag `soul`, namespace
-`assistant:soul`, soul methods). Personal memory and soul live in the guest's
-cognitive store at `/var/lib/op-dbus/identity-cozo/personal-cognitive`, on the
-per-container ext4 RocksDB mount for containers provisioned with it.
+`assistant:soul`, soul methods). Personal-mode memory lives in the identity's
+own pool volume store `<pool>/custom/default_identity-<session>/memory/cozo`
+(`runtime_cognitive.rs` `personal_memory_call`), never in the shared cognitive
+store and never in Qdrant.
 
 **Modes.** One rule (`chat_mode_policy.rs`) for admission, defaults and the
 exchange point's allowed list. Subsidiary = native config
