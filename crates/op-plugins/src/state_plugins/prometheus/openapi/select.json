@@ -1,0 +1,60 @@
+{
+  "spec": "openapi-3.1.yaml",
+  "methods": {
+    "query": {
+      "path": "/query",
+      "op": "get"
+    },
+    "query_range": {
+      "path": "/query_range",
+      "op": "get"
+    },
+    "series": {
+      "path": "/series",
+      "op": "get"
+    },
+    "labels": {
+      "path": "/labels",
+      "op": "get"
+    },
+    "label_values": {
+      "path": "/label/{name}/values",
+      "op": "get"
+    },
+    "targets": {
+      "path": "/targets",
+      "op": "get"
+    },
+    "scrape_pools": {
+      "path": "/scrape_pools",
+      "op": "get"
+    },
+    "rules": {
+      "path": "/rules",
+      "op": "get"
+    },
+    "alerts": {
+      "path": "/alerts",
+      "op": "get"
+    },
+    "metadata": {
+      "path": "/metadata",
+      "op": "get"
+    },
+    "build_info": {
+      "path": "/status/buildinfo",
+      "op": "get"
+    },
+    "runtime_info": {
+      "path": "/status/runtimeinfo",
+      "op": "get"
+    },
+    "tsdb_status": {
+      "path": "/status/tsdb",
+      "op": "get"
+    }
+  },
+  "extra_schemas": [
+    "Error"
+  ]
+}

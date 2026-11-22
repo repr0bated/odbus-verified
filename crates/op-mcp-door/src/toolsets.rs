@@ -110,6 +110,8 @@ fn plugin_sets() -> Vec<(&'static str, &'static str, &'static [&'static str])> {
                 "users",
                 "cron",
                 "fail2ban",
+                "prometheus",
+                "grafana",
                 "software",
                 "full_system",
                 "pcidecl",

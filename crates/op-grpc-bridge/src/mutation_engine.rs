@@ -4214,6 +4214,60 @@ impl MutationEngine {
                 }
                 result
             }
+            "prometheus" => {
+                let args = serde_json::to_value(&parsed_value)?;
+                let dispatch_result =
+                    op_plugins::state_plugins::prometheus::dispatch_prometheus_method(
+                        method, &args,
+                    )
+                    .await?;
+                // Read-only upstream: publish the observed summary like qdrant.
+                match op_plugins::state_plugins::prometheus::current_state().await {
+                    Ok(state) => {
+                        if let Err(error) = self
+                            .publish_plugin_projection_state(
+                                "prometheus",
+                                simd_json::serde::to_owned_value(state)?,
+                                ChangeType::PropertySet,
+                                true,
+                            )
+                            .await
+                        {
+                            tracing::warn!(%error, "prometheus state read but projection publish failed");
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "prometheus method completed but current state could not be read for projection")
+                    }
+                }
+                dispatch_result
+            }
+            "grafana" => {
+                let args = serde_json::to_value(&parsed_value)?;
+                let dispatch_result =
+                    op_plugins::state_plugins::grafana::dispatch_grafana_method(method, &args)
+                        .await?;
+                // Read-only upstream: publish the observed summary like qdrant.
+                match op_plugins::state_plugins::grafana::current_state().await {
+                    Ok(state) => {
+                        if let Err(error) = self
+                            .publish_plugin_projection_state(
+                                "grafana",
+                                simd_json::serde::to_owned_value(state)?,
+                                ChangeType::PropertySet,
+                                true,
+                            )
+                            .await
+                        {
+                            tracing::warn!(%error, "grafana state read but projection publish failed");
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "grafana method completed but current state could not be read for projection")
+                    }
+                }
+                dispatch_result
+            }
             "qdrant" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 let dispatch_result =

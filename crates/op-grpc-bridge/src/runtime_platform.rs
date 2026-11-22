@@ -167,6 +167,14 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
                 | "get_uptime"
                 | "get_net_dev"
         ),
+        // Read-only generated-contract plugins: the method set is the generated
+        // operation table, so the bridge cannot drift from the sealed schema.
+        "prometheus" => native::prometheus::api_types::OPERATIONS
+            .iter()
+            .any(|op| op.method == method),
+        "grafana" => native::grafana::api_types::OPERATIONS
+            .iter()
+            .any(|op| op.method == method),
         "qdrant" => matches!(
             method,
             "create_collection"
@@ -480,6 +488,40 @@ pub(crate) async fn dispatch(
                     method,
                     args,
                 )
+                .await
+                .map_err(|error| operation_error(ctx, error))?;
+            state = replace_fields(
+                ctx,
+                plugin,
+                &scope,
+                serde_json::to_value(observed)
+                    .map_err(|error| operation_error(ctx, error.into()))?,
+            )
+            .map_err(|error| operation_error(ctx, error))?;
+            result
+        }
+        "prometheus" => {
+            let result = native::prometheus::dispatch_prometheus_method(method, args)
+                .await
+                .map_err(|error| operation_error(ctx, error))?;
+            let observed = native::prometheus::current_state()
+                .await
+                .map_err(|error| operation_error(ctx, error))?;
+            state = replace_fields(
+                ctx,
+                plugin,
+                &scope,
+                serde_json::to_value(observed)
+                    .map_err(|error| operation_error(ctx, error.into()))?,
+            )
+            .map_err(|error| operation_error(ctx, error))?;
+            result
+        }
+        "grafana" => {
+            let result = native::grafana::dispatch_grafana_method(method, args)
+                .await
+                .map_err(|error| operation_error(ctx, error))?;
+            let observed = native::grafana::current_state()
                 .await
                 .map_err(|error| operation_error(ctx, error))?;
             state = replace_fields(

@@ -1,0 +1,19 @@
+{
+  "project": "grafana/grafana",
+  "tag": "v13.3.1",
+  "commit": "5db6ba887630c7fa12e5bfd063f2fa854025468c",
+  "url": "https://raw.githubusercontent.com/grafana/grafana/v13.3.1/public/openapi3.json",
+  "file": "openapi3.json",
+  "upstream_sha256": "89ff3e97e4d0e47ddd5a0bc757f2be2c909e655d275486a776a85fbde44dc661",
+  "sha256": "33bc1e11a1231636676c1855244c8af55f2ab94e98b39fa1eb508563ba993d3e",
+  "redactions": [
+    {
+      "pointer": "/components/schemas/NewApiKeyResult/properties/key/example",
+      "replacement": "glsa_REDACTED_UPSTREAM_EXAMPLE",
+      "reason": "Upstream documentation example shaped like a Grafana service-account token; GitHub push protection rejects it. Example values are dropped by prepare.py, so generated types are unaffected. upstream_sha256 is the untouched file at the tag."
+    }
+  ],
+  "license": "AGPL-3.0-only (Grafana OSS repository)",
+  "official": true,
+  "notes": "OpenAPI 3.0.3 conversion of Grafana's swagger (public/api-merged.json) published in the repo at the release tag."
+}

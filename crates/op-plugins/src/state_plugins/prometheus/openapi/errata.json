@@ -1,0 +1,22 @@
+{
+  "_comment": "Upstream spec defects, each proven by a live 3.16.0 response captured in prometheus/fixtures. Applied by prepare.py as JSON-pointer replacements on the vendored document before selection. Remove an entry once upstream fixes it.",
+  "patches": [
+    {
+      "pointer": "/components/schemas/QueryData/anyOf/3/properties/result/items",
+      "expect": {
+        "type": "string"
+      },
+      "value": {
+        "oneOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "evidence": "query_string.json: {\"resultType\":\"string\",\"result\":[1795339859.853,\"antix1\"]} - the timestamp is a JSON number, as for scalar results; the 3.16.0 spec declares both items as strings."
+    }
+  ]
+}

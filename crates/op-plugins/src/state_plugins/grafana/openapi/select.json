@@ -1,0 +1,56 @@
+{
+  "spec": "openapi3.json",
+  "methods": {
+    "health": {
+      "path": "/health",
+      "op": "get"
+    },
+    "search": {
+      "path": "/search",
+      "op": "get"
+    },
+    "get_dashboard_by_uid": {
+      "path": "/dashboards/uid/{uid}",
+      "op": "get"
+    },
+    "get_dashboard_tags": {
+      "path": "/dashboards/tags",
+      "op": "get"
+    },
+    "list_datasources": {
+      "path": "/datasources",
+      "op": "get"
+    },
+    "get_datasource_by_uid": {
+      "path": "/datasources/uid/{uid}",
+      "op": "get"
+    },
+    "check_datasource_health": {
+      "path": "/datasources/uid/{uid}/health",
+      "op": "get"
+    },
+    "list_folders": {
+      "path": "/folders",
+      "op": "get"
+    },
+    "get_folder_by_uid": {
+      "path": "/folders/{folder_uid}",
+      "op": "get"
+    },
+    "get_current_org": {
+      "path": "/org",
+      "op": "get"
+    },
+    "get_annotations": {
+      "path": "/annotations",
+      "op": "get"
+    },
+    "list_alert_rules": {
+      "path": "/v1/provisioning/alert-rules",
+      "op": "get"
+    }
+  },
+  "extra_schemas": [
+    "ErrorResponseBody"
+  ]
+}
