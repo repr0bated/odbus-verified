@@ -73,6 +73,10 @@ Base-OS fixes in the seed (antiX trixie rootfs, applied 2026-11-22):
 - `/etc/hostname` is empty. systemd sets the hostname from that file, which
   overrode `lxc.uts.name = <session>` (`deploy/provisioning/30-provision-container.sh`,
   `raw.lxc`); empty, the session hostname from provisioning stays.
+- `/etc/fstab` keeps only the `/tmp` tmpfs line. antiX shipped a bare-metal fstab
+  (root `LABEL=antix-seed`, plus `proc`, `sysfs`, `devtmpfs`); in a container LXC and
+  the Incus `root` device own those mounts, so `systemd-remount-fs` failed (`can't find
+  LABEL=antix-seed`, `/sys: permission denied`) and left the system `degraded`.
 - antiX network and desktop services are purged (2026-11-22). Containers are NIC-less
   (`deploy/provisioning/README.md`); these SysV services ran under systemd's sysv
   generator and fought the container's own address setup: `connman` rewrote `lo`
