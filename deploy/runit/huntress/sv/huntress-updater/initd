@@ -1,6 +1,6 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          huntress-runit-initd
+# Provides:          huntress-updater
 # Required-Start:
 # Required-Stop:
 # Default-Start:

@@ -1,0 +1,9 @@
+#!/bin/sh
+# auditd under runit (writes /var/log/audit/audit.log). Rules from
+# /etc/audit/rules.d are loaded first (the systemd unit does this as
+# ExecStartPost=augenrules --load; loading works without the daemon).
+exec 2>&1
+[ -x /usr/sbin/auditd ] || { echo "auditd not installed"; sleep 60; exit 1; }
+install -d -m 0700 /var/log/audit
+/usr/sbin/augenrules --load || echo "augenrules --load failed; continuing with current kernel rules"
+exec /usr/sbin/auditd -n

@@ -1,0 +1,12 @@
+/var/log/journal-compat/journal.json {
+	daily
+	rotate 7
+	maxsize 200M
+	missingok
+	notifempty
+	compress
+	delaycompress
+	postrotate
+		sv hup /etc/service/rsyslog >/dev/null 2>&1 || true
+	endscript
+}

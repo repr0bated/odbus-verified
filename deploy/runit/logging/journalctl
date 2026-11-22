@@ -1,0 +1,250 @@
+#!/usr/bin/python3
+"""journalctl emulation over rsyslog's journal-compat JSON stream.
+
+Opt-in only: put /usr/local/libexec/journal-compat/bin first in a program's
+PATH (runit env dir). Supports what log shippers use: -o json|short|cat,
+-n N, -r, -f, -t IDENT (repeatable), --after-cursor, --cursor-file,
+--show-cursor, -q. Source: /var/log/journal-compat/journal.json (+ .1 after
+rotation). Cursors are "jc;i=<inode>;o=<byte offset after entry>".
+"""
+import json
+import os
+import signal
+import sys
+import time
+from datetime import datetime
+
+SRC = os.environ.get("JOURNAL_COMPAT_FILE", "/var/log/journal-compat/journal.json")
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+
+def read(path):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+BOOT_ID = read("/proc/sys/kernel/random/boot_id").replace("-", "")
+MACHINE_ID = read("/etc/machine-id")
+
+
+def usage(msg):
+    sys.stderr.write("journalctl (journal-compat): %s\n" % msg)
+    sys.exit(1)
+
+
+def parse(argv):
+    o = {"output": "short", "n": None, "reverse": False, "follow": False,
+         "idents": set(), "after": None, "cursor_file": None, "show_cursor": False}
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        val = None
+        if a.startswith("--") and "=" in a:
+            a, val = a.split("=", 1)
+
+        def nxt():
+            nonlocal i, val
+            if val is not None:
+                return val
+            i += 1
+            if i >= len(argv):
+                usage("option %s needs a value" % a)
+            return argv[i]
+        if a in ("-o", "--output"):
+            o["output"] = nxt()
+        elif a.startswith("-o") and len(a) > 2:
+            o["output"] = a[2:]
+        elif a in ("-n", "--lines"):
+            v = nxt()
+            o["n"] = None if v == "all" else int(v.lstrip("+"))
+        elif a.startswith("-n") and len(a) > 2:
+            o["n"] = int(a[2:])
+        elif a in ("-r", "--reverse"):
+            o["reverse"] = True
+        elif a in ("-f", "--follow"):
+            o["follow"] = True
+        elif a in ("-t", "--identifier"):
+            o["idents"].add(nxt())
+        elif a == "--after-cursor":
+            o["after"] = nxt()
+        elif a == "--cursor-file":
+            o["cursor_file"] = nxt()
+        elif a == "--show-cursor":
+            o["show_cursor"] = True
+        elif a in ("-q", "--quiet", "--no-pager", "-a", "--all", "--merge", "-m"):
+            pass
+        elif a in ("--version",):
+            print("systemd 257 (journal-compat)")
+            sys.exit(0)
+        else:
+            sys.stderr.write("journalctl (journal-compat): ignoring unsupported option %s\n" % a)
+        i += 1
+    if o["cursor_file"] and not o["after"]:
+        c = read(o["cursor_file"])
+        if c:
+            o["after"] = c
+    return o
+
+
+def usec(ts):
+    try:
+        return int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp() * 1_000_000)
+    except (ValueError, AttributeError):
+        return int(time.time() * 1_000_000)
+
+
+def entry(line, ino, off):
+    try:
+        r = json.loads(line)
+    except ValueError:
+        return None
+    ident = r.get("ident", "")
+    e = {
+        "__CURSOR": "jc;i=%d;o=%d" % (ino, off),
+        "__REALTIME_TIMESTAMP": str(usec(r.get("ts"))),
+        "_BOOT_ID": BOOT_ID,
+        "_MACHINE_ID": MACHINE_ID,
+        "_HOSTNAME": r.get("host", ""),
+        "_TRANSPORT": "syslog",
+        "SYSLOG_IDENTIFIER": ident,
+        "_COMM": ident,
+        "PRIORITY": str(r.get("pri", "6")),
+        "SYSLOG_FACILITY": str(r.get("fac", "")),
+        "MESSAGE": r.get("msg", "").lstrip(" "),
+    }
+    pid = r.get("pid", "")
+    if pid and pid != "-":
+        e["_PID"] = e["SYSLOG_PID"] = str(pid)
+    return e
+
+
+def lines_from(path, start):
+    """Yield (entry, end_offset) for complete lines from byte offset start."""
+    try:
+        f = open(path, "rb")
+    except OSError:
+        return
+    with f:
+        ino = os.fstat(f.fileno()).st_ino
+        f.seek(start)
+        off = start
+        for raw in f:
+            if not raw.endswith(b"\n"):
+                break
+            off += len(raw)
+            e = entry(raw.decode("utf-8", "replace"), ino, off)
+            if e:
+                yield e, off
+
+
+def matches(o, e):
+    return not o["idents"] or e["SYSLOG_IDENTIFIER"] in o["idents"]
+
+
+def fmt(o, e):
+    if o["output"] in ("json", "json-seq", "export"):
+        return json.dumps(e, separators=(",", ":"))
+    if o["output"] == "cat":
+        return e["MESSAGE"]
+    ts = datetime.fromtimestamp(int(e["__REALTIME_TIMESTAMP"]) / 1e6).strftime("%b %d %H:%M:%S")
+    pid = "[%s]" % e["_PID"] if "_PID" in e else ""
+    return "%s %s %s%s: %s" % (ts, e["_HOSTNAME"], e["SYSLOG_IDENTIFIER"], pid, e["MESSAGE"])
+
+
+def cursor_pos(cur):
+    try:
+        parts = dict(p.split("=", 1) for p in cur.split(";")[1:])
+        return int(parts["i"]), int(parts["o"])
+    except (ValueError, KeyError, IndexError):
+        return None
+
+
+def start_points(o):
+    """List of (path, offset) to read, honouring --after-cursor."""
+    files = [p for p in (SRC + ".1", SRC) if os.path.exists(p)]
+    if not o["after"]:
+        return [(p, 0) for p in files]
+    pos = cursor_pos(o["after"])
+    if pos:
+        for idx, p in enumerate(files):
+            try:
+                if os.stat(p).st_ino == pos[0]:
+                    return [(p, pos[1])] + [(q, 0) for q in files[idx + 1:]]
+            except OSError:
+                pass
+    return [(p, 0) for p in files]
+
+
+def emit(o, e):
+    sys.stdout.write(fmt(o, e) + "\n")
+    sys.stdout.flush()
+
+
+def main():
+    o = parse(sys.argv[1:])
+    sel = []
+    src_pos = None  # (inode, offset) reached in the active file
+    for p, off in start_points(o):
+        end = off
+        for e, end in lines_from(p, off):
+            if matches(o, e):
+                sel.append(e)
+        if p == SRC:
+            try:
+                src_pos = (os.stat(p).st_ino, end)
+            except OSError:
+                pass
+    n = o["n"]
+    if n is None and o["follow"] and not o["after"]:
+        n = 10
+    if n is not None:
+        sel = sel[-n:] if n > 0 else []
+    if o["reverse"]:
+        sel.reverse()
+    last = None
+    for e in sel:
+        emit(o, e)
+        last = e["__CURSOR"]
+    if not o["follow"]:
+        if o["show_cursor"] and last:
+            print("-- cursor: %s" % last)
+        if o["cursor_file"] and last:
+            with open(o["cursor_file"], "w") as f:
+                f.write(last)
+        return
+    # follow: start at the current end of the active file, survive rotation.
+    # Resume exactly where the initial read stopped (no gap before following).
+    if src_pos:
+        ino, off = src_pos
+    else:
+        try:
+            st = os.stat(SRC)
+            ino, off = st.st_ino, st.st_size
+        except OSError:
+            ino, off = None, 0
+    while True:
+        try:
+            st = os.stat(SRC)
+        except OSError:
+            time.sleep(1)
+            continue
+        if st.st_ino != ino:
+            ino, off = st.st_ino, 0
+        if st.st_size < off:
+            off = 0
+        if st.st_size > off:
+            for e, end in lines_from(SRC, off):
+                off = end
+                if matches(o, e):
+                    emit(o, e)
+                    if o["cursor_file"]:
+                        with open(o["cursor_file"], "w") as f:
+                            f.write(e["__CURSOR"])
+        time.sleep(0.5)
+
+
+if __name__ == "__main__":
+    main()
