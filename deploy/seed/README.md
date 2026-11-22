@@ -64,3 +64,28 @@ Base-OS fixes in the seed (antiX trixie rootfs, applied 2026-11-22):
 - `/etc/hostname` is empty. systemd sets the hostname from that file, which
   overrode `lxc.uts.name = <session>` (`deploy/provisioning/30-provision-container.sh`,
   `raw.lxc`); empty, the session hostname from provisioning stays.
+- antiX network and desktop services are purged (2026-11-22). Containers are NIC-less
+  (`deploy/provisioning/README.md`); these SysV services ran under systemd's sysv
+  generator and fought the container's own address setup: `connman` rewrote `lo`
+  (dropping `opdbus-lo`'s address) and `avahi-daemon` joined mDNS on it. Purged, with
+  `apt-get purge` offline in the unsealed seed chroot (policy-rc.d 101, nothing
+  installed), then `apt-get autoremove --purge`:
+  - network: `connman`, `cmst`, `ceni`, `antix-wifi-switch`, `dhcpcd`, `dhcpcd-base`,
+    `ifupdown`, `pppoeconf`, `wpasupplicant`, `wpagui`, `modem-manager-gui`,
+    `avahi-daemon`, `libnss-mdns`, `ipp-usb`, `rpcbind`, `nfs-common`,
+    `connectshares-antix`, `ufw`
+  - bluetooth: `bluez`, `bluetooth`, `bluez-obexd`, `bluez-alsa-utils`,
+    `bluez-firmware`, `blueman`, `gnome-bluetooth-sendto`
+  - printing/scanning: `cups`, `cups-*`, `cups-filters*`, `printer-driver-*`
+    (cups-pdf, foo2zjs, gutenprint, hpcups, m2300w, pxljr, sag-gdi, splix), `sane-utils`
+  - desktop/hardware: `slimski`, `slimski-themes-extras-antix`, `gpm`, `smartmontools`,
+    `tlp`, `acpid`, `acpi-support`, `acpi-support-base`, `lm-sensors`
+  - the 66/dinit/s6-rc service packages for the above (other inits' files)
+  - autoremove: 34 orphaned libs (libnl-*, libnm0, iw, libavahi-core7, gutenprint and
+    evolution-data-server libs, etc.)
+  Kept on purpose: `systemd`, `dbus`, `fuse3`, `libc6`, `ca-certificates`, and every
+  library `ldd` lists for `3tched-fs`, `op-grpc-bridge`, `op-tunnel-door` and
+  `op-identity-accept`. `seatd` and `turnstile` stay because `polkitd` and `libseat1`
+  depend on `seatd | logind`; purging them would make apt pull in a logind. No network
+  config was added: no `.network` files in `/etc/systemd/network`, `systemd-networkd`
+  stays disabled, and `opdbus-lo` is the only unit that touches an interface.
