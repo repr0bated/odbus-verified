@@ -58,20 +58,23 @@ profile has only the root disk (on 3tched-pool) and the shared lungs socket.
 Apply by making the seed writable, copying these files, and setting it
 read-only again. Never while a container depends on the seed.
 
-Binaries in the seed: `op-grpc-bridge` is the golden build of `beef2b7`
-(`/mnt/@opdbus-system-a/opt/op-build/target/x86_64-unknown-linux-gnu/release/op-grpc-bridge`,
-sha256 `0ee7670d4d4351158c650dc13c8f7923c18055e924d940b3fd5ddc242ac4c72e`, installed
-2026-11-22 08:37 EST; the previous `580e206` build, sha256 `9cb39ace8272…`, is kept beside it
-as `op-grpc-bridge.pre-20261122-083710`). The running chatbot got the same bytes in its own
-rootfs with `35-refresh-binaries.sh 3tchedChatbot` and the `deploy/provisioning/lib.sh`
-`BIN_BRIDGE` override (other binaries pinned to their current bytes, so only the bridge changed). It must match the sealed catalog's state versions
-(identity_sled 4.11.0) and carries the host-only tunnel owner gate (`ccaf93e`), which
-the host binary `lib.sh` names by default (`/usr/local/libexec/op-dbus/bin/op-grpc-bridge`,
-`0dda1cef`) predates. The host bridge itself is not replaced. The bridge runs in the container.
-`op-tunnel-door` and `op-identity-accept`
-come from the golden live slot (`/srv/golden/opt/op-build/target/release`, the
-chroot build of `deploy/provisioning/README.md` step 2b). `3tched-fs` is the
-duplicate-path-fixed build named in `deploy/provisioning/lib.sh` (`BIN_3TCHED_FS`).
+Binaries in the seed (updated 2026-11-22 14:19 EST from golden release `daa771732f8b-301`,
+the build of `daa7717`; artifacts from
+`/mnt/@upper/golden-release-20261122T180452Z.hT9iSc/os/opt/op-build/target/x86_64-unknown-linux-gnu/release`;
+each previous file is kept beside it as `<file>.pre-20261122-141950`):
+- `op-grpc-bridge` sha256 `0ed6d37708c41a7dd101ec08f0abab180114f9211f113e74dc0f479b63a21a1d`
+  (same bytes as the live host bridge; replaced beef2b7 `0ee7670d…`)
+- `op-tunnel-door` sha256 `6d137319a070bbc617e0b41a3e84fb0e9ff5883c0b386736cc7be7f914035827` (replaced `eed88aa3…`)
+- `3tched-fs` sha256 `b1b5a32a4ab3b3c9836a49d0f3ee8b1230d4f2110fb34e0c533fc8e69f462b82`
+  (same bytes as the host 3tched-fs; replaced the duplicate-path-fixed `b37bffa2…`)
+- `op-identity-accept` unchanged (`795faf89…`).
+All need glibc ≤ 2.39; the seed has 2.41. The bridge must match the sealed catalog's state
+versions (catalog manifest `cc7fb0f4…`, unchanged by this build). Applied with the same
+unseal/copy/reseal as the overlay files, together with the `daa7717` overlay
+(`/run/mounts` tmpfiles, threetchedfs units, `op-grpc-bridge.service` opdbus-lo ordering,
+`nextdns.service` enabled via `multi-user.target.wants`, `nextdns-run`, `resolv.conf`) and the
+official NextDNS client `/usr/bin/nextdns` 1.50.2 (tarball SHA-256 checked against `lib.sh`
+`NEXTDNS_SHA256`; binary sha256 `e6b47528…`). Running containers are not changed by this.
 
 The container bridge does not own the door tunnel: the seed's `bridge.env` leaves
 `OP_TUNNEL_DOOR` unset, so `op-grpc-bridge` only serves its own TLS door on
@@ -117,9 +120,9 @@ Base-OS fixes in the seed (antiX trixie rootfs, applied 2026-11-22):
   stays disabled, and `opdbus-lo` is the only unit that touches an interface.
 
 `zcall` (operator CLI, `crates/op-dbus-cli/src/bin/zcall/`) is in the seed since
-2026-11-22: `/usr/local/bin/zcall`, release build sha256
-`20ef8e37400d08a08b56ec4e5dec78fabe01f832a6e447f62986415ff9f9f6c2` (glibc ≥ 2.34; replaced
-`f34dabdd…` the same day), and its bash completion
+2026-11-22: `/usr/local/bin/zcall`, from golden release `daa771732f8b-301` sha256
+`4b740d548331351951d13c62a31b4c80d19cc27e108eca7f495c5e3b0ddf78ad` (glibc ≥ 2.34; replaced the
+private build `20ef8e37…`, kept as `.pre-20261122-141950`), and its bash completion
 `/usr/share/bash-completion/completions/zcall` (`zcall completion bash`, sha256 `90011e90…`).
 It reads plugins, methods and argument schemas only from the mounted 3tchedFS namespace
 (`/run/mounts/3tchedFS`, the live mirror of the sealed blobs) and calls through the same
