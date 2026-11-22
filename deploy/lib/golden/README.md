@@ -114,3 +114,19 @@ The retained native identity owner creates an admitted empty placeholder
 and invokes `op-container` with the pinned SeedLocation. Existing nonempty
 roots, such as Jeremy's, require the dedicated digest-plan native upgrade;
 operator scripts must not replace those roots behind Incus.
+
+## Build preflight
+
+`build` runs `preflight.sh` before any mount or compile, so a build behaves the
+same whether it is started from a terminal, an agent or a cloud desktop:
+
+| Check | Refuses when | Override |
+| --- | --- | --- |
+| Source | `GOLDEN_SOURCE_REPO` is not `/srv/git/odbus-verified` | `GOLDEN_ALLOW_SOURCE_OVERRIDE=1` |
+| Static catalog match | a state plugin's literal `version()` in the source differs from the sealed catalog (`GOLDEN_SEALED_CATALOG`, default `/var/lib/opdbus/plugin-blobs`, the persisted catalog containers mount, read with `opblob inspect`) | `--allow-catalog-change` (deliberate bump, sealed after the build) |
+| No rebuild | the build OS already holds a verified successful execution receipt for the same commit and source digest | `--force` |
+
+Caches: C/C++ goes through ccache (`CC`/`CXX`, `/var/cache/op-build/ccache`), the
+cozorocks `librocksdb.a` is linked from `/var/cache/op-build/rocksdb/<key>`, and
+when `sccache` is installed in the build OS it is used as `RUSTC_WRAPPER` with
+`/var/cache/op-build/sccache`. The build log names each cache it uses.

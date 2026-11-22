@@ -81,11 +81,13 @@ atomic_state() {
 }
 usage() {
     cat <<'EOF'
-Usage: golden.sh [--apply|--dry-run] [--with-build] [--jobs N] [--mount PATH] VERB
+Usage: golden.sh [--apply|--dry-run] [--with-build] [--jobs N] [--mount PATH] [--force] [--allow-catalog-change] VERB
 Verbs: status plan init build seal cut release rotate rollback catalog-prepare mount-overlay activate activate-fuse deploy project recover
 init verifies the existing writable @opdbus-system-a; it never creates an OS.
 build bind-mounts GOLDEN_SOURCE_REPO (default /srv/git/odbus-verified) at
 /opt/op-build.src and records execution only; a retained copy there is kept.
+build preflight (preflight.sh) refuses a non-default source, a source/sealed-catalog
+plugin version mismatch (--allow-catalog-change) and an already-built commit (--force).
 seal separately reviews plugin removals and seals/stages inside the build OS.
 cut refuses unless the repo digest equals the execution receipt, then creates a
 unique readonly @upper/<release>/os and retains every old release.
@@ -103,6 +105,8 @@ parse_args() {
             --apply) APPLY=1 ;;
             --dry-run) APPLY=0 ;;
             --with-build) WITH_BUILD=1 ;;
+            --force) FORCE=1 ;;
+            --allow-catalog-change) ALLOW_CATALOG_CHANGE=1 ;;
             --jobs) [[ $# -ge 2 ]] || die 'missing jobs'; JOBS=$2; shift ;;
             --mount) [[ $# -ge 2 ]] || die 'missing mount'; MOUNT_POINT=$2; shift ;;
             -h|--help) usage; exit 0 ;;
@@ -165,6 +169,7 @@ rocksdb_cache_harvest() {
     log "cached RocksDB archive for cozorocks $version at $1/librocksdb.a (from ${newest#"$WORK"})"
 }
 plan_build() {
+    plan_preflight
     would "bind $SOURCE_REPO at $WORK/opt/op-build.src (retained copy renamed once, kept); chroot $WORK; cd /opt/op-build.src"
     would "build caches in nested subvolume $WORK$BUILD_CACHE: ccache gcc/g++ (installed into the build OS if absent); target librocksdb.a harvested first, then linked via ROCKSDB_LIB_DIR"
     would "paired retained schema capture; native --target x86_64-unknown-linux-gnu; CXXFLAGS='$BUILD_CXXFLAGS'; cargo build --workspace --release -j$JOBS"
@@ -178,12 +183,16 @@ do_build() {
     commit=$(source_commit) && [[ $commit =~ ^[0-9a-f]{40}$ ]] || die "source repository HEAD unreadable: $SOURCE_REPO"
     dirty=$(source_dirty)
     digest=$(source_digest "$SOURCE_REPO")
+    preflight_source
+    preflight_catalog
+    preflight_receipt "$commit" "$digest"
     capture_pair
     install -d -m 0700 "$WORK$CAPTURE_CONFIG"
     build_cache_prepare
     local rocks_dir cache_env=()
     rocks_dir=$(rocksdb_cache_dir)
     rocksdb_cache_harvest "$rocks_dir"
+    preflight_caches "$rocks_dir"
     if [[ -f $WORK$rocks_dir/librocksdb.a ]]; then
         cache_env+=(ROCKSDB_LIB_DIR="$rocks_dir" ROCKSDB_STATIC=1)
         log "linking cached RocksDB from $rocks_dir"
@@ -197,6 +206,8 @@ do_build() {
     fi
     cache_env+=(CC='ccache gcc' CXX='ccache g++' CCACHE_DIR="$BUILD_CACHE/ccache"
         CCACHE_MAXSIZE=20G CCACHE_COMPILERCHECK=content)
+    local sccache_line
+    while IFS= read -r sccache_line; do [[ -z $sccache_line ]] || cache_env+=("$sccache_line"); done < <(sccache_env)
     jq -n --arg commit "$commit" --argjson dirty "$dirty" --arg repo "$SOURCE_REPO" --arg digest "$digest" \
         '{exit:null,phase:"building",source_commit:$commit,source_dirty:$dirty,source_repo:$repo,source_digest:$digest}' \
         >"$WORK/opt/op-build/execution-receipt.json"
@@ -278,6 +289,7 @@ do_deploy() {
 }
 . "$SCRIPT_DIR/activate.sh"
 . "$SCRIPT_DIR/build-receipt.sh"
+. "$SCRIPT_DIR/preflight.sh"
 . "$SCRIPT_DIR/catalog-transition.sh"
 . "$SCRIPT_DIR/transaction.sh"
 main() {
