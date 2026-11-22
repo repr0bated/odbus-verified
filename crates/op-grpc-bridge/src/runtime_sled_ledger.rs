@@ -11,6 +11,15 @@
 //! The journal stays the authority; the ledger is the session's copy for
 //! end-of-session vectorization. Both appends and finalization run inside
 //! Runtime's admitted method path, never beside it.
+//!
+//! Ordering (owner, 2026-11-22): call -> execution tracker -> sled, as ONE
+//! action. `Runtime::call_owned` builds the schema-filtered entry
+//! (`SledEntry`, private fields: only this module can build one) and returns
+//! it with the result; the tracker's `ReceiptCompleted` commit
+//! (`Runtime::checkpoint_record`) appends it right after `apply_committed`,
+//! applying the personal filter inline (`chat_mode_policy::excluded_from_sled`:
+//! personal-mode calls, personal namespaces and soul writes never reach the
+//! ledger or its vectors). `append_from_tracker` is the sole writer.
 
 use std::io::Write as _;
 use std::os::unix::fs::DirBuilderExt as _;
@@ -22,13 +31,25 @@ use anyhow::{Context as _, ensure};
 use serde_json::{Value, json};
 
 use crate::core::{BackendStateUpdate, StateScope};
-use crate::runtime::{BackendContext, BackendOutcome, RuntimeError, VerifiedCaller};
+use crate::runtime::{BackendContext, BackendOutcome, Runtime, RuntimeError, VerifiedCaller};
+use op_execution_tracker::{ExecutionRecord, ExecutionStatus};
 
 const CURRENT: &str = "current.jsonl";
 const FINALIZING_PREFIX: &str = "finalizing-";
 
 /// Serializes appends with the rename that starts a finalization.
 static LEDGER_LOCK: Mutex<()> = Mutex::new(());
+
+/// One committed call's ledger line, produced by `entry_for` and consumed only
+/// by `append_from_tracker`. Fields are private to this module.
+#[derive(Clone)]
+pub(crate) struct SledEntry {
+    session: String,
+    method: String,
+    args: Value,
+    terminal_event_hash: Value,
+    entry: Value,
+}
 
 pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     plugin == "identity_sled" && method == "finalize_session"
@@ -51,15 +72,13 @@ fn ledger_dir(session: &str) -> anyhow::Result<Option<PathBuf>> {
     Ok(Some(ledger))
 }
 
-/// Append one committed call to the caller's sled ledger. A session without
-/// a sled (a human without a container) has no ledger. Called after commit:
-/// a failure here is logged, never turned into an unknown outcome, because
-/// the journal already holds the event.
-pub(crate) async fn append_committed(
+/// The ledger line for one committed call (nothing is written here). `None`
+/// for the ledger's own finalization method.
+pub(crate) fn entry_for(
     caller: &VerifiedCaller, plugin: &str, method: &str, declaration: &op_state_store::MethodDecl,
     args: &Value, receipt: &op_state_store::method_receipt::MethodExecutionReceipt,
-) {
-    if supports(plugin, method) { return; }
+) -> Option<SledEntry> {
+    if supports(plugin, method) { return None; }
     // The journal's audit view of the arguments, filtered by the sealed args
     // schema: only described fields, no secret or private subtree.
     let audited = if plugin == "elevation" && method == "authorize_task" {
@@ -87,8 +106,61 @@ pub(crate) async fn append_committed(
         "operation_id": receipt.operation_id, "event_hash": receipt.event_hash,
         "terminal_event_hash": receipt.terminal_event_hash, "text": lines.join("\n"),
     });
-    let session = caller.session_id.clone();
+    Some(SledEntry {
+        session: caller.session_id.clone(),
+        method: method.to_owned(),
+        args: audited,
+        terminal_event_hash: entry["terminal_event_hash"].clone(),
+        entry,
+    })
+}
+
+/// The tracker record admits the entry only at `ReceiptCompleted`, with the
+/// entry's own receipt terminal proof and session.
+fn admitted_by_record(record: &ExecutionRecord, staged: &SledEntry) -> bool {
+    record.status == ExecutionStatus::ReceiptCompleted
+        && record.context.executor_session_id.as_deref() == Some(staged.session.as_str())
+        && record.proof.as_ref().is_some_and(|proof| {
+            proof.operation_id == record.context.operation_id
+                && proof.terminal.as_ref().is_some_and(|terminal| {
+                    serde_json::to_value(&terminal.event_hash).ok().as_ref() == Some(&staged.terminal_event_hash)
+                })
+        })
+}
+
+/// Is the session's effective chat mode Personal right now? Stored selection
+/// first; otherwise the session kind's default (`chat_mode_policy`).
+fn session_is_personal(store: &op_cozo_store::CozoGraphShuttle, session: &str) -> anyhow::Result<bool> {
+    let (kind, _) = crate::chat_mode_policy::session_identity(store, session)?;
+    let rows = store.run_query(
+        "?[document] := *chat_context_selection{session_id, document}, session_id = $session",
+        Some(json!({"session": session})),
+    )?;
+    let stored = match rows.as_array().and_then(|rows| rows.first()) {
+        None => None,
+        Some(row) => {
+            let document = row["document"].as_str().context("invalid stored chat context")?;
+            let selection: op_plugins::state_plugins::project::ChatContextSelection =
+                serde_json::from_str(document)?;
+            Some(selection.mode)
+        }
+    };
+    Ok(crate::chat_mode_policy::effective_mode_is_personal(stored, kind))
+}
+
+/// The ONLY sled ledger writer, part of the tracker's `ReceiptCompleted`
+/// commit (`Runtime::checkpoint_record`, right after `apply_committed`). A
+/// failure is logged, never turned into an unknown outcome: the journal and
+/// the tracker already hold the event.
+pub(crate) async fn append_from_tracker(runtime: &Runtime, record: &ExecutionRecord, staged: SledEntry) {
+    if !admitted_by_record(record, &staged) { return; }
+    let store = runtime.identity_store().clone();
     let outcome = tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+        let personal = session_is_personal(&store, &staged.session)?;
+        if crate::chat_mode_policy::excluded_from_sled(personal, &staged.session, &staged.method, &staged.args) {
+            return Ok(());
+        }
+        let SledEntry { session, entry, .. } = staged;
         let Some(ledger) = ledger_dir(&session)? else { return Ok(()) };
         let mut line = serde_json::to_vec(&entry)?;
         line.push(b'\n');
@@ -99,10 +171,11 @@ pub(crate) async fn append_committed(
         file.sync_data()?;
         Ok(())
     }).await;
+    let tool = &record.context.tool_name;
     match outcome {
         Ok(Ok(())) => {}
-        Ok(Err(error)) => tracing::warn!(%error, plugin, method, "sled ledger append failed"),
-        Err(error) => tracing::warn!(%error, plugin, method, "sled ledger append task failed"),
+        Ok(Err(error)) => tracing::warn!(%error, %tool, "sled ledger append failed"),
+        Err(error) => tracing::warn!(%error, %tool, "sled ledger append task failed"),
     }
 }
 
@@ -177,4 +250,47 @@ pub(crate) async fn dispatch(ctx: &BackendContext<'_>, args: &Value) -> Result<B
     Ok(BackendOutcome { result, state: BackendStateUpdate::Unchanged,
         scope: StateScope::Private { principal_id: ctx.caller.principal_id.clone(), session_id: ctx.caller.session_id.clone() },
         additional: Vec::new(), guard: None })
+}
+
+#[cfg(test)]
+mod tracker_boundary_tests {
+    use super::*;
+    use op_execution_tracker::{ExecutionContext, ExecutionProof};
+    use op_state_store::method_receipt::MethodEventProof;
+
+    const SID: &str = "2a2d9aa8-5468-309c-2db4-342221450de8";
+
+    fn staged(hash: &str) -> SledEntry {
+        SledEntry { session: SID.into(), method: "m".into(), args: json!({}),
+            terminal_event_hash: serde_json::to_value(hash.to_owned()).unwrap(), entry: json!({}) }
+    }
+
+    fn record(status: ExecutionStatus, terminal: Option<&str>) -> ExecutionRecord {
+        let now = chrono::Utc::now();
+        ExecutionRecord {
+            context: ExecutionContext {
+                operation_id: "op-1".into(), trace_id: String::new(), parent_operation_id: None,
+                tool_name: "p.m".into(), executor_principal_id: Some("principal".into()),
+                executor_session_id: Some(SID.into()), attribution: None,
+            },
+            status, created_at: now, updated_at: now, duration_ms: 0, cursor: None,
+            proof: terminal.map(|hash| ExecutionProof {
+                operation_id: "op-1".into(),
+                attempt: MethodEventProof { event_id: 1, event_hash: "a".into() },
+                terminal: Some(MethodEventProof { event_id: 2, event_hash: hash.into() }),
+            }),
+        }
+    }
+
+    #[test]
+    fn only_the_receipt_completed_tracker_commit_admits_a_sled_append() {
+        let entry = staged("t");
+        assert!(admitted_by_record(&record(ExecutionStatus::ReceiptCompleted, Some("t")), &entry));
+        // Not yet committed by the tracker, or a different terminal proof.
+        assert!(!admitted_by_record(&record(ExecutionStatus::Running, Some("t")), &entry));
+        assert!(!admitted_by_record(&record(ExecutionStatus::ReceiptCompleted, None), &entry));
+        assert!(!admitted_by_record(&record(ExecutionStatus::ReceiptCompleted, Some("other")), &entry));
+        assert!(!admitted_by_record(&record(ExecutionStatus::Completed, Some("t")), &entry));
+    }
+
 }

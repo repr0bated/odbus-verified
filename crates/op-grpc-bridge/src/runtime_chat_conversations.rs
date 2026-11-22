@@ -313,6 +313,7 @@ impl ConversationBackend {
                         return Err(error);
                     }
                 };
+                let episode_output = serde_json::to_string(&content).unwrap_or_default();
                 let (turn, snapshot) = match self
                     .commit(
                         ctx,
@@ -353,6 +354,12 @@ impl ConversationBackend {
                     )
                     .await
                     .map_err(|error| RuntimeError::unknown(error.into()))?;
+                // Task 27.4: a control-plane turn of the chatbot or a subsidiary is
+                // also a ctl_plane_chatbot episode in the asking session's scope.
+                // The answer is already committed; a failure here is logged only.
+                if let Err(error) = self.commit_control_plane_episode(ctx, &id, &owner, episode_output).await {
+                    tracing::warn!(%error, turn_id = %id, "control-plane chat episode not committed");
+                }
                 let result = if method == "respond_to_user" {
                     serde_json::to_value(RespondToUserOutput {
                         response_id: turn.response_id,
@@ -400,6 +407,65 @@ impl ConversationBackend {
             result,
             self.snapshot(&ctx.caller.principal_id).await?,
         ))
+    }
+
+    /// Owner rule (2026-11-22): the control-plane chatbot keeps its chat history
+    /// in its own `ctl_plane_chatbot` plugin; a subsidiary uses the same plugin
+    /// under `<subsidiary name>::ctrlplane-chat` and owns only that prefix.
+    /// Only ControlPlane turns qualify, so personal content is never an episode.
+    async fn commit_control_plane_episode(
+        &self,
+        ctx: &BackendContext<'_>,
+        turn_id: &str,
+        owner: &VerifiedCaller,
+        decision_output: String,
+    ) -> Result<()> {
+        use op_plugins::state_plugins::ctl_plane_chatbot_methods::{
+            CompletedChatEpisode, build_completed_chat_episode, owns_conversation,
+            subsidiary_conversation_prefix,
+        };
+        let Some(continuation) = self.continuations.lock()
+            .map_err(|_| anyhow::anyhow!("pending continuation lock poisoned"))?
+            .get(turn_id).cloned() else { return Ok(()) };
+        let request = continuation.request;
+        if request.context.mode != op_plugins::state_plugins::project::ChatMode::ControlPlane {
+            return Ok(());
+        }
+        let store = ctx.runtime.identity_store().clone();
+        let session = owner.session_id.clone();
+        let (kind, name) = blocking(move || crate::chat_mode_policy::session_identity(&store, &session)).await?;
+        let conversation_id = match kind {
+            crate::chat_mode_policy::SessionKind::Identity => return Ok(()),
+            crate::chat_mode_policy::SessionKind::ControlPlaneChatbot => request.conversation_id.clone(),
+            crate::chat_mode_policy::SessionKind::Subsidiary => {
+                let name = name.context("subsidiary native instance name absent")?;
+                let id = format!("{}::{}", subsidiary_conversation_prefix(&name)?, request.conversation_id);
+                ensure!(owns_conversation(Some(&name), &id), "subsidiary conversation prefix not owned");
+                id
+            }
+        };
+        if kind == crate::chat_mode_policy::SessionKind::ControlPlaneChatbot {
+            ensure!(owns_conversation(None, &conversation_id), "chatbot cannot write a subsidiary prefix");
+        }
+        let goal_text = request.messages.iter().rev()
+            .find(|message| message.role == "user")
+            .map(|message| message.content.clone());
+        let now = chrono::Utc::now();
+        let episode = build_completed_chat_episode(CompletedChatEpisode {
+            scope: op_cozo_store::EpisodeScope {
+                principal_id: owner.principal_id.clone(),
+                session_id: owner.session_id.clone(),
+                session_genesis: owner.session_genesis.clone(),
+            },
+            conversation_id: Some(conversation_id),
+            goal_text,
+            decision_output,
+            tools: Vec::new(),
+            started_at: now,
+            ended_at: now,
+        })?;
+        ctx.runtime.chat().commit_episode(ctx.runtime, owner, episode).await?;
+        Ok(())
     }
 
     async fn submit(

@@ -145,6 +145,8 @@ pub(crate) struct RuntimeResult {
     /// Verified disclosure authority, with no execution gate or inherited path.
     pub disclosure_caller: VerifiedCaller,
     checkpoint_target: CheckpointTarget,
+    /// Ledger line written by the tracker's ReceiptCompleted commit (one action).
+    sled_entry: Option<crate::runtime_sled_ledger::SledEntry>,
 }
 
 /// One admitted root retains the gate until all of its nested native work ends.
@@ -582,6 +584,19 @@ impl Runtime {
                 // Grants and checkpoint admission run unchanged in call_owned.
                 match self.call_owned(caller.clone(), plugin.to_owned(), method.to_owned(), fallback_arguments, operation_id).await {
                     Ok(completed) => {
+                        // Same tracker step as Runtime::call: the receipt is
+                        // committed by the tracker before anything reaches the sled.
+                        let proof = op_execution_tracker::ExecutionProof {
+                            operation_id: context.operation_id.clone(),
+                            attempt: op_state_store::method_receipt::MethodEventProof {
+                                event_id: completed.receipt.event_id, event_hash: completed.receipt.event_hash.clone(),
+                            },
+                            terminal: Some(op_state_store::method_receipt::MethodEventProof {
+                                event_id: completed.receipt.terminal_event_id,
+                                event_hash: completed.receipt.terminal_event_hash.clone(),
+                            }),
+                        };
+                        self.checkpoint_receipt_completed(&context, &target, proof, completed.sled_entry.clone()).await?;
                         self.revalidate_result(&completed, plugin, method).await?;
                         Ok(completed)
                     }
@@ -915,7 +930,7 @@ impl Runtime {
                             event_id: completed.receipt.terminal_event_id, event_hash: completed.receipt.terminal_event_hash.clone(),
                         }),
                     };
-                    runtime.checkpoint_transition(&context, &target, Status::ReceiptCompleted, Some(proof.clone())).await?;
+                    runtime.checkpoint_receipt_completed(&context, &target, proof.clone(), completed.sled_entry.clone()).await?;
                     // call_owned has returned: no root gate is retained here.
                     let status = match runtime.checkpoint_postflight(&caller, &target, &completed).await? {
                         GroundedOutcome::Succeeded => Status::Completed,
@@ -1163,7 +1178,9 @@ impl Runtime {
                 return Err(correlate(RuntimeError::review("completed response owner unavailable"))),
             None => {}
         }
-        crate::runtime_sled_ledger::append_committed(&caller, &plugin, &method, &declaration, &args, &receipt).await;
+        // Built here, written by the tracker's ReceiptCompleted commit
+        // (checkpoint_record): tracker response and sled append are one action.
+        let sled_entry = crate::runtime_sled_ledger::entry_for(&caller, &plugin, &method, &declaration, &args, &receipt);
         let effective_hash = self.core().committed_snapshot(&committed_scope, &plugin, &committed_path)
             .map_err(|error| correlate(RuntimeError::unknown(error)))?
             .map(|snapshot| snapshot.effective_hash)
@@ -1199,6 +1216,7 @@ impl Runtime {
             effective_hash,
             disclosure_caller,
             checkpoint_target: completed_target,
+            sled_entry,
         };
         self.revalidate_result(&completed, &plugin, &method)
             .await

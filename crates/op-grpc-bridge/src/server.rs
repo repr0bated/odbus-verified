@@ -74,6 +74,9 @@ pub async fn bind_production(
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
         .build_v1()?;
     let chat = ChatLinkService::from_env(service.clone()).await?;
+    // Exchange point (task 27.5): set variables / receive schema, zero logic.
+    let exchange_read = service.clone();
+    let exchange_set = service.clone();
     let web = tonic_web::GrpcWebLayer::new();
     let app = tonic::service::Routes::new(web.layer(StateSyncServer::new(service.clone())))
         .add_service(web.layer(PluginServiceServer::new(service.clone())))
@@ -106,6 +109,15 @@ pub async fn bind_production(
         .route(
             "/mqtt",
             axum::routing::get(crate::mqtt_doorbell_relay::upgrade),
+        )
+        .route(
+            crate::exchange_point::PATH,
+            axum::routing::get(move |headers: axum::http::HeaderMap| {
+                crate::exchange_point::read(exchange_read.clone(), headers)
+            })
+            .post(move |headers: axum::http::HeaderMap, body: axum::Json<serde_json::Value>| {
+                crate::exchange_point::set(exchange_set.clone(), headers, body)
+            }),
         )
         .nest_service("/compliance/api", compliance_api)
         .nest_service("/compliance", compliance_static)

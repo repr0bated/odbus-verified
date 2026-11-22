@@ -223,7 +223,7 @@ impl Projects {
             }
             "get_context" => {
                 let _: GetContextInput = serde_json::from_value(args.clone())?;
-                let selection = stored_selection(ctx).await?;
+                let selection = selection_or_default(ctx, &grants).await?;
                 return Ok(serde_json::to_value(
                     resolve(
                         ctx,
@@ -489,7 +489,39 @@ impl Projects {
     }
 }
 
-async fn stored_selection(ctx: &BackendContext<'_>) -> Result<ChatContextSelection> {
+/// The kind of the asking session for mode admission (task 27.1): read from
+/// its committed sled record (native parent label, configured chatbot key).
+pub(crate) async fn session_kind(ctx: &BackendContext<'_>) -> Result<crate::chat_mode_policy::SessionKind> {
+    let store = ctx.runtime.identity_store().clone();
+    let session = ctx.caller.session_id.clone();
+    let (kind, _) = tokio::task::spawn_blocking(move || {
+        crate::chat_mode_policy::session_identity(&store, &session)
+    })
+    .await??;
+    Ok(kind)
+}
+
+/// The stored selection, or the session kind's default when none was made
+/// (Personal for an identity; never Personal for a subsidiary).
+async fn selection_or_default(ctx: &BackendContext<'_>, grants: &BTreeSet<String>) -> Result<ChatContextSelection> {
+    match stored_selection(ctx).await? {
+        Some(selection) => Ok(selection),
+        None => Ok(ChatContextSelection {
+            mode: crate::chat_mode_policy::default_mode(grants, session_kind(ctx).await?),
+            ..ChatContextSelection::default()
+        }),
+    }
+}
+
+/// Modes this session may select and its default; the exchange point reads
+/// exactly this (task 27.5), so UI and admission cannot disagree.
+pub(crate) async fn allowed_modes(ctx: &BackendContext<'_>) -> Result<(Vec<ChatMode>, ChatMode)> {
+    let grants: BTreeSet<String> = ctx.runtime.current_grants(ctx.caller).await?.into_iter().collect();
+    let kind = session_kind(ctx).await?;
+    Ok((crate::chat_mode_policy::allowed_modes(&grants, kind), crate::chat_mode_policy::default_mode(&grants, kind)))
+}
+
+async fn stored_selection(ctx: &BackendContext<'_>) -> Result<Option<ChatContextSelection>> {
     let rows = query(
         ctx,
         "?[document] := *chat_context_selection{session_id, document}, session_id = $session",
@@ -502,12 +534,12 @@ async fn stored_selection(ctx: &BackendContext<'_>) -> Result<ChatContextSelecti
         .context("invalid chat context selection rows")?;
     ensure!(rows.len() <= 1, "ambiguous session chat context");
     match rows.first() {
-        None => Ok(ChatContextSelection::default()),
-        Some(row) => Ok(serde_json::from_str(
+        None => Ok(None),
+        Some(row) => Ok(Some(serde_json::from_str(
             row["document"]
                 .as_str()
                 .context("invalid stored chat context")?,
-        )?),
+        )?)),
     }
 }
 
@@ -516,7 +548,7 @@ async fn stored_selection(ctx: &BackendContext<'_>) -> Result<ChatContextSelecti
 pub(crate) async fn current_chat_context(ctx: &BackendContext<'_>) -> Result<ResolvedChatContext> {
     ctx.runtime.authorize_nested(ctx.caller, "project", "get_context").await?;
     let grants = ctx.runtime.current_grants(ctx.caller).await?.into_iter().collect();
-    let selection = stored_selection(ctx).await?;
+    let selection = selection_or_default(ctx, &grants).await?;
     resolve(ctx, &grants, ResolveContextInput {
         mode: selection.mode,
         project_id: selection.project_id,
@@ -536,6 +568,13 @@ async fn resolve(
     ensure!(
         input.mode == ChatMode::Personal || input.personal_namespace.is_none(),
         "personal_namespace is only valid in personal mode"
+    );
+    // One admission rule for every resolver and the exchange point (27.1):
+    // a subsidiary has no Personal mode.
+    ensure!(
+        crate::chat_mode_policy::admissible(input.mode, grants, session_kind(ctx).await?),
+        "{:?} mode is not admitted for this identity",
+        input.mode
     );
     let session = &ctx.caller.session_id;
     let mut context = ResolvedChatContext {

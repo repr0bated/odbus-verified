@@ -110,6 +110,13 @@ pub(crate) mod runtime_cognitive;
 pub(crate) mod runtime_tunnel;
 #[path = "runtime_sled_ledger.rs"]
 pub(crate) mod runtime_sled_ledger;
+#[path = "chat_mode_policy.rs"]
+pub(crate) mod chat_mode_policy;
+#[path = "exchange_point.rs"]
+pub(crate) mod exchange_point;
+#[cfg(test)]
+#[path = "tracker_hub_tests.rs"]
+mod tracker_hub_tests;
 #[path = "runtime_creation.rs"]
 pub(crate) mod runtime_creation;
 #[path = "runtime_identity.rs"]

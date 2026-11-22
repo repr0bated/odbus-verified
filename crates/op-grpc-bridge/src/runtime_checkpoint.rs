@@ -199,19 +199,29 @@ impl Runtime {
     pub(super) async fn checkpoint_transition(&self, context: &ExecutionContext,
         target: &CheckpointTarget, status: ExecutionStatus, proof: Option<ExecutionProof>)
         -> Result<ExecutionRecord, RuntimeError> {
-        self.checkpoint_record(context, &target.plugin_id, &target.method, Some(&target.schema_hash), status, proof).await
+        self.checkpoint_record(context, &target.plugin_id, &target.method, Some(&target.schema_hash), status, proof, None).await
+    }
+
+    /// The tracker's ReceiptCompleted commit and the sled ledger append, as one
+    /// action (owner, 2026-11-22). The only caller-facing way to reach the sled.
+    pub(super) async fn checkpoint_receipt_completed(&self, context: &ExecutionContext,
+        target: &CheckpointTarget, proof: ExecutionProof,
+        sled: Option<crate::runtime_sled_ledger::SledEntry>) -> Result<ExecutionRecord, RuntimeError> {
+        self.checkpoint_record(context, &target.plugin_id, &target.method, Some(&target.schema_hash),
+            ExecutionStatus::ReceiptCompleted, Some(proof), sled).await
     }
 
     /// Invalid input has no accepted request digest or attempt. Only resolvable
     /// canonical method metadata is persisted; no body/hash is fabricated.
     pub(super) async fn checkpoint_rejection(&self, context: &ExecutionContext,
         plugin: &str, method: &str) -> Result<ExecutionRecord, RuntimeError> {
-        self.checkpoint_record(context, plugin, method, None, ExecutionStatus::Denied, None).await
+        self.checkpoint_record(context, plugin, method, None, ExecutionStatus::Denied, None, None).await
     }
 
     async fn checkpoint_record(&self, context: &ExecutionContext, plugin: &str,
         method: &str, expected_schema: Option<&str>, status: ExecutionStatus,
-        proof: Option<ExecutionProof>) -> Result<ExecutionRecord, RuntimeError> {
+        proof: Option<ExecutionProof>, sled: Option<crate::runtime_sled_ledger::SledEntry>)
+        -> Result<ExecutionRecord, RuntimeError> {
         let mut record = self.tracker().get_execution(context, &context.operation_id).await
             .ok_or_else(|| RuntimeError::unknown(anyhow::anyhow!("checkpoint reservation unavailable")))?;
         record.status = status;
@@ -233,6 +243,12 @@ impl Runtime {
                 }
             })?;
         self.tracker().apply_committed(record.clone()).await?;
+        // call -> execution tracker -> sled, one action: the ReceiptCompleted
+        // commit carries its ledger line; personal content is filtered inline
+        // (owner, 2026-11-22; task 27.2/27.7).
+        if let Some(entry) = sled {
+            crate::runtime_sled_ledger::append_from_tracker(self, &record, entry).await;
+        }
         let (cursor, stats) = self.core().execution_control_stats(&StateScope::Private {
             principal_id: context.executor_principal_id.clone().expect("validated checkpoint scope"),
             session_id: context.executor_session_id.clone().expect("validated checkpoint scope"),
@@ -280,6 +296,7 @@ impl Runtime {
             // A mounted method receipt is not proof of the current object's
             // effective hash; leave unavailable rather than invent one.
             effective_hash: String::new(), disclosure_caller, checkpoint_target: target,
+            sled_entry: None,
         };
         match self.grounded_outcome(&completed).await? {
             GroundedOutcome::Succeeded | GroundedOutcome::DomainFailed => Ok(completed),
@@ -348,7 +365,7 @@ impl Runtime {
         target.result_digest = Some(BridgeCore::method_value_digest(&receipt.result)?);
         let completed = RuntimeResult {
             result: receipt.result.clone(), receipt, effective_hash: String::new(),
-            disclosure_caller: caller, checkpoint_target: target,
+            disclosure_caller: caller, checkpoint_target: target, sled_entry: None,
         };
         if previous.status.is_terminal() {
             // A final decision cannot be reclassified by later evidence. Current

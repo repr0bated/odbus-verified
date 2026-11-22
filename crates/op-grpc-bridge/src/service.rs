@@ -120,6 +120,12 @@ impl BridgeService {
         }
     }
 
+    /// The native runtime, for door routes that forward to `Runtime::call`
+    /// (the exchange point). `None` on a core-only service.
+    pub(crate) fn runtime_handle(&self) -> Option<Arc<Runtime>> {
+        self.runtime.clone()
+    }
+
     pub(crate) async fn authenticate<T: Sync>(
         &self,
         request: &Request<T>,
