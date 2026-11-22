@@ -187,6 +187,12 @@ async fn auto_specs(runtime: &Runtime) -> Vec<FuseMountSpec> {
     // SAFETY: getuid always succeeds.
     let uid = unsafe { libc::getuid() };
     let mut specs = Vec::new();
+    // The bridge runs with umask 077, so create_dir_all would make /run/mounts
+    // 0700 when it wins the boot race; the standalone 3tched-fs/threetched-fs
+    // helper requires root:root 0755 there and refuses to mount otherwise.
+    if let Err(error) = ensure_shared_mounts_root(Path::new("/run/mounts")) {
+        tracing::warn!(%error, "FUSE auto-mount: cannot prepare /run/mounts");
+    }
     for name in names {
         let root = PathBuf::from("/run/mounts/by-container").join(&name);
         let mount_3tched = root.join("3tchedFS");
@@ -198,6 +204,25 @@ async fn auto_specs(runtime: &Runtime) -> Vec<FuseMountSpec> {
         specs.push(FuseMountSpec { container: name, mount_3tched, mount_threetched, call_owner_uid: uid, store_root: PathBuf::from("/dev/shm/3tchedfs-bridge") });
     }
     specs
+}
+
+/// Create the shared mount root as 0755 (never via the process umask) and
+/// repair a 0700 root left by an earlier bridge start. Symlinks are refused.
+fn ensure_shared_mounts_root(root: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+    match std::fs::DirBuilder::new().mode(0o755).create(root) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(error),
+    }
+    let metadata = std::fs::symlink_metadata(root)?;
+    if !metadata.is_dir() {
+        return Err(std::io::Error::other("mount root is not a directory"));
+    }
+    if metadata.permissions().mode() & 0o7777 != 0o755 {
+        std::fs::set_permissions(root, std::fs::Permissions::from_mode(0o755))?;
+    }
+    Ok(())
 }
 
 /// Keep namespace handles open, like the lungs ProcessIdentity binding, so
