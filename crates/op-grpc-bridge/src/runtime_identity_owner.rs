@@ -442,8 +442,15 @@ async fn adopt_identity_volume(
     let inline = claims.to_inline_ref().map_err(|error| anyhow::anyhow!("seal identity: {error}"))?;
     let installed = std::fs::read_to_string(dir.join("sealed_id")).context("sled has no sealed_id")?;
     ensure!(installed.trim() == inline, "sled sealed_id differs from the decoy-issued identity");
+    // The configured control-plane chatbot may be re-provisioned from @seed
+    // under a new Incus UUID. Prove its previous native instance is gone
+    // (neither its name nor its UUID exists) before the commit may rebind it.
+    let previous_present = match chatbot_previous_instance(&cozo, &key, session)? {
+        Some((name, uuid)) => Some(native.instance_name_or_uuid_present(&name, &uuid).await?),
+        None => None,
+    };
     let cozo = cozo.clone();
-    tokio::task::spawn_blocking(move || commit_volume_identity(&cozo, &key, &claims, &inline, instance)).await?
+    tokio::task::spawn_blocking(move || commit_volume_identity(&cozo, &key, &claims, &inline, instance, previous_present)).await?
 }
 
 fn volume_actor_kind(chatbot: bool, declared: Option<&str>, parent: Option<&str>) -> anyhow::Result<&'static str> {
@@ -459,9 +466,38 @@ fn volume_actor_kind(chatbot: bool, declared: Option<&str>, parent: Option<&str>
     }
 }
 
+/// The stored native name and UUID of the configured control-plane chatbot,
+/// when this volume is that chatbot. Every other identity returns None.
+fn chatbot_previous_instance(cozo: &CozoGraphShuttle, key: &str, session: &str)
+    -> anyhow::Result<Option<(String, String)>> {
+    if configured_chatbot_key().as_deref() != Some(key)
+        || control_plane_chatbot_session_id().as_deref() != Some(session) {
+        return Ok(None);
+    }
+    let expected = cozo.read_identity_revision(session)?;
+    let Some(record) = expected.record.as_ref() else { return Ok(None) };
+    let sled = crate::runtime_identity::record_to_sled(record, expected.genesis.as_ref())?;
+    Ok(sled.instance.as_ref().and_then(|stored| {
+        let uuid = stored.config.as_ref()?.get("volatile.uuid")?.clone();
+        Some((stored.name.clone(), uuid))
+    }))
+}
+
+/// The only exception to the startup UUID fence: the configured control-plane
+/// chatbot key and session, a real UUID change, and proof that no instance
+/// with the previous name or UUID still exists.
+fn chatbot_rebind_allowed(key: &str, session: &str, configured_key: Option<&str>,
+    configured_session: Option<&str>, old_uuid: Option<&str>, new_uuid: Option<&str>,
+    previous_present: Option<bool>) -> bool {
+    configured_key == Some(key) && configured_session == Some(session)
+        && old_uuid.is_some_and(|old| !old.is_empty()) && new_uuid.is_some_and(|new| !new.is_empty())
+        && old_uuid != new_uuid && previous_present == Some(false)
+}
+
 fn commit_volume_identity(
     cozo: &CozoGraphShuttle, key: &str, claims: &op_identity::sealed_id::SealedId, inline: &str,
     instance: op_plugins::state_plugins::incus::IncusInstance,
+    chatbot_previous_present: Option<bool>,
 ) -> anyhow::Result<bool> {
     let session = claims.session_id.clone();
     let config = instance.config.as_ref().context("identity native configuration absent")?;
@@ -493,16 +529,33 @@ fn commit_volume_identity(
         let mut sled = crate::runtime_identity::record_to_sled(record, expected.genesis.as_ref())?;
         ensure!(record.wireguard_pubkey == key && record.principal_kind.as_deref() == Some(kind),
             "identity key or actor class changed");
+        let mut reprovisioned = None;
         if let Some(stored) = &sled.instance {
-            ensure!(stored.name == instance.name && uuid_of(stored).is_some()
-                && uuid_of(stored) == uuid_of(&instance),
-                "startup import cannot replace an existing native identity UUID");
+            let same = stored.name == instance.name && uuid_of(stored).is_some()
+                && uuid_of(stored) == uuid_of(&instance);
+            if !same {
+                let (old, new) = (uuid_of(stored), uuid_of(&instance));
+                ensure!(chatbot_rebind_allowed(key, &session, configured_chatbot_key().as_deref(),
+                    control_plane_chatbot_session_id().as_deref(), old.as_deref(), new.as_deref(),
+                    chatbot_previous_present),
+                    "startup import cannot replace an existing native identity UUID");
+                reprovisioned = Some((stored.name.clone(), old.unwrap_or_default(), new.unwrap_or_default()));
+            }
         }
         let active = instance.status == "Running";
         if sled.active == active && sled.instance.as_ref() == Some(&instance) { return Ok(false) }
         sled.instance = Some(instance);
         sled.active = active;
-        let operation = format!("sled-rebind-{}", uuid::Uuid::new_v4().simple());
+        // A chatbot re-provision is its own durable revision; the operation id
+        // names both native UUIDs so the identity history audits the swap.
+        let operation = match &reprovisioned {
+            Some((old_name, old, new)) => {
+                tracing::warn!(session = %session, %old_name, new_name = %sled.instance.as_ref().map_or("", |bound| bound.name.as_str()), %old, %new,
+                    "control-plane chatbot re-provisioned under a new native UUID");
+                format!("sled-chatbot-reprovision-{old}-{new}")
+            }
+            None => format!("sled-rebind-{}", uuid::Uuid::new_v4().simple()),
+        };
         let genesis = expected.genesis.clone();
         cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
             expected, record: Some(sled_to_record(&sled)?), genesis })))?;
@@ -525,6 +578,33 @@ fn commit_volume_identity(
     cozo.apply_identity_intent(&session, &operation, IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
         expected, record: Some(sled_to_record(&sled)?), genesis: Some(sled_to_genesis(&sled)) })))?;
     Ok(true)
+}
+
+#[cfg(test)]
+mod chatbot_rebind_tests {
+    use super::chatbot_rebind_allowed as allowed;
+    const K: &str = "o/78l2auGGZdV+lnzOWZai6+gohTTo/pa10U9QOr1Dk=";
+    const S: &str = "2a2d9aa8-5468-309c-2db4-342221450de8";
+    const OLD: &str = "03a17769-53a8-4ae8-95de-e151c5377396";
+    const NEW: &str = "b781ea28-ca79-4e94-a78a-3632ca9b1f6e";
+
+    #[test]
+    fn only_the_configured_chatbot_with_its_old_instance_gone_rebinds() {
+        assert!(allowed(K, S, Some(K), Some(S), Some(OLD), Some(NEW), Some(false)));
+        // Old name or UUID still present, or presence unknown.
+        assert!(!allowed(K, S, Some(K), Some(S), Some(OLD), Some(NEW), Some(true)));
+        assert!(!allowed(K, S, Some(K), Some(S), Some(OLD), Some(NEW), None));
+        // Any other identity, or no configured chatbot.
+        assert!(!allowed("other", S, Some(K), Some(S), Some(OLD), Some(NEW), Some(false)));
+        assert!(!allowed(K, "other", Some(K), Some(S), Some(OLD), Some(NEW), Some(false)));
+        assert!(!allowed(K, S, None, Some(S), Some(OLD), Some(NEW), Some(false)));
+        assert!(!allowed(K, S, Some(K), None, Some(OLD), Some(NEW), Some(false)));
+        // Missing or unchanged UUIDs.
+        assert!(!allowed(K, S, Some(K), Some(S), None, Some(NEW), Some(false)));
+        assert!(!allowed(K, S, Some(K), Some(S), Some(OLD), None, Some(false)));
+        assert!(!allowed(K, S, Some(K), Some(S), Some(OLD), Some(OLD), Some(false)));
+        assert!(!allowed(K, S, Some(K), Some(S), Some(""), Some(NEW), Some(false)));
+    }
 }
 
 #[cfg(test)]

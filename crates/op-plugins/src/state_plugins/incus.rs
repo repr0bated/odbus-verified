@@ -1773,6 +1773,16 @@ impl IncusRootRepairBackend {
     /// Names of the instances whose own config carries `user.opdbus.session_id
     /// == session_id`. Read-only; the identity sled volume names the session,
     /// Incus names the container.
+    /// Whether any instance still carries this name or this `volatile.uuid`.
+    /// Read-only; used to prove a replaced native instance is really gone.
+    pub async fn instance_name_or_uuid_present(&self, name: &str, uuid: &str) -> Result<bool> {
+        let listed = self.api.call("GET", "/1.0/instances?recursion=1", None, None).await?;
+        let instances = listed.as_array().context("Incus instance list must be an array")?;
+        Ok(instances.iter().any(|instance| {
+            instance["name"] == name || instance["config"]["volatile.uuid"] == uuid
+        }))
+    }
+
     pub async fn instances_with_session(&self, session_id: &str) -> Result<Vec<String>> {
         let listed = self.api.call("GET", "/1.0/instances?recursion=1", None, None).await?;
         let instances = listed.as_array().context("Incus instance list must be an array")?;

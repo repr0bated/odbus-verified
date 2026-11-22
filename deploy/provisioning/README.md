@@ -40,6 +40,19 @@ possible, never deletes a seed or a container, and starts nothing unless `START=
   (`runtime_identity_seed.rs:84-111`). `upgrade_own_native_root` upgrades the caller's own human
   root and requires `OP_IDENTITY_GOLDEN_*` to already name the new seed
   (`runtime_identity_upgrade.rs:70-78`); it does not move that pin.
+* **Control-plane chatbot re-provision from `@seed`.** The one exception to the startup UUID
+  fence: when the volume's key and session are the configured chatbot
+  (`OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY` / `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`), the
+  stored native UUID differs from the live one, and Incus has no instance with the stored name
+  or the stored UUID (`IncusRootRepairBackend::instance_name_or_uuid_present`), startup import
+  rebinds the existing record to the live instance (`runtime_identity_owner.rs`,
+  `chatbot_previous_instance` / `chatbot_rebind_allowed`). The rebind is a compare-exchange
+  revision with operation id `sled-chatbot-reprovision-<old uuid>-<new uuid>`, logged as
+  "control-plane chatbot re-provisioned under a new native UUID". The decoy-issued IID1 and
+  `sealed_id` checks, the one-instance-per-session check and the key/actor-class checks are
+  unchanged. Every other identity still gets "startup import cannot replace an existing native
+  identity UUID". Route: keep the original keys, `30-provision-container.sh new` (name
+  `3tchedChatbot`), then restart the host bridge (`sv restart op-grpc-bridge`).
 * Reference script for the whole flow: `deploy/scripts/provision-container.sh` (systemd
   Ubuntu seed, names the chatbot `3tchedChatbot`, which on antix1 collides with the old
   stopped container — hence the `NAME` parameter here).
