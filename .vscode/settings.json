@@ -1,0 +1,12 @@
+{
+  // rust-analyzer runs cargo constantly; keep it on the host toolchain instead of
+  // the golden build chroot shim (deploy/lib/golden/cargo-shim.sh), which would
+  // need sudo and refuse while a build owns the single-Cargo lock.
+  "rust-analyzer.cargo.extraEnv": {
+    "GOLDEN_CARGO_HOST": "1",
+    "CXXFLAGS": "-include cstdint"
+  },
+  "rust-analyzer.server.extraEnv": {
+    "GOLDEN_CARGO_HOST": "1"
+  }
+}

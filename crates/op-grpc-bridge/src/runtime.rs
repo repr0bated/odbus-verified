@@ -1143,6 +1143,21 @@ impl Runtime {
                 .outcome_unknown_with_updates(&operation, updates);
             return Err(correlate(RuntimeError::unknown(error)));
         }
+        // A mutation must commit the state it produced in this same terminal
+        // record (owner, 2026-11-22), so SHM, value.json and state streams are
+        // current at completion. Report-only: the effect has already happened,
+        // so refusing here could only turn a completed call into an unknown
+        // outcome. Hard enforcement belongs before dispatch, per native owner.
+        if declaration.side_effect == op_state_store::SideEffect::Mutation
+            && mutation_left_state_unreported(&plugin, &state, &additional)
+        {
+            tracing::warn!(
+                operation_id = %operation_id,
+                plugin = %plugin,
+                method = %method,
+                "mutation_state_unreported: completed mutation committed no state for its plugin"
+            );
+        }
         let refreshed = plugin == "identity_sled"
             && method == "refresh_credential"
             && result.get("refreshed").and_then(Value::as_bool) == Some(true);
@@ -1345,9 +1360,50 @@ impl Runtime {
     }
 }
 
+/// True when a completed mutation commits no state for its own plugin, either
+/// as its primary update or as an additional projection of the same plugin.
+fn mutation_left_state_unreported(
+    plugin: &str,
+    state: &BackendStateUpdate,
+    additional: &[BackendProjection],
+) -> bool {
+    matches!(state, BackendStateUpdate::Unchanged)
+        && !additional.iter().any(|update| {
+            update.plugin_id == plugin && !matches!(update.state, BackendStateUpdate::Unchanged)
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mutation_state_report_detects_only_missing_own_plugin_state() {
+        let projection = |plugin: &str, state: BackendStateUpdate| BackendProjection {
+            plugin_id: plugin.into(),
+            object_path: format!("/org/opdbus/v1/plugins/{plugin}"),
+            schema_hash: "h".into(),
+            scope: StateScope::Public,
+            state,
+        };
+        let unchanged = BackendStateUpdate::Unchanged;
+        assert!(mutation_left_state_unreported("net", &unchanged, &[]));
+        assert!(mutation_left_state_unreported(
+            "net",
+            &unchanged,
+            &[projection("other", BackendStateUpdate::Replace(Value::Null))]
+        ));
+        assert!(!mutation_left_state_unreported(
+            "net",
+            &BackendStateUpdate::Merge(serde_json::json!({"a": 1})),
+            &[]
+        ));
+        assert!(!mutation_left_state_unreported(
+            "net",
+            &unchanged,
+            &[projection("net", BackendStateUpdate::Fields(serde_json::json!({"a": 1})))]
+        ));
+    }
 
     struct RefusedAuthority;
     #[async_trait::async_trait]

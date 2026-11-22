@@ -1,0 +1,551 @@
+#!/usr/bin/env bash
+# zcall - operator wrapper for the live op-dbus plugin tree.
+#
+# org.opdbus.v1.plugins is the only legal tree; the service name, base path, and
+# interface are not overridable. Surface matched against the introspected tree
+# (verify with `zcall tree`):
+#   bus       unix:path=/run/opdbus/session-bus.sock
+#   service   org.opdbus.v1.plugins
+#   object    /org/opdbus/v1/plugins/<plugin>
+#   interface org.opdbus.v1.PluginV1
+#     Call(ss) -> s          method name + JSON args, JSON result
+#     GetProperty(s) -> s
+#     GetAllProperties() -> s
+#     SetProperty(ss) -> ()
+#
+# Method names and argument shapes come from the sealed blob catalog schema
+# (section 1 of /dev/shm/opdbus/plugin-blobs/<plugin>.<hash>.blob), which is the
+# same schema the bridge uses to build its dispatch table.
+set -euo pipefail
+
+readonly DBUS_SERVICE="org.opdbus.v1.plugins"
+readonly DBUS_BASE_PATH="/org/opdbus/v1/plugins"
+readonly DBUS_IFACE="org.opdbus.v1.PluginV1"
+
+BUS_ADDRESS="${ZCALL_BUS_ADDRESS:-unix:path=/run/opdbus/session-bus.sock}"
+BLOB_DIR="${ZCALL_BLOB_DIR:-/dev/shm/opdbus/plugin-blobs}"
+
+BLOB_MAGIC="OPBLOB01"
+BLOB_HEADER_LEN=64
+BLOB_ENTRY_LEN=24
+BLOB_SECTION_SCHEMA=1
+
+arguments_json=""
+arguments_was_set=0
+method_arg_pairs=()
+print_only=0
+
+declare -A SCHEMA_CACHE=()
+
+usage() {
+    cat <<'EOF'
+zcall - operator wrapper for the live op-dbus plugin tree
+
+Usage:
+  zcall tree                              introspected object tree
+  zcall list                              plugin objects on the live tree
+  zcall introspect <plugin>               interfaces/methods of one object
+  zcall methods <plugin>                  declared methods (schema)
+  zcall help [plugin] [method]            MethodDecl JSON
+  zcall props <plugin>                    PluginV1.GetAllProperties
+  zcall get <plugin> <property>           PluginV1.GetProperty
+  zcall set <plugin> <property> <json>    PluginV1.SetProperty
+  zcall expand <plugin> <method> [args]   print the busctl command only
+  zcall <plugin> <method> [args]          PluginV1.Call
+
+Arguments:
+  -a, --arguments JSON     JSON object passed verbatim as PluginV1.Call json_args.
+      --<key> <value>      Typed from the method's args schema; merged into one
+                           JSON object. Mutually exclusive with --arguments.
+
+Options:
+      --address ADDR       Bus address. Default: unix:path=/run/opdbus/session-bus.sock
+      --blob-dir DIR       Blob catalog. Default: /dev/shm/opdbus/plugin-blobs
+      --print, --dry-run   Print the busctl command instead of calling.
+  -h, --help               Show help.
+
+org.opdbus.v1.plugins / /org/opdbus/v1/plugins / org.opdbus.v1.PluginV1 are the
+only legal tree and cannot be overridden.
+
+Examples:
+  zcall list
+  zcall methods unix_socket
+  zcall help zeroclaw GetModelRoutes
+  zcall zeroclaw GetModelRoutes
+  zcall unix_socket bind --name qdrant --path /run/qdrant.sock --ports 6333,6334
+  zcall expand unix_socket listen --path /run/qdrant.sock
+
+Plugin and method names accept - or _ separators and are resolved against the
+names declared on the tree.
+EOF
+}
+
+die() {
+    printf 'zcall: %s\n' "$*" >&2
+    exit 1
+}
+
+have() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+require_tools() {
+    local tool
+    for tool in "$@"; do
+        have "$tool" || die "$tool is required"
+    done
+}
+
+busctl_bus() {
+    printf '%s' "--address=$BUS_ADDRESS"
+}
+
+# --- live tree ---------------------------------------------------------------
+
+bus_tree() {
+    require_tools busctl
+    busctl "$(busctl_bus)" tree "$DBUS_SERVICE"
+}
+
+plugin_objects() {
+    require_tools busctl
+    busctl "$(busctl_bus)" tree "$DBUS_SERVICE" 2>/dev/null |
+        grep -oE "${DBUS_BASE_PATH}/[A-Za-z0-9_]+\$" |
+        sed "s|^${DBUS_BASE_PATH}/||" |
+        LC_ALL=C sort -u
+}
+
+normalize_name() {
+    printf '%s' "${1//-/_}"
+}
+
+resolve_plugin() {
+    local want
+    want="$(normalize_name "${1:-}")"
+    [[ -n "$want" ]] || die "missing plugin name"
+    local live
+    live="$(plugin_objects || true)"
+    if [[ -n "$live" ]] && ! grep -qx -- "$want" <<<"$live"; then
+        local lowered match
+        lowered="$(tr '[:upper:]' '[:lower:]' <<<"$want")"
+        match="$(grep -ix -- "$lowered" <<<"$live" | head -n1 || true)"
+        [[ -n "$match" ]] || die "no such plugin object on $DBUS_BASE_PATH: $want"
+        want="$match"
+    fi
+    printf '%s' "$want"
+}
+
+bus_call() {
+    local path="$1" iface="$2" member="$3"
+    shift 3
+    require_tools busctl jq
+    local raw
+    raw="$(busctl "$(busctl_bus)" --json=short call \
+        "$DBUS_SERVICE" "$path" "$iface" "$member" "$@")"
+    if [[ -z "$raw" ]]; then
+        return 0
+    fi
+    jq -r 'if (.data | type) == "array" then (.data[0] // empty) else . end' <<<"$raw"
+}
+
+print_busctl() {
+    local path="$1" iface="$2" member="$3"
+    shift 3
+    printf 'busctl %q --json=short call %q %q %q %q' \
+        "$(busctl_bus)" "$DBUS_SERVICE" "$path" "$iface" "$member"
+    local arg
+    for arg in "$@"; do
+        printf ' %q' "$arg"
+    done
+    printf '\n'
+}
+
+# --- sealed blob schema ------------------------------------------------------
+
+blob_file() {
+    local plugin="$1" candidate
+    for candidate in $(ls -1t "$BLOB_DIR/$plugin".*.blob 2>/dev/null); do
+        if [[ "$(head -c 8 "$candidate" 2>/dev/null)" == "$BLOB_MAGIC" ]]; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+blob_section() {
+    local file="$1" want="$2"
+    local count
+    count="$(od -An -tu2 -j8 -N4 "$file" 2>/dev/null | tr -s ' ' '\n' | sed -n 2p)"
+    [[ "$count" =~ ^[0-9]+$ ]] && ((count > 0)) || return 1
+
+    local -a vals=()
+    mapfile -t vals < <(od -An -tu4 -j "$BLOB_HEADER_LEN" \
+        -N $((count * BLOB_ENTRY_LEN)) "$file" | tr -s ' ' '\n' | sed '/^$/d')
+
+    local i tag off size
+    for ((i = 0; i < count; i++)); do
+        tag="${vals[i * 6]:-}"
+        off="${vals[i * 6 + 2]:-0}"
+        size="${vals[i * 6 + 4]:-0}"
+        if [[ "$tag" == "$want" ]]; then
+            ((size > 0)) || return 1
+            tail -c "+$((off + 1))" "$file" | head -c "$size"
+            return 0
+        fi
+    done
+    return 1
+}
+
+plugin_schema() {
+    local plugin="$1"
+    if [[ -n "${SCHEMA_CACHE[$plugin]+set}" ]]; then
+        printf '%s' "${SCHEMA_CACHE[$plugin]}"
+        return 0
+    fi
+    local file schema=""
+    if file="$(blob_file "$plugin")"; then
+        schema="$(blob_section "$file" "$BLOB_SECTION_SCHEMA" || true)"
+    fi
+    SCHEMA_CACHE[$plugin]="$schema"
+    printf '%s' "$schema"
+}
+
+declared_methods() {
+    local plugin="$1" schema
+    schema="$(plugin_schema "$plugin")"
+    [[ -n "$schema" ]] || return 0
+    jq -r '(.methods // {}) | keys[]' <<<"$schema" 2>/dev/null || true
+}
+
+resolve_method() {
+    local plugin="$1" want="${2:-}"
+    [[ -n "$want" ]] || die "missing method name"
+    local methods
+    methods="$(declared_methods "$plugin")"
+    if [[ -z "$methods" ]]; then
+        printf '%s' "$want"
+        return 0
+    fi
+    if grep -qx -- "$want" <<<"$methods"; then
+        printf '%s' "$want"
+        return 0
+    fi
+    local flat match
+    flat="$(tr -d '_-' <<<"$want" | tr '[:upper:]' '[:lower:]')"
+    match="$(while IFS= read -r name; do
+        if [[ "$(tr -d '_-' <<<"$name" | tr '[:upper:]' '[:lower:]')" == "$flat" ]]; then
+            printf '%s\n' "$name"
+        fi
+    done <<<"$methods" | head -n1)"
+    [[ -n "$match" ]] || die "plugin $plugin declares no method $want (see: zcall methods $plugin)"
+    printf '%s' "$match"
+}
+
+method_decl() {
+    local plugin="$1" method="$2" schema
+    schema="$(plugin_schema "$plugin")"
+    [[ -n "$schema" ]] || return 1
+    jq --arg m "$method" '(.methods // {})[$m] // empty' <<<"$schema"
+}
+
+method_args_schema() {
+    local plugin="$1" method="$2" decl
+    decl="$(method_decl "$plugin" "$method" || true)"
+    [[ -n "$decl" ]] || {
+        printf '{}'
+        return 0
+    }
+    jq -c '.args // {}' <<<"$decl"
+}
+
+method_arg_flags() {
+    local plugin="$1" method="$2" args
+    args="$(method_args_schema "$plugin" "$method")"
+    jq -r '(.properties // {}) | keys[] | "--" + .' <<<"$args" 2>/dev/null || true
+}
+
+method_summary() {
+    local plugin="$1" schema
+    schema="$(plugin_schema "$plugin")"
+    [[ -n "$schema" ]] || die "no sealed blob schema for $plugin in $BLOB_DIR"
+    {
+        printf 'METHOD\tEFFECT\tCAPABILITY\tSUBID\n'
+        jq -r '(.methods // {}) | to_entries[] |
+            [ .key,
+              (.value.side_effect // "-"),
+              (.value.required_capability // "-"),
+              (.value.subid // "-") ] | @tsv' <<<"$schema"
+    } | column -t -s $'\t'
+}
+
+# --- argument assembly -------------------------------------------------------
+
+args_json_from_flags() {
+    local plugin="$1" method="$2"
+    shift 2
+    local args json='{}' pair key raw type item_type
+    args="$(method_args_schema "$plugin" "$method")"
+    for pair in "$@"; do
+        key="${pair%%=*}"
+        raw="${pair#*=}"
+        key="$(normalize_name "$key")"
+        type="$(jq -r --arg k "$key" '
+            (.properties // {})[$k].type // "string"
+            | if type == "array" then (map(select(. != "null")) | .[0] // "string") else . end
+        ' <<<"$args")"
+        case "$type" in
+            integer | number)
+                [[ "$raw" =~ ^-?[0-9]+([.][0-9]+)?$ ]] || die "--$key expects a number: $raw"
+                json="$(jq -c --arg k "$key" --argjson v "$raw" '.[$k] = $v' <<<"$json")"
+                ;;
+            boolean)
+                case "$(tr '[:upper:]' '[:lower:]' <<<"$raw")" in
+                    1 | true | yes | on) raw=true ;;
+                    0 | false | no | off) raw=false ;;
+                    *) die "--$key expects a boolean: $raw" ;;
+                esac
+                json="$(jq -c --arg k "$key" --argjson v "$raw" '.[$k] = $v' <<<"$json")"
+                ;;
+            object)
+                jq -e . >/dev/null 2>&1 <<<"$raw" || die "--$key expects JSON: $raw"
+                json="$(jq -c --arg k "$key" --argjson v "$raw" '.[$k] = $v' <<<"$json")"
+                ;;
+            array)
+                if [[ "$raw" == \[* ]]; then
+                    jq -e . >/dev/null 2>&1 <<<"$raw" || die "--$key expects JSON: $raw"
+                    json="$(jq -c --arg k "$key" --argjson v "$raw" '.[$k] = $v' <<<"$json")"
+                else
+                    item_type="$(jq -r --arg k "$key" '
+                        (.properties // {})[$k].items.type // "string"
+                        | if type == "array" then (map(select(. != "null")) | .[0] // "string") else . end
+                    ' <<<"$args")"
+                    json="$(jq -c --arg k "$key" --arg v "$raw" --arg t "$item_type" '
+                        .[$k] = ($v | split(",") | map(select(. != "")) | map(
+                            if $t == "integer" or $t == "number" then tonumber
+                            elif $t == "boolean" then (. == "true" or . == "1")
+                            else . end))
+                    ' <<<"$json")"
+                fi
+                ;;
+            *)
+                json="$(jq -c --arg k "$key" --arg v "$raw" '.[$k] = $v' <<<"$json")"
+                ;;
+        esac
+    done
+    printf '%s' "$json"
+}
+
+# --- completion --------------------------------------------------------------
+
+SUBCOMMANDS='tree list introspect methods help props get set expand'
+
+complete_words() {
+    case "${1:-}" in
+        plugins)
+            plugin_objects 2>/dev/null || true
+            ;;
+        subcommands)
+            printf '%s\n' $SUBCOMMANDS
+            ;;
+        methods)
+            declared_methods "$(normalize_name "${2:-}")" 2>/dev/null || true
+            ;;
+        args)
+            local plugin method
+            plugin="$(normalize_name "${2:-}")"
+            method="$(resolve_method "$plugin" "${3:-}" 2>/dev/null || printf '%s' "${3:-}")"
+            method_arg_flags "$plugin" "$method" 2>/dev/null || true
+            ;;
+    esac
+}
+
+# --- option parsing ----------------------------------------------------------
+
+parse_global_opt() {
+    case "$1" in
+        --address) BUS_ADDRESS="${2:-}" ;;
+        --blob-dir) BLOB_DIR="${2:-}" ;;
+        *) return 1 ;;
+    esac
+    return 0
+}
+
+complete_mode=0
+if [[ "${1:-}" == "--complete" ]]; then
+    complete_mode=1
+    shift
+fi
+
+while (($#)); do
+    case "$1" in
+        --address | --blob-dir)
+            [[ -n "${2:-}" ]] || die "missing value for $1"
+            parse_global_opt "$1" "$2"
+            shift 2
+            ;;
+        -a | --arguments)
+            arguments_json="${2:-}"
+            arguments_was_set=1
+            shift 2
+            ;;
+        --print | --dry-run)
+            print_only=1
+            shift
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            die "unknown option: $1"
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if ((complete_mode)); then
+    complete_words "${1:-}" "${2:-}" "${3:-}"
+    exit 0
+fi
+
+cmd="${1:-help}"
+case "$cmd" in
+    tree)
+        bus_tree
+        exit 0
+        ;;
+    list)
+        plugin_objects
+        exit 0
+        ;;
+    introspect)
+        plugin="$(resolve_plugin "${2:-}")"
+        require_tools busctl
+        busctl "$(busctl_bus)" introspect "$DBUS_SERVICE" "$DBUS_BASE_PATH/$plugin"
+        exit 0
+        ;;
+    methods)
+        plugin="$(resolve_plugin "${2:-}")"
+        method_summary "$plugin"
+        exit 0
+        ;;
+    help)
+        if [[ -z "${2:-}" ]]; then
+            usage
+            exit 0
+        fi
+        plugin="$(resolve_plugin "$2")"
+        if [[ -z "${3:-}" ]]; then
+            printf 'Methods for %s (%s %s):\n' \
+                "$plugin" "$DBUS_BASE_PATH/$plugin" "$DBUS_IFACE"
+            method_summary "$plugin"
+        else
+            method="$(resolve_method "$plugin" "$3")"
+            decl="$(method_decl "$plugin" "$method" || true)"
+            [[ -n "$decl" ]] || die "no schema for $plugin.$method"
+            jq -S . <<<"$decl"
+        fi
+        exit 0
+        ;;
+    props)
+        plugin="$(resolve_plugin "${2:-}")"
+        path="$DBUS_BASE_PATH/$plugin"
+        if ((print_only)); then
+            print_busctl "$path" "$DBUS_IFACE" GetAllProperties
+            exit 0
+        fi
+        bus_call "$path" "$DBUS_IFACE" GetAllProperties | { jq . 2>/dev/null || cat; }
+        exit 0
+        ;;
+    get)
+        plugin="$(resolve_plugin "${2:-}")"
+        prop="${3:-}"
+        [[ -n "$prop" ]] || die "usage: zcall get <plugin> <property>"
+        path="$DBUS_BASE_PATH/$plugin"
+        if ((print_only)); then
+            print_busctl "$path" "$DBUS_IFACE" GetProperty s "$prop"
+            exit 0
+        fi
+        bus_call "$path" "$DBUS_IFACE" GetProperty s "$prop" | { jq . 2>/dev/null || cat; }
+        exit 0
+        ;;
+    set)
+        plugin="$(resolve_plugin "${2:-}")"
+        prop="${3:-}"
+        value="${4:-}"
+        [[ -n "$prop" && -n "$value" ]] || die "usage: zcall set <plugin> <property> <json>"
+        path="$DBUS_BASE_PATH/$plugin"
+        if ((print_only)); then
+            print_busctl "$path" "$DBUS_IFACE" SetProperty ss "$prop" "$value"
+            exit 0
+        fi
+        bus_call "$path" "$DBUS_IFACE" SetProperty ss "$prop" "$value"
+        exit 0
+        ;;
+    expand)
+        shift
+        print_only=1
+        ;;
+esac
+
+[[ $# -ge 2 ]] || die "usage: zcall <plugin> <method> [--arguments JSON | --<key> <value> ...]"
+plugin="$(resolve_plugin "$1")"
+method="$(resolve_method "$plugin" "$2")"
+shift 2
+
+while (($#)); do
+    case "$1" in
+        -a | --arguments)
+            arguments_json="${2:-}"
+            arguments_was_set=1
+            shift 2
+            ;;
+        --address | --blob-dir)
+            [[ -n "${2:-}" ]] || die "missing value for $1"
+            parse_global_opt "$1" "$2"
+            shift 2
+            ;;
+        --print | --dry-run)
+            print_only=1
+            shift
+            ;;
+        --*)
+            key="${1#--}"
+            [[ $# -ge 2 ]] || die "missing value for --$key"
+            method_arg_pairs+=("$key=$2")
+            shift 2
+            ;;
+        *)
+            die "unknown call argument: $1"
+            ;;
+    esac
+done
+
+if ((${#method_arg_pairs[@]} > 0)); then
+    ((arguments_was_set == 0)) || die "use either --arguments JSON or --<key> flags, not both"
+    arguments_json="$(args_json_from_flags "$plugin" "$method" "${method_arg_pairs[@]}")"
+fi
+
+if ((arguments_was_set)); then
+    require_tools jq
+    jq -e . >/dev/null 2>&1 <<<"$arguments_json" || die "invalid --arguments JSON"
+elif [[ -z "$arguments_json" ]]; then
+    arguments_json='{}'
+fi
+
+path="$DBUS_BASE_PATH/$plugin"
+
+if ((print_only)); then
+    print_busctl "$path" "$DBUS_IFACE" Call ss "$method" "$arguments_json"
+    exit 0
+fi
+
+bus_call "$path" "$DBUS_IFACE" Call ss "$method" "$arguments_json" |
+    { jq . 2>/dev/null || cat; }

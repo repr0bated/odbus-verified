@@ -105,3 +105,14 @@ Base-OS fixes in the seed (antiX trixie rootfs, applied 2026-11-22):
   depend on `seatd | logind`; purging them would make apt pull in a logind. No network
   config was added: no `.network` files in `/etc/systemd/network`, `systemd-networkd`
   stays disabled, and `opdbus-lo` is the only unit that touches an interface.
+
+`zcall` (operator CLI, `crates/op-dbus-cli/src/bin/zcall/`) is in the seed since
+2026-11-22: `/usr/local/bin/zcall`, release build sha256
+`20ef8e37400d08a08b56ec4e5dec78fabe01f832a6e447f62986415ff9f9f6c2` (glibc ≥ 2.34; replaced
+`f34dabdd…` the same day), and its bash completion
+`/usr/share/bash-completion/completions/zcall` (`zcall completion bash`, sha256 `90011e90…`).
+It reads plugins, methods and argument schemas only from the mounted 3tchedFS namespace
+(`/run/mounts/3tchedFS`, the live mirror of the sealed blobs) and calls through the same
+mount; it never reads a blob catalog directory. The running
+`Jeremy` and `3tchedChatbot` containers got the same two files with `incus file push`
+(owner's choice; no restart). Seed pin unchanged.

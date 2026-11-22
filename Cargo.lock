@@ -6205,12 +6205,15 @@ dependencies = [
 name = "op-dbus-cli"
 version = "1.0.0"
 dependencies = [
+ "_3tched-fs",
  "anyhow",
  "clap",
  "hex",
+ "libc",
  "op-core",
  "op-identity",
  "quick-xml",
+ "reqwest 0.11.27",
  "serde",
  "serde_json",
  "tokio",
