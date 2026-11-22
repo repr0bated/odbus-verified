@@ -15,8 +15,11 @@ a target directory.
 - `3tchedfs.service`, `threetchedfs.service`: both 3tchedFS views, mounted in
   the container over the **host's** `lungs.sock`.
 - `3tchedfs.service.d/10-fuse-first.conf`,
-  `threetchedfs.service.d/10-fuse-first.conf`: start those units before
-  `sysinit.target`. Each checks `/dev/fuse`, the catalog manifest, and the
+  `threetchedfs.service.d/10-fuse-first.conf`: order is dbus, then both FUSE
+  units (the base units keep `After=dbus.service`), then everything that needs
+  FUSE (`op-grpc-bridge` Requires/After them). No `DefaultDependencies=no` /
+  `Before=sysinit.target`: antiX dbus starts after sysinit, so that made an
+  ordering cycle and systemd dropped both units. Each checks `/dev/fuse`, the catalog manifest, and the
   lungs socket, and is only treated as started once the FUSE is mounted.
 - `opdbus-runtime.conf`: creates `/run/mounts`, `/run/mounts/3tchedFS`,
   `/run/mounts/threetched`, and `/dev/shm/opdbus/state` at boot.
