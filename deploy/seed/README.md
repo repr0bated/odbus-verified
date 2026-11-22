@@ -48,10 +48,13 @@ a target directory.
 Apply by making the seed writable, copying these files, and setting it
 read-only again. Never while a container depends on the seed.
 
-Binaries in the seed: `op-grpc-bridge` is the golden build of `580e206`
+Binaries in the seed: `op-grpc-bridge` is the golden build of `beef2b7`
 (`/mnt/@opdbus-system-a/opt/op-build/target/x86_64-unknown-linux-gnu/release/op-grpc-bridge`,
-sha256 `9cb39ace8272…`, installed 2026-11-22 with the `deploy/provisioning/lib.sh`
-`BIN_BRIDGE` override). It must match the sealed catalog's state versions
+sha256 `0ee7670d4d4351158c650dc13c8f7923c18055e924d940b3fd5ddc242ac4c72e`, installed
+2026-11-22 08:37 EST; the previous `580e206` build, sha256 `9cb39ace8272…`, is kept beside it
+as `op-grpc-bridge.pre-20261122-083710`). The running chatbot got the same bytes in its own
+rootfs with `35-refresh-binaries.sh 3tchedChatbot` and the `deploy/provisioning/lib.sh`
+`BIN_BRIDGE` override (other binaries pinned to their current bytes, so only the bridge changed). It must match the sealed catalog's state versions
 (identity_sled 4.11.0) and carries the host-only tunnel owner gate (`ccaf93e`), which
 the host binary `lib.sh` names by default (`/usr/local/libexec/op-dbus/bin/op-grpc-bridge`,
 `0dda1cef`) predates. The host bridge itself is not replaced. The bridge runs in the container.
