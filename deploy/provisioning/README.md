@@ -24,18 +24,22 @@ possible, never deletes a seed or a container, and starts nothing unless `START=
   instance, adoption requires the same instance name and the same `volatile.uuid`
   (`runtime_identity_owner.rs:496-499`, `startup import cannot replace an existing native
   identity UUID`). Deleting a container and running `30-provision-container.sh new` with the
-  same keys creates a new UUID, so the host bridge refuses it. The reprovision route for the
-  chatbot is the sealed `identity_sled` replacement, `creation_mode: "replace_chatbot"`
-  (`runtime_identity_owner.rs:1106-1120` → `runtime_identity_clean.rs:573-613`):
-  1. `inspect_provision_preflight {wireguard_pubkey, creation_mode: "replace_chatbot"}` returns
-     the expected revision and the previous native instance;
-  2. `provision_container {wireguard_pubkey, creation_mode: "replace_chatbot", plan_sha256}`
-     retires that instance and creates the replacement through the durable owner.
-  The key must be the configured chatbot key (`clean.rs:588-592`). The caller must be a
-  verified session holding `mut.service.identity-sled.container.provision@v2` that has its own
-  committed identity sled (`runtime_identity_seed.rs:84-111`). The replacement is created from
-  the seed the host bridge pins in `OP_IDENTITY_GOLDEN_SEED_NAME` /
-  `OP_IDENTITY_GOLDEN_SUBVOLUME_UUID` (`runtime_creation.rs:109-110`), not from `@seed` by name.
+  same keys creates a new UUID, so the host bridge refuses it. There is no sealed route that
+  re-provisions the chatbot from `@seed` on `3tched-pool`. The sealed `identity_sled`
+  `creation_mode: "replace_chatbot"` path (`runtime_identity_owner.rs:1106-1120` →
+  `runtime_identity_clean.rs:573-760`) does not create a container. It adopts an existing,
+  operator-prepared, stopped instance described by a root-written plan at
+  `/var/lib/op-dbus/identity-provision-plans/<session>.json` (`CleanPlan`, `clean.rs:56-79`:
+  physical seed device and generation, leaf image, seven member subvolumes, instance and ETag).
+  `plan_sha256` is that file's SHA-256, not a preflight output. `native_proof` requires the
+  plan's pool to use the `dir` driver (`clean.rs:467-471`); the only plan writer,
+  `deploy/scripts/prepare-chatbot-adoption.sh`, targets the retired `identity-roots` GPT layout.
+  `inspect_provision_preflight` only reports the expected revision and the previous instance.
+  Both methods need the configured chatbot key (`clean.rs:588-592`) and a verified caller holding
+  `mut.service.identity-sled.container.provision@v2` with its own committed identity
+  (`runtime_identity_seed.rs:84-111`). `upgrade_own_native_root` upgrades the caller's own human
+  root and requires `OP_IDENTITY_GOLDEN_*` to already name the new seed
+  (`runtime_identity_upgrade.rs:70-78`); it does not move that pin.
 * Reference script for the whole flow: `deploy/scripts/provision-container.sh` (systemd
   Ubuntu seed, names the chatbot `3tchedChatbot`, which on antix1 collides with the old
   stopped container — hence the `NAME` parameter here).
