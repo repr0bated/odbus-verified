@@ -22,7 +22,9 @@ a target directory.
   ordering cycle and systemd dropped both units. Each checks `/dev/fuse`, the catalog manifest, and the
   lungs socket, and is only treated as started once the FUSE is mounted.
 - `opdbus-runtime.conf`: creates `/run/mounts`, `/run/mounts/3tchedFS`,
-  `/run/mounts/threetched`, and `/dev/shm/opdbus/state` at boot.
+  `/run/mounts/threetched`, and `/dev/shm/opdbus/state` at boot, plus an empty
+  `/var/lib/op-dbus/identity-cozo` (0700): `op-grpc-bridge` refuses to start without
+  its durable identity owner directory (`crates/op-grpc-bridge/src/runtime.rs` `Runtime::open`).
 - `op-tunnel-door.service`: only where provisioning bound `/run/opdbus/tunnel`
   (the chatbot); holds the shared door socket and splices the host door into
   the container door. Binary: `op-tunnel-door` from `crates/op-tunnel-mux`.
