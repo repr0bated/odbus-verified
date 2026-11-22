@@ -1050,6 +1050,15 @@ implement the stated interim behaviour now; the remainder is gated.
     `apply_own_agent_route` call. Container repo; not ours.
   - _Requirements: 7, 12, 30; owner model-selection exception (plan step 3)_
 
+- [ ] 27. Exchange point and chat-mode storage routing (owner, 2026-11-22; Requirement 34)
+  - [ ] 27.1 Subsidiary callers: no Personal mode in admission or exchange point (design, change 1)
+  - [ ] 27.2 Sled ledger skips personal-mode calls, personal memory and soul; unit test (change 2)
+  - [ ] 27.3 Per-container ext4 RocksDB personal store in provisioning; route personal memory and soul (change 3)
+  - [ ] 27.4 Chat turn path commits `ctl_plane_chatbot` episodes for the chatbot (change 4)
+  - [ ] 27.5 Exchange point endpoint on the door: set variables, receive schema, zero logic (change 5)
+  - [x] 27.6 Control-plane chatbot re-adoption under a new native UUID (commit aba5937); permanence verification pending the golden build
+  - Open: D4 (Session_Mode onto ChatMode)
+
 ## Notes
 
 - Tasks marked `*` are optional test sub-tasks and can be skipped for a

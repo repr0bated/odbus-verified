@@ -1017,3 +1017,58 @@ chat runs only through the new code.
 16. WHEN `json_render_gallery.promote_candidate` promotes a candidate, THE resulting Catalog entry SHALL carry element content byte-identical to the candidate's, so that what was approved is exactly what is registered.
 17. WHILE `json_render_gallery` at the pinned commit uses different content schemas for `Candidate` (`title`, `mode`, `prompt`, `spec`) and `CatalogEntry` (`name`, `description`, `spec`, `cozo_relations`), and neither carries Svelte source or compiled output, THE Implementer SHALL leave every task that stages or promotes a Generated_Element in proposed status until `design.md` records a separate, dated Owner_Authorization naming the `json_render_gallery` schema change, and SHALL make that change only in pinned op-dbus under that authorization.
 18. FOR ALL candidates promoted by `promote_candidate`, the element content of the Catalog entry SHALL equal the element content of the candidate (invariant).
+
+### Requirement 34: Exchange point, chat-mode storage routing and the control-plane chatbot (owner, 2026-11-22)
+
+**User Story:** As the owner, I want one docking point where the UI sets chat mode and model and
+receives the schema it may render, with storage routing by mode enforced by the bridge, so that
+personal chat is never vectorized and the control-plane chatbot is permanent.
+
+Owner statements (2026-11-22): "it should be the control plane chatbot with root capabilities and
+grants"; "make sure that its sled includes all mode chats except personal and its own plugin for its
+own chat history"; "the sled gets vectorized" and personal must not be; "personal chats get [their]
+endpoint in personal rocksdb storage with soul and personal namespace storage"; "this would be a purely
+set variable and receive schema no logic, the bridge determines what schema is delivered"; "there is
+already a rocksdb ext4 mount in container for the personal stuff"; "the other modes get included in
+snowball that is vectorized on identity sled at end of sessions"; "look at plugins there is already
+one"; "subsidiary will be different, it won't have personal mode".
+
+#### Acceptance Criteria
+
+1. THE Exchange_Point SHALL be served on the door next to `/mcp` with the door's caller
+   authentication. It SHALL only (a) accept set-variable writes (chat mode, model) and forward them
+   unchanged to the existing sealed methods (`project.select_context`, `chat_router` selection), and
+   (b) return the schema the bridge selects for the caller. It SHALL contain no routing, grant,
+   admission or schema-selection logic.
+2. THE bridge alone SHALL select the delivered schema from the caller's grants. The UI schema and the
+   `/mcp` tool list SHALL derive from the same grant read.
+3. THE Exchange_Point SHALL use the existing sealed catalog versioning and add no versioning scheme:
+   the blob format version (`OPBLOB01`, `FORMAT_VERSION = 1`, `op-blob/src/blob.rs:15-18,41-42`), the
+   per-plugin content hash (SHA-256 of the canonical schema JSON, in the blob header and file name),
+   the plugin's own semantic `version` (for example `identity_sled` 4.11.0), and the manifest
+   `catalog_hash` / `previous_catalog_hash` / monotonic `generation` (`op-blob/src/catalog.rs:26-27,240-271`).
+4. WHEN the persisted mode is Personal, THE bridge SHALL route chat, personal-namespace memory and
+   soul to the container's own RocksDB on its ext4 mount, and SHALL NOT append them to the sled
+   ledger or to any embedding pipeline, regardless of UI flags.
+5. WHEN the persisted mode is any other memory-bearing mode, THE bridge SHALL include the committed
+   calls in the session's sled ledger (snowball), which `identity_sled.finalize_session` vectorizes
+   onto the identity sled at the end of the session.
+6. THE bridge SHALL decide routing from the mode persisted at execution time, never from a
+   client-supplied field.
+7. THE control-plane chatbot (configured key/session, principal `OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID`,
+   `$ROOT`) SHALL stay adopted across host-bridge restarts, container restarts and host reboots
+   with no manual step. Its re-provision from `@seed` under a new native UUID is admitted only by the
+   narrow startup-import exception (commit aba5937).
+8. THE control-plane chatbot's own chat history SHALL live in the existing sealed `ctl_plane_chatbot`
+   plugin (reasoning episodes), granted through `$ROOT` (`chatbot.read`, `chatbot.invoke`) and
+   projected through its FUSE mount.
+9. A subsidiary container (created with `CreateSubsidiary`, `user.opdbus.parent_principal_id` set)
+   SHALL have no Personal mode. THE Exchange_Point SHALL NOT offer it there, and admission SHALL reject it.
+
+#### Decisions
+- D1 (answered): personal chat and soul go to the existing in-container RocksDB ext4 mount
+  (`/var/lib/op-dbus/identity-cozo`, defined by `deploy/seed/3tched-seed-launch:12,41-45,76-107`).
+- D2 (answered): non-personal modes go into snowball (the sled ledger), vectorized on the identity
+  sled at end of session.
+- D3 (answered): the existing `ctl_plane_chatbot` plugin.
+- D4 (open): converge `Session_Mode` (this spec) onto `ChatMode` (`project.rs:17-27`).

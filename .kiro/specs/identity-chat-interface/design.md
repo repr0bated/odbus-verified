@@ -3126,6 +3126,38 @@ item below. Each threat is handled by decisions already recorded above.
   identity its own mount returns.
 - **Plugin feeds.** EMQX approval OA-2026-11-08-EMQX stays on record. The Chat_Interface does not use EMQX (Requirement 29, D-37, D-43). Feeds are local mount reads, checked in the Chat_Route, and delivered on the Chat_Link. They do not offer tools or skip validation or confirmation. Opening a feed stays proposed until the per-plugin state-read map and the three unchosen bounds exist (D-43, Requirement 25.12).
 
+## Exchange Point and chat-mode storage routing (owner, 2026-11-22)
+
+Implements Requirement 34. Status: specified, not implemented (see task 27).
+
+### Exchange Point
+`GET /exchange` on the door (same listener, TLS and caller authentication as `/mcp`) returns
+`{mode, model, schema, catalog: {catalog_hash, generation}}` exactly as the bridge selected it.
+`POST /exchange/mode` and `/exchange/model` forward to `project.select_context` and the `chat_router`
+selection method through the MutationEngine as the caller, and return that method's result or denial.
+No logic of its own. Versioning is the existing catalog: blob `FORMAT_VERSION = 1` (the "v1"), per-plugin
+content hash, plugin `version`, manifest `catalog_hash`/`generation` (73 on antix1 at 2026-11-22).
+
+### What exists today (verified 2026-11-22)
+| Item | Exists | Gap |
+|---|---|---|
+| Mode admission | `project_dispatch.rs:490-560`; Personal is `ChatMode::default` and open to every session | no branch for subsidiaries |
+| Container kind | sled `principal_kind` human/service; subsidiary = `user.opdbus.parent_principal_id` (`runtime_identity_owner.rs` `volume_actor_kind`); chatbot = configured key | admission does not read it |
+| Personal store | per-container ext4 RocksDB image at `/var/lib/op-dbus/identity-cozo` in the retired `3tched-seed-launch` | `30-provision-container.sh` creates no ext4 image. Chatbot has that path on its btrfs root (container bridge Cozo); Jeremy has none. Memory and soul are reached through the cognitive Cozo store, which is not routed there by mode |
+| Snowball / sled ledger | `runtime_sled_ledger.rs`: every committed call appended (`runtime.rs:1166`), `finalize_session` vectorizes once and clears | **no mode filter**: personal-mode committed calls (described fields, up to 512 chars each) reach the ledger and its vectors. An automatic end-of-session caller of `finalize_session` is not yet confirmed |
+| Chatbot history | sealed `ctl_plane_chatbot` 4.2.0 (episodes); `$ROOT` holds `chatbot.read`, `chatbot.invoke`, `chat.control_plane` | `commit_episode` is called only from workspace workflows (`runtime_workspace_workflows.rs:626`), not from the chat turn path |
+
+### Changes required (task 27)
+1. Admission: in `resolve_selection`, reject `ChatMode::Personal` for subsidiary callers, and make the
+   default mode for them a non-personal one. Exchange-point allowed modes come from the same function.
+2. Ledger: `append_committed` skips calls whose persisted mode at execution time is Personal, and
+   personal-namespace memory and soul writes. Unit test.
+3. Personal store: provisioning creates and mounts the per-container ext4 RocksDB image (device added to
+   the documented device table), and personal memory and soul route to it.
+4. Chatbot history: the chat turn path commits one `ctl_plane_chatbot` episode per completed chat for
+   the chatbot principal.
+5. Exchange Point endpoint on the door.
+
 ## Status
 
 | Field | Value |
