@@ -155,6 +155,9 @@ startup_phase private-door-address-ready
 # `tunnel`): 10.0.0.2:8090 is spliced over /run/opdbus/tunnel/tunnel.sock into
 # that container. The host bridge's own tonic listens on loopback only, for
 # host-local callers. Filesystem callers use OPDBUS_LUNGS_SOCKET.
+# OP_TUNNEL_DOOR is what makes this bridge the tunnel owner
+# (crates/op-grpc-bridge/src/runtime_tunnel.rs owns_tunnel_from_env); container
+# bridges leave it unset and never start the tunnel owner.
 FABRIC_BIND="127.0.0.1:8090"
 export OP_GRPC_BRIDGE_LISTEN="$FABRIC_BIND"
 export OP_TUNNEL_DOOR="10.0.0.2:8090"

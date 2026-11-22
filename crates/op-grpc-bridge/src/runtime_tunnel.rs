@@ -4,6 +4,11 @@
 //! default /run/opdbus/tunnel/tunnel.sock) into the door-owning container's
 //! own tonic door, where TLS ends. Methods carry only status and open/close;
 //! bytes never enter state.
+//!
+//! Only the host bridge owns the tunnel: it starts only when OP_TUNNEL_DOOR is
+//! set explicitly (deploy/runit/op-grpc-bridge/run). A container bridge leaves
+//! it unset; its door is its own TLS listener on lo, reached through
+//! `op-tunnel-door`, and it must never rebind the shared door socket.
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -30,12 +35,24 @@ pub(crate) fn supports(plugin: &str, method: &str) -> bool {
     plugin == "tunnel" && matches!(method, "status" | "set_open" | "close_connections")
 }
 
+/// The host door this bridge splices, when it owns the tunnel. Only an
+/// explicit, non-empty OP_TUNNEL_DOOR makes this bridge the tunnel owner.
+fn tunnel_door(value: Option<String>) -> Option<String> {
+    value.map(|door| door.trim().to_string()).filter(|door| !door.is_empty())
+}
+
+/// Whether this bridge owns the door tunnel (host only).
+pub(crate) fn owns_tunnel_from_env() -> bool {
+    tunnel_door(std::env::var("OP_TUNNEL_DOOR").ok()).is_some()
+}
+
 /// Bind the door socket and the host door, then serve until stopped.
 pub(crate) async fn serve_from_env() -> Result<()> {
     let socket = PathBuf::from(
         std::env::var("OP_TUNNEL_SOCKET").unwrap_or_else(|_| "/run/opdbus/tunnel/tunnel.sock".into()),
     );
-    let door = std::env::var("OP_TUNNEL_DOOR").unwrap_or_else(|_| "10.0.0.2:8090".into());
+    let door = tunnel_door(std::env::var("OP_TUNNEL_DOOR").ok())
+        .context("door tunnel owner requires an explicit OP_TUNNEL_DOOR")?;
     if let Some(parent) = socket.parent() {
         std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
     }
@@ -109,4 +126,18 @@ pub(crate) async fn dispatch(
         additional: Vec::new(),
         guard: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tunnel_door;
+
+    #[test]
+    fn only_an_explicit_door_owns_the_tunnel() {
+        assert_eq!(tunnel_door(None), None);
+        assert_eq!(tunnel_door(Some(String::new())), None);
+        assert_eq!(tunnel_door(Some("  ".into())), None);
+        assert_eq!(tunnel_door(Some("10.0.0.2:8090".into())).as_deref(), Some("10.0.0.2:8090"));
+        assert_eq!(tunnel_door(Some(" 10.0.0.2:8090\n".into())).as_deref(), Some("10.0.0.2:8090"));
+    }
 }

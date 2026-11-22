@@ -57,6 +57,12 @@ come from the golden live slot (`/srv/golden/opt/op-build/target/release`, the
 chroot build of `deploy/provisioning/README.md` step 2b). `3tched-fs` is the
 duplicate-path-fixed build named in `deploy/provisioning/lib.sh` (`BIN_3TCHED_FS`).
 
+The container bridge does not own the door tunnel: the seed's `bridge.env` leaves
+`OP_TUNNEL_DOOR` unset, so `op-grpc-bridge` only serves its own TLS door on
+`10.0.0.2:8090` (lo) and `op-tunnel-door` splices the host door into it over
+`/run/opdbus/tunnel/tunnel.sock`. Only the host bridge, which sets `OP_TUNNEL_DOOR`
+(`deploy/runit/op-grpc-bridge/run`), binds that socket.
+
 Base-OS fixes in the seed (antiX trixie rootfs, applied 2026-11-22):
 - `/etc/initrd-release` is removed. antiX ships it unowned by any package; when
   it exists, systemd treats the root as an initrd, runs `initrd-switch-root`

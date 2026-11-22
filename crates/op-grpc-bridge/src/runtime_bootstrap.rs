@@ -165,13 +165,17 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         spawn_owner(&mut workers, "TLS door", door.serve(stopping(receive.clone())));
         spawn_owner(&mut workers, "private ExHook", exhook.serve(stopping(receive.clone())));
         spawn_owner(&mut workers, "committed wake", wake.run(runtime.core().clone(), stopping(receive.clone())));
-        let tunnel_stop = receive.clone();
-        spawn_owner(&mut workers, "door tunnel", async move {
-            tokio::select! {
-                result = crate::runtime_tunnel::serve_from_env() => result,
-                _ = stopping(tunnel_stop) => Ok(()),
-            }
-        });
+        // Host only: a container bridge's door is reached through op-tunnel-door
+        // and must not rebind the shared door socket or the door address.
+        if crate::runtime_tunnel::owns_tunnel_from_env() {
+            let tunnel_stop = receive.clone();
+            spawn_owner(&mut workers, "door tunnel", async move {
+                tokio::select! {
+                    result = crate::runtime_tunnel::serve_from_env() => result,
+                    _ = stopping(tunnel_stop) => Ok(()),
+                }
+            });
+        }
         let observed_runtime = runtime.as_ref().clone();
         let observer_stop = receive.clone();
         spawn_owner(&mut workers, "native network observations", async move {
