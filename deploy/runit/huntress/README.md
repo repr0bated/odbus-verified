@@ -42,5 +42,5 @@ directory runs it under runit. No keys or agent config live here.
   runit stdout goes to /var/log/huntress/<svc>/ (svlogd).
 - /etc/machine-id -> /var/lib/dbus/machine-id (symlink). The agent reads it for host_unique_id.
   It was absent at registration; linking it later did not re-register (same agent id).
-- Rio is also opted in to journal-compat (`sv/huntress-rio/env/PATH`) so it can read
+- All three are opted in (`sv/<svc>/env/PATH`) to ../systemd-run-compat (the updater applies updates via systemd-run) and journal-compat; Rio uses journal-compat so it can read
   sshd/polkitd/cron events without journald. See ../logging/README.md.

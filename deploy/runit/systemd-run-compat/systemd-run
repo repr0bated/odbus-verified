@@ -1,0 +1,61 @@
+#!/bin/sh
+# systemd-run emulation for runit hosts. Opt-in only: it is on the PATH of
+# programs whose runit env dir puts /usr/local/libexec/systemd-run-compat/bin
+# first (huntress-agent/updater/rio). Runs the command as a detached
+# "transient unit": own session, reparented to init, so it survives the
+# caller being stopped (Huntress's updater replaces itself this way).
+# Supported: --unit/-u, --uid, --gid, --setenv/-E, --working-directory,
+# --same-dir/-d, --scope, --wait/-W, --pipe/-P, --quiet/-q; ignored:
+# --description, --collect/-G, --property/-p, --no-block, --service-type,
+# --remain-after-exit, --slice, --nice. Output: /var/log/systemd-run-compat/<unit>.log
+set -u
+unit=; uid=; gid=; wd=; fg=; quiet=
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--) shift; break ;;
+	--unit=*) unit=${1#*=} ;;
+	--unit | -u) shift; unit=$1 ;;
+	--uid=*) uid=${1#*=} ;;
+	--uid) shift; uid=$1 ;;
+	--gid=*) gid=${1#*=} ;;
+	--gid) shift; gid=$1 ;;
+	--setenv=*) export "${1#*=}" ;;
+	--setenv | -E) shift; export "$1" ;;
+	--working-directory=*) wd=${1#*=} ;;
+	--working-directory) shift; wd=$1 ;;
+	--same-dir | -d) wd=$PWD ;;
+	--scope | --wait | -W | --pipe | -P) fg=1 ;;
+	--quiet | -q) quiet=1 ;;
+	--description=* | --property=* | --service-type=* | --slice=* | --nice=* | --on-*=*) ;;
+	--description | --property | -p | --service-type | --slice | --nice) shift ;;
+	--collect | -G | --no-block | --remain-after-exit | -r | --no-ask-password | --system) ;;
+	--version) echo "systemd 257 (systemd-run-compat)"; exit 0 ;;
+	-*) echo "systemd-run (compat): ignoring unsupported option $1" >&2 ;;
+	*) break ;;
+	esac
+	shift
+done
+[ $# -gt 0 ] || { echo "systemd-run (compat): no command given" >&2; exit 1; }
+[ -n "$unit" ] || unit="run-compat-$$"
+unit=${unit%.service}
+rund=/run/systemd-run-compat; logd=/var/log/systemd-run-compat
+install -d -m 0700 "$rund" "$logd"
+[ -n "$wd" ] && { cd "$wd" || exit 1; }
+# --uid/--gid: switch only if different from the caller.
+drop=
+if [ -n "$uid$gid" ] && { [ "${uid:-0}" != "$(id -u)" ] || [ "${gid:-0}" != "$(id -g)" ]; }; then
+	drop="setpriv --reuid=${uid:-$(id -u)} --regid=${gid:-$(id -g)} --clear-groups"
+fi
+if [ -n "$fg" ]; then
+	exec $drop "$@"
+fi
+lock="$rund/$unit.lock"
+if ! flock -n "$lock" true; then
+	echo "Failed to start transient service unit: Unit $unit.service was already loaded or has a fragment file." >&2
+	exit 1
+fi
+[ -n "$quiet" ] || echo "Running as unit: $unit.service" >&2
+{ echo "=== $(date -Is) start: $*"; } >>"$logd/$unit.log"
+setsid -f sh -c 'lock=$1; log=$2; shift 2; flock -n "$lock" "$@" >>"$log" 2>&1 </dev/null; echo "=== $(date -Is) exit=$?" >>"$log"' \
+	systemd-run-compat "$lock" "$logd/$unit.log" $drop "$@"
+exit 0
