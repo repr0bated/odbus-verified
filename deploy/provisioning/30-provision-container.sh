@@ -113,13 +113,6 @@ lxc.mount.auto = cgroup2:force$INIT"
   "$BIN_ACCEPT" --issued "$ISSUED" --pubkey "$KEY" --trust-store "$TRUST" --out "$DIR/sealed_id" >/dev/null
   install -d -m 0700 "$DIR/ledger"
   incus config device add "$NAME" sled disk pool="$POOL" source="$SLED" path=/agent/user readonly=true >/dev/null
-  # Per-container ext4 RocksDB store for the identity owner and personal memory/
-  # soul (task 27.3). New containers only: on an existing container it would
-  # cover the identity owner already in its rootfs (migration is a separate step).
-  "$(dirname -- "$0")/identity-rocksdb.sh" create "$NAME"
-  "$(dirname -- "$0")/identity-rocksdb.sh" mount "$NAME"
-  incus config device add "$NAME" identity-rocksdb disk source="/run/opdbus/identity-rocksdb/$NAME" \
-    path=/var/lib/op-dbus/identity-cozo shift=true >/dev/null
   wire_devices "$NAME"
   ;;
 *) fail "usage: $0 new <pubkey> <iid1> [NAME] | complete <NAME>" ;;

@@ -15,11 +15,6 @@ for name in OP_GRPC_BRIDGE_LISTEN OPDBUS_LUNGS_SOCKET OPDBUS_READY_PATH THREETCH
   value=$(cat "$file")
   export "$name=$value"
 done
-# Personal memory and soul (task 27.3): the cognitive store lives on the
-# identity owner's filesystem, which provisioning makes the per-container ext4
-# RocksDB mount (deploy/provisioning/identity-rocksdb.sh). Separate database
-# directory; the bridge refuses a shared handle or directory.
-export COGNITIVE_DB_PATH=/var/lib/op-dbus/identity-cozo/personal-cognitive
 # Order: threetched gateway up -> paired once -> bridge. Where the image runs
 # its own gateway (sv/threetched-gateway installed), wait for it and the pair step.
 if [ -d /etc/sv/threetched-gateway ]; then
