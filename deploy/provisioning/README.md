@@ -138,11 +138,11 @@ Port of `deploy/seed/rootfs/` (systemd units) to runit (`runit/`):
 
 | runit service | replaces | does |
 |---|---|---|
-| `core-services/90-opdbus.sh` (stage 1) | `tmpfiles.d/opdbus-sockets.conf` | `/run/opdbus -> /opt/run-mounts/opdbus`, mountpoints, `/dev/shm/opdbus/state`, hostname |
+| `core-services/90-opdbus.sh` (stage 1) | `tmpfiles.d/opdbus-sockets.conf` | `/run/opdbus -> /run/mounts/opdbus`, mountpoints, `/dev/shm/opdbus/state`, hostname |
 | `opdbus-lo` | `opdbus-lo.service` | **networking**: no NIC; `10.0.0.2/32` on `lo` for the door |
 | `door-tls-init` | same | door TLS pair generated inside the container; cert exported to host `/run/opdbus/ct/<name>/door.crt` |
 | `3tchedfs` | `3tchedfs.service` | capture + mount `3tchedFS` (surface `3tched`) at `/run/mounts/3tchedFS` over the host lungs socket |
-| `threetchedfs` | `threetchedfs.service` | capture (`--include-plugin threetched`) + mount `threetched` (surface `3tched`: guests do not ship the threetched CLI) at `/run/mounts/threetched`; needs the duplicate-path-fixed `3tched-fs` (host `3tched-fs-dupfix-b37bffa2`) |
+| `threetchedfs` | `threetchedfs.service` | capture (`--include-plugin threetched`) + mount `threetched` (surface `3tched`: guests do not ship the threetched CLI) at `/run/mounts/threetchedFS`; needs the duplicate-path-fixed `3tched-fs` (host `3tched-fs-dupfix-b37bffa2`) |
 | `op-grpc-bridge` | `op-grpc-bridge.service` | waits for both mounts + lo + TLS, loads `/etc/op-dbus/bridge.env`, runs the existing `op-grpc-bridge` binary on `10.0.0.2:8090` |
 | `op-tunnel-door` | same | chatbot only (tunnel device present): splices host door socket into the container door |
 | `threetched-gateway` (`sv/`, host template) | `deploy/runit/threetched` (`daemon`) | zero claw **gateway mode** on `127.0.0.1:8084` with `/var/lib/zeroclaw` |
@@ -155,23 +155,24 @@ in a chroot: `iproute2 openssl fuse3 util-linux runit curl`. Binaries copied in:
 `op-identity-accept` (`/usr/local/bin/`), `nextdns` (`/usr/bin/`).
 
 The Ubuntu/systemd `@seed` already carries the systemd versions of these units
-(`deploy/seed/README.md`); it has no `nextdns` service yet.
+(`deploy/seed/README.md`), including `nextdns.service` since 2026-11-22.
 
 ### Devices per container (step 3)
 
 | device | source (host) | path (container) |
 |---|---|---|
 | `fuse` | `/dev/fuse` | `/dev/fuse` |
-| `opdbus-run` | `/run/opdbus/ct/<name>` | `/opt/run-mounts/opdbus` (shift) |
-| `lungs` | `/run/opdbus/lungs` | `/opt/run-mounts/opdbus/lungs` (ro, shift) |
+| `runtime-run` | `tmpfs:` (Incus tmpfs, `initial.mode=0755`) | `/run` |
+| `opdbus-run` | `/run/opdbus/ct/<name>` | `/run/mounts/opdbus` (shift) |
+| `lungs` | `/run/opdbus/lungs` | `/run/mounts/opdbus/lungs` (ro, shift) |
 | `shm` | `/run/opdbus/shm/<name>` (1777, `opdbus/plugin-blobs` pre-created) | `/dev/shm` (shift) |
 | `catalog` | `/var/lib/opdbus/plugin-blobs` (sealed catalog) | `/dev/shm/opdbus/plugin-blobs` (ro, shift) |
 | `decoy-trust` | `/etc/op-dbus/decoy-trust.json` | same path (ro, shift) |
 | `sled` | pool volume `identity-<session>` | `/agent/user` (ro) |
-| `tunnel` | `/run/opdbus/tunnel` | `/opt/run-mounts/opdbus/tunnel` (chatbot key only) |
+| `tunnel` | `/run/opdbus/tunnel` | `/run/mounts/opdbus/tunnel` (chatbot key only) |
 
 Mount layering: no mount covers another. Each parent is mounted before anything under it:
-`opdbus-run` before `lungs`/`tunnel`, and `shm` before `catalog` (Incus orders disks by path).
+`runtime-run` (`/run`) before `opdbus-run`, `opdbus-run` before `lungs`/`tunnel`, and `shm` before `catalog` (Incus orders disks by path).
 Without the `shm` disk, systemd (systemd seed) mounts its own tmpfs on `/dev/shm` at boot,
 covering the catalog, and both 3tchedFS units fail their manifest check. A tmpfs from
 `raw.lxc` does not work: Incus writes raw.lxc after its disks and LXC attaches idmapped

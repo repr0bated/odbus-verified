@@ -223,7 +223,7 @@ I/O on the mounted `call` file (D-44). The Chat_Route does not spawn
 flowchart TB
   subgraph IC["Deployment_Target: Identity_Container"]
     ICRoute["Chat_Route, file I/O on the container mounts"]
-    ICMount["/run/mounts/3tchedFS and /run/mounts/threetched"]
+    ICMount["/run/mounts/3tchedFS and /run/mounts/threetchedFS"]
     ICRoute --> ICMount
   end
   ICUI["Chat_UI browser"] -.->|"BLOCKED B-26: no recorded Chat_Link path into the container"| ICRoute
@@ -1615,7 +1615,7 @@ PROPOSED-DEFAULT, awaiting owner confirmation:
 | `deployment_targets[].kind` | string enum `identity_container`, `host_dashboard` | yes | | |
 | `deployment_targets[].mount_paths` | object with exactly the keys `3tched` and `threetched` | yes | 2 keys | D-35 |
 | `deployment_targets[].mount_paths.3tched` | string, absolute path, no `..` | yes | 256 chars | our code's view, normally `/run/mounts/3tchedFS` |
-| `deployment_targets[].mount_paths.threetched` | string, absolute path, no `..` | yes | 256 chars | ZeroClaw-derived binary's view, normally `/run/mounts/threetched` |
+| `deployment_targets[].mount_paths.threetched` | string, absolute path, no `..` | yes | 256 chars | ZeroClaw-derived binary's view, normally `/run/mounts/threetchedFS` |
 
 - Forbidden by schema and by the loader: grant or capability lists, plugin
   allowlists, executable values (the schema allows only strings, arrays and
@@ -1818,7 +1818,7 @@ reference to the grant file or `op-grants-materializer`), `check-pins.ts`
   on our code (3tched) are read and called only through the `3tched` view
   (`/run/mounts/3tchedFS`); operations that run on the ZeroClaw-derived
   binary (the `threetched` plugin) only through the `threetched` view
-  (`/run/mounts/threetched`). The Tool_Registry tags each entry with the
+  (`/run/mounts/threetchedFS`). The Tool_Registry tags each entry with the
   `viewKind` of the view that exposed it. The Tool_Executor selects that view's
   mount path from the session binding, never from client input, and never
   retries through the other view after a Denial, error or Unknown_Outcome.

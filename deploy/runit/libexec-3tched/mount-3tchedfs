@@ -18,7 +18,7 @@ case "${1:-}" in
     start)
         [ "$#" = 1 ] || exit 2
         mount /run/mounts/3tchedFS
-        exec mount /run/mounts/threetched
+        exec mount /run/mounts/threetchedFS
         ;;
     stop) exit 0 ;;
 esac
@@ -29,7 +29,7 @@ fs_name=$1
 mount_path=$2
 case "$fs_name:$mount_path" in
     3tchedFS:/run/mounts/3tchedFS) selection=--exclude-plugin; surface=3tched ;;
-    threetched:/run/mounts/threetched) selection=--include-plugin; surface=threetched ;;
+    threetched:/run/mounts/threetchedFS) selection=--include-plugin; surface=threetched ;;
     *) fail 'unexpected mount source or target' ;;
 esac
 upstream_plugins=threetched

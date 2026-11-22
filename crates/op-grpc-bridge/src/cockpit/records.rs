@@ -19,7 +19,7 @@ impl ViewKind {
     pub fn mount_path(self) -> &'static str {
         match self {
             Self::ThreeTched => "/run/mounts/3tchedFS",
-            Self::Threetched => "/run/mounts/threetched",
+            Self::Threetched => "/run/mounts/threetchedFS",
         }
     }
 }

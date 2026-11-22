@@ -74,7 +74,7 @@ implement the stated interim behaviour now; the remainder is gated.
     - For each discovered Branch and each candidate Deployment_Target
       (its Identity_Container and the Host_Dashboard): present or absent for
       the `3tched` view (`/run/mounts/3tchedFS`), the `threetched` view
-      (`/run/mounts/threetched`), the Lungs_Socket, Door_8090 and the
+      (`/run/mounts/threetchedFS`), the Lungs_Socket, Door_8090 and the
       Op_Web_Connector, with exact command, output or error text and UTC
       timestamp to the second. Unobserved items are recorded as absent.
     - Re-observe every owner-brief fact the design relies on (catalog

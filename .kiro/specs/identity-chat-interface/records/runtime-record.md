@@ -8,8 +8,8 @@ identity or deployment change). Unobserved items are recorded as absent.
 |---|---|---|---|
 | `3tched` view | `ls -ld /run/mounts/3tchedFS` | `dr-xr-xr-x 2 root root 0` | present |
 | `3tched` view contents | `ls /run/mounts/3tchedFS` | `capabilities operations plugins relationships view.json` | present |
-| `threetched` view | `ls -ld /run/mounts/threetched` | `dr-xr-xr-x 2 root root 0` | present |
-| `threetched` view contents | `ls /run/mounts/threetched` | `capabilities operations plugins relationships view.json` | present |
+| `threetched` view | `ls -ld /run/mounts/threetchedFS` | `dr-xr-xr-x 2 root root 0` | present |
+| `threetched` view contents | `ls /run/mounts/threetchedFS` | `capabilities operations plugins relationships view.json` | present |
 | Catalog generation | `cat /run/mounts/3tchedFS/view.json` | `source_catalog_generation: 216`, `source_catalog_hash: 3391876719b148ebe8595f2fbb1cccf485bae3b60ecf7ba6480ed8b1b6ddaf05` | present (owner-brief said generation 144 — superseded) |
 | Lungs_Socket (host) | `ls -l /run/opdbus/lungs/lungs.sock` | `srw-rw-rw- 1 root root 0 Nov 8 21:27` | present |
 | Lungs_Socket (guest path) | `ls -l /run/3tched-lungs.socket` | `No such file or directory` | absent on host |

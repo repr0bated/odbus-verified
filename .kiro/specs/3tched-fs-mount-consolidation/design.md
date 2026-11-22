@@ -88,7 +88,7 @@ move to a shared module referenced by both fuse.rs and threetched_fs.rs**
 - Rationale: Consolidates the mount helper into a single decision tree rather than
   two parallel flag combinations.
 - `3tchedFS:/run/mounts/3tchedFS` → `--surface 3tched_fs --exclude-plugin threetched`
-- `threetched:/run/mounts/threetched` → `--surface threetched_fs --include-plugin threetched`
+- `threetched:/run/mounts/threetchedFS` → `--surface threetched_fs --include-plugin threetched`
 - Readiness check: look for `threetched_fs` in `view.json.objects` keys for 3tched mounts,
   or check the catalog inclusion logic (same as before, but using the new plugin name).
 
@@ -180,7 +180,7 @@ reports the mount source.
 ```sh
 case "$fs_name:$mount_path" in
     3tchedFS:/run/mounts/3tchedFS) surface=3tched_fs; selection=--exclude-plugin ;;
-    threetched:/run/mounts/threetched) surface=threetched_fs; selection=--include-plugin ;;
+    threetched:/run/mounts/threetchedFS) surface=threetched_fs; selection=--include-plugin ;;
     *) fail 'unexpected mount source or target' ;;
 esac
 ```

@@ -123,7 +123,7 @@ The session found that `fuse.rs` and `_3tched_fs.rs` share approximately 126 ide
 
 1. WHEN a mount is active THEN the filesystem SHALL respond to FUSE operations with no more than 50ms overhead compared to the pre-consolidation mount
 2. WHEN the binary is rebuilt with a different surface flag THEN it SHALL produce an identical binary except for the surface selection code
-3. WHEN any existing fstab or runit configuration refers to the 3tchedFS or threetched mount THEN the new binary SHALL be compatible with the existing mount paths (`/run/mounts/3tchedFS` and `/run/mounts/threetched`)
+3. WHEN any existing fstab or runit configuration refers to the 3tchedFS or threetched mount THEN the new binary SHALL be compatible with the existing mount paths (`/run/mounts/3tchedFS` and `/run/mounts/threetchedFS`)
 
 - [ ] All acceptance criteria in R1–R7 are met
 - [ ] The consolidated binary passes FUSE smoke tests for both surfaces
@@ -185,7 +185,7 @@ The session found that `fuse.rs` and `_3tched_fs.rs` share approximately 126 ide
 - The existing libfuse type generation (`fuse.rs`) SHALL continue to be generated from libfuse headers by `gen_fuse.py`
 - The threetched binary plugin (ZeroClaw) SHALL continue to be a separate plugin; this spec only consolidates the filesystem projection layer
 - The sealed blob catalog format SHALL not change; the plugin ID `threetched_fs` replaces the historical `_3tched_fs` only in the new consolidated build
-- The mount paths `/run/mounts/3tchedFS` and `/run/mounts/threetched` SHALL remain unchanged
+- The mount paths SHALL be `/run/mounts/3tchedFS` and `/run/mounts/threetchedFS` (owner, 2026-11-22: both FUSE mounts at `/run/mounts/<name>FS`; `threetched` was renamed `threetchedFS`)
 
 ### Assumptions
 
@@ -201,7 +201,7 @@ The session found that `fuse.rs` and `_3tched_fs.rs` share approximately 126 ide
 | Term | Definition |
 |------|------------|
 | **Surface** | A named filesystem view: `3tched_fs` (our code) or `threetched_fs` (ZeroClaw binary) |
-| **Mount** | A FUSE mount of a surface, bound to a mount point (`/run/mounts/3tchedFS` or `/run/mounts/threetched`) |
+| **Mount** | A FUSE mount of a surface, bound to a mount point (`/run/mounts/3tchedFS` or `/run/mounts/threetchedFS`) |
 | **3tchedFS** | The filesystem project name; not a mount point or plugin ID |
 | **threetched** | The ZeroClaw binary surface; also used for the plugin and the mount |
 | **fuse** | The libfuse engine, a library used by both surfaces; not a surface itself |

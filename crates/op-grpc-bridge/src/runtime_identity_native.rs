@@ -126,12 +126,12 @@ pub(super) fn validate_instance(raw: &JsonValue, sid: &str, key: &str, parent: O
                 Some("disk") => {
                     let pair = (device["source"].as_str(), device["path"].as_str());
                     (device["readonly"] == "true" && matches!(pair,
-                        (Some("/run/opdbus/lungs"), Some("/run/opdbus/lungs" | "/opt/run-mounts/opdbus/lungs"))
+                        (Some("/run/opdbus/lungs"), Some("/run/opdbus/lungs" | "/run/mounts/opdbus/lungs" | "/opt/run-mounts/opdbus/lungs"))
                         | (Some("/var/lib/opdbus/plugin-blobs"), Some("/var/lib/opdbus/plugin-blobs"))
                         | (Some("/dev/shm/opdbus/plugin-blobs"), Some("/dev/shm/opdbus/plugin-blobs"))
                         | (Some("/etc/op-dbus/decoy-trust.json"), Some("/etc/op-dbus/decoy-trust.json"))))
                         || pair == (Some("tmpfs:"), Some("/run"))
-                        || (device["shift"] == "true" && device["path"] == "/opt/run-mounts/opdbus"
+                        || (device["shift"] == "true" && (device["path"] == "/run/mounts/opdbus" || device["path"] == "/opt/run-mounts/opdbus")
                             && device["source"] == format!("/run/opdbus/ct/{}", native_name(raw)?))
                 }
                 _ => false,

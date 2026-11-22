@@ -36,7 +36,7 @@ gains no listener, host channel or network surface from the chat
 The cockpit uses both mounted filesystem views at the same time:
 
 - `/run/mounts/3tchedFS` exposes operations that run on 3tched code.
-- `/run/mounts/threetched` exposes operations that run on the ZeroClaw-derived
+- `/run/mounts/threetchedFS` exposes operations that run on the ZeroClaw-derived
   executable `/usr/bin/threetched`.
 
 Both views use the same 3tched-fs engine, sealed catalog, and identity
@@ -94,7 +94,7 @@ this document differs from a workspace steering rule, the steering rule wins.
   failed-start cleanup of the Cockpit.
 - **3tched_View**: The mounted view `/run/mounts/3tchedFS`, containing only
   operations that run on 3tched code.
-- **Threetched_View**: The mounted view `/run/mounts/threetched`, containing
+- **Threetched_View**: The mounted view `/run/mounts/threetchedFS`, containing
   only operations run by `/usr/bin/threetched`.
 - **Mounted_Views**: The 3tched_View and Threetched_View used together.
 - **Matching_View**: The 3tched_View for an operation that runs on 3tched code,

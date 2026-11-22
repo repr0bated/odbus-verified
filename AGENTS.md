@@ -48,10 +48,16 @@ filesystem interface projected from the sealed blobs and live SHM state.
 (Cargo package `_3tched-fs`, plugin `_3tched_fs`, retained source directory
 `crates/_3tched-fs`). The external ZeroClaw-derived executable and surface
 are `threetched`. Host views are separated: `/run/mounts/3tchedFS` exposes our
-OP-DBUS plugins; `/run/mounts/threetched` exposes `threetched`,
+OP-DBUS plugins; `/run/mounts/threetchedFS` exposes `threetched`,
 `threetched_plugins` and `threetched_skills`. Both views use our FUSE engine and preserve
 the same sealed catalog and identity enforcement. Source definitions do not
 establish that either mount is currently deployed; verify runtime receipts.
+Container runtime layout (owner, 2026-11-22): everything mounted into a
+container lives under `/run/mounts`: both FUSE views (`/run/mounts/3tchedFS`,
+`/run/mounts/threetchedFS`) and the host binds (`/run/mounts/opdbus`, with
+`lungs/` and, for the chatbot, `tunnel/`; `/run/opdbus` links there). `/run`
+is the container's own Incus `tmpfs:` disk so systemd does not cover those
+binds. No `/opt/run-mounts` for these.
 
 - Begin with the identity's mounted 3tchedFS namespace.
 - Use its declared state and operation files for supported actions.

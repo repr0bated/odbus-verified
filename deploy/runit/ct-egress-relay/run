@@ -36,7 +36,11 @@ as_ct() {
         --inh-caps=-all --bounding-set=-all --no-new-privs -- "$@"
 }
 # The container controls its own /run: an absolute symlink there would resolve
-# against the host root. Accept only the container-root-owned tmpfs.
+# against the host root. Accept only the container-root-owned tmpfs. Since
+# 2026-11-22 provisioning gives /run as an Incus `tmpfs:` disk (runtime-run,
+# deploy/provisioning/30-provision-container.sh); it is still a tmpfs in the
+# container's mount namespace, so this check is unchanged. Re-verify the owner
+# uid after the first container boots with that device.
 container_tmpfs() {
     [ "$(stat -f -c %T .)" = tmpfs ] && [ "$(stat -c %u .)" = "$uid" ] &&
         { [ -z "${1:-}" ] || [ "$(stat -c %d .)" = "$1" ]; }

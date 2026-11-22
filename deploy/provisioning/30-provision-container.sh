@@ -47,13 +47,18 @@ wire_devices() { # name
   install -d -m 0755 /run/opdbus/shm; install -d -m 1777 "$SHM"; chmod 1777 "$SHM"
   install -d -m 0755 "$SHM/opdbus" "$SHM/opdbus/plugin-blobs"
   dev_add "$n" fuse unix-char source=/dev/fuse path=/dev/fuse mode=0666
-  dev_add "$n" opdbus-run disk source="$RUNDIR" path=/opt/run-mounts/opdbus shift=true
-  dev_add "$n" lungs disk source=/run/opdbus/lungs path=/opt/run-mounts/opdbus/lungs readonly=true shift=true
+  # /run is its own Incus tmpfs disk (same fix as shm below): systemd finds /run
+  # already mounted and does not cover the nested /run/mounts/opdbus binds with
+  # its own tmpfs. Incus orders disks by path, so /run comes first.
+  # (deploy/runit/libexec-3tched/op-identity-root:554, incus.rs runtime-run)
+  dev_add "$n" runtime-run disk source=tmpfs: path=/run initial.mode=0755
+  dev_add "$n" opdbus-run disk source="$RUNDIR" path=/run/mounts/opdbus shift=true
+  dev_add "$n" lungs disk source=/run/opdbus/lungs path=/run/mounts/opdbus/lungs readonly=true shift=true
   dev_add "$n" shm disk source="$SHM" path=/dev/shm shift=true
   dev_add "$n" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true
   dev_add "$n" decoy-trust disk source="$TRUST" path=/etc/op-dbus/decoy-trust.json readonly=true shift=true
   if [ "$(incus config get "$n" user.opdbus.wireguard_public_key)" = "$CHATBOT_KEY" ] && [ -n "$CHATBOT_KEY" ]; then
-    dev_add "$n" tunnel disk source=/run/opdbus/tunnel path=/opt/run-mounts/opdbus/tunnel shift=true
+    dev_add "$n" tunnel disk source=/run/opdbus/tunnel path=/run/mounts/opdbus/tunnel shift=true
   fi; }
 
 case ${1:-} in

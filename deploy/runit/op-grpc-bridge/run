@@ -169,7 +169,7 @@ export OP_TUNNEL_SOCKET=/run/opdbus/tunnel/tunnel.sock
 # /run/mounts/by-container/<native-name>/{3tchedFS,threetched}; an explicit
 # entry wins over the auto spec for that same container; the value
 # off/none/disabled turns bridge-hosted mounts off entirely. Never point an
-# entry at /run/mounts/3tchedFS or /run/mounts/threetched (standalone-owned).
+# entry at /run/mounts/3tchedFS or /run/mounts/threetchedFS (standalone-owned).
 export OP_FUSE_LOCAL_MOUNTS="${OP_FUSE_LOCAL_MOUNTS:-}"
 unset OP_DBUS_GRPC_LISTEN THREETCHED_BIND_ADDR GRPC_BIND THREETCHED_UNIX_SOCKET
 export THREETCHED_TLS_CERT_FILE="${THREETCHED_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"

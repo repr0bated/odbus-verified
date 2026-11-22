@@ -1,0 +1,26 @@
+#!/bin/sh
+# NextDNS client for the systemd seed (nextdns.service). Same logic as the
+# runit service deploy/provisioning/runit/nextdns/run (deploy/provisioning/README.md
+# "NextDNS"): the profile ID and device name are the NextDNS context sealed into
+# this identity's SID1 (NDN1 extension, crates/op-identity/src/sealed_id.rs:23,79-81,
+# 120-124). op-identity-accept verifies the decoy-issued IID1 against the trust
+# store and prints "session_id profile_id device_name"
+# (crates/op-identity/src/bin/op-identity-accept.rs). With --out = the sled's own
+# sealed_id nothing is written (the sled is mounted read-only anyway).
+# The profile ID is never echoed to the journal.
+set -u
+S=/agent/user
+[ -r "$S/issued_identity.iid1" ] && [ -r "$S/sealed_id" ] || { echo "identity sled absent"; exit 1; }
+KEY=
+[ -r "$S/wireguard_pubkey" ] && KEY=$(tr -d ' \n' <"$S/wireguard_pubkey")
+[ -n "$KEY" ] || { echo "sled carries no wireguard public key"; exit 1; }
+OUT=$(/usr/local/bin/op-identity-accept --issued "$S/issued_identity.iid1" --pubkey "$KEY" \
+      --trust-store /etc/op-dbus/decoy-trust.json --out "$S/sealed_id" 2>/dev/null) \
+  || { echo "sled identity did not verify"; exit 1; }
+set -- $OUT; PROFILE=${2:-}; DEVICE=${3:-}
+echo "$PROFILE" | grep -Eq '^[0-9a-f]{6}$' && echo "$DEVICE" | grep -Eq '^[A-Za-z0-9._-]{1,128}$' \
+  || { echo "sealed NextDNS context absent or malformed"; exit 1; }
+echo "starting nextdns for device $DEVICE (profile from the sealed identity)"
+# nextdns has no device-name flag; the device name rides on the DoH path.
+exec /usr/bin/nextdns run -listen 127.0.0.1:53 -report-client-info \
+  -profile "$PROFILE" -forwarder "https://dns.nextdns.io/$PROFILE/$DEVICE"

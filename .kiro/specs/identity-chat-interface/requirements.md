@@ -215,7 +215,7 @@ mounted namespace of the Bound_Identity.
   operation, decided by what runs it (steering
   `naming-3tched-threetched.md`): `3tched` for operations that run on our
   code, exposed in `/run/mounts/3tchedFS`, and `threetched` for operations that
-  run on the ZeroClaw-derived binary, exposed in `/run/mounts/threetched`. A
+  run on the ZeroClaw-derived binary, exposed in `/run/mounts/threetchedFS`. A
   Bound_Identity's Chat_Session uses both views at the same time; each
   Tool_Registry entry carries the View_Kind of the view that exposes it.
 - **Legacy_Chat_Inventory**: The record of existing chat code found in op-dbus,
@@ -423,7 +423,7 @@ against what actually exists.
 
 1. THE Implementer SHALL record in the Baseline_Record, for each pinned interface used by the Chat_Interface (`identity_sled` methods, execution tracker record and integrity functions, the Sealed_Method_Schema format including `required_capability` and side-effect fields, the Operation_File contract, Door_8090 and the Op_Web_Connector), the source path relative to the pinned op-dbus checkout, the symbol name, the full 40-character pinned commit hash, the symbol signature and whether the symbol is committed at that commit or present only in the working tree.
 2. THE Implementer SHALL record in the Runtime_Record, using read-only discovery, each Branch that exists, with the read-only source, the exact observation command and a UTC ISO 8601 timestamp to the second for each entry.
-3. THE Implementer SHALL record in the Runtime_Record, using read-only discovery, for each discovered Branch and for each candidate Deployment_Target (the Identity_Container of that Branch and the Host_Dashboard), a present or absent result for each of the two mounted views (the `3tched` View_Kind at `/run/mounts/3tchedFS` and the `threetched` View_Kind at `/run/mounts/threetched`), the Lungs_Socket, Door_8090 and the Op_Web_Connector, with the exact observation command, the observed output or error text and a UTC ISO 8601 timestamp to the second; an unobserved item SHALL be recorded as absent, not omitted.
+3. THE Implementer SHALL record in the Runtime_Record, using read-only discovery, for each discovered Branch and for each candidate Deployment_Target (the Identity_Container of that Branch and the Host_Dashboard), a present or absent result for each of the two mounted views (the `3tched` View_Kind at `/run/mounts/3tchedFS` and the `threetched` View_Kind at `/run/mounts/threetchedFS`), the Lungs_Socket, Door_8090 and the Op_Web_Connector, with the exact observation command, the observed output or error text and a UTC ISO 8601 timestamp to the second; an unobserved item SHALL be recorded as absent, not omitted.
 4. WHERE a mounted namespace exists for a Branch and its Sealed_Method_Schemas grant `identity_sled.get_own_identity`, THE Implementer SHALL identify the Bound_Identity of that namespace only from the Receipt of a `get_own_identity` read through that namespace's Operation_File and record the Public_Identity_Fields and Receipt in the Runtime_Record.
 5. THE Implementer SHALL record in the Runtime_Record, for each discovered Branch with a mounted namespace, the method name and Required_Capability of each granted operation that exposes Execution_Records to that Branch, as discovered from its mounted Sealed_Method_Schemas, or an explicit "none" entry when no such operation is granted.
 6. THE Implementer SHALL perform Branch discovery without logging in, starting, stopping, restarting, logging out, mounting, unmounting or changing any identity, session, container, grant, storage or deployment.
@@ -955,7 +955,7 @@ chat runs only through the new code.
 
 #### Acceptance Criteria
 
-1. THE Chat_Route SHALL make every op-dbus call of the Chat_Interface, including the `identity_sled.get_own_identity` binding of Requirement 4.1, every identity re-check of Requirements 4.5 and 4.13, every Tool_Call, every read-back, every Execution_Record read, every catalog pin read and every schema discovery, as local file I/O on Operation_Files of the Bound_Identity's mounted views (`/run/mounts/3tchedFS` for the `3tched` View_Kind and `/run/mounts/threetched` for the `threetched` View_Kind).
+1. THE Chat_Route SHALL make every op-dbus call of the Chat_Interface, including the `identity_sled.get_own_identity` binding of Requirement 4.1, every identity re-check of Requirements 4.5 and 4.13, every Tool_Call, every read-back, every Execution_Record read, every catalog pin read and every schema discovery, as local file I/O on Operation_Files of the Bound_Identity's mounted views (`/run/mounts/3tchedFS` for the `3tched` View_Kind and `/run/mounts/threetchedFS` for the `threetched` View_Kind).
 2. THE Chat_Route SHALL make no op-dbus call through a network socket, a gRPC or gRPC-Web channel, Door_8090, a direct Lungs_Socket connection, D-Bus, a child process or any transport other than file I/O on the mounted views.
 3. THE Chat_Route SHALL perform each call on the mounted view of the View_Kind recorded for the called operation, and SHALL never perform a call of one View_Kind through the other view.
 4. THE Chat_Route SHALL discover method arguments, results, errors and the catalog pin only from files in the mounted views, and SHALL take none of them from the Chat_UI, the model, a tool result or a Plugin_Feed_Message.

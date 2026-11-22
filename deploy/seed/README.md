@@ -7,8 +7,8 @@ this directory is their source.
 The seed init is systemd; the host stays runit. The antiX runit and sysvinit
 packages are purged from the seed. Containers have no NIC: the default
 profile has only the root disk (on 3tched-pool) and the shared lungs socket.
-The seed includes `/opt/run-mounts/opdbus/{lungs,tunnel}` so those binds have
-a target directory.
+`/run` is an Incus `tmpfs:` disk (`runtime-run`), so the opdbus binds under
+`/run/mounts/opdbus/{lungs,tunnel}` are not covered by systemd's own `/run` tmpfs.
 
 - `op-grpc-bridge.service`, `opdbus-lo.service`: the container owns its door,
   op-grpc-bridge on lo `10.0.0.2:8090`.
@@ -22,7 +22,7 @@ a target directory.
   ordering cycle and systemd dropped both units. Each checks `/dev/fuse`, the catalog manifest, and the
   lungs socket, and is only treated as started once the FUSE is mounted.
 - `opdbus-runtime.conf`: creates `/run/mounts`, `/run/mounts/3tchedFS`,
-  `/run/mounts/threetched`, and `/dev/shm/opdbus/state` at boot, plus an empty
+  `/run/mounts/threetchedFS`, and `/dev/shm/opdbus/state` at boot, plus an empty
   `/var/lib/op-dbus/identity-cozo` (0700): `op-grpc-bridge` refuses to start without
   its durable identity owner directory (`crates/op-grpc-bridge/src/runtime.rs` `Runtime::open`).
 - `sysusers.d/opdbus.conf`: creates the `secrets` group at boot. The bridge's identity
@@ -31,9 +31,19 @@ a target directory.
 - `op-tunnel-door.service`: only where provisioning bound `/run/opdbus/tunnel`
   (the chatbot); holds the shared door socket and splices the host door into
   the container door. Binary: `op-tunnel-door` from `crates/op-tunnel-mux`.
-- `opdbus-sockets.conf`: `/run/opdbus` -> `/opt/run-mounts/opdbus`, where
+- `opdbus-sockets.conf`: `/run/opdbus` -> `/run/mounts/opdbus`, where
   provisioning binds the host directories (`lungs` read-only, `tunnel` for
   the chatbot).
+- `nextdns.service` + `usr/local/libexec/op-dbus/nextdns-run`, `resolv.conf`: the
+  official NextDNS client (`/usr/bin/nextdns`, release and SHA-256 pinned in
+  `deploy/provisioning/lib.sh` `NEXTDNS_VERSION`/`NEXTDNS_SHA256`) on `127.0.0.1:53`;
+  `/etc/resolv.conf` points there. Profile and device are the NextDNS context sealed in
+  the identity's SID1 (NDN1, `crates/op-identity/src/sealed_id.rs:23,79-81`), read with
+  `op-identity-accept` from the read-only sled, as the runit `nextdns/run` does
+  (`deploy/provisioning/README.md` "NextDNS"). Never configured from the host or the
+  network; the profile ID is not logged. Enable with
+  `systemctl --root=<rootfs> enable nextdns.service`. Upstream DoH needs container
+  egress, which the network spec does not yet provide (see `HANDOFF.md`).
 - `bridge.env`: the container bridge's own lungs socket is private
   (`/run/op-grpc-bridge/lungs.sock`). Lungs stay on the host; the bridge's
   `bind_socket` unlinks an existing socket, so it must never share the

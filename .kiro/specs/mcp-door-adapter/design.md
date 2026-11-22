@@ -32,7 +32,7 @@ code is changed by this spec.
    mounts. On `origin/dev` `c65d57e` the only mount layout in code and on the
    host is the 3tchedFS layout (**Found**): `/run/mounts/3tchedFS` (our
    surface, `mount_identity {"kind":"guest_kernel"}`, 72 plugins) and
-   `/run/mounts/threetched`, fstab type `fuse.3tchedFS`
+   `/run/mounts/threetchedFS`, fstab type `fuse.3tchedFS`
    (`deploy/host-fuse/3tchedfs.fstab`). No separate bridge mount path was
    found. The door therefore takes its mounts from configuration (`mounts.json`,
    below), so a bridge-owned mount with the same `3tchedfs/1` call-file

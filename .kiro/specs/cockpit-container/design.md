@@ -82,7 +82,7 @@ The integration has these responsibilities:
 state through both FUSE views:
 
 - `/run/mounts/3tchedFS` contains operations that run on 3tched code.
-- `/run/mounts/threetched` contains operations run by
+- `/run/mounts/threetchedFS` contains operations run by
   `/usr/bin/threetched`.
 
 Both views use the same 3tched-fs engine, sealed catalog, and identity
@@ -430,7 +430,7 @@ flowchart LR
   Gate --> Exec[TrackedToolExecutor]
   Exec --> Route{Runtime owner}
   Route -->|3tched code| V3[/run/mounts/3tchedFS Operation_File]
-  Route -->|/usr/bin/threetched| VT[/run/mounts/threetched Operation_File]
+  Route -->|/usr/bin/threetched| VT[/run/mounts/threetchedFS Operation_File]
   V3 --> FS[3tched-fs]
   VT --> FS
   FS --> Lungs[Existing lungs path]
@@ -762,7 +762,7 @@ type CatalogPin = {
 
 type MountedViewSnapshot = {
   kind: ViewKind;
-  mountPath: "/run/mounts/3tchedFS" | "/run/mounts/threetched";
+  mountPath: "/run/mounts/3tchedFS" | "/run/mounts/threetchedFS";
   kernelMountSource: string;
   owningProcess: string;
   guestKernelIdentity: GuestKernelIdentity;

@@ -6,7 +6,7 @@ The running bridge (`b58d7e11`, pid 2131, from `bridge-direct.sh`) has not been 
 
 ## Problem
 
-Host 3tchedFS views (`/run/mounts/3tchedFS`, `/run/mounts/threetched`) are mounted with
+Host 3tchedFS views (`/run/mounts/3tchedFS`, `/run/mounts/threetchedFS`) are mounted with
 `--lungs-socket /run/opdbus/lungs/lungs.sock` and no `--lungs-session`. That makes them
 `MountIdentity::GuestKernel` (`crates/_3tched-fs/src/fuse_fs.rs:208-217`), so every call
 sends `BindCurrentContainer()` (`crates/_3tched-fs/src/dispatch.rs:314-319`).

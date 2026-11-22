@@ -2,7 +2,7 @@
 # Identity owner door: the existing op-grpc-bridge binary on 10.0.0.2:8090.
 # gRPC libraries: compiled in (Rust crates), nothing to install at runtime.
 exec 2>&1
-for m in /run/mounts/3tchedFS /run/mounts/threetched; do
+for m in /run/mounts/3tchedFS /run/mounts/threetchedFS; do
   mountpoint -q "$m" || { echo "waiting for $m"; sleep 3; exit 1; }
 done
 [ -e /run/opdbus-lo.ready ] && [ -e /run/door-tls-init.ready ] || { echo "waiting for lo/tls"; sleep 3; exit 1; }

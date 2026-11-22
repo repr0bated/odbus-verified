@@ -13,7 +13,7 @@ Yes. Both views are up.
 | Mountpoint | Source | Type | Surface | Objects | Catalog generation |
 |---|---|---|---|---|---|
 | `/run/mounts/3tchedFS` | `3tchedFS` | `fuse.3tchedFS` | `3tched` (`3tched_fs`) | 72 | 146 |
-| `/run/mounts/threetched` | `threetched` | `fuse.3tchedFS` | `threetched` (`threetched_fs`) | 1 | 146 |
+| `/run/mounts/threetchedFS` | `threetched` | `fuse.3tchedFS` | `threetched` (`threetched_fs`) | 1 | 146 |
 
 Shared options: `rw,nosuid,nodev,noexec,noatime,user_id=0,group_id=0,default_permissions,allow_other`.
 

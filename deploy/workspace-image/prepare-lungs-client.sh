@@ -225,7 +225,7 @@ jq -n --arg release "${release##*/}" --arg release_kind "$release_kind" \
       client_sha256:$client_sha256,catalog_manifest_sha256:$catalog_sha256,
       socket:"/run/3tched-lungs.socket",binding:"BindCurrentContainer",state:"empty",
       mounts:[{service:"3tchedfs.service",mountpoint:"/run/mounts/3tchedFS",store:"/usr/share/op-dbus/lungs-view"},
-              {service:"threetchedfs.service",mountpoint:"/run/mounts/threetched",store:"/usr/share/op-dbus/threetched-view"}],
+              {service:"threetchedfs.service",mountpoint:"/run/mounts/threetchedFS",store:"/usr/share/op-dbus/threetched-view"}],
       mount_table:"/etc/fstab"}' \
     > "$guest/usr/share/op-dbus/lungs-client.json"
 chmod 0644 "$guest/usr/share/op-dbus/lungs-client.json"

@@ -11,7 +11,7 @@ pub(crate) async fn get_catalog(ctx: &BackendContext<'_>, args: &Value) -> Resul
     ensure!(crate::container_ui::setting("CHAT_UI_DIR")?.is_some(), "container UI is not configured");
     let mounts = [
         crate::container_ui::setting("CHAT_UI_MOUNT")?.unwrap_or_else(|| "/run/mounts/3tchedFS".into()),
-        crate::container_ui::setting("CHAT_UI_BINARY_MOUNT")?.unwrap_or_else(|| "/run/mounts/threetched".into()),
+        crate::container_ui::setting("CHAT_UI_BINARY_MOUNT")?.unwrap_or_else(|| "/run/mounts/threetchedFS".into()),
     ];
     let grants = ctx.runtime.current_grants(ctx.caller).await?;
     let catalog = ctx.runtime.catalog().clone();

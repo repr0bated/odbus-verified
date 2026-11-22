@@ -166,7 +166,7 @@ fn local_mounts_disabled() -> bool {
 /// `container_binding` re-verify the native container is Running before any
 /// mount is served. Mountpoints are by convention under
 /// `/run/mounts/by-container/<native-name>/`, never the standalone-owned
-/// `/run/mounts/3tchedFS` or `/run/mounts/threetched`.
+/// `/run/mounts/3tchedFS` or `/run/mounts/threetchedFS`.
 async fn auto_specs(runtime: &Runtime) -> Vec<FuseMountSpec> {
     let catalog_dir = runtime.catalog_dir().to_path_buf();
     let state_dir = op_core::projection_shm::shm_state_dir();

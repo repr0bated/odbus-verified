@@ -197,7 +197,7 @@ Each task: files · contract · acceptance evidence. Maintain per task when work
    ```sh
    case "$fs_name:$mount_path" in
        3tchedFS:/run/mounts/3tchedFS) surface=3tched_fs; selection=--exclude-plugin ;;
-       threetched:/run/mounts/threetched) surface=threetched_fs; selection=--include-plugin ;;
+       threetched:/run/mounts/threetchedFS) surface=threetched_fs; selection=--include-plugin ;;
        *) fail 'unexpected mount source or target' ;;
    esac
    ```

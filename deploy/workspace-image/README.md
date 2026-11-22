@@ -47,11 +47,11 @@ retained received release from a native source snapshot; a source snapshot is
 not evidence of receipt or activation. It refuses a base whose immutable image
 metadata already exists, existing client/view targets, and never captures live
 SHM or credentials. The enabled `3tchedfs.service` and
-`threetchedfs.service` mount `/run/mounts/3tchedFS` and `/run/mounts/threetched`:
+`threetchedfs.service` mount `/run/mounts/3tchedFS` and `/run/mounts/threetchedFS`:
 
 ```fstab
 3tchedFS /run/mounts/3tchedFS fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
-threetched /run/mounts/threetched fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
+threetched /run/mounts/threetchedFS fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
 ```
 
 `noauto` prevents competing early-boot mounts; each enabled service starts
@@ -181,10 +181,10 @@ incus --force-local --project default exec "$INSTANCE" -- \
   /usr/local/bin/3tched-fs call _3tched_fs get_protocol \
   --mount /run/mounts/3tchedFS --guest-kernel --args '{}'
 incus --force-local --project default exec "$INSTANCE" -- \
-  /usr/local/bin/3tched-fs describe --mount /run/mounts/threetched --guest-kernel
+  /usr/local/bin/3tched-fs describe --mount /run/mounts/threetchedFS --guest-kernel
 incus --force-local --project default exec "$INSTANCE" -- \
   /usr/local/bin/3tched-fs call threetched GetState \
-  --mount /run/mounts/threetched --guest-kernel --args '{}'
+  --mount /run/mounts/threetchedFS --guest-kernel --args '{}'
 ```
 
 `--guest-kernel` is available on `describe`, `call`, and `invoke`. It requires
@@ -254,7 +254,7 @@ manifest's critical hash inventory is deliberately limited to `/etc/os-release`,
 `/etc/fstab`, the systemd executable, and `/usr/sbin/init`; it excludes
 hostname, machine ID, SSH keys, credentials, agent data, persistence contents,
 and runtime state. `@agent_user/persist` is an ordinary directory, not another
-subvolume. The guest-owned `/run/mounts/3tchedFS` and `/run/mounts/threetched`
+subvolume. The guest-owned `/run/mounts/3tchedFS` and `/run/mounts/threetchedFS`
 FUSE views and per-boot private state under `/dev/shm` are runtime mounts, not seed contents. The
 `3tched-lungs` Incus profile supplies `/run` as tmpfs and mounts the host's
 dedicated `/run/opdbus/lungs` directory read-only at the same guest path.

@@ -16,7 +16,9 @@
 #      the calling container (BindCurrentContainer). An isolated idmap gives
 #      each container its own host uid range. Devices (idmap-shifted):
 #        /dev/fuse                     for the in-container 3tchedFS mounts
-#        /opt/run-mounts/opdbus        host /run/opdbus/ct/<name> (the seed
+#        /run                          Incus tmpfs (source=tmpfs:), so systemd
+#                                      does not cover the binds below it
+#        /run/mounts/opdbus            host /run/opdbus/ct/<name> (the seed
 #                                      links /run/opdbus here)
 #        .../opdbus/lungs              host /run/opdbus/lungs, read-only, so
 #                                      nothing in the container can replace
@@ -93,11 +95,12 @@ lxc.mount.auto = cgroup2:force"
 incus config device add "$NAME" fuse unix-char source=/dev/fuse path=/dev/fuse mode=0666 >/dev/null
 RUNDIR=/run/opdbus/ct/$NAME
 install -d -m 0755 "$RUNDIR" "$RUNDIR/lungs" "$RUNDIR/tunnel"   # nested idmapped mount targets
-incus config device add "$NAME" opdbus-run disk source="$RUNDIR" path=/opt/run-mounts/opdbus shift=true >/dev/null
-incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/opt/run-mounts/opdbus/lungs readonly=true shift=true >/dev/null
+incus config device add "$NAME" runtime-run disk source=tmpfs: path=/run initial.mode=0755 >/dev/null
+incus config device add "$NAME" opdbus-run disk source="$RUNDIR" path=/run/mounts/opdbus shift=true >/dev/null
+incus config device add "$NAME" lungs disk source=/run/opdbus/lungs path=/run/mounts/opdbus/lungs readonly=true shift=true >/dev/null
 incus config device add "$NAME" catalog disk source="$CATALOG" path=/dev/shm/opdbus/plugin-blobs readonly=true shift=true >/dev/null
 if [ "$NAME" = "$CHATBOT_NAME" ]; then
-    incus config device add "$NAME" tunnel disk source=/run/opdbus/tunnel path=/opt/run-mounts/opdbus/tunnel shift=true >/dev/null
+    incus config device add "$NAME" tunnel disk source=/run/opdbus/tunnel path=/run/mounts/opdbus/tunnel shift=true >/dev/null
 fi
 
 "$OP_CONTAINER" from-seed "$NAME"

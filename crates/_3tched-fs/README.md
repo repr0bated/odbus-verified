@@ -58,7 +58,7 @@ The `_3tched_fs` plugin describes our filesystem protocol itself. Our executable
 is `3tched-fs` (Cargo package `_3tched-fs`); the upstream executable remains
 `threetched`. Host mounts separate our OP-DBUS plugins at
 `/run/mounts/3tchedFS` from the upstream integration plugins at
-`/run/mounts/threetched`, using `capture --exclude-plugin` and
+`/run/mounts/threetchedFS`, using `capture --exclude-plugin` and
 `capture --include-plugin` with the same sealed catalog pin.
 
 The bridge does not start an embedded global FUSE mount. The strict host
