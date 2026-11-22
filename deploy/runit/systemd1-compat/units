@@ -1,5 +1,0 @@
-# Units the systemd1-compat responder answers for (everything else: UnknownObject).
-# Format: <unit name> [runit service name]   (default service = unit minus ".service")
-huntress-agent.service
-huntress-updater.service
-huntress-rio.service
