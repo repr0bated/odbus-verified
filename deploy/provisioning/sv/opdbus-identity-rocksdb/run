@@ -1,0 +1,10 @@
+#!/bin/sh
+# runit (host): mount every per-container ext4 RocksDB image at boot, before
+# any identity container is started (task 27.3). Install:
+#   install -m 0755 deploy/provisioning/identity-rocksdb.sh /usr/local/sbin/opdbus-identity-rocksdb.sh
+# Containers are boot.autostart=false; a missing mount fails their start closed.
+exec 2>&1
+export PATH=/usr/sbin:/sbin:/usr/bin:/bin
+/usr/local/sbin/opdbus-identity-rocksdb.sh mount-all || { sleep 30; exit 1; }
+touch /run/opdbus/identity-rocksdb.ready
+exec sleep infinity

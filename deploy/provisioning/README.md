@@ -169,6 +169,25 @@ The Ubuntu/systemd `@seed` already carries the systemd versions of these units
 | `decoy-trust` | `/etc/op-dbus/decoy-trust.json` | same path (ro, shift) |
 | `sled` | pool volume `identity-<session>` | `/agent/user` (ro) |
 | `tunnel` | `/run/opdbus/tunnel` | `/opt/run-mounts/opdbus/tunnel` (chatbot key only) |
+| `identity-rocksdb` | `/run/opdbus/identity-rocksdb/<name>` (loop mount of `/var/lib/opdbus/identity-rocksdb/<name>.img`, ext4) | `/var/lib/op-dbus/identity-cozo` (shift; `new` only) |
+
+### Per-container ext4 RocksDB store (task 27.3)
+
+`30-provision-container.sh new` creates a sparse 10G ext4 image per container
+(`identity-rocksdb.sh create`, NOCOW set while empty, `mkfs.ext4 -L rocksdb`,
+the retired `deploy/seed/3tched-seed-launch` design), loop-mounts it under
+`/run/opdbus/identity-rocksdb/<name>` and attaches it at
+`/var/lib/op-dbus/identity-cozo`. The container's identity owner and its
+personal cognitive store (`COGNITIVE_DB_PATH=/var/lib/op-dbus/identity-cozo/personal-cognitive`,
+set by the guest bridge run script/unit) live there: personal chat memory,
+personal namespaces and soul stay in the container and never enter the sled
+ledger (task 27.2). On the host, install `identity-rocksdb.sh` as
+`/usr/local/sbin/opdbus-identity-rocksdb.sh` and the runit service
+`sv/opdbus-identity-rocksdb` (with its `log/` service) so images are mounted at
+boot; `/run` is empty after a reboot, so an unmounted image fails the
+container start closed. `complete` does not add the device: on an existing
+container it would cover the identity owner already in the rootfs (a data
+migration, not done by provisioning). Nothing is deleted or reformatted.
 
 Mount layering: no mount covers another. Each parent is mounted before anything under it:
 `opdbus-run` before `lungs`/`tunnel`, and `shm` before `catalog` (Incus orders disks by path).

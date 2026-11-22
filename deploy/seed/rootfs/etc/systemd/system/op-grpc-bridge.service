@@ -6,6 +6,9 @@ Requires=3tchedfs.service threetchedfs.service door-tls-init.service
 [Service]
 Type=simple
 EnvironmentFile=/etc/op-dbus/bridge.env
+# Personal memory and soul on the identity owner's (per-container ext4
+# RocksDB) filesystem, separate database directory (task 27.3).
+Environment=COGNITIVE_DB_PATH=/var/lib/op-dbus/identity-cozo/personal-cognitive
 RuntimeDirectory=op-grpc-bridge
 ExecStart=/usr/local/libexec/op-dbus/bin/op-grpc-bridge
 Restart=on-failure
