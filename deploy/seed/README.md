@@ -45,7 +45,11 @@ a target directory.
 Apply by making the seed writable, copying these files, and setting it
 read-only again. Never while a container depends on the seed.
 
-Binaries in the seed: `op-grpc-bridge`, `op-tunnel-door` and `op-identity-accept`
+Binaries in the seed: `op-grpc-bridge` is the host binary `deploy/provisioning/lib.sh`
+names (`BIN_BRIDGE`, `/usr/local/libexec/op-dbus/bin/op-grpc-bridge`): it must match the
+sealed catalog's state versions (golden's older build failed with `compiled/sealed state
+version mismatch for identity_sled`). The bridge runs in the container.
+`op-tunnel-door` and `op-identity-accept`
 come from the golden live slot (`/srv/golden/opt/op-build/target/release`, the
 chroot build of `deploy/provisioning/README.md` step 2b). `3tched-fs` is the
 duplicate-path-fixed build named in `deploy/provisioning/lib.sh` (`BIN_3TCHED_FS`).
