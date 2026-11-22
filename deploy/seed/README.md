@@ -78,6 +78,31 @@ unseal/copy/reseal as the overlay files, together with the `daa7717` overlay
 official NextDNS client `/usr/bin/nextdns` 1.50.2 (tarball SHA-256 checked against `lib.sh`
 `NEXTDNS_SHA256`; binary sha256 `e6b47528…`). Running containers are not changed by this.
 
+`opdbus-lo.service` and `door-tls-init.service` (dbus, then FUSE, then everything else,
+`88acb44`) were applied to the seed 2026-11-22 15:19 EST the same way; previous units kept as
+`<unit>.pre-20261122-151913`.
+
+In-place update of the running `3tchedChatbot` (2026-11-22 15:19 EST, owner choice "a"; same
+Incus UUID `b781ea28…`, identity volume `identity-2a2d9aa8…` untouched, no NIC). Rollback
+snapshot `3tchedChatbot/pre-optA2-20261122-151928`.
+1. `incus config device set` moved `opdbus-run`, `lungs`, `tunnel` to `/run/mounts/opdbus`,
+   `/run/mounts/opdbus/lungs`, `/run/mounts/opdbus/tunnel`.
+2. `deploy/provisioning/30-provision-container.sh complete 3tchedChatbot` added `runtime-run`
+   (`tmpfs:` on `/run`, the trusted shape without `initial.mode`; with it the host bridge refused
+   adoption, so the first attempt was rolled back to `pre-optA-20261122-150902`).
+3. `deploy/provisioning/35-refresh-binaries.sh 3tchedChatbot` with `BIN_BRIDGE`/`BIN_3TCHED_FS`
+   from `/usr/local/libexec/op-dbus/releases/daa771732f8b-301/bin`, `BIN_TUNNEL_DOOR` from the
+   release target and `BIN_ACCEPT` from the seed: the same bytes as the seed above (old files
+   `.pre-20261122-151929`).
+4. The overlay files listed above, `/usr/bin/nextdns`, `zcall` and its completion copied
+   byte-identical from `@seed/rootfs` (old files `.pre-20261122-151931`), `nextdns.service` enabled.
+Verified: startup order dbus, threetchedfs, 3tchedfs, door-tls-init, opdbus-lo, nextdns,
+op-grpc-bridge, op-tunnel-door; no ordering cycle; `systemctl --failed` empty; only `lo`;
+devices visible under `/run/mounts/opdbus`; 3tchedFS at `/run/mounts/3tchedFS` and
+`/run/mounts/threetchedFS`; host bridge adopts and serves its FUSE after two host-bridge and
+two container restarts. `nextdns` is active on `127.0.0.1:53` but resolves nothing until the
+container has egress.
+
 The container bridge does not own the door tunnel: the seed's `bridge.env` leaves
 `OP_TUNNEL_DOOR` unset, so `op-grpc-bridge` only serves its own TLS door on
 `10.0.0.2:8090` (lo) and `op-tunnel-door` splices the host door into it over
