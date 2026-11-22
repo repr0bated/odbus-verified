@@ -35,22 +35,40 @@ async fn admit(
         "native creation owner differs"
     );
     if request.owner_kind == "identity" {
-        let key = crate::identity_binding::configured_chatbot_key()
-            .context("configured chatbot key is absent")?;
-        let session = crate::identity_binding::control_plane_chatbot_session_id()
-            .context("configured chatbot session is absent")?;
         let body: Value = serde_json::from_str(&request.request_json)?;
-        ensure!(
-            session == op_identity::session::derive_session_id(&key)
+        if body["config"]["user.opdbus.creation_mode"] == "create_subsidiary" {
+            let key = body["config"]["user.opdbus.wireguard_public_key"].as_str().context("subsidiary key absent")?;
+            ensure!(request.reserved_name.is_none()
+                && request.logical_target == op_identity::session::derive_session_id(key)
+                && body["config"]["user.opdbus.session_id"] == request.logical_target
+                && body["config"]["user.opdbus.parent_principal_id"] == caller.principal_id
+                && request.logical_target != caller.session_id
+                && op_identity::session::derive_principal_id(key) != caller.principal_id,
+                "subsidiary native intent belongs to another human or target");
+            let store = runtime.identity_store().clone();
+            let owner_session = caller.session_id.clone();
+            let owner = tokio::task::spawn_blocking(move || store.read_identity_revision(&owner_session)).await??;
+            ensure!(owner.record.as_ref().is_some_and(|record|
+                record.principal_kind.as_deref() == Some("human")
+                && record.session_genesis == caller.session_genesis),
+                "subsidiary creation requires the same anchored human owner");
+            ensure!(crate::human_principal_registry::resolve_key_for_assertion(key).await?
+                .is_some_and(|record| record.revoked_at == 0
+                    && record.principal_id == op_identity::session::derive_principal_id(key)),
+                "subsidiary principal is absent or revoked");
+            let location = seed_location(&body)?;
+            tokio::task::spawn_blocking(move || op_container::inspect_seed(&location)).await??;
+        } else {
+            let key = crate::identity_binding::configured_chatbot_key().context("configured chatbot key is absent")?;
+            let session = crate::identity_binding::control_plane_chatbot_session_id().context("configured chatbot session is absent")?;
+            ensure!(session == op_identity::session::derive_session_id(&key)
                 && request.logical_target == session
-                && (request.reserved_name.as_deref()
-                    == Some(crate::identity_binding::RESERVED_CHATBOT_CONTAINER)
-                    || renamed.is_some_and(|journal| request.reserved_name.as_deref()
-                        == Some(journal.request.old_name.as_str())))
+                && (request.reserved_name.as_deref() == Some(crate::identity_binding::RESERVED_CHATBOT_CONTAINER)
+                    || renamed.is_some_and(|journal| request.reserved_name.as_deref() == Some(journal.request.old_name.as_str())))
                 && body["config"]["user.opdbus.session_id"] == session
                 && body["config"]["user.opdbus.wireguard_public_key"] == key,
-            "reserved native creation requires the exact configured service identity"
-        );
+                "reserved native creation requires the exact configured service identity");
+        }
     } else {
         ensure!(
             request.reserved_name.is_none(),
@@ -81,6 +99,26 @@ async fn admit(
         "registration document drifted from the creation pin"
     );
     Ok(())
+}
+
+fn seed_location(body: &Value) -> anyhow::Result<op_container::SeedLocation> {
+    let config = &body["config"];
+    let seed_name = config["user.opdbus.golden_seed_name"].as_str().context("Golden seed name absent")?;
+    let seed_uuid = config["user.opdbus.golden_seed_uuid"].as_str().context("Golden seed UUID absent")?;
+    let pool_fsid = config["user.opdbus.pool_fsid"].as_str().context("pool FSID absent")?;
+    ensure!(std::env::var("OP_IDENTITY_GOLDEN_SEED_NAME").ok().as_deref() == Some(seed_name)
+        && std::env::var("OP_IDENTITY_GOLDEN_SUBVOLUME_UUID").ok().as_deref() == Some(seed_uuid)
+        && std::env::var("OP_IDENTITY_POOL_FSID").ok().as_deref() == Some(pool_fsid),
+        "native creation does not select the approved Golden seed");
+    Ok(op_container::SeedLocation {
+        seed_name: seed_name.into(),
+        expected_seed_uuid: Some(uuid::Uuid::parse_str(seed_uuid)?),
+        expected_pool_fsid: Some(uuid::Uuid::parse_str(pool_fsid)?),
+        expected_seed_treeid: Some(config["user.opdbus.golden_seed_id"].as_str().context("Golden seed ID absent")?.parse()?),
+        expected_metadata_sha256: Some(hex::decode(config["user.opdbus.golden_metadata_sha256"].as_str()
+            .context("Golden metadata hash absent")?)?.try_into().map_err(|_| anyhow::anyhow!("invalid Golden metadata hash"))?),
+        ..Default::default()
+    })
 }
 
 fn request(
@@ -175,13 +213,18 @@ async fn reconcile(
                 .as_object()
                 .context("expanded devices absent")?;
             ensure!(
-                expanded.len() == 4
-                    && expanded.get("root") == body["devices"].get("root")
-                    && expanded.get("runtime-run") == body["devices"].get("runtime-run")
-                    && expanded.get("fuse") == body["devices"].get("fuse")
-                    && expanded.get("lungs-socket-dir")
-                        == Some(&json!({"type":"disk", "source":"/run/opdbus/lungs",
-                    "path":"/run/opdbus/lungs", "readonly":"true"})),
+                (if body["config"]["user.opdbus.creation_mode"] == "create_subsidiary" {
+                    raw["expanded_devices"] == body["devices"]
+                        && raw["expanded_config"]["security.idmap.isolated"] == "true"
+                } else {
+                    expanded.len() == 4
+                        && expanded.get("root") == body["devices"].get("root")
+                        && expanded.get("runtime-run") == body["devices"].get("runtime-run")
+                        && expanded.get("fuse") == body["devices"].get("fuse")
+                        && expanded.get("lungs-socket-dir")
+                            == Some(&json!({"type":"disk", "source":"/run/opdbus/lungs",
+                            "path":"/run/opdbus/lungs", "readonly":"true"}))
+                }),
                 "expanded identity devices differ"
             );
         }
@@ -194,6 +237,12 @@ async fn reconcile(
                 "native creation configuration differs"
             );
         }
+    }
+    if body["config"]["user.opdbus.creation_mode"] == "create_subsidiary" {
+        let mut location = seed_location(&body)?;
+        location.expected_container_uid = raw["config"]["volatile.idmap.base"].as_str().map(str::parse::<u32>).transpose()?;
+        let name = record.name.clone();
+        tokio::task::spawn_blocking(move || op_container::inspect_container(&location, &name)).await??;
     }
     let native_uuid = raw["config"]["volatile.uuid"]
         .as_str()
@@ -273,6 +322,18 @@ async fn create(
         incus::create_reserved_native(&body)
             .await
             .context("native creation outcome requires reconciliation")?;
+        if body["config"]["user.opdbus.creation_mode"] == "create_subsidiary" {
+            admit(runtime, caller, &record.request, None).await?;
+            let (raw, _) = IncusRootRepairBackend::local().instance(&record.name).await?;
+            ensure!(raw["status"] == "Stopped" && raw["config"]["user.opdbus.creation_operation"] == record.request.operation_id
+                && raw["config"]["user.opdbus.creation_digest"] == record.request.request_digest,
+                "seed creation requires the exact admitted stopped placeholder");
+            let location = seed_location(&body)?;
+            let name = record.name.clone();
+            // Only the original fresh intent can snapshot. All replays inspect
+            // the original root and refuse unresolved .<name>.seed staging.
+            tokio::task::spawn_blocking(move || op_container::create_from_seed(&location, &name)).await??;
+        }
     }
     let (record, state) = reconcile(runtime, caller, record).await?;
     Ok((record, state, !fresh))

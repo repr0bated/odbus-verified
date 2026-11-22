@@ -24,3 +24,19 @@ LOGDIR=${PROV_LOGDIR:-/home/jeremy/provisioning/runs}
 fail() { echo "provisioning: $*" >&2; exit 1; }
 need_root() { [ "$(id -u)" = 0 ] || fail "run as root (sudo)"; }
 log() { echo "[$(date +%H:%M:%S)] $*"; }
+
+# Runit guest settings, never a shared .env/bridge.env file.
+write_guest_bridge_settings() {
+  root=$1
+  install -d -m 0700 "$root/etc/op-dbus/env"
+  while read -r name value; do
+    printf '%s\n' "$value" >"$root/etc/op-dbus/env/$name"
+    chmod 0600 "$root/etc/op-dbus/env/$name"
+  done <<'SETTINGS'
+OP_GRPC_BRIDGE_LISTEN 10.0.0.2:8090
+OPDBUS_LUNGS_SOCKET /run/op-grpc-bridge/lungs.sock
+OPDBUS_READY_PATH /run/op-grpc-bridge/ready
+THREETCHED_TLS_CERT_FILE /var/lib/op-dbus/door-tls/door.crt
+THREETCHED_TLS_KEY_FILE /var/lib/op-dbus/door-tls/door.key
+SETTINGS
+}

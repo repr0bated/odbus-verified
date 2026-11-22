@@ -16,7 +16,8 @@ process=$(jq -er --arg lungs "$lungs" '
         and .listen_addr == "127.0.0.1:8090" and .transport == "tls"
         and .runtime_ready == true and .lungs_ready == true
         and .lungs_socket == $lungs
-        and .exhook_ready == true and .exhook_addr == "127.0.0.1:9000")
+        and ((.exhook_ready == false and .exhook_addr == null)
+            or (.exhook_ready == true and .exhook_addr == "127.0.0.1:9000")))
     | [.pid, .start_time_ticks]
     | select(all(.[]; type == "number" and . > 0 and . == floor))
     | @tsv

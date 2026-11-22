@@ -36,7 +36,7 @@ chmod 0700 "$R/etc/op-dbus/secrets"
 # 2. seed overlay files from the repo (committed source of truth, read via git show)
 git -C "$REPO" show HEAD:deploy/seed/rootfs/usr/local/libexec/op-dbus/door-tls-init >"$R/usr/local/libexec/op-dbus/door-tls-init"
 chmod 0755 "$R/usr/local/libexec/op-dbus/door-tls-init"
-git -C "$REPO" show HEAD:deploy/seed/rootfs/etc/op-dbus/bridge.env >"$R/etc/op-dbus/bridge.env"
+write_guest_bridge_settings "$R"
 # 3. NextDNS: official release tarball, checksum pinned
 t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
 curl -fsSL -o "$t/n.tgz" "https://github.com/nextdns/nextdns/releases/download/v$NEXTDNS_VERSION/nextdns_${NEXTDNS_VERSION}_linux_amd64.tar.gz"

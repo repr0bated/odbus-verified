@@ -32,7 +32,6 @@ pub fn install_tls_crypto_provider() {
 
 pub mod chat_router_routes;
 pub mod chat_store;
-pub mod compliance_proxy;
 pub mod door_proxy;
 pub mod email;
 pub mod groups_admin;

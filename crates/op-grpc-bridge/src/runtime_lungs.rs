@@ -61,6 +61,18 @@ struct LungsPlugin {
 
 #[zbus::interface(name = "org.opdbus.v1.PluginV1")]
 impl LungsPlugin {
+    async fn authorize_method(&self, method: &str, capability: &str) -> zbus::fdo::Result<bool> {
+        let caller = self.identity.caller().await.map_err(binding_denial)?;
+        let (_, declaration) = match self.runtime.pinned_method(&self.plugin_id, method) {
+            Ok(declaration) => declaration,
+            Err(_) => return Ok(false),
+        };
+        if capability.is_empty() || declaration.required_capability.as_deref() != Some(capability) {
+            return Ok(false);
+        }
+        Ok(self.runtime.authorize_nested(&caller, &self.plugin_id, method).await.is_ok())
+    }
+
     async fn call_with_operation_id(
         &self,
         method: &str,

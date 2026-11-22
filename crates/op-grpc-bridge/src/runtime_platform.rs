@@ -996,6 +996,14 @@ fn package_state(
 
 /// Identity storage is never controlled through a generic native lifecycle
 /// method. Parent-owned identity routes retain their provenance/mount guards.
+fn native_identity_marked(raw: &Value) -> Result<bool> {
+    let config = raw["config"].as_object().context("native configuration is unavailable")?;
+    let expanded = raw["expanded_config"].as_object().context("expanded native configuration is unavailable")?;
+    Ok([config, expanded].into_iter().any(|config| [
+        "user.opdbus.session_id", "user.opdbus.parent_principal_id", "user.opdbus.principal_kind",
+    ].into_iter().any(|key| config.contains_key(key))))
+}
+
 async fn guard_unmanaged_instance(
     ctx: &BackendContext<'_>,
     args: &Value,
@@ -1007,6 +1015,15 @@ async fn guard_unmanaged_instance(
         .context("native instance name is required")
         .map_err(RuntimeError::backend)?
         .to_owned();
+    // Native labels fence guests created after startup, before their Cozo
+    // import. A missing/invalid read is not permission to mutate an unknown
+    // instance. Dedicated identity lifecycle keeps its exact-owner path.
+    let (raw, _) = native::incus::IncusRootRepairBackend::local().instance(&target).await
+        .map_err(|error| RuntimeError::denied(format!("native ownership unavailable: {error}")))?;
+    if native_identity_marked(&raw).map_err(|error| RuntimeError::denied(error.to_string()))? {
+        return Err(RuntimeError::denied(
+            "identity-marked native targets require their identity lifecycle/provenance owner"));
+    }
     let store = ctx.runtime.identity_store().clone();
     let protected = tokio::task::spawn_blocking(move || -> Result<bool> {
         let recovery = store.read_identity_recovery_state(0)?;
@@ -1092,4 +1109,30 @@ async fn authorize_emqx(
         .revalidate()
         .await
         .map_err(|error| RuntimeError::denied(error.to_string()))
+}
+
+#[cfg(test)]
+mod native_ownership_tests {
+    use super::*;
+
+    #[test]
+    fn marked_unindexed_guest_cannot_use_generic_native_mutation() {
+        for config in [
+            serde_json::json!({"user.opdbus.session_id":"human-session"}),
+            serde_json::json!({"user.opdbus.parent_principal_id":"human-parent"}),
+            serde_json::json!({"user.opdbus.session_id":""}),
+        ] {
+            assert!(native_identity_marked(&serde_json::json!({"config":config,"expanded_config":{}})).unwrap());
+        }
+        assert!(native_identity_marked(&serde_json::json!({"config":{},"expanded_config":{
+            "user.opdbus.session_id":"inherited-session"}})).unwrap());
+    }
+
+    #[test]
+    fn ordinary_unmanaged_guest_keeps_generic_native_admission() {
+        assert!(!native_identity_marked(&serde_json::json!({
+            "config":{"security.privileged":"false"},"expanded_config":{}
+        })).unwrap());
+        assert!(native_identity_marked(&serde_json::json!({"config":null})).is_err());
+    }
 }

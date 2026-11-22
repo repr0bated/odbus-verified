@@ -236,6 +236,12 @@ pub(super) fn check_fence(
             .record
             .as_ref()
             .ok_or_else(|| err("renamed identity tombstone requires explicit provision"))?;
+        if old.principal_kind.as_deref() == Some("human") && old.instance_json.is_empty() {
+            if record.instance_json.is_empty() {
+                return Ok(());
+            }
+            return Err(err("retired human binding requires native attachment"));
+        }
         let previous_instance: Value = serde_json::from_str(&old.instance_json)?;
         let instance: Value = serde_json::from_str(&record.instance_json)?;
         // A later explicit CleanProvision may replace the native UUID while

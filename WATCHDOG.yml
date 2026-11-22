@@ -1,6 +1,6 @@
 advisors:
   - name: default
-    model: cursor/grok-4.7:high
+    model: openai-codex/gpt-6-sol:xhigh
     tools:
       - read
       - security_scan

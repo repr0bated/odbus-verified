@@ -32,7 +32,7 @@ pub(crate) struct ResponderWake {
 /// Publish on the responder's existing authenticated owner topic. Failure is
 /// returned after input commit and must never trigger a submit replay.
 pub(crate) async fn publish_responder_wake(wake: ResponderWake,
-    responder: &op_identity::SealedId) -> anyhow::Result<()> {
+    responder: &op_identity::sealed_id::SealedId) -> anyhow::Result<()> {
     let owner_key = crate::runtime_mqtt::owner_key_for_claims(responder)?;
     op_plugins::state_plugins::emqx::dispatch_emqx_method("publish_responder_wake",
         &serde_json::json!({

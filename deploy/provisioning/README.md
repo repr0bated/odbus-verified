@@ -25,6 +25,55 @@ possible, never deletes a seed or a container, and starts nothing unless `START=
 
 ## Steps
 
+### LXD subsidiary from the golden snapshot
+
+```sh
+./deploy/provisioning/30-provision-container.sh --subsidiary 3tchedChatbot \
+    --name kiroween --lxd-pool <pool> --image <full-image-fingerprint> --dry-run
+```
+
+The image must already be published privately in LXD from the golden live
+snapshot. Its `opdbus.golden.commit` and `opdbus.golden.subvolume` properties
+must match the golden state file. Remove `--dry-run` to create the stopped
+instance through the mounted `lxd` plugin. The subsidiary has a root disk
+and a parent reference. It stays pending until its own identity is admitted.
+After admission, grant policy can assign the child principal to
+`$SUBSIDIARY`. Root inside the subsidiary is UID 0 in that container's own
+user namespace. The isolated ID mapping keeps that authority inside the
+container.
+
+| Authority | Scope |
+|---|---|
+| Guest UID 0 | Manage local users, packages, services, and files on the subsidiary's writable volume. |
+| `$SUBSIDIARY` | `cap.identity.sled.self.read@v1` for the admitted child principal's own identity. The group name and LXD labels confer no authority by themselves. |
+| Application access | Grant exact capabilities to the child principal after checking its approved scope. For example, the sealed `json_render.read` capability covers reading and validating the UI schema. Keep it separate from the baseline group. |
+| Host operator | Provision, attach devices and networks, admit the child identity, assign memberships, start, snapshot, and roll back through the sealed operations. |
+
+Check each application grant against the parent allowance and the child's
+required methods. Broad capabilities such as LXD instance management, host
+shell, secrets, grants, and network administration belong outside this group.
+An own-instance management capability would need server-side validation of
+the verified identity against the target on every call before it could be
+granted.
+
+Pending instances have a read-only root disk, no inherited profiles or
+additional devices, an isolated ID map, and a start lock. The provisioner
+disables nesting, the LXD guest API, and syscall interception, and sets
+limits of 2 CPUs, 2 GiB hard memory, and 512 processes. It reads the expanded
+instance configuration back after creation.
+
+Admission is a separate step. Before lifting the start lock, verify the
+child's own Decoy-issued identity, attach its writable overlay and
+identity-bound 3tchedFS projection, and verify any dedicated OVN egress
+against the backend deny policy. Keep host management sockets and parent
+storage outside the subsidiary. The creation command does not perform
+admission or start the instance.
+
+`tests/mock-lxd.sh` is an offline fixture for the image lookup, stopped
+creation, operation wait, and instance readback. It reads a fixture
+`image.json` and writes `instance.json` under `LXD_MOCK_FIXTURE`. Its
+responses are marked `mock: true` and carry no live admission.
+
 | step | script | what |
 |---|---|---|
 | 1 | `10-seed-acquire.sh check` | **Case A**: a seed already exists (`images/@seed` Ubuntu 26.04 systemd, `images/@antix-seed` Debian trixie runit). |

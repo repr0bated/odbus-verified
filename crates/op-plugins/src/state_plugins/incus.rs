@@ -23,6 +23,7 @@ use tokio_tungstenite::{
 };
 
 use super::incus_device::{Device, NamedDevice};
+pub use op_cozo_store::IDENTITY_STORAGE_SYSCALL_DENY;
 
 /// Top-level state representing all Incus instances on the system.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -39,7 +40,7 @@ pub struct IncusState {
 /// `type: proxy`. The previous non-standard `sockets`/`IncusProxySocket` field is
 /// gone; a container's relationship to the shared `container.sock` is resolved
 /// by name at the projection/gemma layer, not embedded here.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct IncusInstance {
     pub name: String,
     /// Instance status: "Running", "Stopped", "Frozen"
@@ -306,20 +307,17 @@ impl IncusPlugin {
         state: IdentitySessionPowerState,
     ) -> Result<(String, &'static str)> {
         let (_, body) = Self::identity_session_power_request(session_id, state)?;
-        if instance_name != session_id
-            && !numbered_native_name(instance_name)
-            && !(instance_name == op_cozo_store::CONTROL_PLANE_NATIVE_NAME
-                && session_id == "b0c777e3-0955-cd8b-3d01-ca12998cae28")
-        {
-            anyhow::bail!("native identity power target is not canonical or the pinned chatbot");
-        }
+        // The durable bridge owner proves UUID/key/session ownership. This
+        // transport only validates a single safe native path component;
+        // human display names are not a separate authority class.
+        validate_segment(instance_name, "bound identity instance name")?;
         Ok((format!("/1.0/instances/{instance_name}/state"), body))
     }
 
     /// The bridge supplies an already validated durable identity binding.
-    /// This transport accepts canonical legacy names and numbered names only
-    /// after the bridge validates their durable identity binding; spelling is
-    /// not ownership. It never resolves identities or allocates names.
+    /// The bridge validates the durable UUID/key/session binding before this
+    /// transport call; spelling is not ownership. Never resolves identities
+    /// or allocates native names.
     pub async fn set_bound_identity_session_power_state(
         session_id: &str,
         instance_name: &str,
@@ -1241,10 +1239,13 @@ mod tests {
         )
         .unwrap();
         assert_eq!(body, r#"{"action":"stop"}"#);
+        let (path, _) = IncusPlugin::bound_identity_session_power_request(
+            "fb86888e-d6ab-d4f7-6278-9fe116c46b1c", "Jeremy", IdentitySessionPowerState::Running,
+        ).unwrap();
+        assert_eq!(path, "/1.0/instances/Jeremy/state");
         for (session, name) in [
-            ("00000000-0000-4000-8000-000000000001", "3tchedCockpitBot"),
-            (sid, "Chatbot3tched"),
-            (sid, "another-container"),
+            ("invalid-session", "Jeremy"),
+            (sid, ""),
             (sid, "../../host?project=default"),
         ] {
             assert!(
@@ -1560,11 +1561,63 @@ pub async fn identity_creation_body(session: &str, public_key: &str) -> Result<s
         "type":"container","ephemeral":false,"source":{"type":"none"},"profiles":["3tched-lungs"],
         "config":{"security.privileged":"false","security.nesting":"false","security.protection.shift":"true",
             "boot.autostart":"false","security.syscalls.deny_default":"true",
-            "security.syscalls.deny":"ioctl errno 1 [1,0x4008941a,SCMP_CMP_MASKED_EQ,0xffffffff]\nioctl errno 1 [1,0x5000940f,SCMP_CMP_MASKED_EQ,0xffffffff]\nioctl errno 1 [1,0x5000943f,SCMP_CMP_MASKED_EQ,0xffffffff]",
+            "security.syscalls.deny":IDENTITY_STORAGE_SYSCALL_DENY,
             "user.opdbus.session_id":session,"user.opdbus.wireguard_public_key":public_key,
             "user.display_name":"control-plane-chatbot","raw.lxc":format!("lxc.uts.name = {session}")},
         "devices":{"root":{"type":"disk","path":"/","pool":"identity-roots"},"runtime-run":runtime,
             "fuse":{"type":"unix-char","source":"/dev/fuse","path":"/dev/fuse"}}
+    }))
+}
+
+/// Native-pool empty placeholder. The admitted creation journal pins the
+/// immutable Golden wrapper consumed once by the external storage owner.
+pub async fn native_identity_creation_body(session: &str, public_key: &str, parent: &str) -> Result<serde_json::Value> {
+    let pool = IncusApi::local().call("GET", "/1.0/storage-pools/3tched-pool", None, None).await?;
+    anyhow::ensure!(pool["driver"] == "btrfs" && pool["status"] == "Created",
+        "native identity creation requires the existing 3tched-pool Btrfs pool");
+    let seed = std::env::var("OP_IDENTITY_GOLDEN_SEED_NAME").context("approved Golden seed name absent")?;
+    anyhow::ensure!(!seed.is_empty() && seed.len() <= 128 && seed != "." && seed != ".."
+        && seed.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'@')),
+        "approved Golden seed name is unsafe");
+    let seed_uuid = std::env::var("OP_IDENTITY_GOLDEN_SUBVOLUME_UUID").context("approved Golden seed UUID absent")?;
+    let pool_fsid = std::env::var("OP_IDENTITY_POOL_FSID").context("approved pool FSID absent")?;
+    for value in [&seed_uuid, &pool_fsid] {
+        anyhow::ensure!(uuid::Uuid::parse_str(value)?.to_string() == *value, "noncanonical native storage pin");
+    }
+    let seed_id = std::env::var("OP_IDENTITY_GOLDEN_SUBVOLUME_ID").context("Golden seed ID absent")?;
+    anyhow::ensure!(seed_id.parse::<u64>()? >= 256, "invalid Golden seed ID");
+    let metadata_hash = std::env::var("OP_IDENTITY_GOLDEN_METADATA_SHA256").context("Golden metadata hash absent")?;
+    anyhow::ensure!(metadata_hash.len() == 64 && metadata_hash.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()),
+        "invalid Golden metadata hash");
+    // The identity volume is prepared by the issuing/storage authority before
+    // admission. No credential or arbitrary source path is accepted here.
+    Ok(serde_json::json!({
+        "type":"container","ephemeral":false,"source":{"type":"none"},"profiles":[],
+        "config":{
+            "security.privileged":"false","security.nesting":"false","security.idmap.isolated":"true",
+            "security.protection.shift":"true","boot.autostart":"false",
+            "raw.lxc":format!("lxc.uts.name = {session}\nlxc.init.cmd = /sbin/runit-init"),
+            "security.syscalls.deny_default":"true",
+            "security.syscalls.deny":IDENTITY_STORAGE_SYSCALL_DENY,
+            "user.opdbus.session_id":session,"user.opdbus.wireguard_public_key":public_key,
+            "user.opdbus.principal_kind":"service","user.opdbus.creation_mode":"create_subsidiary",
+            "user.opdbus.parent_principal_id":parent,"user.opdbus.golden_seed_name":seed,
+            "user.opdbus.golden_seed_uuid":seed_uuid,"user.opdbus.pool_fsid":pool_fsid,
+            "user.opdbus.golden_seed_id":seed_id,"user.opdbus.golden_metadata_sha256":metadata_hash
+        },
+        "devices":{
+            "root":{"type":"disk","path":"/","pool":"3tched-pool"},
+            "identity-sled":{"type":"disk","path":"/agent/user","pool":"3tched-pool",
+                "source":format!("identity-{session}"),"readonly":"true"},
+            "runtime-run":{"type":"disk","source":"tmpfs:","path":"/run"},
+            "fuse":{"type":"unix-char","source":"/dev/fuse","path":"/dev/fuse"},
+            "lungs-socket-dir":{"type":"disk","source":"/run/opdbus/lungs",
+                "path":"/run/opdbus/lungs","readonly":"true"},
+            "catalog":{"type":"disk","source":"/var/lib/opdbus/plugin-blobs",
+                "path":"/var/lib/opdbus/plugin-blobs","readonly":"true"},
+            "decoy-trust":{"type":"disk","source":"/etc/op-dbus/decoy-trust.json",
+                "path":"/etc/op-dbus/decoy-trust.json","readonly":"true"}
+        }
     }))
 }
 
@@ -1937,6 +1990,25 @@ impl IncusRootRepairBackend {
             .api
             .call("POST", &path, Some(&body.to_string()), None)
             .await?;
+        Ok(())
+    }
+
+    /// Exact, stopped, same-UUID safety transition, never a generic config API.
+    pub async fn harden_stopped_identity(&self, name: &str, native_uuid: &str,
+        expected: &serde_json::Value, expected_etag: &str) -> Result<()> {
+        let path = instance_path(name)?;
+        let (current, etag) = self.instance(name).await?;
+        anyhow::ensure!(!expected_etag.is_empty() && etag == expected_etag && current == *expected
+            && current["status"] == "Stopped" && current["config"]["volatile.uuid"] == native_uuid,
+            "stopped identity hardening UUID, definition or ETag changed");
+        for field in ["config", "expanded_config"] {
+            anyhow::ensure!(current[field]["security.syscalls.deny"].as_str()
+                .is_none_or(|deny| deny.is_empty() || deny == IDENTITY_STORAGE_SYSCALL_DENY),
+                "root upgrade cannot erase an unrelated syscall deny list");
+        }
+        let body = serde_json::json!({"config":{
+            "security.syscalls.deny_default":"true","security.syscalls.deny":IDENTITY_STORAGE_SYSCALL_DENY}});
+        self.api.call("PATCH", &path, Some(&body.to_string()), Some(expected_etag)).await?;
         Ok(())
     }
 

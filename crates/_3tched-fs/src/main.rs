@@ -882,9 +882,15 @@ async fn main() -> Result<()> {
             if auto_unmount {
                 options.push(MountOption::AutoUnmount);
             }
-            fuser::mount2(filesystem, &mountpoint, &options).with_context(|| {
-                format!("mount {} at {}", surface.mount_name(), mountpoint.display())
-            })?;
+            // FUSE callbacks synchronously drive their own transport runtime.
+            // Keep the blocking request loop out of the async CLI runtime.
+            tokio::task::spawn_blocking(move || {
+                fuser::mount2(filesystem, &mountpoint, &options).with_context(|| {
+                    format!("mount {} at {}", surface.mount_name(), mountpoint.display())
+                })
+            })
+            .await
+            .context("FUSE mount worker failed")??;
         }
     }
     Ok(())

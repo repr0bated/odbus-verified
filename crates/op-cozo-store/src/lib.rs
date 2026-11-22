@@ -35,6 +35,9 @@ pub use identity_transactions::{
     ContainerRenameRequest, IdentityCleanProvision, IdentityCommit, IdentityCompareExchange,
     IdentityIntent, IdentityPhysicalRootMigration, IdentityRecoverySnapshot, IdentityRevision,
     NativeCreationRecord, NativeCreationRequest, PhysicalRootMigrationReceipt, RootRepairJournal,
+    NativeRootUpgradeJournal,
+    IDENTITY_STORAGE_SYSCALL_DENY, native_root_policy_transition_matches,
+    ContainerExecRequest, ContainerExecJournal,
     SeedProvisionJournal, clean_provision_instance_binding_matches,
     container_rename_native_matches, is_numbered_native_name,
     physical_root_instance_binding_matches,
@@ -545,6 +548,12 @@ impl CozoGraphShuttle {
             // Private same-UUID name cutover; native POST permission is never replayed.
             r#":create identity_container_renames {
                 session_id: String => document: String
+            }"#,
+            r#":create identity_native_root_upgrades {
+                session_id: String, operation_id: String => document: String
+            }"#,
+            r#":create identity_container_execs {
+                operation_id: String => document: String
             }"#,
             // Private one-row-per-session repair fence in this same Cozo DB.
             // Ordinary session events cannot create, overwrite or truncate it.

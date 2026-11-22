@@ -21,6 +21,18 @@ rendering. The container passes the UI spec. The end user's browser renders
 it, on the user's machine. The container does not run a desktop. How the
 bytes leave the container is still open.
 
+## Backend, container UI service, and browser
+
+The backend publishes the sealed schema and operation results through
+identity-bound 3tchedFS. The container UI service reads that schema from its
+own mount and uses the mounted call files for operations. It forwards only
+the permitted schema and result data needed by the browser application.
+
+The end user's browser renders the interface on the user's device. The
+container runs the web UI service headlessly, without a desktop, window
+manager, or screen relay. Browser transport and ingress are separate from
+the local FUSE boundary.
+
 ## Architecture
 
 ```mermaid

@@ -15,6 +15,10 @@ const PROVISION_CAPABILITY: &str = "identity_sled.write";
 pub(super) struct ProvisionInput {
     pub wireguard_pubkey: String,
     pub plan_sha256: String,
+    #[serde(default)]
+    pub creation_mode: op_plugins::state_plugins::identity_sled::ContainerCreationMode,
+    #[serde(default)]
+    pub parent_principal_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

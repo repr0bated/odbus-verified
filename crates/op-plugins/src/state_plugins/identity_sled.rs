@@ -38,6 +38,43 @@ pub const RECORD_FORMAT: u32 = 3;
 pub const SCHEMA_CONTENT_HASH: &str =
     include_str!(concat!(env!("OUT_DIR"), "/identity_sled_schema_hash.txt"));
 
+/// Creation authority is explicit; omitted mode retains the existing chatbot
+/// replacement contract and cannot select a human or subsidiary implicitly.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ContainerCreationMode {
+    #[default]
+    ReplaceChatbot,
+    AttachExistingHuman,
+    CreateSubsidiary,
+}
+
+/// Bounded noninteractive development command inside an already bound Incus
+/// guest. Target identity is resolved by the owner; no host exec parameters.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExecuteInOwnedContainerInput {
+    pub operation_id: String,
+    pub session_id: String,
+    #[schemars(length(min = 1, max = 128))]
+    pub command: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ExecuteInOwnedContainerOutput {
+    pub operation_id: String,
+    pub session_id: String,
+    pub native_uuid: String,
+    pub exit_code: i64,
+    pub stdout: String,
+    pub stderr: String,
+    pub stdout_bytes: u64,
+    pub stderr_bytes: u64,
+    pub stdout_truncated: bool,
+    pub stderr_truncated: bool,
+    pub replayed: bool,
+}
+
 /// Administrative same-instance rename, fenced by a stable caller operation id.
 /// It never accepts native config, storage, credentials or replacement identity.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -272,7 +309,7 @@ impl StatePlugin for IdentitySledPlugin {
     // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "4.10.0"
+        "4.11.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -324,7 +361,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "4.10.0",
+        "4.11.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -408,6 +445,10 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     pub struct PrepareContainerInput {
         pub wireguard_pubkey: String,
         pub operation_id: String,
+        #[serde(default)]
+        pub creation_mode: ContainerCreationMode,
+        #[serde(default)]
+        pub parent_principal_id: Option<String>,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     pub struct PrepareContainerOutput {
@@ -429,11 +470,19 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         /// writes fresh same-key records; it never composes or mounts roots.
         #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
         pub plan_sha256: String,
+        #[serde(default)]
+        pub creation_mode: ContainerCreationMode,
+        #[serde(default)]
+        pub parent_principal_id: Option<String>,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
     pub struct InspectProvisionPreflightInput {
         pub wireguard_pubkey: String,
+        #[serde(default)]
+        pub creation_mode: ContainerCreationMode,
+        #[serde(default)]
+        pub parent_principal_id: Option<String>,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -476,6 +525,17 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     pub struct RepairOwnRootInput {
         #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
         pub plan_sha256: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct UpgradeOwnNativeRootOutput {
+        pub session_id: String,
+        pub native_uuid: String,
+        pub operation_id: String,
+        pub old_root_uuid: String,
+        pub new_root_uuid: String,
+        pub rollback_name: String,
+        pub committed_revision: u64,
+        pub replayed: bool,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -580,6 +640,20 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
 
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
     use op_state_store::SideEffect;
+    schema.methods.insert(
+        "execute_in_owned_container".to_string(),
+        method_decl_from_schemars_with_output::<ExecuteInOwnedContainerInput, ExecuteInOwnedContainerOutput>(
+            "execute_in_owned_container", SideEffect::Mutation, true,
+            "cap.service.identity-sled.container.exec@v1", "mut.service.identity-sled.container.exec@v1",
+        ),
+    );
+    schema.methods.insert(
+        "upgrade_own_native_root".to_string(),
+        method_decl_from_schemars_with_output::<RepairOwnRootInput, UpgradeOwnNativeRootOutput>(
+            "upgrade_own_native_root", SideEffect::Mutation, true,
+            "identity_sled.write", "mut.service.identity-sled.native-root.upgrade@v1",
+        ),
+    );
 
     schema.methods.insert(
         "prepare_container".to_string(),
@@ -817,7 +891,14 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         "identity_sled.write".to_string(),
         op_state_store::CapabilityDecl {
             id: "identity_sled.write".to_string(),
-            description: "Grants: write_identity, provision_container, inspect_provision_preflight, delete_provision_record, attach_btrfs_device, touch_session, record_session_event, finalize_session.".to_string(),
+            description: "Grants: write_identity, prepare_container, provision_container, inspect_provision_preflight, upgrade_own_native_root, delete_provision_record, attach_btrfs_device, touch_session, record_session_event, finalize_session. Dedicated guest exec requires its separate exact capability.".to_string(),
+        },
+    );
+    schema.capabilities.insert(
+        "cap.service.identity-sled.container.exec@v1".to_string(),
+        op_state_store::CapabilityDecl {
+            id: "cap.service.identity-sled.container.exec@v1".to_string(),
+            description: "Runs bounded noninteractive argv only inside the caller's own Incus guest, or an exact human-parent/sole-chatbot-owner target; never host execution or identity impersonation.".to_string(),
         },
     );
     schema.capabilities.insert(
@@ -1033,7 +1114,7 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "4.10.0");
+        assert_eq!(schema.version, "4.11.0");
         for method in [
             "get_identity",
             "get_own_identity",

@@ -20,7 +20,7 @@ impl ReadyReceipt {
     fn publish(
         listen: SocketAddr,
         lungs: &std::path::Path,
-        exhook: SocketAddr,
+        exhook: Option<SocketAddr>,
     ) -> anyhow::Result<Self> {
         ensure!(
             nix::unistd::geteuid().is_root(),
@@ -62,8 +62,8 @@ impl ReadyReceipt {
                 &serde_json::json!({
                     "schema":"opdbus.bridge-ready.v1", "pid":pid, "start_time_ticks":start,
                     "listen_addr":listen.to_string(), "transport":"tls", "runtime_ready":true,
-                    "lungs_ready":true, "lungs_socket":lungs, "exhook_ready":true,
-                    "exhook_addr":exhook.to_string(),
+                    "lungs_ready":true, "lungs_socket":lungs, "exhook_ready":exhook.is_some(),
+                    "exhook_addr":exhook.map(|addr| addr.to_string()),
                 }),
             )?;
             file.write_all(b"\n")?;
@@ -112,6 +112,12 @@ where
 }
 
 pub async fn run_from_env() -> anyhow::Result<()> {
+    let exhook_enabled = match std::env::var("OP_EMQX_EXHOOK_ENABLE") {
+        Ok(value) if value == "1" => true,
+        Ok(value) if value == "0" => false,
+        Err(std::env::VarError::NotPresent) => false,
+        _ => anyhow::bail!("OP_EMQX_EXHOOK_ENABLE must be 0 or 1"),
+    };
     let addr: SocketAddr = std::env::var("OP_GRPC_BRIDGE_LISTEN")
         .unwrap_or_else(|_| "10.0.0.2:8090".into())
         .parse()?;
@@ -159,9 +165,17 @@ pub async fn run_from_env() -> anyhow::Result<()> {
     let mut ready = None;
     // Every failure after lungs starts accepting uses the same bounded teardown.
     let result = async {
-        let exhook = crate::runtime_mqtt::ExHookServer::bind_from_env(runtime.clone(), oracle).await?;
-        let wake = exhook.wake_publisher();
-        ready = Some(ReadyReceipt::publish(door.local_addr(), lungs.socket_path(), exhook.local_addr())?);
+        let exhook_addr = if exhook_enabled {
+            let exhook = crate::runtime_mqtt::ExHookServer::bind_from_env(runtime.clone(), oracle).await?;
+            let addr = exhook.local_addr();
+            let wake = exhook.wake_publisher();
+            spawn_owner(&mut workers, "private ExHook", exhook.serve(stopping(receive.clone())));
+            spawn_owner(&mut workers, "committed wake", wake.run(runtime.core().clone(), stopping(receive.clone())));
+            Some(addr)
+        } else {
+            None
+        };
+        ready = Some(ReadyReceipt::publish(door.local_addr(), lungs.socket_path(), exhook_addr)?);
         spawn_owner(&mut workers, "TLS door", door.serve(stopping(receive.clone())));
         spawn_owner(&mut workers, "private ExHook", exhook.serve(stopping(receive.clone())));
         spawn_owner(&mut workers, "committed wake", wake.run(runtime.core().clone(), stopping(receive.clone())));

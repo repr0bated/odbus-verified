@@ -49,7 +49,7 @@ pub fn identity_instance_matches(sled: &ContainerIdentitySled, instance: &IncusI
     // rotates, and startup recovery could never publish. The stricter
     // configured-session check lives in configured_chatbot_instance_matches.
     let named = (op_cozo_store::is_numbered_native_name(&instance.name)
-        || (sled.principal_kind.as_deref() == Some("service")
+        || (matches!(sled.principal_kind.as_deref(), Some("human" | "service"))
             && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id))
         && instance.instance_type == "container"
         && instance.config.as_ref().is_some_and(|c| {
@@ -114,6 +114,27 @@ pub fn control_plane_chatbot_session_id() -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn named_human_container_requires_the_same_stored_uuid_key_and_session() {
+        let key = "lnF9hBrcX5rpHoX87VGwlIbkOspN8cWER+vtohkW0lg=";
+        let session = "fb86888e-d6ab-d4f7-6278-9fe116c46b1c";
+        let instance: IncusInstance = serde_json::from_value(serde_json::json!({
+            "name":"Jeremy","type":"container","status":"Running",
+            "config":{"user.opdbus.session_id":session,"user.opdbus.wireguard_public_key":key,
+                "volatile.uuid":"cc84a2d6-acc8-4327-b80b-9c243d6eda6e"}
+        })).unwrap();
+        let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+            "session_id":session,"wireguard_pubkey":key,"principal_kind":"human","instance":instance
+        })).unwrap();
+        assert!(identity_instance_matches(&sled, &instance));
+        let mut replaced = instance.clone();
+        replaced.config.as_mut().unwrap().insert("volatile.uuid".into(), "00000000-0000-4000-8000-000000000001".into());
+        assert!(!identity_instance_matches(&sled, &replaced));
+        replaced = instance.clone();
+        replaced.config.as_mut().unwrap().insert("user.opdbus.session_id".into(), "foreign".into());
+        assert!(!identity_instance_matches(&sled, &replaced));
+    }
 
     #[test]
     fn human_and_container_bindings_are_checked_from_the_record() {

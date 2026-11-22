@@ -11,10 +11,26 @@ die() {
 
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 PROJECT_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)
-RELEASE_DIR=${OP_DECOY_RELEASE_DIR:-"$PROJECT_ROOT/target/release"}
+RELEASE_DIR=${OP_DECOY_RELEASE_DIR:-"$PROJECT_ROOT/target/x86_64-unknown-linux-gnu/release"}
 CATALOG_SOURCE=${OP_DECOY_PERSISTED_CATALOG_SOURCE:-/var/lib/opdbus/plugin-blobs}
 OUTPUT_DIR=${OP_DECOY_ARTIFACT_DIR:-"$PROJECT_ROOT/target/container-artifacts"}
 ARTIFACT_NAME=decoy-network-x86_64-linux-gnu-bundle.tar
+: "${OP_DECOY_EXECUTION_RECEIPT:?provide the successful same-source GNU execution receipt}"
+: "${OP_DECOY_CATALOG_SEAL_RECEIPT:?provide the matching explicit catalog seal receipt}"
+for receipt in "$OP_DECOY_EXECUTION_RECEIPT" "$OP_DECOY_CATALOG_SEAL_RECEIPT"; do
+    [ -f "$receipt" ] && [ ! -L "$receipt" ] || die "release receipt is not a regular file"
+done
+jq -e '.exit==0 and (.source_commit|test("^[0-9a-f]{40}$")) and (.source_digest|test("^[0-9a-f]{64}$")) and .artifact_dir=="/opt/op-build/target/x86_64-unknown-linux-gnu/release" and (.artifacts["op-decoy-network"]|test("^[0-9a-f]{64}$")) and (.artifacts.opblob|test("^[0-9a-f]{64}$"))' "$OP_DECOY_EXECUTION_RECEIPT" >/dev/null ||
+    die "execution receipt does not pin the required GNU artifacts"
+jq -e --slurpfile execution "$OP_DECOY_EXECUTION_RECEIPT" \
+    '.exit==0 and .source_commit==$execution[0].source_commit and .source_digest==$execution[0].source_digest and (.catalog_manifest_sha256|test("^[0-9a-f]{64}$"))' "$OP_DECOY_CATALOG_SEAL_RECEIPT" >/dev/null ||
+    die "catalog seal is not from the successful built source"
+helper_digest() {
+    (CDPATH='' cd -- "$SCRIPT_DIR" &&
+      sha256sum build-artifact.sh run op-decoy-network.wrapper opblob.wrapper apply-rootfs.sh environment.example) |
+        sha256sum | cut -d' ' -f1
+}
+helpers_sha=$(helper_digest)
 
 for command_name in readelf ldd tar jq sha256sum; do
     command -v "$command_name" >/dev/null 2>&1 || die "$command_name is unavailable"
@@ -22,11 +38,16 @@ done
 for binary_name in op-decoy-network opblob; do
     binary="$RELEASE_DIR/$binary_name"
     [ -x "$binary" ] || die "missing release binary $binary"
+    [ ! -L "$binary" ] &&
+        [ "$(sha256sum "$binary" | cut -d' ' -f1)" = "$(jq -er --arg name "$binary_name" '.artifacts[$name]' "$OP_DECOY_EXECUTION_RECEIPT")" ] ||
+        die "$binary_name differs from the execution receipt"
     readelf -h "$binary" | grep -q 'Machine:.*X86-64' ||
         die "$binary_name is not x86_64 ELF"
 done
 [ -f "$CATALOG_SOURCE/.manifest.json" ] ||
     die "persisted sealer-owned catalog is absent: $CATALOG_SOURCE/.manifest.json"
+[ "$(sha256sum "$CATALOG_SOURCE/.manifest.json" | cut -d' ' -f1)" = "$(jq -er .catalog_manifest_sha256 "$OP_DECOY_CATALOG_SEAL_RECEIPT")" ] ||
+    die "catalog manifest differs from the matching seal receipt"
 jq -e '.plugins | (type == "object") and (to_entries | all(.[];
     (.key | test("^[A-Za-z0-9_.-]+$")) and
     (.value | type == "string" and test("^[0-9a-f]{64}$"))))' \
@@ -41,27 +62,8 @@ for plugin in wireguard wg_opdbus wgcf; do
         "$CATALOG_SOURCE/.manifest.json") || die "catalog does not contain $plugin"
     blob="$CATALOG_SOURCE/$plugin.$(printf '%.16s' "$schema_hash").blob"
     [ -f "$blob" ] || die "catalog is missing $(basename -- "$blob")"
-    # `inspect` parses and authenticates the sealed blob. The decoy later pins
-    # the same bytes to this manifest before every method effect.
-    inspection=$("$RELEASE_DIR/opblob" inspect "$blob") ||
-        die "$plugin blob is not a valid sealed plugin"
-    printf '%s\n' "$inspection" | grep -Eq "^plugin[[:space:]]+$plugin v[0-9]+([.][0-9]+)*$" ||
-        die "$plugin blob manifest names another plugin"
-    printf '%s\n' "$inspection" | grep -Fqx "schema     sha256 $schema_hash" ||
-        die "$plugin blob differs from the catalog manifest"
 done
 
-catalog_files=$(mktemp)
-actual_catalog_files=$(mktemp)
-trap 'rm -f -- "$catalog_files" "$actual_catalog_files"' HUP INT TERM
-jq -r '.plugins | to_entries[] | "\(.key).\(.value[0:16]).blob"' \
-    "$CATALOG_SOURCE/.manifest.json" | sort > "$catalog_files"
-(CDPATH='' cd -- "$CATALOG_SOURCE" && find . -maxdepth 1 -type f -name '*.blob' -print |
-    sed 's|^\./||' | sort) > "$actual_catalog_files"
-cmp -s "$catalog_files" "$actual_catalog_files" ||
-    die "persisted blob set differs from its sealer-owned manifest"
-rm -f -- "$catalog_files" "$actual_catalog_files"
-trap - HUP INT TERM
 
 mkdir -p "$PROJECT_ROOT/target" "$OUTPUT_DIR"
 stage=$(mktemp -d "$PROJECT_ROOT/target/.decoy-network-artifact.XXXXXX")
@@ -88,6 +90,8 @@ for binary_name in op-decoy-network opblob; do
     fi
     interpreter=$binary_interpreter
     install -m 0755 "$binary" "$bundle/$binary_name.bin"
+    [ "$(sha256sum "$bundle/$binary_name.bin" | cut -d' ' -f1)" = "$(jq -er --arg name "$binary_name" '.artifacts[$name]' "$OP_DECOY_EXECUTION_RECEIPT")" ] ||
+        die "$binary_name changed during packaging"
 
     LC_ALL=C ldd "$binary" > "$stage/$binary_name.ldd"
     grep -q 'not found' "$stage/$binary_name.ldd" &&
@@ -130,22 +134,24 @@ install -Dm644 "$SCRIPT_DIR/environment.example" \
     "$rootfs/etc/op-dbus/decoy-network.env.example"
 install -d -m 0755 "$rootfs/var/lib/opdbus/plugin-blobs"
 
-# Copy the complete sealer-owned catalog and commit its manifest last. Keeping
-# the manifest unchanged preserves its catalog hash and avoids a second schema
-# or catalog writer in this packaging layer.
-for blob in "$CATALOG_SOURCE"/*.blob; do
-    [ -f "$blob" ] || die "persisted catalog contains no blob files"
-    install -m 0644 "$blob" "$rootfs/var/lib/opdbus/plugin-blobs/$(basename -- "$blob")"
-done
-install -m 0644 "$CATALOG_SOURCE/.manifest.json" \
-    "$rootfs/var/lib/opdbus/plugin-blobs/.manifest.json"
+# Opblob alone validates/authenticates the complete blob closure and stages its
+# exact committed manifest into this OFFLINE prepared application root.
+"$rootfs/usr/local/bin/opblob" persist "$CATALOG_SOURCE" "$rootfs/var/lib/opdbus/plugin-blobs"
+[ "$(sha256sum "$rootfs/var/lib/opdbus/plugin-blobs/.manifest.json" | cut -d' ' -f1)" = "$(jq -er .catalog_manifest_sha256 "$OP_DECOY_CATALOG_SEAL_RECEIPT")" ] ||
+    die "catalog changed while packaging"
+jq '{version:1,source_commit,source_digest,artifact_dir,artifacts:{"op-decoy-network":.artifacts["op-decoy-network"],opblob:.artifacts.opblob}}' \
+    "$OP_DECOY_EXECUTION_RECEIPT" >"$stage/PROVENANCE.json"
 
 install -Dm755 "$SCRIPT_DIR/apply-rootfs.sh" "$stage/apply-rootfs.sh"
 
-commit=$(git -C "$PROJECT_ROOT" rev-parse HEAD 2>/dev/null || printf unknown)
+commit=$(jq -er .source_commit "$OP_DECOY_EXECUTION_RECEIPT")
 {
     printf 'artifact: decoy-network\n'
     printf 'source-commit: %s\n' "$commit"
+    printf 'source-digest: %s\n' "$(jq -er .source_digest "$OP_DECOY_EXECUTION_RECEIPT")"
+    printf 'bundle-helper-sha256: %s\n' "$(sha256sum "$SCRIPT_DIR/build-artifact.sh" | cut -d' ' -f1)"
+    printf 'bundle-helpers-sha256: %s\n' "$helpers_sha"
+    printf 'catalog-manifest-sha256: %s\n' "$(jq -er .catalog_manifest_sha256 "$OP_DECOY_CATALOG_SEAL_RECEIPT")"
     printf 'rust-target: x86_64-unknown-linux-gnu\n'
     printf 'elf-runtime: private-glibc-loader-bundle\n'
     printf 'catalog-hash: %s\n' "$catalog_hash"
@@ -156,15 +162,16 @@ commit=$(git -C "$PROJECT_ROOT" rev-parse HEAD 2>/dev/null || printf unknown)
             "$CATALOG_SOURCE/.manifest.json"
     done
     printf '\n[sha256]\n'
-    (CDPATH='' cd -- "$stage" && find apply-rootfs.sh rootfs -type f -print | sort |
+    (CDPATH='' cd -- "$stage" && find PROVENANCE.json apply-rootfs.sh rootfs -type f -print | sort |
         while IFS= read -r file; do
             printf '%s  %s\n' "$(sha256sum "$file" | cut -d' ' -f1)" "$file"
         done)
 } > "$stage/MANIFEST"
+[ "$(helper_digest)" = "$helpers_sha" ] || die "release helper sources changed during packaging"
 
 artifact_stage="$OUTPUT_DIR/.$ARTIFACT_NAME.tmp.$$"
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
-    -cf "$artifact_stage" -C "$stage" MANIFEST apply-rootfs.sh rootfs
+    -cf "$artifact_stage" -C "$stage" MANIFEST PROVENANCE.json apply-rootfs.sh rootfs
 artifact="$OUTPUT_DIR/$ARTIFACT_NAME"
 mv -f -- "$artifact_stage" "$artifact"
 printf '%s  %s\n' "$(sha256sum "$artifact" | cut -d' ' -f1)" "$artifact"

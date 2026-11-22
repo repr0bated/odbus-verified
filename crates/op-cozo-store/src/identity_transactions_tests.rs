@@ -2430,3 +2430,151 @@ fn container_rename_native_proof_pins_identity_and_storage() {
         &request.new_name
     ));
 }
+
+#[test]
+fn native_human_attachment_is_atomic_credential_preserving_and_replayable() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let (mut old, genesis, _) = legacy_credential_fixture();
+    old.instance_json.clear();
+    old.btrfs_device_json.clear();
+    let sid = old.session_id.clone();
+    let expected = put(&store, &sid, "issued-human", old.clone(), Some(genesis.clone()));
+    let mut attached = old.clone();
+    attached.instance_json = serde_json::json!({
+        "name":"Jeremy","type":"container","status":"Running",
+        "config":{"volatile.uuid":"cc84a2d6-acc8-4327-b80b-9c243d6eda6e",
+            "user.opdbus.session_id":sid,"user.opdbus.wireguard_public_key":old.wireguard_pubkey,
+            "security.privileged":"false","security.nesting":"false","security.idmap.isolated":"true"},
+        "devices":[{"name":"root","device":{"type":"disk","pool":"3tched-pool"}},
+            {"name":"sled","device":{"type":"disk","pool":"3tched-pool","source":format!("identity-{sid}"),"path":"/agent/user","readonly":"true"}}]
+    }).to_string();
+    let provenance_json = serde_json::json!({
+        "version":5,"creation_mode":"attach_existing_human","session_id":sid,
+        "wireguard_pubkey":old.wireguard_pubkey,"caller_session_id":sid,
+        "caller_principal_id":op_identity::session::derive_principal_id(&old.wireguard_pubkey),
+        "caller_genesis":old.session_genesis,"parent_principal_id":null,"creation_operation_id":null
+    }).to_string();
+    let make = |record| IdentityIntent::AttachNativeContainer(Box::new(IdentityCleanProvision {
+        expected:expected.clone(),record,genesis:genesis.clone(),
+        plan_sha256:"d".repeat(64),provenance_json:provenance_json.clone()
+    }));
+    let operation = format!("native-attachment-{}", "d".repeat(64));
+    let mut reminted = attached.clone();
+    reminted.sealed_id = "replacement".into();
+    assert!(store.apply_identity_intent(&sid, &operation, make(reminted)).is_err());
+    assert_eq!(store.read_identity_revision(&sid).unwrap(), expected);
+    assert!(store.read_clean_provision(&sid).unwrap().is_none());
+    let committed = store.apply_identity_intent(&sid, &operation, make(attached.clone())).unwrap();
+    assert_eq!(committed.current.record.as_ref(), Some(&attached));
+    assert_eq!(committed.current.genesis.as_ref(), Some(&genesis));
+    assert_eq!(committed.current.record.as_ref().unwrap().sealed_id, old.sealed_id);
+    assert!(store.apply_identity_intent(&sid, &operation, make(attached)).unwrap().replayed);
+    assert_eq!(store.read_identity_revision(&sid).unwrap(), committed.current);
+}
+
+#[test]
+fn native_root_upgrade_fences_mutation_and_preserves_identity_on_commit() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let (mut old, genesis, _) = legacy_credential_fixture();
+    old.btrfs_device_json.clear();
+    let native_uuid = "cc84a2d6-acc8-4327-b80b-9c243d6eda6e";
+    old.instance_json = serde_json::json!({"name":"Jeremy","type":"container","status":"Running",
+        "config":{"volatile.uuid":native_uuid},"expanded_config":{"volatile.uuid":native_uuid},
+        "devices":[],"expanded_devices":[]}).to_string();
+    let sid = old.session_id.clone();
+    let expected = put(&store, &sid, "issued-native-human", old.clone(), Some(genesis.clone()));
+    let digest = "c".repeat(64);
+    let plan_json = serde_json::json!({"version":1,"session_id":sid,"caller_session_id":sid,
+        "caller_genesis":old.session_genesis,
+        "caller_principal_id":op_identity::session::derive_principal_id(&old.wireguard_pubkey),
+        "native_uuid":native_uuid,"current":{"instance":serde_json::from_str::<Value>(&old.instance_json).unwrap()}}).to_string();
+    let journal = NativeRootUpgradeJournal {
+        operation_id:format!("native-upgrade-{digest}"), plan_sha256:digest, plan_json,
+        expected:expected.clone(), phase:"prepared".into(), native_before_json:old.instance_json.clone(),
+        native_after_json:String::new(), old_root_uuid:"20a3b610-7e0a-3940-ab4d-beb9e83cc128".into(),
+        stopped_native_raw_json:String::new(), stopped_native_etag:String::new(), hardened_native_raw_json:String::new(),
+        new_root_uuid:String::new(), new_root_id:0, rollback_name:String::new(), committed_revision:0,
+    };
+    let mut journal = store.begin_native_root_upgrade(journal).unwrap();
+    let operation = journal.operation_id.clone();
+    let mut changed = old.clone();
+    changed.last_seen_at += 1;
+    assert!(store.apply_identity_intent(&sid, "unrelated-update",
+        IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+            expected:expected.clone(), record:Some(changed), genesis:Some(genesis.clone())
+        }))).is_err());
+    assert!(store.advance_native_root_upgrade(&journal, "running", "", "", 0, "").is_err());
+    for phase in ["stop-intent", "stopped"] {
+        journal = store.advance_native_root_upgrade(&journal, phase, &old.instance_json, "", 0, "").unwrap();
+    }
+    assert!(store.advance_native_root_upgrade(&journal, "exchange-intent", "", "", 0, "").is_err());
+    let mut stopped: Value = serde_json::from_str(&old.instance_json).unwrap();
+    stopped["status"] = "Stopped".into();
+    let original = journal.clone();
+    journal = store.record_native_root_hardening(&journal, "harden-intent", &stopped.to_string(), "etag-one").unwrap();
+    assert_eq!(store.record_native_root_hardening(&original, "harden-intent", &stopped.to_string(), "etag-one").unwrap(), journal);
+    let mut drift = stopped.clone(); drift["config"]["security.privileged"] = "true".into();
+    assert!(store.record_native_root_hardening(&journal, "hardened", &drift.to_string(), "").is_err());
+    for field in ["config", "expanded_config"] {
+        stopped[field]["security.syscalls.deny_default"] = "true".into();
+        stopped[field]["security.syscalls.deny"] = IDENTITY_STORAGE_SYSCALL_DENY.into();
+    }
+    journal = store.record_native_root_hardening(&journal, "hardened", &stopped.to_string(), "").unwrap();
+    let mut upgraded = old.clone();
+    stopped["status"] = "Running".into();
+    upgraded.instance_json = stopped.to_string();
+    for phase in ["exchange-intent", "exchanged", "start-intent", "running"] {
+        journal = store.advance_native_root_upgrade(&journal, phase, &upgraded.instance_json,
+            "e53c0d50-0000-4000-8000-000000000001", 280, ".Jeremy.upgrade-original").unwrap();
+    }
+    let mut forged = old.clone();
+    forged.sealed_id = "different-credential".into();
+    assert!(store.apply_identity_intent(&sid, &operation,
+        IdentityIntent::UpgradeNativeRoot {journal:Box::new(journal.clone()), record:forged}).is_err());
+    assert_eq!(store.read_identity_revision(&sid).unwrap(), expected);
+    let result = store.apply_identity_intent(&sid, &operation,
+        IdentityIntent::UpgradeNativeRoot {journal:Box::new(journal), record:upgraded.clone()}).unwrap();
+    assert_eq!(result.current.record.as_ref(), Some(&upgraded));
+    assert_eq!(result.current.genesis.as_ref(), Some(&genesis));
+    assert_eq!(store.read_identity_revision(&sid).unwrap(), result.current);
+    let durable = store.read_native_root_upgrade(&sid).unwrap().unwrap();
+    assert_eq!(durable.phase, "identity-committed");
+    assert_eq!(durable.committed_revision, expected.revision + 1);
+}
+
+#[test]
+fn native_guest_exec_intent_never_reissues_unknown_command_or_changes_target() {
+    use sha2::{Digest as _, Sha256};
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let (mut actor, genesis, _) = legacy_credential_fixture();
+    let sid = actor.session_id.clone();
+    let native_uuid = "cc84a2d6-acc8-4327-b80b-9c243d6eda6e";
+    actor.instance_json = serde_json::json!({"name":"Jeremy","type":"container","status":"Running",
+        "config":{"volatile.uuid":native_uuid},"expanded_config":{},"devices":[],"expanded_devices":[]}).to_string();
+    put(&store, &sid, "issued-exec-owner", actor.clone(), Some(genesis));
+    let command = serde_json::json!({"command":["/bin/echo","literal;$(not-a-host-command)"]}).to_string();
+    let request = ContainerExecRequest {
+        operation_id:"00000000-0000-4000-8000-000000000009".into(),
+        actor_id:op_identity::session::derive_principal_id(&actor.wireguard_pubkey),
+        caller_session:sid.clone(),caller_genesis:actor.session_genesis.clone(),
+        target_session:sid,native_uuid:native_uuid.into(),schema_hash:"a".repeat(64),
+        arguments_sha256:format!("{:x}",Sha256::digest(command.as_bytes())), arguments_json:command.clone(),
+        target_instance_json:actor.instance_json.clone(),target_root_receipt:"original-root-receipt".into(),
+    };
+    let (journal, permission) = store.reserve_container_exec(request.clone()).unwrap();
+    assert!(permission);
+    assert_eq!(journal.request.arguments_json, command);
+    let (replay, permission) = store.reserve_container_exec(request.clone()).unwrap();
+    assert!(!permission);
+    assert_eq!(replay.phase, "intent");
+    assert_eq!(replay, journal);
+    let mut wrong = request.clone(); wrong.native_uuid = "00000000-0000-4000-8000-000000000001".into();
+    assert!(store.reserve_container_exec(wrong).is_err());
+    let unknown = store.finish_container_exec(&journal, r#"{"phase":"unknown","error":"native reply lost"}"#, true).unwrap();
+    let (replay, permission) = store.reserve_container_exec(request.clone()).unwrap();
+    assert!(!permission); assert_eq!(replay, unknown);
+    assert!(store.finish_container_exec(&unknown, r#"{"exit_code":0}"#, false).is_err());
+    let mut changed_command = request; changed_command.arguments_json = r#"{"command":["/bin/other"]}"#.into();
+    changed_command.arguments_sha256 = format!("{:x}",Sha256::digest(changed_command.arguments_json.as_bytes()));
+    assert!(store.reserve_container_exec(changed_command).is_err());
+}

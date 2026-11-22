@@ -8,7 +8,13 @@ done
 [ -e /run/opdbus-lo.ready ] && [ -e /run/door-tls-init.ready ] || { echo "waiting for lo/tls"; sleep 3; exit 1; }
 [ -r /agent/user/sealed_id ] || echo "warning: identity sled not mounted at /agent/user"
 install -d -m 0755 /run/op-grpc-bridge
-set -a; . /etc/op-dbus/bridge.env; set +a
+# Only declared non-secret settings; credentials remain one file per secret.
+for name in OP_GRPC_BRIDGE_LISTEN OPDBUS_LUNGS_SOCKET OPDBUS_READY_PATH THREETCHED_TLS_CERT_FILE THREETCHED_TLS_KEY_FILE; do
+  file=/etc/op-dbus/env/$name
+  [ -f "$file" ] && [ ! -L "$file" ] && [ "$(stat -c '%u:%g:%a' "$file")" = 0:0:600 ] || exit 78
+  value=$(cat "$file")
+  export "$name=$value"
+done
 # Order: threetched gateway up -> paired once -> bridge. Where the image runs
 # its own gateway (sv/threetched-gateway installed), wait for it and the pair step.
 if [ -d /etc/sv/threetched-gateway ]; then

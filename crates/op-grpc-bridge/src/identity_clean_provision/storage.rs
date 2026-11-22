@@ -5,6 +5,7 @@ use super::*;
 mod partitioned;
 use nix::libc;
 use std::path::PathBuf;
+use std::io::Read as _;
 use std::{
     ffi::CString,
     fs::File,
@@ -14,7 +15,7 @@ use std::{
     },
 };
 
-pub(super) struct StorageGuard {
+pub(crate) struct StorageGuard {
     _files: Vec<File>,
 }
 
@@ -557,4 +558,56 @@ pub(super) fn verify(plan: &CleanPlan) -> Result<StorageGuard> {
         "shared seed/leaf ancestry incomplete"
     );
     Ok(StorageGuard { _files: files })
+}
+
+/// Native Incus filesystem volumes are subvolumes, never partition images.
+/// Paths are derived exclusively from validated native name/session pins.
+pub(crate) fn verify_native(
+    plan: &crate::runtime_identity_owner::native_attachment::NativePlan,
+) -> Result<StorageGuard> {
+    let pool = Path::new("/var/lib/incus/storage-pools/3tched-pool");
+    let name = plan.instance["name"].as_str().context("native name absent")?;
+    let root_path = pool.join("containers").join(name);
+    let sled_path = pool.join("custom").join(format!("default_identity-{}", plan.session_id));
+    let root = open_controlled(&root_path, true, Some(&root_path), None)?;
+    let sled = open_controlled(&sled_path, true, Some(&sled_path), None)?;
+    for (file, pin, is_root) in [(&root, &plan.root, true), (&sled, &plan.sled, false)] {
+        fs_info(file, &plan.pool_fsid)?;
+        let mut bytes = [0u8; 504];
+        // SAFETY: held Btrfs descriptor and exact GET_SUBVOL_INFO output.
+        ensure!(unsafe { libc::ioctl(file.as_raw_fd(), 0x81f8_943c as libc::c_ulong, bytes.as_mut_ptr()) } == 0,
+            "native subvolume query failed");
+        ensure!(u64::from_ne_bytes(bytes[..8].try_into()?) == pin.id
+            && bytes[296..312] == *uuid::Uuid::parse_str(&pin.uuid)?.as_bytes()
+            && u64::from_ne_bytes(bytes[288..296].try_into()?) & 1 == 0,
+            "native subvolume ID/UUID/write policy changed");
+        if is_root {
+            ensure!(bytes[312..328] == *uuid::Uuid::parse_str(&plan.golden_subvolume_uuid)?.as_bytes(),
+                "native root does not descend from the approved golden subvolume");
+        }
+    }
+    ensure!(plan.root.id != plan.sled.id && plan.root.uuid != plan.sled.uuid,
+        "native root and sled must be distinct subvolumes");
+    Ok(StorageGuard { _files: vec![root, sled] })
+}
+
+impl StorageGuard {
+    pub(crate) fn native_sled_text(&self, name: &str) -> Result<String> {
+        ensure!(matches!(name, "session_id" | "issued_identity.iid1" | "sealed_id"),
+            "unsupported sled metadata");
+        let directory = self._files.get(1).context("native sled guard absent")?;
+        let name = CString::new(name)?;
+        // SAFETY: held sled FD, static single component, no symlink following.
+        let fd = unsafe { libc::openat(directory.as_raw_fd(), name.as_ptr(),
+            libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC) };
+        ensure!(fd >= 0, "native sled metadata absent");
+        // SAFETY: successful openat returns a fresh owned descriptor.
+        let file = unsafe { File::from_raw_fd(fd) };
+        ensure!(file.metadata()?.is_file() && file.metadata()?.len() <= 65536,
+            "native sled metadata is not a bounded regular file");
+        let mut text = String::new();
+        std::io::Read::take(file, 65537).read_to_string(&mut text)?;
+        ensure!(text.len() <= 65536, "native sled metadata grew during read");
+        Ok(text)
+    }
 }

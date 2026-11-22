@@ -3,6 +3,13 @@
 //! Legacy writes are rejected after a session acquires a revision/tombstone.
 use super::*;
 mod clean_provision;
+mod native_attachment;
+mod native_upgrade;
+pub use native_upgrade::NativeRootUpgradeJournal;
+mod native_policy;
+pub use native_policy::{IDENTITY_STORAGE_SYSCALL_DENY, native_root_policy_transition_matches};
+mod container_exec;
+pub use container_exec::{ContainerExecRequest, ContainerExecJournal};
 #[path = "identity_transactions/container_rename.rs"]
 mod container_rename;
 mod native_creation;
@@ -48,6 +55,17 @@ pub struct IdentityCompareExchange {
 
 pub enum IdentityIntent {
     CleanProvision(Box<IdentityCleanProvision>),
+    /// Native-pool attachment is NOT a clean replacement. Human credentials,
+    /// genesis and history are immutable; subsidiary creation is separately
+    /// owner-bound to an exact durable native creation request.
+    AttachNativeContainer(Box<IdentityCleanProvision>),
+    RetireOwnNativeContainer {
+        expected: Box<IdentityRevision>,
+    },
+    UpgradeNativeRoot {
+        journal: Box<NativeRootUpgradeJournal>,
+        record: IdentitySledRecord,
+    },
     CompareExchange(Box<IdentityCompareExchange>),
     MigratePhysicalRoot(Box<IdentityPhysicalRootMigration>),
     RenameContainer {
@@ -1332,6 +1350,7 @@ impl CozoGraphShuttle {
         let tx = self.db.multi_transaction(true);
         let (previous, metadata) = read_one(&tx, session_id)?;
         container_rename::check_fence(&tx, &previous, &intent)?;
+        native_upgrade::check_fence(&tx, &previous, &intent)?;
         if let IdentityIntent::CompareExchange(exchange) = &intent {
             clean_provision::validate_cas(&tx, &previous, exchange.record.as_ref())?;
         }
@@ -1422,6 +1441,59 @@ impl CozoGraphShuttle {
                     value,
                     false,
                 )
+            }
+            IdentityIntent::UpgradeNativeRoot { journal, record } => {
+                native_upgrade::validate_commit(&tx, session_id, operation_id, &previous, &journal, &record)?;
+                let replayed = previous.operation_id == operation_id;
+                if !replayed {
+                    native_upgrade::complete(&tx, &journal, &record)?;
+                }
+                let genesis = journal.expected.genesis.clone();
+                (Some(record), genesis, "native-root-upgrade",
+                    i64::try_from(journal.expected.revision).map_err(native)?, replayed)
+            }
+            IdentityIntent::AttachNativeContainer(provision) => {
+                native_attachment::validate(&tx, session_id, operation_id, &previous, &metadata, &provision)?;
+                let replayed = previous.operation_id == operation_id;
+                if !replayed {
+                    clean_provision::append(&tx, session_id, operation_id, &provision)?;
+                }
+                (
+                    Some(provision.record),
+                    Some(provision.genesis),
+                    "native-attachment",
+                    i64::try_from(provision.expected.revision).map_err(native)?,
+                    replayed,
+                )
+            }
+            IdentityIntent::RetireOwnNativeContainer { expected } => {
+                let operation = format!("retire-native-{session_id}-{}", expected.revision);
+                let value = i64::try_from(expected.revision).map_err(native)?;
+                let mut record = expected.record.clone().ok_or_else(|| err("native retirement identity absent"))?;
+                if operation_id != operation
+                    || expected.session_id != session_id
+                    || expected.genesis.is_none()
+                    || record.principal_kind.as_deref() != Some("human")
+                    || record.sealed_id.is_empty()
+                    || !record.btrfs_device_json.is_empty()
+                    || record.instance_json.is_empty()
+                    || physical.is_some()
+                {
+                    return Err(err("invalid human native retirement"));
+                }
+                record.instance_json.clear();
+                record.active = false;
+                let replayed = previous.operation_id == operation_id;
+                if replayed {
+                    if metadata.kind != "native-retirement" || metadata.value != value
+                        || previous.record.as_ref() != Some(&record) || previous.genesis != expected.genesis
+                    {
+                        return Err(err("native retirement replay changed"));
+                    }
+                } else if previous != *expected {
+                    return Err(err("native retirement compare/exchange conflict"));
+                }
+                (Some(record), expected.genesis, "native-retirement", value, replayed)
             }
             IdentityIntent::CleanProvision(provision) => {
                 clean_provision::validate(
@@ -1748,6 +1820,9 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
                 | "transport-refresh"
                 | "physical-migrate"
                 | "clean-provision"
+                | "native-attachment"
+                | "native-retirement"
+                | "native-root-upgrade"
                 | "container-rename"
         )
         || value < 0

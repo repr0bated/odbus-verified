@@ -175,22 +175,22 @@ unset OP_DBUS_GRPC_LISTEN THREETCHED_BIND_ADDR GRPC_BIND THREETCHED_UNIX_SOCKET
 export THREETCHED_TLS_CERT_FILE="${THREETCHED_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export THREETCHED_TLS_KEY_FILE="${THREETCHED_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
 unset THREETCHED_BROWSER_TLS_BIND_ADDR THREETCHED_BROWSER_TLS_CERT_FILE THREETCHED_BROWSER_TLS_KEY_FILE
-# EMQX starts after this bridge: do not wait for the broker here. The bridge
-# must bind its authenticated private ExHook backend before publishing ready.
-# The retained /mqtt route then relays to EMQX's verified loopback WSS backend.
-startup_phase emqx-prepare
-# EMQX is deprecated: run its helper only where it is still installed.
-if [ -x /usr/local/libexec/op-dbus/helpers/emqx-prepare ]; then
-    /usr/local/libexec/op-dbus/helpers/emqx-prepare
-else
-    echo "emqx-prepare skipped: helper not installed (EMQX deprecated)"
+# Legacy EMQX deployments may opt in to the authenticated private listener.
+if [ -r /etc/op-dbus/env/op-emqx-exhook-enable ]; then
+    OP_EMQX_EXHOOK_ENABLE=$(cat /etc/op-dbus/env/op-emqx-exhook-enable)
 fi
-export OP_EMQX_EXHOOK_ENABLE=1
-export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
-export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${THREETCHED_TLS_CERT_FILE}"
-export OP_EMQX_EXHOOK_SERVER_KEY_FILE="${THREETCHED_TLS_KEY_FILE}"
-export OP_EMQX_EXHOOK_CLIENT_CA_FILE=/etc/emqx/certs/opdbus-ca.crt
-export OP_EMQX_EXHOOK_CLIENT_CERT_FILE=/etc/emqx/certs/emqx-exhook-client.crt
+export OP_EMQX_EXHOOK_ENABLE="${OP_EMQX_EXHOOK_ENABLE:-0}"
+if [ "$OP_EMQX_EXHOOK_ENABLE" = 1 ]; then
+    startup_phase emqx-prepare
+    if [ -x /usr/local/libexec/op-dbus/helpers/emqx-prepare ]; then
+        /usr/local/libexec/op-dbus/helpers/emqx-prepare
+    fi
+    export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
+    export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${THREETCHED_TLS_CERT_FILE}"
+    export OP_EMQX_EXHOOK_SERVER_KEY_FILE="${THREETCHED_TLS_KEY_FILE}"
+    export OP_EMQX_EXHOOK_CLIENT_CA_FILE=/etc/emqx/certs/opdbus-ca.crt
+    export OP_EMQX_EXHOOK_CLIENT_CERT_FILE=/etc/emqx/certs/emqx-exhook-client.crt
+fi
 # The bridge opens this append-only journal with mode 0600 and syncs every
 # accepted nonce before dispatch. Keeping it outside tmpfs preserves replay
 # rejection across service/process restarts.
@@ -200,9 +200,9 @@ export OP_AUTH_REPLAY_DB_PATH="${OP_AUTH_REPLAY_DB_PATH:-/var/lib/op-dbus/auth-r
 export OP_DECOY_NATIVE_CA_FILE="${OP_DECOY_NATIVE_CA_FILE:-/etc/op-dbus/decoy-native/ca.pem}"
 export OP_DECOY_NATIVE_CERT_FILE="${OP_DECOY_NATIVE_CERT_FILE:-/etc/op-dbus/decoy-native/bridge.pem}"
 export OP_DECOY_NATIVE_KEY_FILE="${OP_DECOY_NATIVE_KEY_FILE:-/etc/op-dbus/decoy-native/bridge-key.pem}"
-# Owner 2026-11-11: the identity Cozo store root is the Incus pool containers
-# directory; each container directory under it holds that identity's data.
-export IDENTITY_SLED_COZO_DB_PATH="${IDENTITY_SLED_COZO_DB_PATH:-/var/lib/incus/storage-pools/3tched-pool/containers}"
+# The private Cozo root is a sibling of containers. Cozo enforces 0700 on its
+# root, while Incus requires 0711 on the parent of unprivileged instances.
+export IDENTITY_SLED_COZO_DB_PATH="${IDENTITY_SLED_COZO_DB_PATH:-/var/lib/incus/storage-pools/3tched-pool/identity-cozo}"
 export OPDBUS_SNOWBALL_PATH="${OPDBUS_SNOWBALL_PATH:-/var/lib/opdbus/snowball}"
 export OP_DBUS_CACHE_DIR="${OP_DBUS_CACHE_DIR:-/var/lib/opdbus/cache}"
 export OPDBUS_CACHE_PLACEMENT="${OPDBUS_CACHE_PLACEMENT:-local}"
@@ -241,8 +241,11 @@ export OP_BROWSER_CONTROL_PLANE_PEER_KEY="${OP_BROWSER_CONTROL_PLANE_PEER_KEY:-4
 # human WireGuard principal. The MutationEngine mints SID1 into this same sled;
 # there is deliberately no Codex-specific service identity.
 export OP_LOCAL_HUMAN_WIREGUARD_PUBKEY="${OP_LOCAL_HUMAN_WIREGUARD_PUBKEY:-0I5FNCuHAu62VctaNgOlJ7RgfejJpYe9Qd0VdPGesX8=}"
-export OP_LOCAL_HUMAN_SESSION_ID="${OP_LOCAL_HUMAN_SESSION_ID:-414fbc56-03fb-20ab-758a-bcc7a7cbdc0e}"
-export OP_LOCAL_HUMAN_PRINCIPAL_ID="${OP_LOCAL_HUMAN_PRINCIPAL_ID:-c9bdf32e-811d-2495-b688-277c9e5c4d36}"
+human_binding=$(/usr/local/bin/op-identity-accept derive --pubkey "$OP_LOCAL_HUMAN_WIREGUARD_PUBKEY")
+set -- $human_binding
+export OP_LOCAL_HUMAN_SESSION_ID="$1" OP_LOCAL_HUMAN_PRINCIPAL_ID="$2"
+unset human_binding
+set --
 export OP_LOCAL_HUMAN_DISPLAY_ALIAS="${OP_LOCAL_HUMAN_DISPLAY_ALIAS:-jeremy-wg-f036}"
 # Transport source addresses do not prove the originating human peer.
 # Bind OIA1 to the trusted decoy signature, short lifetime, one-time nonce, and

@@ -8,6 +8,10 @@
 #       add the missing devices. Idempotent; prints every change.
 # Nothing is started unless START=1. Nothing is deleted. A failure leaves the
 # stopped container for inspection (same contract as deploy/scripts/provision-container.sh).
+if [ "${1:-}" = --subsidiary ]; then
+  shift
+  exec "$(dirname -- "$0")/31-provision-subsidiary.sh" "$@"
+fi
 . "$(dirname -- "$0")/lib.sh"; need_root
 . /etc/profile.d/op-dbus-env.sh 2>/dev/null || true
 CHATBOT_KEY=${OP_CHATBOT_WIREGUARD_PUBKEY:-}

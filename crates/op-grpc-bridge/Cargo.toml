@@ -63,6 +63,7 @@ op-identity = { path = "../op-identity" }
 op-network = { path = "../op-network" }
 op-tunnel-mux = { path = "../op-tunnel-mux" }
 op-cozo-store = { path = "../op-cozo-store" }
+op-container = { path = "../op-container" }
 op-mcp.workspace = true
 op-cognitive = { path = "../op-cognitive" }
 op-agents = { path = "../op-agents" }

@@ -29,6 +29,18 @@ Its host placement of Chat_Route is the old line.
 
 ## Requirements
 
+### Browser rendering and the backend boundary
+
+1. The 3tched backend owns the sealed schema and operation results. It exposes
+   them through the container's identity-bound 3tchedFS mount.
+2. The container UI service reads the authorized schema through FUSE and
+   submits backend operations through the admitted FUSE call files.
+3. The container UI service delivers the browser application and the permitted
+   schema and response data. The user's browser renders the UI locally.
+4. Browser rendering requires no container desktop, window manager, or
+   screen stream. The browser-facing transport carries UI data and user
+   input. It does not give the browser direct filesystem access.
+
 ### Requirement 1: The container repo owns chat and installs on 3tched
 
 **User Story:** As an operator, I want chat in the container repo, so that

@@ -11,5 +11,7 @@
 
 mod btrfs;
 pub mod seed;
+mod upgrade;
+pub use upgrade::{RootUpgradeReceipt, inspect_upgrade, upgrade_from_seed};
 
-pub use seed::{SeedContainer, SeedLocation, create_from_seed};
+pub use seed::{SeedContainer, SeedLocation, create_from_seed, inspect_container, inspect_seed};

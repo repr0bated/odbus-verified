@@ -761,7 +761,77 @@ impl Runtime {
             .as_deref()
             .filter(|s| !s.is_empty())
             .ok_or_else(|| RuntimeError::denied("sealed method has no exact capability"))?;
+        if plugin == "ctl_plane_chatbot" {
+            return self.authorize_chatbot(caller, method, required).await;
+        }
         self.require_capability(caller, required).await
+    }
+
+    async fn authorize_chatbot(
+        &self,
+        caller: &VerifiedCaller,
+        method: &str,
+        required: &str,
+    ) -> Result<(), RuntimeError> {
+        caller
+            .authority
+            .revalidate()
+            .await
+            .map_err(|_| RuntimeError::denied("identity authority is no longer valid"))?;
+        let principal = caller.principal_id.clone();
+        let session = caller.session_id.clone();
+        let genesis = caller.session_genesis.clone();
+        let key = caller.claims().wireguard_pubkey.clone();
+        let required = required.to_owned();
+        let owner_only = method == "set_config";
+        let store = self.identity_store().clone();
+        tokio::task::spawn_blocking(move || {
+            let document = crate::admission::read_grant_document()?;
+            let link = crate::grant_document::chatbot_owner(&document)
+                .map_err(|_| RuntimeError::denied("invalid chatbot ownership policy"))?;
+            let Some((owner, chatbot)) = link else {
+                return if crate::grant_document::capabilities_for_principal(&document, &principal)
+                    .contains(&required)
+                {
+                    Ok(())
+                } else {
+                    Err(RuntimeError::denied("current exact-principal capability is required"))
+                };
+            };
+            let target_matches = crate::identity_binding::configured_chatbot_key()
+                .is_some_and(|value| op_identity::session::derive_principal_id(&value) == chatbot
+                    && (principal != chatbot || value == key));
+            if !target_matches
+                || op_identity::session::derive_principal_id(&key) != principal
+                || op_identity::session::derive_session_id(&key) != session
+            {
+                return Err(RuntimeError::denied("chatbot identity binding does not match"));
+            }
+            let kind = if principal == owner {
+                "human"
+            } else if principal == chatbot && !owner_only
+                && crate::grant_document::capabilities_for_principal(&document, &principal)
+                    .contains(&required)
+            {
+                "service"
+            } else {
+                return Err(RuntimeError::denied("configured chatbot human owner is required"));
+            };
+            let revision = store
+                .read_identity_revision(&session)
+                .map_err(|error| RuntimeError::backend(error.into()))?;
+            if !revision.record.is_some_and(|record| {
+                record.active
+                    && record.principal_kind.as_deref() == Some(kind)
+                    && record.wireguard_pubkey == key
+                    && record.session_genesis == genesis
+            }) {
+                return Err(RuntimeError::denied("chatbot caller must have its own live identity"));
+            }
+            Ok(())
+        })
+        .await
+        .map_err(RuntimeError::from)?
     }
     pub(crate) async fn can_read_plugin(
         &self,

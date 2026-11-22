@@ -327,18 +327,9 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .nest("/groups-admin", groups_admin::create_groups_admin_router())
         .nest("/admin", admin::admin_routes());
 
-    // Compliance is mounted before the dashboard fallback so `/compliance`
-    // stays on its own static tree and API proxy. Router middleware already
-    // wrapped around this router still applies. The proxy forwards method,
-    // body, and content-type; admission stays on those layers.
+    // Compliance moved to the door Axum stack (op-grpc-bridge :8090).
     let static_dir = std::env::var("OP_WEB_STATIC_DIR")
         .unwrap_or_else(|_| "/usr/local/share/op-dbus/dashboard-release".to_string());
-    let compliance_dir = crate::compliance_proxy::compliance_static_dir(&static_dir);
-    let compliance_static = crate::compliance_proxy::compliance_static_service(&compliance_dir);
-    let compliance_api = Router::new().fallback(crate::compliance_proxy::compliance_api_proxy);
-    let router = router
-        .nest_service("/compliance/api", compliance_api)
-        .nest_service("/compliance", compliance_static);
     let spa =
         ServeDir::new(&static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 

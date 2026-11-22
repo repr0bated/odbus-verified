@@ -61,6 +61,19 @@ pub fn open_dir(parent: &File, name: &[u8]) -> Result<Option<File>> {
     Ok(Some(dir))
 }
 
+/// Incus protects a started container wrapper with its isolated host-root UID.
+/// Only that exact daemon-authored UID is allowed; pool/seed ancestors still
+/// use the root-only opener above.
+pub fn open_volume(parent: &File, name: &[u8], isolated_uid: Option<u32>) -> Result<Option<File>> {
+    let Some(dir) = open_at(Some(parent), name, true)? else { return Ok(None) };
+    let meta = dir.metadata()?;
+    ensure!((meta.uid() == 0 && meta.mode() & 0o022 == 0)
+        || (isolated_uid.is_some_and(|uid| uid != 0 && uid == meta.uid())
+            && meta.gid() == 0 && meta.mode() & 0o777 == 0o100),
+        "container wrapper no longer matches the exact isolated native root");
+    Ok(Some(dir))
+}
+
 fn open_at(parent: Option<&File>, name: &[u8], nofollow: bool) -> Result<Option<File>> {
     let c_name = CString::new(name)?;
     let dirfd = parent.map_or(libc::AT_FDCWD, |p| p.as_raw_fd());

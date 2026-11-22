@@ -11,7 +11,7 @@ use std::{
 };
 
 #[path = "identity_clean_provision/storage.rs"]
-mod storage;
+pub(super) mod storage;
 
 const PLAN_DIR: &str = "/var/lib/op-dbus/identity-provision-plans";
 const PARTITIONED_POOL: &str = "/var/lib/incus/storage-pools/3tched-pool";
@@ -485,8 +485,8 @@ async fn native_proof(
 }
 
 pub(super) struct CleanRootGuard {
-    pub should_start: bool,
-    _storage: storage::StorageGuard,
+    pub(super) should_start: bool,
+    pub(super) _storage: storage::StorageGuard,
 }
 
 pub(super) async fn guard_start(
@@ -494,6 +494,12 @@ pub(super) async fn guard_start(
     revision: &IdentityRevision,
     sled: &ContainerIdentitySled,
 ) -> Result<Option<CleanRootGuard>> {
+    if let Some(guard) = native_upgrade::guard_start(store, revision, sled).await? {
+        return Ok(Some(guard));
+    }
+    if let Some(guard) = native_attachment::guard_start(store, revision, sled).await? {
+        return Ok(Some(guard));
+    }
     let Some(receipt) = receipt(store, &sled.session_id).await? else {
         return Ok(None);
     };
@@ -573,6 +579,10 @@ pub(super) async fn provision(
     _request_operation: &str,
     preflight: bool,
 ) -> Result<JsonValue> {
+    if input.creation_mode != op_plugins::state_plugins::identity_sled::ContainerCreationMode::ReplaceChatbot {
+        return native_attachment::provision(engine, store, actor, input, seal, preflight).await;
+    }
+    ensure!(input.parent_principal_id.is_none(), "chatbot replacement has no parent authority");
     canonical_key(&input.wireguard_pubkey)?;
     let sid = op_identity::session::derive_session_id(&input.wireguard_pubkey);
     ensure!(
