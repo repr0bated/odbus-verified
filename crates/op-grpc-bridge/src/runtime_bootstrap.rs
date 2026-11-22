@@ -177,8 +177,6 @@ pub async fn run_from_env() -> anyhow::Result<()> {
         };
         ready = Some(ReadyReceipt::publish(door.local_addr(), lungs.socket_path(), exhook_addr)?);
         spawn_owner(&mut workers, "TLS door", door.serve(stopping(receive.clone())));
-        spawn_owner(&mut workers, "private ExHook", exhook.serve(stopping(receive.clone())));
-        spawn_owner(&mut workers, "committed wake", wake.run(runtime.core().clone(), stopping(receive.clone())));
         // Host only: a container bridge's door is reached through op-tunnel-door
         // and must not rebind the shared door socket or the door address.
         if crate::runtime_tunnel::owns_tunnel_from_env() {
