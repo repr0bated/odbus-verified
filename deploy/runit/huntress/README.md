@@ -13,10 +13,10 @@ directory runs it under runit. No keys or agent config live here.
    unpacks to /usr/share/huntress, writes /etc/huntress/agent_config.yaml and registers.
 2. `install -m 0644 ../boot-run/S98-huntress-kfs.stage1.sh /etc/runit/boot-run/`, then
    source it once. It mounts bpffs and tracefs; it's sourced by /etc/runit/1, so it never exits.
-3. `cp -a sv/huntress-* /etc/sv/`
-   `install -D -m 0755 huntress-systemd1-shim /usr/local/libexec/huntress-runit/huntress-systemd1-shim`
-   `install -m 0644 huntress-systemd1-shim.conf /etc/dbus-1/system.d/`, then reload the dbus config.
-4. `ln -s /etc/sv/huntress-{systemd1-shim,agent,updater,rio} /etc/runit/runsvdir/default/`
+3. Install ../systemd1-compat (private systemd1 bus) first, then
+   `cp -a sv/huntress-agent sv/huntress-updater sv/huntress-rio /etc/sv/`
+   (each comes with `env/DBUS_SYSTEM_BUS_ADDRESS`, which opts it in to the private bus).
+4. `ln -s /etc/sv/huntress-{agent,updater,rio} /etc/runit/runsvdir/default/`
    huntress-rio idles until the updater has fetched /usr/share/huntress/rio/rio.
 5. Optionally `huntress-agent update` triggers the first update, which delivers Rio.
 
@@ -30,10 +30,11 @@ directory runs it under runit. No keys or agent config live here.
   `sv` and prints Running/Stopped for kardianos. It also kills any unsupervised
   copy found via /var/run/<svc>.pid. runit's SysV emulation skips init.d scripts
   that have an /etc/sv/<name>, so nothing starts twice at boot.
-- The agent and updater read sibling service health via D-Bus
-  (org.freedesktop.systemd1 Unit.ActiveState). `huntress-systemd1-shim` answers
-  only those reads for the huntress-* units, from `sv status`. It has no
-  Manager methods and no write paths, and root alone may own or call it.
+- The agent, updater and Rio check sibling service health only through
+  go-systemd -> godbus `SystemBusPrivate`, which honours `DBUS_SYSTEM_BUS_ADDRESS`.
+  They use no other bus names, no /run/systemd/private and no persistent real-bus connection.
+  Their run scripts exec through `systemd1-compat/with-bus`, so they talk to the
+  private systemd1-compat bus. Nothing else on the host sees a systemd1.
 - No systemctl CLI shim: neither binary execs systemctl on a non-systemd host.
   `uninstall.sh` ends with `systemctl daemon-reload`, which fails after
   everything has been removed. Then remove /etc/sv/huntress-* and the runsvdir links.

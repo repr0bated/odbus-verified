@@ -23,4 +23,8 @@ if [ -f "$P" ]; then
 fi
 install -d -m 0755 /run/huntress
 cd /run/huntress || cd /
+# Opted in to the private systemd1-compat bus (go-systemd health checks of
+# huntress-* units); see deploy/runit/systemd1-compat/README.md.
+W=/usr/local/libexec/systemd1-compat/with-bus
+[ -x "$W" ] && [ -d "$SV/env" ] && exec "$W" "$SV/env" "$BIN"
 exec "$BIN"

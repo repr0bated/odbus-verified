@@ -1,0 +1,174 @@
+#!/usr/bin/python3
+"""Read-only org.freedesktop.systemd1 responder for runit hosts.
+
+Runs on the private systemd1-compat bus (never the real system bus). Answers
+org.freedesktop.DBus.Properties Get/GetAll on
+/org/freedesktop/systemd1/unit/<escaped unit> (interfaces
+org.freedesktop.systemd1.Unit and .Service) plus Manager.GetUnit/LoadUnit, for
+units listed in /etc/systemd1-compat/units only. State comes from `sv status`
+(fallback: /var/run/<svc>.pid). No write methods exist.
+"""
+import os
+import subprocess
+
+import dbus
+import dbus.service
+from dbus.mainloop.glib import DBusGMainLoop
+from gi.repository import GLib
+
+BUS_NAME = "org.freedesktop.systemd1"
+UNIT_IFACE = "org.freedesktop.systemd1.Unit"
+SERVICE_IFACE = "org.freedesktop.systemd1.Service"
+MANAGER_IFACE = "org.freedesktop.systemd1.Manager"
+PROPS_IFACE = "org.freedesktop.DBus.Properties"
+UNIT_ROOT = "/org/freedesktop/systemd1/unit"
+UNITS_FILE = os.environ.get("SYSTEMD1_COMPAT_UNITS", "/etc/systemd1-compat/units")
+
+_cache = {"mtime": None, "units": {}}
+
+
+def units():
+    try:
+        mtime = os.stat(UNITS_FILE).st_mtime
+    except OSError:
+        return {}
+    if mtime != _cache["mtime"]:
+        table = {}
+        with open(UNITS_FILE) as f:
+            for line in f:
+                parts = line.split("#", 1)[0].split()
+                if not parts:
+                    continue
+                unit = parts[0]
+                svc = parts[1] if len(parts) > 1 else unit.rsplit(".service", 1)[0]
+                table[unit] = svc
+        _cache.update(mtime=mtime, units=table)
+    return _cache["units"]
+
+
+def bus_escape(s):
+    return "".join(c if c.isalnum() else "_%02x" % ord(c) for c in s)
+
+
+def bus_unescape(s):
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == "_" and i + 2 < len(s):
+            try:
+                out.append(chr(int(s[i + 1:i + 3], 16)))
+                i += 3
+                continue
+            except ValueError:
+                pass
+        out.append(s[i])
+        i += 1
+    return "".join(out)
+
+
+def unknown(what):
+    return dbus.exceptions.DBusException(
+        what, name="org.freedesktop.DBus.Error.UnknownObject")
+
+
+def pid_alive(pidfile):
+    try:
+        with open(pidfile) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return pid
+    except (OSError, ValueError):
+        return 0
+
+
+def runit_state(svc):
+    svdir = "/etc/service/" + svc
+    if os.path.isdir(svdir):
+        try:
+            out = subprocess.run(["sv", "status", svdir], capture_output=True,
+                                 text=True, timeout=5).stdout
+        except (OSError, subprocess.SubprocessError):
+            out = ""
+        if out.startswith("run:"):
+            try:
+                pid = int(out.split("(pid ", 1)[1].split(")", 1)[0])
+            except (IndexError, ValueError):
+                pid = 0
+            return "loaded", "active", "running", pid
+        if out.startswith("finish:"):
+            return "loaded", "deactivating", "stop-post", 0
+        return "loaded", "inactive", "dead", 0
+    pid = pid_alive("/var/run/%s.pid" % svc)
+    if pid:
+        return "loaded", "active", "running", pid
+    if os.path.exists("/etc/init.d/" + svc):
+        return "loaded", "inactive", "dead", 0
+    return "not-found", "inactive", "dead", 0
+
+
+def props(unit, iface):
+    svc = units().get(unit)
+    if svc is None:
+        raise unknown("Unit %s not provided by systemd1-compat" % unit)
+    load, active, sub, pid = runit_state(svc)
+    if iface == SERVICE_IFACE:
+        return {"MainPID": dbus.UInt32(pid), "Type": "simple"}
+    return {
+        "Id": unit,
+        "Names": dbus.Array([unit], signature="s"),
+        "LoadState": load,
+        "ActiveState": active,
+        "SubState": sub,
+        "UnitFileState": "enabled" if load == "loaded" else "",
+        "Description": "%s (runit: %s)" % (unit, svc),
+    }
+
+
+class Units(dbus.service.FallbackObject):
+    @dbus.service.method(PROPS_IFACE, in_signature="ss", out_signature="v",
+                         rel_path_keyword="rel")
+    def Get(self, iface, prop, rel=None):
+        p = props(bus_unescape((rel or "/").lstrip("/")), iface)
+        if prop not in p:
+            raise dbus.exceptions.DBusException(
+                "Unknown property " + prop,
+                name="org.freedesktop.DBus.Error.UnknownProperty")
+        return p[prop]
+
+    @dbus.service.method(PROPS_IFACE, in_signature="s", out_signature="a{sv}",
+                         rel_path_keyword="rel")
+    def GetAll(self, iface, rel=None):
+        return dbus.Dictionary(props(bus_unescape((rel or "/").lstrip("/")), iface),
+                               signature="sv")
+
+
+class Manager(dbus.service.Object):
+    def _path(self, unit):
+        if unit not in units():
+            raise dbus.exceptions.DBusException(
+                "Unit %s not loaded." % unit,
+                name="org.freedesktop.systemd1.NoSuchUnit")
+        return dbus.ObjectPath(UNIT_ROOT + "/" + bus_escape(unit))
+
+    @dbus.service.method(MANAGER_IFACE, in_signature="s", out_signature="o")
+    def GetUnit(self, unit):
+        return self._path(unit)
+
+    @dbus.service.method(MANAGER_IFACE, in_signature="s", out_signature="o")
+    def LoadUnit(self, unit):
+        return self._path(unit)
+
+
+def main():
+    DBusGMainLoop(set_as_default=True)
+    bus = dbus.SystemBus()  # DBUS_SYSTEM_BUS_ADDRESS points at the private bus
+    name = dbus.service.BusName(BUS_NAME, bus, do_not_queue=True)
+    objs = [Units(bus, UNIT_ROOT), Manager(bus, "/org/freedesktop/systemd1")]
+    print("serving read-only %s on %s for: %s" % (
+        BUS_NAME, os.environ.get("DBUS_SYSTEM_BUS_ADDRESS"),
+        ", ".join(sorted(units())) or "(no units)"), flush=True)
+    GLib.MainLoop().run()
+    del name, objs
+
+
+if __name__ == "__main__":
+    main()
